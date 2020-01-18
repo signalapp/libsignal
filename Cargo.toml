@@ -20,7 +20,7 @@ sha2 = "0.8.0"
 [dependencies.curve25519-dalek]
 features = ["serde", "alloc"]
 version = "1.2.1"
-git = "https://github.com/signalapp/curve25519-dalek.git"
+git = "ssh://git@github.com/signalapp/curve25519-dalek.git"
 branch="lizard"
 
 [features]
