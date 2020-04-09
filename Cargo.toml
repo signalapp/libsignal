@@ -12,15 +12,13 @@ authors = ["Trevor Perrin <trevp@signal.org>"]
 edition = "2018"
 license = "GPL-3.0-only"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 sha2 = "0.8.0"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "alloc"]
 version = "2.0.0"
-git = "ssh://git@github.com/signalapp/curve25519-dalek2.git"
+git = "ssh://git@github.com/signalapp/curve25519-dalek.git"
 branch="lizard2"
 
 [features]
