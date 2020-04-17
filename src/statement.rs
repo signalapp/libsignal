@@ -58,9 +58,9 @@ use std::collections::HashMap;
 // strategy is intended to ensure that the nonce appears random to any attacker and that different
 // Schnorr challenges will never be used with the same nonce.
 //
-// Below we describe the hash inputs to SHO/SHA256:
+// Below we describe the hash inputs to SHO/HMAC-SHA256:
 //
-//  L : bytes, label = "POKSHO_Ristretto_SHA256"
+//  L : bytes, label = "POKSHO_Ristretto_SHOHMACSHA256"
 //  D : bytes, description of statement - see below
 //  a : G1, witness scalars for statement
 //  A : G2, point values for statement = homomorphism(a)
