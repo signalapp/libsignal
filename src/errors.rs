@@ -7,7 +7,7 @@
 
 #[derive(Debug)]
 pub enum PokshoError {
-    BadArgs,             // Bad arguments were passed to the function
+    BadArgs,                          // Bad arguments were passed to the function
     BadArgsWrongNumberOfScalarArgs,   // Bad arguments were passed to the function
     BadArgsWrongNumberOfPointArgs,    // Bad arguments were passed to the function
     BadArgsMissingScalarArg,          // Bad arguments were passed to the function

@@ -14,12 +14,13 @@ license = "GPL-3.0-only"
 
 [dependencies]
 sha2 = "0.8.0"
+hmac = "0.7.1"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "alloc"]
 version = "2.0.0"
 git = "ssh://git@github.com/signalapp/curve25519-dalek.git"
-branch="lizard2"
+branch = "lizard2"
 
 [features]
 default = ["u64_backend"]
