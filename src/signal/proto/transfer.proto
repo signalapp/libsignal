@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package signal.proto.transfer;
+
+message SignalMessage {
+  bytes  ratchet_key      = 1;
+  uint32 counter          = 2;
+  uint32 previous_counter = 3;
+  bytes  ciphertext       = 4;
+}
+
+message PreKeySignalMessage {
+  uint32 registration_id   = 5;
+  uint32 pre_key_id        = 1;
+  uint32 signed_pre_key_id = 6;
+  bytes  base_key          = 2;
+  bytes  identity_key      = 3;
+  bytes  message           = 4; // SignalMessage
+}
+
+message KeyExchangeMessage {
+  uint32 id                 = 1;
+  bytes  base_key           = 2;
+  bytes  ratchet_key        = 3;
+  bytes  identity_key       = 4;
+  bytes  base_key_signature = 5;
+}
+
+message SenderKeyMessage {
+  uint32 id         = 1;
+  uint32 iteration  = 2;
+  bytes  ciphertext = 3;
+}
+
+message SenderKeyDistributionMessage {
+  uint32 id          = 1;
+  uint32 iteration   = 2;
+  bytes  chain_key   = 3;
+  bytes  signing_key = 4;
+}
+
+message DeviceConsistencyCodeMessage {
+  uint32 generation = 1;
+  bytes  signature  = 2;
+}
