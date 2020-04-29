@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arrayref = "0.3.6"
 bytes = "0.5"
 curve25519-dalek = "2.0.0"
 prost = "0.6"
@@ -14,7 +15,6 @@ rand = "0.7.3"
 sha2 = "0.8.1"
 subtle = "2.2.2"
 x25519-dalek = "0.6.0"
-zeroize = "1.1.0"
 
 [build-dependencies]
 prost-build = "0.6"

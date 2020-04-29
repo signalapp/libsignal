@@ -1,20 +1,18 @@
 use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
-use curve25519_dalek::edwards::{CompressedEdwardsY, EdwardsBasepointTable, EdwardsPoint};
+use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::montgomery::MontgomeryPoint;
 use curve25519_dalek::scalar::Scalar;
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
-use subtle::{Choice, ConstantTimeEq};
+use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
-use zeroize::Zeroize;
 
 const AGREEMENT_LENGTH: usize = 32;
 const PRIVATE_KEY_LENGTH: usize = 32;
 const PUBLIC_KEY_LENGTH: usize = 32;
 const SIGNATURE_LENGTH: usize = 64;
 
-#[derive(Clone, Debug, Zeroize)]
-#[zeroize(drop)]
+#[derive(Clone, Debug)]
 pub struct KeyPair {
     public_key: [u8; PUBLIC_KEY_LENGTH],
     private_key: [u8; PRIVATE_KEY_LENGTH],
@@ -144,12 +142,27 @@ impl From<[u8; PRIVATE_KEY_LENGTH]> for KeyPair {
     }
 }
 
+impl From<KeyPair> for super::KeyPair {
+    fn from(kp: KeyPair) -> Self {
+        Self {
+            public_key: Box::new(super::DjbPublicKey(kp.public_key)),
+            private_key: Box::new(super::DjbPrivateKey(kp.private_key)),
+        }
+    }
+}
+
+impl From<super::DjbPrivateKey> for KeyPair {
+    fn from(djb_priv_key: super::DjbPrivateKey) -> Self {
+        Self::from(djb_priv_key.0)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use rand::rngs::OsRng;
+    use rand::RngCore;
 
     use super::*;
-    use rand::RngCore;
 
     #[test]
     fn test_agreement() {
@@ -209,8 +222,6 @@ mod test {
 
     #[test]
     fn test_signature() {
-        let mut csprng = OsRng;
-
         let alice_identity_private: [u8; PRIVATE_KEY_LENGTH] = [
             0xc0, 0x97, 0x24, 0x84, 0x12, 0xe5, 0x8b, 0xf0, 0x5d, 0xf4, 0x87, 0x96, 0x82, 0x05,
             0x13, 0x27, 0x94, 0x17, 0x8e, 0x36, 0x76, 0x37, 0xf5, 0x81, 0x8f, 0x81, 0xe0, 0xe6,

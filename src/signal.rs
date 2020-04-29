@@ -1,4 +1,4 @@
-mod curve25519;
+pub mod curve;
 mod error;
 pub(crate) mod proto;
 

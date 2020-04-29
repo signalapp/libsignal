@@ -1,4 +1,4 @@
-pub(crate) mod signal;
+pub mod signal;
 
 #[cfg(test)]
 mod test {
