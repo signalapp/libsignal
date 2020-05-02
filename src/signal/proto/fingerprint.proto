@@ -8,7 +8,7 @@ message LogicalFingerprint {
 }
 
 message CombinedFingerprints {
-  uint32             version           = 1;
-  LogicalFingerprint localFingerprint  = 2;
-  LogicalFingerprint remoteFingerprint = 3;
+  uint32             version            = 1;
+  LogicalFingerprint local_fingerprint  = 2;
+  LogicalFingerprint remote_fingerprint = 3;
 }
