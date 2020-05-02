@@ -1,6 +1,7 @@
 use arrayref::array_ref;
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
+use std::error;
 use std::fmt;
 
 mod curve25519;
@@ -33,6 +34,8 @@ impl fmt::Display for InvalidKeyError {
         }
     }
 }
+
+impl error::Error for InvalidKeyError {}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum KeyType {
@@ -67,6 +70,23 @@ impl TryFrom<u8> for KeyType {
 pub trait PublicKey {
     fn serialize(&self) -> Box<[u8]>;
     fn key_type(&self) -> KeyType;
+}
+
+impl PartialEq for dyn PublicKey {
+    fn eq(&self, other: &dyn PublicKey) -> bool {
+        self.serialize() == other.serialize()
+    }
+}
+
+impl fmt::Debug for dyn PublicKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "PublicKey {{ key_type={:?}, serialize={:?} }}",
+            self.key_type(),
+            self.serialize()
+        )
+    }
 }
 
 pub trait PrivateKey {

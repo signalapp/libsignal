@@ -1,37 +1,47 @@
+use super::curve;
+use prost::DecodeError;
+use std::error::Error;
+use std::fmt;
+
 #[derive(Debug)]
-pub struct Error {
-    inner: Box<dyn std::error::Error + Send + Sync + 'static>,
+enum InvalidKeyErrorCause {
+    Decode(DecodeError),
+    CurveInvalidKey(curve::InvalidKeyError),
 }
 
-impl Error {
-    #[inline]
-    pub fn new<E>(err: E) -> Self
-    where
-        E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
-    {
-        Error { inner: err.into() }
-    }
+#[derive(Debug)]
+pub struct InvalidKeyError(InvalidKeyErrorCause);
 
-    #[inline]
-    pub fn inner(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
-        &*self.inner
-    }
-
-    #[inline]
-    pub fn take_inner(self) -> Box<dyn std::error::Error + Send + Sync + 'static> {
-        self.inner
+impl Error for InvalidKeyError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self.0 {
+            InvalidKeyErrorCause::Decode(ref e) => Some(e),
+            InvalidKeyErrorCause::CurveInvalidKey(ref e) => Some(e),
+        }
     }
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.inner)
+impl From<DecodeError> for InvalidKeyError {
+    fn from(value: DecodeError) -> Self {
+        Self(InvalidKeyErrorCause::Decode(value))
     }
 }
 
-impl std::error::Error for Error {
-    #[inline]
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.inner.source()
+impl From<curve::InvalidKeyError> for InvalidKeyError {
+    fn from(value: curve::InvalidKeyError) -> Self {
+        Self(InvalidKeyErrorCause::CurveInvalidKey(value))
+    }
+}
+
+impl fmt::Display for InvalidKeyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            InvalidKeyErrorCause::Decode(ref e) => {
+                write!(f, "invalid key: failed to decode: {}", e)
+            }
+            InvalidKeyErrorCause::CurveInvalidKey(ref e) => {
+                write!(f, "invalid key: bad ecc key: {}", e)
+            }
+        }
     }
 }
