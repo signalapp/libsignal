@@ -17,6 +17,7 @@ impl fmt::Display for HKDFError {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct HKDF {
     iteration_start_offset: u8,
 }
