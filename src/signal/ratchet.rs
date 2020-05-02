@@ -2,6 +2,8 @@ use arrayref::array_ref;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
+use super::curve;
+pub use super::curve::{InvalidKeyError, PrivateKey, PublicKey};
 pub use super::kdf::HKDF;
 
 pub struct MessageKeys {
@@ -90,9 +92,51 @@ impl ChainKey {
     }
 }
 
+pub struct RootKey {
+    kdf: HKDF,
+    key: [u8; 32],
+}
+
+impl RootKey {
+    pub fn new(kdf: HKDF, key: [u8; 32]) -> Self {
+        Self { kdf, key }
+    }
+
+    pub fn key(&self) -> &[u8; 32] {
+        &self.key
+    }
+
+    pub fn create_chain(
+        &self,
+        their_ratchet_key: &dyn PublicKey,
+        our_ratchet_key: &dyn PrivateKey,
+    ) -> Result<(RootKey, ChainKey), InvalidKeyError> {
+        let shared_secret = curve::calculate_agreement(their_ratchet_key, our_ratchet_key)?;
+        let derived_secret_bytes = self.kdf.derive_salted_secrets(
+            shared_secret.as_ref(),
+            &self.key,
+            b"WhisperRatchet",
+            64,
+        );
+        Ok((
+            RootKey {
+                kdf: self.kdf,
+                key: *array_ref![derived_secret_bytes, 0, 32],
+            },
+            ChainKey {
+                kdf: self.kdf,
+                key: *array_ref![derived_secret_bytes, 32, 32],
+                index: 0,
+            },
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use super::curve;
 
     #[test]
     fn test_chain_key_derivation_v2() {
@@ -160,5 +204,54 @@ mod tests {
         assert_eq!(0, chain_key.message_keys().counter());
         assert_eq!(1, chain_key.next_chain_key().index());
         assert_eq!(1, chain_key.next_chain_key().message_keys().counter());
+    }
+
+    #[test]
+    fn test_root_key_derivation_v2() {
+        let root_key_seed = [
+            0x7bu8, 0xa6, 0xde, 0xbc, 0x2b, 0xc1, 0xbb, 0xf9, 0x1a, 0xbb, 0xc1, 0x36, 0x74, 0x04,
+            0x17, 0x6c, 0xa6, 0x23, 0x09, 0x5b, 0x7e, 0xc6, 0x6b, 0x45, 0xf6, 0x02, 0xd9, 0x35,
+            0x38, 0x94, 0x2d, 0xcc,
+        ];
+        let alice_private = [
+            0x20u8, 0x68, 0x22, 0xec, 0x67, 0xeb, 0x38, 0x04, 0x9e, 0xba, 0xe7, 0xb9, 0x39, 0xba,
+            0xea, 0xeb, 0xb1, 0x51, 0xbb, 0xb3, 0x2d, 0xb8, 0x0f, 0xd3, 0x89, 0x24, 0x5a, 0xc3,
+            0x7a, 0x94, 0x8e, 0x50,
+        ];
+        let bob_public = [
+            0x05u8, 0xab, 0xb8, 0xeb, 0x29, 0xcc, 0x80, 0xb4, 0x71, 0x09, 0xa2, 0x26, 0x5a, 0xbe,
+            0x97, 0x98, 0x48, 0x54, 0x06, 0xe3, 0x2d, 0xa2, 0x68, 0x93, 0x4a, 0x95, 0x55, 0xe8,
+            0x47, 0x57, 0x70, 0x8a, 0x30,
+        ];
+
+        // These differ from the libsignal-protocol-java test case because the test case there uses
+        // an invalid alice private key that hasn't been properly scalar clamped. The x25519 code in
+        // Java doesn't apply the scalar clamping before doing the montgomery point multiplication
+        // whereas the rust x25519 library does scalar clamp the passed in private key before doing
+        // the multiplication. You can confirm these keys with libsignal-protocol-java by changing
+        // the first byte of alicePrivate from 0x21 to 0x20.
+        let next_root = [
+            0x67u8, 0x46, 0x77, 0x65, 0x21, 0x04, 0xe8, 0x64, 0xd0, 0x7c, 0x54, 0x33, 0xef, 0xaa,
+            0x59, 0x25, 0xed, 0x43, 0x67, 0xd6, 0xb2, 0x5a, 0xaf, 0xe6, 0x99, 0x1d, 0xef, 0x5c,
+            0x7f, 0x0f, 0xb8, 0x6f,
+        ];
+        let next_chain = [
+            0xfau8, 0xed, 0x7f, 0xb2, 0xc3, 0xe6, 0xf6, 0x06, 0xfc, 0xbf, 0x26, 0x64, 0x6c, 0xf2,
+            0x68, 0xad, 0x49, 0x58, 0x9f, 0xcb, 0xde, 0x01, 0xc1, 0x26, 0x75, 0xe5, 0xe8, 0x22,
+            0xa7, 0xe3, 0x35, 0xd1,
+        ];
+
+        let alice_private_key = curve::decode_private_point(&alice_private)
+            .expect("alice_private should decode successfully");
+        let bob_public_key =
+            curve::decode_point(&bob_public).expect("bob_public should decode successfully");
+        let root_key = RootKey::new(HKDF::new(2).expect("HKDFv2 should exist"), root_key_seed);
+
+        let (next_root_key, next_chain_key) =
+            root_key.create_chain(bob_public_key.as_ref(), alice_private_key.as_ref()).expect("bob_public_key and alice_private_key should successfully create a chain with root_key");
+
+        assert_eq!(&root_key_seed, root_key.key());
+        assert_eq!(&next_root, next_root_key.key());
+        assert_eq!(&next_chain, next_chain_key.key());
     }
 }

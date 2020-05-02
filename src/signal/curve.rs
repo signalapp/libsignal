@@ -167,6 +167,7 @@ pub fn decode_private_point(value: &[u8]) -> Result<Box<dyn PrivateKey>, Invalid
     Ok(Box::new(DjbPrivateKey::try_from(value)?))
 }
 
+#[derive(Debug)]
 struct DjbPublicKey([u8; 32]);
 
 impl PublicKey for DjbPublicKey {
@@ -196,6 +197,7 @@ impl TryFrom<&[u8]> for DjbPublicKey {
     }
 }
 
+#[derive(Debug)]
 struct DjbPrivateKey([u8; 32]);
 
 impl PrivateKey for DjbPrivateKey {
