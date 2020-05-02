@@ -2,7 +2,7 @@ pub mod signal;
 
 #[cfg(test)]
 mod test {
-    use super::signal::proto::transfer::SignalMessage;
+    use super::signal::proto::wire::SignalMessage;
 
     #[test]
     fn it_works() {

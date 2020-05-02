@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package signal.proto.transfer;
+package signal.proto.wire;
 
 message SignalMessage {
   bytes  ratchet_key      = 1;

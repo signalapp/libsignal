@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package signal.proto.fingerprint;
+
+message LogicalFingerprint {
+  bytes content = 1;
+  // bytes identifier = 2;
+}
+
+message CombinedFingerprints {
+  uint32             version           = 1;
+  LogicalFingerprint localFingerprint  = 2;
+  LogicalFingerprint remoteFingerprint = 3;
+}

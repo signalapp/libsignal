@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package signal.proto.storage;
+
+message SessionStructure {
+  message Chain {
+    bytes senderRatchetKey        = 1;
+    bytes senderRatchetKeyPrivate = 2;
+
+    message ChainKey {
+      uint32 index = 1;
+      bytes  key   = 2;
+    }
+
+    ChainKey chainKey = 3;
+
+    message MessageKey {
+      uint32 index     = 1;
+      bytes  cipherKey = 2;
+      bytes  macKey    = 3;
+      bytes  iv        = 4;
+    }
+
+    repeated MessageKey messageKeys = 4;
+  }
+
+  message PendingKeyExchange {
+    uint32 sequence                 = 1;
+    bytes  localBaseKey             = 2;
+    bytes  localBaseKeyPrivate      = 3;
+    bytes  localRatchetKey          = 4;
+    bytes  localRatchetKeyPrivate   = 5;
+    bytes  localIdentityKey         = 7;
+    bytes  localIdentityKeyPrivate  = 8;
+  }
+
+  message PendingPreKey {
+    uint32 preKeyId       = 1;
+    int32  signedPreKeyId = 3;
+    bytes  baseKey        = 2;
+  }
+
+  uint32         sessionVersion           = 1;
+  bytes          localIdentityPublic      = 2;
+  bytes          remoteIdentityPublic     = 3;
+
+  bytes          rootKey                  = 4;
+  uint32         previousCounter          = 5;
+
+  Chain          senderChain              = 6;
+  repeated Chain receiverChains           = 7;
+
+  PendingKeyExchange pendingKeyExchange   = 8;
+  PendingPreKey      pendingPreKey        = 9;
+
+  uint32             remoteRegistrationId = 10;
+  uint32             localRegistrationId  = 11;
+
+  bool               needsRefresh         = 12;
+  bytes              aliceBaseKey         = 13;
+}
+
+message RecordStructure {
+  SessionStructure          currentSession   = 1;
+  repeated SessionStructure previousSessions = 2;
+}
+
+message PreKeyRecordStructure {
+  uint32 id         = 1;
+  bytes  publicKey  = 2;
+  bytes  privateKey = 3;
+}
+
+message SignedPreKeyRecordStructure {
+  uint32  id         = 1;
+  bytes   publicKey  = 2;
+  bytes   privateKey = 3;
+  bytes   signature  = 4;
+  fixed64 timestamp  = 5;
+}
+
+message IdentityKeyPairStructure {
+  bytes publicKey  = 1;
+  bytes privateKey = 2;
+}
+
+message SenderKeyStateStructure {
+  message SenderChainKey {
+    uint32 iteration = 1;
+    bytes  seed      = 2;
+  }
+
+  message SenderMessageKey {
+    uint32 iteration = 1;
+    bytes  seed      = 2;
+  }
+
+  message SenderSigningKey {
+    bytes public  = 1;
+    bytes private = 2;
+  }
+
+  uint32                    senderKeyId       = 1;
+  SenderChainKey            senderChainKey    = 2;
+  SenderSigningKey          senderSigningKey  = 3;
+  repeated SenderMessageKey senderMessageKeys = 4;
+}
+
+message SenderKeyRecordStructure {
+  repeated SenderKeyStateStructure senderKeyStates = 1;
+}
