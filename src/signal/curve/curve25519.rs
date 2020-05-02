@@ -158,7 +158,7 @@ impl From<super::DjbPrivateKey> for KeyPair {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use rand::rngs::OsRng;
     use rand::RngCore;
 
