@@ -1,11 +1,12 @@
 mod curve25519;
 
-use arrayref::array_ref;
-use rand::{CryptoRng, Rng};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::error;
 use std::fmt;
+
+use arrayref::array_ref;
+use rand::{CryptoRng, Rng};
 
 #[derive(Debug)]
 pub enum InvalidKeyError {
