@@ -4,8 +4,11 @@ pub mod kdf;
 pub(crate) mod proto;
 pub mod ratchet;
 
-use prost::Message;
 use std::convert::TryFrom;
+
+use prost::Message;
+
+use kdf::HKDF;
 
 #[derive(Debug)]
 pub struct IdentityKey {
