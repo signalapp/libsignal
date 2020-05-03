@@ -1,10 +1,14 @@
+mod params;
+
 use arrayref::array_ref;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
-use super::curve;
 pub use super::curve::{InvalidKeyError, PrivateKey, PublicKey};
 pub use super::kdf::HKDF;
+use super::{curve, IdentityKey, IdentityKeyPair};
+
+pub use params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 
 pub struct MessageKeys {
     cipher_key: [u8; 32],
