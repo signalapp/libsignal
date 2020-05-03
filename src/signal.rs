@@ -4,7 +4,6 @@ pub mod kdf;
 pub(crate) mod proto;
 pub mod ratchet;
 
-use crate::signal::curve::KeyPair;
 use prost::Message;
 use std::convert::TryFrom;
 
@@ -103,7 +102,7 @@ impl TryFrom<&[u8]> for IdentityKeyPair {
 }
 
 impl From<curve::KeyPair> for IdentityKeyPair {
-    fn from(value: KeyPair) -> Self {
+    fn from(value: curve::KeyPair) -> Self {
         Self {
             identity_key: value.public_key.into(),
             private_key: value.private_key,
@@ -118,7 +117,7 @@ mod tests {
     use rand::rngs::OsRng;
 
     #[test]
-    fn test_from() {
+    fn test_identity_key_from() {
         let key_pair = curve::KeyPair::new(&mut OsRng);
         let key_pair_public_serialized = key_pair.public_key.serialize();
         let identity_key = IdentityKey::from(key_pair.public_key);
