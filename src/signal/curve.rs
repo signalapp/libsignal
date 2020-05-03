@@ -2,6 +2,7 @@ mod curve25519;
 
 use arrayref::array_ref;
 use rand::{CryptoRng, Rng};
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::error;
 use std::fmt;
@@ -75,6 +76,23 @@ pub trait PublicKey {
 impl PartialEq for dyn PublicKey {
     fn eq(&self, other: &dyn PublicKey) -> bool {
         self.serialize() == other.serialize()
+    }
+}
+
+impl Eq for dyn PublicKey {}
+
+impl Ord for dyn PublicKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let our_bytes = self.serialize();
+        let their_bytes = other.serialize();
+        our_bytes.cmp(&their_bytes)
+        our_bytes.as_ref().cmp(their_bytes.as_ref())
+    }
+}
+
+impl PartialOrd for dyn PublicKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
