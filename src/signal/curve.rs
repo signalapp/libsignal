@@ -87,7 +87,6 @@ impl Ord for dyn PublicKey {
         let our_bytes = self.serialize();
         let their_bytes = other.serialize();
         our_bytes.cmp(&their_bytes)
-        our_bytes.as_ref().cmp(their_bytes.as_ref())
     }
 }
 

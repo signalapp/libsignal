@@ -12,6 +12,6 @@ mod test {
     #[test]
     fn proto_test() {
         let m = SignalMessage::default();
-        assert_eq!(m.counter, 0);
+        assert_eq!(m.counter, None);
     }
 }

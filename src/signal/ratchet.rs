@@ -1,7 +1,12 @@
 mod keys;
 mod params;
 
-use super::{curve, HKDF};
+pub use self::keys::{ChainKey, MessageKeys, RootKey};
+pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
+use super::{curve, state::SessionState, HKDF};
 
-pub use keys::{ChainKey, MessageKeys, RootKey};
-pub use params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
+pub fn initialize_alice_session(
+    session_state: &mut SessionState,
+    parameters: &AliceSignalProtocolParameters,
+) {
+}

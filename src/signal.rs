@@ -2,7 +2,9 @@ pub mod curve;
 mod error;
 pub mod kdf;
 pub(crate) mod proto;
+mod protocol;
 pub mod ratchet;
+pub mod state;
 
 use std::convert::TryFrom;
 
