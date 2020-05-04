@@ -1,6 +1,8 @@
+use std::error;
+use std::fmt;
+
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use std::fmt;
 
 #[derive(Debug)]
 pub enum HKDFError {
@@ -16,6 +18,8 @@ impl fmt::Display for HKDFError {
         }
     }
 }
+
+impl error::Error for HKDFError {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct HKDF {
