@@ -106,10 +106,7 @@ impl BobSignalProtocolParameters {
 
     #[inline]
     pub fn our_one_time_pre_key_pair(&self) -> Option<&CurveKeyPair> {
-        match self.our_one_time_pre_key_pair {
-            None => None,
-            Some(ref curve_key_pair) => Some(curve_key_pair),
-        }
+        self.our_one_time_pre_key_pair.as_ref()
     }
 
     #[inline]
