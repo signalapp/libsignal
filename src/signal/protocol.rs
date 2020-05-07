@@ -68,10 +68,10 @@ impl From<curve::InvalidKeyError> for CiphertextMessageDeserializationError {
 }
 
 pub enum CiphertextMessage {
-    Signal(SignalMessage),
-    PreKeySignal(PreKeySignalMessage),
-    SenderKey(SenderKeyMessage),
-    SenderKeyDistribution(SenderKeyDistributionMessage),
+    SignalMessage(SignalMessage),
+    PreKeySignalMessage(PreKeySignalMessage),
+    SenderKeyMessage(SenderKeyMessage),
+    SenderKeyDistributionMessage(SenderKeyDistributionMessage),
 }
 
 pub struct SignalMessage {
