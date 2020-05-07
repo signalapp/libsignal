@@ -42,7 +42,7 @@ impl HKDF {
     }
 
     pub fn derive_secrets(
-        &self,
+        self,
         input_key_material: &[u8],
         info: &[u8],
         output_length: usize,
@@ -56,7 +56,7 @@ impl HKDF {
     }
 
     pub fn derive_salted_secrets(
-        &self,
+        self,
         input_key_material: &[u8],
         salt: &[u8],
         info: &[u8],
@@ -66,7 +66,7 @@ impl HKDF {
         self.expand(&prk, info, output_length)
     }
 
-    fn extract(&self, salt: &[u8], input_key_material: &[u8]) -> [u8; Self::HASH_OUTPUT_SIZE] {
+    fn extract(self, salt: &[u8], input_key_material: &[u8]) -> [u8; Self::HASH_OUTPUT_SIZE] {
         let mut mac =
             Hmac::<Sha256>::new_varkey(salt).expect("HMAC-SHA256 should accept any size key");
         mac.input(input_key_material);
@@ -74,7 +74,7 @@ impl HKDF {
     }
 
     fn expand(
-        &self,
+        self,
         prk: &[u8; Self::HASH_OUTPUT_SIZE],
         info: &[u8],
         output_length: usize,
