@@ -19,7 +19,7 @@ pub struct IdentityKey {
 
 impl IdentityKey {
     #[inline]
-    pub fn public_key(&self) -> &dyn curve::PublicKey {
+    pub fn public_key(&self) -> &(dyn curve::PublicKey + 'static) {
         self.public_key.as_ref()
     }
 
