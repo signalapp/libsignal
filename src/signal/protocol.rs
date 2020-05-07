@@ -230,3 +230,39 @@ impl TryInto<SignalMessage> for &[u8] {
 pub struct PreKeySignalMessage {}
 pub struct SenderKeyMessage {}
 pub struct SenderKeyDistributionMessage {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use rand::rngs::OsRng;
+    use rand::RngCore;
+
+    #[test]
+    fn test_signal_message_serialize_deserialize() {
+        let mut csprng = OsRng;
+
+        let mut mac_key = [0u8; 32];
+        csprng.fill_bytes(&mut mac_key);
+        let mac_key = mac_key;
+
+        let mut ciphertext = [0u8; 20];
+        csprng.fill_bytes(&mut ciphertext);
+        let ciphertext = ciphertext;
+
+        let sender_ratchet_key_pair = curve::KeyPair::new(&mut csprng);
+        let sender_identity_key_pair = curve::KeyPair::new(&mut csprng);
+        let receiver_identity_key_pair = curve::KeyPair::new(&mut csprng);
+
+        let msg = SignalMessage::new(
+            3,
+            &mac_key,
+            sender_ratchet_key_pair.public_key,
+            42,
+            41,
+            Box::new(ciphertext),
+            &sender_identity_key_pair.public_key.into(),
+            &receiver_identity_key_pair.public_key.into(),
+        );
+    }
+}
