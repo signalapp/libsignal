@@ -80,7 +80,7 @@ impl KeyPair {
         hash.input(&message);
 
         let h = Scalar::from_hash(hash);
-        let s = &(&h * &a) + &r;
+        let s = (h * a) + r;
 
         let mut result = [0u8; SIGNATURE_LENGTH];
         result[..32].copy_from_slice(cap_r.as_bytes());
