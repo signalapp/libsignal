@@ -58,7 +58,7 @@ impl KeyPair {
         let a = Scalar::from_bits(self.private_key);
         let ed_public_key_point = &a * &ED25519_BASEPOINT_TABLE;
         let ed_public_key = ed_public_key_point.compress();
-        let sign_bit = ed_public_key.as_bytes()[31] & 0b1000_0000u8;
+        let sign_bit = ed_public_key.as_bytes()[31] & 0b1000_0000_u8;
 
         let mut hash1 = Sha512::new();
         let hash_prefix = [
@@ -85,7 +85,7 @@ impl KeyPair {
         let mut result = [0u8; SIGNATURE_LENGTH];
         result[..32].copy_from_slice(cap_r.as_bytes());
         result[32..].copy_from_slice(s.as_bytes());
-        result[SIGNATURE_LENGTH - 1] &= 0b0111_1111u8;
+        result[SIGNATURE_LENGTH - 1] &= 0b0111_1111_u8;
         result[SIGNATURE_LENGTH - 1] |= sign_bit;
         result
     }
@@ -97,7 +97,7 @@ impl KeyPair {
     ) -> bool {
         let mont_point = MontgomeryPoint(*their_public_key);
         let ed_pub_key_point =
-            match mont_point.to_edwards((signature[SIGNATURE_LENGTH - 1] & 0b1000_0000u8) >> 7) {
+            match mont_point.to_edwards((signature[SIGNATURE_LENGTH - 1] & 0b1000_0000_u8) >> 7) {
                 Some(x) => x,
                 None => return false,
             };
@@ -106,8 +106,8 @@ impl KeyPair {
         cap_r.copy_from_slice(&signature[..32]);
         let mut s = [0u8; 32];
         s.copy_from_slice(&signature[32..]);
-        s[31] &= 0b0111_1111u8;
-        if (s[31] & 0b11100000u8) != 0 {
+        s[31] &= 0b0111_1111_u8;
+        if (s[31] & 0b1110_0000_u8) != 0 {
             return false;
         }
         let minus_cap_a = -ed_pub_key_point;
