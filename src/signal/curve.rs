@@ -174,15 +174,15 @@ pub fn calculate_signature<R>(
     csprng: &mut R,
     private_key: &dyn PrivateKey,
     message: &[u8],
-) -> Result<Box<[u8]>, InvalidKeyError>
+) -> Box<[u8]>
 where
     R: CryptoRng + Rng,
 {
     match private_key.key_type() {
         KeyType::Djb => {
-            let djb_priv_key = DjbPrivateKey::try_from(&private_key.serialize()[..])?;
+            let djb_priv_key = DjbPrivateKey::try_from(&private_key.serialize()[..]).unwrap();
             let kp = curve25519::KeyPair::from(djb_priv_key);
-            Ok(Box::new(kp.calculate_signature(csprng, message)))
+            Box::new(kp.calculate_signature(csprng, message))
         }
     }
 }
@@ -273,7 +273,7 @@ mod tests {
         let mut csprng = OsRng;
         let key_pair = KeyPair::new(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
-        let signature = calculate_signature(&mut csprng, &*key_pair.private_key, &message).unwrap();
+        let signature = calculate_signature(&mut csprng, &*key_pair.private_key, &message);
 
         assert!(verify_signature(&*key_pair.public_key, &message, &*signature).unwrap());
         message[0] ^= 0x01u8;

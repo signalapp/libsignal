@@ -10,6 +10,7 @@ use subtle::ConstantTimeEq;
 use super::curve;
 use super::proto;
 use crate::signal::IdentityKey;
+use rand::{CryptoRng, Rng};
 
 pub const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 3;
 
@@ -358,7 +359,126 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
     }
 }
 
-pub struct SenderKeyMessage {}
+pub struct SenderKeyMessage {
+    message_version: u8,
+    key_id: u32,
+    iteration: u32,
+    ciphertext: Box<[u8]>,
+    serialized: Box<[u8]>,
+}
+
+impl SenderKeyMessage {
+    const SIGNATURE_LEN: usize = 64;
+
+    pub fn new<R>(
+        key_id: u32,
+        iteration: u32,
+        ciphertext: Box<[u8]>,
+        csprng: &mut R,
+        signature_key: &dyn curve::PrivateKey,
+    ) -> Self
+    where
+        R: CryptoRng + Rng,
+    {
+        let proto_message = proto::wire::SenderKeyMessage {
+            id: Some(key_id),
+            iteration: Some(iteration),
+            ciphertext: Some(ciphertext.clone().into_vec()),
+        };
+        let proto_message_len = proto_message.encoded_len();
+        let mut serialized = vec![0u8; 1 + proto_message_len + Self::SIGNATURE_LEN];
+        serialized[0] =
+            ((CIPHERTEXT_MESSAGE_CURRENT_VERSION & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
+        proto_message
+            .encode(&mut &mut serialized[1..1 + proto_message_len])
+            .unwrap();
+        let signature =
+            curve::calculate_signature(csprng, signature_key, &serialized[..1 + proto_message_len]);
+        serialized[1 + proto_message_len..].copy_from_slice(&signature[..]);
+        Self {
+            message_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION,
+            key_id,
+            iteration,
+            ciphertext,
+            serialized: serialized.into_boxed_slice(),
+        }
+    }
+
+    pub fn verify_signature(&self, signature_key: &dyn curve::PublicKey) -> bool {
+        curve::verify_signature(
+            signature_key,
+            &self.serialized[..self.serialized.len() - Self::SIGNATURE_LEN],
+            &self.serialized[self.serialized.len() - Self::SIGNATURE_LEN..],
+        )
+        .unwrap()
+    }
+
+    #[inline]
+    pub fn message_version(&self) -> u8 {
+        self.message_version
+    }
+
+    #[inline]
+    pub fn key_id(&self) -> u32 {
+        self.key_id
+    }
+
+    #[inline]
+    pub fn iteration(&self) -> u32 {
+        self.iteration
+    }
+
+    #[inline]
+    pub fn ciphertext(&self) -> &[u8] {
+        &*self.ciphertext
+    }
+}
+
+impl AsRef<[u8]> for SenderKeyMessage {
+    fn as_ref(&self) -> &[u8] {
+        &*self.serialized
+    }
+}
+
+impl TryFrom<&[u8]> for SenderKeyMessage {
+    type Error = CiphertextMessageDeserializationError;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if value.len() < 1 + Self::SIGNATURE_LEN {
+            return Err(CiphertextMessageDeserializationError::MessageTooShort(
+                value.len(),
+            ));
+        }
+        let message_version = value[0] >> 4;
+        let ciphertext_version = value[0] & 0x0F;
+        if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+            return Err(CiphertextMessageDeserializationError::LegacyVersion(
+                ciphertext_version,
+            ));
+        }
+        if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+            return Err(CiphertextMessageDeserializationError::UnrecognizedVersion(
+                ciphertext_version,
+            ));
+        }
+        let proto_structure =
+            proto::wire::SenderKeyMessage::decode(&value[1..value.len() - Self::SIGNATURE_LEN])?;
+        if proto_structure.id.is_none()
+            || proto_structure.iteration.is_none()
+            || proto_structure.ciphertext.is_none()
+        {
+            return Err(CiphertextMessageDeserializationError::InvalidMessage(None));
+        }
+        Ok(SenderKeyMessage {
+            message_version,
+            key_id: proto_structure.id.unwrap(),
+            iteration: proto_structure.iteration.unwrap(),
+            ciphertext: proto_structure.ciphertext.unwrap().into_boxed_slice(),
+            serialized: Box::from(value),
+        })
+    }
+}
+
 pub struct SenderKeyDistributionMessage {}
 
 #[cfg(test)]
