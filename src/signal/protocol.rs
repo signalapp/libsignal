@@ -551,7 +551,7 @@ mod tests {
         );
         let deser_pre_key_signal_message =
             PreKeySignalMessage::try_from(pre_key_signal_message.as_ref())
-                .expect("should deserialized without error");
+                .expect("should deserialize without error");
         assert_eq!(
             pre_key_signal_message.message_version,
             deser_pre_key_signal_message.message_version
@@ -583,6 +583,38 @@ mod tests {
         assert_eq!(
             pre_key_signal_message.serialized,
             deser_pre_key_signal_message.serialized
+        );
+    }
+
+    #[test]
+    fn test_sender_key_message_serialize_deserialize() {
+        let mut csprng = OsRng;
+        let signature_key_pair = curve::KeyPair::new(&mut csprng);
+        let sender_key_message = SenderKeyMessage::new(
+            42,
+            7,
+            vec![1u8, 2, 3].into_boxed_slice(),
+            &mut csprng,
+            &*signature_key_pair.private_key,
+        );
+        let deser_sender_key_message = SenderKeyMessage::try_from(sender_key_message.as_ref())
+            .expect("should deserialize without error");
+        assert_eq!(
+            sender_key_message.message_version,
+            deser_sender_key_message.message_version
+        );
+        assert_eq!(sender_key_message.key_id, deser_sender_key_message.key_id);
+        assert_eq!(
+            sender_key_message.iteration,
+            deser_sender_key_message.iteration
+        );
+        assert_eq!(
+            sender_key_message.ciphertext,
+            deser_sender_key_message.ciphertext
+        );
+        assert_eq!(
+            sender_key_message.serialized,
+            deser_sender_key_message.serialized
         );
     }
 }
