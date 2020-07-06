@@ -131,6 +131,10 @@ impl KeyPair {
     pub fn public_key(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
         &self.public_key
     }
+
+    pub fn private_key(&self) -> &[u8; PRIVATE_KEY_LENGTH] {
+        &self.private_key
+    }
 }
 
 impl From<[u8; PRIVATE_KEY_LENGTH]> for KeyPair {
@@ -139,21 +143,6 @@ impl From<[u8; PRIVATE_KEY_LENGTH]> for KeyPair {
             private_key,
             public_key: *PublicKey::from(&StaticSecret::from(private_key)).as_bytes(),
         }
-    }
-}
-
-impl From<KeyPair> for super::KeyPair {
-    fn from(kp: KeyPair) -> Self {
-        Self {
-            public_key: Box::new(super::DjbPublicKey(kp.public_key)),
-            private_key: Box::new(super::DjbPrivateKey(kp.private_key)),
-        }
-    }
-}
-
-impl From<super::DjbPrivateKey> for KeyPair {
-    fn from(djb_priv_key: super::DjbPrivateKey) -> Self {
-        Self::from(djb_priv_key.0)
     }
 }
 

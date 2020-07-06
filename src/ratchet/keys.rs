@@ -142,8 +142,8 @@ impl RootKey {
 
     pub fn create_chain(
         &self,
-        their_ratchet_key: &dyn curve::PublicKey,
-        our_ratchet_key: &dyn curve::PrivateKey,
+        their_ratchet_key: &curve::PublicKey,
+        our_ratchet_key: &curve::PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {
         let shared_secret = curve::calculate_agreement(their_ratchet_key, our_ratchet_key)?;
         let derived_secret_bytes = self.kdf.derive_salted_secrets(

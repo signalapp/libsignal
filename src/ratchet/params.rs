@@ -6,9 +6,9 @@ pub struct AliceSignalProtocolParameters {
     our_base_key_pair: CurveKeyPair,
 
     their_identity_key: IdentityKey,
-    their_signed_pre_key: Box<dyn CurvePublicKey>,
-    their_one_time_pre_key: Option<Box<dyn CurvePublicKey>>,
-    their_ratchet_key: Box<dyn CurvePublicKey>,
+    their_signed_pre_key: CurvePublicKey,
+    their_one_time_pre_key: Option<CurvePublicKey>,
+    their_ratchet_key: CurvePublicKey,
 }
 
 impl AliceSignalProtocolParameters {
@@ -16,9 +16,9 @@ impl AliceSignalProtocolParameters {
         our_identity_key_pair: IdentityKeyPair,
         our_base_key_pair: CurveKeyPair,
         their_identity_key: IdentityKey,
-        their_signed_pre_key: Box<dyn CurvePublicKey>,
-        their_one_time_pre_key: Option<Box<dyn CurvePublicKey>>,
-        their_ratchet_key: Box<dyn CurvePublicKey>,
+        their_signed_pre_key: CurvePublicKey,
+        their_one_time_pre_key: Option<CurvePublicKey>,
+        their_ratchet_key: CurvePublicKey,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -46,21 +46,18 @@ impl AliceSignalProtocolParameters {
     }
 
     #[inline]
-    pub fn their_signed_pre_key(&self) -> &dyn CurvePublicKey {
-        self.their_signed_pre_key.as_ref()
+    pub fn their_signed_pre_key(&self) -> &CurvePublicKey {
+        &self.their_signed_pre_key
     }
 
     #[inline]
-    pub fn their_one_time_pre_key(&self) -> Option<&dyn CurvePublicKey> {
-        match self.their_one_time_pre_key {
-            None => None,
-            Some(ref b) => Some(b.as_ref()),
-        }
+    pub fn their_one_time_pre_key(&self) -> Option<&CurvePublicKey> {
+        self.their_one_time_pre_key.as_ref()
     }
 
     #[inline]
-    pub fn their_ratchet_key(&self) -> &dyn CurvePublicKey {
-        self.their_ratchet_key.as_ref()
+    pub fn their_ratchet_key(&self) -> &CurvePublicKey {
+        &self.their_ratchet_key
     }
 }
 
@@ -71,7 +68,7 @@ pub struct BobSignalProtocolParameters {
     our_ratchet_key_pair: CurveKeyPair,
 
     their_identity_key: IdentityKey,
-    their_base_key: Box<dyn CurvePublicKey>,
+    their_base_key: CurvePublicKey,
 }
 
 impl BobSignalProtocolParameters {
@@ -80,9 +77,8 @@ impl BobSignalProtocolParameters {
         our_signed_pre_key_pair: CurveKeyPair,
         our_one_time_pre_key_pair: Option<CurveKeyPair>,
         our_ratchet_key_pair: CurveKeyPair,
-
         their_identity_key: IdentityKey,
-        their_base_key: Box<dyn CurvePublicKey>,
+        their_base_key: CurvePublicKey,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -120,7 +116,7 @@ impl BobSignalProtocolParameters {
     }
 
     #[inline]
-    pub fn their_base_key(&self) -> &dyn CurvePublicKey {
-        self.their_base_key.as_ref()
+    pub fn their_base_key(&self) -> &CurvePublicKey {
+        &self.their_base_key
     }
 }

@@ -12,11 +12,11 @@ use prost::Message;
 struct UnacknowledgedPreKeyMessageItems {
     pre_key_id: Option<u32>,
     signed_pre_key_id: u32,
-    base_key: Box<dyn curve::PublicKey>,
+    base_key: curve::PublicKey,
 }
 
 impl UnacknowledgedPreKeyMessageItems {
-    fn new(pre_key_id: Option<u32>, signed_pre_key_id: u32, base_key: Box<dyn curve::PublicKey>) -> Self {
+    fn new(pre_key_id: Option<u32>, signed_pre_key_id: u32, base_key: curve::PublicKey) -> Self {
         Self { pre_key_id, signed_pre_key_id, base_key }
     }
 
@@ -28,8 +28,8 @@ impl UnacknowledgedPreKeyMessageItems {
         Ok(self.signed_pre_key_id)
     }
 
-    pub fn base_key(&self) -> Result<&(dyn curve::PublicKey + 'static)> {
-        return Ok(self.base_key.as_ref())
+    pub fn base_key(&self) -> Result<&curve::PublicKey> {
+        Ok(&self.base_key)
     }
 
 }
@@ -84,7 +84,7 @@ impl SessionState {
         RootKey::new(hkdf, &self.session.root_key)
     }
 
-    pub fn sender_ratchet_key(&self) -> Result<Box<dyn curve::PublicKey>> {
+    pub fn sender_ratchet_key(&self) -> Result<curve::PublicKey> {
         match self.session.sender_chain {
             None => Err(SignalProtocolError::InvalidProtobufEncoding),
             Some(ref c) => {
@@ -93,7 +93,7 @@ impl SessionState {
         }
     }
 
-    pub fn sender_ratchet_private_key(&self) -> Result<Box<dyn curve::PrivateKey>> {
+    pub fn sender_ratchet_private_key(&self) -> Result<curve::PrivateKey> {
         match self.session.sender_chain {
             None => Err(SignalProtocolError::InvalidProtobufEncoding),
             Some(ref c) => {
@@ -102,7 +102,7 @@ impl SessionState {
         }
     }
 
-    pub fn has_receiver_chain(&self, sender: &dyn curve::PublicKey) -> Result<bool> {
+    pub fn has_receiver_chain(&self, sender: &curve::PublicKey) -> Result<bool> {
         Ok(self.get_receiver_chain(sender)?.is_some())
     }
 
@@ -110,7 +110,7 @@ impl SessionState {
         Ok(self.session.sender_chain.is_some())
     }
 
-    pub fn get_receiver_chain(&self, sender: &dyn curve::PublicKey) -> Result<Option<(session_structure::Chain, usize)>> {
+    pub fn get_receiver_chain(&self, sender: &curve::PublicKey) -> Result<Option<(session_structure::Chain, usize)>> {
         let sender_bytes = sender.serialize();
 
         for (idx,chain) in self.session.receiver_chains.iter().enumerate() {
@@ -129,7 +129,7 @@ impl SessionState {
         Ok(None)
     }
 
-    pub fn get_receiver_chain_key(&self, sender: &dyn curve::PublicKey) -> Result<Option<ChainKey>> {
+    pub fn get_receiver_chain_key(&self, sender: &curve::PublicKey) -> Result<Option<ChainKey>> {
         match self.get_receiver_chain(sender)? {
             None => Ok(None),
             Some((chain,_)) => {
@@ -147,7 +147,7 @@ impl SessionState {
         }
     }
 
-    pub fn add_receiver_chain(&mut self, sender: &dyn curve::PublicKey, chain_key: &ChainKey) -> Result<()> {
+    pub fn add_receiver_chain(&mut self, sender: &curve::PublicKey, chain_key: &ChainKey) -> Result<()> {
         let chain_key = session_structure::chain::ChainKey {
             index: chain_key.index(),
             key: chain_key.key().to_vec()
@@ -224,7 +224,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn has_message_keys(&self, sender: &dyn curve::PublicKey, counter: u32) -> Result<bool> {
+    pub fn has_message_keys(&self, sender: &curve::PublicKey, counter: u32) -> Result<bool> {
         if let Some(chain_and_index) = self.get_receiver_chain(sender)? {
             for message_key in chain_and_index.0.message_keys {
                 if message_key.index == counter {
@@ -236,7 +236,7 @@ impl SessionState {
         Ok(false)
     }
 
-    pub fn remove_message_keys(&mut self, sender: &dyn curve::PublicKey, counter: u32) -> Result<Option<MessageKeys>> {
+    pub fn remove_message_keys(&mut self, sender: &curve::PublicKey, counter: u32) -> Result<Option<MessageKeys>> {
         if let Some(mut chain_and_index) = self.get_receiver_chain(sender)? {
             let message_key_idx = chain_and_index.0.message_keys.iter().position(|m| m.index == counter);
             if let Some(position) = message_key_idx {
@@ -256,7 +256,7 @@ impl SessionState {
         Ok(None)
     }
 
-    pub fn set_message_keys(&mut self, sender: &dyn curve::PublicKey, message_keys: &MessageKeys) -> Result<bool> {
+    pub fn set_message_keys(&mut self, sender: &curve::PublicKey, message_keys: &MessageKeys) -> Result<bool> {
         let new_keys = session_structure::chain::MessageKey {
             cipher_key: message_keys.cipher_key().to_vec(),
             mac_key: message_keys.mac_key().to_vec(),
@@ -278,7 +278,7 @@ impl SessionState {
         Err(SignalProtocolError::InvalidState("set_message_keys", "No receiver".to_string()))
     }
 
-    pub fn set_receiver_chain_key(&mut self, sender: &dyn curve::PublicKey, chain_key: &ChainKey) -> Result<()> {
+    pub fn set_receiver_chain_key(&mut self, sender: &curve::PublicKey, chain_key: &ChainKey) -> Result<()> {
         if let Some(mut chain_and_index) = self.get_receiver_chain(sender)? {
             let mut updated_chain = chain_and_index.0;
             updated_chain.chain_key = Some(session_structure::chain::ChainKey {
@@ -366,7 +366,7 @@ impl SessionState {
     pub fn set_unacknowledged_pre_key_message(&mut self,
                                               pre_key_id: Option<u32>,
                                               signed_pre_key_id: u32,
-                                              base_key: &dyn curve::PublicKey) -> Result<()> {
+                                              base_key: &curve::PublicKey) -> Result<()> {
         let pending = session_structure::PendingPreKey {
             pre_key_id: pre_key_id.unwrap_or(0),
             signed_pre_key_id: signed_pre_key_id as i32,

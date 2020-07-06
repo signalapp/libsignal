@@ -9,7 +9,7 @@ use std::fmt;
 use arrayref::array_ref;
 use rand::{CryptoRng, Rng};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum KeyType {
     Djb,
 }
@@ -39,20 +39,67 @@ impl TryFrom<u8> for KeyType {
     }
 }
 
-pub trait PublicKey {
-    fn serialize(&self) -> Box<[u8]>;
-    fn key_type(&self) -> KeyType;
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+enum PublicKeyData {
+    DjbPublicKey([u8; 32]),
 }
 
-impl PartialEq for dyn PublicKey {
-    fn eq(&self, other: &dyn PublicKey) -> bool {
+#[derive(Clone, Copy, Eq, PartialOrd)]
+pub struct PublicKey {
+    key: PublicKeyData
+}
+
+impl PublicKey {
+    pub fn deserialize(value: &[u8]) -> Result<Self> {
+        if value.is_empty() {
+            return Err(SignalProtocolError::NoKeyTypeIdentifier);
+        }
+        let key_type = KeyType::try_from(value[0])?;
+        match key_type {
+            KeyType::Djb => {
+                // We allow trailing data after the public key (why?)
+                if value.len() < 32 + 1 {
+                    return Err(SignalProtocolError::BadKeyLength(KeyType::Djb, value.len()));
+                }
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&value[1..33]);
+                Ok(PublicKey { key : PublicKeyData::DjbPublicKey(key) })
+            }
+        }
+    }
+
+    pub fn serialize(&self) -> Box<[u8]> {
+        let value_len = match self.key {
+            PublicKeyData::DjbPublicKey(v) => v.len()
+        };
+        let mut result = Vec::with_capacity(1 + value_len);
+        result.push(self.key_type().value());
+        match self.key {
+            PublicKeyData::DjbPublicKey(v) => result.extend_from_slice(&v)
+        }
+        result.into_boxed_slice()
+    }
+
+    pub fn key_type(&self) -> KeyType {
+        match self.key {
+            PublicKeyData::DjbPublicKey(_) => KeyType::Djb,
+        }
+    }
+}
+
+impl From<PublicKeyData> for PublicKey {
+    fn from(key: PublicKeyData) -> PublicKey {
+        Self { key }
+    }
+}
+
+impl PartialEq for PublicKey {
+    fn eq(&self, other: &PublicKey) -> bool {
         self.serialize() == other.serialize()
     }
 }
 
-impl Eq for dyn PublicKey {}
-
-impl Ord for dyn PublicKey {
+impl Ord for PublicKey {
     fn cmp(&self, other: &Self) -> Ordering {
         let our_bytes = self.serialize();
         let their_bytes = other.serialize();
@@ -60,39 +107,70 @@ impl Ord for dyn PublicKey {
     }
 }
 
-impl PartialOrd for dyn PublicKey {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl fmt::Debug for dyn PublicKey {
+impl fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "PublicKey {{ key_type={:?}, serialize={:?} }}",
+            "PublicKey {{ key_type={}, serialize={:?} }}",
             self.key_type(),
             self.serialize()
         )
     }
 }
 
-pub trait PrivateKey {
-    fn serialize(&self) -> Box<[u8]>;
-    fn key_type(&self) -> KeyType;
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum PrivateKeyData {
+    DjbPrivateKey([u8; 32]),
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct PrivateKey {
+    key: PrivateKeyData
+}
+
+impl PrivateKey {
+    pub fn deserialize(value: &[u8]) -> Result<Self> {
+        if value.len() != 32 {
+            Err(SignalProtocolError::BadKeyLength(KeyType::Djb, value.len()))
+        } else {
+            let mut key = [0u8; 32];
+            key.copy_from_slice(&value[..32]);
+            Ok(Self { key: PrivateKeyData::DjbPrivateKey(key) })
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        match self.key {
+            PrivateKeyData::DjbPrivateKey(v) => v.to_vec(),
+        }
+    }
+
+    pub fn key_type(&self) -> KeyType {
+        match self.key {
+            PrivateKeyData::DjbPrivateKey(_) => KeyType::Djb
+        }
+    }
+}
+
+impl From<PrivateKeyData> for PrivateKey {
+    fn from(key: PrivateKeyData) -> PrivateKey {
+        Self { key }
+    }
 }
 
 pub struct KeyPair {
-    pub public_key: Box<dyn PublicKey>,
-    pub private_key: Box<dyn PrivateKey>,
+    pub public_key: PublicKey,
+    pub private_key: PrivateKey,
 }
 
 impl KeyPair {
-    pub fn new<R>(csprng: &mut R) -> Self
-    where
-        R: CryptoRng + Rng,
-    {
-        curve25519::KeyPair::new(csprng).into()
+    pub fn new<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
+        let keypair = curve25519::KeyPair::new(csprng);
+
+        let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(*keypair.public_key()));
+        let private_key = PrivateKey::from(PrivateKeyData::DjbPrivateKey(*keypair.private_key()));
+
+        Self { public_key, private_key }
     }
 
     pub fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
@@ -103,42 +181,32 @@ impl KeyPair {
 }
 
 pub fn calculate_agreement(
-    public_key: &dyn PublicKey,
-    private_key: &dyn PrivateKey,
+    public_key: &PublicKey,
+    private_key: &PrivateKey,
 ) -> Result<Box<[u8]>> {
-    if public_key.key_type() != private_key.key_type() {
-        return Err(SignalProtocolError::MismatchedKeyTypes(
-            public_key.key_type(),
-            private_key.key_type(),
-        ));
-    }
-
-    match public_key.key_type() {
-        KeyType::Djb => {
-            let djb_priv_key = DjbPrivateKey::try_from(&private_key.serialize()[..])?;
-            let kp = curve25519::KeyPair::from(djb_priv_key);
-            let djb_pub_key = decode_point_internal(&public_key.serialize()[..])?;
-            Ok(Box::new(kp.calculate_agreement(&djb_pub_key.0)))
+    match (public_key.key, private_key.key) {
+        (PublicKeyData::DjbPublicKey(pub_key), PrivateKeyData::DjbPrivateKey(priv_key)) => {
+            let kp = curve25519::KeyPair::from(priv_key);
+            Ok(Box::new(kp.calculate_agreement(&pub_key)))
         }
     }
 }
 
 pub fn verify_signature(
-    public_key: &dyn PublicKey,
+    public_key: &PublicKey,
     message: &[u8],
     signature: &[u8],
 ) -> Result<bool> {
-    match public_key.key_type() {
-        KeyType::Djb => {
+    match public_key.key {
+        PublicKeyData::DjbPublicKey(pub_key) => {
             if signature.len() != 64 {
                 return Err(SignalProtocolError::MismatchedSignatureLengthForKey(
                     KeyType::Djb,
                     signature.len(),
                 ));
             }
-            let djb_pub_key = decode_point_internal(&public_key.serialize()[..])?;
             Ok(curve25519::KeyPair::verify_signature(
-                &djb_pub_key.0,
+                &pub_key,
                 message,
                 array_ref![signature, 0, 64],
             ))
@@ -148,91 +216,23 @@ pub fn verify_signature(
 
 pub fn calculate_signature<R: CryptoRng + Rng>(
     csprng: &mut R,
-    private_key: &dyn PrivateKey,
+    private_key: &PrivateKey,
     message: &[u8]) -> Result<Box<[u8]>>
 {
-    match private_key.key_type() {
-        KeyType::Djb => {
-            let djb_priv_key = DjbPrivateKey::try_from(&private_key.serialize()[..])?;
-            let kp = curve25519::KeyPair::from(djb_priv_key);
+    match private_key.key {
+        PrivateKeyData::DjbPrivateKey(k) => {
+            let kp = curve25519::KeyPair::from(k);
             Ok(Box::new(kp.calculate_signature(csprng, message)))
         }
     }
 }
 
-pub fn decode_point(value: &[u8]) -> Result<Box<dyn PublicKey>> {
-    decode_point_internal(value).map(|x| Box::new(x) as Box<dyn PublicKey>)
+pub fn decode_private_point(value: &[u8]) -> Result<PrivateKey> {
+    PrivateKey::deserialize(value)
 }
 
-fn decode_point_internal(value: &[u8]) -> Result<DjbPublicKey> {
-    if value.is_empty() {
-        return Err(SignalProtocolError::NoKeyTypeIdentifier);
-    }
-    let key_type = KeyType::try_from(value[0])?;
-    match key_type {
-        KeyType::Djb => Ok(DjbPublicKey::try_from(&value[1..])?),
-    }
-}
-
-pub fn decode_private_point(value: &[u8]) -> Result<Box<dyn PrivateKey>> {
-    Ok(Box::new(DjbPrivateKey::try_from(value)?))
-}
-
-#[derive(Debug)]
-struct DjbPublicKey([u8; 32]);
-
-impl PublicKey for DjbPublicKey {
-    fn serialize(&self) -> Box<[u8]> {
-        let mut result = Vec::with_capacity(1 + self.0.len());
-        result.push(self.key_type().value());
-        result.extend_from_slice(&self.0);
-        result.into_boxed_slice()
-    }
-
-    fn key_type(&self) -> KeyType {
-        KeyType::Djb
-    }
-}
-
-impl TryFrom<&[u8]> for DjbPublicKey {
-    type Error = SignalProtocolError;
-
-    fn try_from(value: &[u8]) -> Result<Self> {
-        if value.len() < 32 {
-            Err(SignalProtocolError::BadKeyLength(KeyType::Djb, value.len()))
-        } else {
-            let mut result = DjbPublicKey([0u8; 32]);
-            result.0.copy_from_slice(&value[..32]);
-            Ok(result)
-        }
-    }
-}
-
-#[derive(Debug)]
-struct DjbPrivateKey([u8; 32]);
-
-impl PrivateKey for DjbPrivateKey {
-    fn serialize(&self) -> Box<[u8]> {
-        Box::from(&self.0[..])
-    }
-
-    fn key_type(&self) -> KeyType {
-        KeyType::Djb
-    }
-}
-
-impl TryFrom<&[u8]> for DjbPrivateKey {
-    type Error = SignalProtocolError;
-
-    fn try_from(value: &[u8]) -> Result<Self> {
-        if value.len() != 32 {
-            Err(SignalProtocolError::BadKeyLength(KeyType::Djb, value.len()))
-        } else {
-            let mut result = DjbPrivateKey([0u8; 32]);
-            result.0.copy_from_slice(value);
-            Ok(result)
-        }
-    }
+pub fn decode_point(v: &[u8]) -> Result<PublicKey> {
+    PublicKey::deserialize(v)
 }
 
 #[cfg(test)]
@@ -246,11 +246,11 @@ mod tests {
         let mut csprng = OsRng;
         let key_pair = KeyPair::new(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
-        let signature = calculate_signature(&mut csprng, &*key_pair.private_key, &message).unwrap();
+        let signature = calculate_signature(&mut csprng, &key_pair.private_key, &message).unwrap();
 
-        assert!(verify_signature(&*key_pair.public_key, &message, &*signature).unwrap());
+        assert!(verify_signature(&key_pair.public_key, &message, &signature).unwrap());
         message[0] ^= 0x01u8;
-        assert!(!verify_signature(&*key_pair.public_key, &message, &*signature).unwrap());
+        assert!(!verify_signature(&key_pair.public_key, &message, &signature).unwrap());
     }
 
     #[test]

@@ -21,7 +21,7 @@ pub enum CiphertextMessage {
 
 pub struct SignalMessage {
     message_version: u8,
-    sender_ratchet_key: Box<dyn curve::PublicKey>,
+    sender_ratchet_key: curve::PublicKey,
     counter: u32,
     previous_counter: u32,
     ciphertext: Box<[u8]>,
@@ -34,7 +34,7 @@ impl SignalMessage {
     pub fn new(
         message_version: u8,
         mac_key: &[u8; 32],
-        sender_ratchet_key: Box<dyn curve::PublicKey>,
+        sender_ratchet_key: curve::PublicKey,
         counter: u32,
         previous_counter: u32,
         ciphertext: Box<[u8]>,
@@ -75,8 +75,8 @@ impl SignalMessage {
     }
 
     #[inline]
-    pub fn sender_ratchet_key(&self) -> &(dyn curve::PublicKey + 'static) {
-        &*self.sender_ratchet_key
+    pub fn sender_ratchet_key(&self) -> &curve::PublicKey {
+        &self.sender_ratchet_key
     }
 
     #[inline]
@@ -172,7 +172,7 @@ pub struct PreKeySignalMessage {
     registration_id: u32,
     pre_key_id: Option<u32>,
     signed_pre_key_id: u32,
-    base_key: Box<dyn curve::PublicKey>,
+    base_key: curve::PublicKey,
     identity_key: IdentityKey,
     message: SignalMessage,
     serialized: Box<[u8]>,
@@ -184,7 +184,7 @@ impl PreKeySignalMessage {
         registration_id: u32,
         pre_key_id: Option<u32>,
         signed_pre_key_id: u32,
-        base_key: Box<dyn curve::PublicKey>,
+        base_key: curve::PublicKey,
         identity_key: IdentityKey,
         message: SignalMessage,
     ) -> Result<Self> {
@@ -232,8 +232,8 @@ impl PreKeySignalMessage {
     }
 
     #[inline]
-    pub fn base_key(&self) -> &(dyn curve::PublicKey + 'static) {
-        &*self.base_key
+    pub fn base_key(&self) -> &curve::PublicKey {
+        &self.base_key
     }
 
     #[inline]
@@ -310,7 +310,7 @@ impl SenderKeyMessage {
         iteration: u32,
         ciphertext: Box<[u8]>,
         csprng: &mut R,
-        signature_key: &dyn curve::PrivateKey,
+        signature_key: &curve::PrivateKey,
     ) -> Result<Self>
     {
         let proto_message = proto::wire::SenderKeyMessage {
@@ -335,7 +335,7 @@ impl SenderKeyMessage {
         })
     }
 
-    pub fn verify_signature(&self, signature_key: &dyn curve::PublicKey) -> Result<bool> {
+    pub fn verify_signature(&self, signature_key: &curve::PublicKey) -> Result<bool> {
         let valid = curve::verify_signature(
             signature_key,
             &self.serialized[..self.serialized.len() - Self::SIGNATURE_LEN],
@@ -445,7 +445,7 @@ mod tests {
 
     fn assert_signal_message_equals(m1: &SignalMessage, m2: &SignalMessage) {
         assert_eq!(m1.message_version, m2.message_version);
-        assert_eq!(*m1.sender_ratchet_key, *m2.sender_ratchet_key);
+        assert_eq!(m1.sender_ratchet_key, m2.sender_ratchet_key);
         assert_eq!(m1.counter, m2.counter);
         assert_eq!(m1.previous_counter, m2.previous_counter);
         assert_eq!(m1.ciphertext, m2.ciphertext);
@@ -496,8 +496,8 @@ mod tests {
             deser_pre_key_signal_message.signed_pre_key_id
         );
         assert_eq!(
-            *pre_key_signal_message.base_key,
-            *deser_pre_key_signal_message.base_key
+            pre_key_signal_message.base_key,
+            deser_pre_key_signal_message.base_key
         );
         assert_eq!(
             pre_key_signal_message.identity_key.public_key(),
@@ -522,7 +522,7 @@ mod tests {
             7,
             vec![1u8, 2, 3].into_boxed_slice(),
             &mut csprng,
-            &*signature_key_pair.private_key,
+            &signature_key_pair.private_key,
         ).unwrap();
         let deser_sender_key_message = SenderKeyMessage::try_from(sender_key_message.as_ref())
             .expect("should deserialize without error");
