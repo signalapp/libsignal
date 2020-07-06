@@ -5,14 +5,16 @@ pub(crate) mod proto;
 mod protocol;
 pub mod ratchet;
 pub mod state;
+pub mod fingerprint;
 
 use std::convert::TryFrom;
 
 use prost::Message;
 
 use kdf::HKDF;
+use rand::{Rng, CryptoRng};
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd)]
 pub struct IdentityKey {
     public_key: Box<dyn curve::PublicKey>,
 }
@@ -27,13 +29,17 @@ impl IdentityKey {
     pub fn serialize(&self) -> Box<[u8]> {
         self.public_key.serialize()
     }
+
+    pub fn decode(value: &[u8]) -> Result<Self, curve::InvalidKeyError> {
+        curve::decode_point(value).map(|public_key| Self { public_key })
+    }
 }
 
 impl TryFrom<&[u8]> for IdentityKey {
     type Error = curve::InvalidKeyError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        curve::decode_point(value).map(|public_key| Self { public_key })
+        IdentityKey::decode(value)
     }
 }
 
@@ -54,9 +60,17 @@ impl From<Box<dyn curve::PublicKey>> for IdentityKey {
     }
 }
 
+impl Eq for IdentityKey {}
+
 impl PartialEq for IdentityKey {
     fn eq(&self, other: &Self) -> bool {
         self.public_key.as_ref() == other.public_key.as_ref()
+    }
+}
+
+impl Ord for IdentityKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.public_key.as_ref().cmp(other.public_key.as_ref())
     }
 }
 
@@ -72,6 +86,11 @@ impl IdentityKeyPair {
             private_key,
         }
     }
+
+    pub fn generate<R: CryptoRng + Rng>(csprng: &mut R) -> Self {
+        curve::KeyPair::new(csprng).into()
+    }
+
 
     #[inline]
     pub fn identity_key(&self) -> &IdentityKey {
@@ -131,8 +150,7 @@ mod tests {
 
     #[test]
     fn test_serialize_identity_key_pair() {
-        let key_pair = curve::KeyPair::new(&mut OsRng);
-        let identity_key_pair: IdentityKeyPair = key_pair.into();
+        let identity_key_pair = IdentityKeyPair::generate(&mut OsRng);
         let serialized = identity_key_pair.serialize();
         let deserialized_identity_key_pair = IdentityKeyPair::try_from(&serialized[..]).unwrap();
         assert_eq!(

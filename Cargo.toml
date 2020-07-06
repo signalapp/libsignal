@@ -17,5 +17,8 @@ sha2 = "0.8.1"
 subtle = "2.2.2"
 x25519-dalek = "0.6.0"
 
+[dev-dependencies]
+hex = "0.4"
+
 [build-dependencies]
 prost-build = "0.6"
