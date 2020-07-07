@@ -4,7 +4,7 @@ use sha2::Sha256;
 
 use crate::curve;
 use crate::kdf::HKDF;
-use crate::error::Result;
+use crate::error::{SignalProtocolError, Result};
 
 pub struct MessageKeys {
     cipher_key: [u8; 32],
@@ -22,6 +22,25 @@ impl MessageKeys {
             iv: *array_ref![okm, 64, 16],
             counter,
         }
+    }
+
+    pub fn new(cipher_key: &[u8], mac_key: &[u8], iv: &[u8], counter: u32) -> Result<Self> {
+        if cipher_key.len() != 32 {
+            return Err(SignalProtocolError::InvalidCipherKeyLength(cipher_key.len()));
+        }
+        if mac_key.len() != 32 {
+            return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));
+        }
+        if iv.len() != 16 {
+            return Err(SignalProtocolError::InvalidCipherNonceLength(iv.len()));
+        }
+
+        Ok(MessageKeys {
+            cipher_key: *array_ref![cipher_key, 0, 32],
+            mac_key: *array_ref![mac_key, 0, 32],
+            iv: *array_ref![iv, 0, 16],
+            counter,
+        })
     }
 
     #[inline]
@@ -44,6 +63,7 @@ impl MessageKeys {
         self.counter
     }
 }
+
 pub struct ChainKey {
     kdf: HKDF,
     key: [u8; 32],
@@ -54,8 +74,16 @@ impl ChainKey {
     const MESSAGE_KEY_SEED: [u8; 1] = [0x01u8];
     const CHAIN_KEY_SEED: [u8; 1] = [0x02u8];
 
-    pub fn new(kdf: HKDF, key: [u8; 32], index: u32) -> Self {
-        Self { kdf, key, index }
+    pub fn new(kdf: HKDF, key: &[u8], index: u32) -> Result<Self> {
+        if key.len() != 32 {
+            return Err(SignalProtocolError::InvalidChainKeyLength(key.len()));
+        }
+
+        Ok(Self {
+            kdf,
+            key: *array_ref![key, 0, 32],
+            index,
+        })
     }
 
     #[inline]
@@ -98,8 +126,14 @@ pub struct RootKey {
 }
 
 impl RootKey {
-    pub fn new(kdf: HKDF, key: [u8; 32]) -> Self {
-        Self { kdf, key }
+    pub fn new(kdf: HKDF, key: &[u8]) -> Result<Self> {
+        if key.len() != 32 {
+            return Err(SignalProtocolError::InvalidRootKeyLength(key.len()));
+        }
+        Ok(Self {
+            kdf,
+            key: *array_ref![key, 0, 32],
+        })
     }
 
     pub fn key(&self) -> &[u8; 32] {
