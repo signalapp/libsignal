@@ -1,5 +1,7 @@
 mod curve25519;
 
+use crate::error::{SignalProtocolError, Result};
+
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::error;
@@ -8,38 +10,7 @@ use std::fmt;
 use arrayref::array_ref;
 use rand::{CryptoRng, Rng};
 
-#[derive(Debug)]
-pub enum InvalidKeyError {
-    NoKeyTypeIdentifier,
-    BadKeyType(u8),
-    BadKeyLength(KeyType, usize),
-    MismatchedKeyTypes(KeyType, KeyType),
-    MismatchedSignatureLengthForKey(KeyType, usize),
-}
-
-impl fmt::Display for InvalidKeyError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            InvalidKeyError::NoKeyTypeIdentifier => write!(f, "no key type identifier"),
-            InvalidKeyError::BadKeyType(t) => write!(f, "bad key type <{:#04x}>", t),
-            InvalidKeyError::BadKeyLength(t, l) => {
-                write!(f, "bad key length <{}> for key with type <{}>", l, t)
-            }
-            InvalidKeyError::MismatchedKeyTypes(a, b) => {
-                write!(f, "key types <{}> and <{}> do not match", a, b)
-            }
-            InvalidKeyError::MismatchedSignatureLengthForKey(t, l) => write!(
-                f,
-                "signature length <{}> does not match expected for key with type <{}>",
-                l, t
-            ),
-        }
-    }
-}
-
-impl error::Error for InvalidKeyError {}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyType {
     Djb,
 }
@@ -59,12 +30,12 @@ impl KeyType {
 }
 
 impl TryFrom<u8> for KeyType {
-    type Error = InvalidKeyError;
+    type Error = SignalProtocolError;
 
-    fn try_from(x: u8) -> Result<Self, Self::Error> {
+    fn try_from(x: u8) -> Result<Self> {
         match x {
             0x05u8 => Ok(KeyType::Djb),
-            t => Err(InvalidKeyError::BadKeyType(t)),
+            t => Err(SignalProtocolError::BadKeyType(t)),
         }
     }
 }
@@ -129,9 +100,9 @@ impl KeyPair {
 pub fn calculate_agreement(
     public_key: &dyn PublicKey,
     private_key: &dyn PrivateKey,
-) -> Result<Box<[u8]>, InvalidKeyError> {
+) -> Result<Box<[u8]>> {
     if public_key.key_type() != private_key.key_type() {
-        return Err(InvalidKeyError::MismatchedKeyTypes(
+        return Err(SignalProtocolError::MismatchedKeyTypes(
             public_key.key_type(),
             private_key.key_type(),
         ));
@@ -151,11 +122,11 @@ pub fn verify_signature(
     public_key: &dyn PublicKey,
     message: &[u8],
     signature: &[u8],
-) -> Result<bool, InvalidKeyError> {
+) -> Result<bool> {
     match public_key.key_type() {
         KeyType::Djb => {
             if signature.len() != 64 {
-                return Err(InvalidKeyError::MismatchedSignatureLengthForKey(
+                return Err(SignalProtocolError::MismatchedSignatureLengthForKey(
                     KeyType::Djb,
                     signature.len(),
                 ));
@@ -170,30 +141,27 @@ pub fn verify_signature(
     }
 }
 
-pub fn calculate_signature<R>(
+pub fn calculate_signature<R: CryptoRng + Rng>(
     csprng: &mut R,
     private_key: &dyn PrivateKey,
-    message: &[u8],
-) -> Box<[u8]>
-where
-    R: CryptoRng + Rng,
+    message: &[u8]) -> Result<Box<[u8]>>
 {
     match private_key.key_type() {
         KeyType::Djb => {
-            let djb_priv_key = DjbPrivateKey::try_from(&private_key.serialize()[..]).unwrap();
+            let djb_priv_key = DjbPrivateKey::try_from(&private_key.serialize()[..])?;
             let kp = curve25519::KeyPair::from(djb_priv_key);
-            Box::new(kp.calculate_signature(csprng, message))
+            Ok(Box::new(kp.calculate_signature(csprng, message)))
         }
     }
 }
 
-pub fn decode_point(value: &[u8]) -> Result<Box<dyn PublicKey>, InvalidKeyError> {
+pub fn decode_point(value: &[u8]) -> Result<Box<dyn PublicKey>> {
     decode_point_internal(value).map(|x| Box::new(x) as Box<dyn PublicKey>)
 }
 
-fn decode_point_internal(value: &[u8]) -> Result<DjbPublicKey, InvalidKeyError> {
+fn decode_point_internal(value: &[u8]) -> Result<DjbPublicKey> {
     if value.is_empty() {
-        return Err(InvalidKeyError::NoKeyTypeIdentifier);
+        return Err(SignalProtocolError::NoKeyTypeIdentifier);
     }
     let key_type = KeyType::try_from(value[0])?;
     match key_type {
@@ -201,7 +169,7 @@ fn decode_point_internal(value: &[u8]) -> Result<DjbPublicKey, InvalidKeyError> 
     }
 }
 
-pub fn decode_private_point(value: &[u8]) -> Result<Box<dyn PrivateKey>, InvalidKeyError> {
+pub fn decode_private_point(value: &[u8]) -> Result<Box<dyn PrivateKey>> {
     Ok(Box::new(DjbPrivateKey::try_from(value)?))
 }
 
@@ -222,11 +190,11 @@ impl PublicKey for DjbPublicKey {
 }
 
 impl TryFrom<&[u8]> for DjbPublicKey {
-    type Error = InvalidKeyError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         if value.len() < 32 {
-            Err(InvalidKeyError::BadKeyLength(KeyType::Djb, value.len()))
+            Err(SignalProtocolError::BadKeyLength(KeyType::Djb, value.len()))
         } else {
             let mut result = DjbPublicKey([0u8; 32]);
             result.0.copy_from_slice(&value[..32]);
@@ -249,11 +217,11 @@ impl PrivateKey for DjbPrivateKey {
 }
 
 impl TryFrom<&[u8]> for DjbPrivateKey {
-    type Error = InvalidKeyError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         if value.len() != 32 {
-            Err(InvalidKeyError::BadKeyLength(KeyType::Djb, value.len()))
+            Err(SignalProtocolError::BadKeyLength(KeyType::Djb, value.len()))
         } else {
             let mut result = DjbPrivateKey([0u8; 32]);
             result.0.copy_from_slice(value);
@@ -273,7 +241,7 @@ mod tests {
         let mut csprng = OsRng;
         let key_pair = KeyPair::new(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
-        let signature = calculate_signature(&mut csprng, &*key_pair.private_key, &message);
+        let signature = calculate_signature(&mut csprng, &*key_pair.private_key, &message).unwrap();
 
         assert!(verify_signature(&*key_pair.public_key, &message, &*signature).unwrap());
         message[0] ^= 0x01u8;

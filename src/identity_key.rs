@@ -1,6 +1,7 @@
 use crate::curve;
 use crate::proto;
-use crate::error;
+
+use crate::error::{SignalProtocolError, Result};
 
 use std::convert::TryFrom;
 use rand::{Rng, CryptoRng};
@@ -23,16 +24,17 @@ impl IdentityKey {
         self.public_key.serialize()
     }
 
-    pub fn decode(value: &[u8]) -> Result<Self, curve::InvalidKeyError> {
-        curve::decode_point(value).map(|public_key| Self { public_key })
+    pub fn decode(value: &[u8]) -> Result<Self> {
+        let pt = curve::decode_point(value)?;
+        Ok(Self { public_key: pt })
     }
 }
 
 impl TryFrom<&[u8]> for IdentityKey {
-    type Error = curve::InvalidKeyError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        IdentityKey::decode(value)
+    fn try_from(value: &[u8]) -> Result<Self> {
+        IdentityKey::decode(value).into()
     }
 }
 
@@ -107,9 +109,9 @@ impl IdentityKeyPair {
 }
 
 impl TryFrom<&[u8]> for IdentityKeyPair {
-    type Error = error::InvalidKeyError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         let structure = proto::storage::IdentityKeyPairStructure::decode(value)?;
         Ok(Self {
             identity_key: IdentityKey::try_from(&structure.public_key[..])?,

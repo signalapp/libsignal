@@ -1,72 +1,16 @@
-use std::convert::{TryFrom, TryInto};
-use std::error::Error;
-use std::fmt::{self, Display, Formatter};
+use crate::error::{SignalProtocolError, Result};
+use crate::IdentityKey;
+use crate::{curve, proto};
+
+use std::convert::TryFrom;
 
 use hmac::{Hmac, Mac};
-use prost::{DecodeError, Message};
+use prost::Message;
+use rand::{CryptoRng, Rng};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 
-use super::curve;
-use super::proto;
-use crate::IdentityKey;
-use rand::{CryptoRng, Rng};
-
 pub const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 3;
-
-#[derive(Debug)]
-pub enum CiphertextMessageDeserializationError {
-    MessageTooShort(usize),
-    LegacyVersion(u8),
-    UnrecognizedVersion(u8),
-    InvalidMessage(Option<Box<dyn Error>>),
-}
-
-impl Display for CiphertextMessageDeserializationError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            CiphertextMessageDeserializationError::MessageTooShort(size) => {
-                write!(f, "ciphertext serialized bytes were too short <{}>", size)
-            }
-            CiphertextMessageDeserializationError::LegacyVersion(version) => {
-                write!(f, "ciphertext version was too old <{}>", version)
-            }
-            CiphertextMessageDeserializationError::UnrecognizedVersion(version) => {
-                write!(f, "ciphertext version was unrecognized <{}>", version)
-            }
-            CiphertextMessageDeserializationError::InvalidMessage(source) => match source {
-                None => write!(f, "ciphertext was invalid"),
-                Some(err) => write!(f, "ciphertext was invalid; caused by: {}", err),
-            },
-        }
-    }
-}
-
-impl Error for CiphertextMessageDeserializationError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            CiphertextMessageDeserializationError::MessageTooShort(_) => None,
-            CiphertextMessageDeserializationError::LegacyVersion(_) => None,
-            CiphertextMessageDeserializationError::UnrecognizedVersion(_) => None,
-            CiphertextMessageDeserializationError::InvalidMessage(source) => match source {
-                None => None,
-                Some(b) => Some(b.as_ref()),
-            },
-        }
-    }
-}
-
-impl From<DecodeError> for CiphertextMessageDeserializationError {
-    fn from(value: DecodeError) -> Self {
-        CiphertextMessageDeserializationError::InvalidMessage(Some(Box::new(value)))
-    }
-}
-
-impl From<curve::InvalidKeyError> for CiphertextMessageDeserializationError {
-    fn from(value: curve::InvalidKeyError) -> Self {
-        CiphertextMessageDeserializationError::InvalidMessage(Some(Box::new(value)))
-    }
-}
 
 pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
@@ -96,7 +40,7 @@ impl SignalMessage {
         ciphertext: Box<[u8]>,
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
-    ) -> Self {
+    ) -> Result<Self> {
         let message = proto::wire::SignalMessage {
             ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
             counter: Some(counter),
@@ -105,26 +49,24 @@ impl SignalMessage {
         };
         let mut serialized = vec![0u8; 1 + message.encoded_len() + Self::MAC_LENGTH];
         serialized[0] = ((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-        message
-            .encode(&mut &mut serialized[1..message.encoded_len() + 1])
-            .unwrap();
+        message.encode(&mut &mut serialized[1..message.encoded_len() + 1])?;
         let msg_len_for_mac = serialized.len() - Self::MAC_LENGTH;
         let mac = Self::compute_mac(
             sender_identity_key,
             receiver_identity_key,
             mac_key,
             &serialized[..msg_len_for_mac],
-        );
+        )?;
         serialized[msg_len_for_mac..].copy_from_slice(&mac);
         let serialized = serialized.into_boxed_slice();
-        Self {
+        Ok(Self {
             message_version,
             sender_ratchet_key,
             counter,
             previous_counter,
             ciphertext,
             serialized,
-        }
+        })
     }
 
     #[inline]
@@ -152,15 +94,15 @@ impl SignalMessage {
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
         mac_key: &[u8; 32],
-    ) -> bool {
+    ) -> Result<bool> {
         let our_mac = &Self::compute_mac(
             sender_identity_key,
             receiver_identity_key,
             mac_key,
             &self.serialized[..self.serialized.len() - Self::MAC_LENGTH],
-        );
+        )?;
         let their_mac = &self.serialized[self.serialized.len() - Self::MAC_LENGTH..];
-        our_mac.ct_eq(their_mac).into()
+        Ok(our_mac.ct_eq(their_mac).into())
     }
 
     fn compute_mac(
@@ -168,14 +110,16 @@ impl SignalMessage {
         receiver_identity_key: &IdentityKey,
         mac_key: &[u8; 32],
         message: &[u8],
-    ) -> [u8; Self::MAC_LENGTH] {
-        let mut mac = Hmac::<Sha256>::new_varkey(mac_key).unwrap();
+    ) -> Result<[u8; Self::MAC_LENGTH]> {
+        let mut mac = Hmac::<Sha256>::new_varkey(mac_key)
+            .map_err(|_| SignalProtocolError::InvalidArgument(format!("Invalid HMAC key length <{}>", mac_key.len())))?;
+
         mac.input(sender_identity_key.public_key().serialize().as_ref());
         mac.input(receiver_identity_key.public_key().serialize().as_ref());
         mac.input(message);
         let mut result = [0u8; Self::MAC_LENGTH];
         result.copy_from_slice(&mac.result().code()[..Self::MAC_LENGTH]);
-        result
+        Ok(result)
     }
 }
 
@@ -186,43 +130,38 @@ impl AsRef<[u8]> for SignalMessage {
 }
 
 impl TryFrom<&[u8]> for SignalMessage {
-    type Error = CiphertextMessageDeserializationError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         if value.len() < SignalMessage::MAC_LENGTH + 1 {
-            return Err(CiphertextMessageDeserializationError::MessageTooShort(
-                value.len(),
-            ));
+            return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
         }
         let message_version = value[0] >> 4;
         let ciphertext_version = value[0] & 0x0F;
         if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
-            return Err(CiphertextMessageDeserializationError::LegacyVersion(
-                ciphertext_version,
-            ));
+            return Err(SignalProtocolError::LegacyCiphertextVersion(ciphertext_version));
         }
         if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
-            return Err(CiphertextMessageDeserializationError::UnrecognizedVersion(
+            return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
                 ciphertext_version,
             ));
         }
 
         let proto_structure =
             proto::wire::SignalMessage::decode(&value[1..value.len() - SignalMessage::MAC_LENGTH])?;
-        if proto_structure.ciphertext.is_none()
-            || proto_structure.counter.is_none()
-            || proto_structure.ratchet_key.is_none()
-        {
-            return Err(CiphertextMessageDeserializationError::InvalidMessage(None));
-        }
-        let sender_ratchet_key =
-            curve::decode_point(proto_structure.ratchet_key.unwrap().as_ref())?;
+
+        let sender_ratchet_key = proto_structure.ratchet_key.ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let sender_ratchet_key = curve::decode_point(&sender_ratchet_key)?;
+        let counter = proto_structure.counter.ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let previous_counter = proto_structure.previous_counter.unwrap_or(0);
+        let ciphertext = proto_structure.ciphertext.ok_or(SignalProtocolError::InvalidProtobufEncoding)?.into_boxed_slice();
+
         Ok(SignalMessage {
             message_version,
             sender_ratchet_key,
-            counter: proto_structure.counter.unwrap(),
-            previous_counter: proto_structure.previous_counter.unwrap_or(0),
-            ciphertext: proto_structure.ciphertext.unwrap().into_boxed_slice(),
+            counter,
+            previous_counter,
+            ciphertext,
             serialized: Box::from(value),
         })
     }
@@ -248,7 +187,7 @@ impl PreKeySignalMessage {
         base_key: Box<dyn curve::PublicKey>,
         identity_key: IdentityKey,
         message: SignalMessage,
-    ) -> Self {
+    ) -> Result<Self> {
         let proto_message = proto::wire::PreKeySignalMessage {
             registration_id: Some(registration_id),
             pre_key_id,
@@ -259,8 +198,8 @@ impl PreKeySignalMessage {
         };
         let mut serialized = vec![0u8; 1 + proto_message.encoded_len()];
         serialized[0] = ((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-        proto_message.encode(&mut &mut serialized[1..]).unwrap();
-        Self {
+        proto_message.encode(&mut &mut serialized[1..])?;
+        Ok(Self {
             message_version,
             registration_id,
             pre_key_id,
@@ -269,7 +208,7 @@ impl PreKeySignalMessage {
             identity_key,
             message,
             serialized: serialized.into_boxed_slice(),
-        }
+        })
     }
 
     #[inline]
@@ -315,24 +254,20 @@ impl AsRef<[u8]> for PreKeySignalMessage {
 }
 
 impl TryFrom<&[u8]> for PreKeySignalMessage {
-    type Error = CiphertextMessageDeserializationError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         if value.is_empty() {
-            return Err(CiphertextMessageDeserializationError::MessageTooShort(
-                value.len(),
-            ));
+            return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
         }
 
         let message_version = value[0] >> 4;
         let ciphertext_version = value[0] & 0x0F;
         if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
-            return Err(CiphertextMessageDeserializationError::LegacyVersion(
-                ciphertext_version,
-            ));
+            return Err(SignalProtocolError::LegacyCiphertextVersion(ciphertext_version));
         }
         if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
-            return Err(CiphertextMessageDeserializationError::UnrecognizedVersion(
+            return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
                 ciphertext_version,
             ));
         }
@@ -343,7 +278,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
             || proto_structure.identity_key.is_none()
             || proto_structure.message.is_none()
         {
-            return Err(CiphertextMessageDeserializationError::InvalidMessage(None));
+            return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
         let base_key = curve::decode_point(proto_structure.base_key.unwrap().as_ref())?;
         Ok(PreKeySignalMessage {
@@ -370,15 +305,13 @@ pub struct SenderKeyMessage {
 impl SenderKeyMessage {
     const SIGNATURE_LEN: usize = 64;
 
-    pub fn new<R>(
+    pub fn new<R: CryptoRng + Rng>(
         key_id: u32,
         iteration: u32,
         ciphertext: Box<[u8]>,
         csprng: &mut R,
         signature_key: &dyn curve::PrivateKey,
-    ) -> Self
-    where
-        R: CryptoRng + Rng,
+    ) -> Result<Self>
     {
         let proto_message = proto::wire::SenderKeyMessage {
             id: Some(key_id),
@@ -389,28 +322,27 @@ impl SenderKeyMessage {
         let mut serialized = vec![0u8; 1 + proto_message_len + Self::SIGNATURE_LEN];
         serialized[0] =
             ((CIPHERTEXT_MESSAGE_CURRENT_VERSION & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-        proto_message
-            .encode(&mut &mut serialized[1..1 + proto_message_len])
-            .unwrap();
+        proto_message.encode(&mut &mut serialized[1..1 + proto_message_len])?;
         let signature =
-            curve::calculate_signature(csprng, signature_key, &serialized[..1 + proto_message_len]);
+            curve::calculate_signature(csprng, signature_key, &serialized[..1 + proto_message_len])?;
         serialized[1 + proto_message_len..].copy_from_slice(&signature[..]);
-        Self {
+        Ok(Self {
             message_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION,
             key_id,
             iteration,
             ciphertext,
             serialized: serialized.into_boxed_slice(),
-        }
+        })
     }
 
-    pub fn verify_signature(&self, signature_key: &dyn curve::PublicKey) -> bool {
-        curve::verify_signature(
+    pub fn verify_signature(&self, signature_key: &dyn curve::PublicKey) -> Result<bool> {
+        let valid = curve::verify_signature(
             signature_key,
             &self.serialized[..self.serialized.len() - Self::SIGNATURE_LEN],
             &self.serialized[self.serialized.len() - Self::SIGNATURE_LEN..],
-        )
-        .unwrap()
+        )?;
+
+        Ok(valid)
     }
 
     #[inline]
@@ -441,39 +373,34 @@ impl AsRef<[u8]> for SenderKeyMessage {
 }
 
 impl TryFrom<&[u8]> for SenderKeyMessage {
-    type Error = CiphertextMessageDeserializationError;
+    type Error = SignalProtocolError;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         if value.len() < 1 + Self::SIGNATURE_LEN {
-            return Err(CiphertextMessageDeserializationError::MessageTooShort(
-                value.len(),
-            ));
+            return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
         }
         let message_version = value[0] >> 4;
         let ciphertext_version = value[0] & 0x0F;
         if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
-            return Err(CiphertextMessageDeserializationError::LegacyVersion(
-                ciphertext_version,
-            ));
+            return Err(SignalProtocolError::LegacyCiphertextVersion(ciphertext_version));
         }
         if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
-            return Err(CiphertextMessageDeserializationError::UnrecognizedVersion(
+            return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
                 ciphertext_version,
             ));
         }
         let proto_structure =
             proto::wire::SenderKeyMessage::decode(&value[1..value.len() - Self::SIGNATURE_LEN])?;
-        if proto_structure.id.is_none()
-            || proto_structure.iteration.is_none()
-            || proto_structure.ciphertext.is_none()
-        {
-            return Err(CiphertextMessageDeserializationError::InvalidMessage(None));
-        }
+
+        let key_id = proto_structure.id.ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let iteration = proto_structure.iteration.ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let ciphertext = proto_structure.ciphertext.ok_or(SignalProtocolError::InvalidProtobufEncoding)?.into_boxed_slice();
+
         Ok(SenderKeyMessage {
             message_version,
-            key_id: proto_structure.id.unwrap(),
-            iteration: proto_structure.iteration.unwrap(),
-            ciphertext: proto_structure.ciphertext.unwrap().into_boxed_slice(),
+            key_id,
+            iteration,
+            ciphertext,
             serialized: Box::from(value),
         })
     }
@@ -513,7 +440,7 @@ mod tests {
             Box::new(ciphertext),
             &sender_identity_key_pair.public_key.into(),
             &receiver_identity_key_pair.public_key.into(),
-        )
+        ).unwrap()
     }
 
     fn assert_signal_message_equals(m1: &SignalMessage, m2: &SignalMessage) {
@@ -548,7 +475,7 @@ mod tests {
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,
-        );
+        ).unwrap();
         let deser_pre_key_signal_message =
             PreKeySignalMessage::try_from(pre_key_signal_message.as_ref())
                 .expect("should deserialize without error");
@@ -596,7 +523,7 @@ mod tests {
             vec![1u8, 2, 3].into_boxed_slice(),
             &mut csprng,
             &*signature_key_pair.private_key,
-        );
+        ).unwrap();
         let deser_sender_key_message = SenderKeyMessage::try_from(sender_key_message.as_ref())
             .expect("should deserialize without error");
         assert_eq!(

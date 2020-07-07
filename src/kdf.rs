@@ -1,25 +1,7 @@
-use std::error;
-use std::fmt;
+use crate::error::{SignalProtocolError, Result};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-
-#[derive(Debug)]
-pub enum HKDFError {
-    UnrecognizedMessageVersion(u32),
-}
-
-impl fmt::Display for HKDFError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self {
-            HKDFError::UnrecognizedMessageVersion(message_version) => {
-                write!(f, "unrecognized message version <{}>", message_version)
-            }
-        }
-    }
-}
-
-impl error::Error for HKDFError {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct HKDF {
@@ -29,7 +11,7 @@ pub struct HKDF {
 impl HKDF {
     const HASH_OUTPUT_SIZE: usize = 32;
 
-    pub fn new(message_version: u32) -> Result<Self, HKDFError> {
+    pub fn new(message_version: u32) -> Result<Self> {
         match message_version {
             2 => Ok(HKDF {
                 iteration_start_offset: 0,
@@ -37,7 +19,7 @@ impl HKDF {
             3 => Ok(HKDF {
                 iteration_start_offset: 1,
             }),
-            _ => Err(HKDFError::UnrecognizedMessageVersion(message_version)),
+            _ => Err(SignalProtocolError::UnrecognizedMessageVersion(message_version)),
         }
     }
 

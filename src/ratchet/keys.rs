@@ -2,7 +2,9 @@ use arrayref::array_ref;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
-use super::{curve, HKDF};
+use crate::curve;
+use crate::kdf::HKDF;
+use crate::error::Result;
 
 pub struct MessageKeys {
     cipher_key: [u8; 32],
@@ -108,7 +110,7 @@ impl RootKey {
         &self,
         their_ratchet_key: &dyn curve::PublicKey,
         our_ratchet_key: &dyn curve::PrivateKey,
-    ) -> Result<(RootKey, ChainKey), curve::InvalidKeyError> {
+    ) -> Result<(RootKey, ChainKey)> {
         let shared_secret = curve::calculate_agreement(their_ratchet_key, our_ratchet_key)?;
         let derived_secret_bytes = self.kdf.derive_salted_secrets(
             shared_secret.as_ref(),
