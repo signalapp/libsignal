@@ -1,17 +1,13 @@
-pub mod signal;
+mod address;
+mod curve;
+mod error;
+mod identity_key;
+mod kdf;
+mod proto;
+mod protocol;
+mod ratchet;
+mod state;
+mod fingerprint;
 
-#[cfg(test)]
-mod test {
-    use super::signal::proto::wire::SignalMessage;
+pub use identity_key::{IdentityKey, IdentityKeyPair};
 
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-
-    #[test]
-    fn proto_test() {
-        let m = SignalMessage::default();
-        assert_eq!(m.counter, None);
-    }
-}

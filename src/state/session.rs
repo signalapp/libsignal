@@ -1,4 +1,4 @@
-use crate::signal::proto::storage::SessionStructure;
+use crate::proto::storage::SessionStructure;
 
 #[derive(Clone, Default)]
 pub struct State {

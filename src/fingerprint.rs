@@ -1,5 +1,5 @@
-use crate::signal::IdentityKey;
-use crate::signal::proto;
+use crate::IdentityKey;
+use crate::proto;
 use sha2::Sha512;
 use std::fmt;
 use prost::Message;

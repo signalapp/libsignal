@@ -9,7 +9,7 @@ use subtle::ConstantTimeEq;
 
 use super::curve;
 use super::proto;
-use crate::signal::IdentityKey;
+use crate::IdentityKey;
 use rand::{CryptoRng, Rng};
 
 pub const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 3;
