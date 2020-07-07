@@ -4,7 +4,6 @@ use crate::error::{SignalProtocolError, Result};
 
 use std::cmp::Ordering;
 use std::convert::TryFrom;
-use std::error;
 use std::fmt;
 
 use arrayref::array_ref;
@@ -94,6 +93,12 @@ impl KeyPair {
         R: CryptoRng + Rng,
     {
         curve25519::KeyPair::new(csprng).into()
+    }
+
+    pub fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
+        let public_key = decode_point(public_key)?;
+        let private_key = decode_private_point(private_key)?;
+        Ok(Self { public_key, private_key })
     }
 }
 
