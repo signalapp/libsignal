@@ -38,6 +38,14 @@ impl TryFrom<&[u8]> for IdentityKey {
     }
 }
 
+impl Clone for IdentityKey {
+    fn clone(&self) -> Self {
+        IdentityKey {
+            public_key: curve::decode_point(&self.public_key.serialize()[..]).expect("Serialization round trips properly"),
+        }
+    }
+}
+
 impl<T> From<T> for IdentityKey
 where
     T: curve::PublicKey + 'static,
@@ -72,6 +80,15 @@ impl Ord for IdentityKey {
 pub struct IdentityKeyPair {
     identity_key: IdentityKey,
     private_key: Box<dyn curve::PrivateKey>,
+}
+
+impl Clone for IdentityKeyPair {
+    fn clone(&self) -> Self {
+        IdentityKeyPair {
+            identity_key: self.identity_key.clone(),
+            private_key: curve::decode_private_point(&self.private_key.serialize()).expect("Serializion round trips"),
+        }
+    }
 }
 
 impl IdentityKeyPair {
