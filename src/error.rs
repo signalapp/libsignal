@@ -8,6 +8,7 @@ pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 #[derive(Debug, Clone)]
 pub enum SignalProtocolError {
     InvalidArgument(String),
+    InvalidState(&'static str, String),
 
     ProtobufDecodingError(prost::DecodeError),
     ProtobufEncodingError(prost::EncodeError),
@@ -26,6 +27,16 @@ pub enum SignalProtocolError {
     BadKeyLength(KeyType, usize),
     MismatchedKeyTypes(KeyType, KeyType),
     MismatchedSignatureLengthForKey(KeyType, usize),
+
+    InvalidPreKeyId,
+    InvalidSignedPreKeyId,
+
+    InvalidRootKeyLength(usize),
+    InvalidChainKeyLength(usize),
+
+    InvalidCipherKeyLength(usize),
+    InvalidMacKeyLength(usize),
+    InvalidCipherNonceLength(usize),
 }
 
 impl Error for SignalProtocolError {
@@ -66,6 +77,9 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::InvalidArgument(ref s) => {
                 write!(f, "invalid argument: {}", s)
             }
+            SignalProtocolError::InvalidState(ref func, ref s) => {
+                write!(f, "invalid state for call to {} to succeed: {}", func, s)
+            }
             SignalProtocolError::CiphertextMessageTooShort(size) => {
                 write!(f, "ciphertext serialized bytes were too short <{}>", size)
             }
@@ -98,6 +112,27 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::MismatchedSignatureLengthForKey(t, l) => {
                 write!(f, "signature length <{}> does not match expected for key with type <{}>", l, t)
+            }
+            SignalProtocolError::InvalidPreKeyId => {
+                write!(f, "invalid prekey identifier")
+            }
+            SignalProtocolError::InvalidSignedPreKeyId => {
+                write!(f, "invalid signed prekey identifier")
+            }
+            SignalProtocolError::InvalidChainKeyLength(l) => {
+                write!(f, "invalid chain key length <{}>", l)
+            }
+            SignalProtocolError::InvalidRootKeyLength(l) => {
+                write!(f, "invalid root key length <{}>", l)
+            }
+            SignalProtocolError::InvalidCipherKeyLength(l) => {
+                write!(f, "invalid cipher key length <{}>", l)
+            }
+            SignalProtocolError::InvalidMacKeyLength(l) => {
+                write!(f, "invalid MAC key length <{}>", l)
+            }
+            SignalProtocolError::InvalidCipherNonceLength(l) => {
+                write!(f, "invalid cipher nonce length <{}>", l)
             }
         }
     }
