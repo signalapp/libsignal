@@ -1,6 +1,6 @@
 
-#[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
-struct ProtocolAddress {
+#[derive(Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
+pub struct ProtocolAddress {
     name: String,
     device_id: u32
 }
