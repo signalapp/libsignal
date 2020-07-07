@@ -1,3 +1,7 @@
 mod session;
+mod prekey;
+mod signed_prekey;
 
-pub use session::State as SessionState;
+pub use prekey::{PreKeyRecord, PreKeyId};
+pub use signed_prekey::{SignedPreKeyRecord, SignedPreKeyId};
+pub use session::{SessionState, SessionRecord};
