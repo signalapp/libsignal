@@ -2,14 +2,17 @@ use crate::{IdentityKey, IdentityKeyPair};
 use crate::error::{Result, SignalProtocolError};
 use crate::ratchet::{RootKey, ChainKey, MessageKeys};
 
-use crate::proto::storage::SessionStructure;
+use crate::proto::storage::{SessionStructure, RecordStructure};
 use crate::proto::storage::session_structure;
 use crate::kdf;
 use crate::curve;
 use prost::Message;
 
+use std::collections::VecDeque;
+use std::iter::FromIterator;
+
 #[derive(Debug)]
-struct UnacknowledgedPreKeyMessageItems {
+pub struct UnacknowledgedPreKeyMessageItems {
     pre_key_id: Option<u32>,
     signed_pre_key_id: u32,
     base_key: curve::PublicKey,
@@ -41,12 +44,16 @@ pub struct SessionState {
 
 const MAX_MESSAGE_KEYS: usize = 2000;
 const MAX_RECEIVER_CHAINS: usize = 5;
+const ARCHIVED_STATES_MAX_LENGTH : usize = 40;
 
 impl SessionState {
-
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
         let session = SessionStructure::decode(bytes)?;
         Ok(Self { session })
+    }
+
+    fn new(session: SessionStructure) -> Self {
+        Self { session }
     }
 
     pub fn alice_base_key(&self) -> Result<Vec<u8>> {
@@ -422,25 +429,106 @@ impl SessionState {
     }
 }
 
+impl From<SessionStructure> for SessionState {
+    fn from(value: SessionStructure) -> SessionState {
+        SessionState::new(value)
+    }
+}
+
+impl From<SessionState> for SessionStructure {
+    fn from(value: SessionState) -> SessionStructure {
+        value.session
+    }
+}
+
+impl From<&SessionState> for SessionStructure {
+    fn from(value: &SessionState) -> SessionStructure {
+        value.session.clone()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct SessionRecord {
-
+    pub current_session: Option<SessionState>,
+    pub previous_sessions: VecDeque<SessionState>,
 }
 
-/*
 impl SessionRecord {
-    fn new_fresh() -> Self {
-
+    pub fn new_fresh() -> Self {
+        Self {
+            current_session: None,
+            previous_sessions: VecDeque::new()
+        }
     }
 
-    fn deserialize(bytes: &[u8]) -> Result<Self> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self> {
+        let record = RecordStructure::decode(bytes)?;
 
+        let mut previous = VecDeque::with_capacity(record.previous_sessions.len());
+        for s in record.previous_sessions {
+            previous.push_back(s.into());
+        }
+
+        Ok(Self {
+            current_session: record.current_session.map(|s| s.into()),
+            previous_sessions: previous,
+        })
     }
 
-    fn serialize(&self) -> Result<Vec<u8>> {
+    pub fn has_session_state(version: u32, alice_base_key: &[u8]) -> Result<bool> {
+        Ok(false)
+    }
 
+    fn remove_previous_session_states(&mut self) -> Result<()> {
+        self.previous_sessions.clear();
+        Ok(())
+    }
+
+    pub fn session_state(&self) -> Result<SessionState> {
+        if let Some(ref session) = self.current_session {
+            return Ok(session.clone());
+        }
+        Err(SignalProtocolError::InvalidState("session_state", "No session".into()))
+    }
+
+    pub fn get_previous_session_states(&self) -> Result<impl Iterator<Item = &SessionState>> {
+        Ok(self.previous_sessions.iter())
+    }
+
+    pub fn is_fresh(&self) -> Result<bool> {
+        Ok(self.current_session.is_none() && self.previous_sessions.len() == 0)
+    }
+
+    pub fn promote_state(&mut self, new_state: SessionState) -> Result<()> {
+        if let Some(current_session) = self.current_session.take() {
+            self.previous_sessions.push_front(current_session);
+
+            if self.previous_sessions.len() > ARCHIVED_STATES_MAX_LENGTH {
+                self.previous_sessions.pop_back();
+            }
+        }
+        self.current_session = Some(new_state);
+        Ok(())
+    }
+
+    pub fn archive_current_state(&mut self) -> Result<()> {
+        if self.current_session.is_some() {
+            self.previous_sessions.insert(0, self.current_session.take().expect("Checked is_some"));
+        }
+
+        Ok(())
+    }
+
+    pub fn serialize(&self) -> Result<Vec<u8>> {
+        let mut buf = vec![];
+
+        let record = RecordStructure {
+            current_session: self.current_session.as_ref().map(|s| s.into()),
+            previous_sessions: Vec::from_iter(self.previous_sessions.iter().map(|s| s.into())),
+        };
+        record.encode(&mut buf)?;
+        Ok(buf)
     }
 
 }
-*/
+

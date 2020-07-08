@@ -14,4 +14,5 @@ pub use error::SignalProtocolError;
 pub use address::ProtocolAddress;
 pub use identity_key::{IdentityKey, IdentityKeyPair};
 
+pub use state::{SessionRecord, SessionState};
 pub use storage::{IdentityKeyStore, PreKeyStore, SignedPreKeyStore, SessionStore};
