@@ -52,13 +52,19 @@ impl SessionState {
         Ok(Self { session })
     }
 
-    fn new(session: SessionStructure) -> Self {
+    pub(crate) fn new(session: SessionStructure) -> Self {
         Self { session }
     }
 
-    pub fn alice_base_key(&self) -> Result<Vec<u8>> {
+    pub fn alice_base_key(&self) -> Result<&[u8]> {
         // Check the length before returning?
-        Ok(self.session.alice_base_key.clone())
+        Ok(&self.session.alice_base_key)
+    }
+
+    pub fn set_alice_base_key(&mut self, key: &[u8]) -> Result<()> {
+        // Should we check the length?
+        self.session.alice_base_key = key.to_vec();
+        Ok(())
     }
 
     pub fn session_version(&self) -> Result<u32> {
@@ -271,7 +277,7 @@ impl SessionState {
             index: message_keys.counter(),
         };
 
-        if let Some(mut chain_and_index) = self.get_receiver_chain(sender)? {
+        if let Some(chain_and_index) = self.get_receiver_chain(sender)? {
             let mut updated_chain = chain_and_index.0;
             updated_chain.message_keys.push(new_keys);
 
@@ -286,7 +292,7 @@ impl SessionState {
     }
 
     pub fn set_receiver_chain_key(&mut self, sender: &curve::PublicKey, chain_key: &ChainKey) -> Result<()> {
-        if let Some(mut chain_and_index) = self.get_receiver_chain(sender)? {
+        if let Some(chain_and_index) = self.get_receiver_chain(sender)? {
             let mut updated_chain = chain_and_index.0;
             updated_chain.chain_key = Some(session_structure::chain::ChainKey {
                 index: chain_key.index(),
@@ -460,7 +466,6 @@ impl SessionRecord {
             previous_sessions: VecDeque::new()
         }
     }
-
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
         let record = RecordStructure::decode(bytes)?;
 
@@ -475,7 +480,21 @@ impl SessionRecord {
         })
     }
 
-    pub fn has_session_state(version: u32, alice_base_key: &[u8]) -> Result<bool> {
+    pub fn has_session_state(&self, version: u32, alice_base_key: &[u8]) -> Result<bool> {
+        if let Some(current_session) = &self.current_session {
+            if current_session.session_version()? == version &&
+                alice_base_key == current_session.alice_base_key()? {
+                    return Ok(true);
+                }
+        }
+
+        for previous in &self.previous_sessions {
+            if previous.session_version()? == version &&
+                alice_base_key == previous.alice_base_key()? {
+                    return Ok(true);
+                }
+        }
+
         Ok(false)
     }
 
@@ -500,20 +519,14 @@ impl SessionRecord {
     }
 
     pub fn promote_state(&mut self, new_state: SessionState) -> Result<()> {
-        if let Some(current_session) = self.current_session.take() {
-            self.previous_sessions.push_front(current_session);
-
-            if self.previous_sessions.len() > ARCHIVED_STATES_MAX_LENGTH {
-                self.previous_sessions.pop_back();
-            }
-        }
+        self.archive_current_state()?;
         self.current_session = Some(new_state);
         Ok(())
     }
 
     pub fn archive_current_state(&mut self) -> Result<()> {
         if self.current_session.is_some() {
-            self.previous_sessions.insert(0, self.current_session.take().expect("Checked is_some"));
+            self.previous_sessions.push_front(self.current_session.take().expect("Checked is_some"));
         }
 
         Ok(())
