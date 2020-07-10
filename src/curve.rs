@@ -158,6 +158,7 @@ impl From<PrivateKeyData> for PrivateKey {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct KeyPair {
     pub public_key: PublicKey,
     pub private_key: PrivateKey,
