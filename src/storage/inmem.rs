@@ -12,7 +12,7 @@ pub struct InMemIdentityKeyStore {
 }
 
 impl InMemIdentityKeyStore {
-    fn new(key_pair: IdentityKeyPair, id: u32) -> Self {
+    pub fn new(key_pair: IdentityKeyPair, id: u32) -> Self {
         Self {
             key_pair,
             id,
@@ -39,14 +39,14 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
             Some(k) if k == identity => {
                 Ok(false) // same key
             }
-            Some(k) => {
+            Some(_k) => {
                 self.known_keys.insert(address.clone(), identity.clone());
                 Ok(true) // overwrite
             }
         }
     }
 
-    fn is_trusted_identity(&self, address: &ProtocolAddress, identity: &IdentityKey, direction: traits::Direction) -> Result<bool> {
+    fn is_trusted_identity(&self, address: &ProtocolAddress, identity: &IdentityKey, _direction: traits::Direction) -> Result<bool> {
         match self.known_keys.get(address) {
             None => {
                 Ok(true) // first use
@@ -70,7 +70,7 @@ pub struct InMemPreKeyStore {
 }
 
 impl InMemPreKeyStore {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { pre_keys: HashMap::new() }
     }
 }
@@ -102,7 +102,7 @@ pub struct InMemSignedPreKeyStore {
 }
 
 impl InMemSignedPreKeyStore {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { signed_pre_keys: HashMap::new() }
     }
 }
@@ -142,7 +142,7 @@ pub struct InMemSessionStore {
 }
 
 impl InMemSessionStore {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { sessions: HashMap::new() }
     }
 }

@@ -4,6 +4,11 @@ mod inmem;
 pub use traits::{IdentityKeyStore,
                  PreKeyStore,
                  SignedPreKeyStore,
-                 SessionStore};
+                 SessionStore,
+                 Direction};
 
-pub use inmem::InMemIdentityKeyStore;
+pub use inmem::{InMemIdentityKeyStore,
+                InMemPreKeyStore,
+                InMemSignedPreKeyStore,
+                InMemSessionStore};
+
