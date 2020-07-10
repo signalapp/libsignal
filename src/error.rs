@@ -28,8 +28,14 @@ pub enum SignalProtocolError {
     MismatchedKeyTypes(KeyType, KeyType),
     MismatchedSignatureLengthForKey(KeyType, usize),
 
+    SignatureValidationFailed,
+
+    UntrustedIdentity(crate::ProtocolAddress),
+
     InvalidPreKeyId,
     InvalidSignedPreKeyId,
+
+    InvalidPreKeyBundle,
 
     InvalidRootKeyLength(usize),
     InvalidChainKeyLength(usize),
@@ -133,6 +139,15 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::InvalidCipherNonceLength(l) => {
                 write!(f, "invalid cipher nonce length <{}>", l)
+            }
+            SignalProtocolError::UntrustedIdentity(addr) => {
+                write!(f, "untrusted identity for address {}", addr)
+            }
+            SignalProtocolError::SignatureValidationFailed => {
+                write!(f, "invalid signature detected")
+            }
+            SignalProtocolError::InvalidPreKeyBundle => {
+                write!(f, "invalid pre key bundle format")
             }
         }
     }
