@@ -1,3 +1,4 @@
+use std::fmt;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct ProtocolAddress {
@@ -19,4 +20,10 @@ impl ProtocolAddress {
         self.device_id
     }
 
+}
+
+impl fmt::Display for ProtocolAddress {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.name, self.device_id)
+    }
 }
