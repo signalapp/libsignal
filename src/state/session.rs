@@ -527,6 +527,9 @@ impl SessionRecord {
     pub fn archive_current_state(&mut self) -> Result<()> {
         if self.current_session.is_some() {
             self.previous_sessions.push_front(self.current_session.take().expect("Checked is_some"));
+            if self.previous_sessions.len() > ARCHIVED_STATES_MAX_LENGTH {
+                self.previous_sessions.pop_back();
+            }
         }
 
         Ok(())

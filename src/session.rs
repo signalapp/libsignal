@@ -13,22 +13,23 @@ use crate::protocol::{PreKeySignalMessage};
 use crate::storage::Direction;
 use crate::state::{PreKeyId, PreKeyBundle};
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
+use rand::{Rng, CryptoRng};
 
-pub struct SessionBuilder {
+pub struct SessionBuilder<'a> {
     remote_address: ProtocolAddress,
-    session_store: Box<dyn SessionStore>,
-    identity_store: Box<dyn IdentityKeyStore>,
-    signed_prekey_store: Box<dyn SignedPreKeyStore>,
-    pre_key_store: Box<dyn PreKeyStore>,
+    session_store: &'a mut dyn SessionStore,
+    identity_store: &'a mut dyn IdentityKeyStore,
+    signed_prekey_store: &'a mut dyn SignedPreKeyStore,
+    pre_key_store: &'a mut dyn PreKeyStore,
 }
 
-impl SessionBuilder {
+impl<'a> SessionBuilder<'a> {
 
     pub fn new(remote_address: ProtocolAddress,
-               session_store: Box<dyn SessionStore>,
-               identity_store: Box<dyn IdentityKeyStore>,
-               signed_prekey_store: Box<dyn SignedPreKeyStore>,
-               pre_key_store: Box<dyn PreKeyStore>) -> Self {
+               session_store: &'a mut dyn SessionStore,
+               identity_store: &'a mut dyn IdentityKeyStore,
+               signed_prekey_store: &'a mut dyn SignedPreKeyStore,
+               pre_key_store: &'a mut dyn PreKeyStore) -> Self {
         SessionBuilder {
             remote_address,
             session_store,
@@ -41,7 +42,7 @@ impl SessionBuilder {
     pub fn process_prekey(&mut self, session_record: &mut SessionRecord, message: &PreKeySignalMessage) -> Result<Option<PreKeyId>> {
         let their_identity_key = message.identity_key();
 
-        if self.identity_store.is_trusted_identity(&self.remote_address, their_identity_key, Direction::Receiving)? {
+        if !self.identity_store.is_trusted_identity(&self.remote_address, their_identity_key, Direction::Receving)? {
             return Err(SignalProtocolError::UntrustedIdentity(self.remote_address.clone()));
         }
 
@@ -61,7 +62,7 @@ impl SessionBuilder {
         let our_signed_pre_key_pair = self.signed_prekey_store.get_signed_pre_key(message.signed_pre_key_id())?.key_pair()?;
 
         let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
-            Some(self.pre_key_store.get_pre_key(pre_key_id)?).map(|p| p.key_pair()).transpose()?
+            Some(self.pre_key_store.get_pre_key(pre_key_id)?.key_pair()?)
         } else {
             None
         };
@@ -87,22 +88,21 @@ impl SessionBuilder {
         Ok(message.pre_key_id())
     }
 
-    fn process_prekey_bundle(&mut self, bundle: &PreKeyBundle) -> Result<()> {
+    fn process_prekey_bundle<R: Rng + CryptoRng>(&mut self, bundle: &PreKeyBundle, mut csprng: &mut R) -> Result<()> {
         let their_identity_key = bundle.identity_key()?;
 
-        if self.identity_store.is_trusted_identity(&self.remote_address, their_identity_key, Direction::Sending)? {
+        if !self.identity_store.is_trusted_identity(&self.remote_address, their_identity_key, Direction::Sending)? {
             return Err(SignalProtocolError::UntrustedIdentity(self.remote_address.clone()));
         }
 
-        if curve::verify_signature(their_identity_key.public_key(),
-                                   &bundle.signed_pre_key_public()?.serialize(),
-                                   bundle.signed_pre_key_signature()?)? == false {
+        if !curve::verify_signature(their_identity_key.public_key(),
+                                    &bundle.signed_pre_key_public()?.serialize(),
+                                    bundle.signed_pre_key_signature()?)? {
             return Err(SignalProtocolError::SignatureValidationFailed);
         }
 
         let mut session_record = self.session_store.load_session(&self.remote_address)?.unwrap_or(SessionRecord::new_fresh());
 
-        let mut csprng = rand::rngs::OsRng;
         let our_base_key_pair = curve::KeyPair::new(&mut csprng);
         let their_signed_prekey = bundle.signed_pre_key_public()?;
 
@@ -119,7 +119,7 @@ impl SessionBuilder {
             *their_one_time_prekey,
             *their_signed_prekey);
 
-        let mut session = ratchet::initialize_alice_session(&parameters)?;
+        let mut session = ratchet::initialize_alice_session(&parameters, csprng)?;
 
         session.set_unacknowledged_pre_key_message(their_one_time_prekey_id,
                                                    bundle.signed_pre_key_id()?,

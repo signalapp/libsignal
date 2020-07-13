@@ -8,6 +8,7 @@ use crate::error::Result;
 use crate::curve;
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
 use crate::proto::storage::SessionStructure;
+use rand::{Rng, CryptoRng};
 
 fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
     let kdf = crate::kdf::HKDF::new(3)?;
@@ -20,10 +21,9 @@ fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
     Ok((root_key, chain_key))
 }
 
-pub fn initialize_alice_session(parameters: &AliceSignalProtocolParameters) -> Result<SessionState> {
+pub fn initialize_alice_session<R: Rng + CryptoRng>(parameters: &AliceSignalProtocolParameters, mut csprng: &mut R) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let mut csprng = rand::rngs::OsRng; // pass as arg?
     let sending_ratchet_key = curve::KeyPair::new(&mut csprng);
 
     let mut secrets = Vec::with_capacity(32 * 5);
