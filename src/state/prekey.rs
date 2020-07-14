@@ -1,7 +1,6 @@
-
+use crate::curve;
 use crate::error::Result;
 use crate::proto::storage::PreKeyRecordStructure;
-use crate::curve;
 use prost::Message;
 
 pub type PreKeyId = u32;
@@ -17,8 +16,10 @@ impl PreKeyRecord {
         let private_key = key.private_key.serialize().to_vec();
         Self {
             pre_key: PreKeyRecordStructure {
-                id, public_key, private_key
-            }
+                id,
+                public_key,
+                private_key,
+            },
         }
     }
 
@@ -27,8 +28,7 @@ impl PreKeyRecord {
     }
 
     pub fn key_pair(&self) -> Result<curve::KeyPair> {
-        curve::KeyPair::from_public_and_private(&self.pre_key.public_key,
-                                                &self.pre_key.private_key)
+        curve::KeyPair::from_public_and_private(&self.pre_key.public_key, &self.pre_key.private_key)
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {

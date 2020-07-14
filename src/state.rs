@@ -1,9 +1,9 @@
-mod session;
-mod prekey;
 mod bundle;
+mod prekey;
+mod session;
 mod signed_prekey;
 
 pub use bundle::PreKeyBundle;
-pub use prekey::{PreKeyRecord, PreKeyId};
-pub use signed_prekey::{SignedPreKeyRecord, SignedPreKeyId};
-pub use session::{SessionState, SessionRecord};
+pub use prekey::{PreKeyId, PreKeyRecord};
+pub use session::{SessionRecord, SessionState};
+pub use signed_prekey::{SignedPreKeyId, SignedPreKeyRecord};

@@ -3,8 +3,8 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
 use crate::curve;
+use crate::error::{Result, SignalProtocolError};
 use crate::kdf::HKDF;
-use crate::error::{SignalProtocolError, Result};
 
 pub struct MessageKeys {
     cipher_key: [u8; 32],
@@ -26,7 +26,9 @@ impl MessageKeys {
 
     pub fn new(cipher_key: &[u8], mac_key: &[u8], iv: &[u8], counter: u32) -> Result<Self> {
         if cipher_key.len() != 32 {
-            return Err(SignalProtocolError::InvalidCipherKeyLength(cipher_key.len()));
+            return Err(SignalProtocolError::InvalidCipherKeyLength(
+                cipher_key.len(),
+            ));
         }
         if mac_key.len() != 32 {
             return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));

@@ -1,12 +1,11 @@
-
-use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
-use crate::state::{PreKeyRecord, PreKeyId, SignedPreKeyRecord, SignedPreKeyId, SessionRecord};
 use crate::error::Result;
+use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
+use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Direction {
     Sending,
-    Receiving
+    Receiving,
 }
 
 pub trait IdentityKeyStore {
@@ -16,7 +15,12 @@ pub trait IdentityKeyStore {
 
     fn save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool>;
 
-    fn is_trusted_identity(&self, address: &ProtocolAddress, identity: &IdentityKey, direction: Direction) -> Result<bool>;
+    fn is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        direction: Direction,
+    ) -> Result<bool>;
 
     fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>>;
 }
@@ -36,7 +40,11 @@ pub trait SignedPreKeyStore {
 
     fn get_all_signed_prekeys(&self) -> Result<Vec<SignedPreKeyRecord>>;
 
-    fn save_signed_pre_key(&mut self, signed_prekey_id: SignedPreKeyId, record: &SignedPreKeyRecord) -> Result<()>;
+    fn save_signed_pre_key(
+        &mut self,
+        signed_prekey_id: SignedPreKeyId,
+        record: &SignedPreKeyRecord,
+    ) -> Result<()>;
 
     fn has_signed_pre_key(&self, signed_prekey_id: SignedPreKeyId) -> Result<bool>;
 

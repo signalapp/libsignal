@@ -1,6 +1,6 @@
 mod curve25519;
 
-use crate::error::{SignalProtocolError, Result};
+use crate::error::{Result, SignalProtocolError};
 
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -46,7 +46,7 @@ enum PublicKeyData {
 
 #[derive(Clone, Copy, Eq, PartialOrd)]
 pub struct PublicKey {
-    key: PublicKeyData
+    key: PublicKeyData,
 }
 
 impl PublicKey {
@@ -63,19 +63,21 @@ impl PublicKey {
                 }
                 let mut key = [0u8; 32];
                 key.copy_from_slice(&value[1..33]);
-                Ok(PublicKey { key : PublicKeyData::DjbPublicKey(key) })
+                Ok(PublicKey {
+                    key: PublicKeyData::DjbPublicKey(key),
+                })
             }
         }
     }
 
     pub fn serialize(&self) -> Box<[u8]> {
         let value_len = match self.key {
-            PublicKeyData::DjbPublicKey(v) => v.len()
+            PublicKeyData::DjbPublicKey(v) => v.len(),
         };
         let mut result = Vec::with_capacity(1 + value_len);
         result.push(self.key_type().value());
         match self.key {
-            PublicKeyData::DjbPublicKey(v) => result.extend_from_slice(&v)
+            PublicKeyData::DjbPublicKey(v) => result.extend_from_slice(&v),
         }
         result.into_boxed_slice()
     }
@@ -125,7 +127,7 @@ enum PrivateKeyData {
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct PrivateKey {
-    key: PrivateKeyData
+    key: PrivateKeyData,
 }
 
 impl PrivateKey {
@@ -135,7 +137,9 @@ impl PrivateKey {
         } else {
             let mut key = [0u8; 32];
             key.copy_from_slice(&value[..32]);
-            Ok(Self { key: PrivateKeyData::DjbPrivateKey(key) })
+            Ok(Self {
+                key: PrivateKeyData::DjbPrivateKey(key),
+            })
         }
     }
 
@@ -147,7 +151,7 @@ impl PrivateKey {
 
     pub fn key_type(&self) -> KeyType {
         match self.key {
-            PrivateKeyData::DjbPrivateKey(_) => KeyType::Djb
+            PrivateKeyData::DjbPrivateKey(_) => KeyType::Djb,
         }
     }
 }
@@ -171,20 +175,23 @@ impl KeyPair {
         let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(*keypair.public_key()));
         let private_key = PrivateKey::from(PrivateKeyData::DjbPrivateKey(*keypair.private_key()));
 
-        Self { public_key, private_key }
+        Self {
+            public_key,
+            private_key,
+        }
     }
 
     pub fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
         let public_key = decode_point(public_key)?;
         let private_key = decode_private_point(private_key)?;
-        Ok(Self { public_key, private_key })
+        Ok(Self {
+            public_key,
+            private_key,
+        })
     }
 }
 
-pub fn calculate_agreement(
-    public_key: &PublicKey,
-    private_key: &PrivateKey,
-) -> Result<Box<[u8]>> {
+pub fn calculate_agreement(public_key: &PublicKey, private_key: &PrivateKey) -> Result<Box<[u8]>> {
     match (public_key.key, private_key.key) {
         (PublicKeyData::DjbPublicKey(pub_key), PrivateKeyData::DjbPrivateKey(priv_key)) => {
             let kp = curve25519::KeyPair::from(priv_key);
@@ -193,11 +200,7 @@ pub fn calculate_agreement(
     }
 }
 
-pub fn verify_signature(
-    public_key: &PublicKey,
-    message: &[u8],
-    signature: &[u8],
-) -> Result<bool> {
+pub fn verify_signature(public_key: &PublicKey, message: &[u8], signature: &[u8]) -> Result<bool> {
     match public_key.key {
         PublicKeyData::DjbPublicKey(pub_key) => {
             if signature.len() != 64 {
@@ -218,8 +221,8 @@ pub fn verify_signature(
 pub fn calculate_signature<R: CryptoRng + Rng>(
     csprng: &mut R,
     private_key: &PrivateKey,
-    message: &[u8]) -> Result<Box<[u8]>>
-{
+    message: &[u8],
+) -> Result<Box<[u8]>> {
     match private_key.key {
         PrivateKeyData::DjbPrivateKey(k) => {
             let kp = curve25519::KeyPair::from(k);

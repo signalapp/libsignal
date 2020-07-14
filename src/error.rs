@@ -69,7 +69,6 @@ impl From<prost::EncodeError> for SignalProtocolError {
 
 impl fmt::Display for SignalProtocolError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         match self {
             SignalProtocolError::ProtobufDecodingError(ref e) => {
                 write!(f, "failed to decode protobuf: {}", e)
@@ -80,9 +79,7 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::InvalidProtobufEncoding => {
                 write!(f, "protobuf encoding was invalid")
             }
-            SignalProtocolError::InvalidArgument(ref s) => {
-                write!(f, "invalid argument: {}", s)
-            }
+            SignalProtocolError::InvalidArgument(ref s) => write!(f, "invalid argument: {}", s),
             SignalProtocolError::InvalidState(ref func, ref s) => {
                 write!(f, "invalid state for call to {} to succeed: {}", func, s)
             }
@@ -104,24 +101,20 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::FingerprintVersionMismatch => {
                 write!(f, "fingerprint version numbers do not match")
             }
-            SignalProtocolError::NoKeyTypeIdentifier => {
-                write!(f, "no key type identifier")
-            }
-            SignalProtocolError::BadKeyType(t) => {
-                write!(f, "bad key type <{:#04x}>", t)
-            }
+            SignalProtocolError::NoKeyTypeIdentifier => write!(f, "no key type identifier"),
+            SignalProtocolError::BadKeyType(t) => write!(f, "bad key type <{:#04x}>", t),
             SignalProtocolError::BadKeyLength(t, l) => {
                 write!(f, "bad key length <{}> for key with type <{}>", l, t)
             }
             SignalProtocolError::MismatchedKeyTypes(a, b) => {
                 write!(f, "key types <{}> and <{}> do not match", a, b)
             }
-            SignalProtocolError::MismatchedSignatureLengthForKey(t, l) => {
-                write!(f, "signature length <{}> does not match expected for key with type <{}>", l, t)
-            }
-            SignalProtocolError::InvalidPreKeyId => {
-                write!(f, "invalid prekey identifier")
-            }
+            SignalProtocolError::MismatchedSignatureLengthForKey(t, l) => write!(
+                f,
+                "signature length <{}> does not match expected for key with type <{}>",
+                l, t
+            ),
+            SignalProtocolError::InvalidPreKeyId => write!(f, "invalid prekey identifier"),
             SignalProtocolError::InvalidSignedPreKeyId => {
                 write!(f, "invalid signed prekey identifier")
             }
@@ -146,9 +139,7 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::SignatureValidationFailed => {
                 write!(f, "invalid signature detected")
             }
-            SignalProtocolError::InvalidPreKeyBundle => {
-                write!(f, "invalid pre key bundle format")
-            }
+            SignalProtocolError::InvalidPreKeyBundle => write!(f, "invalid pre key bundle format"),
         }
     }
 }

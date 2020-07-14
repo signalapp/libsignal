@@ -1,5 +1,5 @@
-use crate::IdentityKey;
 use crate::curve;
+use crate::IdentityKey;
 
 use crate::error::{Result, SignalProtocolError};
 use crate::state::{PreKeyId, SignedPreKeyId};
@@ -17,16 +17,16 @@ pub struct PreKeyBundle {
 }
 
 impl PreKeyBundle {
-
-    pub fn new(registration_id: u32,
-           device_id: u32,
-           pre_key_id: Option<PreKeyId>,
-           pre_key_public: Option<curve::PublicKey>,
-           signed_pre_key_id: SignedPreKeyId,
-           signed_pre_key_public: curve::PublicKey,
-           signed_pre_key_signature: Vec<u8>,
-           identity_key: IdentityKey) -> Result<Self> {
-
+    pub fn new(
+        registration_id: u32,
+        device_id: u32,
+        pre_key_id: Option<PreKeyId>,
+        pre_key_public: Option<curve::PublicKey>,
+        signed_pre_key_id: SignedPreKeyId,
+        signed_pre_key_public: curve::PublicKey,
+        signed_pre_key_signature: Vec<u8>,
+        identity_key: IdentityKey,
+    ) -> Result<Self> {
         if pre_key_public.is_some() != pre_key_id.is_some() {
             return Err(SignalProtocolError::InvalidPreKeyBundle);
         }
@@ -74,5 +74,4 @@ impl PreKeyBundle {
     pub fn identity_key(&self) -> Result<&IdentityKey> {
         Ok(&self.identity_key)
     }
-
 }

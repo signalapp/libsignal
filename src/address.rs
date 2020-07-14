@@ -3,11 +3,10 @@ use std::fmt;
 #[derive(Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub struct ProtocolAddress {
     name: String,
-    device_id: u32
+    device_id: u32,
 }
 
 impl ProtocolAddress {
-
     pub fn new(name: String, device_id: u32) -> Self {
         ProtocolAddress { name, device_id }
     }
@@ -19,7 +18,6 @@ impl ProtocolAddress {
     pub fn device_id(&self) -> u32 {
         self.device_id
     }
-
 }
 
 impl fmt::Display for ProtocolAddress {

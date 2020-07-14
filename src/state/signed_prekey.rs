@@ -1,6 +1,6 @@
+use crate::curve;
 use crate::error::Result;
 use crate::proto::storage::SignedPreKeyRecordStructure;
-use crate::curve;
 use prost::Message;
 
 pub type SignedPreKeyId = u32;
@@ -10,7 +10,6 @@ pub struct SignedPreKeyRecord {
     signed_pre_key: SignedPreKeyRecordStructure,
 }
 
-
 impl SignedPreKeyRecord {
     pub fn new(id: SignedPreKeyId, timestamp: u64, key: &curve::KeyPair, signature: &[u8]) -> Self {
         let public_key = key.public_key.serialize().to_vec();
@@ -18,8 +17,12 @@ impl SignedPreKeyRecord {
         let signature = signature.to_vec();
         Self {
             signed_pre_key: SignedPreKeyRecordStructure {
-                id, timestamp, public_key, private_key, signature
-            }
+                id,
+                timestamp,
+                public_key,
+                private_key,
+                signature,
+            },
         }
     }
 
@@ -36,8 +39,10 @@ impl SignedPreKeyRecord {
     }
 
     pub fn key_pair(&self) -> Result<curve::KeyPair> {
-        curve::KeyPair::from_public_and_private(&self.signed_pre_key.public_key,
-                                                &self.signed_pre_key.private_key)
+        curve::KeyPair::from_public_and_private(
+            &self.signed_pre_key.public_key,
+            &self.signed_pre_key.private_key,
+        )
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {

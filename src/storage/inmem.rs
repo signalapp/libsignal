@@ -1,7 +1,7 @@
-use crate::error::{SignalProtocolError, Result};
+use crate::error::{Result, SignalProtocolError};
+use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
 use crate::storage::traits;
-use crate::state::{PreKeyRecord, PreKeyId, SignedPreKeyRecord, SignedPreKeyId, SessionRecord};
-use crate::{IdentityKeyPair, IdentityKey, ProtocolAddress};
+use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
 
 use std::collections::HashMap;
 
@@ -16,7 +16,7 @@ impl InMemIdentityKeyStore {
         Self {
             key_pair,
             id,
-            known_keys: HashMap::new()
+            known_keys: HashMap::new(),
         }
     }
 }
@@ -46,21 +46,24 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
         }
     }
 
-    fn is_trusted_identity(&self, address: &ProtocolAddress, identity: &IdentityKey, _direction: traits::Direction) -> Result<bool> {
+    fn is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        _direction: traits::Direction,
+    ) -> Result<bool> {
         match self.known_keys.get(address) {
             None => {
                 Ok(true) // first use
             }
-            Some(k) => {
-                Ok(k == identity)
-            }
+            Some(k) => Ok(k == identity),
         }
     }
 
     fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>> {
         match self.known_keys.get(address) {
             None => Ok(None),
-            Some(k) => Ok(Some(k.to_owned()))
+            Some(k) => Ok(Some(k.to_owned())),
         }
     }
 }
@@ -71,13 +74,19 @@ pub struct InMemPreKeyStore {
 
 impl InMemPreKeyStore {
     pub fn new() -> Self {
-        Self { pre_keys: HashMap::new() }
+        Self {
+            pre_keys: HashMap::new(),
+        }
     }
 }
 
 impl traits::PreKeyStore for InMemPreKeyStore {
     fn get_pre_key(&self, id: PreKeyId) -> Result<PreKeyRecord> {
-        Ok(self.pre_keys.get(&id).ok_or(SignalProtocolError::InvalidPreKeyId)?.clone())
+        Ok(self
+            .pre_keys
+            .get(&id)
+            .ok_or(SignalProtocolError::InvalidPreKeyId)?
+            .clone())
     }
 
     fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord) -> Result<()> {
@@ -103,13 +112,19 @@ pub struct InMemSignedPreKeyStore {
 
 impl InMemSignedPreKeyStore {
     pub fn new() -> Self {
-        Self { signed_pre_keys: HashMap::new() }
+        Self {
+            signed_pre_keys: HashMap::new(),
+        }
     }
 }
 
 impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
     fn get_signed_pre_key(&self, id: SignedPreKeyId) -> Result<SignedPreKeyRecord> {
-        Ok(self.signed_pre_keys.get(&id).ok_or(SignalProtocolError::InvalidSignedPreKeyId)?.clone())
+        Ok(self
+            .signed_pre_keys
+            .get(&id)
+            .ok_or(SignalProtocolError::InvalidSignedPreKeyId)?
+            .clone())
     }
 
     fn get_all_signed_prekeys(&self) -> Result<Vec<SignedPreKeyRecord>> {
@@ -120,7 +135,11 @@ impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
         Ok(result)
     }
 
-    fn save_signed_pre_key(&mut self, id: SignedPreKeyId, record: &SignedPreKeyRecord) -> Result<()> {
+    fn save_signed_pre_key(
+        &mut self,
+        id: SignedPreKeyId,
+        record: &SignedPreKeyRecord,
+    ) -> Result<()> {
         // This overwrites old values, which matches Java behavior, but is it correct?
         self.signed_pre_keys.insert(id, record.to_owned());
         Ok(())
@@ -143,7 +162,9 @@ pub struct InMemSessionStore {
 
 impl InMemSessionStore {
     pub fn new() -> Self {
-        Self { sessions: HashMap::new() }
+        Self {
+            sessions: HashMap::new(),
+        }
     }
 }
 
@@ -151,7 +172,7 @@ impl traits::SessionStore for InMemSessionStore {
     fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>> {
         match self.sessions.get(address) {
             None => Ok(None),
-            Some(s) => Ok(Some(s.clone()))
+            Some(s) => Ok(Some(s.clone())),
         }
     }
 
@@ -182,7 +203,7 @@ impl traits::SessionStore for InMemSessionStore {
     }
 
     fn delete_all_sessions(&mut self, name: &str) -> Result<()> {
-        self.sessions.retain(|a,_| a.name() != name);
+        self.sessions.retain(|a, _| a.name() != name);
         Ok(())
     }
 }

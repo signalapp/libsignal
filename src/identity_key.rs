@@ -1,10 +1,10 @@
 use crate::curve;
 use crate::proto;
 
-use crate::error::{SignalProtocolError, Result};
+use crate::error::{Result, SignalProtocolError};
 
+use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
-use rand::{Rng, CryptoRng};
 
 use prost::Message;
 
@@ -40,9 +40,7 @@ impl TryFrom<&[u8]> for IdentityKey {
 
 impl From<curve::PublicKey> for IdentityKey {
     fn from(value: curve::PublicKey) -> Self {
-        Self {
-            public_key: value
-        }
+        Self { public_key: value }
     }
 }
 
@@ -79,7 +77,7 @@ impl IdentityKeyPair {
 
         Self {
             identity_key: keypair.public_key.into(),
-            private_key: keypair.private_key
+            private_key: keypair.private_key,
         }
     }
 
