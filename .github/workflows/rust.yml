@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Rustfmt check
+      run: cargo fmt -- --check
     - name: Build
       run: cargo build --verbose
     - name: Run tests
