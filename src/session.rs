@@ -42,7 +42,7 @@ impl<'a> SessionBuilder<'a> {
     pub fn process_prekey(&mut self, session_record: &mut SessionRecord, message: &PreKeySignalMessage) -> Result<Option<PreKeyId>> {
         let their_identity_key = message.identity_key();
 
-        if !self.identity_store.is_trusted_identity(&self.remote_address, their_identity_key, Direction::Receving)? {
+        if !self.identity_store.is_trusted_identity(&self.remote_address, their_identity_key, Direction::Receiving)? {
             return Err(SignalProtocolError::UntrustedIdentity(self.remote_address.clone()));
         }
 
