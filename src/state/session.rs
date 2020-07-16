@@ -94,12 +94,22 @@ impl SessionState {
         Ok(self.session.previous_counter)
     }
 
+    pub fn set_previous_counter(&mut self, ctr: u32) -> Result<()> {
+        self.session.previous_counter = ctr;
+        Ok(())
+    }
+
     pub fn root_key(&self) -> Result<RootKey> {
         if self.session.root_key.len() != 32 {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
         let hkdf = kdf::HKDF::new(self.session_version()?)?;
         RootKey::new(hkdf, &self.session.root_key)
+    }
+
+    pub fn set_root_key(&mut self, root_key: &RootKey) -> Result<()> {
+        self.session.root_key = root_key.key().to_vec();
+        Ok(())
     }
 
     pub fn sender_ratchet_key(&self) -> Result<curve::PublicKey> {
@@ -305,7 +315,7 @@ impl SessionState {
         &mut self,
         sender: &curve::PublicKey,
         message_keys: &MessageKeys,
-    ) -> Result<bool> {
+    ) -> Result<()> {
         let new_keys = session_structure::chain::MessageKey {
             cipher_key: message_keys.cipher_key().to_vec(),
             mac_key: message_keys.mac_key().to_vec(),
@@ -322,12 +332,13 @@ impl SessionState {
             }
 
             self.session.receiver_chains[chain_and_index.1] = updated_chain;
+            return Ok(());
+        } else {
+            return Err(SignalProtocolError::InvalidState(
+                "set_message_keys",
+                "No receiver".to_string(),
+            ));
         }
-
-        Err(SignalProtocolError::InvalidState(
-            "set_message_keys",
-            "No receiver".to_string(),
-        ))
     }
 
     pub fn set_receiver_chain_key(
@@ -343,10 +354,11 @@ impl SessionState {
             });
 
             self.session.receiver_chains[chain_and_index.1] = updated_chain;
+            return Ok(());
         }
 
         Err(SignalProtocolError::InvalidState(
-            "set_message_keys",
+            "set_receiver_chain_key",
             "No receiver".to_string(),
         ))
     }
@@ -441,11 +453,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn has_unacknowledged_pre_key_message(&self) -> Result<bool> {
-        Ok(self.session.pending_pre_key.is_some())
-    }
-
-    pub fn get_unacknowledged_pre_key_message_items(
+    pub fn unacknowledged_pre_key_message_items(
         &self,
     ) -> Result<Option<UnacknowledgedPreKeyMessageItems>> {
         if let Some(ref pending_pre_key) = self.session.pending_pre_key {
@@ -472,7 +480,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn get_remote_registration_id(&self) -> Result<u32> {
+    pub fn remote_registration_id(&self) -> Result<u32> {
         Ok(self.session.remote_registration_id)
     }
 
@@ -481,7 +489,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn get_local_registration_id(&self) -> Result<u32> {
+    pub fn local_registration_id(&self) -> Result<u32> {
         Ok(self.session.local_registration_id)
     }
 
@@ -562,18 +570,49 @@ impl SessionRecord {
         Ok(())
     }
 
-    pub fn session_state(&self) -> Result<SessionState> {
+    pub fn session_state(&self) -> Result<&SessionState> {
         if let Some(ref session) = self.current_session {
-            return Ok(session.clone());
+            Ok(session)
+        } else {
+            Err(SignalProtocolError::InvalidState(
+                "session_state",
+                "No session".into(),
+            ))
         }
-        Err(SignalProtocolError::InvalidState(
-            "session_state",
-            "No session".into(),
-        ))
     }
 
-    pub fn get_previous_session_states(&self) -> Result<impl Iterator<Item = &SessionState>> {
+    pub fn session_state_mut(&mut self) -> Result<&mut SessionState> {
+        if let Some(ref mut session) = self.current_session {
+            Ok(session)
+        } else {
+            Err(SignalProtocolError::InvalidState(
+                "session_state",
+                "No session".into(),
+            ))
+        }
+    }
+
+    pub fn set_session_state(&mut self, session: SessionState) -> Result<()> {
+        self.current_session = Some(session);
+        Ok(())
+    }
+
+    pub fn previous_session_states(&self) -> Result<impl Iterator<Item = &SessionState>> {
         Ok(self.previous_sessions.iter())
+    }
+
+    pub fn promote_old_session(
+        &mut self,
+        old_session: usize,
+        updated_session: SessionState,
+    ) -> Result<()> {
+        self.previous_sessions
+            .remove(old_session)
+            .ok_or(SignalProtocolError::InvalidState(
+                "promote_old_session",
+                "out of range".into(),
+            ))?;
+        self.promote_state(updated_session)
     }
 
     pub fn is_fresh(&self) -> Result<bool> {
