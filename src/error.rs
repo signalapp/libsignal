@@ -5,7 +5,7 @@ use std::fmt;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SignalProtocolError {
     InvalidArgument(String),
     InvalidState(&'static str, String),
@@ -43,6 +43,14 @@ pub enum SignalProtocolError {
     InvalidCipherKeyLength(usize),
     InvalidMacKeyLength(usize),
     InvalidCipherNonceLength(usize),
+    InvalidCiphertext,
+
+    SessionNotFound,
+    InvalidSessionStructure,
+
+    DuplicatedMessage(u32, u32),
+    InvalidMessage(&'static str),
+    InternalError(&'static str),
 }
 
 impl Error for SignalProtocolError {
@@ -140,6 +148,14 @@ impl fmt::Display for SignalProtocolError {
                 write!(f, "invalid signature detected")
             }
             SignalProtocolError::InvalidPreKeyBundle => write!(f, "invalid pre key bundle format"),
+            SignalProtocolError::InvalidCiphertext => write!(f, "invalid ciphertext message"),
+            SignalProtocolError::SessionNotFound => write!(f, "session not found"),
+            SignalProtocolError::InvalidSessionStructure => write!(f, "invalid session structure"),
+            SignalProtocolError::DuplicatedMessage(i, c) => {
+                write!(f, "message with old counter {} / {}", i, c)
+            }
+            SignalProtocolError::InvalidMessage(m) => write!(f, "invalid message {}", m),
+            SignalProtocolError::InternalError(m) => write!(f, "internal error {}", m),
         }
     }
 }
