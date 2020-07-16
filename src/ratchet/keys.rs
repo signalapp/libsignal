@@ -6,6 +6,7 @@ use crate::curve;
 use crate::error::{Result, SignalProtocolError};
 use crate::kdf::HKDF;
 
+#[derive(Copy, Clone, Debug)]
 pub struct MessageKeys {
     cipher_key: [u8; 32],
     mac_key: [u8; 32],
@@ -66,6 +67,7 @@ impl MessageKeys {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct ChainKey {
     kdf: HKDF,
     key: [u8; 32],
