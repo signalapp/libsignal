@@ -87,6 +87,11 @@ impl IdentityKeyPair {
     }
 
     #[inline]
+    pub fn public_key(&self) -> &curve::PublicKey {
+        &self.identity_key.public_key()
+    }
+
+    #[inline]
     pub fn private_key(&self) -> &curve::PrivateKey {
         &self.private_key
     }
