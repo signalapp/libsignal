@@ -16,6 +16,8 @@ rand = "0.7.3"
 sha2 = "0.8.1"
 subtle = "2.2.2"
 x25519-dalek = "0.6.0"
+aes = "0.4"
+block-modes = "0.5"
 
 [dev-dependencies]
 hex = "0.4"
