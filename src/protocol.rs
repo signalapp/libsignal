@@ -19,6 +19,47 @@ pub enum CiphertextMessage {
     SenderKeyDistributionMessage(SenderKeyDistributionMessage),
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum CiphertextMessageType {
+    Whisper,
+    PreKey,
+    SenderKey,
+    SenderKeyDistribution,
+}
+
+impl CiphertextMessageType {
+    fn encoding(&self) -> u8 {
+        match self {
+            CiphertextMessageType::Whisper => 2,
+            CiphertextMessageType::PreKey => 3,
+            CiphertextMessageType::SenderKey => 4,
+            CiphertextMessageType::SenderKeyDistribution => 5,
+        }
+    }
+}
+
+impl CiphertextMessage {
+    pub fn message_type(&self) -> CiphertextMessageType {
+        match self {
+            CiphertextMessage::SignalMessage(_) => CiphertextMessageType::Whisper,
+            CiphertextMessage::PreKeySignalMessage(_) => CiphertextMessageType::PreKey,
+            CiphertextMessage::SenderKeyMessage(_) => CiphertextMessageType::SenderKey,
+            CiphertextMessage::SenderKeyDistributionMessage(_) => {
+                CiphertextMessageType::SenderKeyDistribution
+            }
+        }
+    }
+
+    pub fn serialize(&self) -> &[u8] {
+        match self {
+            CiphertextMessage::SignalMessage(x) => x.serialized(),
+            CiphertextMessage::PreKeySignalMessage(x) => x.serialized(),
+            CiphertextMessage::SenderKeyMessage(x) => x.serialized(),
+            CiphertextMessage::SenderKeyDistributionMessage(_x) => unimplemented!(),
+        }
+    }
+}
+
 pub struct SignalMessage {
     message_version: u8,
     sender_ratchet_key: curve::PublicKey,
@@ -82,6 +123,11 @@ impl SignalMessage {
     #[inline]
     pub fn counter(&self) -> u32 {
         self.counter
+    }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &*self.serialized
     }
 
     #[inline]
@@ -258,6 +304,11 @@ impl PreKeySignalMessage {
     pub fn message(&self) -> &SignalMessage {
         &self.message
     }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &*self.serialized
+    }
 }
 
 impl AsRef<[u8]> for PreKeySignalMessage {
@@ -381,6 +432,11 @@ impl SenderKeyMessage {
     pub fn ciphertext(&self) -> &[u8] {
         &*self.ciphertext
     }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &*self.serialized
+    }
 }
 
 impl AsRef<[u8]> for SenderKeyMessage {
@@ -439,7 +495,7 @@ mod tests {
     use super::*;
 
     use rand::rngs::OsRng;
-    use rand::{CryptoRng, Rng, RngCore};
+    use rand::{CryptoRng, Rng};
 
     fn create_signal_message<T>(csprng: &mut T) -> SignalMessage
     where
