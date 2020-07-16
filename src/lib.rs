@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod address;
 mod curve;
 mod error;
@@ -8,20 +10,26 @@ mod proto;
 mod protocol;
 mod ratchet;
 mod session;
+mod session_cipher;
 mod state;
 mod storage;
 
-pub use session::SessionBuilder;
-
-pub use address::ProtocolAddress;
-pub use error::SignalProtocolError;
-pub use identity_key::{IdentityKey, IdentityKeyPair};
-
-pub use state::{PreKeyBundle, SessionRecord, SessionState};
-pub use storage::{IdentityKeyStore, PreKeyStore, SessionStore, SignedPreKeyStore};
-
-pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
-
-pub use storage::{
-    InMemIdentityKeyStore, InMemPreKeyStore, InMemSessionStore, InMemSignedPreKeyStore,
+pub use {
+    address::ProtocolAddress,
+    curve::{KeyPair, PrivateKey, PublicKey},
+    error::SignalProtocolError,
+    fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint},
+    identity_key::{IdentityKey, IdentityKeyPair},
+    protocol::{
+        CiphertextMessage, CiphertextMessageType, PreKeySignalMessage,
+        SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
+    },
+    session::*,
+    session_cipher::SessionCipher,
+    state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},
+    storage::{
+        IdentityKeyStore, InMemIdentityKeyStore, InMemPreKeyStore, InMemSessionStore,
+        InMemSignalProtocolStore, InMemSignedPreKeyStore, PreKeyStore, ProtocolStore, SessionStore,
+        SignedPreKeyStore,
+    },
 };
