@@ -154,6 +154,19 @@ impl PrivateKey {
             PrivateKeyData::DjbPrivateKey(_) => KeyType::Djb,
         }
     }
+
+    pub fn calculate_signature<R: CryptoRng + Rng>(
+        &self,
+        message: &[u8],
+        csprng: &mut R,
+    ) -> Result<Box<[u8]>> {
+        match self.key {
+            PrivateKeyData::DjbPrivateKey(k) => {
+                let kp = curve25519::KeyPair::from(k);
+                Ok(Box::new(kp.calculate_signature(csprng, message)))
+            }
+        }
+    }
 }
 
 impl From<PrivateKeyData> for PrivateKey {
@@ -189,6 +202,14 @@ impl KeyPair {
             private_key,
         })
     }
+
+    pub fn calculate_signature<R: CryptoRng + Rng>(
+        &self,
+        message: &[u8],
+        csprng: &mut R,
+    ) -> Result<Box<[u8]>> {
+        self.private_key.calculate_signature(message, csprng)
+    }
 }
 
 pub fn calculate_agreement(public_key: &PublicKey, private_key: &PrivateKey) -> Result<Box<[u8]>> {
@@ -223,12 +244,7 @@ pub fn calculate_signature<R: CryptoRng + Rng>(
     private_key: &PrivateKey,
     message: &[u8],
 ) -> Result<Box<[u8]>> {
-    match private_key.key {
-        PrivateKeyData::DjbPrivateKey(k) => {
-            let kp = curve25519::KeyPair::from(k);
-            Ok(Box::new(kp.calculate_signature(csprng, message)))
-        }
-    }
+    private_key.calculate_signature(message, csprng)
 }
 
 pub fn decode_private_point(value: &[u8]) -> Result<PrivateKey> {
