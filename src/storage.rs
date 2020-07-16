@@ -1,8 +1,12 @@
 mod inmem;
 mod traits;
 
-pub use traits::{Direction, IdentityKeyStore, PreKeyStore, SessionStore, SignedPreKeyStore};
-
-pub use inmem::{
-    InMemIdentityKeyStore, InMemPreKeyStore, InMemSessionStore, InMemSignedPreKeyStore,
+pub use {
+    inmem::{
+        InMemIdentityKeyStore, InMemPreKeyStore, InMemSessionStore, InMemSignalProtocolStore,
+        InMemSignedPreKeyStore,
+    },
+    traits::{
+        Direction, IdentityKeyStore, PreKeyStore, ProtocolStore, SessionStore, SignedPreKeyStore,
+    },
 };

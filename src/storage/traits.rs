@@ -64,3 +64,5 @@ pub trait SessionStore {
 
     fn delete_all_sessions(&mut self, name: &str) -> Result<()>;
 }
+
+pub trait ProtocolStore: SessionStore + PreKeyStore + SignedPreKeyStore + IdentityKeyStore {}
