@@ -24,6 +24,10 @@ pub use {
         CiphertextMessage, CiphertextMessageType, PreKeySignalMessage,
         SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
     },
+    ratchet::{
+        initialize_alice_session, initialize_bob_session, AliceSignalProtocolParameters,
+        BobSignalProtocolParameters,
+    },
     session::*,
     session_cipher::SessionCipher,
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},

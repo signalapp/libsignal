@@ -592,6 +592,170 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
     Ok(())
 }
 
+fn initialize_sessions_v3() -> Result<(SessionState, SessionState), SignalProtocolError> {
+    let mut csprng = OsRng;
+    let alice_identity = IdentityKeyPair::generate(&mut csprng);
+    let bob_identity = IdentityKeyPair::generate(&mut csprng);
+
+    let alice_base_key = KeyPair::new(&mut csprng);
+
+    let bob_base_key = KeyPair::new(&mut csprng);
+    let bob_ephemeral_key = bob_base_key;
+
+    let alice_params = AliceSignalProtocolParameters::new(
+        alice_identity,
+        alice_base_key,
+        *bob_identity.identity_key(),
+        bob_base_key.public_key,
+        None,
+        bob_ephemeral_key.public_key,
+    );
+
+    let alice_session = initialize_alice_session(&alice_params, &mut csprng)?;
+
+    let bob_params = BobSignalProtocolParameters::new(
+        bob_identity,
+        bob_base_key,
+        None,
+        bob_ephemeral_key,
+        *alice_identity.identity_key(),
+        alice_base_key.public_key,
+    );
+
+    let bob_session = initialize_bob_session(&bob_params)?;
+
+    Ok((alice_session, bob_session))
+}
+
+#[test]
+fn basic_session_v3() -> Result<(), SignalProtocolError> {
+    let (alice_session, bob_session) = initialize_sessions_v3()?;
+    let alice_session_record = SessionRecord::new(alice_session);
+    let bob_session_record = SessionRecord::new(bob_session);
+    run_session_interaction(alice_session_record, bob_session_record)?;
+    Ok(())
+}
+
+#[test]
+fn message_key_limits() -> Result<(), SignalProtocolError> {
+    let (alice_session, bob_session) = initialize_sessions_v3()?;
+    let alice_session_record = SessionRecord::new(alice_session);
+    let bob_session_record = SessionRecord::new(bob_session);
+
+    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    alice_store.store_session(&bob_address, &alice_session_record)?;
+    bob_store.store_session(&alice_address, &bob_session_record)?;
+
+    const MAX_MESSAGE_KEYS: usize = 2000; // same value as in library
+    const TOO_MANY_MESSAGES: usize = MAX_MESSAGE_KEYS + 300;
+
+    let mut inflight = Vec::with_capacity(TOO_MANY_MESSAGES);
+
+    for i in 0..TOO_MANY_MESSAGES {
+        inflight.push(encrypt(
+            &mut alice_store,
+            &bob_address,
+            &format!("It's over {}", i),
+        )?);
+    }
+
+    assert_eq!(
+        String::from_utf8(decrypt(&mut bob_store, &alice_address, &inflight[1000])?).unwrap(),
+        "It's over 1000"
+    );
+    assert_eq!(
+        String::from_utf8(decrypt(
+            &mut bob_store,
+            &alice_address,
+            &inflight[TOO_MANY_MESSAGES - 1]
+        )?)
+        .unwrap(),
+        format!("It's over {}", TOO_MANY_MESSAGES - 1)
+    );
+
+    assert!(decrypt(&mut bob_store, &alice_address, &inflight[0]).is_err());
+    Ok(())
+}
+
+fn run_session_interaction(
+    alice_session: SessionRecord,
+    bob_session: SessionRecord,
+) -> Result<(), SignalProtocolError> {
+    use rand::seq::SliceRandom;
+
+    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    alice_store.store_session(&bob_address, &alice_session)?;
+    bob_store.store_session(&alice_address, &bob_session)?;
+
+    let alice_plaintext = "This is Alice's message";
+    let alice_ciphertext = encrypt(&mut alice_store, &bob_address, alice_plaintext)?;
+    let bob_decrypted = decrypt(&mut bob_store, &alice_address, &alice_ciphertext)?;
+    assert_eq!(String::from_utf8(bob_decrypted).unwrap(), alice_plaintext);
+
+    let bob_plaintext = "This is Bob's reply";
+
+    let bob_ciphertext = encrypt(&mut bob_store, &alice_address, bob_plaintext)?;
+    let alice_decrypted = decrypt(&mut alice_store, &bob_address, &bob_ciphertext)?;
+    assert_eq!(String::from_utf8(alice_decrypted).unwrap(), bob_plaintext);
+
+    const ALICE_MESSAGE_COUNT: usize = 50;
+    const BOB_MESSAGE_COUNT: usize = 50;
+
+    let mut alice_messages = Vec::with_capacity(ALICE_MESSAGE_COUNT);
+
+    for i in 0..ALICE_MESSAGE_COUNT {
+        let ptext = format!("смерть за смерть {}", i);
+        let ctext = encrypt(&mut alice_store, &bob_address, &ptext)?;
+        alice_messages.push((ptext, ctext));
+    }
+
+    let mut rng = rand::rngs::OsRng;
+
+    alice_messages.shuffle(&mut rng);
+
+    for i in 0..ALICE_MESSAGE_COUNT / 2 {
+        let ptext = decrypt(&mut bob_store, &alice_address, &alice_messages[i].1)?;
+        assert_eq!(String::from_utf8(ptext).unwrap(), alice_messages[i].0);
+    }
+
+    let mut bob_messages = Vec::with_capacity(BOB_MESSAGE_COUNT);
+
+    for i in 0..BOB_MESSAGE_COUNT {
+        let ptext = format!("Relax in the safety of your own delusions. {}", i);
+        let ctext = encrypt(&mut bob_store, &alice_address, &ptext)?;
+        bob_messages.push((ptext, ctext));
+    }
+
+    bob_messages.shuffle(&mut rng);
+
+    for i in 0..BOB_MESSAGE_COUNT / 2 {
+        let ptext = decrypt(&mut alice_store, &bob_address, &bob_messages[i].1)?;
+        assert_eq!(String::from_utf8(ptext).unwrap(), bob_messages[i].0);
+    }
+
+    for i in ALICE_MESSAGE_COUNT / 2..ALICE_MESSAGE_COUNT {
+        let ptext = decrypt(&mut bob_store, &alice_address, &alice_messages[i].1)?;
+        assert_eq!(String::from_utf8(ptext).unwrap(), alice_messages[i].0);
+    }
+
+    for i in BOB_MESSAGE_COUNT / 2..BOB_MESSAGE_COUNT {
+        let ptext = decrypt(&mut alice_store, &bob_address, &bob_messages[i].1)?;
+        assert_eq!(String::from_utf8(ptext).unwrap(), bob_messages[i].0);
+    }
+
+    Ok(())
+}
+
 fn run_interaction(
     alice_store: &mut InMemSignalProtocolStore,
     alice_address: &ProtocolAddress,

@@ -325,7 +325,7 @@ impl SessionState {
 
         if let Some(chain_and_index) = self.get_receiver_chain(sender)? {
             let mut updated_chain = chain_and_index.0;
-            updated_chain.message_keys.push(new_keys);
+            updated_chain.message_keys.insert(0, new_keys);
 
             if updated_chain.message_keys.len() > MAX_MESSAGE_KEYS {
                 updated_chain.message_keys.pop();
@@ -531,6 +531,14 @@ impl SessionRecord {
             previous_sessions: VecDeque::new(),
         }
     }
+
+    pub fn new(state: SessionState) -> Self {
+        Self {
+            current_session: Some(state),
+            previous_sessions: VecDeque::new(),
+        }
+    }
+
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
         let record = RecordStructure::decode(bytes)?;
 
