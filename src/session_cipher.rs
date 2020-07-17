@@ -12,6 +12,13 @@ use crate::storage::Direction;
 
 use aes::Aes256;
 use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
+use rand::{CryptoRng, Rng};
+
+/*
+* Prevent a message from jumping too far forward to avoid computation DoS.
+* The specific value is arbitrary, value taking from libsignal-protocol-java
+*/
+const MAX_FORWARD_CHAIN_JUMPS: u32 = 2000;
 
 pub struct SessionCipher<'a> {
     remote_address: ProtocolAddress,
@@ -149,17 +156,25 @@ impl<'a> SessionCipher<'a> {
         Ok(message)
     }
 
-    pub fn decrypt(&mut self, ciphertext: &CiphertextMessage) -> Result<Vec<u8>> {
+    pub fn decrypt<R: Rng + CryptoRng>(
+        &mut self,
+        ciphertext: &CiphertextMessage,
+        csprng: &mut R,
+    ) -> Result<Vec<u8>> {
         match ciphertext {
-            CiphertextMessage::SignalMessage(m) => self.decrypt_message(m),
-            CiphertextMessage::PreKeySignalMessage(m) => self.decrypt_with_prekey(m),
+            CiphertextMessage::SignalMessage(m) => self.decrypt_message(m, csprng),
+            CiphertextMessage::PreKeySignalMessage(m) => self.decrypt_with_prekey(m, csprng),
             _ => Err(SignalProtocolError::InvalidArgument(
                 "SessionCipher::decrypt cannot decrypt this message type".to_owned(),
             )),
         }
     }
 
-    fn decrypt_with_prekey(&mut self, ciphertext: &PreKeySignalMessage) -> Result<Vec<u8>> {
+    fn decrypt_with_prekey<R: Rng + CryptoRng>(
+        &mut self,
+        ciphertext: &PreKeySignalMessage,
+        csprng: &mut R,
+    ) -> Result<Vec<u8>> {
         let mut session_record = match self.session_store.load_session(&self.remote_address)? {
             Some(s) => s,
             None => SessionRecord::new_fresh(),
@@ -174,7 +189,8 @@ impl<'a> SessionCipher<'a> {
             ciphertext,
         )?;
 
-        let ptext = self.decrypt_message_with_record(&mut session_record, ciphertext.message())?;
+        let ptext =
+            self.decrypt_message_with_record(&mut session_record, ciphertext.message(), csprng)?;
 
         self.session_store
             .store_session(&self.remote_address, &session_record)?;
@@ -186,13 +202,17 @@ impl<'a> SessionCipher<'a> {
         Ok(ptext)
     }
 
-    fn decrypt_message(&mut self, ciphertext: &SignalMessage) -> Result<Vec<u8>> {
+    fn decrypt_message<R: Rng + CryptoRng>(
+        &mut self,
+        ciphertext: &SignalMessage,
+        csprng: &mut R,
+    ) -> Result<Vec<u8>> {
         let mut session_record = self
             .session_store
             .load_session(&self.remote_address)?
             .ok_or(SignalProtocolError::InternalError("SessionCipher::decrypt"))?;
 
-        let ptext = self.decrypt_message_with_record(&mut session_record, ciphertext)?;
+        let ptext = self.decrypt_message_with_record(&mut session_record, ciphertext, csprng)?;
 
         // Why are we performing this check after decryption instead of before?
         let their_identity_key = session_record
@@ -218,14 +238,15 @@ impl<'a> SessionCipher<'a> {
         Ok(ptext)
     }
 
-    fn decrypt_message_with_record(
+    fn decrypt_message_with_record<R: Rng + CryptoRng>(
         &mut self,
         record: &mut SessionRecord,
         ciphertext: &SignalMessage,
+        csprng: &mut R,
     ) -> Result<Vec<u8>> {
         let mut current_state = record.session_state()?.clone();
 
-        if let Ok(ptext) = self.decrypt_message_with_state(&mut current_state, ciphertext) {
+        if let Ok(ptext) = self.decrypt_message_with_state(&mut current_state, ciphertext, csprng) {
             record.set_session_state(current_state)?; // update the state
             return Ok(ptext);
         }
@@ -247,10 +268,11 @@ impl<'a> SessionCipher<'a> {
         ))
     }
 
-    fn decrypt_message_with_state(
+    fn decrypt_message_with_state<R: Rng + CryptoRng>(
         &mut self,
         state: &mut SessionState,
         ciphertext: &SignalMessage,
+        csprng: &mut R,
     ) -> Result<Vec<u8>> {
         if !state.has_sender_chain()? {
             return Err(SignalProtocolError::InvalidSessionStructure);
@@ -265,7 +287,7 @@ impl<'a> SessionCipher<'a> {
 
         let their_ephemeral = ciphertext.sender_ratchet_key();
         let counter = ciphertext.counter();
-        let chain_key = self.get_or_create_chain_key(state, their_ephemeral)?;
+        let chain_key = self.get_or_create_chain_key(state, their_ephemeral, csprng)?;
         let message_keys =
             self.get_or_create_message_key(state, their_ephemeral, &chain_key, counter)?;
 
@@ -310,10 +332,11 @@ impl<'a> SessionCipher<'a> {
         session_record.session_state()?.session_version()
     }
 
-    fn get_or_create_chain_key(
+    fn get_or_create_chain_key<R: Rng + CryptoRng>(
         &self,
         state: &mut SessionState,
         their_ephemeral: &curve::PublicKey,
+        csprng: &mut R,
     ) -> Result<ChainKey> {
         if let Some(chain) = state.get_receiver_chain_key(their_ephemeral)? {
             return Ok(chain);
@@ -322,8 +345,7 @@ impl<'a> SessionCipher<'a> {
         let root_key = state.root_key()?;
         let our_ephemeral = state.sender_ratchet_private_key()?;
         let receiver_chain = root_key.create_chain(their_ephemeral, &our_ephemeral)?;
-        let mut csprng = rand::rngs::OsRng;
-        let our_new_ephemeral = curve::KeyPair::new(&mut csprng);
+        let our_new_ephemeral = curve::KeyPair::new(csprng);
         let sender_chain = receiver_chain
             .0
             .create_chain(their_ephemeral, &our_new_ephemeral.private_key)?;
@@ -363,14 +385,14 @@ impl<'a> SessionCipher<'a> {
         }
 
         assert!(chain_index <= counter);
-        // Why 2000 exactly?
-        if counter - chain_index > 2000 {
+
+        if counter - chain_index > MAX_FORWARD_CHAIN_JUMPS {
             return Err(SignalProtocolError::InvalidMessage(
                 "message from too far into the future",
             ));
         }
 
-        let mut chain_key = *chain_key;
+        let mut chain_key = chain_key.clone();
 
         while chain_key.index() < counter {
             let message_keys = chain_key.message_keys();

@@ -31,7 +31,8 @@ fn decrypt(
         &mut store.signed_pre_key_store,
         &mut store.pre_key_store,
     );
-    session_cipher.decrypt(msg)
+    let mut csprng = OsRng;
+    session_cipher.decrypt(msg, &mut csprng)
 }
 
 #[test]
