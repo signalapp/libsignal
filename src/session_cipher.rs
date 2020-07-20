@@ -3,6 +3,7 @@ use crate::{
     SignalProtocolError, SignedPreKeyStore,
 };
 
+use crate::crypto;
 use crate::curve;
 use crate::error::Result;
 use crate::protocol::{CiphertextMessage, PreKeySignalMessage, SignalMessage};
@@ -10,8 +11,6 @@ use crate::ratchet::{ChainKey, MessageKeys};
 use crate::session;
 use crate::storage::Direction;
 
-use aes::Aes256;
-use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
 use rand::{CryptoRng, Rng};
 
 /*
@@ -26,37 +25,6 @@ pub struct SessionCipher<'a> {
     identity_store: &'a mut dyn IdentityKeyStore,
     signed_prekey_store: &'a mut dyn SignedPreKeyStore,
     pre_key_store: &'a mut dyn PreKeyStore,
-}
-
-fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
-    if key.len() != 32 {
-        return Err(SignalProtocolError::InvalidCipherKeyLength(key.len()));
-    }
-    if iv.len() != 16 {
-        return Err(SignalProtocolError::InvalidCipherNonceLength(iv.len()));
-    }
-
-    let mode = Cbc::<Aes256, Pkcs7>::new_var(key, iv)
-        .map_err(|e| SignalProtocolError::InvalidArgument(format!("{}", e)))?;
-    Ok(mode.encrypt_vec(&ptext))
-}
-
-fn aes_256_cbc_decrypt(ctext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
-    if key.len() != 32 {
-        return Err(SignalProtocolError::InvalidCipherKeyLength(key.len()));
-    }
-    if iv.len() != 16 {
-        return Err(SignalProtocolError::InvalidCipherNonceLength(iv.len()));
-    }
-    if ctext.len() == 0 || ctext.len() % 16 != 0 {
-        return Err(SignalProtocolError::InvalidCiphertext);
-    }
-
-    let mode = Cbc::<Aes256, Pkcs7>::new_var(key, iv)
-        .map_err(|e| SignalProtocolError::InvalidArgument(format!("{}", e)))?;
-    Ok(mode
-        .decrypt_vec(ctext)
-        .map_err(|_| SignalProtocolError::InvalidCiphertext)?)
 }
 
 impl<'a> SessionCipher<'a> {
@@ -85,7 +53,7 @@ impl<'a> SessionCipher<'a> {
 
         let chain_key = session_state.get_sender_chain_key()?;
 
-        let message_keys = chain_key.message_keys();
+        let message_keys = chain_key.message_keys()?;
 
         let sender_ephemeral = session_state.sender_ratchet_key()?;
         let previous_counter = session_state.previous_counter()?;
@@ -96,7 +64,7 @@ impl<'a> SessionCipher<'a> {
             .remote_identity_key()?
             .ok_or(SignalProtocolError::InvalidSessionStructure)?;
 
-        let ctext = aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())?;
+        let ctext = crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())?;
 
         let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
             let local_registration_id = session_state.local_registration_id()?;
@@ -134,7 +102,7 @@ impl<'a> SessionCipher<'a> {
             )?)
         };
 
-        session_state.set_sender_chain_key(&chain_key.next_chain_key())?;
+        session_state.set_sender_chain_key(&chain_key.next_chain_key()?)?;
 
         // XXX why is this check after everything else?!!
         if !self.identity_store.is_trusted_identity(
@@ -308,7 +276,7 @@ impl<'a> SessionCipher<'a> {
             return Err(SignalProtocolError::InvalidCiphertext);
         }
 
-        let ptext = aes_256_cbc_decrypt(
+        let ptext = crypto::aes_256_cbc_decrypt(
             ciphertext.body(),
             message_keys.cipher_key(),
             message_keys.iv(),
@@ -398,43 +366,12 @@ impl<'a> SessionCipher<'a> {
         let mut chain_key = chain_key.clone();
 
         while chain_key.index() < counter {
-            let message_keys = chain_key.message_keys();
+            let message_keys = chain_key.message_keys()?;
             state.set_message_keys(their_ephemeral, &message_keys)?;
-            chain_key = chain_key.next_chain_key();
+            chain_key = chain_key.next_chain_key()?;
         }
 
-        state.set_receiver_chain_key(their_ephemeral, &chain_key.next_chain_key())?;
-        Ok(chain_key.message_keys())
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    #[test]
-    fn aes_cbc_test() {
-        let key = hex::decode("4e22eb16d964779994222e82192ce9f747da72dc4abe49dfdeeb71d0ffe3796e")
-            .unwrap();
-        let iv = hex::decode("6f8a557ddc0a140c878063a6d5f31d3d").unwrap();
-
-        let ptext = hex::decode("30736294a124482a4159").unwrap();
-
-        let ctext = super::aes_256_cbc_encrypt(&ptext, &key, &iv).unwrap();
-        assert_eq!(
-            hex::encode(ctext.clone()),
-            "dd3f573ab4508b9ed0e45e0baf5608f3"
-        );
-
-        let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &iv).unwrap();
-        assert_eq!(hex::encode(ptext), hex::encode(recovered.clone()));
-
-        // padding is invalid:
-        assert!(super::aes_256_cbc_decrypt(&recovered, &key, &iv).is_err());
-        assert!(super::aes_256_cbc_decrypt(&ctext, &key, &ctext).is_err());
-
-        // bitflip the IV to cause a change in the recovered text
-        let bad_iv = hex::decode("ef8a557ddc0a140c878063a6d5f31d3d").unwrap();
-        let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &bad_iv).unwrap();
-        assert_eq!(hex::encode(recovered), "b0736294a124482a4159");
+        state.set_receiver_chain_key(their_ephemeral, &chain_key.next_chain_key()?)?;
+        Ok(chain_key.message_keys()?)
     }
 }

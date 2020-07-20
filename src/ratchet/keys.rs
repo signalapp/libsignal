@@ -1,7 +1,6 @@
 use arrayref::array_ref;
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
 
+use crate::crypto;
 use crate::curve;
 use crate::error::{Result, SignalProtocolError};
 use crate::kdf::HKDF;
@@ -14,14 +13,14 @@ pub struct MessageKeys {
 }
 
 impl MessageKeys {
-    pub fn derive_keys(input_key_material: &[u8], kdf: HKDF, counter: u32) -> Self {
-        let okm = kdf.derive_secrets(input_key_material, b"WhisperMessageKeys", 80);
-        MessageKeys {
+    pub fn derive_keys(input_key_material: &[u8], kdf: HKDF, counter: u32) -> Result<Self> {
+        let okm = kdf.derive_secrets(input_key_material, b"WhisperMessageKeys", 80)?;
+        Ok(MessageKeys {
             cipher_key: *array_ref![okm, 0, 32],
             mac_key: *array_ref![okm, 32, 32],
             iv: *array_ref![okm, 64, 16],
             counter,
-        }
+        })
     }
 
     pub fn new(cipher_key: &[u8], mac_key: &[u8], iv: &[u8], counter: u32) -> Result<Self> {
@@ -99,27 +98,24 @@ impl ChainKey {
         self.index
     }
 
-    pub fn next_chain_key(&self) -> Self {
-        Self {
+    pub fn next_chain_key(&self) -> Result<Self> {
+        Ok(Self {
             kdf: self.kdf,
-            key: self.calculate_base_material(Self::CHAIN_KEY_SEED),
+            key: self.calculate_base_material(Self::CHAIN_KEY_SEED)?,
             index: self.index + 1,
-        }
+        })
     }
 
-    pub fn message_keys(&self) -> MessageKeys {
+    pub fn message_keys(&self) -> Result<MessageKeys> {
         MessageKeys::derive_keys(
-            &self.calculate_base_material(Self::MESSAGE_KEY_SEED),
+            &self.calculate_base_material(Self::MESSAGE_KEY_SEED)?,
             self.kdf,
             self.index,
         )
     }
 
-    fn calculate_base_material(&self, seed: [u8; 1]) -> [u8; 32] {
-        let mut mac =
-            Hmac::<Sha256>::new_varkey(&self.key).expect("hmac key should be able to be any size");
-        mac.input(&seed);
-        mac.result().code().into()
+    fn calculate_base_material(&self, seed: [u8; 1]) -> Result<[u8; 32]> {
+        crypto::hmac_sha256(&self.key, &seed)
     }
 }
 
@@ -155,7 +151,7 @@ impl RootKey {
             &self.key,
             b"WhisperRatchet",
             64,
-        );
+        )?;
         Ok((
             RootKey {
                 kdf: self.kdf,

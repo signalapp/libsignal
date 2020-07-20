@@ -2,6 +2,7 @@
 
 mod address;
 mod curve;
+mod crypto;
 mod error;
 mod fingerprint;
 mod identity_key;
@@ -13,6 +14,7 @@ mod session;
 mod session_cipher;
 mod state;
 mod storage;
+mod sender_keys;
 
 pub use {
     address::ProtocolAddress,
