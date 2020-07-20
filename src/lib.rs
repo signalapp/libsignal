@@ -1,8 +1,9 @@
 #![allow(dead_code)]
+#![deny(unsafe_code)]
 
 mod address;
-mod curve;
 mod crypto;
+mod curve;
 mod error;
 mod fingerprint;
 mod identity_key;
@@ -10,11 +11,11 @@ mod kdf;
 mod proto;
 mod protocol;
 mod ratchet;
+mod sender_keys;
 mod session;
 mod session_cipher;
 mod state;
 mod storage;
-mod sender_keys;
 
 pub use {
     address::ProtocolAddress,
@@ -30,6 +31,7 @@ pub use {
         initialize_alice_session, initialize_bob_session, AliceSignalProtocolParameters,
         BobSignalProtocolParameters,
     },
+    sender_keys::{SenderKeyName, SenderKeyRecord},
     session::*,
     session_cipher::SessionCipher,
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},

@@ -50,7 +50,11 @@ impl HKDF {
         self.expand(&prk, info, output_length)
     }
 
-    fn extract(self, salt: &[u8], input_key_material: &[u8]) -> Result<[u8; Self::HASH_OUTPUT_SIZE]> {
+    fn extract(
+        self,
+        salt: &[u8],
+        input_key_material: &[u8],
+    ) -> Result<[u8; Self::HASH_OUTPUT_SIZE]> {
         crate::crypto::hmac_sha256(salt, input_key_material)
     }
 
@@ -102,7 +106,8 @@ mod tests {
 
         let output = HKDF::new(3)
             .unwrap()
-            .derive_salted_secrets(&ikm, &salt, &info, okm.len()).unwrap();
+            .derive_salted_secrets(&ikm, &salt, &info, okm.len())
+            .unwrap();
 
         assert_eq!(&okm[..], &output[..]);
     }
@@ -144,7 +149,8 @@ mod tests {
 
         let output = HKDF::new(3)
             .unwrap()
-            .derive_salted_secrets(&ikm, &salt, &info, okm.len()).unwrap();
+            .derive_salted_secrets(&ikm, &salt, &info, okm.len())
+            .unwrap();
 
         assert_eq!(&okm[..], &output[..]);
     }
@@ -169,7 +175,8 @@ mod tests {
 
         let output = HKDF::new(2)
             .unwrap()
-            .derive_salted_secrets(&ikm, &salt, &info, okm.len()).unwrap();
+            .derive_salted_secrets(&ikm, &salt, &info, okm.len())
+            .unwrap();
 
         assert_eq!(&okm[..], &output[..]);
     }

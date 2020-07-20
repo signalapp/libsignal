@@ -64,7 +64,8 @@ impl<'a> SessionCipher<'a> {
             .remote_identity_key()?
             .ok_or(SignalProtocolError::InvalidSessionStructure)?;
 
-        let ctext = crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())?;
+        let ctext =
+            crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())?;
 
         let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
             let local_registration_id = session_state.local_registration_id()?;

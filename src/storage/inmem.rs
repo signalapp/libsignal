@@ -1,7 +1,7 @@
 use crate::error::{Result, SignalProtocolError};
 use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
 use crate::storage::traits;
-use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
+use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SenderKeyName, SenderKeyRecord};
 
 use std::collections::HashMap;
 
@@ -205,6 +205,36 @@ impl traits::SessionStore for InMemSessionStore {
     fn delete_all_sessions(&mut self, name: &str) -> Result<()> {
         self.sessions.retain(|a, _| a.name() != name);
         Ok(())
+    }
+}
+
+pub struct InMemSenderKeyStore {
+    keys: HashMap<SenderKeyName, SenderKeyRecord>,
+}
+
+impl InMemSenderKeyStore {
+    pub fn new() -> Self {
+        Self {
+            keys: HashMap::new(),
+        }
+    }
+}
+
+impl traits::SenderKeyStore for InMemSenderKeyStore {
+    fn store_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        record: &SenderKeyRecord,
+    ) -> Result<()> {
+        self.keys.insert(sender_key_name.clone(), record.clone());
+        Ok(())
+    }
+
+    fn load_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+    ) -> Result<Option<SenderKeyRecord>> {
+        Ok(self.keys.get(&sender_key_name).map(|x| x.clone()))
     }
 }
 

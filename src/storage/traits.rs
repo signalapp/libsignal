@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
-use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
+use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SenderKeyName, SenderKeyRecord};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Direction {
@@ -63,6 +63,19 @@ pub trait SessionStore {
     fn delete_session(&mut self, address: &ProtocolAddress) -> Result<()>;
 
     fn delete_all_sessions(&mut self, name: &str) -> Result<()>;
+}
+
+pub trait SenderKeyStore {
+    fn store_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        record: &SenderKeyRecord,
+    ) -> Result<()>;
+
+    fn load_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+    ) -> Result<Option<SenderKeyRecord>>;
 }
 
 pub trait ProtocolStore: SessionStore + PreKeyStore + SignedPreKeyStore + IdentityKeyStore {}
