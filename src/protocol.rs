@@ -28,7 +28,7 @@ pub enum CiphertextMessageType {
 }
 
 impl CiphertextMessageType {
-    fn encoding(&self) -> u8 {
+    pub fn encoding(&self) -> u8 {
         match self {
             CiphertextMessageType::Whisper => 2,
             CiphertextMessageType::PreKey => 3,
@@ -55,7 +55,7 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(x) => x.serialized(),
             CiphertextMessage::PreKeySignalMessage(x) => x.serialized(),
             CiphertextMessage::SenderKeyMessage(x) => x.serialized(),
-            CiphertextMessage::SenderKeyDistributionMessage(_x) => unimplemented!(),
+            CiphertextMessage::SenderKeyDistributionMessage(x) => x.serialized(),
         }
     }
 }
@@ -488,7 +488,133 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
     }
 }
 
-pub struct SenderKeyDistributionMessage {}
+pub struct SenderKeyDistributionMessage {
+    message_version: u8,
+    id: u32,
+    iteration: u32,
+    chain_key: Vec<u8>,
+    signing_key: curve::PublicKey,
+    serialized: Box<[u8]>,
+}
+
+impl SenderKeyDistributionMessage {
+    pub fn new(
+        id: u32,
+        iteration: u32,
+        chain_key: &[u8],
+        signing_key: curve::PublicKey,
+    ) -> Result<Self> {
+        let proto_message = proto::wire::SenderKeyDistributionMessage {
+            id: Some(id),
+            iteration: Some(iteration),
+            chain_key: Some(chain_key.to_vec()),
+            signing_key: Some(signing_key.serialize().to_vec()),
+        };
+        let message_version = CIPHERTEXT_MESSAGE_CURRENT_VERSION;
+        let mut serialized = vec![0u8; 1 + proto_message.encoded_len()];
+        serialized[0] = ((message_version & 0xF) << 4) | message_version;
+        proto_message.encode(&mut &mut serialized[1..])?;
+
+        Ok(Self {
+            message_version,
+            id,
+            iteration,
+            chain_key: chain_key.to_vec(),
+            signing_key,
+            serialized: serialized.into_boxed_slice(),
+        })
+    }
+
+    #[inline]
+    pub fn message_version(&self) -> u8 {
+        self.message_version
+    }
+
+    #[inline]
+    pub fn id(&self) -> Result<u32> {
+        Ok(self.id)
+    }
+
+    #[inline]
+    pub fn iteration(&self) -> Result<u32> {
+        Ok(self.iteration)
+    }
+
+    #[inline]
+    pub fn chain_key(&self) -> Result<&[u8]> {
+        Ok(&self.chain_key)
+    }
+
+    #[inline]
+    pub fn signing_key(&self) -> Result<&curve::PublicKey> {
+        Ok(&self.signing_key)
+    }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &*self.serialized
+    }
+}
+
+impl AsRef<[u8]> for SenderKeyDistributionMessage {
+    fn as_ref(&self) -> &[u8] {
+        &*self.serialized
+    }
+}
+
+impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
+        // The message contains at least a X25519 key and a chain key
+        if value.len() < 1 + 32 + 32 {
+            return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
+        }
+
+        let message_version = value[0] >> 4;
+
+        if message_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+            return Err(SignalProtocolError::LegacyCiphertextVersion(
+                message_version,
+            ));
+        }
+        if message_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+            return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
+                message_version,
+            ));
+        }
+
+        let proto_structure = proto::wire::SenderKeyDistributionMessage::decode(&value[1..])?;
+
+        let id = proto_structure
+            .id
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let iteration = proto_structure
+            .iteration
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let chain_key = proto_structure
+            .chain_key
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let signing_key = proto_structure
+            .signing_key
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+
+        if chain_key.len() != 32 || signing_key.len() != 33 {
+            return Err(SignalProtocolError::InvalidProtobufEncoding)?;
+        }
+
+        let signing_key = curve::PublicKey::deserialize(&signing_key)?;
+
+        Ok(SenderKeyDistributionMessage {
+            message_version,
+            id,
+            iteration,
+            chain_key,
+            signing_key,
+            serialized: Box::from(value),
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {
