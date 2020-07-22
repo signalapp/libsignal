@@ -29,11 +29,13 @@ pub enum SignalProtocolError {
     MismatchedSignatureLengthForKey(KeyType, usize),
 
     SignatureValidationFailed,
+    SignaturePubkeyMissing,
 
     UntrustedIdentity(crate::ProtocolAddress),
 
     InvalidPreKeyId,
     InvalidSignedPreKeyId,
+    InvalidSenderKeyId,
 
     InvalidPreKeyBundle,
 
@@ -44,6 +46,9 @@ pub enum SignalProtocolError {
     InvalidMacKeyLength(usize),
     InvalidCipherNonceLength(usize),
     InvalidCiphertext,
+
+    NoSenderKeyState,
+    SenderKeySigningKeyMissing,
 
     SessionNotFound,
     InvalidSessionStructure,
@@ -156,6 +161,14 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::InvalidMessage(m) => write!(f, "invalid message {}", m),
             SignalProtocolError::InternalError(m) => write!(f, "internal error {}", m),
+            SignalProtocolError::InvalidSenderKeyId => write!(f, "invalid send key id"),
+            SignalProtocolError::NoSenderKeyState => write!(f, "no sender key state"),
+            SignalProtocolError::SenderKeySigningKeyMissing => {
+                write!(f, "sender key signature key missing")
+            }
+            SignalProtocolError::SignaturePubkeyMissing => {
+                write!(f, "cannot verify signature due to missing key")
+            }
         }
     }
 }
