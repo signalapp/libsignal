@@ -243,6 +243,7 @@ pub struct InMemSignalProtocolStore {
     pub pre_key_store: InMemPreKeyStore,
     pub signed_pre_key_store: InMemSignedPreKeyStore,
     pub identity_store: InMemIdentityKeyStore,
+    pub sender_key_store: InMemSenderKeyStore,
 }
 
 impl InMemSignalProtocolStore {
@@ -252,6 +253,7 @@ impl InMemSignalProtocolStore {
             pre_key_store: InMemPreKeyStore::new(),
             signed_pre_key_store: InMemSignedPreKeyStore::new(),
             identity_store: InMemIdentityKeyStore::new(key_pair, registration_id),
+            sender_key_store: InMemSenderKeyStore::new(),
         })
     }
 }
@@ -351,6 +353,24 @@ impl traits::SessionStore for InMemSignalProtocolStore {
 
     fn delete_all_sessions(&mut self, name: &str) -> Result<()> {
         self.session_store.delete_all_sessions(name)
+    }
+}
+
+impl traits::SenderKeyStore for InMemSignalProtocolStore {
+    fn store_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        record: &SenderKeyRecord,
+    ) -> Result<()> {
+        self.sender_key_store
+            .store_sender_key(sender_key_name, record)
+    }
+
+    fn load_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+    ) -> Result<Option<SenderKeyRecord>> {
+        self.sender_key_store.load_sender_key(sender_key_name)
     }
 }
 
