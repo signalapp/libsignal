@@ -263,7 +263,7 @@ impl<'a> SessionCipher<'a> {
 
         if let Some((ptext, idx, updated_session)) = updated_session {
             record.promote_old_session(idx, updated_session)?;
-            return Ok(ptext);
+            Ok(ptext)
         } else {
             Err(SignalProtocolError::InternalError(
                 "decrypt_message_with_record session not found",
