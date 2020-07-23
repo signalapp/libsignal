@@ -1,7 +1,7 @@
 mod support;
 
 use libsignal_protocol_rust::*;
-use rand::rngs::OsRng;
+use rand::{rngs::OsRng, CryptoRng, Rng};
 use std::convert::TryFrom;
 
 fn encrypt(
@@ -33,6 +33,51 @@ fn decrypt(
     );
     let mut csprng = OsRng;
     session_cipher.decrypt(msg, &mut csprng)
+}
+
+fn create_pre_key_bundle<R: Rng + CryptoRng>(
+    store: &mut dyn ProtocolStore,
+    mut csprng: &mut R,
+) -> Result<PreKeyBundle, SignalProtocolError> {
+    let pre_key_pair = KeyPair::new(&mut csprng);
+    let signed_pre_key_pair = KeyPair::new(&mut csprng);
+
+    let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
+    let signed_pre_key_signature = store
+        .get_identity_key_pair()?
+        .private_key()
+        .calculate_signature(&signed_pre_key_public, &mut csprng)?;
+
+    let device_id: u32 = csprng.gen();
+    let pre_key_id: u32 = csprng.gen();
+    let signed_pre_key_id: u32 = csprng.gen();
+
+    let pre_key_bundle = PreKeyBundle::new(
+        store.get_local_registration_id()?,
+        device_id,
+        Some(pre_key_id),
+        Some(pre_key_pair.public_key),
+        signed_pre_key_id,
+        signed_pre_key_pair.public_key,
+        signed_pre_key_signature.to_vec(),
+        *store.get_identity_key_pair()?.identity_key(),
+    )?;
+
+    store.save_pre_key(pre_key_id, &PreKeyRecord::new(pre_key_id, &pre_key_pair))?;
+
+    let timestamp = csprng.gen();
+
+    store.save_signed_pre_key(
+        signed_pre_key_id,
+        &SignedPreKeyRecord::new(
+            signed_pre_key_id,
+            timestamp,
+            &signed_pre_key_pair,
+            &signed_pre_key_signature,
+        ),
+    )?;
+
+    Ok(pre_key_bundle)
 }
 
 #[test]
@@ -834,6 +879,795 @@ fn run_interaction(
             ptext
         );
     }
+
+    Ok(())
+}
+
+fn is_session_id_equal(
+    alice_store: &dyn ProtocolStore,
+    alice_address: &ProtocolAddress,
+    bob_store: &dyn ProtocolStore,
+    bob_address: &ProtocolAddress,
+) -> Result<bool, SignalProtocolError> {
+    Ok(alice_store
+        .load_session(bob_address)?
+        .unwrap()
+        .session_state()?
+        .alice_base_key()
+        == bob_store
+            .load_session(alice_address)?
+            .unwrap()
+            .session_state()?
+            .alice_base_key())
+}
+
+#[test]
+fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng;
+
+    let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng)?;
+    let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng)?;
+
+    process_prekey_bundle(
+        &bob_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        &bob_pre_key_bundle,
+        &mut csprng,
+    )?;
+
+    process_prekey_bundle(
+        &alice_address,
+        &mut bob_store.session_store,
+        &mut bob_store.identity_store,
+        &alice_pre_key_bundle,
+        &mut csprng,
+    )?;
+
+    let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+    let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+    assert_eq!(
+        message_for_bob.message_type(),
+        CiphertextMessageType::PreKey
+    );
+    assert_eq!(
+        message_for_alice.message_type(),
+        CiphertextMessageType::PreKey
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let alice_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            message_for_alice.serialize(),
+        )?),
+    )?;
+    assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+
+    let bob_plaintext = decrypt(
+        &mut bob_store,
+        &alice_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            message_for_bob.serialize(),
+        )?),
+    )?;
+    assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+    assert_eq!(
+        alice_store
+            .load_session(&bob_address)?
+            .unwrap()
+            .session_state()?
+            .session_version()?,
+        3
+    );
+    assert_eq!(
+        bob_store
+            .load_session(&alice_address)?
+            .unwrap()
+            .session_state()?
+            .session_version()?,
+        3
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you")?;
+
+    assert_eq!(
+        alice_response.message_type(),
+        CiphertextMessageType::Whisper
+    );
+
+    let response_plaintext = decrypt(
+        &mut bob_store,
+        &alice_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(alice_response.serialize())?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "nice to see you"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        true
+    );
+
+    let bob_response = encrypt(&mut bob_store, &alice_address, "you as well")?;
+
+    assert_eq!(bob_response.message_type(), CiphertextMessageType::Whisper);
+
+    let response_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "you as well"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        true
+    );
+
+    Ok(())
+}
+
+#[test]
+fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng;
+
+    let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng)?;
+    let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng)?;
+
+    process_prekey_bundle(
+        &bob_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        &bob_pre_key_bundle,
+        &mut csprng,
+    )?;
+
+    process_prekey_bundle(
+        &alice_address,
+        &mut bob_store.session_store,
+        &mut bob_store.identity_store,
+        &alice_pre_key_bundle,
+        &mut csprng,
+    )?;
+
+    let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+    let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+    assert_eq!(
+        message_for_bob.message_type(),
+        CiphertextMessageType::PreKey
+    );
+    assert_eq!(
+        message_for_alice.message_type(),
+        CiphertextMessageType::PreKey
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let bob_plaintext = decrypt(
+        &mut bob_store,
+        &alice_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            message_for_bob.serialize(),
+        )?),
+    )?;
+    assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+    assert_eq!(
+        alice_store
+            .load_session(&bob_address)?
+            .unwrap()
+            .session_state()?
+            .session_version()?,
+        3
+    );
+    assert_eq!(
+        bob_store
+            .load_session(&alice_address)?
+            .unwrap()
+            .session_state()?
+            .session_version()?,
+        3
+    );
+
+    let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you")?;
+
+    assert_eq!(alice_response.message_type(), CiphertextMessageType::PreKey);
+
+    let response_plaintext = decrypt(
+        &mut bob_store,
+        &alice_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            alice_response.serialize(),
+        )?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "nice to see you"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        true
+    );
+
+    let bob_response = encrypt(&mut bob_store, &alice_address, "you as well")?;
+
+    assert_eq!(bob_response.message_type(), CiphertextMessageType::Whisper);
+
+    let response_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "you as well"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        true
+    );
+
+    Ok(())
+}
+
+#[test]
+fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng;
+
+    let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng)?;
+    let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng)?;
+
+    process_prekey_bundle(
+        &bob_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        &bob_pre_key_bundle,
+        &mut csprng,
+    )?;
+
+    process_prekey_bundle(
+        &alice_address,
+        &mut bob_store.session_store,
+        &mut bob_store.identity_store,
+        &alice_pre_key_bundle,
+        &mut csprng,
+    )?;
+
+    let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+    let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+    assert_eq!(
+        message_for_bob.message_type(),
+        CiphertextMessageType::PreKey
+    );
+    assert_eq!(
+        message_for_alice.message_type(),
+        CiphertextMessageType::PreKey
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let alice_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            message_for_alice.serialize(),
+        )?),
+    )?;
+    assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+
+    let bob_plaintext = decrypt(
+        &mut bob_store,
+        &alice_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            message_for_bob.serialize(),
+        )?),
+    )?;
+    assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+    assert_eq!(
+        alice_store
+            .load_session(&bob_address)?
+            .unwrap()
+            .session_state()?
+            .session_version()?,
+        3
+    );
+    assert_eq!(
+        bob_store
+            .load_session(&alice_address)?
+            .unwrap()
+            .session_state()?
+            .session_version()?,
+        3
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you")?;
+
+    assert_eq!(
+        alice_response.message_type(),
+        CiphertextMessageType::Whisper
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let bob_response = encrypt(&mut bob_store, &alice_address, "you as well")?;
+
+    assert_eq!(bob_response.message_type(), CiphertextMessageType::Whisper);
+
+    let response_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "you as well"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        true
+    );
+
+    Ok(())
+}
+
+#[test]
+fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng;
+
+    let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    for _ in 0..15 {
+        let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng)?;
+        let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng)?;
+
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            &mut csprng,
+        )?;
+
+        process_prekey_bundle(
+            &alice_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            &mut csprng,
+        )?;
+
+        let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+        let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+        assert_eq!(
+            message_for_bob.message_type(),
+            CiphertextMessageType::PreKey
+        );
+        assert_eq!(
+            message_for_alice.message_type(),
+            CiphertextMessageType::PreKey
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+
+        let alice_plaintext = decrypt(
+            &mut alice_store,
+            &bob_address,
+            &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+                message_for_alice.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+
+        let bob_plaintext = decrypt(
+            &mut bob_store,
+            &alice_address,
+            &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+                message_for_bob.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+        assert_eq!(
+            alice_store
+                .load_session(&bob_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+        assert_eq!(
+            bob_store
+                .load_session(&alice_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+    }
+
+    for _ in 0..50 {
+        let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+        let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+        assert_eq!(
+            message_for_bob.message_type(),
+            CiphertextMessageType::Whisper
+        );
+        assert_eq!(
+            message_for_alice.message_type(),
+            CiphertextMessageType::Whisper
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+
+        let alice_plaintext = decrypt(
+            &mut alice_store,
+            &bob_address,
+            &CiphertextMessage::SignalMessage(SignalMessage::try_from(
+                message_for_alice.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+
+        let bob_plaintext = decrypt(
+            &mut bob_store,
+            &alice_address,
+            &CiphertextMessage::SignalMessage(SignalMessage::try_from(
+                message_for_bob.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+        assert_eq!(
+            alice_store
+                .load_session(&bob_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+        assert_eq!(
+            bob_store
+                .load_session(&alice_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+    }
+
+    let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you")?;
+
+    assert_eq!(
+        alice_response.message_type(),
+        CiphertextMessageType::Whisper
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let bob_response = encrypt(&mut bob_store, &alice_address, "you as well")?;
+
+    assert_eq!(bob_response.message_type(), CiphertextMessageType::Whisper);
+
+    let response_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "you as well"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        true
+    );
+
+    Ok(())
+}
+
+#[test]
+fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng;
+
+    let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
+    let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
+
+    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut bob_store = support::test_in_memory_protocol_store();
+
+    let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng)?;
+
+    process_prekey_bundle(
+        &bob_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        &bob_pre_key_bundle,
+        &mut csprng,
+    )?;
+    let lost_message_for_bob = encrypt(&mut alice_store, &bob_address, "it was so long ago")?;
+
+    for _ in 0..15 {
+        let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng)?;
+        let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng)?;
+
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            &mut csprng,
+        )?;
+
+        process_prekey_bundle(
+            &alice_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            &mut csprng,
+        )?;
+
+        let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+        let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+        assert_eq!(
+            message_for_bob.message_type(),
+            CiphertextMessageType::PreKey
+        );
+        assert_eq!(
+            message_for_alice.message_type(),
+            CiphertextMessageType::PreKey
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+
+        let alice_plaintext = decrypt(
+            &mut alice_store,
+            &bob_address,
+            &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+                message_for_alice.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+
+        let bob_plaintext = decrypt(
+            &mut bob_store,
+            &alice_address,
+            &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+                message_for_bob.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+        assert_eq!(
+            alice_store
+                .load_session(&bob_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+        assert_eq!(
+            bob_store
+                .load_session(&alice_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+    }
+
+    for _ in 0..50 {
+        let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob")?;
+        let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice")?;
+
+        assert_eq!(
+            message_for_bob.message_type(),
+            CiphertextMessageType::Whisper
+        );
+        assert_eq!(
+            message_for_alice.message_type(),
+            CiphertextMessageType::Whisper
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+
+        let alice_plaintext = decrypt(
+            &mut alice_store,
+            &bob_address,
+            &CiphertextMessage::SignalMessage(SignalMessage::try_from(
+                message_for_alice.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+
+        let bob_plaintext = decrypt(
+            &mut bob_store,
+            &alice_address,
+            &CiphertextMessage::SignalMessage(SignalMessage::try_from(
+                message_for_bob.serialize(),
+            )?),
+        )?;
+        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+
+        assert_eq!(
+            alice_store
+                .load_session(&bob_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+        assert_eq!(
+            bob_store
+                .load_session(&alice_address)?
+                .unwrap()
+                .session_state()?
+                .session_version()?,
+            3
+        );
+
+        assert_eq!(
+            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+            false
+        );
+    }
+
+    let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you")?;
+
+    assert_eq!(
+        alice_response.message_type(),
+        CiphertextMessageType::Whisper
+    );
+
+    assert_eq!(
+        is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)?,
+        false
+    );
+
+    let bob_response = encrypt(&mut bob_store, &alice_address, "you as well")?;
+
+    assert_eq!(bob_response.message_type(), CiphertextMessageType::Whisper);
+
+    let response_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
+    )?;
+    assert_eq!(
+        String::from_utf8(response_plaintext).unwrap(),
+        "you as well"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        true
+    );
+
+    let blast_from_the_past = decrypt(
+        &mut bob_store,
+        &alice_address,
+        &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
+            lost_message_for_bob.serialize(),
+        )?),
+    )?;
+    assert_eq!(
+        String::from_utf8(blast_from_the_past).unwrap(),
+        "it was so long ago"
+    );
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        false
+    );
+
+    let bob_response = encrypt(&mut bob_store, &alice_address, "so it was")?;
+
+    assert_eq!(bob_response.message_type(), CiphertextMessageType::Whisper);
+
+    let response_plaintext = decrypt(
+        &mut alice_store,
+        &bob_address,
+        &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
+    )?;
+    assert_eq!(String::from_utf8(response_plaintext).unwrap(), "so it was");
+
+    assert_eq!(
+        is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address)?,
+        true
+    );
 
     Ok(())
 }

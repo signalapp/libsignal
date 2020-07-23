@@ -323,3 +323,5 @@ impl traits::SessionStore for InMemSignalProtocolStore {
         self.session_store.delete_all_sessions(name)
     }
 }
+
+impl traits::ProtocolStore for InMemSignalProtocolStore {}

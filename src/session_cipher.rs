@@ -251,21 +251,24 @@ impl<'a> SessionCipher<'a> {
             return Ok(ptext);
         }
 
-        /*
-        XXX Missing logic here:
+        let mut updated_session = None;
 
-                let from_old_session = for previous in record.previous_session_states()? {
-                    let mut updated = previous.clone();
-                    if let Ok(ptext) = self.decrypt_message_with_state(&mut updated, ciphertext) {
-                        return Some((ptext, updated, previous));
-                    }
-                    None
-                };
-        */
+        for (idx, previous) in record.previous_session_states()?.enumerate() {
+            let mut updated = previous.clone();
+            if let Ok(ptext) = self.decrypt_message_with_state(&mut updated, ciphertext, csprng) {
+                updated_session = Some((ptext, idx, updated));
+                break;
+            }
+        }
 
-        Err(SignalProtocolError::InternalError(
-            "decrypt_message_with_record session not found",
-        ))
+        if let Some((ptext, idx, updated_session)) = updated_session {
+            record.promote_old_session(idx, updated_session)?;
+            return Ok(ptext);
+        } else {
+            Err(SignalProtocolError::InternalError(
+                "decrypt_message_with_record session not found",
+            ))
+        }
     }
 
     fn decrypt_message_with_state<R: Rng + CryptoRng>(
