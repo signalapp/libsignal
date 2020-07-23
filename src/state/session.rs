@@ -2,6 +2,7 @@ use crate::error::{Result, SignalProtocolError};
 use crate::ratchet::{ChainKey, MessageKeys, RootKey};
 use crate::{IdentityKey, IdentityKeyPair};
 
+use crate::consts;
 use crate::curve;
 use crate::kdf;
 use crate::proto::storage::session_structure;
@@ -44,10 +45,6 @@ impl UnacknowledgedPreKeyMessageItems {
 pub struct SessionState {
     session: SessionStructure,
 }
-
-const MAX_MESSAGE_KEYS: usize = 2000;
-const MAX_RECEIVER_CHAINS: usize = 5;
-const ARCHIVED_STATES_MAX_LENGTH: usize = 40;
 
 impl SessionState {
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
@@ -191,7 +188,7 @@ impl SessionState {
 
         self.session.receiver_chains.push(chain);
 
-        if self.session.receiver_chains.len() > MAX_RECEIVER_CHAINS {
+        if self.session.receiver_chains.len() > consts::MAX_RECEIVER_CHAINS {
             self.session.receiver_chains.remove(0);
         }
 
@@ -327,7 +324,7 @@ impl SessionState {
             let mut updated_chain = chain_and_index.0;
             updated_chain.message_keys.insert(0, new_keys);
 
-            if updated_chain.message_keys.len() > MAX_MESSAGE_KEYS {
+            if updated_chain.message_keys.len() > consts::MAX_MESSAGE_KEYS {
                 updated_chain.message_keys.pop();
             }
 
@@ -637,7 +634,7 @@ impl SessionRecord {
         if self.current_session.is_some() {
             self.previous_sessions
                 .push_front(self.current_session.take().expect("Checked is_some"));
-            if self.previous_sessions.len() > ARCHIVED_STATES_MAX_LENGTH {
+            if self.previous_sessions.len() > consts::ARCHIVED_STATES_MAX_LENGTH {
                 self.previous_sessions.pop_back();
             }
         }

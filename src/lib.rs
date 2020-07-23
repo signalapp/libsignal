@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 
 mod address;
+mod consts;
 mod crypto;
 mod curve;
 mod error;

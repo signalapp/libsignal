@@ -3,6 +3,7 @@ use crate::{
     SignalProtocolError, SignedPreKeyStore,
 };
 
+use crate::consts::MAX_FORWARD_JUMPS;
 use crate::crypto;
 use crate::curve;
 use crate::error::Result;
@@ -12,12 +13,6 @@ use crate::session;
 use crate::storage::Direction;
 
 use rand::{CryptoRng, Rng};
-
-/*
-* Prevent a message from jumping too far forward to avoid computation DoS.
-* The specific value is arbitrary, value taking from libsignal-protocol-java
-*/
-const MAX_FORWARD_CHAIN_JUMPS: u32 = 2000;
 
 pub struct SessionCipher<'a> {
     remote_address: ProtocolAddress,
@@ -259,9 +254,9 @@ impl<'a> SessionCipher<'a> {
 
         let their_ephemeral = ciphertext.sender_ratchet_key();
         let counter = ciphertext.counter();
-        let chain_key = self.get_or_create_chain_key(state, their_ephemeral, csprng)?;
+        let chain_key = Self::get_or_create_chain_key(state, their_ephemeral, csprng)?;
         let message_keys =
-            self.get_or_create_message_key(state, their_ephemeral, &chain_key, counter)?;
+            Self::get_or_create_message_key(state, their_ephemeral, &chain_key, counter)?;
 
         let their_identity_key = state
             .remote_identity_key()?
@@ -305,7 +300,6 @@ impl<'a> SessionCipher<'a> {
     }
 
     fn get_or_create_chain_key<R: Rng + CryptoRng>(
-        &self,
         state: &mut SessionState,
         their_ephemeral: &curve::PublicKey,
         csprng: &mut R,
@@ -338,7 +332,6 @@ impl<'a> SessionCipher<'a> {
     }
 
     fn get_or_create_message_key(
-        &self,
         state: &mut SessionState,
         their_ephemeral: &curve::PublicKey,
         chain_key: &ChainKey,
@@ -358,7 +351,9 @@ impl<'a> SessionCipher<'a> {
 
         assert!(chain_index <= counter);
 
-        if counter - chain_index > MAX_FORWARD_CHAIN_JUMPS {
+        let jump = (counter - chain_index) as usize;
+
+        if jump > MAX_FORWARD_JUMPS {
             return Err(SignalProtocolError::InvalidMessage(
                 "message from too far into the future",
             ));

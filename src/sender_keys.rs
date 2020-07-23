@@ -1,3 +1,4 @@
+use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::curve;
 use crate::error::{Result, SignalProtocolError};
@@ -140,8 +141,6 @@ pub struct SenderKeyState {
 }
 
 impl SenderKeyState {
-    const MAX_MESSAGE_KEYS: usize = 2000;
-
     pub fn new(
         id: u32,
         iteration: u32,
@@ -224,7 +223,7 @@ impl SenderKeyState {
         self.state
             .sender_message_keys
             .push(sender_message_key.as_protobuf()?);
-        while self.state.sender_message_keys.len() > Self::MAX_MESSAGE_KEYS {
+        while self.state.sender_message_keys.len() > consts::MAX_MESSAGE_KEYS {
             self.state.sender_message_keys.remove(0);
         }
         Ok(())
@@ -254,8 +253,6 @@ pub struct SenderKeyRecord {
 }
 
 impl SenderKeyRecord {
-    const MAX_STATES: usize = 5;
-
     pub fn new_empty() -> Self {
         Self {
             states: VecDeque::new(),
@@ -308,7 +305,7 @@ impl SenderKeyRecord {
             signature_private_key,
         )?);
 
-        while self.states.len() > Self::MAX_STATES {
+        while self.states.len() > consts::MAX_SENDER_KEY_STATES {
             self.states.pop_back();
         }
         Ok(())

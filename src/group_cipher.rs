@@ -1,3 +1,4 @@
+use crate::consts;
 use crate::crypto;
 use crate::curve;
 use crate::error::Result;
@@ -58,7 +59,8 @@ fn get_sender_key(state: &mut SenderKeyState, iteration: u32) -> Result<SenderMe
         }
     }
 
-    if iteration - sender_chain_key.iteration()? > 2000 {
+    let jump = (iteration - sender_chain_key.iteration()?) as usize;
+    if jump > consts::MAX_FORWARD_JUMPS {
         return Err(SignalProtocolError::InvalidMessage(
             "message from too far into the future",
         ));
