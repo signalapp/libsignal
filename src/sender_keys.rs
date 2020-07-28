@@ -26,15 +26,6 @@ impl SenderKeyName {
     pub fn sender(&self) -> Result<ProtocolAddress> {
         Ok(self.sender.clone())
     }
-
-    pub fn serialize(&self) -> Result<String> {
-        Ok(format!(
-            "{}::{}::{}",
-            self.group_id,
-            self.sender.name(),
-            self.sender.device_id()
-        ))
-    }
 }
 
 #[derive(Debug)]
