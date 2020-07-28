@@ -6,31 +6,32 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
 pub fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
-    if key.len() != 32 {
-        return Err(SignalProtocolError::InvalidCipherKeyLength(key.len()));
+    match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
+        Ok(mode) => Ok(mode.encrypt_vec(&ptext)),
+        Err(block_modes::InvalidKeyIvLength) => {
+            return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
+                key.len(),
+                iv.len(),
+            ))
+        }
     }
-    if iv.len() != 16 {
-        return Err(SignalProtocolError::InvalidCipherNonceLength(iv.len()));
-    }
-
-    let mode = Cbc::<Aes256, Pkcs7>::new_var(key, iv)
-        .map_err(|e| SignalProtocolError::InvalidArgument(format!("{}", e)))?;
-    Ok(mode.encrypt_vec(&ptext))
 }
 
 pub fn aes_256_cbc_decrypt(ctext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
-    if key.len() != 32 {
-        return Err(SignalProtocolError::InvalidCipherKeyLength(key.len()));
-    }
-    if iv.len() != 16 {
-        return Err(SignalProtocolError::InvalidCipherNonceLength(iv.len()));
-    }
     if ctext.len() == 0 || ctext.len() % 16 != 0 {
         return Err(SignalProtocolError::InvalidCiphertext);
     }
 
-    let mode = Cbc::<Aes256, Pkcs7>::new_var(key, iv)
-        .map_err(|e| SignalProtocolError::InvalidArgument(format!("{}", e)))?;
+    let mode = match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
+        Ok(mode) => mode,
+        Err(block_modes::InvalidKeyIvLength) => {
+            return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
+                key.len(),
+                iv.len(),
+            ))
+        }
+    };
+
     Ok(mode
         .decrypt_vec(ctext)
         .map_err(|_| SignalProtocolError::InvalidCiphertext)?)

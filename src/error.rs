@@ -42,9 +42,8 @@ pub enum SignalProtocolError {
     InvalidRootKeyLength(usize),
     InvalidChainKeyLength(usize),
 
-    InvalidCipherKeyLength(usize),
     InvalidMacKeyLength(usize),
-    InvalidCipherNonceLength(usize),
+    InvalidCipherCryptographicParameters(usize, usize),
     InvalidCiphertext,
 
     NoSenderKeyState,
@@ -137,14 +136,13 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::InvalidRootKeyLength(l) => {
                 write!(f, "invalid root key length <{}>", l)
             }
-            SignalProtocolError::InvalidCipherKeyLength(l) => {
-                write!(f, "invalid cipher key length <{}>", l)
-            }
+            SignalProtocolError::InvalidCipherCryptographicParameters(kl, nl) => write!(
+                f,
+                "invalid cipher key length <{}> or nonce length <{}>",
+                kl, nl
+            ),
             SignalProtocolError::InvalidMacKeyLength(l) => {
                 write!(f, "invalid MAC key length <{}>", l)
-            }
-            SignalProtocolError::InvalidCipherNonceLength(l) => {
-                write!(f, "invalid cipher nonce length <{}>", l)
             }
             SignalProtocolError::UntrustedIdentity(addr) => {
                 write!(f, "untrusted identity for address {}", addr)

@@ -24,16 +24,14 @@ impl MessageKeys {
     }
 
     pub fn new(cipher_key: &[u8], mac_key: &[u8], iv: &[u8], counter: u32) -> Result<Self> {
-        if cipher_key.len() != 32 {
-            return Err(SignalProtocolError::InvalidCipherKeyLength(
-                cipher_key.len(),
-            ));
-        }
         if mac_key.len() != 32 {
             return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));
         }
-        if iv.len() != 16 {
-            return Err(SignalProtocolError::InvalidCipherNonceLength(iv.len()));
+        if cipher_key.len() != 32 || iv.len() != 16 {
+            return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
+                cipher_key.len(),
+                iv.len(),
+            ));
         }
 
         Ok(MessageKeys {
