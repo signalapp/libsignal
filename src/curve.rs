@@ -82,6 +82,24 @@ impl PublicKey {
         result.into_boxed_slice()
     }
 
+    pub fn verify_signature(&self, message: &[u8], signature: &[u8]) -> Result<bool> {
+        match self.key {
+            PublicKeyData::DjbPublicKey(pub_key) => {
+                if signature.len() != 64 {
+                    return Err(SignalProtocolError::MismatchedSignatureLengthForKey(
+                        KeyType::Djb,
+                        signature.len(),
+                    ));
+                }
+                Ok(curve25519::KeyPair::verify_signature(
+                    &pub_key,
+                    message,
+                    array_ref![signature, 0, 64],
+                ))
+            }
+        }
+    }
+
     pub fn key_type(&self) -> KeyType {
         match self.key {
             PublicKeyData::DjbPublicKey(_) => KeyType::Djb,
@@ -167,6 +185,15 @@ impl PrivateKey {
             }
         }
     }
+
+    pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>> {
+        match (self.key, their_key.key) {
+            (PrivateKeyData::DjbPrivateKey(priv_key), PublicKeyData::DjbPublicKey(pub_key)) => {
+                let kp = curve25519::KeyPair::from(priv_key);
+                Ok(Box::new(kp.calculate_agreement(&pub_key)))
+            }
+        }
+    }
 }
 
 impl From<PrivateKeyData> for PrivateKey {
@@ -210,33 +237,14 @@ impl KeyPair {
     ) -> Result<Box<[u8]>> {
         self.private_key.calculate_signature(message, csprng)
     }
-}
 
-pub fn calculate_agreement(public_key: &PublicKey, private_key: &PrivateKey) -> Result<Box<[u8]>> {
-    match (public_key.key, private_key.key) {
-        (PublicKeyData::DjbPublicKey(pub_key), PrivateKeyData::DjbPrivateKey(priv_key)) => {
-            let kp = curve25519::KeyPair::from(priv_key);
-            Ok(Box::new(kp.calculate_agreement(&pub_key)))
-        }
+    pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>> {
+        self.private_key.calculate_agreement(their_key)
     }
 }
 
 pub fn verify_signature(public_key: &PublicKey, message: &[u8], signature: &[u8]) -> Result<bool> {
-    match public_key.key {
-        PublicKeyData::DjbPublicKey(pub_key) => {
-            if signature.len() != 64 {
-                return Err(SignalProtocolError::MismatchedSignatureLengthForKey(
-                    KeyType::Djb,
-                    signature.len(),
-                ));
-            }
-            Ok(curve25519::KeyPair::verify_signature(
-                &pub_key,
-                message,
-                array_ref![signature, 0, 64],
-            ))
-        }
-    }
+    public_key.verify_signature(message, signature)
 }
 
 pub fn calculate_signature<R: CryptoRng + Rng>(
@@ -245,6 +253,10 @@ pub fn calculate_signature<R: CryptoRng + Rng>(
     message: &[u8],
 ) -> Result<Box<[u8]>> {
     private_key.calculate_signature(message, csprng)
+}
+
+pub fn calculate_agreement(public_key: &PublicKey, private_key: &PrivateKey) -> Result<Box<[u8]>> {
+    private_key.calculate_agreement(public_key)
 }
 
 pub fn decode_private_point(value: &[u8]) -> Result<PrivateKey> {
