@@ -1,8 +1,9 @@
 [package]
 name = "libsignal-protocol-rust"
 version = "0.1.0"
-authors = ["Ehren Kret <ehren@signal.org>"]
+authors = ["Ehren Kret <ehren@signal.org>", "Jack Lloyd <jack@signal.org>"]
 edition = "2018"
+license = "GPL-3"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
