@@ -1,3 +1,4 @@
+#![deny(warnings)]
 #![allow(dead_code)]
 #![deny(unsafe_code)]
 
