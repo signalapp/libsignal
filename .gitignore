@@ -1,3 +1,7 @@
 /.idea
 /target
 Cargo.lock
+
+*~
+\#*\#
+.\#*
