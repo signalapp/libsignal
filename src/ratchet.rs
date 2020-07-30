@@ -13,7 +13,7 @@ use rand::{CryptoRng, Rng};
 fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
     let kdf = crate::kdf::HKDF::new(3)?;
 
-    let secrets = kdf.derive_secrets(secret_input, "WhisperText".as_bytes(), 64)?;
+    let secrets = kdf.derive_secrets(secret_input, b"WhisperText", 64)?;
 
     let root_key = RootKey::new(kdf, &secrets[0..32])?;
     let chain_key = ChainKey::new(kdf, &secrets[32..64], 0)?;

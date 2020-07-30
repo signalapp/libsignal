@@ -23,7 +23,7 @@ impl InMemIdentityKeyStore {
 
 impl traits::IdentityKeyStore for InMemIdentityKeyStore {
     fn get_identity_key_pair(&self) -> Result<IdentityKeyPair> {
-        Ok(self.key_pair.clone())
+        Ok(self.key_pair)
     }
 
     fn get_local_registration_id(&self) -> Result<u32> {
@@ -33,14 +33,14 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
     fn save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool> {
         match self.known_keys.get(address) {
             None => {
-                self.known_keys.insert(address.clone(), identity.clone());
+                self.known_keys.insert(address.clone(), *identity);
                 Ok(false) // new key
             }
             Some(k) if k == identity => {
                 Ok(false) // same key
             }
             Some(_k) => {
-                self.known_keys.insert(address.clone(), identity.clone());
+                self.known_keys.insert(address.clone(), *identity);
                 Ok(true) // overwrite
             }
         }
@@ -80,6 +80,12 @@ impl InMemPreKeyStore {
     }
 }
 
+impl Default for InMemPreKeyStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl traits::PreKeyStore for InMemPreKeyStore {
     fn get_pre_key(&self, id: PreKeyId) -> Result<PreKeyRecord> {
         Ok(self
@@ -115,6 +121,12 @@ impl InMemSignedPreKeyStore {
         Self {
             signed_pre_keys: HashMap::new(),
         }
+    }
+}
+
+impl Default for InMemSignedPreKeyStore {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -165,6 +177,12 @@ impl InMemSessionStore {
         Self {
             sessions: HashMap::new(),
         }
+    }
+}
+
+impl Default for InMemSessionStore {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -220,6 +238,12 @@ impl InMemSenderKeyStore {
     }
 }
 
+impl Default for InMemSenderKeyStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl traits::SenderKeyStore for InMemSenderKeyStore {
     fn store_sender_key(
         &mut self,
@@ -234,7 +258,7 @@ impl traits::SenderKeyStore for InMemSenderKeyStore {
         &mut self,
         sender_key_name: &SenderKeyName,
     ) -> Result<Option<SenderKeyRecord>> {
-        Ok(self.keys.get(&sender_key_name).map(|x| x.clone()))
+        Ok(self.keys.get(&sender_key_name).cloned())
     }
 }
 

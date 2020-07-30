@@ -34,7 +34,7 @@ impl TryFrom<&[u8]> for IdentityKey {
     type Error = SignalProtocolError;
 
     fn try_from(value: &[u8]) -> Result<Self> {
-        IdentityKey::decode(value).into()
+        IdentityKey::decode(value)
     }
 }
 

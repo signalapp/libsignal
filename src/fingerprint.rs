@@ -68,7 +68,7 @@ pub struct ScannableFingerprint {
 impl ScannableFingerprint {
     fn new(version: u32, local_fprint: &[u8], remote_fprint: &[u8]) -> Self {
         Self {
-            version: version,
+            version,
             local_fingerprint: local_fprint[..32].to_vec(),
             remote_fingerprint: remote_fprint[..32].to_vec(),
         }

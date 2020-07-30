@@ -8,17 +8,14 @@ use sha2::Sha256;
 pub fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
     match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
         Ok(mode) => Ok(mode.encrypt_vec(&ptext)),
-        Err(block_modes::InvalidKeyIvLength) => {
-            return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
-                key.len(),
-                iv.len(),
-            ))
-        }
+        Err(block_modes::InvalidKeyIvLength) => Err(
+            SignalProtocolError::InvalidCipherCryptographicParameters(key.len(), iv.len()),
+        ),
     }
 }
 
 pub fn aes_256_cbc_decrypt(ctext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
-    if ctext.len() == 0 || ctext.len() % 16 != 0 {
+    if ctext.is_empty() || ctext.len() % 16 != 0 {
         return Err(SignalProtocolError::InvalidCiphertext);
     }
 

@@ -66,7 +66,7 @@ fn get_sender_key(state: &mut SenderKeyState, iteration: u32) -> Result<SenderMe
         ));
     }
 
-    let mut sender_chain_key = sender_chain_key.clone();
+    let mut sender_chain_key = sender_chain_key;
 
     while sender_chain_key.iteration()? < iteration {
         state.add_sender_message_key(&sender_chain_key.sender_message_key()?)?;
@@ -115,7 +115,7 @@ pub fn process_sender_key_distribution_message(
 ) -> Result<()> {
     let mut sender_key_record = sender_key_store
         .load_sender_key(sender_key_name)?
-        .unwrap_or(SenderKeyRecord::new_empty());
+        .unwrap_or_else(SenderKeyRecord::new_empty);
 
     sender_key_record.add_sender_key_state(
         skdm.id()?,

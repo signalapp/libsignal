@@ -218,23 +218,13 @@ impl SessionState {
     }
 
     pub fn get_sender_chain_key(&self) -> Result<ChainKey> {
-        let sender_chain =
-            self.session
-                .sender_chain
-                .as_ref()
-                .ok_or(SignalProtocolError::InvalidState(
-                    "get_sender_chain_key",
-                    "No chain".to_owned(),
-                ))?;
+        let sender_chain = self.session.sender_chain.as_ref().ok_or_else(|| {
+            SignalProtocolError::InvalidState("get_sender_chain_key", "No chain".to_owned())
+        })?;
 
-        let chain_key =
-            sender_chain
-                .chain_key
-                .as_ref()
-                .ok_or(SignalProtocolError::InvalidState(
-                    "get_sender_chain_key",
-                    "No chain key".to_owned(),
-                ))?;
+        let chain_key = sender_chain.chain_key.as_ref().ok_or_else(|| {
+            SignalProtocolError::InvalidState("get_sender_chain_key", "No chain key".to_owned())
+        })?;
 
         let hkdf = kdf::HKDF::new(self.session_version()?)?;
         ChainKey::new(hkdf, &chain_key.key, chain_key.index)
@@ -329,12 +319,12 @@ impl SessionState {
             }
 
             self.session.receiver_chains[chain_and_index.1] = updated_chain;
-            return Ok(());
+            Ok(())
         } else {
-            return Err(SignalProtocolError::InvalidState(
+            Err(SignalProtocolError::InvalidState(
                 "set_message_keys",
                 "No receiver".to_string(),
-            ));
+            ))
         }
     }
 
@@ -611,17 +601,14 @@ impl SessionRecord {
         old_session: usize,
         updated_session: SessionState,
     ) -> Result<()> {
-        self.previous_sessions
-            .remove(old_session)
-            .ok_or(SignalProtocolError::InvalidState(
-                "promote_old_session",
-                "out of range".into(),
-            ))?;
+        self.previous_sessions.remove(old_session).ok_or_else(|| {
+            SignalProtocolError::InvalidState("promote_old_session", "out of range".into())
+        })?;
         self.promote_state(updated_session)
     }
 
     pub fn is_fresh(&self) -> Result<bool> {
-        Ok(self.current_session.is_none() && self.previous_sessions.len() == 0)
+        Ok(self.current_session.is_none() && self.previous_sessions.is_empty())
     }
 
     pub fn promote_state(&mut self, new_state: SessionState) -> Result<()> {

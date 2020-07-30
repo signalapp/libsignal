@@ -600,7 +600,7 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
 
         if chain_key.len() != 32 || signing_key.len() != 33 {
-            return Err(SignalProtocolError::InvalidProtobufEncoding)?;
+            return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
 
         let signing_key = curve::PublicKey::deserialize(&signing_key)?;

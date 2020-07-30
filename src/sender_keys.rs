@@ -40,7 +40,7 @@ pub struct SenderMessageKey {
 impl SenderMessageKey {
     pub fn new(iteration: u32, seed: &[u8]) -> Result<Self> {
         let hkdf = HKDF::new(3)?;
-        let derived = hkdf.derive_secrets(seed, "WhisperGroup".as_bytes(), 48)?;
+        let derived = hkdf.derive_secrets(seed, b"WhisperGroup", 48)?;
         Ok(Self {
             iteration,
             seed: seed.to_vec(),
@@ -96,7 +96,7 @@ impl SenderChainKey {
     pub fn new(iteration: u32, chain_key: Vec<u8>) -> Result<Self> {
         Ok(Self {
             iteration,
-            chain_key: chain_key,
+            chain_key,
         })
     }
 
@@ -270,11 +270,11 @@ impl SenderKeyRecord {
     }
 
     pub fn empty(&self) -> Result<bool> {
-        Ok(self.states.len() == 0)
+        Ok(self.states.is_empty())
     }
 
     pub fn sender_key_state(&mut self) -> Result<&mut SenderKeyState> {
-        if self.states.len() > 0 {
+        if !self.states.is_empty() {
             return Ok(&mut self.states[0]);
         }
         Err(SignalProtocolError::NoSenderKeyState)

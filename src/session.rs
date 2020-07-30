@@ -84,7 +84,7 @@ fn process_prekey_v3(
         our_signed_pre_key_pair, // signed pre key
         our_one_time_pre_key_pair,
         our_signed_pre_key_pair, // ratchet key
-        message.identity_key().clone(),
+        *message.identity_key(),
         *message.base_key(),
     );
 
@@ -130,7 +130,7 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
 
     let mut session_record = session_store
         .load_session(&remote_address)?
-        .unwrap_or(SessionRecord::new_fresh());
+        .unwrap_or_else(SessionRecord::new_fresh);
 
     let our_base_key_pair = curve::KeyPair::new(&mut csprng);
     let their_signed_prekey = bundle.signed_pre_key_public()?;
