@@ -164,12 +164,12 @@ impl RootKey {
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_chain_key_derivation_v2() {
+    fn test_chain_key_derivation_v2() -> Result<()> {
         let seed = [
             0x8au8, 0xb7, 0x2d, 0x6f, 0x4c, 0xc5, 0xac, 0x0d, 0x38, 0x7e, 0xaf, 0x46, 0x33, 0x78,
             0xdd, 0xb2, 0x8e, 0xdd, 0x07, 0x38, 0x5b, 0x1c, 0xb0, 0x12, 0x50, 0xc7, 0x15, 0x98,
@@ -191,19 +191,20 @@ mod tests {
             0xa2, 0x46, 0xd1, 0x5d,
         ];
 
-        let chain_key = ChainKey::new(HKDF::new(2).expect("HKDF v2 should exist"), seed, 0);
+        let chain_key = ChainKey::new(HKDF::new(2)?, &seed, 0)?;
         assert_eq!(&seed, chain_key.key());
-        assert_eq!(&message_key, chain_key.message_keys().cipher_key());
-        assert_eq!(&mac_key, chain_key.message_keys().mac_key());
-        assert_eq!(&next_chain_key, chain_key.next_chain_key().key());
+        assert_eq!(&message_key, chain_key.message_keys()?.cipher_key());
+        assert_eq!(&mac_key, chain_key.message_keys()?.mac_key());
+        assert_eq!(&next_chain_key, chain_key.next_chain_key()?.key());
         assert_eq!(0, chain_key.index());
-        assert_eq!(0, chain_key.message_keys().counter());
-        assert_eq!(1, chain_key.next_chain_key().index());
-        assert_eq!(1, chain_key.next_chain_key().message_keys().counter());
+        assert_eq!(0, chain_key.message_keys()?.counter());
+        assert_eq!(1, chain_key.next_chain_key()?.index());
+        assert_eq!(1, chain_key.next_chain_key()?.message_keys()?.counter());
+        Ok(())
     }
 
     #[test]
-    fn test_chain_key_derivation_v3() {
+    fn test_chain_key_derivation_v3() -> Result<()> {
         let seed = [
             0x8au8, 0xb7, 0x2d, 0x6f, 0x4c, 0xc5, 0xac, 0x0d, 0x38, 0x7e, 0xaf, 0x46, 0x33, 0x78,
             0xdd, 0xb2, 0x8e, 0xdd, 0x07, 0x38, 0x5b, 0x1c, 0xb0, 0x12, 0x50, 0xc7, 0x15, 0x98,
@@ -225,19 +226,20 @@ mod tests {
             0xa2, 0x46, 0xd1, 0x5d,
         ];
 
-        let chain_key = ChainKey::new(HKDF::new(3).expect("HKDF v3 should exist"), seed, 0);
+        let chain_key = ChainKey::new(HKDF::new(3)?, &seed, 0)?;
         assert_eq!(&seed, chain_key.key());
-        assert_eq!(&message_key, chain_key.message_keys().cipher_key());
-        assert_eq!(&mac_key, chain_key.message_keys().mac_key());
-        assert_eq!(&next_chain_key, chain_key.next_chain_key().key());
+        assert_eq!(&message_key, chain_key.message_keys()?.cipher_key());
+        assert_eq!(&mac_key, chain_key.message_keys()?.mac_key());
+        assert_eq!(&next_chain_key, chain_key.next_chain_key()?.key());
         assert_eq!(0, chain_key.index());
-        assert_eq!(0, chain_key.message_keys().counter());
-        assert_eq!(1, chain_key.next_chain_key().index());
-        assert_eq!(1, chain_key.next_chain_key().message_keys().counter());
+        assert_eq!(0, chain_key.message_keys()?.counter());
+        assert_eq!(1, chain_key.next_chain_key()?.index());
+        assert_eq!(1, chain_key.next_chain_key()?.message_keys()?.counter());
+        Ok(())
     }
 
     #[test]
-    fn test_root_key_derivation_v2() {
+    fn test_root_key_derivation_v2() -> Result<()> {
         let root_key_seed = [
             0x7bu8, 0xa6, 0xde, 0xbc, 0x2b, 0xc1, 0xbb, 0xf9, 0x1a, 0xbb, 0xc1, 0x36, 0x74, 0x04,
             0x17, 0x6c, 0xa6, 0x23, 0x09, 0x5b, 0x7e, 0xc6, 0x6b, 0x45, 0xf6, 0x02, 0xd9, 0x35,
@@ -271,17 +273,16 @@ mod tests {
             0xa7, 0xe3, 0x35, 0xd1,
         ];
 
-        let alice_private_key = curve::decode_private_point(&alice_private)
-            .expect("alice_private should decode successfully");
-        let bob_public_key =
-            curve::decode_point(&bob_public).expect("bob_public should decode successfully");
-        let root_key = RootKey::new(HKDF::new(2).expect("HKDFv2 should exist"), root_key_seed);
+        let alice_private_key = curve::decode_private_point(&alice_private)?;
+        let bob_public_key = curve::decode_point(&bob_public)?;
+        let root_key = RootKey::new(HKDF::new(2)?, &root_key_seed)?;
 
         let (next_root_key, next_chain_key) =
-            root_key.create_chain(bob_public_key.as_ref(), alice_private_key.as_ref()).expect("bob_public_key and alice_private_key should successfully create a chain with root_key");
+            root_key.create_chain(&bob_public_key, &alice_private_key)?;
 
         assert_eq!(&root_key_seed, root_key.key());
         assert_eq!(&next_root, next_root_key.key());
         assert_eq!(&next_chain, next_chain_key.key());
+        Ok(())
     }
 }
