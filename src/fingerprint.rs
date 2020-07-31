@@ -74,7 +74,17 @@ impl ScannableFingerprint {
         }
     }
 
-    fn serialize(&self) -> Result<Vec<u8>> {
+    pub fn deserialize(protobuf: &[u8]) -> Result<Self> {
+        let fingerprint = proto::fingerprint::CombinedFingerprints::decode(protobuf)?;
+
+        Ok(Self {
+            version: fingerprint.version,
+            local_fingerprint: fingerprint.local_fingerprint.ok_or(SignalProtocolError::InvalidProtobufEncoding)?.content,
+            remote_fingerprint: fingerprint.remote_fingerprint.ok_or(SignalProtocolError::InvalidProtobufEncoding)?.content,
+        })
+    }
+
+    pub fn serialize(&self) -> Result<Vec<u8>> {
         let combined_fingerprints = proto::fingerprint::CombinedFingerprints {
             version: self.version,
             local_fingerprint: Some(proto::fingerprint::LogicalFingerprint {
@@ -90,7 +100,7 @@ impl ScannableFingerprint {
         Ok(buf)
     }
 
-    fn compare(&self, combined: &[u8]) -> Result<bool> {
+    pub fn compare(&self, combined: &[u8]) -> Result<bool> {
         let combined = proto::fingerprint::CombinedFingerprints::decode(combined)?;
 
         if combined.version != self.version {
