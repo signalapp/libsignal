@@ -444,14 +444,14 @@ impl SessionState {
         &self,
     ) -> Result<Option<UnacknowledgedPreKeyMessageItems>> {
         if let Some(ref pending_pre_key) = self.session.pending_pre_key {
-            Ok(Some(UnacknowledgedPreKeyMessageItems {
-                pre_key_id: match pending_pre_key.pre_key_id {
+            Ok(Some(UnacknowledgedPreKeyMessageItems::new(
+                match pending_pre_key.pre_key_id {
                     0 => None,
                     v => Some(v),
                 },
-                signed_pre_key_id: pending_pre_key.signed_pre_key_id as u32,
-                base_key: curve::decode_point(&pending_pre_key.base_key)?,
-            }))
+                pending_pre_key.signed_pre_key_id as u32,
+                curve::decode_point(&pending_pre_key.base_key)?,
+            )))
         } else {
             Ok(None)
         }
@@ -558,11 +558,6 @@ impl SessionRecord {
         }
 
         Ok(false)
-    }
-
-    fn remove_previous_session_states(&mut self) -> Result<()> {
-        self.previous_sessions.clear();
-        Ok(())
     }
 
     pub fn session_state(&self) -> Result<&SessionState> {

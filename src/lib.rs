@@ -1,5 +1,4 @@
 #![deny(warnings)]
-#![allow(dead_code)]
 #![deny(unsafe_code)]
 
 mod address;
@@ -30,13 +29,14 @@ pub use {
         process_sender_key_distribution_message,
     },
     identity_key::{IdentityKey, IdentityKeyPair},
+    kdf::HKDF,
     protocol::{
         CiphertextMessage, CiphertextMessageType, PreKeySignalMessage,
         SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
     },
     ratchet::{
-        initialize_alice_session, initialize_bob_session, AliceSignalProtocolParameters,
-        BobSignalProtocolParameters,
+        are_we_alice, initialize_alice_session, initialize_bob_session,
+        AliceSignalProtocolParameters, BobSignalProtocolParameters,
     },
     sender_keys::{SenderKeyName, SenderKeyRecord},
     session::*,
