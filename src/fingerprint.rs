@@ -79,8 +79,14 @@ impl ScannableFingerprint {
 
         Ok(Self {
             version: fingerprint.version,
-            local_fingerprint: fingerprint.local_fingerprint.ok_or(SignalProtocolError::InvalidProtobufEncoding)?.content,
-            remote_fingerprint: fingerprint.remote_fingerprint.ok_or(SignalProtocolError::InvalidProtobufEncoding)?.content,
+            local_fingerprint: fingerprint
+                .local_fingerprint
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+                .content,
+            remote_fingerprint: fingerprint
+                .remote_fingerprint
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+                .content,
         })
     }
 
