@@ -22,6 +22,11 @@ block-modes = "0.5"
 
 [dev-dependencies]
 hex = "0.4"
+criterion = "0.3"
 
 [build-dependencies]
 prost-build = "0.6"
+
+[[bench]]
+name = "session"
+harness = false

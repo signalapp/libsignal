@@ -5,6 +5,7 @@ use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SenderKeyName, Sender
 
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct InMemIdentityKeyStore {
     key_pair: IdentityKeyPair,
     id: u32,
@@ -68,6 +69,7 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
     }
 }
 
+#[derive(Clone)]
 pub struct InMemPreKeyStore {
     pre_keys: HashMap<PreKeyId, PreKeyRecord>,
 }
@@ -112,6 +114,7 @@ impl traits::PreKeyStore for InMemPreKeyStore {
     }
 }
 
+#[derive(Clone)]
 pub struct InMemSignedPreKeyStore {
     signed_pre_keys: HashMap<SignedPreKeyId, SignedPreKeyRecord>,
 }
@@ -168,6 +171,7 @@ impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
     }
 }
 
+#[derive(Clone)]
 pub struct InMemSessionStore {
     sessions: HashMap<ProtocolAddress, SessionRecord>,
 }
@@ -226,6 +230,7 @@ impl traits::SessionStore for InMemSessionStore {
     }
 }
 
+#[derive(Clone)]
 pub struct InMemSenderKeyStore {
     keys: HashMap<SenderKeyName, SenderKeyRecord>,
 }
@@ -262,6 +267,7 @@ impl traits::SenderKeyStore for InMemSenderKeyStore {
     }
 }
 
+#[derive(Clone)]
 pub struct InMemSignalProtocolStore {
     pub session_store: InMemSessionStore,
     pub pre_key_store: InMemPreKeyStore,

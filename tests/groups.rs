@@ -5,6 +5,7 @@ use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::convert::TryFrom;
+use support::test_in_memory_protocol_store;
 
 #[test]
 fn group_no_send_session() -> Result<(), SignalProtocolError> {
@@ -14,7 +15,7 @@ fn group_no_send_session() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
 
     assert!(group_encrypt(
         &mut alice_store,
@@ -35,8 +36,8 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -66,8 +67,8 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -103,8 +104,8 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -141,8 +142,8 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -200,8 +201,8 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -246,8 +247,8 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -300,8 +301,8 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
@@ -344,8 +345,8 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = test_in_memory_protocol_store();
+    let mut bob_store = test_in_memory_protocol_store();
 
     let sent_distribution_message =
         create_sender_key_distribution_message(&group_sender, &mut alice_store, &mut csprng)?;
