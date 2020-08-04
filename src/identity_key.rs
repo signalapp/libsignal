@@ -14,6 +14,10 @@ pub struct IdentityKey {
 }
 
 impl IdentityKey {
+    pub fn new(public_key: curve::PublicKey) -> Self {
+        Self { public_key }
+    }
+
     #[inline]
     pub fn public_key(&self) -> &curve::PublicKey {
         &self.public_key

@@ -60,6 +60,7 @@ impl CiphertextMessage {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct SignalMessage {
     message_version: u8,
     sender_ratchet_key: curve::PublicKey,
@@ -75,11 +76,11 @@ impl SignalMessage {
 
     pub fn new(
         message_version: u8,
-        mac_key: &[u8; 32],
+        mac_key: &[u8],
         sender_ratchet_key: curve::PublicKey,
         counter: u32,
         previous_counter: u32,
-        ciphertext: Box<[u8]>,
+        ciphertext: &[u8],
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
     ) -> Result<Self> {
@@ -106,7 +107,7 @@ impl SignalMessage {
             sender_ratchet_key,
             counter,
             previous_counter,
-            ciphertext,
+            ciphertext: ciphertext.into(),
             serialized,
         })
     }
@@ -140,7 +141,7 @@ impl SignalMessage {
         &self,
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
-        mac_key: &[u8; 32],
+        mac_key: &[u8],
     ) -> Result<bool> {
         let our_mac = &Self::compute_mac(
             sender_identity_key,
@@ -155,9 +156,12 @@ impl SignalMessage {
     fn compute_mac(
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
-        mac_key: &[u8; 32],
+        mac_key: &[u8],
         message: &[u8],
     ) -> Result<[u8; Self::MAC_LENGTH]> {
+        if mac_key.len() != 32 {
+            return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));
+        }
         let mut mac = Hmac::<Sha256>::new_varkey(mac_key).map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
                 "Invalid HMAC key length <{}>",
@@ -227,6 +231,7 @@ impl TryFrom<&[u8]> for SignalMessage {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PreKeySignalMessage {
     message_version: u8,
     registration_id: u32,
@@ -361,6 +366,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct SenderKeyMessage {
     message_version: u8,
     key_id: u32,
@@ -375,14 +381,14 @@ impl SenderKeyMessage {
     pub fn new<R: CryptoRng + Rng>(
         key_id: u32,
         iteration: u32,
-        ciphertext: Box<[u8]>,
+        ciphertext: &[u8],
         csprng: &mut R,
         signature_key: &curve::PrivateKey,
     ) -> Result<Self> {
         let proto_message = proto::wire::SenderKeyMessage {
             id: Some(key_id),
             iteration: Some(iteration),
-            ciphertext: Some(ciphertext.clone().into_vec()),
+            ciphertext: Some(ciphertext.to_vec()),
         };
         let proto_message_len = proto_message.encoded_len();
         let mut serialized = vec![0u8; 1 + proto_message_len + Self::SIGNATURE_LEN];
@@ -399,7 +405,7 @@ impl SenderKeyMessage {
             message_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION,
             key_id,
             iteration,
-            ciphertext,
+            ciphertext: ciphertext.into(),
             serialized: serialized.into_boxed_slice(),
         })
     }
@@ -489,6 +495,7 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct SenderKeyDistributionMessage {
     message_version: u8,
     id: u32,
@@ -646,7 +653,7 @@ mod tests {
             sender_ratchet_key_pair.public_key,
             42,
             41,
-            Box::new(ciphertext),
+            &ciphertext,
             &sender_identity_key_pair.public_key.into(),
             &receiver_identity_key_pair.public_key.into(),
         )
@@ -731,7 +738,7 @@ mod tests {
         let sender_key_message = SenderKeyMessage::new(
             42,
             7,
-            vec![1u8, 2, 3].into_boxed_slice(),
+            &[1u8, 2, 3],
             &mut csprng,
             &signature_key_pair.private_key,
         )

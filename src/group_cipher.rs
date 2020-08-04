@@ -33,7 +33,7 @@ pub fn group_encrypt<R: Rng + CryptoRng>(
     let skm = SenderKeyMessage::new(
         sender_key_state.sender_key_id()?,
         sender_key.iteration()?,
-        ciphertext.into_boxed_slice(),
+        &ciphertext,
         csprng,
         &signing_key,
     )?;

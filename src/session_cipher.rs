@@ -71,7 +71,7 @@ impl<'a> SessionCipher<'a> {
                 sender_ephemeral,
                 chain_key.index(),
                 previous_counter,
-                ctext.into_boxed_slice(),
+                &ctext,
                 &local_identity_key,
                 &their_identity_key,
             )?;
@@ -92,7 +92,7 @@ impl<'a> SessionCipher<'a> {
                 sender_ephemeral,
                 chain_key.index(),
                 previous_counter,
-                ctext.into_boxed_slice(),
+                &ctext,
                 &local_identity_key,
                 &their_identity_key,
             )?)
