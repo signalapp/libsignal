@@ -783,12 +783,14 @@ fn is_session_id_equal(
         .load_session(bob_address)?
         .unwrap()
         .session_state()?
-       .alice_base_key().clone() ==
-       bob_store
-        .load_session(alice_address)?
-        .unwrap()
-        .session_state()?
-        .alice_base_key().clone())
+        .alice_base_key()
+        .clone()
+        == bob_store
+            .load_session(alice_address)?
+            .unwrap()
+            .session_state()?
+            .alice_base_key()
+            .clone())
 }
 
 #[test]

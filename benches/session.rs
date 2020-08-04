@@ -18,28 +18,21 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
     alice_store.store_session(&bob_address, &alice_session_record)?;
     bob_store.store_session(&alice_address, &bob_session_record)?;
 
-    let message_to_decrypt = support::encrypt(
-                &mut alice_store,
-                &bob_address,
-                "a short message")?;
+    let message_to_decrypt = support::encrypt(&mut alice_store, &bob_address, "a short message")?;
 
     c.bench_function("session encrypt", |b| {
         b.iter(|| {
             let mut alice_store = alice_store.clone();
-            support::encrypt(
-                &mut alice_store,
-                &bob_address,
-                "a short message").expect("success");
-        })});
+            support::encrypt(&mut alice_store, &bob_address, "a short message").expect("success");
+        })
+    });
 
     c.bench_function("session decrypt", |b| {
         b.iter(|| {
             let mut bob_store = bob_store.clone();
-            support::decrypt(
-                &mut bob_store,
-                &alice_address,
-                &message_to_decrypt).expect("success");
-        })});
+            support::decrypt(&mut bob_store, &alice_address, &message_to_decrypt).expect("success");
+        })
+    });
 
     Ok(())
 }
