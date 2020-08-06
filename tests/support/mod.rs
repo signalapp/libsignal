@@ -47,8 +47,8 @@ pub fn create_pre_key_bundle<R: Rng + CryptoRng>(
     store: &mut dyn ProtocolStore,
     mut csprng: &mut R,
 ) -> Result<PreKeyBundle, SignalProtocolError> {
-    let pre_key_pair = KeyPair::new(&mut csprng);
-    let signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let pre_key_pair = KeyPair::generate(&mut csprng);
+    let signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
     let signed_pre_key_signature = store
@@ -94,9 +94,9 @@ pub fn initialize_sessions_v3() -> Result<(SessionState, SessionState), SignalPr
     let alice_identity = IdentityKeyPair::generate(&mut csprng);
     let bob_identity = IdentityKeyPair::generate(&mut csprng);
 
-    let alice_base_key = KeyPair::new(&mut csprng);
+    let alice_base_key = KeyPair::generate(&mut csprng);
 
-    let bob_base_key = KeyPair::new(&mut csprng);
+    let bob_base_key = KeyPair::generate(&mut csprng);
     let bob_ephemeral_key = bob_base_key;
 
     let alice_params = AliceSignalProtocolParameters::new(

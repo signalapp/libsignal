@@ -26,6 +26,12 @@ impl SignedPreKeyRecord {
         }
     }
 
+    pub fn deserialize(data: &[u8]) -> Result<Self> {
+        Ok(Self {
+            signed_pre_key: SignedPreKeyRecordStructure::decode(data)?,
+        })
+    }
+
     pub fn id(&self) -> Result<SignedPreKeyId> {
         Ok(self.signed_pre_key.id)
     }
@@ -36,6 +42,14 @@ impl SignedPreKeyRecord {
 
     pub fn signature(&self) -> Result<Vec<u8>> {
         Ok(self.signed_pre_key.signature.clone())
+    }
+
+    pub fn public_key(&self) -> Result<curve::PublicKey> {
+        curve::PublicKey::deserialize(&self.signed_pre_key.public_key)
+    }
+
+    pub fn private_key(&self) -> Result<curve::PrivateKey> {
+        curve::PrivateKey::deserialize(&self.signed_pre_key.private_key)
     }
 
     pub fn key_pair(&self) -> Result<curve::KeyPair> {

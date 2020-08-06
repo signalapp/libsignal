@@ -36,7 +36,7 @@ pub use {
     },
     ratchet::{
         are_we_alice, initialize_alice_session, initialize_bob_session,
-        AliceSignalProtocolParameters, BobSignalProtocolParameters,
+        AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
     },
     sender_keys::{SenderKeyName, SenderKeyRecord},
     session::*,

@@ -77,7 +77,7 @@ impl IdentityKeyPair {
     }
 
     pub fn generate<R: CryptoRng + Rng>(csprng: &mut R) -> Self {
-        let keypair = curve::KeyPair::new(csprng);
+        let keypair = curve::KeyPair::generate(csprng);
 
         Self {
             identity_key: keypair.public_key.into(),
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_identity_key_from() {
-        let key_pair = curve::KeyPair::new(&mut OsRng);
+        let key_pair = curve::KeyPair::generate(&mut OsRng);
         let key_pair_public_serialized = key_pair.public_key.serialize();
         let identity_key = IdentityKey::from(key_pair.public_key);
         assert_eq!(key_pair_public_serialized, identity_key.serialize());

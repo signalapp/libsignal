@@ -27,7 +27,7 @@ pub fn initialize_alice_session<R: Rng + CryptoRng>(
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let sending_ratchet_key = curve::KeyPair::new(&mut csprng);
+    let sending_ratchet_key = curve::KeyPair::generate(&mut csprng);
 
     let mut secrets = Vec::with_capacity(32 * 5);
 

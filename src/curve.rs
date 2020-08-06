@@ -209,12 +209,19 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    pub fn new<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
+    pub fn generate<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
         let keypair = curve25519::KeyPair::new(csprng);
 
         let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(*keypair.public_key()));
         let private_key = PrivateKey::from(PrivateKeyData::DjbPrivateKey(*keypair.private_key()));
 
+        Self {
+            public_key,
+            private_key,
+        }
+    }
+
+    pub fn new(public_key: PublicKey, private_key: PrivateKey) -> Self {
         Self {
             public_key,
             private_key,
@@ -276,7 +283,7 @@ mod tests {
     #[test]
     fn test_large_signatures() {
         let mut csprng = OsRng;
-        let key_pair = KeyPair::new(&mut csprng);
+        let key_pair = KeyPair::generate(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
         let signature = calculate_signature(&mut csprng, &key_pair.private_key, &message).unwrap();
 
@@ -288,7 +295,7 @@ mod tests {
     #[test]
     fn test_decode_size() {
         let mut csprng = OsRng;
-        let key_pair = KeyPair::new(&mut csprng);
+        let key_pair = KeyPair::generate(&mut csprng);
         let serialized_public = key_pair.public_key.serialize();
         let empty: [u8; 0] = [];
 

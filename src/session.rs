@@ -132,7 +132,7 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
         .load_session(&remote_address)?
         .unwrap_or_else(SessionRecord::new_fresh);
 
-    let our_base_key_pair = curve::KeyPair::new(&mut csprng);
+    let our_base_key_pair = curve::KeyPair::generate(&mut csprng);
     let their_signed_prekey = bundle.signed_pre_key_public()?;
 
     let their_one_time_prekey = bundle.pre_key_public()?;

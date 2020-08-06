@@ -311,7 +311,7 @@ impl<'a> SessionCipher<'a> {
         let root_key = state.root_key()?;
         let our_ephemeral = state.sender_ratchet_private_key()?;
         let receiver_chain = root_key.create_chain(their_ephemeral, &our_ephemeral)?;
-        let our_new_ephemeral = curve::KeyPair::new(csprng);
+        let our_new_ephemeral = curve::KeyPair::generate(csprng);
         let sender_chain = receiver_chain
             .0
             .create_chain(their_ephemeral, &our_new_ephemeral.private_key)?;

@@ -15,8 +15,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
     let mut alice_store = support::test_in_memory_protocol_store();
     let mut bob_store = support::test_in_memory_protocol_store();
 
-    let bob_pre_key_pair = KeyPair::new(&mut csprng);
-    let bob_signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let bob_pre_key_pair = KeyPair::generate(&mut csprng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -120,8 +120,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
     let mut alice_store = support::test_in_memory_protocol_store();
 
-    let bob_pre_key_pair = KeyPair::new(&mut csprng);
-    let bob_signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let bob_pre_key_pair = KeyPair::generate(&mut csprng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -215,8 +215,8 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
     let bob_store = support::test_in_memory_protocol_store();
 
     let mut csprng = OsRng;
-    let bob_pre_key_pair = KeyPair::new(&mut csprng);
-    let bob_signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let bob_pre_key_pair = KeyPair::generate(&mut csprng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -289,8 +289,8 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
     let mut bob_store = support::test_in_memory_protocol_store();
 
     let mut csprng = OsRng;
-    let bob_pre_key_pair = KeyPair::new(&mut csprng);
-    let bob_signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let bob_pre_key_pair = KeyPair::generate(&mut csprng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -396,8 +396,8 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
     let mut alice_store = support::test_in_memory_protocol_store();
     let mut bob_store = support::test_in_memory_protocol_store();
 
-    let bob_pre_key_pair = KeyPair::new(&mut csprng);
-    let bob_signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let bob_pre_key_pair = KeyPair::generate(&mut csprng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -494,7 +494,7 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
     let mut bob_store = support::test_in_memory_protocol_store();
 
     let mut csprng = OsRng;
-    let bob_signed_pre_key_pair = KeyPair::new(&mut csprng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store

@@ -643,9 +643,9 @@ mod tests {
         csprng.fill_bytes(&mut ciphertext);
         let ciphertext = ciphertext;
 
-        let sender_ratchet_key_pair = curve::KeyPair::new(csprng);
-        let sender_identity_key_pair = curve::KeyPair::new(csprng);
-        let receiver_identity_key_pair = curve::KeyPair::new(csprng);
+        let sender_ratchet_key_pair = curve::KeyPair::generate(csprng);
+        let sender_identity_key_pair = curve::KeyPair::generate(csprng);
+        let receiver_identity_key_pair = curve::KeyPair::generate(csprng);
 
         SignalMessage::new(
             3,
@@ -681,8 +681,8 @@ mod tests {
     #[test]
     fn test_pre_key_signal_message_serialize_deserialize() {
         let mut csprng = OsRng;
-        let identity_key_pair = curve::KeyPair::new(&mut csprng);
-        let base_key_pair = curve::KeyPair::new(&mut csprng);
+        let identity_key_pair = curve::KeyPair::generate(&mut csprng);
+        let base_key_pair = curve::KeyPair::generate(&mut csprng);
         let message = create_signal_message(&mut csprng);
         let pre_key_signal_message = PreKeySignalMessage::new(
             3,
@@ -734,7 +734,7 @@ mod tests {
     #[test]
     fn test_sender_key_message_serialize_deserialize() {
         let mut csprng = OsRng;
-        let signature_key_pair = curve::KeyPair::new(&mut csprng);
+        let signature_key_pair = curve::KeyPair::generate(&mut csprng);
         let sender_key_message = SenderKeyMessage::new(
             42,
             7,

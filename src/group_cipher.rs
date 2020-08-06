@@ -140,7 +140,7 @@ pub fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
             let sender_key_id: u32 = csprng.gen();
             let iteration = 0;
             let sender_key: [u8; 32] = csprng.gen();
-            let signing_key = curve::KeyPair::new(csprng);
+            let signing_key = curve::KeyPair::generate(csprng);
             sender_key_record.set_sender_key_state(
                 sender_key_id,
                 iteration,

@@ -23,12 +23,26 @@ impl PreKeyRecord {
         }
     }
 
+    pub fn deserialize(data: &[u8]) -> Result<Self> {
+        Ok(Self {
+            pre_key: PreKeyRecordStructure::decode(data)?,
+        })
+    }
+
     pub fn id(&self) -> Result<PreKeyId> {
         Ok(self.pre_key.id)
     }
 
     pub fn key_pair(&self) -> Result<curve::KeyPair> {
         curve::KeyPair::from_public_and_private(&self.pre_key.public_key, &self.pre_key.private_key)
+    }
+
+    pub fn public_key(&self) -> Result<curve::PublicKey> {
+        curve::PublicKey::deserialize(&self.pre_key.public_key)
+    }
+
+    pub fn private_key(&self) -> Result<curve::PrivateKey> {
+        curve::PrivateKey::deserialize(&self.pre_key.private_key)
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
