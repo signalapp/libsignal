@@ -43,7 +43,7 @@ impl SenderMessageKey {
         let derived = hkdf.derive_secrets(&seed, b"WhisperGroup", 48)?;
         Ok(Self {
             iteration,
-            seed: seed,
+            seed,
             iv: derived[0..16].to_vec(),
             cipher_key: derived[16..48].to_vec(),
         })
