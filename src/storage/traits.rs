@@ -30,39 +30,23 @@ pub trait PreKeyStore {
 
     fn save_pre_key(&mut self, prekey_id: PreKeyId, record: &PreKeyRecord) -> Result<()>;
 
-    fn has_pre_key(&self, prekey_id: PreKeyId) -> Result<bool>;
-
     fn remove_pre_key(&mut self, prekey_id: PreKeyId) -> Result<()>;
 }
 
 pub trait SignedPreKeyStore {
     fn get_signed_pre_key(&self, signed_prekey_id: SignedPreKeyId) -> Result<SignedPreKeyRecord>;
 
-    fn get_all_signed_prekeys(&self) -> Result<Vec<SignedPreKeyRecord>>;
-
     fn save_signed_pre_key(
         &mut self,
         signed_prekey_id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
     ) -> Result<()>;
-
-    fn has_signed_pre_key(&self, signed_prekey_id: SignedPreKeyId) -> Result<bool>;
-
-    fn remove_pre_key(&mut self, signed_prekey_id: SignedPreKeyId) -> Result<()>;
 }
 
 pub trait SessionStore {
     fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>>;
 
     fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<()>;
-
-    fn contains_session(&self, address: &ProtocolAddress) -> Result<bool>;
-
-    fn delete_session(&mut self, address: &ProtocolAddress) -> Result<()>;
-
-    fn get_sub_device_sessions(&self, name: &str) -> Result<Vec<u32>>;
-
-    fn delete_all_sessions(&mut self, name: &str) -> Result<()>;
 }
 
 pub trait SenderKeyStore {

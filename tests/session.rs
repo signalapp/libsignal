@@ -46,7 +46,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
         &mut csprng,
     )?;
 
-    assert!(alice_store.contains_session(&bob_address)?);
+    assert!(alice_store.load_session(&bob_address)?.is_some());
     assert_eq!(
         alice_store
             .load_session(&bob_address)?
@@ -89,7 +89,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
     let bobs_response = "Who watches the watchers?";
 
-    assert!(bob_store.contains_session(&alice_address)?);
+    assert!(bob_store.load_session(&alice_address)?.is_some());
     let bobs_session_with_alice = bob_store.load_session(&alice_address)?.unwrap();
     assert_eq!(
         bobs_session_with_alice.session_state()?.session_version()?,
@@ -320,7 +320,7 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
         &mut csprng,
     )?;
 
-    assert!(alice_store.contains_session(&bob_address)?);
+    assert!(alice_store.load_session(&bob_address)?.is_some());
     assert_eq!(
         alice_store
             .load_session(&bob_address)?
@@ -441,7 +441,7 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
         ),
     )?;
 
-    assert!(alice_store.contains_session(&bob_address)?);
+    assert!(alice_store.load_session(&bob_address)?.is_some());
     assert_eq!(
         alice_store
             .load_session(&bob_address)?
@@ -453,7 +453,7 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
 
     let original_message = "L'homme est condamné à être libre";
 
-    assert!(bob_store.has_pre_key(pre_key_id)?);
+    assert!(bob_store.get_pre_key(pre_key_id).is_ok());
     let outgoing_message = encrypt(&mut alice_store, &bob_address, original_message)?;
 
     assert_eq!(
@@ -471,7 +471,7 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
     )?);
 
     assert!(decrypt(&mut bob_store, &alice_address, &incoming_message).is_err());
-    assert!(bob_store.has_pre_key(pre_key_id)?);
+    assert!(bob_store.get_pre_key(pre_key_id).is_ok());
 
     let incoming_message = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
         outgoing_message.as_slice(),
@@ -480,7 +480,10 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
     let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message)?;
 
     assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
-    assert_eq!(bob_store.has_pre_key(pre_key_id)?, false);
+    assert_eq!(
+        bob_store.get_pre_key(pre_key_id).unwrap_err(),
+        SignalProtocolError::InvalidPreKeyId
+    );
 
     Ok(())
 }

@@ -103,10 +103,6 @@ impl traits::PreKeyStore for InMemPreKeyStore {
         Ok(())
     }
 
-    fn has_pre_key(&self, id: PreKeyId) -> Result<bool> {
-        Ok(self.pre_keys.get(&id).is_some())
-    }
-
     fn remove_pre_key(&mut self, id: PreKeyId) -> Result<()> {
         // If id does not exist this silently does nothing
         self.pre_keys.remove(&id);
@@ -142,14 +138,6 @@ impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
             .clone())
     }
 
-    fn get_all_signed_prekeys(&self) -> Result<Vec<SignedPreKeyRecord>> {
-        let mut result = Vec::with_capacity(self.signed_pre_keys.len());
-        for v in self.signed_pre_keys.values() {
-            result.push(v.clone());
-        }
-        Ok(result)
-    }
-
     fn save_signed_pre_key(
         &mut self,
         id: SignedPreKeyId,
@@ -157,16 +145,6 @@ impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
     ) -> Result<()> {
         // This overwrites old values, which matches Java behavior, but is it correct?
         self.signed_pre_keys.insert(id, record.to_owned());
-        Ok(())
-    }
-
-    fn has_signed_pre_key(&self, id: SignedPreKeyId) -> Result<bool> {
-        Ok(self.signed_pre_keys.get(&id).is_some())
-    }
-
-    fn remove_pre_key(&mut self, id: SignedPreKeyId) -> Result<()> {
-        // If id does not exist this silently does nothing
-        self.signed_pre_keys.remove(&id);
         Ok(())
     }
 }
@@ -198,34 +176,8 @@ impl traits::SessionStore for InMemSessionStore {
         }
     }
 
-    fn get_sub_device_sessions(&self, name: &str) -> Result<Vec<u32>> {
-        let mut result = vec![];
-
-        for address in self.sessions.keys() {
-            if address.name() == name && address.device_id() != 1 {
-                result.push(address.device_id());
-            }
-        }
-
-        Ok(result)
-    }
-
     fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<()> {
         self.sessions.insert(address.clone(), record.clone());
-        Ok(())
-    }
-
-    fn contains_session(&self, address: &ProtocolAddress) -> Result<bool> {
-        Ok(self.sessions.get(address).is_some())
-    }
-
-    fn delete_session(&mut self, address: &ProtocolAddress) -> Result<()> {
-        self.sessions.remove(address);
-        Ok(())
-    }
-
-    fn delete_all_sessions(&mut self, name: &str) -> Result<()> {
-        self.sessions.retain(|a, _| a.name() != name);
         Ok(())
     }
 }
@@ -325,10 +277,6 @@ impl traits::PreKeyStore for InMemSignalProtocolStore {
         self.pre_key_store.save_pre_key(id, record)
     }
 
-    fn has_pre_key(&self, id: PreKeyId) -> Result<bool> {
-        self.pre_key_store.has_pre_key(id)
-    }
-
     fn remove_pre_key(&mut self, id: PreKeyId) -> Result<()> {
         self.pre_key_store.remove_pre_key(id)
     }
@@ -339,24 +287,12 @@ impl traits::SignedPreKeyStore for InMemSignalProtocolStore {
         self.signed_pre_key_store.get_signed_pre_key(id)
     }
 
-    fn get_all_signed_prekeys(&self) -> Result<Vec<SignedPreKeyRecord>> {
-        self.signed_pre_key_store.get_all_signed_prekeys()
-    }
-
     fn save_signed_pre_key(
         &mut self,
         id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
     ) -> Result<()> {
         self.signed_pre_key_store.save_signed_pre_key(id, record)
-    }
-
-    fn has_signed_pre_key(&self, id: SignedPreKeyId) -> Result<bool> {
-        self.signed_pre_key_store.has_signed_pre_key(id)
-    }
-
-    fn remove_pre_key(&mut self, id: SignedPreKeyId) -> Result<()> {
-        self.signed_pre_key_store.remove_pre_key(id)
     }
 }
 
@@ -365,24 +301,8 @@ impl traits::SessionStore for InMemSignalProtocolStore {
         self.session_store.load_session(address)
     }
 
-    fn get_sub_device_sessions(&self, name: &str) -> Result<Vec<u32>> {
-        self.session_store.get_sub_device_sessions(name)
-    }
-
     fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<()> {
         self.session_store.store_session(address, record)
-    }
-
-    fn contains_session(&self, address: &ProtocolAddress) -> Result<bool> {
-        self.session_store.contains_session(address)
-    }
-
-    fn delete_session(&mut self, address: &ProtocolAddress) -> Result<()> {
-        self.session_store.delete_session(address)
-    }
-
-    fn delete_all_sessions(&mut self, name: &str) -> Result<()> {
-        self.session_store.delete_all_sessions(name)
     }
 }
 
