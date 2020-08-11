@@ -53,23 +53,23 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
 
         SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
-            "org/signal/libsignal/DuplicatedMessageException"
+            "org/whispersystems/libsignal/DuplicatedMessageException"
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
         | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
         | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeyId) => {
-            "org/signal/libsignal/InvalidKeyIdException"
+            "org/whispersystems/libsignal/InvalidKeyIdException"
         }
 
         SignalJniError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
         | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _)) => {
-            "org/signal/libsignal/InvalidKeyException"
+            "org/whispersystems/libsignal/InvalidKeyException"
         }
 
         SignalJniError::Signal(SignalProtocolError::SessionNotFound) => {
-            "org/signal/libsignal/NoSessionException"
+            "org/whispersystems/libsignal/NoSessionException"
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
@@ -78,11 +78,11 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidCiphertext)
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding) => {
-            "org/signal/libsignal/InvalidMessageException"
+            "org/whispersystems/libsignal/InvalidMessageException"
         }
 
         SignalJniError::Signal(SignalProtocolError::LegacyCiphertextVersion(_)) => {
-            "org/signal/libsignal/LegacyMessageException"
+            "org/whispersystems/libsignal/LegacyMessageException"
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
