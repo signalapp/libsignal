@@ -144,9 +144,9 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
         our_identity_key_pair,
         our_base_key_pair,
         *their_identity_key,
-        *their_signed_prekey,
-        *their_one_time_prekey,
-        *their_signed_prekey,
+        their_signed_prekey,
+        their_one_time_prekey,
+        their_signed_prekey,
     );
 
     let mut session = ratchet::initialize_alice_session(&parameters, csprng)?;

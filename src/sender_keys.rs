@@ -38,12 +38,12 @@ pub struct SenderMessageKey {
 }
 
 impl SenderMessageKey {
-    pub fn new(iteration: u32, seed: &[u8]) -> Result<Self> {
+    pub fn new(iteration: u32, seed: Vec<u8>) -> Result<Self> {
         let hkdf = HKDF::new(3)?;
-        let derived = hkdf.derive_secrets(seed, b"WhisperGroup", 48)?;
+        let derived = hkdf.derive_secrets(&seed, b"WhisperGroup", 48)?;
         Ok(Self {
             iteration,
-            seed: seed.to_vec(),
+            seed: seed,
             iv: derived[0..16].to_vec(),
             cipher_key: derived[16..48].to_vec(),
         })
@@ -52,7 +52,7 @@ impl SenderMessageKey {
     pub fn from_protobuf(
         smk: storage_proto::sender_key_state_structure::SenderMessageKey,
     ) -> Result<Self> {
-        Self::new(smk.iteration, &smk.seed)
+        Self::new(smk.iteration, smk.seed)
     }
 
     pub fn iteration(&self) -> Result<u32> {
@@ -118,7 +118,7 @@ impl SenderChainKey {
     pub fn sender_message_key(&self) -> Result<SenderMessageKey> {
         Ok(SenderMessageKey::new(
             self.iteration,
-            &self.get_derivative(Self::MESSAGE_KEY_SEED)?,
+            self.get_derivative(Self::MESSAGE_KEY_SEED)?,
         )?)
     }
 
@@ -168,8 +168,19 @@ impl SenderKeyState {
         Ok(Self { state })
     }
 
+    pub fn deserialize(buf: &[u8]) -> Result<Self> {
+        let state = storage_proto::SenderKeyStateStructure::decode(buf)?;
+        Ok(Self { state })
+    }
+
     pub fn from_protobuf(state: storage_proto::SenderKeyStateStructure) -> Self {
         Self { state }
+    }
+
+    pub fn serialize(&self) -> Result<Vec<u8>> {
+        let mut buf = vec![];
+        self.state.encode(&mut buf)?;
+        Ok(buf)
     }
 
     pub fn sender_key_id(&self) -> Result<u32> {
@@ -206,7 +217,7 @@ impl SenderKeyState {
         }
     }
 
-    pub fn has_sender_key_message(&self, iteration: u32) -> Result<bool> {
+    pub fn has_sender_message_key(&self, iteration: u32) -> Result<bool> {
         for sender_message_key in &self.state.sender_message_keys {
             if sender_message_key.iteration == iteration {
                 return Ok(true);
@@ -338,5 +349,11 @@ impl SenderKeyRecord {
         Ok(storage_proto::SenderKeyRecordStructure {
             sender_key_states: states,
         })
+    }
+
+    pub fn serialize(&self) -> Result<Vec<u8>> {
+        let mut buf = vec![];
+        self.as_protobuf()?.encode(&mut buf)?;
+        Ok(buf)
     }
 }

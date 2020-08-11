@@ -38,7 +38,9 @@ pub use {
         are_we_alice, initialize_alice_session, initialize_bob_session,
         AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
     },
-    sender_keys::{SenderKeyName, SenderKeyRecord},
+    sender_keys::{
+        SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
+    },
     session::*,
     session_cipher::SessionCipher,
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},

@@ -192,6 +192,10 @@ impl Fingerprint {
             scannable: ScannableFingerprint::new(version, &local_fingerprint, &remote_fingerprint),
         })
     }
+
+    pub fn display_string(&self) -> Result<String> {
+        Ok(format!("{}", self.display))
+    }
 }
 
 #[cfg(test)]

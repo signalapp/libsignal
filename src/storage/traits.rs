@@ -54,13 +54,13 @@ pub trait SignedPreKeyStore {
 pub trait SessionStore {
     fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>>;
 
-    fn get_sub_device_sessions(&self, name: &str) -> Result<Vec<u32>>;
-
     fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<()>;
 
     fn contains_session(&self, address: &ProtocolAddress) -> Result<bool>;
 
     fn delete_session(&mut self, address: &ProtocolAddress) -> Result<()>;
+
+    fn get_sub_device_sessions(&self, name: &str) -> Result<Vec<u32>>;
 
     fn delete_all_sessions(&mut self, name: &str) -> Result<()>;
 }

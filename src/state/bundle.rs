@@ -55,16 +55,16 @@ impl PreKeyBundle {
         Ok(self.pre_key_id)
     }
 
-    pub fn pre_key_public(&self) -> Result<&Option<curve::PublicKey>> {
-        Ok(&self.pre_key_public)
+    pub fn pre_key_public(&self) -> Result<Option<curve::PublicKey>> {
+        Ok(self.pre_key_public)
     }
 
     pub fn signed_pre_key_id(&self) -> Result<SignedPreKeyId> {
         Ok(self.signed_pre_key_id)
     }
 
-    pub fn signed_pre_key_public(&self) -> Result<&curve::PublicKey> {
-        Ok(&self.signed_pre_key_public)
+    pub fn signed_pre_key_public(&self) -> Result<curve::PublicKey> {
+        Ok(self.signed_pre_key_public)
     }
 
     pub fn signed_pre_key_signature(&self) -> Result<&[u8]> {
