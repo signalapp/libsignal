@@ -137,12 +137,20 @@ impl KeyPair {
     }
 }
 
+pub fn derive_public_key(private_key: &[u8; 32]) -> [u8; 32] {
+    *PublicKey::from(&StaticSecret::from(*private_key)).as_bytes()
+}
+
 impl From<[u8; PRIVATE_KEY_LENGTH]> for KeyPair {
     fn from(private_key: [u8; 32]) -> Self {
+        let private_key = StaticSecret::from(private_key);
+        let public_key = PublicKey::from(&private_key);
+
         KeyPair {
-            private_key,
-            public_key: *PublicKey::from(&StaticSecret::from(private_key)).as_bytes(),
+            private_key: private_key.to_bytes(),
+            public_key: *public_key.as_bytes(),
         }
+
     }
 }
 

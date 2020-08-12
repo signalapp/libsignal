@@ -50,6 +50,10 @@ pub struct PublicKey {
 }
 
 impl PublicKey {
+    fn new(key: PublicKeyData) -> Self {
+        Self { key }
+    }
+
     pub fn deserialize(value: &[u8]) -> Result<Self> {
         if value.is_empty() {
             return Err(SignalProtocolError::NoKeyTypeIdentifier);
@@ -164,6 +168,15 @@ impl PrivateKey {
     pub fn serialize(&self) -> Vec<u8> {
         match self.key {
             PrivateKeyData::DjbPrivateKey(v) => v.to_vec(),
+        }
+    }
+
+    pub fn public_key(&self) -> Result<PublicKey> {
+        match self.key {
+            PrivateKeyData::DjbPrivateKey(private_key) => {
+                let public_key = curve25519::derive_public_key(&private_key);
+                Ok(PublicKey::new(PublicKeyData::DjbPublicKey(public_key)))
+            }
         }
     }
 
@@ -290,6 +303,9 @@ mod tests {
         assert!(verify_signature(&key_pair.public_key, &message, &signature).unwrap());
         message[0] ^= 0x01u8;
         assert!(!verify_signature(&key_pair.public_key, &message, &signature).unwrap());
+        message[0] ^= 0x01u8;
+        let public_key = key_pair.private_key.public_key().unwrap();
+        assert!(verify_signature(&public_key, &message, &signature).unwrap());
     }
 
     #[test]
@@ -297,6 +313,8 @@ mod tests {
         let mut csprng = OsRng;
         let key_pair = KeyPair::generate(&mut csprng);
         let serialized_public = key_pair.public_key.serialize();
+
+        assert_eq!(serialized_public, key_pair.private_key.public_key().unwrap().serialize());
         let empty: [u8; 0] = [];
 
         let just_right = decode_point(&serialized_public[..]);
