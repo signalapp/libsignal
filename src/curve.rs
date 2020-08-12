@@ -314,7 +314,10 @@ mod tests {
         let key_pair = KeyPair::generate(&mut csprng);
         let serialized_public = key_pair.public_key.serialize();
 
-        assert_eq!(serialized_public, key_pair.private_key.public_key().unwrap().serialize());
+        assert_eq!(
+            serialized_public,
+            key_pair.private_key.public_key().unwrap().serialize()
+        );
         let empty: [u8; 0] = [];
 
         let just_right = decode_point(&serialized_public[..]);

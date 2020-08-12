@@ -150,7 +150,6 @@ impl From<[u8; PRIVATE_KEY_LENGTH]> for KeyPair {
             private_key: private_key.to_bytes(),
             public_key: *public_key.as_bytes(),
         }
-
     }
 }
 
