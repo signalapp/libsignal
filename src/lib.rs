@@ -104,6 +104,21 @@ jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Serial
                        |k: &PrivateKey| Ok(k.serialize()));
 
 #[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Generate(
+    env: JNIEnv,
+    _class: JClass,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let mut rng = rand::rngs::OsRng;
+        let keypair = KeyPair::generate(&mut rng);
+        box_object::<PrivateKey>(Ok(keypair.private_key))
+    })
+}
+
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_GetPublicKey(PublicKey) from PrivateKey,
+                          |k: &PrivateKey| k.public_key());
+
+#[no_mangle]
 pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Sign(
     env: JNIEnv,
     _class: JClass,
