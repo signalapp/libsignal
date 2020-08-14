@@ -1,7 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
-use jni::objects::{JClass, JString};
-use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring};
+use jni::objects::{JClass, JString, JValue, JObject};
+use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring, jobject};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
@@ -832,3 +832,231 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_Sen
         }
     })
 }
+
+pub struct JniSenderKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    obj: jobject,
+}
+
+impl<'a> JniSenderKeyStore<'a> {
+    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
+        Self { env, obj }
+    }
+}
+
+fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
+    let sender_key_name_class = env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
+    let sender_key_name_ctor_args = [
+        JObject::from(env.new_string(sender_key_name.group_id()?)?).into(),
+        JObject::from(env.new_string(sender_key_name.sender_name()?)?).into(),
+        JValue::from(jint_from_u32(sender_key_name.sender_device_id())?)
+    ];
+
+    let sender_key_name_ctor_sig = "(Ljava/lang/String;Ljava/lang/String;I)V";
+    let sender_key_name_jobject = env.new_object(sender_key_name_class, sender_key_name_ctor_sig, &sender_key_name_ctor_args)?;
+    Ok(sender_key_name_jobject)
+}
+
+fn jobject_from_sender_key_record<'a>(env: &'a JNIEnv, sender_key_record: &SenderKeyRecord) -> Result<JObject<'a>, SignalJniError> {
+    let sender_key_record_class = env.find_class("org/whispersystems/libsignal/groups/state/SenderKeyRecord")?;
+    let sender_key_record_ctor_sig = "([B)V";
+    let sender_key_record_ctor_args = [
+        JValue::from(to_jbytearray(env, sender_key_record.serialize())?),
+    ];
+    let sender_key_record_jobject = env.new_object(sender_key_record_class, sender_key_record_ctor_sig, &sender_key_record_ctor_args)?;
+    Ok(sender_key_record_jobject)
+}
+
+fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
+    if env.exception_check()? {
+        let throwable = env.exception_occurred()?;
+        env.exception_clear()?;
+
+        let getmessage_sig = "()Ljava/lang/String;";
+
+        let jmessage = env.call_method(throwable, "getMessage", getmessage_sig, &[])?;
+
+        if let JValue::Object(o) = jmessage {
+            let message: String = env.get_string(JString::from(o))?.into();
+            return Err(SignalJniError::ExceptionDuringCallback(message));
+        } else {
+            return Err(SignalJniError::ExceptionDuringCallback("Exception that didn't implement getMessage".to_string()));
+        }
+    }
+
+    Ok(())
+}
+
+impl<'a> JniSenderKeyStore<'a> {
+    fn do_store_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        record: &SenderKeyRecord,
+    ) -> Result<(), SignalJniError> {
+
+        let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
+        let sender_key_record_jobject = jobject_from_sender_key_record(self.env, record)?;
+
+        let callback_args = [
+            sender_key_name_jobject.into(),
+            sender_key_record_jobject.into(),
+        ];
+        let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;)V";
+        self.env.call_method(self.obj, "storeSenderKey", callback_sig, &callback_args[..])?;
+        exception_check(self.env)?;
+
+        Ok(())
+    }
+
+    fn do_load_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+    ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
+
+        let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
+        let callback_args = [
+            sender_key_name_jobject.into(),
+        ];
+        let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;)Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;";
+
+        let skr_obj = self.env.call_method(self.obj, "loadSenderKey", callback_sig, &callback_args[..])?;
+        exception_check(self.env)?;
+
+        let skr_obj = match skr_obj {
+            JValue::Object(o) => *o,
+            _ => {
+                return Err(SignalJniError::BadJniParameter("loadSenderKey returned non-object"))
+            }
+        };
+
+        let serialized_bytes = self.env.call_method(skr_obj, "serialize", "()[B", &[])?;
+        exception_check(self.env)?;
+
+        match serialized_bytes {
+            JValue::Object(o) => {
+                let bytes = self.env.convert_byte_array(*o)?;
+                let skr = SenderKeyRecord::deserialize(&bytes)?;
+                Ok(Some(skr))
+            }
+            _ => {
+                Err(SignalJniError::BadJniParameter("SenderKeyRecord::serialize returned unexpected type"))
+            }
+        }
+    }
+
+}
+
+impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
+    fn store_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        record: &SenderKeyRecord,
+    ) -> Result<(), SignalProtocolError> {
+        self.do_store_sender_key(sender_key_name, record).map_err(|e| e.to_signal_protocol_error())
+    }
+
+    fn load_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
+        self.do_load_sender_key(sender_key_name).map_err(|e| e.to_signal_protocol_error())
+    }
+}
+
+fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &str) -> Result<jobject, SignalJniError> {
+    if obj == std::ptr::null_mut() {
+        return Err(SignalJniError::NullHandle);
+    }
+
+    let class = env.find_class(class_name)?;
+
+    if !env.is_instance_of(obj, class)? {
+        return Err(SignalJniError::BadJniParameter("SenderKeyStore"));
+    }
+
+    Ok(obj)
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSessionBuilder_CreateSenderKeyDistributionMessage(
+    env: JNIEnv,
+    _class: JClass,
+    sender_key_name: ObjectHandle,
+    store: jobject) -> ObjectHandle {
+
+    run_ffi_safe(&env, || {
+        let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
+        let store = check_jobject_type(&env, store, "org/whispersystems/libsignal/groups/state/SenderKeyStore")?;
+
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+        let mut csprng = rand::rngs::OsRng;
+
+        let skdm = create_sender_key_distribution_message(&sender_key_name, &mut sender_key_store, &mut csprng)?;
+        box_object::<SenderKeyDistributionMessage>(Ok(skdm))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSessionBuilder_ProcessSenderKeyDistributionMessage(
+    env: JNIEnv,
+    _class: JClass,
+    sender_key_name: ObjectHandle,
+    sender_key_distribution_message: ObjectHandle,
+    store: jobject) {
+
+    run_ffi_safe(&env, || {
+        let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
+        let sender_key_distribution_message = native_handle_cast::<SenderKeyDistributionMessage>(sender_key_distribution_message)?;
+        let store = check_jobject_type(&env, store, "org/whispersystems/libsignal/groups/state/SenderKeyStore")?;
+
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+
+        process_sender_key_distribution_message(sender_key_name, sender_key_distribution_message, &mut sender_key_store)?;
+        Ok(())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCipher_EncryptMessage(
+    env: JNIEnv,
+    _class: JClass,
+    sender_key_name: ObjectHandle,
+    message: jbyteArray,
+    store: jobject) -> jbyteArray {
+
+    run_ffi_safe(&env, || {
+        let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
+        let message = env.convert_byte_array(message)?;
+        let store = check_jobject_type(&env, store, "org/whispersystems/libsignal/groups/state/SenderKeyStore")?;
+
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+
+        let mut rng = rand::rngs::OsRng;
+
+        let ctext = group_encrypt(&mut sender_key_store, &sender_key_name, &message, &mut rng)?;
+
+        to_jbytearray(&env, Ok(ctext))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCipher_DecryptMessage(
+    env: JNIEnv,
+    _class: JClass,
+    sender_key_name: ObjectHandle,
+    message: jbyteArray,
+    store: jobject) -> jbyteArray {
+
+    run_ffi_safe(&env, || {
+        let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
+        let message = env.convert_byte_array(message)?;
+        let store = check_jobject_type(&env, store, "org/whispersystems/libsignal/groups/state/SenderKeyStore")?;
+
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+
+        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name)?;
+
+        to_jbytearray(&env, Ok(ptext))
+    })
+}
+
