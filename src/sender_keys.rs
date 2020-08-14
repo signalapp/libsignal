@@ -24,6 +24,14 @@ impl SenderKeyName {
         Ok(self.group_id.clone())
     }
 
+    pub fn sender_name(&self) -> Result<String> {
+        Ok(self.sender.name().to_string())
+    }
+
+    pub fn sender_device_id(&self) -> Result<u32> {
+        Ok(self.sender.device_id())
+    }
+
     pub fn sender(&self) -> Result<ProtocolAddress> {
         Ok(self.sender.clone())
     }
@@ -280,7 +288,7 @@ impl SenderKeyRecord {
         Ok(Self { states })
     }
 
-    pub fn empty(&self) -> Result<bool> {
+    pub fn is_empty(&self) -> Result<bool> {
         Ok(self.states.is_empty())
     }
 
