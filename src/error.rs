@@ -55,6 +55,7 @@ pub enum SignalProtocolError {
     DuplicatedMessage(u32, u32),
     InvalidMessage(&'static str),
     InternalError(&'static str),
+    FfiBindingError(String),
 }
 
 impl Error for SignalProtocolError {
@@ -166,6 +167,9 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::SignaturePubkeyMissing => {
                 write!(f, "cannot verify signature due to missing key")
+            }
+            SignalProtocolError::FfiBindingError(m) => {
+                write!(f, "error while invoking an ffi callback: {}", m)
             }
         }
     }
