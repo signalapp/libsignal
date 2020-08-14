@@ -133,7 +133,9 @@ pub fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     sender_key_store: &mut dyn SenderKeyStore,
     csprng: &mut R,
 ) -> Result<SenderKeyDistributionMessage> {
-    let mut sender_key_record = sender_key_store.load_sender_key(sender_key_name)?.unwrap_or_else(SenderKeyRecord::new_empty);
+    let mut sender_key_record = sender_key_store
+        .load_sender_key(sender_key_name)?
+        .unwrap_or_else(SenderKeyRecord::new_empty);
 
     if sender_key_record.is_empty()? {
         // libsignal-protocol-java uses 31-bit integers for sender key IDs
