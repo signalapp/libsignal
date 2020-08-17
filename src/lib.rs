@@ -833,17 +833,6 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_Sen
     })
 }
 
-pub struct JniSenderKeyStore<'a> {
-    env: &'a JNIEnv<'a>,
-    obj: jobject,
-}
-
-impl<'a> JniSenderKeyStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
-    }
-}
-
 fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
     let sender_key_name_class = env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
     let sender_key_name_ctor_args = [
@@ -858,33 +847,185 @@ fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKey
 }
 
 fn jobject_from_sender_key_record<'a>(env: &'a JNIEnv, sender_key_record: &SenderKeyRecord) -> Result<JObject<'a>, SignalJniError> {
-    let sender_key_record_class = env.find_class("org/whispersystems/libsignal/groups/state/SenderKeyRecord")?;
-    let sender_key_record_ctor_sig = "([B)V";
-    let sender_key_record_ctor_args = [
-        JValue::from(to_jbytearray(env, sender_key_record.serialize())?),
-    ];
-    let sender_key_record_jobject = env.new_object(sender_key_record_class, sender_key_record_ctor_sig, &sender_key_record_ctor_args)?;
-    Ok(sender_key_record_jobject)
+    jobject_from_serialized(env, "org/whispersystems/libsignal/groups/state/SenderKeyRecord", &sender_key_record.serialize()?)
 }
 
-fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
-    if env.exception_check()? {
-        let throwable = env.exception_occurred()?;
-        env.exception_clear()?;
+pub struct JniIdentityKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    obj: jobject,
+}
 
-        let getmessage_sig = "()Ljava/lang/String;";
+impl<'a> JniIdentityKeyStore<'a> {
+    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
+        Self { env, obj }
+    }
+}
 
-        let jmessage = env.call_method(throwable, "getMessage", getmessage_sig, &[])?;
-
-        if let JValue::Object(o) = jmessage {
-            let message: String = env.get_string(JString::from(o))?.into();
-            return Err(SignalJniError::ExceptionDuringCallback(message));
-        } else {
-            return Err(SignalJniError::ExceptionDuringCallback("Exception that didn't implement getMessage".to_string()));
-        }
+impl<'a> JniIdentityKeyStore<'a> {
+    fn do_get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
     }
 
-    Ok(())
+    fn do_get_local_registration_id(&self) -> Result<u32, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        direction: Direction,
+    ) -> Result<bool, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+}
+
+impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
+
+    fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
+        Ok(self.do_get_identity_key_pair()?)
+    }
+
+    fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
+        Ok(self.do_get_local_registration_id()?)
+    }
+
+    fn save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool, SignalProtocolError> {
+        Ok(self.do_save_identity(address, identity)?)
+    }
+
+    fn is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        direction: Direction,
+    ) -> Result<bool, SignalProtocolError> {
+        Ok(self.do_is_trusted_identity(address, identity, direction)?)
+    }
+
+    fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>, SignalProtocolError> {
+        Ok(self.do_get_identity(address)?)
+    }
+}
+
+pub struct JniPreKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    obj: jobject,
+}
+
+impl<'a> JniPreKeyStore<'a> {
+    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
+        Self { env, obj }
+    }
+}
+
+impl<'a> JniPreKeyStore<'a> {
+    fn do_get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_save_pre_key(&mut self, prekey_id: u32, record: &PreKeyRecord) -> Result<(), SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+}
+
+impl<'a> PreKeyStore for JniPreKeyStore<'a> {
+    fn get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalProtocolError> {
+        Ok(self.do_get_pre_key(prekey_id)?)
+    }
+
+    fn save_pre_key(&mut self, prekey_id: u32, record: &PreKeyRecord) -> Result<(), SignalProtocolError> {
+        Ok(self.do_save_pre_key(prekey_id, record)?)
+    }
+
+    fn remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalProtocolError> {
+        Ok(self.do_remove_pre_key(prekey_id)?)
+    }
+}
+
+pub struct JniSignedPreKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    obj: jobject,
+}
+
+impl<'a> JniSignedPreKeyStore<'a> {
+    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
+        Self { env, obj }
+    }
+}
+
+impl<'a> JniSignedPreKeyStore<'a> {
+    fn do_get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_save_signed_pre_key(&mut self, prekey_id: u32, record: &SignedPreKeyRecord) -> Result<(), SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+}
+
+impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
+    fn get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalProtocolError> {
+        Ok(self.do_get_signed_pre_key(prekey_id)?)
+    }
+
+    fn save_signed_pre_key(&mut self, prekey_id: u32, record: &SignedPreKeyRecord) -> Result<(), SignalProtocolError> {
+        Ok(self.do_save_signed_pre_key(prekey_id, record)?)
+    }
+}
+
+pub struct JniSessionStore<'a> {
+    env: &'a JNIEnv<'a>,
+    obj: jobject,
+}
+
+impl<'a> JniSessionStore<'a> {
+    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
+        Self { env, obj }
+    }
+}
+
+impl<'a> JniSessionStore<'a> {
+    fn do_load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>, SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+
+    fn do_store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<(), SignalJniError> {
+        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+    }
+}
+
+impl<'a> SessionStore for JniSessionStore<'a> {
+    fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>, SignalProtocolError> {
+        Ok(self.do_load_session(address)?)
+    }
+
+    fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<(), SignalProtocolError> {
+        Ok(self.do_store_session(address, record)?)
+    }
+}
+
+pub struct JniSenderKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    obj: jobject,
+}
+
+impl<'a> JniSenderKeyStore<'a> {
+    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
+        Self { env, obj }
+    }
 }
 
 impl<'a> JniSenderKeyStore<'a> {
@@ -914,9 +1055,7 @@ impl<'a> JniSenderKeyStore<'a> {
     ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
 
         let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
-        let callback_args = [
-            sender_key_name_jobject.into(),
-        ];
+        let callback_args = [sender_key_name_jobject.into()];
         let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;)Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;";
 
         let skr_obj = self.env.call_method(self.obj, "loadSenderKey", callback_sig, &callback_args[..])?;
@@ -943,7 +1082,6 @@ impl<'a> JniSenderKeyStore<'a> {
             }
         }
     }
-
 }
 
 impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
@@ -952,29 +1090,15 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        self.do_store_sender_key(sender_key_name, record).map_err(|e| e.to_signal_protocol_error())
+        Ok(self.do_store_sender_key(sender_key_name, record)?)
     }
 
     fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        self.do_load_sender_key(sender_key_name).map_err(|e| e.to_signal_protocol_error())
+        Ok(self.do_load_sender_key(sender_key_name)?)
     }
-}
-
-fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &str) -> Result<jobject, SignalJniError> {
-    if obj == std::ptr::null_mut() {
-        return Err(SignalJniError::NullHandle);
-    }
-
-    let class = env.find_class(class_name)?;
-
-    if !env.is_instance_of(obj, class)? {
-        return Err(SignalJniError::BadJniParameter("SenderKeyStore"));
-    }
-
-    Ok(obj)
 }
 
 #[no_mangle]

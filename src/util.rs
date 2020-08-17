@@ -1,4 +1,5 @@
-use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jstring};
+use jni::sys::{_jobject, jobject, jboolean, jbyteArray, jint, jlong, jstring};
+use jni::objects::{JString, JValue, JObject};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
 use std::fmt;
@@ -59,6 +60,23 @@ impl From<SignalProtocolError> for SignalJniError {
 impl From<jni::errors::Error> for SignalJniError {
     fn from(e: jni::errors::Error) -> SignalJniError {
         SignalJniError::Jni(e)
+    }
+}
+
+impl From<SignalJniError> for SignalProtocolError {
+    fn from(err: SignalJniError) -> SignalProtocolError {
+        match err {
+            SignalJniError::Signal(e) => e.clone(),
+            SignalJniError::Jni(e) => {
+                SignalProtocolError::FfiBindingError(e.to_string())
+            }
+            SignalJniError::BadJniParameter(m) => {
+                SignalProtocolError::InvalidArgument(m.to_string())
+            }
+            _ => {
+                SignalProtocolError::FfiBindingError(format!("{}", err))
+            }
+        }
     }
 }
 
@@ -268,6 +286,47 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
         }
         Err(e) => Err(SignalJniError::Signal(e)),
     }
+}
+
+pub fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
+    if env.exception_check()? {
+        let throwable = env.exception_occurred()?;
+        env.exception_clear()?;
+
+        let getmessage_sig = "()Ljava/lang/String;";
+
+        let jmessage = env.call_method(throwable, "getMessage", getmessage_sig, &[])?;
+
+        if let JValue::Object(o) = jmessage {
+            let message: String = env.get_string(JString::from(o))?.into();
+            return Err(SignalJniError::ExceptionDuringCallback(message));
+        } else {
+            return Err(SignalJniError::ExceptionDuringCallback("Exception that didn't implement getMessage".to_string()));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &'static str) -> Result<jobject, SignalJniError> {
+    if obj == std::ptr::null_mut() {
+        return Err(SignalJniError::NullHandle);
+    }
+
+    let class = env.find_class(class_name)?;
+
+    if !env.is_instance_of(obj, class)? {
+        return Err(SignalJniError::BadJniParameter(class_name));
+    }
+
+    Ok(obj)
+}
+
+pub fn jobject_from_serialized<'a>(env: &'a JNIEnv, class_name: &str, serialized: &[u8]) -> Result<JObject<'a>, SignalJniError> {
+    let class_type = env.find_class(class_name)?;
+    let ctor_sig = "([B)V";
+    let ctor_args = [JValue::from(to_jbytearray(env, Ok(serialized))?)];
+    Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 
 #[macro_export]
