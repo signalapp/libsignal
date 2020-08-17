@@ -45,7 +45,7 @@ pub use {
     session_cipher::SessionCipher,
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},
     storage::{
-        IdentityKeyStore, InMemIdentityKeyStore, InMemPreKeyStore, InMemSenderKeyStore,
+        Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemPreKeyStore, InMemSenderKeyStore,
         InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore, PreKeyStore,
         ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
     },
