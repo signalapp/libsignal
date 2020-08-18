@@ -107,9 +107,9 @@ pub fn message_decrypt<R: Rng + CryptoRng>(
 ) -> Result<Vec<u8>> {
     match ciphertext {
         CiphertextMessage::SignalMessage(m) => {
-            decrypt_message(m, remote_address, session_store, identity_store, csprng)
+            message_decrypt_signal(m, remote_address, session_store, identity_store, csprng)
         }
-        CiphertextMessage::PreKeySignalMessage(m) => decrypt_with_prekey(
+        CiphertextMessage::PreKeySignalMessage(m) => message_decrypt_prekey(
             m,
             remote_address,
             session_store,
@@ -124,7 +124,7 @@ pub fn message_decrypt<R: Rng + CryptoRng>(
     }
 }
 
-fn decrypt_with_prekey<R: Rng + CryptoRng>(
+pub fn message_decrypt_prekey<R: Rng + CryptoRng>(
     ciphertext: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
@@ -158,7 +158,7 @@ fn decrypt_with_prekey<R: Rng + CryptoRng>(
     Ok(ptext)
 }
 
-fn decrypt_message<R: Rng + CryptoRng>(
+pub fn message_decrypt_signal<R: Rng + CryptoRng>(
     ciphertext: &SignalMessage,
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
