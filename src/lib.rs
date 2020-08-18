@@ -42,7 +42,7 @@ pub use {
         SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
     },
     session::*,
-    session_cipher::SessionCipher,
+    session_cipher::{message_decrypt, message_encrypt, remote_registration_id, session_version},
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},
     storage::{
         Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemPreKeyStore, InMemSenderKeyStore,

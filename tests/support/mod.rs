@@ -15,14 +15,12 @@ pub fn encrypt(
     remote_address: &ProtocolAddress,
     msg: &str,
 ) -> Result<CiphertextMessage, SignalProtocolError> {
-    let mut session_cipher = SessionCipher::new(
-        remote_address.clone(),
+    message_encrypt(
+        msg.as_bytes(),
+        remote_address,
         &mut store.session_store,
         &mut store.identity_store,
-        &mut store.signed_pre_key_store,
-        &mut store.pre_key_store,
-    );
-    session_cipher.encrypt(msg.as_bytes())
+    )
 }
 
 #[allow(dead_code)]
@@ -31,15 +29,16 @@ pub fn decrypt(
     remote_address: &ProtocolAddress,
     msg: &CiphertextMessage,
 ) -> Result<Vec<u8>, SignalProtocolError> {
-    let mut session_cipher = SessionCipher::new(
-        remote_address.clone(),
+    let mut csprng = OsRng;
+    message_decrypt(
+        msg,
+        &remote_address,
         &mut store.session_store,
         &mut store.identity_store,
-        &mut store.signed_pre_key_store,
         &mut store.pre_key_store,
-    );
-    let mut csprng = OsRng;
-    session_cipher.decrypt(msg, &mut csprng)
+        &mut store.signed_pre_key_store,
+        &mut csprng,
+    )
 }
 
 #[allow(dead_code)]
