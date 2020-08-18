@@ -9,6 +9,7 @@ pub enum SignalJniError {
     Signal(SignalProtocolError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
+    UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -40,6 +41,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ExceptionDuringCallback(s) => write!(f, "exception recieved during callback {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
+            SignalJniError::UnexpectedJniResultType(m, t) => write!(f, "calling {} returned unexpected type {}", m, t),
             SignalJniError::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
             }
@@ -87,6 +89,7 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
         SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
         SignalJniError::BadJniParameter(_) => "java/lang/AssertionError",
+        SignalJniError::UnexpectedJniResultType(_,_) => "java/lang/AssertionError",
         SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
 
         SignalJniError::ExceptionDuringCallback(_) => "java/lang/RuntimeException",

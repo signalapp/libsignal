@@ -833,7 +833,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_Sen
     })
 }
 
-fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
+fn sender_key_name_to_jobject<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
     let sender_key_name_class = env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
     let sender_key_name_ctor_args = [
         JObject::from(env.new_string(sender_key_name.group_id()?)?).into(),
@@ -846,18 +846,26 @@ fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKey
     Ok(sender_key_name_jobject)
 }
 
-fn jobject_from_sender_key_record<'a>(env: &'a JNIEnv, sender_key_record: &SenderKeyRecord) -> Result<JObject<'a>, SignalJniError> {
-    jobject_from_serialized(env, "org/whispersystems/libsignal/groups/state/SenderKeyRecord", &sender_key_record.serialize()?)
+fn protocol_address_to_jobject<'a>(env: &'a JNIEnv, address: &ProtocolAddress) -> Result<JObject<'a>, SignalJniError> {
+    let address_class = env.find_class("org/whispersystems/libsignal/ProtocolAddress")?;
+    let address_ctor_args = [
+        JObject::from(env.new_string(address.name())?).into(),
+        JValue::from(jint_from_u32(Ok(address.device_id()))?)
+    ];
+
+    let address_ctor_sig = "(Ljava/lang/String;I)V";
+    let address_jobject = env.new_object(address_class, address_ctor_sig, &address_ctor_args)?;
+    Ok(address_jobject)
 }
 
 pub struct JniIdentityKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    obj: jobject,
+    store: jobject,
 }
 
 impl<'a> JniIdentityKeyStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
     }
 }
 
@@ -867,7 +875,15 @@ impl<'a> JniIdentityKeyStore<'a> {
     }
 
     fn do_get_local_registration_id(&self) -> Result<u32, SignalJniError> {
-        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let callback_sig = "()I";
+
+        let rvalue = self.env.call_method(self.store, "getLocalRegistrationId", callback_sig, &[])?;
+        exception_check(self.env)?;
+
+        match rvalue {
+            JValue::Int(i) => jint_to_u32(i),
+            _ => Err(SignalJniError::BadJniParameter("Unexpected return type from getLocalRegistrationId"))
+        }
     }
 
     fn do_save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool, SignalJniError> {
@@ -918,26 +934,59 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
 
 pub struct JniPreKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    obj: jobject,
+    store: jobject,
 }
 
 impl<'a> JniPreKeyStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
     }
 }
+
+fn get_object_with_native_handle<T: 'static + Clone>(env: &JNIEnv,
+                                                     store_obj: jobject,
+                                                     callback_args: &[JValue],
+                                                     callback_sig: &'static str,
+                                                     callback_fn: &'static str) -> Result<T, SignalJniError> {
+        let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
+        exception_check(env)?;
+
+        let obj = match rvalue {
+            JValue::Object(o) => *o,
+            _ => return Err(SignalJniError::UnexpectedJniResultType(callback_fn, rvalue.type_name()))
+        };
+
+        let handle = env.call_method(obj, "nativeHandle", "()J", &[])?;
+        match handle {
+            JValue::Long(handle) => {
+                let object = unsafe { native_handle_cast::<T>(handle)? };
+                Ok(object.clone())
+            }
+            _ => Err(SignalJniError::UnexpectedJniResultType("nativeHandle", handle.type_name()))
+        }
+}
+
 
 impl<'a> JniPreKeyStore<'a> {
     fn do_get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalJniError> {
-        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let callback_sig = "(I)Lorg/whispersystems/libsignal/state/PreKeyRecord;";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
+        get_object_with_native_handle::<PreKeyRecord>(self.env, self.store, &callback_args, callback_sig, "loadPreKey")
     }
 
     fn do_save_pre_key(&mut self, prekey_id: u32, record: &PreKeyRecord) -> Result<(), SignalJniError> {
-        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let jobject_record = jobject_from_serialized(self.env, "org/whispersystems/libsignal/state/PreKeyRecord", &record.serialize()?)?;
+        let callback_sig = "(I,Lorg/whispersystems/libsignal/state/PreKeyRecord;)V";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?), jobject_record.into()];
+        self.env.call_method(self.store, "storePreKey", callback_sig, &callback_args)?;
+        Ok(())
     }
 
     fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
-        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let callback_sig = "(I)V";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
+        self.env.call_method(self.store, "removePreKey", callback_sig, &callback_args)?;
+        Ok(())
     }
 }
 
@@ -957,22 +1006,28 @@ impl<'a> PreKeyStore for JniPreKeyStore<'a> {
 
 pub struct JniSignedPreKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    obj: jobject,
+    store: jobject,
 }
 
 impl<'a> JniSignedPreKeyStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
     }
 }
 
 impl<'a> JniSignedPreKeyStore<'a> {
     fn do_get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalJniError> {
-        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let callback_sig = "(I)Lorg/whispersystems/libsignal/state/SignedPreKeyRecord;";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
+        get_object_with_native_handle::<SignedPreKeyRecord>(self.env, self.store, &callback_args, callback_sig, "loadSignedPreKey")
     }
 
     fn do_save_signed_pre_key(&mut self, prekey_id: u32, record: &SignedPreKeyRecord) -> Result<(), SignalJniError> {
-        Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let jobject_record = jobject_from_serialized(self.env, "org/whispersystems/libsignal/state/SignedPreKeyRecord", &record.serialize()?)?;
+        let callback_sig = "(I,Lorg/whispersystems/libsignal/state/SignedPreKeyRecord;)V";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?), jobject_record.into()];
+        self.env.call_method(self.store, "storeSignedPreKey", callback_sig, &callback_args)?;
+        Ok(())
     }
 }
 
@@ -988,12 +1043,12 @@ impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
 
 pub struct JniSessionStore<'a> {
     env: &'a JNIEnv<'a>,
-    obj: jobject,
+    store: jobject,
 }
 
 impl<'a> JniSessionStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
     }
 }
 
@@ -1019,12 +1074,12 @@ impl<'a> SessionStore for JniSessionStore<'a> {
 
 pub struct JniSenderKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    obj: jobject,
+    store: jobject,
 }
 
 impl<'a> JniSenderKeyStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
     }
 }
 
@@ -1035,15 +1090,16 @@ impl<'a> JniSenderKeyStore<'a> {
         record: &SenderKeyRecord,
     ) -> Result<(), SignalJniError> {
 
-        let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
-        let sender_key_record_jobject = jobject_from_sender_key_record(self.env, record)?;
+        let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
+        let sender_key_record_jobject =
+            jobject_from_serialized(self.env, "org/whispersystems/libsignal/groups/state/SenderKeyRecord", &record.serialize()?)?;
 
         let callback_args = [
             sender_key_name_jobject.into(),
             sender_key_record_jobject.into(),
         ];
         let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;)V";
-        self.env.call_method(self.obj, "storeSenderKey", callback_sig, &callback_args[..])?;
+        self.env.call_method(self.store, "storeSenderKey", callback_sig, &callback_args[..])?;
         exception_check(self.env)?;
 
         Ok(())
@@ -1054,11 +1110,11 @@ impl<'a> JniSenderKeyStore<'a> {
         sender_key_name: &SenderKeyName,
     ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
 
-        let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
+        let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
         let callback_args = [sender_key_name_jobject.into()];
         let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;)Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;";
 
-        let skr_obj = self.env.call_method(self.obj, "loadSenderKey", callback_sig, &callback_args[..])?;
+        let skr_obj = self.env.call_method(self.store, "loadSenderKey", callback_sig, &callback_args[..])?;
         exception_check(self.env)?;
 
         let skr_obj = match skr_obj {
