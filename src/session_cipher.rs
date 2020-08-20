@@ -133,7 +133,9 @@ pub fn message_decrypt_prekey<R: Rng + CryptoRng>(
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
-    let mut session_record = session_store.load_session(&remote_address)?.unwrap_or_else(SessionRecord::new_fresh);
+    let mut session_record = session_store
+        .load_session(&remote_address)?
+        .unwrap_or_else(SessionRecord::new_fresh);
 
     let pre_key_id = session::process_prekey(
         ciphertext,
@@ -204,10 +206,10 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             record.set_session_state(current_state)?; // update the state
             return Ok(ptext);
         }
-        Err(SignalProtocolError::DuplicatedMessage(_,_)) => {
+        Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
             return result;
         }
-        Err(_) => {},
+        Err(_) => {}
     }
 
     let mut updated_session = None;
@@ -222,10 +224,10 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                 updated_session = Some((ptext, idx, updated));
                 break;
             }
-            Err(SignalProtocolError::DuplicatedMessage(_,_)) => {
+            Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
                 return result;
             }
-            _ => {},
+            _ => {}
         }
     }
 
@@ -233,7 +235,9 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         record.promote_old_session(idx, updated_session)?;
         Ok(ptext)
     } else {
-        Err(SignalProtocolError::InvalidMessage("decryption failed; no matching session state"))
+        Err(SignalProtocolError::InvalidMessage(
+            "decryption failed; no matching session state",
+        ))
     }
 }
 
