@@ -22,12 +22,12 @@ free standing.
  */
 
 pub fn process_prekey(
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-    pre_key_store: &mut dyn PreKeyStore,
-    identity_store: &mut dyn IdentityKeyStore,
+    message: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
-    message: &PreKeySignalMessage,
+    identity_store: &mut dyn IdentityKeyStore,
+    pre_key_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
 ) -> Result<Option<PreKeyId>> {
     let their_identity_key = message.identity_key();
 
@@ -42,11 +42,11 @@ pub fn process_prekey(
     }
 
     let unsigned_pre_key_id = process_prekey_v3(
+        message,
+        session_record,
         signed_prekey_store,
         pre_key_store,
         identity_store,
-        session_record,
-        message,
     )?;
 
     identity_store.save_identity(&remote_address, their_identity_key)?;
@@ -55,11 +55,11 @@ pub fn process_prekey(
 }
 
 fn process_prekey_v3(
+    message: &PreKeySignalMessage,
+    session_record: &mut SessionRecord,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     identity_store: &mut dyn IdentityKeyStore,
-    session_record: &mut SessionRecord,
-    message: &PreKeySignalMessage,
 ) -> Result<Option<PreKeyId>> {
     if session_record.has_session_state(
         message.message_version() as u32,

@@ -133,18 +133,15 @@ pub fn message_decrypt_prekey<R: Rng + CryptoRng>(
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
-    let mut session_record = match session_store.load_session(&remote_address)? {
-        Some(s) => s,
-        None => SessionRecord::new_fresh(),
-    };
+    let mut session_record = session_store.load_session(&remote_address)?.unwrap_or_else(SessionRecord::new_fresh);
 
     let pre_key_id = session::process_prekey(
-        signed_pre_key_store,
-        pre_key_store,
-        identity_store,
+        ciphertext,
         &remote_address,
         &mut session_record,
-        ciphertext,
+        identity_store,
+        pre_key_store,
+        signed_pre_key_store,
     )?;
 
     let ptext = decrypt_message_with_record(&mut session_record, ciphertext.message(), csprng)?;
@@ -200,18 +197,35 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
 ) -> Result<Vec<u8>> {
     let mut current_state = record.session_state()?.clone();
 
-    if let Ok(ptext) = decrypt_message_with_state(&mut current_state, ciphertext, csprng) {
-        record.set_session_state(current_state)?; // update the state
-        return Ok(ptext);
+    let result = decrypt_message_with_state(&mut current_state, ciphertext, csprng);
+
+    match result {
+        Ok(ptext) => {
+            record.set_session_state(current_state)?; // update the state
+            return Ok(ptext);
+        }
+        Err(SignalProtocolError::DuplicatedMessage(_,_)) => {
+            return result;
+        }
+        Err(_) => {},
     }
 
     let mut updated_session = None;
 
     for (idx, previous) in record.previous_session_states()?.enumerate() {
         let mut updated = previous.clone();
-        if let Ok(ptext) = decrypt_message_with_state(&mut updated, ciphertext, csprng) {
-            updated_session = Some((ptext, idx, updated));
-            break;
+
+        let result = decrypt_message_with_state(&mut updated, ciphertext, csprng);
+
+        match result {
+            Ok(ptext) => {
+                updated_session = Some((ptext, idx, updated));
+                break;
+            }
+            Err(SignalProtocolError::DuplicatedMessage(_,_)) => {
+                return result;
+            }
+            _ => {},
         }
     }
 
@@ -219,9 +233,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         record.promote_old_session(idx, updated_session)?;
         Ok(ptext)
     } else {
-        Err(SignalProtocolError::InternalError(
-            "decrypt_message_with_record session not found",
-        ))
+        Err(SignalProtocolError::InvalidMessage("decryption failed; no matching session state"))
     }
 }
 

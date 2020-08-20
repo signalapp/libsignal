@@ -616,7 +616,8 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
         format!("It's over {}", TOO_MANY_MESSAGES - 1)
     );
 
-    assert!(decrypt(&mut bob_store, &alice_address, &inflight[0]).is_err());
+    let err = decrypt(&mut bob_store, &alice_address, &inflight[5]).unwrap_err();
+    assert_eq!(err, SignalProtocolError::DuplicatedMessage(2300, 5));
     Ok(())
 }
 
