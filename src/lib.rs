@@ -1,4 +1,5 @@
 #![allow(clippy::missing_safety_doc)]
+#![deny(warnings)]
 
 use jni::objects::{JClass, JString, JValue, JObject};
 use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring, jobject};
@@ -9,48 +10,6 @@ use std::convert::TryFrom;
 mod util;
 
 use crate::util::*;
-
-struct SeedAndIteration {
-    seed: Vec<u8>,
-    iteration: u32
-}
-
-impl SeedAndIteration {
-    fn new(seed: Vec<u8>, iteration: u32) -> Self {
-        Self { seed, iteration }
-    }
-
-    fn seed(&self) -> Result<Vec<u8>, SignalProtocolError> {
-        Ok(self.seed.clone())
-    }
-
-    fn iteration(&self) -> Result<u32, SignalProtocolError> {
-        Ok(self.iteration)
-    }
-}
-
-/* SeedAndIteration (utility class) */
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_util_SeedAndIteration_New(
-    env: JNIEnv,
-    _class: JClass,
-    seed: jbyteArray,
-    iteration: jint
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let seed = env.convert_byte_array(seed)?;
-        let iteration = jint_to_u32(iteration)?;
-        box_object::<SeedAndIteration>(Ok(SeedAndIteration::new(seed, iteration)))
-    })
-}
-
-jni_fn_destroy!(Java_org_whispersystems_libsignal_util_SeedAndIteration_Destroy destroys SeedAndIteration);
-
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_util_SeedAndIteration_GetIteration(SeedAndIteration) using
-                 |si: &SeedAndIteration| si.iteration());
-
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_util_SeedAndIteration_GetSeed(SeedAndIteration) using
-                       |si: &SeedAndIteration| si.seed());
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SignalProtocolAddress_New(
@@ -760,79 +719,6 @@ jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_groups_state_SenderK
 jni_fn_get_new_boxed_optional_obj!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSigningKeyPrivate(PrivateKey) from SenderKeyState,
                                    |sks: &SenderKeyState| sks.signing_key_private());
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSenderChainKeySeed(SenderKeyState) using
-                       |sks: &SenderKeyState| sks.sender_chain_key()?.seed());
-
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSenderChainKeyIteration(SenderKeyState) using
-                 |sks: &SenderKeyState| sks.sender_chain_key()?.iteration());
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_SetSenderChainKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint,
-    seed: jbyteArray) {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-        let seed = env.convert_byte_array(seed)?;
-
-        let sender_chain = SenderChainKey::new(iteration, seed)?;
-        sender_key_state.set_sender_chain_key(sender_chain)?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_AddSenderMessageKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint,
-    seed: jbyteArray) {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-        let seed = env.convert_byte_array(seed)?;
-        let sender_message_key = SenderMessageKey::new(iteration, seed)?;
-        sender_key_state.add_sender_message_key(&sender_message_key)?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_HasSenderMessageKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint) -> jboolean {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-        Ok(sender_key_state.has_sender_message_key(iteration)? as jboolean)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_RemoveSenderMessageKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-
-        if let Some(sender_key) = sender_key_state.remove_sender_message_key(iteration)? {
-            let sai = SeedAndIteration::new(sender_key.seed()?, sender_key.iteration()?);
-            box_object::<SeedAndIteration>(Ok(sai))
-        } else {
-            Ok(0 as ObjectHandle)
-        }
-    })
-}
-
 fn sender_key_name_to_jobject<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
     let sender_key_name_class = env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
     let sender_key_name_ctor_args = [
@@ -915,8 +801,23 @@ impl<'a> JniIdentityKeyStore<'a> {
         let address_jobject = protocol_address_to_jobject(self.env, address)?;
         let key_jobject = jobject_from_serialized(self.env, "org/whispersystems/libsignal/IdentityKey", identity.serialize().as_ref())?;
 
-        Ok(true)
-        //Err(SignalJniError::Signal(SignalProtocolError::InternalError("todo")))
+        let direction_class = self.env.find_class("org/whispersystems/libsignal/state/IdentityKeyStore$Direction")?;
+        let field_name = match direction {
+            Direction::Sending => "SENDING",
+            Direction::Receiving => "RECEIVING",
+        };
+
+        let field_value = self.env.get_static_field(direction_class, field_name, "Lorg/whispersystems/libsignal/state/IdentityKeyStore$Direction;")?;
+
+        let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;Lorg/whispersystems/libsignal/IdentityKey;Lorg/whispersystems/libsignal/state/IdentityKeyStore$Direction;)Z";
+        let callback_args = [address_jobject.into(), key_jobject.into(), field_value];
+        let result = self.env.call_method(self.store, "isTrustedIdentity", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+
+        match result {
+            JValue::Bool(b) => Ok(b != 0),
+            _ => Err(SignalJniError::UnexpectedJniResultType("isTrustedIdentity", result.type_name()))
+        }
     }
 
     fn do_get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>, SignalJniError> {

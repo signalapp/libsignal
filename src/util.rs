@@ -83,8 +83,6 @@ impl From<SignalJniError> for SignalProtocolError {
 }
 
 pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
-    let error_string = format!("{}", error);
-
     let exception_type = match error {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
         SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
@@ -128,6 +126,10 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/whispersystems/libsignal/LegacyMessageException"
         }
 
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_)) => {
+            "org/whispersystems/libsignal/UntrustedIdentityException"
+        }
+
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
         | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
@@ -141,6 +143,12 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(_) => "java/lang/RuntimeException",
 
         SignalJniError::Jni(_) => "java/lang/RuntimeException",
+    };
+
+
+    let error_string = match error {
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(addr)) => addr.name().to_string(),
+        e => format!("{}", e)
     };
 
     let _ = env.throw_new(exception_type, error_string);
@@ -379,7 +387,7 @@ pub fn get_object_with_serialization(env: &JNIEnv,
             Ok(Some(env.convert_byte_array(*o)?))
         }
         _ => {
-            return Err(SignalJniError::UnexpectedJniResultType("serialize", bytes.type_name()))
+            Err(SignalJniError::UnexpectedJniResultType("serialize", bytes.type_name()))
         }
     }
 }
