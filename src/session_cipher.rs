@@ -166,7 +166,7 @@ pub fn message_decrypt_signal<R: Rng + CryptoRng>(
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
         .load_session(&remote_address)?
-        .ok_or(SignalProtocolError::InternalError("SessionCipher::decrypt"))?;
+        .ok_or(SignalProtocolError::SessionNotFound)?;
 
     let ptext = decrypt_message_with_record(&mut session_record, ciphertext, csprng)?;
 
@@ -348,13 +348,10 @@ fn get_or_create_message_key(
     let chain_index = chain_key.index();
 
     if chain_index > counter {
-        if state.has_message_keys(their_ephemeral, counter)? {
-            return Ok(state
-                .remove_message_keys(their_ephemeral, counter)?
-                .ok_or(SignalProtocolError::InternalError("message key not found"))?);
-        } else {
-            return Err(SignalProtocolError::DuplicatedMessage(chain_index, counter));
-        }
+        return match state.get_message_keys(their_ephemeral, counter)? {
+            Some(keys) => Ok(keys),
+            None => Err(SignalProtocolError::DuplicatedMessage(chain_index, counter)),
+        };
     }
 
     assert!(chain_index <= counter);

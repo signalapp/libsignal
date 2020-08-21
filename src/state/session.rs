@@ -256,19 +256,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn has_message_keys(&self, sender: &curve::PublicKey, counter: u32) -> Result<bool> {
-        if let Some(chain_and_index) = self.get_receiver_chain(sender)? {
-            for message_key in chain_and_index.0.message_keys {
-                if message_key.index == counter {
-                    return Ok(true);
-                }
-            }
-        }
-
-        Ok(false)
-    }
-
-    pub fn remove_message_keys(
+    pub fn get_message_keys(
         &mut self,
         sender: &curve::PublicKey,
         counter: u32,
