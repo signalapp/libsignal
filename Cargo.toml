@@ -12,6 +12,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 libsignal-protocol-rust = { path = "../libsignal-protocol-rust" }
-#libsignal-protocol-rust = { git = "https://github.com/signalapp/libsignal-protocol-rust" }
+#libsignal-protocol-rust = { git = "ssh://git@github.com/signalapp/libsignal-protocol-rust.git" }
 jni = "0.17"
 rand = "0.7.3"

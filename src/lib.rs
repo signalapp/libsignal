@@ -1,4 +1,5 @@
 #![allow(clippy::missing_safety_doc)]
+#![deny(warnings)]
 
 use jni::objects::{JClass, JString, JValue, JObject};
 use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring, jobject};
@@ -9,48 +10,6 @@ use std::convert::TryFrom;
 mod util;
 
 use crate::util::*;
-
-struct SeedAndIteration {
-    seed: Vec<u8>,
-    iteration: u32
-}
-
-impl SeedAndIteration {
-    fn new(seed: Vec<u8>, iteration: u32) -> Self {
-        Self { seed, iteration }
-    }
-
-    fn seed(&self) -> Result<Vec<u8>, SignalProtocolError> {
-        Ok(self.seed.clone())
-    }
-
-    fn iteration(&self) -> Result<u32, SignalProtocolError> {
-        Ok(self.iteration)
-    }
-}
-
-/* SeedAndIteration (utility class) */
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_util_SeedAndIteration_New(
-    env: JNIEnv,
-    _class: JClass,
-    seed: jbyteArray,
-    iteration: jint
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let seed = env.convert_byte_array(seed)?;
-        let iteration = jint_to_u32(iteration)?;
-        box_object::<SeedAndIteration>(Ok(SeedAndIteration::new(seed, iteration)))
-    })
-}
-
-jni_fn_destroy!(Java_org_whispersystems_libsignal_util_SeedAndIteration_Destroy destroys SeedAndIteration);
-
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_util_SeedAndIteration_GetIteration(SeedAndIteration) using
-                 |si: &SeedAndIteration| si.iteration());
-
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_util_SeedAndIteration_GetSeed(SeedAndIteration) using
-                       |si: &SeedAndIteration| si.seed());
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SignalProtocolAddress_New(
@@ -760,91 +719,7 @@ jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_groups_state_SenderK
 jni_fn_get_new_boxed_optional_obj!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSigningKeyPrivate(PrivateKey) from SenderKeyState,
                                    |sks: &SenderKeyState| sks.signing_key_private());
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSenderChainKeySeed(SenderKeyState) using
-                       |sks: &SenderKeyState| sks.sender_chain_key()?.seed());
-
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSenderChainKeyIteration(SenderKeyState) using
-                 |sks: &SenderKeyState| sks.sender_chain_key()?.iteration());
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_SetSenderChainKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint,
-    seed: jbyteArray) {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-        let seed = env.convert_byte_array(seed)?;
-
-        let sender_chain = SenderChainKey::new(iteration, seed)?;
-        sender_key_state.set_sender_chain_key(sender_chain)?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_AddSenderMessageKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint,
-    seed: jbyteArray) {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-        let seed = env.convert_byte_array(seed)?;
-        let sender_message_key = SenderMessageKey::new(iteration, seed)?;
-        sender_key_state.add_sender_message_key(&sender_message_key)?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_HasSenderMessageKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint) -> jboolean {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-        Ok(sender_key_state.has_sender_message_key(iteration)? as jboolean)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_RemoveSenderMessageKey(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    iteration: jint) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let sender_key_state = native_handle_cast::<SenderKeyState>(handle)?;
-        let iteration = jint_to_u32(iteration)?;
-
-        if let Some(sender_key) = sender_key_state.remove_sender_message_key(iteration)? {
-            let sai = SeedAndIteration::new(sender_key.seed()?, sender_key.iteration()?);
-            box_object::<SeedAndIteration>(Ok(sai))
-        } else {
-            Ok(0 as ObjectHandle)
-        }
-    })
-}
-
-pub struct JniSenderKeyStore<'a> {
-    env: &'a JNIEnv<'a>,
-    obj: jobject,
-}
-
-impl<'a> JniSenderKeyStore<'a> {
-    fn new(env: &'a JNIEnv, obj: jobject) -> Self {
-        Self { env, obj }
-    }
-}
-
-fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
+fn sender_key_name_to_jobject<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
     let sender_key_name_class = env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
     let sender_key_name_ctor_args = [
         JObject::from(env.new_string(sender_key_name.group_id()?)?).into(),
@@ -857,34 +732,424 @@ fn jobject_from_sender_key_name<'a>(env: &'a JNIEnv, sender_key_name: &SenderKey
     Ok(sender_key_name_jobject)
 }
 
-fn jobject_from_sender_key_record<'a>(env: &'a JNIEnv, sender_key_record: &SenderKeyRecord) -> Result<JObject<'a>, SignalJniError> {
-    let sender_key_record_class = env.find_class("org/whispersystems/libsignal/groups/state/SenderKeyRecord")?;
-    let sender_key_record_ctor_sig = "([B)V";
-    let sender_key_record_ctor_args = [
-        JValue::from(to_jbytearray(env, sender_key_record.serialize())?),
+fn protocol_address_to_jobject<'a>(env: &'a JNIEnv, address: &ProtocolAddress) -> Result<JObject<'a>, SignalJniError> {
+    let address_class = env.find_class("org/whispersystems/libsignal/SignalProtocolAddress")?;
+    let address_ctor_args = [
+        JObject::from(env.new_string(address.name())?).into(),
+        JValue::from(jint_from_u32(Ok(address.device_id()))?)
     ];
-    let sender_key_record_jobject = env.new_object(sender_key_record_class, sender_key_record_ctor_sig, &sender_key_record_ctor_args)?;
-    Ok(sender_key_record_jobject)
+
+    let address_ctor_sig = "(Ljava/lang/String;I)V";
+    let address_jobject = env.new_object(address_class, address_ctor_sig, &address_ctor_args)?;
+    Ok(address_jobject)
 }
 
-fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
-    if env.exception_check()? {
-        let throwable = env.exception_occurred()?;
-        env.exception_clear()?;
+pub struct JniIdentityKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    store: jobject,
+}
 
-        let getmessage_sig = "()Ljava/lang/String;";
+impl<'a> JniIdentityKeyStore<'a> {
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
+    }
+}
 
-        let jmessage = env.call_method(throwable, "getMessage", getmessage_sig, &[])?;
+impl<'a> JniIdentityKeyStore<'a> {
+    fn do_get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalJniError> {
+        let callback_sig = "()Lorg/whispersystems/libsignal/IdentityKeyPair;";
+        let bits = get_object_with_serialization(self.env, self.store, &[], callback_sig, "getIdentityKeyPair")?;
 
-        if let JValue::Object(o) = jmessage {
-            let message: String = env.get_string(JString::from(o))?.into();
-            return Err(SignalJniError::ExceptionDuringCallback(message));
-        } else {
-            return Err(SignalJniError::ExceptionDuringCallback("Exception that didn't implement getMessage".to_string()));
+        match bits {
+            None => Err(SignalJniError::Signal(SignalProtocolError::InternalError("getIdentityKeyPair returned null"))),
+            Some(k) => Ok(IdentityKeyPair::try_from(k.as_ref())?),
         }
     }
 
-    Ok(())
+    fn do_get_local_registration_id(&self) -> Result<u32, SignalJniError> {
+        let callback_sig = "()I";
+
+        let rvalue = self.env.call_method(self.store, "getLocalRegistrationId", callback_sig, &[])?;
+        exception_check(self.env)?;
+
+        match rvalue {
+            JValue::Int(i) => jint_to_u32(i),
+            _ => Err(SignalJniError::UnexpectedJniResultType("getLocalRegistrationId", rvalue.type_name()))
+        }
+    }
+
+    fn do_save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool, SignalJniError> {
+        let address_jobject = protocol_address_to_jobject(self.env, address)?;
+        let key_jobject = jobject_from_serialized(self.env, "org/whispersystems/libsignal/IdentityKey", identity.serialize().as_ref())?;
+        let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;Lorg/whispersystems/libsignal/IdentityKey;)Z";
+        let callback_args = [address_jobject.into(), key_jobject.into()];
+        let result = self.env.call_method(self.store, "saveIdentity", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+
+        match result {
+            JValue::Bool(b) => Ok(b != 0),
+            _ => Err(SignalJniError::UnexpectedJniResultType("saveIdentity", result.type_name()))
+        }
+    }
+
+    fn do_is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        direction: Direction,
+    ) -> Result<bool, SignalJniError> {
+        let address_jobject = protocol_address_to_jobject(self.env, address)?;
+        let key_jobject = jobject_from_serialized(self.env, "org/whispersystems/libsignal/IdentityKey", identity.serialize().as_ref())?;
+
+        let direction_class = self.env.find_class("org/whispersystems/libsignal/state/IdentityKeyStore$Direction")?;
+        let field_name = match direction {
+            Direction::Sending => "SENDING",
+            Direction::Receiving => "RECEIVING",
+        };
+
+        let field_value = self.env.get_static_field(direction_class, field_name, "Lorg/whispersystems/libsignal/state/IdentityKeyStore$Direction;")?;
+
+        let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;Lorg/whispersystems/libsignal/IdentityKey;Lorg/whispersystems/libsignal/state/IdentityKeyStore$Direction;)Z";
+        let callback_args = [address_jobject.into(), key_jobject.into(), field_value];
+        let result = self.env.call_method(self.store, "isTrustedIdentity", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+
+        match result {
+            JValue::Bool(b) => Ok(b != 0),
+            _ => Err(SignalJniError::UnexpectedJniResultType("isTrustedIdentity", result.type_name()))
+        }
+    }
+
+    fn do_get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>, SignalJniError> {
+        let address_jobject = protocol_address_to_jobject(self.env, address)?;
+        let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;)Lorg/whispersystems/libsignal/IdentityKey;";
+        let callback_args = [address_jobject.into()];
+
+        let bits = get_object_with_serialization(self.env, self.store, &callback_args, callback_sig, "getIdentity")?;
+
+        match bits {
+            None => Ok(None),
+            Some(k) => Ok(Some(IdentityKey::decode(&k)?)),
+        }
+    }
+}
+
+impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
+
+    fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
+        Ok(self.do_get_identity_key_pair()?)
+    }
+
+    fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
+        Ok(self.do_get_local_registration_id()?)
+    }
+
+    fn save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool, SignalProtocolError> {
+        Ok(self.do_save_identity(address, identity)?)
+    }
+
+    fn is_trusted_identity(
+        &self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        direction: Direction,
+    ) -> Result<bool, SignalProtocolError> {
+        Ok(self.do_is_trusted_identity(address, identity, direction)?)
+    }
+
+    fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>, SignalProtocolError> {
+        Ok(self.do_get_identity(address)?)
+    }
+}
+
+pub struct JniPreKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    store: jobject,
+}
+
+impl<'a> JniPreKeyStore<'a> {
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
+    }
+}
+
+impl<'a> JniPreKeyStore<'a> {
+    fn do_get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalJniError> {
+        let callback_sig = "(I)Lorg/whispersystems/libsignal/state/PreKeyRecord;";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
+        let pk = get_object_with_native_handle::<PreKeyRecord>(self.env, self.store, &callback_args, callback_sig, "loadPreKey")?;
+        match pk {
+            Some(pk) => Ok(pk),
+            None => Err(SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)),
+        }
+    }
+
+    fn do_save_pre_key(&mut self, prekey_id: u32, record: &PreKeyRecord) -> Result<(), SignalJniError> {
+        let jobject_record = jobject_from_serialized(self.env, "org/whispersystems/libsignal/state/PreKeyRecord", &record.serialize()?)?;
+        let callback_sig = "(I,Lorg/whispersystems/libsignal/state/PreKeyRecord;)V";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?), jobject_record.into()];
+        self.env.call_method(self.store, "storePreKey", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+        Ok(())
+    }
+
+    fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
+        let callback_sig = "(I)V";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
+        self.env.call_method(self.store, "removePreKey", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+        Ok(())
+    }
+}
+
+impl<'a> PreKeyStore for JniPreKeyStore<'a> {
+    fn get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalProtocolError> {
+        Ok(self.do_get_pre_key(prekey_id)?)
+    }
+
+    fn save_pre_key(&mut self, prekey_id: u32, record: &PreKeyRecord) -> Result<(), SignalProtocolError> {
+        Ok(self.do_save_pre_key(prekey_id, record)?)
+    }
+
+    fn remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalProtocolError> {
+        Ok(self.do_remove_pre_key(prekey_id)?)
+    }
+}
+
+pub struct JniSignedPreKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    store: jobject,
+}
+
+impl<'a> JniSignedPreKeyStore<'a> {
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
+    }
+}
+
+impl<'a> JniSignedPreKeyStore<'a> {
+    fn do_get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalJniError> {
+        let callback_sig = "(I)Lorg/whispersystems/libsignal/state/SignedPreKeyRecord;";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
+        let spk = get_object_with_native_handle::<SignedPreKeyRecord>(self.env, self.store, &callback_args, callback_sig, "loadSignedPreKey")?;
+        match spk {
+            Some(spk) => Ok(spk),
+            None => Err(SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)),
+        }
+    }
+
+    fn do_save_signed_pre_key(&mut self, prekey_id: u32, record: &SignedPreKeyRecord) -> Result<(), SignalJniError> {
+        let jobject_record = jobject_from_serialized(self.env, "org/whispersystems/libsignal/state/SignedPreKeyRecord", &record.serialize()?)?;
+        let callback_sig = "(I,Lorg/whispersystems/libsignal/state/SignedPreKeyRecord;)V";
+        let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?), jobject_record.into()];
+        self.env.call_method(self.store, "storeSignedPreKey", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+        Ok(())
+    }
+}
+
+impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
+    fn get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalProtocolError> {
+        Ok(self.do_get_signed_pre_key(prekey_id)?)
+    }
+
+    fn save_signed_pre_key(&mut self, prekey_id: u32, record: &SignedPreKeyRecord) -> Result<(), SignalProtocolError> {
+        Ok(self.do_save_signed_pre_key(prekey_id, record)?)
+    }
+}
+
+pub struct JniSessionStore<'a> {
+    env: &'a JNIEnv<'a>,
+    store: jobject,
+}
+
+impl<'a> JniSessionStore<'a> {
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
+    }
+}
+
+impl<'a> JniSessionStore<'a> {
+    fn do_load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>, SignalJniError> {
+        let address_jobject = protocol_address_to_jobject(self.env, address)?;
+
+        let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;)Lorg/whispersystems/libsignal/state/SessionRecord;";
+        let callback_args = [address_jobject.into()];
+        let session = get_object_with_serialization(self.env, self.store, &callback_args, callback_sig, "loadSession")?;
+
+        match session {
+            None => Ok(None),
+            Some(s) => Ok(Some(SessionRecord::deserialize(&s)?))
+        }
+    }
+
+    fn do_store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<(), SignalJniError> {
+        let address_jobject = protocol_address_to_jobject(self.env, address)?;
+        let session_jobject =
+            jobject_from_serialized(self.env, "org/whispersystems/libsignal/state/SessionRecord", &record.serialize()?)?;
+
+        let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;Lorg/whispersystems/libsignal/state/SessionRecord;)V";
+        let callback_args = [address_jobject.into(), session_jobject.into()];
+        self.env.call_method(self.store, "storeSession", callback_sig, &callback_args)?;
+        exception_check(self.env)?;
+        Ok(())
+    }
+}
+
+impl<'a> SessionStore for JniSessionStore<'a> {
+    fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>, SignalProtocolError> {
+        Ok(self.do_load_session(address)?)
+    }
+
+    fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<(), SignalProtocolError> {
+        Ok(self.do_store_session(address, record)?)
+    }
+}
+
+fn create_identity_store<'a>(env: &'a JNIEnv, obj: jobject) -> Result<JniIdentityKeyStore<'a>, SignalJniError> {
+    let identity_key_store = check_jobject_type(&env, obj, "org/whispersystems/libsignal/state/IdentityKeyStore")?;
+    Ok(JniIdentityKeyStore::new(&env, identity_key_store))
+}
+
+fn create_session_store<'a>(env: &'a JNIEnv, obj: jobject) -> Result<JniSessionStore<'a>, SignalJniError> {
+    let session_store = check_jobject_type(&env, obj, "org/whispersystems/libsignal/state/SessionStore")?;
+    Ok(JniSessionStore::new(&env, session_store))
+}
+
+fn create_prekey_store<'a>(env: &'a JNIEnv, obj: jobject) -> Result<JniPreKeyStore<'a>, SignalJniError> {
+    let prekey_store = check_jobject_type(&env, obj, "org/whispersystems/libsignal/state/PreKeyStore")?;
+    Ok(JniPreKeyStore::new(&env, prekey_store))
+}
+
+fn create_signed_prekey_store<'a>(env: &'a JNIEnv, obj: jobject) -> Result<JniSignedPreKeyStore<'a>, SignalJniError> {
+    let signed_prekey_store = check_jobject_type(&env, obj, "org/whispersystems/libsignal/state/SignedPreKeyStore")?;
+    Ok(JniSignedPreKeyStore::new(&env, signed_prekey_store))
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_ProcessPreKeyBundle(
+    env: JNIEnv,
+    _class: JClass,
+    bundle: ObjectHandle,
+    protocol_address: ObjectHandle,
+    session_store: jobject,
+    identity_key_store: jobject) {
+
+    run_ffi_safe(&env, || {
+        let bundle = native_handle_cast::<PreKeyBundle>(bundle)?;
+        let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
+
+        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
+        let mut session_store = create_session_store(&env, session_store)?;
+
+        let mut csprng = rand::rngs::OsRng;
+        process_prekey_bundle(&protocol_address, &mut session_store, &mut identity_key_store,
+                              bundle, &mut csprng)?;
+
+        Ok(())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_EncryptMessage(
+    env: JNIEnv,
+    _class: JClass,
+    message: jbyteArray,
+    protocol_address: ObjectHandle,
+    session_store: jobject,
+    identity_key_store: jobject) -> jobject {
+
+    run_ffi_safe(&env, || {
+        let message = env.convert_byte_array(message)?;
+        let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
+
+        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
+        let mut session_store = create_session_store(&env, session_store)?;
+
+        let ctext = message_encrypt(&message, &protocol_address, &mut session_store, &mut identity_key_store)?;
+
+        let obj = match ctext {
+            CiphertextMessage::SignalMessage(m) => {
+                jobject_from_native_handle(&env,
+                                           "org/whispersystems/libsignal/protocol/SignalMessage",
+                                           box_object::<SignalMessage>(Ok(m))?)
+            }
+            CiphertextMessage::PreKeySignalMessage(m) => {
+                jobject_from_native_handle(&env,
+                                           "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                                           box_object::<PreKeySignalMessage>(Ok(m))?)
+            }
+            _ => Err(SignalJniError::Signal(SignalProtocolError::InternalError("Unexpected result type from message_encrypt")))
+        };
+
+        Ok(obj?.into_inner())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_DecryptSignalMessage(
+    env: JNIEnv,
+    _class: JClass,
+    message: ObjectHandle,
+    protocol_address: ObjectHandle,
+    session_store: jobject,
+    identity_key_store: jobject) -> jbyteArray {
+
+    run_ffi_safe(&env, || {
+        let message = native_handle_cast::<SignalMessage>(message)?;
+        let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
+
+        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
+        let mut session_store = create_session_store(&env, session_store)?;
+
+        let mut csprng = rand::rngs::OsRng;
+        let ptext = message_decrypt_signal(&message, &protocol_address, &mut session_store, &mut identity_key_store, &mut csprng)?;
+
+        to_jbytearray(&env, Ok(ptext))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_DecryptPreKeySignalMessage(
+    env: JNIEnv,
+    _class: JClass,
+    message: ObjectHandle,
+    protocol_address: ObjectHandle,
+    session_store: jobject,
+    identity_key_store: jobject,
+    prekey_store: jobject,
+    signed_prekey_store: jobject) -> jbyteArray {
+
+    run_ffi_safe(&env, || {
+        let message = native_handle_cast::<PreKeySignalMessage>(message)?;
+        let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
+        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
+        let mut session_store = create_session_store(&env, session_store)?;
+        let mut prekey_store = create_prekey_store(&env, prekey_store)?;
+        let mut signed_prekey_store = create_signed_prekey_store(&env, signed_prekey_store)?;
+
+        let mut csprng = rand::rngs::OsRng;
+        let ptext = message_decrypt_prekey(&message,
+                                           &protocol_address,
+                                           &mut session_store,
+                                           &mut identity_key_store,
+                                           &mut prekey_store,
+                                           &mut signed_prekey_store,
+                                           &mut csprng)?;
+
+        to_jbytearray(&env, Ok(ptext))
+    })
+}
+
+pub struct JniSenderKeyStore<'a> {
+    env: &'a JNIEnv<'a>,
+    store: jobject,
+}
+
+impl<'a> JniSenderKeyStore<'a> {
+    fn new(env: &'a JNIEnv, store: jobject) -> Self {
+        Self { env, store }
+    }
 }
 
 impl<'a> JniSenderKeyStore<'a> {
@@ -894,15 +1159,16 @@ impl<'a> JniSenderKeyStore<'a> {
         record: &SenderKeyRecord,
     ) -> Result<(), SignalJniError> {
 
-        let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
-        let sender_key_record_jobject = jobject_from_sender_key_record(self.env, record)?;
+        let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
+        let sender_key_record_jobject =
+            jobject_from_serialized(self.env, "org/whispersystems/libsignal/groups/state/SenderKeyRecord", &record.serialize()?)?;
 
         let callback_args = [
             sender_key_name_jobject.into(),
             sender_key_record_jobject.into(),
         ];
         let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;)V";
-        self.env.call_method(self.obj, "storeSenderKey", callback_sig, &callback_args[..])?;
+        self.env.call_method(self.store, "storeSenderKey", callback_sig, &callback_args[..])?;
         exception_check(self.env)?;
 
         Ok(())
@@ -913,37 +1179,17 @@ impl<'a> JniSenderKeyStore<'a> {
         sender_key_name: &SenderKeyName,
     ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
 
-        let sender_key_name_jobject = jobject_from_sender_key_name(self.env, sender_key_name)?;
-        let callback_args = [
-            sender_key_name_jobject.into(),
-        ];
+        let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
+        let callback_args = [sender_key_name_jobject.into()];
         let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;)Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;";
 
-        let skr_obj = self.env.call_method(self.obj, "loadSenderKey", callback_sig, &callback_args[..])?;
-        exception_check(self.env)?;
+        let skr = get_object_with_serialization(self.env, self.store, &callback_args, callback_sig, "loadSenderKey")?;
 
-        let skr_obj = match skr_obj {
-            JValue::Object(o) => *o,
-            _ => {
-                return Err(SignalJniError::BadJniParameter("loadSenderKey returned non-object"))
-            }
-        };
-
-        let serialized_bytes = self.env.call_method(skr_obj, "serialize", "()[B", &[])?;
-        exception_check(self.env)?;
-
-        match serialized_bytes {
-            JValue::Object(o) => {
-                let bytes = self.env.convert_byte_array(*o)?;
-                let skr = SenderKeyRecord::deserialize(&bytes)?;
-                Ok(Some(skr))
-            }
-            _ => {
-                Err(SignalJniError::BadJniParameter("SenderKeyRecord::serialize returned unexpected type"))
-            }
+        match skr {
+            None => Ok(None),
+            Some(k) => Ok(Some(SenderKeyRecord::deserialize(&k)?))
         }
     }
-
 }
 
 impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
@@ -952,29 +1198,15 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
     ) -> Result<(), SignalProtocolError> {
-        self.do_store_sender_key(sender_key_name, record).map_err(|e| e.to_signal_protocol_error())
+        Ok(self.do_store_sender_key(sender_key_name, record)?)
     }
 
     fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        self.do_load_sender_key(sender_key_name).map_err(|e| e.to_signal_protocol_error())
+        Ok(self.do_load_sender_key(sender_key_name)?)
     }
-}
-
-fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &str) -> Result<jobject, SignalJniError> {
-    if obj == std::ptr::null_mut() {
-        return Err(SignalJniError::NullHandle);
-    }
-
-    let class = env.find_class(class_name)?;
-
-    if !env.is_instance_of(obj, class)? {
-        return Err(SignalJniError::BadJniParameter("SenderKeyStore"));
-    }
-
-    Ok(obj)
 }
 
 #[no_mangle]
@@ -1060,3 +1292,94 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
     })
 }
 
+// The following are just exposed to make it possible to retain some of the Java tests:
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionState_InitializeAliceSession(
+    env: JNIEnv,
+    _class: JClass,
+    identity_key_private: ObjectHandle,
+    identity_key_public: ObjectHandle,
+    base_private: ObjectHandle,
+    base_public: ObjectHandle,
+    their_identity_key: ObjectHandle,
+    their_signed_prekey: ObjectHandle,
+    their_ratchet_key: ObjectHandle) -> jbyteArray {
+
+    run_ffi_safe(&env, || {
+        let identity_key_private = native_handle_cast::<PrivateKey>(identity_key_private)?;
+        let identity_key_public = native_handle_cast::<PublicKey>(identity_key_public)?;
+        let base_private = native_handle_cast::<PrivateKey>(base_private)?;
+        let base_public = native_handle_cast::<PublicKey>(base_public)?;
+        let their_identity_key = native_handle_cast::<PublicKey>(their_identity_key)?;
+        let their_signed_prekey = native_handle_cast::<PublicKey>(their_signed_prekey)?;
+        let their_ratchet_key = native_handle_cast::<PublicKey>(their_ratchet_key)?;
+
+        let our_identity_key_pair = IdentityKeyPair::new(
+            IdentityKey::new(*identity_key_public), *identity_key_private);
+
+        let our_base_key_pair = KeyPair::new(*base_public, *base_private);
+
+        let their_identity_key = IdentityKey::new(*their_identity_key);
+
+        let mut csprng = rand::rngs::OsRng;
+
+        let parameters = AliceSignalProtocolParameters::new(
+            our_identity_key_pair,
+            our_base_key_pair,
+            their_identity_key,
+            *their_signed_prekey,
+            None,
+            *their_ratchet_key);
+
+        let session = initialize_alice_session(&parameters, &mut csprng)?;
+
+        to_jbytearray(&env, session.serialize())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionState_InitializeBobSession(
+    env: JNIEnv,
+    _class: JClass,
+    identity_key_private: ObjectHandle,
+    identity_key_public: ObjectHandle,
+    signed_prekey_private: ObjectHandle,
+    signed_prekey_public: ObjectHandle,
+    eph_private: ObjectHandle,
+    eph_public: ObjectHandle,
+    their_identity_key: ObjectHandle,
+    their_base_key: ObjectHandle) -> jbyteArray {
+
+    run_ffi_safe(&env, || {
+        let identity_key_private = native_handle_cast::<PrivateKey>(identity_key_private)?;
+        let identity_key_public = native_handle_cast::<PublicKey>(identity_key_public)?;
+        let signed_prekey_private = native_handle_cast::<PrivateKey>(signed_prekey_private)?;
+        let signed_prekey_public = native_handle_cast::<PublicKey>(signed_prekey_public)?;
+        let eph_private = native_handle_cast::<PrivateKey>(eph_private)?;
+        let eph_public = native_handle_cast::<PublicKey>(eph_public)?;
+        let their_identity_key = native_handle_cast::<PublicKey>(their_identity_key)?;
+        let their_base_key = native_handle_cast::<PublicKey>(their_base_key)?;
+
+        let our_identity_key_pair = IdentityKeyPair::new(
+            IdentityKey::new(*identity_key_public), *identity_key_private);
+
+        let our_signed_pre_key_pair = KeyPair::new(*signed_prekey_public, *signed_prekey_private);
+
+        let our_ratchet_key_pair = KeyPair::new(*eph_public, *eph_private);
+
+        let their_identity_key = IdentityKey::new(*their_identity_key);
+
+        let parameters = BobSignalProtocolParameters::new(
+            our_identity_key_pair,
+            our_signed_pre_key_pair,
+            None,
+            our_ratchet_key_pair,
+            their_identity_key,
+            *their_base_key);
+
+        let session = initialize_bob_session(&parameters)?;
+
+        to_jbytearray(&env, session.serialize())
+    })
+}

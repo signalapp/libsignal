@@ -1,4 +1,5 @@
-use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jstring};
+use jni::sys::{_jobject, jobject, jboolean, jbyteArray, jint, jlong, jstring};
+use jni::objects::{JString, JValue, JObject};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
 use std::fmt;
@@ -8,6 +9,7 @@ pub enum SignalJniError {
     Signal(SignalProtocolError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
+    UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -39,6 +41,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ExceptionDuringCallback(s) => write!(f, "exception recieved during callback {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
+            SignalJniError::UnexpectedJniResultType(m, t) => write!(f, "calling {} returned unexpected type {}", m, t),
             SignalJniError::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
             }
@@ -62,13 +65,29 @@ impl From<jni::errors::Error> for SignalJniError {
     }
 }
 
-pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
-    let error_string = format!("{}", error);
+impl From<SignalJniError> for SignalProtocolError {
+    fn from(err: SignalJniError) -> SignalProtocolError {
+        match err {
+            SignalJniError::Signal(e) => e,
+            SignalJniError::Jni(e) => {
+                SignalProtocolError::FfiBindingError(e.to_string())
+            }
+            SignalJniError::BadJniParameter(m) => {
+                SignalProtocolError::InvalidArgument(m.to_string())
+            }
+            _ => {
+                SignalProtocolError::FfiBindingError(format!("{}", err))
+            }
+        }
+    }
+}
 
+pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
     let exception_type = match error {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
         SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
         SignalJniError::BadJniParameter(_) => "java/lang/AssertionError",
+        SignalJniError::UnexpectedJniResultType(_,_) => "java/lang/AssertionError",
         SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
 
         SignalJniError::ExceptionDuringCallback(_) => "java/lang/RuntimeException",
@@ -84,6 +103,7 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
+        | SignalJniError::Signal(SignalProtocolError::SignatureValidationFailed)
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
         | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _)) => {
             "org/whispersystems/libsignal/InvalidKeyException"
@@ -106,6 +126,10 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/whispersystems/libsignal/LegacyMessageException"
         }
 
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_)) => {
+            "org/whispersystems/libsignal/UntrustedIdentityException"
+        }
+
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
         | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
@@ -119,6 +143,12 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(_) => "java/lang/RuntimeException",
 
         SignalJniError::Jni(_) => "java/lang/RuntimeException",
+    };
+
+
+    let error_string = match error {
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(addr)) => addr.name().to_string(),
+        e => format!("{}", e)
     };
 
     let _ = env.throw_new(exception_type, error_string);
@@ -268,6 +298,112 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
         }
         Err(e) => Err(SignalJniError::Signal(e)),
     }
+}
+
+pub fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
+    if env.exception_check()? {
+        let throwable = env.exception_occurred()?;
+        env.exception_clear()?;
+
+        let getmessage_sig = "()Ljava/lang/String;";
+
+        let jmessage = env.call_method(throwable, "getMessage", getmessage_sig, &[])?;
+
+        if let JValue::Object(o) = jmessage {
+            let message: String = env.get_string(JString::from(o))?.into();
+            return Err(SignalJniError::ExceptionDuringCallback(message));
+        } else {
+            return Err(SignalJniError::ExceptionDuringCallback("Exception that didn't implement getMessage".to_string()));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &'static str) -> Result<jobject, SignalJniError> {
+    if obj.is_null() {
+        return Err(SignalJniError::NullHandle);
+    }
+
+    let class = env.find_class(class_name)?;
+
+    if !env.is_instance_of(obj, class)? {
+        return Err(SignalJniError::BadJniParameter(class_name));
+    }
+
+    Ok(obj)
+}
+
+pub fn get_object_with_native_handle<T: 'static + Clone>(env: &JNIEnv,
+                                                         store_obj: jobject,
+                                                         callback_args: &[JValue],
+                                                         callback_sig: &'static str,
+                                                         callback_fn: &'static str) -> Result<Option<T>, SignalJniError> {
+    let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
+    exception_check(env)?;
+
+    let obj = match rvalue {
+        JValue::Object(o) => *o,
+        _ => return Err(SignalJniError::UnexpectedJniResultType(callback_fn, rvalue.type_name()))
+    };
+
+    if obj.is_null() {
+        return Ok(None);
+    }
+
+    let handle = env.call_method(obj, "nativeHandle", "()J", &[])?;
+    exception_check(env)?;
+    match handle {
+        JValue::Long(handle) => {
+            let object = unsafe { native_handle_cast::<T>(handle)? };
+            Ok(Some(object.clone()))
+        }
+        _ => Err(SignalJniError::UnexpectedJniResultType("nativeHandle", handle.type_name()))
+    }
+}
+
+pub fn get_object_with_serialization(env: &JNIEnv,
+                                     store_obj: jobject,
+                                     callback_args: &[JValue],
+                                     callback_sig: &'static str,
+                                     callback_fn: &'static str) -> Result<Option<Vec<u8>>, SignalJniError> {
+    let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
+    exception_check(env)?;
+
+    let obj = match rvalue {
+        JValue::Object(o) => *o,
+        _ => return Err(SignalJniError::UnexpectedJniResultType(callback_fn, rvalue.type_name()))
+    };
+
+    if obj.is_null() {
+        return Ok(None);
+    }
+
+    let bytes = env.call_method(obj, "serialize", "()[B", &[])?;
+    exception_check(env)?;
+
+    match bytes {
+        JValue::Object(o) => {
+            Ok(Some(env.convert_byte_array(*o)?))
+        }
+        _ => {
+            Err(SignalJniError::UnexpectedJniResultType("serialize", bytes.type_name()))
+        }
+    }
+}
+
+pub fn jobject_from_serialized<'a>(env: &'a JNIEnv, class_name: &str, serialized: &[u8]) -> Result<JObject<'a>, SignalJniError> {
+    let class_type = env.find_class(class_name)?;
+    let ctor_sig = "([B)V";
+    let ctor_args = [JValue::from(to_jbytearray(env, Ok(serialized))?)];
+    Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
+}
+
+pub fn jobject_from_native_handle<'a>(env: &'a JNIEnv, class_name: &str, boxed_handle: ObjectHandle) -> Result<JObject<'a>, SignalJniError> {
+    let class_type = env.find_class(class_name)?;
+    let ctor_sig = "(J)V";
+    let ctor_args = [JValue::from(boxed_handle)];
+    Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 
 #[macro_export]
