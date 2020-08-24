@@ -12,7 +12,7 @@ mod util;
 use crate::util::*;
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SignalProtocolAddress_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SignalProtocolAddress_nativeNew(
     env: JNIEnv,
     _class: JClass,
     name: JString,
@@ -26,21 +26,21 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SignalProtocolAd
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_SignalProtocolAddress_Destroy destroys ProtocolAddress);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_SignalProtocolAddress_nativeDestroy destroys ProtocolAddress);
 
-jni_fn_get_jstring!(Java_org_whispersystems_libsignal_SignalProtocolAddress_Name(ProtocolAddress) using
+jni_fn_get_jstring!(Java_org_whispersystems_libsignal_SignalProtocolAddress_nativeName(ProtocolAddress) using
                     |p: &ProtocolAddress| Ok(p.name().to_string()));
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_SignalProtocolAddress_DeviceId(ProtocolAddress) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_SignalProtocolAddress_nativeDeviceId(ProtocolAddress) using
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_Deserialize is PublicKey::deserialize);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeDeserialize is PublicKey::deserialize);
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_Serialize(PublicKey) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeSerialize(PublicKey) using
                        |k: &PublicKey| Ok(k.serialize()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_Verify(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeVerify(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -55,15 +55,15 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_Destroy destroys PublicKey);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeDestroy destroys PublicKey);
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Deserialize is PrivateKey::deserialize);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeDeserialize is PrivateKey::deserialize);
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Serialize(PrivateKey) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeSerialize(PrivateKey) using
                        |k: &PrivateKey| Ok(k.serialize()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Generate(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeGenerate(
     env: JNIEnv,
     _class: JClass,
 ) -> ObjectHandle {
@@ -74,11 +74,11 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey
     })
 }
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_GetPublicKey(PublicKey) from PrivateKey,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeGetPublicKey(PublicKey) from PrivateKey,
                           |k: &PrivateKey| k.public_key());
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Sign(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeSign(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -94,7 +94,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Agree(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeAgree(
     env: JNIEnv,
     _class: JClass,
     private_key_handle: ObjectHandle,
@@ -108,10 +108,10 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPrivateKey
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_Destroy destroys PrivateKey);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_ecc_ECPrivateKey_nativeDestroy destroys PrivateKey);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_DisplayableFingerprint_Format(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_DisplayableFingerprint_nativeFormat(
     env: JNIEnv,
     _class: JClass,
     local: jbyteArray,
@@ -127,7 +127,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_Disp
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_nativeNew(
     env: JNIEnv,
     _class: JClass,
     iterations: jint,
@@ -162,16 +162,16 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_Nume
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_Destroy destroys Fingerprint);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_nativeDestroy destroys Fingerprint);
 
-jni_fn_get_jstring!(Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_GetDisplayString(Fingerprint) using
+jni_fn_get_jstring!(Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_nativeGetDisplayString(Fingerprint) using
     Fingerprint::display_string);
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_GetScannableEncoding(Fingerprint) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_fingerprint_NumericFingerprintGenerator_nativeGetScannableEncoding(Fingerprint) using
                        |f: &Fingerprint| f.scannable.serialize());
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_ScannableFingerprint_Compare(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_ScannableFingerprint_nativeCompare(
     env: JNIEnv,
     _class: JClass,
     fprint1: jbyteArray,
@@ -187,7 +187,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_fingerprint_Scan
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_kdf_HKDF_DeriveSecrets(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_kdf_HKDF_nativeDeriveSecrets(
     env: JNIEnv,
     _class: JClass,
     version: jint,
@@ -221,10 +221,10 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_kdf_HKDF_DeriveS
     })
 }
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_SignalMessage_Deserialize is SignalMessage::try_from);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeDeserialize is SignalMessage::try_from);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SignalMessage_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeNew(
     env: JNIEnv,
     _class: JClass,
     message_version: jint,
@@ -262,24 +262,24 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SignalM
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_SignalMessage_Destroy destroys SignalMessage);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeDestroy destroys SignalMessage);
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SignalMessage_GetSenderRatchetKey(SignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeGetSenderRatchetKey(SignalMessage) using
                        |m: &SignalMessage| Ok(m.sender_ratchet_key().serialize()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SignalMessage_GetBody(SignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeGetBody(SignalMessage) using
                        |m: &SignalMessage| Ok(m.body().to_vec()));
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SignalMessage_GetSerialized(SignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeGetSerialized(SignalMessage) using
                        |m: &SignalMessage| Ok(m.serialized().to_vec()));
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SignalMessage_GetMessageVersion(SignalMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeGetMessageVersion(SignalMessage) using
                  |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SignalMessage_GetCounter(SignalMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeGetCounter(SignalMessage) using
                  |msg: &SignalMessage| { Ok(msg.counter()) });
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SignalMessage_VerifyMac(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SignalMessage_nativeVerifyMac(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -303,10 +303,10 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SignalM
     })
 }
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_Deserialize is PreKeySignalMessage::try_from);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeDeserialize is PreKeySignalMessage::try_from);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeNew(
     env: JNIEnv,
     _class: JClass,
     message_version: jint,
@@ -343,17 +343,17 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_PreKeyS
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_Destroy destroys PreKeySignalMessage);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeDestroy destroys PreKeySignalMessage);
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetVersion(PreKeySignalMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetVersion(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetRegistrationId(PreKeySignalMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetRegistrationId(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.registration_id()));
 
 // Special logic to handle optionality:
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetPreKeyId(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetPreKeyId(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -367,25 +367,25 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_PreKeyS
     })
 }
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetSignedPreKeyId(PreKeySignalMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetSignedPreKeyId(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetBaseKey(PreKeySignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetBaseKey(PreKeySignalMessage) using
                        |m: &PreKeySignalMessage| Ok(m.base_key().serialize()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetIdentityKey(PreKeySignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetIdentityKey(PreKeySignalMessage) using
                        |m: &PreKeySignalMessage| Ok(m.identity_key().serialize()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetSignalMessage(PreKeySignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetSignalMessage(PreKeySignalMessage) using
                        |m: &PreKeySignalMessage| Ok(m.message().serialized().to_vec()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_GetSerialized(PreKeySignalMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_PreKeySignalMessage_nativeGetSerialized(PreKeySignalMessage) using
                        |m: &PreKeySignalMessage| Ok(m.serialized().to_vec()));
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_Deserialize is SenderKeyMessage::try_from);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeDeserialize is SenderKeyMessage::try_from);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeNew(
     env: JNIEnv,
     _class: JClass,
     key_id: jint,
@@ -404,24 +404,24 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderK
     })
 }
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_Deserialize is SenderKeyDistributionMessage::try_from);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeDeserialize is SenderKeyDistributionMessage::try_from);
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_Destroy destroys SenderKeyMessage);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeDestroy destroys SenderKeyMessage);
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_GetKeyId(SenderKeyMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeGetKeyId(SenderKeyMessage) using
                  |m: &SenderKeyMessage| Ok(m.key_id()));
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_GetIteration(SenderKeyMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeGetIteration(SenderKeyMessage) using
                  |m: &SenderKeyMessage| Ok(m.iteration()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_GetCipherText(SenderKeyMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeGetCipherText(SenderKeyMessage) using
                        |m: &SenderKeyMessage| Ok(m.ciphertext().to_vec()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_GetSerialized(SenderKeyMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeGetSerialized(SenderKeyMessage) using
                        |m: &SenderKeyMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_VerifySignature(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderKeyMessage_nativeVerifySignature(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -436,7 +436,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderK
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeNew(
     env: JNIEnv,
     _class: JClass,
     key_id: jint,
@@ -454,25 +454,25 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_protocol_SenderK
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_Destroy destroys SenderKeyDistributionMessage);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeDestroy destroys SenderKeyDistributionMessage);
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_GetId(SenderKeyDistributionMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeGetId(SenderKeyDistributionMessage) using
                  |m: &SenderKeyDistributionMessage| m.id());
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_GetIteration(SenderKeyDistributionMessage) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeGetIteration(SenderKeyDistributionMessage) using
                  |m: &SenderKeyDistributionMessage| m.iteration());
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_GetChainKey(SenderKeyDistributionMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeGetChainKey(SenderKeyDistributionMessage) using
                        |m: &SenderKeyDistributionMessage| Ok(m.chain_key()?.to_vec()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_GetSignatureKey(SenderKeyDistributionMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeGetSignatureKey(SenderKeyDistributionMessage) using
                        |m: &SenderKeyDistributionMessage| Ok(m.signing_key()?.serialize()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_GetSerialized(SenderKeyDistributionMessage) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_protocol_SenderKeyDistributionMessage_nativeGetSerialized(SenderKeyDistributionMessage) using
                        |m: &SenderKeyDistributionMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyBundle_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeNew(
     env: JNIEnv,
     _class: JClass,
     registration_id: jint,
@@ -516,20 +516,20 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyBund
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_state_PreKeyBundle_Destroy destroys PreKeyBundle);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeDestroy destroys PreKeyBundle);
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetRegistrationId(PreKeyBundle) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetRegistrationId(PreKeyBundle) using
                  |m: &PreKeyBundle| m.registration_id());
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetDeviceId(PreKeyBundle) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetDeviceId(PreKeyBundle) using
                  |m: &PreKeyBundle| m.device_id());
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetSignedPreKeyId(PreKeyBundle) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetSignedPreKeyId(PreKeyBundle) using
                  |m: &PreKeyBundle| m.signed_pre_key_id());
 
 // Special logic for optional here:
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyBundle_GetPreKeyId(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetPreKeyId(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -543,22 +543,22 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyBund
     })
 }
 
-jni_fn_get_new_boxed_optional_obj!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetPreKeyPublic(PublicKey) from PreKeyBundle,
+jni_fn_get_new_boxed_optional_obj!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetPreKeyPublic(PublicKey) from PreKeyBundle,
                                    |p: &PreKeyBundle| p.pre_key_public());
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetSignedPreKeyPublic(PublicKey) from PreKeyBundle,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetSignedPreKeyPublic(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(p.signed_pre_key_public()?));
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetIdentityKey(PublicKey) from PreKeyBundle,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetIdentityKey(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_PreKeyBundle_GetSignedPreKeySignature(PreKeyBundle) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_PreKeyBundle_nativeGetSignedPreKeySignature(PreKeyBundle) using
                        |m: &PreKeyBundle| Ok(m.signed_pre_key_signature()?.to_vec()));
 
 /* SignedPreKeyRecord */
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeNew(
     env: JNIEnv,
     _class: JClass,
     id: jint,
@@ -581,13 +581,13 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SignedPreK
     })
 }
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_Deserialize is SignedPreKeyRecord::deserialize);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeDeserialize is SignedPreKeyRecord::deserialize);
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_GetId(SignedPreKeyRecord) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetId(SignedPreKeyRecord) using
                  |m: &SignedPreKeyRecord| m.id());
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_GetTimestamp(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetTimestamp(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -598,24 +598,24 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SignedPreK
     })
 }
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_GetPublicKey(PublicKey) from SignedPreKeyRecord,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetPublicKey(PublicKey) from SignedPreKeyRecord,
                           |p: &SignedPreKeyRecord| p.public_key());
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_GetPrivateKey(PrivateKey) from SignedPreKeyRecord,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetPrivateKey(PrivateKey) from SignedPreKeyRecord,
                           |p: &SignedPreKeyRecord| p.private_key());
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_GetSignature(SignedPreKeyRecord) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetSignature(SignedPreKeyRecord) using
                        |m: &SignedPreKeyRecord| m.signature());
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_GetSerialized(SignedPreKeyRecord) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetSerialized(SignedPreKeyRecord) using
                        |m: &SignedPreKeyRecord| m.serialize());
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_Destroy destroys SignedPreKeyRecord);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeDestroy destroys SignedPreKeyRecord);
 
 /* PreKeyRecord */
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyRecord_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeNew(
     env: JNIEnv,
     _class: JClass,
     id: jint,
@@ -634,26 +634,26 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_PreKeyReco
     })
 }
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_state_PreKeyRecord_Deserialize is PreKeyRecord::deserialize);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeDeserialize is PreKeyRecord::deserialize);
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyRecord_GetId(PreKeyRecord) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeGetId(PreKeyRecord) using
                  |m: &PreKeyRecord| m.id());
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyRecord_GetPublicKey(PublicKey) from PreKeyRecord,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeGetPublicKey(PublicKey) from PreKeyRecord,
                           |p: &PreKeyRecord| p.public_key());
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyRecord_GetPrivateKey(PrivateKey) from PreKeyRecord,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeGetPrivateKey(PrivateKey) from PreKeyRecord,
                           |p: &PreKeyRecord| p.private_key());
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_PreKeyRecord_GetSerialized(PreKeyRecord) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeGetSerialized(PreKeyRecord) using
                        |m: &PreKeyRecord| m.serialize());
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_state_PreKeyRecord_Destroy destroys PreKeyRecord);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeDestroy destroys PreKeyRecord);
 
 /* SenderKeyName */
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_SenderKeyName_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_SenderKeyName_nativeNew(
     env: JNIEnv,
     _class: JClass,
     group_id: JString,
@@ -669,20 +669,20 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_SenderKey
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_groups_SenderKeyName_Destroy destroys SenderKeyName);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_groups_SenderKeyName_nativeDestroy destroys SenderKeyName);
 
-jni_fn_get_jstring!(Java_org_whispersystems_libsignal_groups_SenderKeyName_GetGroupId(SenderKeyName) using
+jni_fn_get_jstring!(Java_org_whispersystems_libsignal_groups_SenderKeyName_nativeGetGroupId(SenderKeyName) using
                     SenderKeyName::group_id);
 
-jni_fn_get_jstring!(Java_org_whispersystems_libsignal_groups_SenderKeyName_GetSenderName(SenderKeyName) using
+jni_fn_get_jstring!(Java_org_whispersystems_libsignal_groups_SenderKeyName_nativeGetSenderName(SenderKeyName) using
                     |skn: &SenderKeyName| { Ok(skn.sender()?.name().to_string()) });
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_SenderKeyName_GetSenderDeviceId(SenderKeyName) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_SenderKeyName_nativeGetSenderDeviceId(SenderKeyName) using
                  |m: &SenderKeyName| Ok(m.sender()?.device_id()));
 
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_New(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeNew(
     env: JNIEnv,
     _class: JClass,
     id: jint,
@@ -703,20 +703,20 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_state_Sen
     })
 }
 
-jni_fn_destroy!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_Destroy destroys SenderKeyState);
+jni_fn_destroy!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeDestroy destroys SenderKeyState);
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_Deserialize is SenderKeyState::deserialize);
+jni_fn_deserialize!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeDeserialize is SenderKeyState::deserialize);
 
-jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSerialized(SenderKeyState) using
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeGetSerialized(SenderKeyState) using
                        |sks: &SenderKeyState| sks.serialize());
 
-jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetKeyId(SenderKeyState) using
+jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeGetKeyId(SenderKeyState) using
                        |sks: &SenderKeyState| sks.sender_key_id());
 
-jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSigningKeyPublic(PublicKey) from SenderKeyState,
+jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeGetSigningKeyPublic(PublicKey) from SenderKeyState,
                           |sks: &SenderKeyState| sks.signing_key_public());
 
-jni_fn_get_new_boxed_optional_obj!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_GetSigningKeyPrivate(PrivateKey) from SenderKeyState,
+jni_fn_get_new_boxed_optional_obj!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeGetSigningKeyPrivate(PrivateKey) from SenderKeyState,
                                    |sks: &SenderKeyState| sks.signing_key_private());
 
 fn sender_key_name_to_jobject<'a>(env: &'a JNIEnv, sender_key_name: &SenderKeyName) -> Result<JObject<'a>, SignalJniError> {
@@ -1027,7 +1027,7 @@ fn create_signed_prekey_store<'a>(env: &'a JNIEnv, obj: jobject) -> Result<JniSi
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_ProcessPreKeyBundle(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_nativeProcessPreKeyBundle(
     env: JNIEnv,
     _class: JClass,
     bundle: ObjectHandle,
@@ -1051,7 +1051,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_P
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_EncryptMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_nativeEncryptMessage(
     env: JNIEnv,
     _class: JClass,
     message: jbyteArray,
@@ -1087,7 +1087,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_En
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_DecryptSignalMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_nativeDecryptSignalMessage(
     env: JNIEnv,
     _class: JClass,
     message: ObjectHandle,
@@ -1110,7 +1110,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_De
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_DecryptPreKeySignalMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_nativeDecryptPreKeySignalMessage(
     env: JNIEnv,
     _class: JClass,
     message: ObjectHandle,
@@ -1210,7 +1210,7 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSessionBuilder_CreateSenderKeyDistributionMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSessionBuilder_nativeCreateSenderKeyDistributionMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
@@ -1229,7 +1229,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSessionBuilder_ProcessSenderKeyDistributionMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSessionBuilder_nativeProcessSenderKeyDistributionMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
@@ -1249,7 +1249,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCipher_EncryptMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCipher_nativeEncryptMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
@@ -1272,7 +1272,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCipher_DecryptMessage(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCipher_nativeDecryptMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
@@ -1295,7 +1295,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
 // The following are just exposed to make it possible to retain some of the Java tests:
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionState_InitializeAliceSession(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionState_nativeInitializeAliceSession(
     env: JNIEnv,
     _class: JClass,
     identity_key_private: ObjectHandle,
@@ -1339,7 +1339,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionSta
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionState_InitializeBobSession(
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_state_SessionState_nativeInitializeBobSession(
     env: JNIEnv,
     _class: JClass,
     identity_key_private: ObjectHandle,
