@@ -34,7 +34,20 @@ jni_fn_get_jstring!(Java_org_whispersystems_libsignal_SignalProtocolAddress_nati
 jni_fn_get_jint!(Java_org_whispersystems_libsignal_SignalProtocolAddress_nativeDeviceId(ProtocolAddress) using
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
-jni_fn_deserialize!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeDeserialize is PublicKey::deserialize);
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeDeserialize(
+    env: JNIEnv,
+    _class: JClass,
+    data: jbyteArray,
+    offset: jint,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let offset = jint_to_u32(offset)? as usize;
+        let data = env.convert_byte_array(data)?;
+        let key = PublicKey::deserialize(&data[offset..])?;
+        box_object::<PublicKey>(Ok(key))
+    })
+}
 
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeSerialize(PublicKey) using
                        |k: &PublicKey| Ok(k.serialize()));
