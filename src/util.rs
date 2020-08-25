@@ -1,5 +1,5 @@
-use jni::sys::{_jobject, jobject, jboolean, jbyteArray, jint, jlong, jstring};
-use jni::objects::{JString, JValue, JObject};
+use jni::objects::{JObject, JString, JValue};
+use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
 use std::fmt;
@@ -20,15 +20,11 @@ impl SignalJniError {
     pub fn to_signal_protocol_error(&self) -> SignalProtocolError {
         match self {
             SignalJniError::Signal(e) => e.clone(),
-            SignalJniError::Jni(e) => {
-                SignalProtocolError::FfiBindingError(e.to_string())
-            }
+            SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
             SignalJniError::BadJniParameter(m) => {
                 SignalProtocolError::InvalidArgument(m.to_string())
             }
-            _ => {
-                SignalProtocolError::FfiBindingError(format!("{}", self))
-            }
+            _ => SignalProtocolError::FfiBindingError(format!("{}", self)),
         }
     }
 }
@@ -38,10 +34,14 @@ impl fmt::Display for SignalJniError {
         match self {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
-            SignalJniError::ExceptionDuringCallback(s) => write!(f, "exception recieved during callback {}", s),
+            SignalJniError::ExceptionDuringCallback(s) => {
+                write!(f, "exception recieved during callback {}", s)
+            }
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
-            SignalJniError::UnexpectedJniResultType(m, t) => write!(f, "calling {} returned unexpected type {}", m, t),
+            SignalJniError::UnexpectedJniResultType(m, t) => {
+                write!(f, "calling {} returned unexpected type {}", m, t)
+            }
             SignalJniError::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
             }
@@ -69,15 +69,11 @@ impl From<SignalJniError> for SignalProtocolError {
     fn from(err: SignalJniError) -> SignalProtocolError {
         match err {
             SignalJniError::Signal(e) => e,
-            SignalJniError::Jni(e) => {
-                SignalProtocolError::FfiBindingError(e.to_string())
-            }
+            SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
             SignalJniError::BadJniParameter(m) => {
                 SignalProtocolError::InvalidArgument(m.to_string())
             }
-            _ => {
-                SignalProtocolError::FfiBindingError(format!("{}", err))
-            }
+            _ => SignalProtocolError::FfiBindingError(format!("{}", err)),
         }
     }
 }
@@ -87,7 +83,7 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
         SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
         SignalJniError::BadJniParameter(_) => "java/lang/AssertionError",
-        SignalJniError::UnexpectedJniResultType(_,_) => "java/lang/AssertionError",
+        SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
         SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
 
         SignalJniError::ExceptionDuringCallback(_) => "java/lang/RuntimeException",
@@ -145,10 +141,11 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Jni(_) => "java/lang/RuntimeException",
     };
 
-
     let error_string = match error {
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(addr)) => addr.name().to_string(),
-        e => format!("{}", e)
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(addr)) => {
+            addr.name().to_string()
+        }
+        e => format!("{}", e),
     };
 
     let _ = env.throw_new(exception_type, error_string);
@@ -211,8 +208,7 @@ impl JniDummyValue for jboolean {
 }
 
 impl JniDummyValue for () {
-    fn dummy_value() -> Self {
-    }
+    fn dummy_value() -> Self {}
 }
 
 pub fn run_ffi_safe<F: FnOnce() -> Result<R, SignalJniError> + std::panic::UnwindSafe, R>(
@@ -313,14 +309,20 @@ pub fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
             let message: String = env.get_string(JString::from(o))?.into();
             return Err(SignalJniError::ExceptionDuringCallback(message));
         } else {
-            return Err(SignalJniError::ExceptionDuringCallback("Exception that didn't implement getMessage".to_string()));
+            return Err(SignalJniError::ExceptionDuringCallback(
+                "Exception that didn't implement getMessage".to_string(),
+            ));
         }
     }
 
     Ok(())
 }
 
-pub fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &'static str) -> Result<jobject, SignalJniError> {
+pub fn check_jobject_type(
+    env: &JNIEnv,
+    obj: jobject,
+    class_name: &'static str,
+) -> Result<jobject, SignalJniError> {
     if obj.is_null() {
         return Err(SignalJniError::NullHandle);
     }
@@ -334,17 +336,24 @@ pub fn check_jobject_type(env: &JNIEnv, obj: jobject, class_name: &'static str) 
     Ok(obj)
 }
 
-pub fn get_object_with_native_handle<T: 'static + Clone>(env: &JNIEnv,
-                                                         store_obj: jobject,
-                                                         callback_args: &[JValue],
-                                                         callback_sig: &'static str,
-                                                         callback_fn: &'static str) -> Result<Option<T>, SignalJniError> {
+pub fn get_object_with_native_handle<T: 'static + Clone>(
+    env: &JNIEnv,
+    store_obj: jobject,
+    callback_args: &[JValue],
+    callback_sig: &'static str,
+    callback_fn: &'static str,
+) -> Result<Option<T>, SignalJniError> {
     let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
     exception_check(env)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,
-        _ => return Err(SignalJniError::UnexpectedJniResultType(callback_fn, rvalue.type_name()))
+        _ => {
+            return Err(SignalJniError::UnexpectedJniResultType(
+                callback_fn,
+                rvalue.type_name(),
+            ))
+        }
     };
 
     if obj.is_null() {
@@ -358,21 +367,31 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(env: &JNIEnv,
             let object = unsafe { native_handle_cast::<T>(handle)? };
             Ok(Some(object.clone()))
         }
-        _ => Err(SignalJniError::UnexpectedJniResultType("nativeHandle", handle.type_name()))
+        _ => Err(SignalJniError::UnexpectedJniResultType(
+            "nativeHandle",
+            handle.type_name(),
+        )),
     }
 }
 
-pub fn get_object_with_serialization(env: &JNIEnv,
-                                     store_obj: jobject,
-                                     callback_args: &[JValue],
-                                     callback_sig: &'static str,
-                                     callback_fn: &'static str) -> Result<Option<Vec<u8>>, SignalJniError> {
+pub fn get_object_with_serialization(
+    env: &JNIEnv,
+    store_obj: jobject,
+    callback_args: &[JValue],
+    callback_sig: &'static str,
+    callback_fn: &'static str,
+) -> Result<Option<Vec<u8>>, SignalJniError> {
     let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
     exception_check(env)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,
-        _ => return Err(SignalJniError::UnexpectedJniResultType(callback_fn, rvalue.type_name()))
+        _ => {
+            return Err(SignalJniError::UnexpectedJniResultType(
+                callback_fn,
+                rvalue.type_name(),
+            ))
+        }
     };
 
     if obj.is_null() {
@@ -383,23 +402,30 @@ pub fn get_object_with_serialization(env: &JNIEnv,
     exception_check(env)?;
 
     match bytes {
-        JValue::Object(o) => {
-            Ok(Some(env.convert_byte_array(*o)?))
-        }
-        _ => {
-            Err(SignalJniError::UnexpectedJniResultType("serialize", bytes.type_name()))
-        }
+        JValue::Object(o) => Ok(Some(env.convert_byte_array(*o)?)),
+        _ => Err(SignalJniError::UnexpectedJniResultType(
+            "serialize",
+            bytes.type_name(),
+        )),
     }
 }
 
-pub fn jobject_from_serialized<'a>(env: &'a JNIEnv, class_name: &str, serialized: &[u8]) -> Result<JObject<'a>, SignalJniError> {
+pub fn jobject_from_serialized<'a>(
+    env: &'a JNIEnv,
+    class_name: &str,
+    serialized: &[u8],
+) -> Result<JObject<'a>, SignalJniError> {
     let class_type = env.find_class(class_name)?;
     let ctor_sig = "([B)V";
     let ctor_args = [JValue::from(to_jbytearray(env, Ok(serialized))?)];
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 
-pub fn jobject_from_native_handle<'a>(env: &'a JNIEnv, class_name: &str, boxed_handle: ObjectHandle) -> Result<JObject<'a>, SignalJniError> {
+pub fn jobject_from_native_handle<'a>(
+    env: &'a JNIEnv,
+    class_name: &str,
+    boxed_handle: ObjectHandle,
+) -> Result<JObject<'a>, SignalJniError> {
     let class_type = env.find_class(class_name)?;
     let ctor_sig = "(J)V";
     let ctor_args = [JValue::from(boxed_handle)];
@@ -451,7 +477,7 @@ macro_rules! jni_fn_get_new_boxed_optional_obj {
         ) -> ObjectHandle {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
-                let result : Option<$rt> = $body(obj)?;
+                let result: Option<$rt> = $body(obj)?;
                 if let Some(result) = result {
                     box_object::<$rt>(Ok(result))
                 } else {
@@ -490,7 +516,7 @@ macro_rules! jni_fn_get_jboolean {
         ) -> jboolean {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
-                let r : bool = $body(obj)?;
+                let r: bool = $body(obj)?;
                 Ok(r as jboolean)
             })
         }
@@ -514,7 +540,7 @@ macro_rules! jni_fn_get_jstring {
                 $body(&t)
             }
             run_ffi_safe(&env, || {
-                let obj : &mut $typ = native_handle_cast::<$typ>(handle)?;
+                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
                 return Ok(env.new_string(inner_get(&obj)?)?.into_inner());
             })
         }
@@ -527,7 +553,7 @@ macro_rules! jni_fn_get_jstring {
             handle: ObjectHandle,
         ) -> jstring {
             run_ffi_safe(&env, || {
-                let obj : &mut $typ = native_handle_cast::<$typ>(handle)?;
+                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
                 return Ok(env.new_string($func(&obj)?)?.into_inner());
             })
         }
