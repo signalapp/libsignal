@@ -49,6 +49,25 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_
     })
 }
 
+#[no_mangle]
+pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeCompare(
+    env: JNIEnv,
+    _class: JClass,
+    key1: ObjectHandle,
+    key2: ObjectHandle,
+) -> jint {
+    run_ffi_safe(&env, || {
+        let key1 = native_handle_cast::<PublicKey>(key1)?;
+        let key2 = native_handle_cast::<PublicKey>(key2)?;
+
+        match key1.cmp(&key2) {
+            std::cmp::Ordering::Less => Ok(-1),
+            std::cmp::Ordering::Equal => Ok(0),
+            std::cmp::Ordering::Greater => Ok(1),
+        }
+    })
+}
+
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeSerialize(PublicKey) using
                        |k: &PublicKey| Ok(k.serialize()));
 
