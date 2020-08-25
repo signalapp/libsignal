@@ -8,8 +8,9 @@ use std::fmt;
 
 use arrayref::array_ref;
 use rand::{CryptoRng, Rng};
+use subtle::ConstantTimeEq;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyType {
     Djb,
 }
@@ -39,12 +40,12 @@ impl TryFrom<u8> for KeyType {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum PublicKeyData {
     DjbPublicKey([u8; 32]),
 }
 
-#[derive(Clone, Copy, Eq, PartialOrd)]
+#[derive(Clone, Copy, Eq)]
 pub struct PublicKey {
     key: PublicKeyData,
 }
@@ -104,6 +105,12 @@ impl PublicKey {
         }
     }
 
+    fn key_data(&self) -> &[u8] {
+        match self.key {
+            PublicKeyData::DjbPublicKey(ref k) => k.as_ref(),
+        }
+    }
+
     pub fn key_type(&self) -> KeyType {
         match self.key {
             PublicKeyData::DjbPublicKey(_) => KeyType::Djb,
@@ -119,15 +126,23 @@ impl From<PublicKeyData> for PublicKey {
 
 impl PartialEq for PublicKey {
     fn eq(&self, other: &PublicKey) -> bool {
-        self.serialize() == other.serialize()
+        self.key_type() == other.key_type() && self.key_data().ct_eq(other.key_data()).into()
     }
 }
 
 impl Ord for PublicKey {
     fn cmp(&self, other: &Self) -> Ordering {
-        let our_bytes = self.serialize();
-        let their_bytes = other.serialize();
-        our_bytes.cmp(&their_bytes)
+        if self.key_type() != other.key_type() {
+            return self.key_type().cmp(&other.key_type());
+        }
+
+        crate::utils::constant_time_cmp(self.key_data(), other.key_data())
+    }
+}
+
+impl PartialOrd for PublicKey {
+    fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

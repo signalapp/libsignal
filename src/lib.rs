@@ -18,6 +18,7 @@ mod session;
 mod session_cipher;
 mod state;
 mod storage;
+mod utils;
 
 pub use {
     address::ProtocolAddress,
