@@ -1,3 +1,10 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
 use crate::error::{Result, SignalProtocolError};
 use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
 use crate::storage::traits;

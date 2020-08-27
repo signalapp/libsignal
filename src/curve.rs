@@ -1,3 +1,10 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
 mod curve25519;
 
 use crate::error::{Result, SignalProtocolError};

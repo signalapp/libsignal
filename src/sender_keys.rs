@@ -1,3 +1,10 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
 use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::curve;

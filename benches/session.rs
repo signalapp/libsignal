@@ -1,3 +1,10 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use libsignal_protocol_rust::*;
 

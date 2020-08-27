@@ -1,3 +1,10 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
 pub use super::super::curve::{KeyPair as CurveKeyPair, PublicKey as CurvePublicKey};
 pub use super::super::{IdentityKey, IdentityKeyPair};
 
