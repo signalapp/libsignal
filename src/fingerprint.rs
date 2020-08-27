@@ -160,17 +160,17 @@ impl Fingerprint {
         let mut sha512 = Sha512::new();
 
         // iteration=0
-        sha512.input(&fingerprint_version);
-        sha512.input(&key_bytes);
-        sha512.input(local_id);
-        sha512.input(&key_bytes);
-        let mut buf = sha512.result();
+        sha512.update(&fingerprint_version);
+        sha512.update(&key_bytes);
+        sha512.update(local_id);
+        sha512.update(&key_bytes);
+        let mut buf = sha512.finalize();
 
         for _i in 1..iterations {
             let mut sha512 = Sha512::new();
-            sha512.input(&buf);
-            sha512.input(&key_bytes);
-            buf = sha512.result();
+            sha512.update(&buf);
+            sha512.update(&key_bytes);
+            buf = sha512.finalize();
         }
 
         Ok(buf.to_vec())

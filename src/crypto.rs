@@ -2,7 +2,7 @@ use crate::{error::Result, SignalProtocolError};
 
 use aes::Aes256;
 use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;
 
 pub fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
@@ -36,8 +36,8 @@ pub fn aes_256_cbc_decrypt(ctext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8
 
 pub fn hmac_sha256(key: &[u8], input: &[u8]) -> Result<[u8; 32]> {
     let mut hmac = Hmac::<Sha256>::new_varkey(key).expect("HMAC-SHA256 should accept any size key");
-    hmac.input(input);
-    Ok(hmac.result().code().into())
+    hmac.update(input);
+    Ok(hmac.finalize().into_bytes().into())
 }
 
 #[cfg(test)]

@@ -66,18 +66,18 @@ impl KeyPair {
             0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
             0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
         ];
-        hash1.input(&hash_prefix);
-        hash1.input(&self.private_key);
-        hash1.input(&message);
-        hash1.input(&random_bytes[..]);
+        hash1.update(&hash_prefix);
+        hash1.update(&self.private_key);
+        hash1.update(&message);
+        hash1.update(&random_bytes[..]);
 
         let r = Scalar::from_hash(hash1);
         let cap_r = (&r * &ED25519_BASEPOINT_TABLE).compress();
 
         let mut hash = Sha512::new();
-        hash.input(cap_r.as_bytes());
-        hash.input(ed_public_key.as_bytes());
-        hash.input(&message);
+        hash.update(cap_r.as_bytes());
+        hash.update(ed_public_key.as_bytes());
+        hash.update(&message);
 
         let h = Scalar::from_hash(hash);
         let s = (h * a) + r;
@@ -113,9 +113,9 @@ impl KeyPair {
         let minus_cap_a = -ed_pub_key_point;
 
         let mut hash = Sha512::new();
-        hash.input(&cap_r);
-        hash.input(cap_a.as_bytes());
-        hash.input(&message);
+        hash.update(&cap_r);
+        hash.update(cap_a.as_bytes());
+        hash.update(&message);
         let h = Scalar::from_hash(hash);
 
         let cap_r_check_point = EdwardsPoint::vartime_double_scalar_mul_basepoint(

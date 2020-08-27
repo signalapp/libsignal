@@ -4,7 +4,7 @@ use crate::{curve, proto};
 
 use std::convert::TryFrom;
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, NewMac};
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;
@@ -169,11 +169,11 @@ impl SignalMessage {
             ))
         })?;
 
-        mac.input(sender_identity_key.public_key().serialize().as_ref());
-        mac.input(receiver_identity_key.public_key().serialize().as_ref());
-        mac.input(message);
+        mac.update(sender_identity_key.public_key().serialize().as_ref());
+        mac.update(receiver_identity_key.public_key().serialize().as_ref());
+        mac.update(message);
         let mut result = [0u8; Self::MAC_LENGTH];
-        result.copy_from_slice(&mac.result().code()[..Self::MAC_LENGTH]);
+        result.copy_from_slice(&mac.finalize().into_bytes()[..Self::MAC_LENGTH]);
         Ok(result)
     }
 }

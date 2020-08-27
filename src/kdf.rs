@@ -1,6 +1,6 @@
 use crate::error::{Result, SignalProtocolError};
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;
 
 #[derive(Clone, Copy, Debug)]
@@ -71,11 +71,11 @@ impl HKDF {
 
         for i in 0..iterations {
             if result.len() >= Self::HASH_OUTPUT_SIZE {
-                mac.input(&result[(result.len() - Self::HASH_OUTPUT_SIZE)..]);
+                mac.update(&result[(result.len() - Self::HASH_OUTPUT_SIZE)..]);
             }
-            mac.input(info);
-            mac.input(&[(i as u8) + self.iteration_start_offset]);
-            let d = mac.result_reset().code();
+            mac.update(info);
+            mac.update(&[(i as u8) + self.iteration_start_offset]);
+            let d = mac.finalize_reset().into_bytes();
             result.extend_from_slice(&d[..]);
         }
 
