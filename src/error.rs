@@ -63,6 +63,8 @@ pub enum SignalProtocolError {
     InvalidMessage(&'static str),
     InternalError(&'static str),
     FfiBindingError(String),
+    ApplicationCallbackThrewException(&'static str, Option<String>, String),
+    ApplicationCallbackReturnedIntegerError(&'static str, i32),
 }
 
 impl Error for SignalProtocolError {
@@ -178,6 +180,21 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::FfiBindingError(m) => {
                 write!(f, "error while invoking an ffi callback: {}", m)
             }
+            SignalProtocolError::ApplicationCallbackReturnedIntegerError(func, c) => {
+                write!(f, "application callback {} returned error code {}", func, c)
+            }
+            SignalProtocolError::ApplicationCallbackThrewException(func, t, m) => match t {
+                Some(t) => write!(
+                    f,
+                    "application callback {} threw exception {} with message {}",
+                    func, t, m
+                ),
+                None => write!(
+                    f,
+                    "application callback {} threw exception with message {}",
+                    func, m
+                ),
+            },
         }
     }
 }
