@@ -6,7 +6,7 @@
 //
 
 use crate::{
-    IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
+    Context, IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
     SignalProtocolError, SignedPreKeyStore,
 };
 
@@ -35,6 +35,7 @@ pub fn process_prekey(
     identity_store: &mut dyn IdentityKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
+    ctx: Context,
 ) -> Result<Option<PreKeyId>> {
     let their_identity_key = message.identity_key();
 
@@ -42,6 +43,7 @@ pub fn process_prekey(
         &remote_address,
         their_identity_key,
         Direction::Receiving,
+        ctx,
     )? {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
@@ -54,9 +56,10 @@ pub fn process_prekey(
         signed_prekey_store,
         pre_key_store,
         identity_store,
+        ctx,
     )?;
 
-    identity_store.save_identity(&remote_address, their_identity_key)?;
+    identity_store.save_identity(&remote_address, their_identity_key, ctx)?;
 
     Ok(unsigned_pre_key_id)
 }
@@ -67,6 +70,7 @@ fn process_prekey_v3(
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
 ) -> Result<Option<PreKeyId>> {
     if session_record.has_session_state(
         message.message_version() as u32,
@@ -77,17 +81,17 @@ fn process_prekey_v3(
     }
 
     let our_signed_pre_key_pair = signed_prekey_store
-        .get_signed_pre_key(message.signed_pre_key_id())?
+        .get_signed_pre_key(message.signed_pre_key_id(), ctx)?
         .key_pair()?;
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
-        Some(pre_key_store.get_pre_key(pre_key_id)?.key_pair()?)
+        Some(pre_key_store.get_pre_key(pre_key_id, ctx)?.key_pair()?)
     } else {
         None
     };
 
     let parameters = BobSignalProtocolParameters::new(
-        identity_store.get_identity_key_pair()?,
+        identity_store.get_identity_key_pair(ctx)?,
         our_signed_pre_key_pair, // signed pre key
         our_one_time_pre_key_pair,
         our_signed_pre_key_pair, // ratchet key
@@ -99,7 +103,7 @@ fn process_prekey_v3(
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;
 
-    new_session.set_local_registration_id(identity_store.get_local_registration_id()?)?;
+    new_session.set_local_registration_id(identity_store.get_local_registration_id(ctx)?)?;
     new_session.set_remote_registration_id(message.registration_id())?;
     new_session.set_alice_base_key(&message.base_key().serialize())?;
 
@@ -114,6 +118,7 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
     identity_store: &mut dyn IdentityKeyStore,
     bundle: &PreKeyBundle,
     mut csprng: &mut R,
+    ctx: Context,
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?;
 
@@ -121,6 +126,7 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
         &remote_address,
         their_identity_key,
         Direction::Sending,
+        ctx,
     )? {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
@@ -136,7 +142,7 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
     }
 
     let mut session_record = session_store
-        .load_session(&remote_address)?
+        .load_session(&remote_address, ctx)?
         .unwrap_or_else(SessionRecord::new_fresh);
 
     let our_base_key_pair = curve::KeyPair::generate(&mut csprng);
@@ -145,7 +151,7 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
     let their_one_time_prekey = bundle.pre_key_public()?;
     let their_one_time_prekey_id = bundle.pre_key_id()?;
 
-    let our_identity_key_pair = identity_store.get_identity_key_pair()?;
+    let our_identity_key_pair = identity_store.get_identity_key_pair(ctx)?;
 
     let parameters = AliceSignalProtocolParameters::new(
         our_identity_key_pair,
@@ -164,15 +170,15 @@ pub fn process_prekey_bundle<R: Rng + CryptoRng>(
         &our_base_key_pair.public_key,
     )?;
 
-    session.set_local_registration_id(identity_store.get_local_registration_id()?)?;
+    session.set_local_registration_id(identity_store.get_local_registration_id(ctx)?)?;
     session.set_remote_registration_id(bundle.registration_id()?)?;
     session.set_alice_base_key(&our_base_key_pair.public_key.serialize())?;
 
-    identity_store.save_identity(&remote_address, their_identity_key)?;
+    identity_store.save_identity(&remote_address, their_identity_key, ctx)?;
 
     session_record.promote_state(session)?;
 
-    session_store.store_session(&remote_address, &session_record)?;
+    session_store.store_session(&remote_address, &session_record, ctx)?;
 
     Ok(())
 }

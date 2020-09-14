@@ -6,8 +6,8 @@
 //
 
 use crate::{
-    IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionState, SessionStore,
-    SignalProtocolError, SignedPreKeyStore,
+    Context, IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionState,
+    SessionStore, SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::consts::MAX_FORWARD_JUMPS;
@@ -26,9 +26,10 @@ pub fn message_encrypt(
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
 ) -> Result<CiphertextMessage> {
     let mut session_record = session_store
-        .load_session(&remote_address)?
+        .load_session(&remote_address, ctx)?
         .ok_or(SignalProtocolError::SessionNotFound)?;
     let session_state = session_record.session_state_mut()?;
 
@@ -90,6 +91,7 @@ pub fn message_encrypt(
         &remote_address,
         &their_identity_key,
         Direction::Sending,
+        ctx,
     )? {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
@@ -97,9 +99,9 @@ pub fn message_encrypt(
     }
 
     // XXX this could be combined with the above call to the identity store (in a new API)
-    identity_store.save_identity(&remote_address, &their_identity_key)?;
+    identity_store.save_identity(&remote_address, &their_identity_key, ctx)?;
 
-    session_store.store_session(&remote_address, &session_record)?;
+    session_store.store_session(&remote_address, &session_record, ctx)?;
     Ok(message)
 }
 
@@ -111,11 +113,17 @@ pub fn message_decrypt<R: Rng + CryptoRng>(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
     csprng: &mut R,
+    ctx: Context,
 ) -> Result<Vec<u8>> {
     match ciphertext {
-        CiphertextMessage::SignalMessage(m) => {
-            message_decrypt_signal(m, remote_address, session_store, identity_store, csprng)
-        }
+        CiphertextMessage::SignalMessage(m) => message_decrypt_signal(
+            m,
+            remote_address,
+            session_store,
+            identity_store,
+            csprng,
+            ctx,
+        ),
         CiphertextMessage::PreKeySignalMessage(m) => message_decrypt_prekey(
             m,
             remote_address,
@@ -124,6 +132,7 @@ pub fn message_decrypt<R: Rng + CryptoRng>(
             pre_key_store,
             signed_pre_key_store,
             csprng,
+            ctx,
         ),
         _ => Err(SignalProtocolError::InvalidArgument(
             "SessionCipher::decrypt cannot decrypt this message type".to_owned(),
@@ -139,9 +148,10 @@ pub fn message_decrypt_prekey<R: Rng + CryptoRng>(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
     csprng: &mut R,
+    ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
-        .load_session(&remote_address)?
+        .load_session(&remote_address, ctx)?
         .unwrap_or_else(SessionRecord::new_fresh);
 
     let pre_key_id = session::process_prekey(
@@ -151,14 +161,15 @@ pub fn message_decrypt_prekey<R: Rng + CryptoRng>(
         identity_store,
         pre_key_store,
         signed_pre_key_store,
+        ctx,
     )?;
 
     let ptext = decrypt_message_with_record(&mut session_record, ciphertext.message(), csprng)?;
 
-    session_store.store_session(&remote_address, &session_record)?;
+    session_store.store_session(&remote_address, &session_record, ctx)?;
 
     if let Some(pre_key_id) = pre_key_id {
-        pre_key_store.remove_pre_key(pre_key_id)?;
+        pre_key_store.remove_pre_key(pre_key_id, ctx)?;
     }
 
     Ok(ptext)
@@ -170,9 +181,10 @@ pub fn message_decrypt_signal<R: Rng + CryptoRng>(
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     csprng: &mut R,
+    ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
-        .load_session(&remote_address)?
+        .load_session(&remote_address, ctx)?
         .ok_or(SignalProtocolError::SessionNotFound)?;
 
     let ptext = decrypt_message_with_record(&mut session_record, ciphertext, csprng)?;
@@ -182,19 +194,21 @@ pub fn message_decrypt_signal<R: Rng + CryptoRng>(
         .session_state()?
         .remote_identity_key()?
         .ok_or(SignalProtocolError::InvalidSessionStructure)?;
+
     if !identity_store.is_trusted_identity(
         &remote_address,
         &their_identity_key,
         Direction::Receiving,
+        ctx,
     )? {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
         ));
     }
 
-    identity_store.save_identity(&remote_address, &their_identity_key)?;
+    identity_store.save_identity(&remote_address, &their_identity_key, ctx)?;
 
-    session_store.store_session(&remote_address, &session_record)?;
+    session_store.store_session(&remote_address, &session_record, ctx)?;
 
     Ok(ptext)
 }
@@ -297,9 +311,10 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
 pub fn remote_registration_id(
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
+    ctx: Context,
 ) -> Result<u32> {
     let session_record = session_store
-        .load_session(&remote_address)?
+        .load_session(&remote_address, ctx)?
         .ok_or(SignalProtocolError::SessionNotFound)?;
     session_record.session_state()?.remote_registration_id()
 }
@@ -307,9 +322,10 @@ pub fn remote_registration_id(
 pub fn session_version(
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
+    ctx: Context,
 ) -> Result<u32> {
     let session_record = session_store
-        .load_session(&remote_address)?
+        .load_session(&remote_address, ctx)?
         .ok_or(SignalProtocolError::SessionNotFound)?;
     session_record.session_state()?.session_version()
 }

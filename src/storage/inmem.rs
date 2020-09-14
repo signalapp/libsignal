@@ -8,6 +8,7 @@
 use crate::error::{Result, SignalProtocolError};
 use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
 use crate::storage::traits;
+use crate::storage::Context;
 use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SenderKeyName, SenderKeyRecord};
 
 use std::collections::HashMap;
@@ -30,15 +31,20 @@ impl InMemIdentityKeyStore {
 }
 
 impl traits::IdentityKeyStore for InMemIdentityKeyStore {
-    fn get_identity_key_pair(&self) -> Result<IdentityKeyPair> {
+    fn get_identity_key_pair(&self, _ctx: Context) -> Result<IdentityKeyPair> {
         Ok(self.key_pair)
     }
 
-    fn get_local_registration_id(&self) -> Result<u32> {
+    fn get_local_registration_id(&self, _ctx: Context) -> Result<u32> {
         Ok(self.id)
     }
 
-    fn save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool> {
+    fn save_identity(
+        &mut self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        _ctx: Context,
+    ) -> Result<bool> {
         match self.known_keys.get(address) {
             None => {
                 self.known_keys.insert(address.clone(), *identity);
@@ -59,6 +65,7 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
         address: &ProtocolAddress,
         identity: &IdentityKey,
         _direction: traits::Direction,
+        _ctx: Context,
     ) -> Result<bool> {
         match self.known_keys.get(address) {
             None => {
@@ -68,7 +75,11 @@ impl traits::IdentityKeyStore for InMemIdentityKeyStore {
         }
     }
 
-    fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>> {
+    fn get_identity(
+        &self,
+        address: &ProtocolAddress,
+        _ctx: Context,
+    ) -> Result<Option<IdentityKey>> {
         match self.known_keys.get(address) {
             None => Ok(None),
             Some(k) => Ok(Some(k.to_owned())),
@@ -96,7 +107,7 @@ impl Default for InMemPreKeyStore {
 }
 
 impl traits::PreKeyStore for InMemPreKeyStore {
-    fn get_pre_key(&self, id: PreKeyId) -> Result<PreKeyRecord> {
+    fn get_pre_key(&self, id: PreKeyId, _ctx: Context) -> Result<PreKeyRecord> {
         Ok(self
             .pre_keys
             .get(&id)
@@ -104,13 +115,13 @@ impl traits::PreKeyStore for InMemPreKeyStore {
             .clone())
     }
 
-    fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord) -> Result<()> {
+    fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord, _ctx: Context) -> Result<()> {
         // This overwrites old values, which matches Java behavior, but is it correct?
         self.pre_keys.insert(id, record.to_owned());
         Ok(())
     }
 
-    fn remove_pre_key(&mut self, id: PreKeyId) -> Result<()> {
+    fn remove_pre_key(&mut self, id: PreKeyId, _ctx: Context) -> Result<()> {
         // If id does not exist this silently does nothing
         self.pre_keys.remove(&id);
         Ok(())
@@ -137,7 +148,7 @@ impl Default for InMemSignedPreKeyStore {
 }
 
 impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
-    fn get_signed_pre_key(&self, id: SignedPreKeyId) -> Result<SignedPreKeyRecord> {
+    fn get_signed_pre_key(&self, id: SignedPreKeyId, _ctx: Context) -> Result<SignedPreKeyRecord> {
         Ok(self
             .signed_pre_keys
             .get(&id)
@@ -149,6 +160,7 @@ impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
         &mut self,
         id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
+        _ctx: Context,
     ) -> Result<()> {
         // This overwrites old values, which matches Java behavior, but is it correct?
         self.signed_pre_keys.insert(id, record.to_owned());
@@ -176,14 +188,23 @@ impl Default for InMemSessionStore {
 }
 
 impl traits::SessionStore for InMemSessionStore {
-    fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>> {
+    fn load_session(
+        &self,
+        address: &ProtocolAddress,
+        _ctx: Context,
+    ) -> Result<Option<SessionRecord>> {
         match self.sessions.get(address) {
             None => Ok(None),
             Some(s) => Ok(Some(s.clone())),
         }
     }
 
-    fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<()> {
+    fn store_session(
+        &mut self,
+        address: &ProtocolAddress,
+        record: &SessionRecord,
+        _ctx: Context,
+    ) -> Result<()> {
         self.sessions.insert(address.clone(), record.clone());
         Ok(())
     }
@@ -213,6 +234,7 @@ impl traits::SenderKeyStore for InMemSenderKeyStore {
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
+        _ctx: Context,
     ) -> Result<()> {
         self.keys.insert(sender_key_name.clone(), record.clone());
         Ok(())
@@ -221,6 +243,7 @@ impl traits::SenderKeyStore for InMemSenderKeyStore {
     fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
+        _ctx: Context,
     ) -> Result<Option<SenderKeyRecord>> {
         Ok(self.keys.get(&sender_key_name).cloned())
     }
@@ -248,16 +271,21 @@ impl InMemSignalProtocolStore {
 }
 
 impl traits::IdentityKeyStore for InMemSignalProtocolStore {
-    fn get_identity_key_pair(&self) -> Result<IdentityKeyPair> {
-        self.identity_store.get_identity_key_pair()
+    fn get_identity_key_pair(&self, ctx: Context) -> Result<IdentityKeyPair> {
+        self.identity_store.get_identity_key_pair(ctx)
     }
 
-    fn get_local_registration_id(&self) -> Result<u32> {
-        self.identity_store.get_local_registration_id()
+    fn get_local_registration_id(&self, ctx: Context) -> Result<u32> {
+        self.identity_store.get_local_registration_id(ctx)
     }
 
-    fn save_identity(&mut self, address: &ProtocolAddress, identity: &IdentityKey) -> Result<bool> {
-        self.identity_store.save_identity(address, identity)
+    fn save_identity(
+        &mut self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+        ctx: Context,
+    ) -> Result<bool> {
+        self.identity_store.save_identity(address, identity, ctx)
     }
 
     fn is_trusted_identity(
@@ -265,51 +293,63 @@ impl traits::IdentityKeyStore for InMemSignalProtocolStore {
         address: &ProtocolAddress,
         identity: &IdentityKey,
         direction: traits::Direction,
+        ctx: Context,
     ) -> Result<bool> {
         self.identity_store
-            .is_trusted_identity(address, identity, direction)
+            .is_trusted_identity(address, identity, direction, ctx)
     }
 
-    fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>> {
-        self.identity_store.get_identity(address)
+    fn get_identity(&self, address: &ProtocolAddress, ctx: Context) -> Result<Option<IdentityKey>> {
+        self.identity_store.get_identity(address, ctx)
     }
 }
 
 impl traits::PreKeyStore for InMemSignalProtocolStore {
-    fn get_pre_key(&self, id: PreKeyId) -> Result<PreKeyRecord> {
-        self.pre_key_store.get_pre_key(id)
+    fn get_pre_key(&self, id: PreKeyId, ctx: Context) -> Result<PreKeyRecord> {
+        self.pre_key_store.get_pre_key(id, ctx)
     }
 
-    fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord) -> Result<()> {
-        self.pre_key_store.save_pre_key(id, record)
+    fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord, ctx: Context) -> Result<()> {
+        self.pre_key_store.save_pre_key(id, record, ctx)
     }
 
-    fn remove_pre_key(&mut self, id: PreKeyId) -> Result<()> {
-        self.pre_key_store.remove_pre_key(id)
+    fn remove_pre_key(&mut self, id: PreKeyId, ctx: Context) -> Result<()> {
+        self.pre_key_store.remove_pre_key(id, ctx)
     }
 }
 
 impl traits::SignedPreKeyStore for InMemSignalProtocolStore {
-    fn get_signed_pre_key(&self, id: SignedPreKeyId) -> Result<SignedPreKeyRecord> {
-        self.signed_pre_key_store.get_signed_pre_key(id)
+    fn get_signed_pre_key(&self, id: SignedPreKeyId, ctx: Context) -> Result<SignedPreKeyRecord> {
+        self.signed_pre_key_store.get_signed_pre_key(id, ctx)
     }
 
     fn save_signed_pre_key(
         &mut self,
         id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
+        ctx: Context,
     ) -> Result<()> {
-        self.signed_pre_key_store.save_signed_pre_key(id, record)
+        self.signed_pre_key_store
+            .save_signed_pre_key(id, record, ctx)
     }
 }
 
 impl traits::SessionStore for InMemSignalProtocolStore {
-    fn load_session(&self, address: &ProtocolAddress) -> Result<Option<SessionRecord>> {
-        self.session_store.load_session(address)
+    fn load_session(
+        &self,
+        address: &ProtocolAddress,
+        ctx: Context,
+    ) -> Result<Option<SessionRecord>> {
+        self.session_store.load_session(address, ctx)
     }
 
-    fn store_session(&mut self, address: &ProtocolAddress, record: &SessionRecord) -> Result<()> {
-        self.session_store.store_session(address, record)
+    fn store_session(
+        &mut self,
+        address: &ProtocolAddress,
+        record: &SessionRecord,
+        ctx: Context,
+    ) -> Result<()> {
+        self.session_store.store_session(address, record, ctx)
     }
 }
 
@@ -318,16 +358,18 @@ impl traits::SenderKeyStore for InMemSignalProtocolStore {
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
+        ctx: Context,
     ) -> Result<()> {
         self.sender_key_store
-            .store_sender_key(sender_key_name, record)
+            .store_sender_key(sender_key_name, record, ctx)
     }
 
     fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
+        ctx: Context,
     ) -> Result<Option<SenderKeyRecord>> {
-        self.sender_key_store.load_sender_key(sender_key_name)
+        self.sender_key_store.load_sender_key(sender_key_name, ctx)
     }
 }
 

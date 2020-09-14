@@ -11,7 +11,7 @@ use crate::curve;
 use crate::error::Result;
 use crate::protocol::{SenderKeyDistributionMessage, SenderKeyMessage};
 use crate::sender_keys::{SenderKeyRecord, SenderKeyState, SenderMessageKey};
-use crate::{SenderKeyName, SenderKeyStore, SignalProtocolError};
+use crate::{Context, SenderKeyName, SenderKeyStore, SignalProtocolError};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
@@ -21,9 +21,10 @@ pub fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_id: &SenderKeyName,
     plaintext: &[u8],
     csprng: &mut R,
+    ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut record = sender_key_store
-        .load_sender_key(&sender_key_id)?
+        .load_sender_key(&sender_key_id, ctx)?
         .ok_or(SignalProtocolError::InvalidSenderKeyId)?;
 
     let sender_key_state = record.sender_key_state()?;
@@ -47,7 +48,7 @@ pub fn group_encrypt<R: Rng + CryptoRng>(
 
     sender_key_state.set_sender_chain_key(sender_key_state.sender_chain_key()?.next()?)?;
 
-    sender_key_store.store_sender_key(sender_key_id, &record)?;
+    sender_key_store.store_sender_key(sender_key_id, &record, ctx)?;
 
     Ok(skm.serialized().to_vec())
 }
@@ -88,9 +89,10 @@ pub fn group_decrypt(
     skm_bytes: &[u8],
     sender_key_store: &mut dyn SenderKeyStore,
     sender_key_id: &SenderKeyName,
+    ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut record = sender_key_store
-        .load_sender_key(&sender_key_id)?
+        .load_sender_key(&sender_key_id, ctx)?
         .ok_or(SignalProtocolError::InvalidSenderKeyId)?;
 
     let skm = SenderKeyMessage::try_from(skm_bytes)?;
@@ -110,7 +112,7 @@ pub fn group_decrypt(
         &sender_key.iv()?,
     )?;
 
-    sender_key_store.store_sender_key(sender_key_id, &record)?;
+    sender_key_store.store_sender_key(sender_key_id, &record, ctx)?;
 
     Ok(plaintext)
 }
@@ -119,9 +121,10 @@ pub fn process_sender_key_distribution_message(
     sender_key_name: &SenderKeyName,
     skdm: &SenderKeyDistributionMessage,
     sender_key_store: &mut dyn SenderKeyStore,
+    ctx: Context,
 ) -> Result<()> {
     let mut sender_key_record = sender_key_store
-        .load_sender_key(sender_key_name)?
+        .load_sender_key(sender_key_name, ctx)?
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     sender_key_record.add_sender_key_state(
@@ -131,7 +134,7 @@ pub fn process_sender_key_distribution_message(
         *skdm.signing_key()?,
         None,
     )?;
-    sender_key_store.store_sender_key(sender_key_name, &sender_key_record)?;
+    sender_key_store.store_sender_key(sender_key_name, &sender_key_record, ctx)?;
     Ok(())
 }
 
@@ -139,9 +142,10 @@ pub fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     sender_key_name: &SenderKeyName,
     sender_key_store: &mut dyn SenderKeyStore,
     csprng: &mut R,
+    ctx: Context,
 ) -> Result<SenderKeyDistributionMessage> {
     let mut sender_key_record = sender_key_store
-        .load_sender_key(sender_key_name)?
+        .load_sender_key(sender_key_name, ctx)?
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     if sender_key_record.is_empty()? {
@@ -157,7 +161,7 @@ pub fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
             signing_key.public_key,
             Some(signing_key.private_key),
         )?;
-        sender_key_store.store_sender_key(sender_key_name, &sender_key_record)?;
+        sender_key_store.store_sender_key(sender_key_name, &sender_key_record, ctx)?;
     }
 
     let state = sender_key_record.sender_key_state()?;
