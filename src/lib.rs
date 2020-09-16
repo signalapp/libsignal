@@ -1,4 +1,5 @@
-//#![deny(warnings)]
+#![allow(clippy::missing_safety_doc)]
+#![deny(warnings)]
 
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
@@ -547,7 +548,7 @@ pub unsafe extern "C" fn signal_pre_key_bundle_new(
         let signed_prekey_signature =
             as_slice(signed_prekey_signature, signed_prekey_signature_len)?;
 
-        let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.map(|k| *k);
+        let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.copied();
 
         let prekey_id = if prekey_id.is_null() {
             None
@@ -1000,7 +1001,7 @@ impl SessionStore for FfiSessionStore {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("load_session", result));
         }
 
-        Ok(unsafe { record.as_ref() }.map(|o| o.clone()))
+        Ok(unsafe { record.as_ref() }.cloned())
     }
 
     fn store_session(
@@ -1193,7 +1194,7 @@ impl SenderKeyStore for FfiSenderKeyStore {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("load_sender_key", result));
         }
 
-        Ok(unsafe { record.as_ref() }.map(|o| o.clone()))
+        Ok(unsafe { record.as_ref() }.cloned())
     }
 }
 
