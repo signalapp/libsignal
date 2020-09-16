@@ -1,7 +1,7 @@
-use jni::objects::{JObject, JString, JValue};
+use jni::objects::{JObject, JString, JThrowable, JValue};
 use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
-use libsignal_protocol_rust::*;
+use libsignal_protocol_rust::SignalProtocolError;
 use std::fmt;
 
 #[derive(Debug)]
@@ -296,23 +296,56 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
     }
 }
 
-pub fn exception_check(env: &JNIEnv) -> Result<(), SignalJniError> {
+pub fn exception_check(env: &JNIEnv, fn_name: &'static str) -> Result<(), SignalJniError> {
+    fn exception_class_name(env: &JNIEnv, exn: JThrowable) -> Result<String, SignalJniError> {
+        let class_type = env.call_method(exn, "getClass", "()Ljava/lang/Class;", &[])?;
+        if let JValue::Object(class_type) = class_type {
+            let class_name =
+                env.call_method(class_type, "getCanonicalName", "()Ljava/lang/String;", &[])?;
+
+            if let JValue::Object(class_name) = class_name {
+                let class_name: String = env.get_string(JString::from(class_name))?.into();
+                Ok(class_name)
+            } else {
+                Err(SignalJniError::UnexpectedJniResultType(
+                    "getCanonicalName",
+                    class_name.type_name(),
+                ))
+            }
+        } else {
+            Err(SignalJniError::UnexpectedJniResultType(
+                "getClass",
+                class_type.type_name(),
+            ))
+        }
+    }
+
     if env.exception_check()? {
         let throwable = env.exception_occurred()?;
         env.exception_clear()?;
 
         let getmessage_sig = "()Ljava/lang/String;";
 
-        let jmessage = env.call_method(throwable, "getMessage", getmessage_sig, &[])?;
+        let exn_type = exception_class_name(env, throwable).ok();
 
-        if let JValue::Object(o) = jmessage {
-            let message: String = env.get_string(JString::from(o))?.into();
-            return Err(SignalJniError::ExceptionDuringCallback(message));
-        } else {
-            return Err(SignalJniError::ExceptionDuringCallback(
-                "Exception that didn't implement getMessage".to_string(),
-            ));
+        if let Ok(jmessage) = env.call_method(throwable, "getMessage", getmessage_sig, &[]) {
+            if let JValue::Object(o) = jmessage {
+                let message: String = env.get_string(JString::from(o))?.into();
+                return Err(SignalJniError::Signal(
+                    SignalProtocolError::ApplicationCallbackThrewException(
+                        fn_name, exn_type, message,
+                    ),
+                ));
+            }
         }
+
+        return Err(SignalJniError::Signal(
+            SignalProtocolError::ApplicationCallbackThrewException(
+                fn_name,
+                exn_type,
+                "<exception did not implement getMessage>".to_string(),
+            ),
+        ));
     }
 
     Ok(())
@@ -344,7 +377,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
     let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
-    exception_check(env)?;
+    exception_check(env, callback_fn)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,
@@ -361,7 +394,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     }
 
     let handle = env.call_method(obj, "nativeHandle", "()J", &[])?;
-    exception_check(env)?;
+    exception_check(env, "nativeHandle")?;
     match handle {
         JValue::Long(handle) => {
             let object = unsafe { native_handle_cast::<T>(handle)? };
@@ -382,7 +415,7 @@ pub fn get_object_with_serialization(
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
     let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
-    exception_check(env)?;
+    exception_check(env, callback_fn)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,
@@ -399,7 +432,7 @@ pub fn get_object_with_serialization(
     }
 
     let bytes = env.call_method(obj, "serialize", "()[B", &[])?;
-    exception_check(env)?;
+    exception_check(env, "serialize")?;
 
     match bytes {
         JValue::Object(o) => Ok(Some(env.convert_byte_array(*o)?)),

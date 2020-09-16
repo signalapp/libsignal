@@ -829,7 +829,7 @@ impl<'a> JniIdentityKeyStore<'a> {
         let rvalue =
             self.env
                 .call_method(self.store, "getLocalRegistrationId", callback_sig, &[])?;
-        exception_check(self.env)?;
+        exception_check(self.env, "getLocalRegistrationId")?;
 
         match rvalue {
             JValue::Int(i) => jint_to_u32(i),
@@ -856,7 +856,7 @@ impl<'a> JniIdentityKeyStore<'a> {
         let result =
             self.env
                 .call_method(self.store, "saveIdentity", callback_sig, &callback_args)?;
-        exception_check(self.env)?;
+        exception_check(self.env, "saveIdentity")?;
 
         match result {
             JValue::Bool(b) => Ok(b != 0),
@@ -902,7 +902,7 @@ impl<'a> JniIdentityKeyStore<'a> {
             callback_sig,
             &callback_args,
         )?;
-        exception_check(self.env)?;
+        exception_check(self.env, "isTrustedIdentity")?;
 
         match result {
             JValue::Bool(b) => Ok(b != 0),
@@ -937,11 +937,11 @@ impl<'a> JniIdentityKeyStore<'a> {
 }
 
 impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
-    fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
+    fn get_identity_key_pair(&self, _ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
         Ok(self.do_get_identity_key_pair()?)
     }
 
-    fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
+    fn get_local_registration_id(&self, _ctx: Context) -> Result<u32, SignalProtocolError> {
         Ok(self.do_get_local_registration_id()?)
     }
 
@@ -949,6 +949,7 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
+        _ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
         Ok(self.do_save_identity(address, identity)?)
     }
@@ -958,6 +959,7 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
         address: &ProtocolAddress,
         identity: &IdentityKey,
         direction: Direction,
+        _ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
         Ok(self.do_is_trusted_identity(address, identity, direction)?)
     }
@@ -965,6 +967,7 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
     fn get_identity(
         &self,
         address: &ProtocolAddress,
+        _ctx: Context,
     ) -> Result<Option<IdentityKey>, SignalProtocolError> {
         Ok(self.do_get_identity(address)?)
     }
@@ -1015,7 +1018,7 @@ impl<'a> JniPreKeyStore<'a> {
         ];
         self.env
             .call_method(self.store, "storePreKey", callback_sig, &callback_args)?;
-        exception_check(self.env)?;
+        exception_check(self.env, "storePreKey")?;
         Ok(())
     }
 
@@ -1024,13 +1027,17 @@ impl<'a> JniPreKeyStore<'a> {
         let callback_args = [JValue::from(jint_from_u32(Ok(prekey_id))?)];
         self.env
             .call_method(self.store, "removePreKey", callback_sig, &callback_args)?;
-        exception_check(self.env)?;
+        exception_check(self.env, "removePreKey")?;
         Ok(())
     }
 }
 
 impl<'a> PreKeyStore for JniPreKeyStore<'a> {
-    fn get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalProtocolError> {
+    fn get_pre_key(
+        &self,
+        prekey_id: u32,
+        _ctx: Context,
+    ) -> Result<PreKeyRecord, SignalProtocolError> {
         Ok(self.do_get_pre_key(prekey_id)?)
     }
 
@@ -1038,11 +1045,12 @@ impl<'a> PreKeyStore for JniPreKeyStore<'a> {
         &mut self,
         prekey_id: u32,
         record: &PreKeyRecord,
+        _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         Ok(self.do_save_pre_key(prekey_id, record)?)
     }
 
-    fn remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalProtocolError> {
+    fn remove_pre_key(&mut self, prekey_id: u32, _ctx: Context) -> Result<(), SignalProtocolError> {
         Ok(self.do_remove_pre_key(prekey_id)?)
     }
 }
@@ -1098,7 +1106,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
             callback_sig,
             &callback_args,
         )?;
-        exception_check(self.env)?;
+        exception_check(self.env, "storeSignedPreKey")?;
         Ok(())
     }
 }
@@ -1107,6 +1115,7 @@ impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
     fn get_signed_pre_key(
         &self,
         prekey_id: u32,
+        _ctx: Context,
     ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
         Ok(self.do_get_signed_pre_key(prekey_id)?)
     }
@@ -1115,6 +1124,7 @@ impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
         &mut self,
         prekey_id: u32,
         record: &SignedPreKeyRecord,
+        _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         Ok(self.do_save_signed_pre_key(prekey_id, record)?)
     }
@@ -1170,7 +1180,7 @@ impl<'a> JniSessionStore<'a> {
         let callback_args = [address_jobject.into(), session_jobject.into()];
         self.env
             .call_method(self.store, "storeSession", callback_sig, &callback_args)?;
-        exception_check(self.env)?;
+        exception_check(self.env, "storeSession")?;
         Ok(())
     }
 }
@@ -1179,6 +1189,7 @@ impl<'a> SessionStore for JniSessionStore<'a> {
     fn load_session(
         &self,
         address: &ProtocolAddress,
+        _ctx: Context,
     ) -> Result<Option<SessionRecord>, SignalProtocolError> {
         Ok(self.do_load_session(address)?)
     }
@@ -1187,6 +1198,7 @@ impl<'a> SessionStore for JniSessionStore<'a> {
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
+        _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         Ok(self.do_store_session(address, record)?)
     }
@@ -1257,6 +1269,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_n
             &mut identity_key_store,
             bundle,
             &mut csprng,
+            None,
         )?;
 
         Ok(())
@@ -1284,6 +1297,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
+            None,
         )?;
 
         let obj = match ctext {
@@ -1329,6 +1343,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
             &mut session_store,
             &mut identity_key_store,
             &mut csprng,
+            None,
         )?;
 
         to_jbytearray(&env, Ok(ptext))
@@ -1363,6 +1378,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
             &mut prekey_store,
             &mut signed_prekey_store,
             &mut csprng,
+            None,
         )?;
 
         to_jbytearray(&env, Ok(ptext))
@@ -1404,7 +1420,7 @@ impl<'a> JniSenderKeyStore<'a> {
             callback_sig,
             &callback_args[..],
         )?;
-        exception_check(self.env)?;
+        exception_check(self.env, "storeSenderKey")?;
 
         Ok(())
     }
@@ -1437,6 +1453,7 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
+        _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         Ok(self.do_store_sender_key(sender_key_name, record)?)
     }
@@ -1444,6 +1461,7 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
     fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
+        _ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
         Ok(self.do_load_sender_key(sender_key_name)?)
     }
@@ -1471,6 +1489,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
             &sender_key_name,
             &mut sender_key_store,
             &mut csprng,
+            None,
         )?;
         box_object::<SenderKeyDistributionMessage>(Ok(skdm))
     })
@@ -1500,6 +1519,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
             sender_key_name,
             sender_key_distribution_message,
             &mut sender_key_store,
+            None,
         )?;
         Ok(())
     })
@@ -1526,7 +1546,13 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
 
         let mut rng = rand::rngs::OsRng;
 
-        let ctext = group_encrypt(&mut sender_key_store, &sender_key_name, &message, &mut rng)?;
+        let ctext = group_encrypt(
+            &mut sender_key_store,
+            &sender_key_name,
+            &message,
+            &mut rng,
+            None,
+        )?;
 
         to_jbytearray(&env, Ok(ctext))
     })
@@ -1551,7 +1577,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
 
         let mut sender_key_store = JniSenderKeyStore::new(&env, store);
 
-        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name)?;
+        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name, None)?;
 
         to_jbytearray(&env, Ok(ptext))
     })
