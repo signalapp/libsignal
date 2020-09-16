@@ -72,24 +72,24 @@ typedef struct SignalMessage SignalMessage;
 
 typedef struct SignedPreKeyRecord SignedPreKeyRecord;
 
-typedef int (*LoadSession)(SessionRecord**, const ProtocolAddress*);
+typedef int (*LoadSession)(SessionRecord**, const ProtocolAddress*, void*);
 
-typedef int (*StoreSession)(const ProtocolAddress*, const SessionRecord*);
+typedef int (*StoreSession)(const ProtocolAddress*, const SessionRecord*, void*);
 
 typedef struct {
   LoadSession load_session;
   StoreSession store_session;
 } FfiSessionStoreStruct;
 
-typedef int (*GetIdentityKeyPair)(PrivateKey**);
+typedef int (*GetIdentityKeyPair)(PrivateKey**, void*);
 
-typedef int (*GetLocalRegistrationId)(uint32_t*);
+typedef int (*GetLocalRegistrationId)(uint32_t*, void*);
 
-typedef int (*SaveIdentityKey)(const ProtocolAddress*, const PublicKey*);
+typedef int (*SaveIdentityKey)(const ProtocolAddress*, const PublicKey*, void*);
 
-typedef int (*GetIdentityKey)(PublicKey**, const ProtocolAddress*);
+typedef int (*GetIdentityKey)(PublicKey**, const ProtocolAddress*, void*);
 
-typedef int (*IsTrustedIdentity)(const ProtocolAddress*, const PublicKey*, unsigned int);
+typedef int (*IsTrustedIdentity)(const ProtocolAddress*, const PublicKey*, unsigned int, void*);
 
 typedef struct {
   GetIdentityKeyPair get_identity_key_pair;
@@ -99,11 +99,11 @@ typedef struct {
   IsTrustedIdentity is_trusted_identity;
 } FfiIdentityKeyStoreStruct;
 
-typedef int (*LoadPreKey)(PreKeyRecord**, uint32_t);
+typedef int (*LoadPreKey)(PreKeyRecord**, uint32_t, void*);
 
-typedef int (*StorePreKey)(uint32_t, const PreKeyRecord*);
+typedef int (*StorePreKey)(uint32_t, const PreKeyRecord*, void*);
 
-typedef int (*RemovePreKey)(uint32_t);
+typedef int (*RemovePreKey)(uint32_t, void*);
 
 typedef struct {
   LoadPreKey load_pre_key;
@@ -111,18 +111,18 @@ typedef struct {
   RemovePreKey remove_pre_key;
 } FfiPreKeyStoreStruct;
 
-typedef int (*LoadSignedPreKey)(SignedPreKeyRecord**, uint32_t);
+typedef int (*LoadSignedPreKey)(SignedPreKeyRecord**, uint32_t, void*);
 
-typedef int (*StoreSignedPreKey)(uint32_t, const SignedPreKeyRecord*);
+typedef int (*StoreSignedPreKey)(uint32_t, const SignedPreKeyRecord*, void*);
 
 typedef struct {
   LoadSignedPreKey load_signed_pre_key;
   StoreSignedPreKey store_signed_pre_key;
 } FfiSignedPreKeyStoreStruct;
 
-typedef int (*LoadSenderKey)(SenderKeyRecord**, const SenderKeyName*);
+typedef int (*LoadSenderKey)(SenderKeyRecord**, const SenderKeyName*, void*);
 
-typedef int (*StoreSenderKey)(const SenderKeyName*, const SenderKeyRecord*);
+typedef int (*StoreSenderKey)(const SenderKeyName*, const SenderKeyRecord*, void*);
 
 typedef struct {
   LoadSenderKey load_sender_key;
@@ -519,7 +519,8 @@ SignalFfiError *signal_sender_key_record_serialize(const SenderKeyRecord *obj,
 SignalFfiError *signal_process_prekey_bundle(PreKeyBundle *bundle,
                                              const ProtocolAddress *protocol_address,
                                              FfiSessionStoreStruct *session_store,
-                                             FfiIdentityKeyStoreStruct *identity_key_store);
+                                             FfiIdentityKeyStoreStruct *identity_key_store,
+                                             void *ctx);
 
 SignalFfiError *signal_encrypt_message(unsigned char *result,
                                        size_t *result_len,
@@ -527,14 +528,16 @@ SignalFfiError *signal_encrypt_message(unsigned char *result,
                                        size_t ptext_len,
                                        const ProtocolAddress *protocol_address,
                                        FfiSessionStoreStruct *session_store,
-                                       FfiIdentityKeyStoreStruct *identity_key_store);
+                                       FfiIdentityKeyStoreStruct *identity_key_store,
+                                       void *ctx);
 
 SignalFfiError *signal_decrypt_message(unsigned char *result,
                                        size_t *result_len,
                                        const SignalMessage *message,
                                        const ProtocolAddress *protocol_address,
                                        FfiSessionStoreStruct *session_store,
-                                       FfiIdentityKeyStoreStruct *identity_key_store);
+                                       FfiIdentityKeyStoreStruct *identity_key_store,
+                                       void *ctx);
 
 SignalFfiError *signal_decrypt_pre_key_message(unsigned char *result,
                                                size_t *result_len,
@@ -543,28 +546,33 @@ SignalFfiError *signal_decrypt_pre_key_message(unsigned char *result,
                                                FfiSessionStoreStruct *session_store,
                                                FfiIdentityKeyStoreStruct *identity_key_store,
                                                FfiPreKeyStoreStruct *prekey_store,
-                                               FfiSignedPreKeyStoreStruct *signed_prekey_store);
+                                               FfiSignedPreKeyStoreStruct *signed_prekey_store,
+                                               void *ctx);
 
 SignalFfiError *signal_create_sender_key_distribution_message(SenderKeyDistributionMessage **obj,
                                                               const SenderKeyName *sender_key_name,
-                                                              FfiSenderKeyStoreStruct *store);
+                                                              FfiSenderKeyStoreStruct *store,
+                                                              void *ctx);
 
 SignalFfiError *signal_process_sender_key_distribution_message(const SenderKeyName *sender_key_name,
                                                                const SenderKeyDistributionMessage *sender_key_distribution_message,
-                                                               FfiSenderKeyStoreStruct *store);
+                                                               FfiSenderKeyStoreStruct *store,
+                                                               void *ctx);
 
 SignalFfiError *signal_group_encrypt_message(unsigned char *out,
                                              size_t *out_len,
                                              const SenderKeyName *sender_key_name,
                                              const unsigned char *message,
                                              size_t message_len,
-                                             FfiSenderKeyStoreStruct *store);
+                                             FfiSenderKeyStoreStruct *store,
+                                             void *ctx);
 
 SignalFfiError *signal_group_decrypt_message(unsigned char *out,
                                              size_t *out_len,
                                              const SenderKeyName *sender_key_name,
                                              const unsigned char *message,
                                              size_t message_len,
-                                             FfiSenderKeyStoreStruct *store);
+                                             FfiSenderKeyStoreStruct *store,
+                                             void *ctx);
 
 #endif /* SIGNAL_FFI_H_ */

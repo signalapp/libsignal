@@ -1,6 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(warnings)]
 
+use std::ffi::c_void;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
@@ -730,11 +731,11 @@ ffi_fn_deserialize!(signal_sender_key_record_deserialize(SenderKeyRecord) is Sen
 ffi_fn_get_bytearray!(signal_sender_key_record_serialize(SenderKeyRecord) using
                       |sks: &SenderKeyRecord| sks.serialize());
 
-type GetIdentityKeyPair = extern "C" fn(*mut *mut PrivateKey) -> c_int;
-type GetLocalRegistrationId = extern "C" fn(*mut u32) -> c_int;
-type GetIdentityKey = extern "C" fn(*mut *mut PublicKey, *const ProtocolAddress) -> c_int;
-type SaveIdentityKey = extern "C" fn(*const ProtocolAddress, *const PublicKey) -> c_int;
-type IsTrustedIdentity = extern "C" fn(*const ProtocolAddress, *const PublicKey, c_uint) -> c_int;
+type GetIdentityKeyPair = extern "C" fn(*mut *mut PrivateKey, *mut c_void) -> c_int;
+type GetLocalRegistrationId = extern "C" fn(*mut u32, *mut c_void) -> c_int;
+type GetIdentityKey = extern "C" fn(*mut *mut PublicKey, *const ProtocolAddress, *mut c_void) -> c_int;
+type SaveIdentityKey = extern "C" fn(*const ProtocolAddress, *const PublicKey, *mut c_void) -> c_int;
+type IsTrustedIdentity = extern "C" fn(*const ProtocolAddress, *const PublicKey, c_uint, *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -759,9 +760,10 @@ impl FfiIdentityKeyStore {
 }
 
 impl IdentityKeyStore for FfiIdentityKeyStore {
-    fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
+    fn get_identity_key_pair(&self, ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut key = std::ptr::null_mut();
-        let result = (self.store.get_identity_key_pair)(&mut key);
+        let result = (self.store.get_identity_key_pair)(&mut key, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("get_identity_key_pair", result));
@@ -777,9 +779,10 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), *priv_key))
     }
 
-    fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
+    fn get_local_registration_id(&self, ctx: Context) -> Result<u32, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut id = 0;
-        let result = (self.store.get_local_registration_id)(&mut id);
+        let result = (self.store.get_local_registration_id)(&mut id, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("get_local_registration_id", result));
@@ -792,8 +795,10 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
+        ctx: Context
     ) -> Result<bool, SignalProtocolError> {
-        let result = (self.store.save_identity)(&*address, &*identity.public_key());
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+        let result = (self.store.save_identity)(&*address, &*identity.public_key(), ctx);
 
         match result {
             0 => Ok(false),
@@ -807,14 +812,16 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         address: &ProtocolAddress,
         identity: &IdentityKey,
         direction: Direction,
+        ctx: Context
     ) -> Result<bool, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let direction = if direction == Direction::Sending {
             0
         } else {
             1
         };
         let result =
-            (self.store.is_trusted_identity)(&*address, &*identity.public_key(), direction);
+            (self.store.is_trusted_identity)(&*address, &*identity.public_key(), direction, ctx);
 
         match result {
             0 => Ok(false),
@@ -826,9 +833,10 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
     fn get_identity(
         &self,
         address: &ProtocolAddress,
-    ) -> Result<Option<IdentityKey>, SignalProtocolError> {
+        ctx: Context) -> Result<Option<IdentityKey>, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut key = std::ptr::null_mut();
-        let result = (self.store.get_identity)(&mut key, &*address);
+        let result = (self.store.get_identity)(&mut key, &*address, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("get_identity", result));
@@ -844,9 +852,9 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
     }
 }
 
-type LoadPreKey = extern "C" fn(*mut *mut PreKeyRecord, u32) -> c_int;
-type StorePreKey = extern "C" fn(u32, *const PreKeyRecord) -> c_int;
-type RemovePreKey = extern "C" fn(u32) -> c_int;
+type LoadPreKey = extern "C" fn(*mut *mut PreKeyRecord, u32, *mut c_void) -> c_int;
+type StorePreKey = extern "C" fn(u32, *const PreKeyRecord, *mut c_void) -> c_int;
+type RemovePreKey = extern "C" fn(u32, *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -869,9 +877,10 @@ impl FfiPreKeyStore {
 }
 
 impl PreKeyStore for FfiPreKeyStore {
-    fn get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalProtocolError> {
+    fn get_pre_key(&self, prekey_id: u32, ctx: Context) -> Result<PreKeyRecord, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.store.load_pre_key)(&mut record, prekey_id);
+        let result = (self.store.load_pre_key)(&mut record, prekey_id, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("load_pre_key", result));
@@ -889,8 +898,10 @@ impl PreKeyStore for FfiPreKeyStore {
         &mut self,
         prekey_id: u32,
         record: &PreKeyRecord,
+        ctx: Context
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store.store_pre_key)(prekey_id, &*record);
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+        let result = (self.store.store_pre_key)(prekey_id, &*record, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("store_pre_key", result));
@@ -899,8 +910,9 @@ impl PreKeyStore for FfiPreKeyStore {
         Ok(())
     }
 
-    fn remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalProtocolError> {
-        let result = (self.store.remove_pre_key)(prekey_id);
+    fn remove_pre_key(&mut self, prekey_id: u32, ctx: Context) -> Result<(), SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+        let result = (self.store.remove_pre_key)(prekey_id, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("remove_pre_key", result));
@@ -910,8 +922,8 @@ impl PreKeyStore for FfiPreKeyStore {
     }
 }
 
-type LoadSignedPreKey = extern "C" fn(*mut *mut SignedPreKeyRecord, u32) -> c_int;
-type StoreSignedPreKey = extern "C" fn(u32, *const SignedPreKeyRecord) -> c_int;
+type LoadSignedPreKey = extern "C" fn(*mut *mut SignedPreKeyRecord, u32, *mut c_void) -> c_int;
+type StoreSignedPreKey = extern "C" fn(u32, *const SignedPreKeyRecord, *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -936,9 +948,10 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
     fn get_signed_pre_key(
         &self,
         prekey_id: u32,
-    ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
+        ctx: Context) -> Result<SignedPreKeyRecord, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.store.load_signed_pre_key)(&mut record, prekey_id);
+        let result = (self.store.load_signed_pre_key)(&mut record, prekey_id, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("load_signed_pre_key", result));
@@ -956,8 +969,10 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
         &mut self,
         prekey_id: u32,
         record: &SignedPreKeyRecord,
+        ctx: Context
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store.store_signed_pre_key)(prekey_id, &*record);
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+        let result = (self.store.store_signed_pre_key)(prekey_id, &*record, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("store_signed_pre_key", result));
@@ -967,8 +982,8 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
     }
 }
 
-type LoadSession = extern "C" fn(*mut *mut SessionRecord, *const ProtocolAddress) -> c_int;
-type StoreSession = extern "C" fn(*const ProtocolAddress, *const SessionRecord) -> c_int;
+type LoadSession = extern "C" fn(*mut *mut SessionRecord, *const ProtocolAddress, *mut c_void) -> c_int;
+type StoreSession = extern "C" fn(*const ProtocolAddress, *const SessionRecord, *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -993,9 +1008,10 @@ impl SessionStore for FfiSessionStore {
     fn load_session(
         &self,
         address: &ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, SignalProtocolError> {
+        ctx: Context) -> Result<Option<SessionRecord>, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.store.load_session)(&mut record, &*address);
+        let result = (self.store.load_session)(&mut record, &*address, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("load_session", result));
@@ -1008,8 +1024,10 @@ impl SessionStore for FfiSessionStore {
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
+        ctx: Context
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store.store_session)(&*address, &*record);
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+        let result = (self.store.store_session)(&*address, &*record, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("store_session", result));
@@ -1025,6 +1043,7 @@ pub unsafe extern "C" fn signal_process_prekey_bundle(
     protocol_address: *const ProtocolAddress,
     session_store: *mut FfiSessionStoreStruct,
     identity_key_store: *mut FfiIdentityKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let bundle = native_handle_cast::<PreKeyBundle>(bundle)?;
@@ -1040,6 +1059,7 @@ pub unsafe extern "C" fn signal_process_prekey_bundle(
             &mut identity_key_store,
             bundle,
             &mut csprng,
+            Some(ctx),
         )?;
 
         Ok(())
@@ -1055,6 +1075,7 @@ pub unsafe extern "C" fn signal_encrypt_message(
     protocol_address: *const ProtocolAddress,
     session_store: *mut FfiSessionStoreStruct,
     identity_key_store: *mut FfiIdentityKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let ptext = as_slice(ptext, ptext_len)?;
@@ -1068,6 +1089,7 @@ pub unsafe extern "C" fn signal_encrypt_message(
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
+            Some(ctx),
         )?;
 
         let ctext = match ctext {
@@ -1092,6 +1114,7 @@ pub unsafe extern "C" fn signal_decrypt_message(
     protocol_address: *const ProtocolAddress,
     session_store: *mut FfiSessionStoreStruct,
     identity_key_store: *mut FfiIdentityKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let message = native_handle_cast::<SignalMessage>(message)?;
@@ -1107,6 +1130,7 @@ pub unsafe extern "C" fn signal_decrypt_message(
             &mut session_store,
             &mut identity_key_store,
             &mut csprng,
+            Some(ctx),
         );
         write_bytearray_to(result, result_len, ptext)
     })
@@ -1122,6 +1146,7 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
     identity_key_store: *mut FfiIdentityKeyStoreStruct,
     prekey_store: *mut FfiPreKeyStoreStruct,
     signed_prekey_store: *mut FfiSignedPreKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let message = native_handle_cast::<PreKeySignalMessage>(message)?;
@@ -1140,14 +1165,15 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
             &mut prekey_store,
             &mut signed_prekey_store,
             &mut csprng,
+            Some(ctx),
         );
 
         write_bytearray_to(result, result_len, ptext)
     })
 }
 
-type LoadSenderKey = extern "C" fn(*mut *mut SenderKeyRecord, *const SenderKeyName) -> c_int;
-type StoreSenderKey = extern "C" fn(*const SenderKeyName, *const SenderKeyRecord) -> c_int;
+type LoadSenderKey = extern "C" fn(*mut *mut SenderKeyRecord, *const SenderKeyName, *mut c_void) -> c_int;
+type StoreSenderKey = extern "C" fn(*const SenderKeyName, *const SenderKeyRecord, *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1173,8 +1199,10 @@ impl SenderKeyStore for FfiSenderKeyStore {
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
+        ctx: Context
     ) -> Result<(), SignalProtocolError> {
-        let result = (self.store.store_sender_key)(&*sender_key_name, &*record);
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+        let result = (self.store.store_sender_key)(&*sender_key_name, &*record, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("store_sender_key", result));
@@ -1186,9 +1214,11 @@ impl SenderKeyStore for FfiSenderKeyStore {
     fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
+        ctx: Context
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
+        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.store.load_sender_key)(&mut record, &*sender_key_name);
+        let result = (self.store.load_sender_key)(&mut record, &*sender_key_name, ctx);
 
         if result != 0 {
             return Err(SignalProtocolError::ApplicationCallbackReturnedIntegerError("load_sender_key", result));
@@ -1203,6 +1233,7 @@ pub unsafe extern "C" fn signal_create_sender_key_distribution_message(
     obj: *mut *mut SenderKeyDistributionMessage,
     sender_key_name: *const SenderKeyName,
     store: *mut FfiSenderKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         if sender_key_name.is_null() || store.is_null() {
@@ -1217,6 +1248,7 @@ pub unsafe extern "C" fn signal_create_sender_key_distribution_message(
             &sender_key_name,
             &mut sender_key_store,
             &mut csprng,
+            Some(ctx),
         );
 
         box_object::<SenderKeyDistributionMessage>(obj, skdm)
@@ -1228,6 +1260,7 @@ pub unsafe extern "C" fn signal_process_sender_key_distribution_message(
     sender_key_name: *const SenderKeyName,
     sender_key_distribution_message: *const SenderKeyDistributionMessage,
     store: *mut FfiSenderKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
@@ -1239,6 +1272,7 @@ pub unsafe extern "C" fn signal_process_sender_key_distribution_message(
             sender_key_name,
             sender_key_distribution_message,
             &mut sender_key_store,
+            Some(ctx),
         )?;
 
         Ok(())
@@ -1253,13 +1287,14 @@ pub unsafe extern "C" fn signal_group_encrypt_message(
     message: *const c_uchar,
     message_len: size_t,
     store: *mut FfiSenderKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
         let mut rng = rand::rngs::OsRng;
-        let ctext = group_encrypt(&mut sender_key_store, &sender_key_name, &message, &mut rng);
+        let ctext = group_encrypt(&mut sender_key_store, &sender_key_name, &message, &mut rng, Some(ctx));
         write_bytearray_to(out, out_len, ctext)
     })
 }
@@ -1272,13 +1307,14 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
     message: *const c_uchar,
     message_len: size_t,
     store: *mut FfiSenderKeyStoreStruct,
+    ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
 
-        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name);
+        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name, Some(ctx));
         write_bytearray_to(out, out_len, ptext)
     })
 }
