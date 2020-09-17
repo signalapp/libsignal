@@ -70,8 +70,8 @@ pub enum SignalProtocolError {
 impl Error for SignalProtocolError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            SignalProtocolError::ProtobufEncodingError(ref e) => Some(e),
-            SignalProtocolError::ProtobufDecodingError(ref e) => Some(e),
+            SignalProtocolError::ProtobufEncodingError(e) => Some(e),
+            SignalProtocolError::ProtobufDecodingError(e) => Some(e),
             _ => None,
         }
     }
@@ -92,17 +92,17 @@ impl From<prost::EncodeError> for SignalProtocolError {
 impl fmt::Display for SignalProtocolError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SignalProtocolError::ProtobufDecodingError(ref e) => {
+            SignalProtocolError::ProtobufDecodingError(e) => {
                 write!(f, "failed to decode protobuf: {}", e)
             }
-            SignalProtocolError::ProtobufEncodingError(ref e) => {
+            SignalProtocolError::ProtobufEncodingError(e) => {
                 write!(f, "failed to encode protobuf: {}", e)
             }
             SignalProtocolError::InvalidProtobufEncoding => {
                 write!(f, "protobuf encoding was invalid")
             }
-            SignalProtocolError::InvalidArgument(ref s) => write!(f, "invalid argument: {}", s),
-            SignalProtocolError::InvalidState(ref func, ref s) => {
+            SignalProtocolError::InvalidArgument(s) => write!(f, "invalid argument: {}", s),
+            SignalProtocolError::InvalidState(func, s) => {
                 write!(f, "invalid state for call to {} to succeed: {}", func, s)
             }
             SignalProtocolError::CiphertextMessageTooShort(size) => {
