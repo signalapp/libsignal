@@ -241,29 +241,25 @@ pub unsafe extern "C" fn signal_fingerprint_new(
     version: c_uint,
     local_identifier: *const c_uchar,
     local_identifier_len: size_t,
-    local_key: *const c_uchar,
-    local_key_len: size_t,
+    local_key: *const PublicKey,
     remote_identifier: *const c_uchar,
     remote_identifier_len: size_t,
-    remote_key: *const c_uchar,
-    remote_key_len: size_t,
+    remote_key: *const PublicKey,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let local_identifier = as_slice(local_identifier, local_identifier_len)?;
-        let local_key = as_slice(local_key, local_key_len)?;
+        let local_key = native_handle_cast::<PublicKey>(local_key)?;
 
         let remote_identifier = as_slice(remote_identifier, remote_identifier_len)?;
-        let remote_key = as_slice(remote_key, remote_key_len)?;
+        let remote_key = native_handle_cast::<PublicKey>(remote_key)?;
 
-        let local_key = IdentityKey::decode(&local_key)?;
-        let remote_key = IdentityKey::decode(&remote_key)?;
         let fprint = Fingerprint::new(
             version,
             iterations,
-            &local_identifier,
-            &local_key,
-            &remote_identifier,
-            &remote_key,
+            local_identifier,
+            &IdentityKey::new(*local_key),
+            remote_identifier,
+            &IdentityKey::new(*remote_key),
         );
 
         box_object::<Fingerprint>(obj, fprint)

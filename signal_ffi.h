@@ -167,16 +167,16 @@ SignalFfiError *signal_publickey_serialize(const PublicKey *obj,
                                            unsigned char *out,
                                            size_t *out_len);
 
-SignalFfiError *signal_public_key_compare(int32_t *result,
-                                          const PublicKey *key1,
-                                          const PublicKey *key2);
+SignalFfiError *signal_publickey_compare(int32_t *result,
+                                         const PublicKey *key1,
+                                         const PublicKey *key2);
 
-SignalFfiError *signal_public_key_verify(const PublicKey *key,
-                                         unsigned char *result,
-                                         const unsigned char *message,
-                                         size_t message_len,
-                                         const unsigned char *signature,
-                                         size_t signature_len);
+SignalFfiError *signal_publickey_verify(const PublicKey *key,
+                                        unsigned char *result,
+                                        const unsigned char *message,
+                                        size_t message_len,
+                                        const unsigned char *signature,
+                                        size_t signature_len);
 
 SignalFfiError *signal_publickey_free(PublicKey *p);
 
@@ -227,12 +227,10 @@ SignalFfiError *signal_fingerprint_new(Fingerprint **obj,
                                        unsigned int version,
                                        const unsigned char *local_identifier,
                                        size_t local_identifier_len,
-                                       const unsigned char *local_key,
-                                       size_t local_key_len,
+                                       const PublicKey *local_key,
                                        const unsigned char *remote_identifier,
                                        size_t remote_identifier_len,
-                                       const unsigned char *remote_key,
-                                       size_t remote_key_len);
+                                       const PublicKey *remote_key);
 
 SignalFfiError *signal_fingerprint_destroy(Fingerprint *p);
 
