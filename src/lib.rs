@@ -115,7 +115,7 @@ ffi_fn_deserialize!(signal_publickey_deserialize(PublicKey) is PublicKey::deseri
 ffi_fn_get_bytearray!(signal_publickey_serialize(PublicKey) using |k: &PublicKey| Ok(k.serialize()));
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_public_key_compare(
+pub unsafe extern "C" fn signal_publickey_compare(
     result: *mut i32,
     key1: *const PublicKey,
     key2: *const PublicKey,
@@ -134,7 +134,7 @@ pub unsafe extern "C" fn signal_public_key_compare(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_public_key_verify(
+pub unsafe extern "C" fn signal_publickey_verify(
     key: *const PublicKey,
     result: *mut c_uchar,
     message: *const c_uchar,
