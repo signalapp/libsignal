@@ -2,6 +2,8 @@
 
 libsignal-protocol-rust is an implementation of the Signal protocol in Rust.
 
+Work in progress.  Subject to change without notice, use outside Signal not yet recommended.
+
 # Legal things
 ## Cryptography Notice
 
