@@ -172,6 +172,7 @@ SignalFfiError *signal_public_key_compare(int32_t *result,
                                           const PublicKey *key2);
 
 SignalFfiError *signal_public_key_verify(const PublicKey *key,
+                                         unsigned char *result,
                                          const unsigned char *message,
                                          size_t message_len,
                                          const unsigned char *signature,

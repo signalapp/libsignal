@@ -136,22 +136,22 @@ pub unsafe extern "C" fn signal_public_key_compare(
 #[no_mangle]
 pub unsafe extern "C" fn signal_public_key_verify(
     key: *const PublicKey,
+    result: *mut c_uchar,
     message: *const c_uchar,
     message_len: size_t,
     signature: *const c_uchar,
     signature_len: size_t,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
+        *result = 0; // pre-set to invalid state
         let key = native_handle_cast::<PublicKey>(key)?;
         let message = as_slice(message, message_len)?;
         let signature = as_slice(signature, signature_len)?;
 
-        match key.verify_signature(&message, &signature)? {
-            true => Ok(()),
-            false => Err(SignalFfiError::Signal(
-                SignalProtocolError::SignatureValidationFailed,
-            )),
-        }
+        let valid = key.verify_signature(&message, &signature)?;
+
+        *result = if valid { 1 } else { 0 };
+        Ok(())
     })
 }
 
