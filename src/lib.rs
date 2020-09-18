@@ -155,7 +155,7 @@ pub unsafe extern "C" fn signal_public_key_verify(
     })
 }
 
-ffi_fn_destroy!(signnal_publickey_free destroys PublicKey);
+ffi_fn_destroy!(signal_publickey_free destroys PublicKey);
 
 ffi_fn_deserialize!(signal_privatekey_deserialize(PrivateKey) is PrivateKey::deserialize);
 

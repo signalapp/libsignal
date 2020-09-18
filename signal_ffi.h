@@ -177,7 +177,7 @@ SignalFfiError *signal_public_key_verify(const PublicKey *key,
                                          const unsigned char *signature,
                                          size_t signature_len);
 
-SignalFfiError *signnal_publickey_free(PublicKey *p);
+SignalFfiError *signal_publickey_free(PublicKey *p);
 
 SignalFfiError *signal_privatekey_deserialize(PrivateKey **p,
                                               const unsigned char *data,
