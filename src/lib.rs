@@ -4,24 +4,31 @@
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
-use std::ffi::c_void;
+use std::ffi::{c_void, CString};
 
 mod util;
 
 use crate::util::*;
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_free_string(out: *const c_char) {
+    if out.is_null() {
+        return;
+    }
+    CString::from_raw(out as _);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_get_message(
     err: *const SignalFfiError,
-    out: *mut c_uchar,
-    out_len: *mut size_t,
+    out: *mut *const c_char,
 ) -> *mut SignalFfiError {
     let result = (|| {
         if err.is_null() {
             return Err(SignalFfiError::NullPointer);
         }
         let msg = format!("{}", *err);
-        write_cstr_to(out, out_len, Ok(msg))
+        write_cstr_to(out, Ok(msg))
     })();
 
     match result {
@@ -219,8 +226,7 @@ ffi_fn_destroy!(signal_session_record_destroy destroys SessionRecord);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_format(
-    fprint: *mut c_uchar,
-    fprint_len: *mut size_t,
+    fprint: *mut *const c_char,
     local: *const c_uchar,
     local_len: size_t,
     remote: *const c_uchar,
@@ -230,7 +236,7 @@ pub unsafe extern "C" fn signal_fingerprint_format(
         let local = as_slice(local, local_len)?;
         let remote = as_slice(remote, remote_len)?;
         let fingerprint = DisplayableFingerprint::new(&local, &remote).map(|f| format!("{}", f));
-        write_cstr_to(fprint, fprint_len, fingerprint)
+        write_cstr_to(fprint, fingerprint)
     })
 }
 

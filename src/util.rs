@@ -278,11 +278,10 @@ pub unsafe fn read_c_string(cstr: *const c_char) -> Result<String, SignalFfiErro
 }
 
 pub fn write_cstr_to(
-    out: *mut c_uchar,
-    out_len: *mut size_t,
+    out: *mut *const c_char,
     value: Result<String, SignalProtocolError>,
 ) -> Result<(), SignalFfiError> {
-    if out.is_null() || out_len.is_null() {
+    if out.is_null() {
         return Err(SignalFfiError::NullPointer);
     }
 
@@ -292,18 +291,8 @@ pub fn write_cstr_to(
         Ok(value) => {
             let cstr =
                 CString::new(value).expect("No NULL characters in string being returned to C");
-            let cstr_bytes = cstr.into_bytes_with_nul();
-
             unsafe {
-                let space_avail = *out_len;
-                *out_len = cstr_bytes.len();
-                if space_avail < cstr_bytes.len() {
-                    return Err(SignalFfiError::InsufficientOutputSize(
-                        cstr_bytes.len(),
-                        space_avail,
-                    ));
-                }
-                std::ptr::copy_nonoverlapping(cstr_bytes.as_ptr(), out, cstr_bytes.len());
+                *out = cstr.into_raw();
             }
             Ok(())
         }
@@ -517,15 +506,14 @@ macro_rules! ffi_fn_get_cstring {
         #[no_mangle]
         pub unsafe extern "C" fn $nm(
             obj: *const $typ,
-            out: *mut c_uchar,
-            out_len: *mut size_t,
+            out: *mut *const c_char,
         ) -> *mut SignalFfiError {
             fn inner_get(t: &$typ) -> Result<String, SignalProtocolError> {
                 $body(&t)
             }
             run_ffi_safe(|| {
                 let obj = native_handle_cast::<$typ>(obj)?;
-                write_cstr_to(out, out_len, inner_get(&obj))?;
+                write_cstr_to(out, inner_get(&obj))?;
                 Ok(())
             })
         }
