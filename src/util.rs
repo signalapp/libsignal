@@ -359,7 +359,7 @@ pub fn write_uint64_to(
 }
 
 pub fn write_bytearray_to<T: AsRef<[u8]>>(
-    out: *mut c_uchar,
+    out: *mut *const c_uchar,
     out_len: *mut size_t,
     value: Result<T, SignalProtocolError>,
 ) -> Result<(), SignalFfiError> {
@@ -369,19 +369,12 @@ pub fn write_bytearray_to<T: AsRef<[u8]>>(
 
     match value {
         Ok(value) => {
-            let value: &[u8] = value.as_ref();
+            let value : Box<[u8]> = value.as_ref().to_vec().into_boxed_slice();
 
             unsafe {
-                let space_avail = *out_len;
                 *out_len = value.len();
-                if space_avail < value.len() {
-                    return Err(SignalFfiError::InsufficientOutputSize(
-                        value.len(),
-                        space_avail,
-                    ));
-                }
-
-                std::ptr::copy_nonoverlapping(value.as_ptr(), out, value.len());
+                let mem = Box::into_raw(value);
+                *out = (*mem).as_ptr();
             }
             Ok(())
         }
@@ -489,7 +482,7 @@ macro_rules! ffi_fn_get_bytearray {
         #[no_mangle]
         pub unsafe extern "C" fn $nm(
             obj: *const $typ,
-            out: *mut c_uchar,
+            out: *mut *const c_uchar,
             out_len: *mut size_t,
         ) -> *mut SignalFfiError {
             run_ffi_safe(|| {

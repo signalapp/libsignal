@@ -11,11 +11,19 @@ mod util;
 use crate::util::*;
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_free_string(out: *const c_char) {
-    if out.is_null() {
+pub unsafe extern "C" fn signal_free_string(buf: *const c_char) {
+    if buf.is_null() {
         return;
     }
-    CString::from_raw(out as _);
+    CString::from_raw(buf as _);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: size_t) {
+    if buf.is_null() {
+        return;
+    }
+    Box::from_raw(std::slice::from_raw_parts_mut(buf as *mut c_uchar, buf_len));
 }
 
 #[no_mangle]
@@ -185,7 +193,7 @@ ffi_fn_get_new_boxed_obj!(signal_privatekey_get_public_key(PublicKey) from Priva
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_privatekey_sign(
-    signature: *mut c_uchar,
+    signature: *mut *const c_uchar,
     signature_len: *mut size_t,
     key: *const PrivateKey,
     message: *const c_uchar,
@@ -202,7 +210,7 @@ pub unsafe extern "C" fn signal_privatekey_sign(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_privatekey_agree(
-    shared_secret: *mut c_uchar,
+    shared_secret: *mut *const c_uchar,
     shared_secret_len: *mut size_t,
     private_key: *const PrivateKey,
     public_key: *const PublicKey,
@@ -1137,7 +1145,7 @@ pub unsafe extern "C" fn signal_process_prekey_bundle(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_encrypt_message(
-    result: *mut c_uchar,
+    result: *mut *const c_uchar,
     result_len: *mut size_t,
     ptext: *const c_uchar,
     ptext_len: size_t,
@@ -1177,7 +1185,7 @@ pub unsafe extern "C" fn signal_encrypt_message(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_decrypt_message(
-    result: *mut c_uchar,
+    result: *mut *const c_uchar,
     result_len: *mut size_t,
     message: *const SignalMessage,
     protocol_address: *const ProtocolAddress,
@@ -1207,7 +1215,7 @@ pub unsafe extern "C" fn signal_decrypt_message(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_decrypt_pre_key_message(
-    result: *mut c_uchar,
+    result: *mut *const c_uchar,
     result_len: *mut size_t,
     message: *const PreKeySignalMessage,
     protocol_address: *const ProtocolAddress,
@@ -1362,7 +1370,7 @@ pub unsafe extern "C" fn signal_process_sender_key_distribution_message(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_group_encrypt_message(
-    out: *mut c_uchar,
+    out: *mut *const c_uchar,
     out_len: *mut size_t,
     sender_key_name: *const SenderKeyName,
     message: *const c_uchar,
@@ -1388,7 +1396,7 @@ pub unsafe extern "C" fn signal_group_encrypt_message(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_group_decrypt_message(
-    out: *mut c_uchar,
+    out: *mut *const c_uchar,
     out_len: *mut size_t,
     sender_key_name: *const SenderKeyName,
     message: *const c_uchar,
