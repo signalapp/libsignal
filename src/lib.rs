@@ -405,11 +405,7 @@ pub unsafe extern "C" fn signal_pre_key_signal_message_new(
     signal_message: *const SignalMessage,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
-        let pre_key_id = if pre_key_id.is_null() {
-            None
-        } else {
-            Some(*pre_key_id)
-        };
+        let pre_key_id = get_optional_uint32(pre_key_id);
         let base_key = native_handle_cast::<PublicKey>(base_key)?;
         let identity_key = native_handle_cast::<PublicKey>(identity_key)?;
         let signal_message = native_handle_cast::<SignalMessage>(signal_message)?;
@@ -561,12 +557,7 @@ pub unsafe extern "C" fn signal_pre_key_bundle_new(
 
         let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.copied();
 
-        let prekey_id = if prekey_id.is_null() {
-            None
-        } else {
-            Some(*prekey_id)
-        };
-
+        let prekey_id = get_optional_uint32(prekey_id);
         let identity_key = IdentityKey::new(*(identity_key as *const PublicKey));
 
         let bundle = PreKeyBundle::new(
