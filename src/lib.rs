@@ -351,8 +351,8 @@ pub unsafe extern "C" fn signal_message_new(
 
 ffi_fn_destroy!(signal_message_destroy destroys SignalMessage);
 
-ffi_fn_get_bytearray!(signal_message_get_sender_ratchet_key(SignalMessage) using
-                      |m: &SignalMessage| Ok(m.sender_ratchet_key().serialize()));
+ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
+                          |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
 
 ffi_fn_get_bytearray!(signal_message_get_body(SignalMessage) using
                       |m: &SignalMessage| Ok(m.body().to_vec()));
@@ -440,11 +440,11 @@ ffi_fn_get_uint32!(signal_pre_key_signal_message_get_signed_pre_key_id(PreKeySig
 ffi_fn_get_bytearray!(signal_pre_key_signal_message_get_base_key(PreKeySignalMessage) using
                       |m: &PreKeySignalMessage| Ok(m.base_key().serialize()));
 
-ffi_fn_get_bytearray!(signal_pre_key_signal_message_get_identity_key(PreKeySignalMessage) using
-                      |m: &PreKeySignalMessage| Ok(m.identity_key().serialize()));
+ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_identity_key(PublicKey) from PreKeySignalMessage,
+                          |p: &PreKeySignalMessage| Ok(*p.identity_key().public_key()));
 
-ffi_fn_get_bytearray!(signal_pre_key_signal_message_get_signal_message(PreKeySignalMessage) using
-                      |m: &PreKeySignalMessage| Ok(m.message().serialized().to_vec()));
+ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_signal_message(SignalMessage) from PreKeySignalMessage,
+                          |p: &PreKeySignalMessage| Ok(p.message().clone()));
 
 ffi_fn_get_bytearray!(signal_pre_key_signal_message_serialize(PreKeySignalMessage) using
                       |m: &PreKeySignalMessage| Ok(m.serialized().to_vec()));
@@ -531,8 +531,8 @@ ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_iteration(SenderKe
 ffi_fn_get_bytearray!(signal_sender_key_distribution_message_get_chain_key(SenderKeyDistributionMessage) using
                       |m: &SenderKeyDistributionMessage| Ok(m.chain_key()?.to_vec()));
 
-ffi_fn_get_bytearray!(signal_sender_key_distribution_message_get_signature_key(SenderKeyDistributionMessage) using
-                      |m: &SenderKeyDistributionMessage| Ok(m.signing_key()?.serialize()));
+ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
+                          |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
 
 ffi_fn_get_bytearray!(signal_sender_key_distribution_message_serialize(SenderKeyDistributionMessage) using
                       |m: &SenderKeyDistributionMessage| Ok(m.serialized().to_vec()));

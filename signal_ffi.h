@@ -263,9 +263,8 @@ SignalFfiError *signal_message_new(SignalMessage **obj,
 
 SignalFfiError *signal_message_destroy(SignalMessage *p);
 
-SignalFfiError *signal_message_get_sender_ratchet_key(const SignalMessage *obj,
-                                                      const unsigned char **out,
-                                                      size_t *out_len);
+SignalFfiError *signal_message_get_sender_ratchet_key(PublicKey **new_obj,
+                                                      const SignalMessage *obj);
 
 SignalFfiError *signal_message_get_body(const SignalMessage *obj,
                                         const unsigned char **out,
@@ -317,13 +316,11 @@ SignalFfiError *signal_pre_key_signal_message_get_base_key(const PreKeySignalMes
                                                            const unsigned char **out,
                                                            size_t *out_len);
 
-SignalFfiError *signal_pre_key_signal_message_get_identity_key(const PreKeySignalMessage *obj,
-                                                               const unsigned char **out,
-                                                               size_t *out_len);
+SignalFfiError *signal_pre_key_signal_message_get_identity_key(PublicKey **new_obj,
+                                                               const PreKeySignalMessage *obj);
 
-SignalFfiError *signal_pre_key_signal_message_get_signal_message(const PreKeySignalMessage *obj,
-                                                                 const unsigned char **out,
-                                                                 size_t *out_len);
+SignalFfiError *signal_pre_key_signal_message_get_signal_message(SignalMessage **new_obj,
+                                                                 const PreKeySignalMessage *obj);
 
 SignalFfiError *signal_pre_key_signal_message_serialize(const PreKeySignalMessage *obj,
                                                         const unsigned char **out,
@@ -382,9 +379,8 @@ SignalFfiError *signal_sender_key_distribution_message_get_chain_key(const Sende
                                                                      const unsigned char **out,
                                                                      size_t *out_len);
 
-SignalFfiError *signal_sender_key_distribution_message_get_signature_key(const SenderKeyDistributionMessage *obj,
-                                                                         const unsigned char **out,
-                                                                         size_t *out_len);
+SignalFfiError *signal_sender_key_distribution_message_get_signature_key(PublicKey **new_obj,
+                                                                         const SenderKeyDistributionMessage *obj);
 
 SignalFfiError *signal_sender_key_distribution_message_serialize(const SenderKeyDistributionMessage *obj,
                                                                  const unsigned char **out,
