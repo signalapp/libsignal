@@ -157,7 +157,7 @@ SignalFfiError *signal_address_get_name(const ProtocolAddress *obj,
 
 SignalFfiError *signal_address_get_device_id(const ProtocolAddress *obj, unsigned int *out);
 
-SignalFfiError *signal_address_free(ProtocolAddress *p);
+SignalFfiError *signal_address_destroy(ProtocolAddress *p);
 
 SignalFfiError *signal_publickey_deserialize(PublicKey **p,
                                              const unsigned char *data,
@@ -178,7 +178,7 @@ SignalFfiError *signal_publickey_verify(const PublicKey *key,
                                         const unsigned char *signature,
                                         size_t signature_len);
 
-SignalFfiError *signal_publickey_free(PublicKey *p);
+SignalFfiError *signal_publickey_destroy(PublicKey *p);
 
 SignalFfiError *signal_privatekey_deserialize(PrivateKey **p,
                                               const unsigned char *data,
@@ -203,7 +203,7 @@ SignalFfiError *signal_privatekey_agree(unsigned char *shared_secret,
                                         const PrivateKey *private_key,
                                         const PublicKey *public_key);
 
-SignalFfiError *signal_privatekey_free(PrivateKey *p);
+SignalFfiError *signal_privatekey_destroy(PrivateKey *p);
 
 SignalFfiError *signal_session_record_deserialize(SessionRecord **p,
                                                   const unsigned char *data,
@@ -213,7 +213,7 @@ SignalFfiError *signal_session_record_serialize(const SessionRecord *obj,
                                                 unsigned char *out,
                                                 size_t *out_len);
 
-SignalFfiError *signal_session_record_free(SessionRecord *p);
+SignalFfiError *signal_session_record_destroy(SessionRecord *p);
 
 SignalFfiError *signal_fingerprint_format(unsigned char *fprint,
                                           size_t *fprint_len,

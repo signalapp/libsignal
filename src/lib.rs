@@ -108,7 +108,7 @@ ffi_fn_get_cstring!(signal_address_get_name(ProtocolAddress) using
 ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
                    |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
-ffi_fn_destroy!(signal_address_free destroys ProtocolAddress);
+ffi_fn_destroy!(signal_address_destroy destroys ProtocolAddress);
 
 ffi_fn_deserialize!(signal_publickey_deserialize(PublicKey) is PublicKey::deserialize);
 
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn signal_publickey_verify(
     })
 }
 
-ffi_fn_destroy!(signal_publickey_free destroys PublicKey);
+ffi_fn_destroy!(signal_publickey_destroy destroys PublicKey);
 
 ffi_fn_deserialize!(signal_privatekey_deserialize(PrivateKey) is PrivateKey::deserialize);
 
@@ -208,14 +208,14 @@ pub unsafe extern "C" fn signal_privatekey_agree(
     })
 }
 
-ffi_fn_destroy!(signal_privatekey_free destroys PrivateKey);
+ffi_fn_destroy!(signal_privatekey_destroy destroys PrivateKey);
 
 ffi_fn_deserialize!(signal_session_record_deserialize(SessionRecord) is SessionRecord::deserialize);
 
 ffi_fn_get_bytearray!(signal_session_record_serialize(SessionRecord) using
                       |s: &SessionRecord| s.serialize());
 
-ffi_fn_destroy!(signal_session_record_free destroys SessionRecord);
+ffi_fn_destroy!(signal_session_record_destroy destroys SessionRecord);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_format(
