@@ -61,9 +61,7 @@ impl SignalFfiError {
 
             SignalFfiError::CallbackError(_) => SignalErrorCode::CallbackError,
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
-            SignalFfiError::InsufficientOutputSize(_, _) => {
-                SignalErrorCode::InsufficientOutputSize
-            }
+            SignalFfiError::InsufficientOutputSize(_, _) => SignalErrorCode::InsufficientOutputSize,
 
             SignalFfiError::Signal(SignalProtocolError::ProtobufEncodingError(_))
             | SignalFfiError::Signal(SignalProtocolError::ProtobufDecodingError(_)) => {
