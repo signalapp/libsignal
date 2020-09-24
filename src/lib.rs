@@ -225,6 +225,36 @@ pub unsafe extern "C" fn signal_privatekey_agree(
 
 ffi_fn_destroy!(signal_privatekey_destroy destroys PrivateKey);
 
+#[no_mangle]
+pub unsafe extern "C" fn signal_identitykeypair_serialize(
+    output: *mut *const c_uchar,
+    output_len: *mut size_t,
+    private_key: *const PrivateKey,
+    public_key: *const PublicKey,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let private_key = *native_handle_cast::<PrivateKey>(private_key)?;
+        let public_key = *native_handle_cast::<PublicKey>(public_key)?;
+        let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(public_key), private_key);
+        write_bytearray_to(output, output_len, Ok(identity_key_pair.serialize()))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_identitykeypair_deserialize(
+    private_key: *mut *mut PrivateKey,
+    public_key: *mut *mut PublicKey,
+    input: *const c_uchar,
+    input_len: size_t,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let input = as_slice(input, input_len)?;
+        let identity_key_pair = IdentityKeyPair::try_from(input)?;
+        box_object::<PublicKey>(public_key, Ok(*identity_key_pair.public_key()))?;
+        box_object::<PrivateKey>(private_key, Ok(*identity_key_pair.private_key()))
+    })
+}
+
 ffi_fn_deserialize!(signal_session_record_deserialize(SessionRecord) is SessionRecord::deserialize);
 
 ffi_fn_get_bytearray!(signal_session_record_serialize(SessionRecord) using
@@ -437,8 +467,8 @@ ffi_fn_get_optional_uint32!(signal_pre_key_signal_message_get_pre_key_id(PreKeyS
 ffi_fn_get_uint32!(signal_pre_key_signal_message_get_signed_pre_key_id(PreKeySignalMessage) using
                    |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
 
-ffi_fn_get_bytearray!(signal_pre_key_signal_message_get_base_key(PreKeySignalMessage) using
-                      |m: &PreKeySignalMessage| Ok(m.base_key().serialize()));
+ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_base_key(PublicKey) from PreKeySignalMessage,
+                          |p: &PreKeySignalMessage| Ok(*p.base_key()));
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_identity_key(PublicKey) from PreKeySignalMessage,
                           |p: &PreKeySignalMessage| Ok(*p.identity_key().public_key()));

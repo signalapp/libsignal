@@ -205,6 +205,16 @@ SignalFfiError *signal_privatekey_agree(const unsigned char **shared_secret,
 
 SignalFfiError *signal_privatekey_destroy(PrivateKey *p);
 
+SignalFfiError *signal_identitykeypair_serialize(const unsigned char **output,
+                                                 size_t *output_len,
+                                                 const PrivateKey *private_key,
+                                                 const PublicKey *public_key);
+
+SignalFfiError *signal_identitykeypair_deserialize(PrivateKey **private_key,
+                                                   PublicKey **public_key,
+                                                   const unsigned char *input,
+                                                   size_t input_len);
+
 SignalFfiError *signal_session_record_deserialize(SessionRecord **p,
                                                   const unsigned char *data,
                                                   size_t data_len);
@@ -312,9 +322,8 @@ SignalFfiError *signal_pre_key_signal_message_get_pre_key_id(const PreKeySignalM
 SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(const PreKeySignalMessage *obj,
                                                                     unsigned int *out);
 
-SignalFfiError *signal_pre_key_signal_message_get_base_key(const PreKeySignalMessage *obj,
-                                                           const unsigned char **out,
-                                                           size_t *out_len);
+SignalFfiError *signal_pre_key_signal_message_get_base_key(PublicKey **new_obj,
+                                                           const PreKeySignalMessage *obj);
 
 SignalFfiError *signal_pre_key_signal_message_get_identity_key(PublicKey **new_obj,
                                                                const PreKeySignalMessage *obj);
