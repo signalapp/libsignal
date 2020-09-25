@@ -72,26 +72,28 @@ typedef struct SignalMessage SignalMessage;
 
 typedef struct SignedPreKeyRecord SignedPreKeyRecord;
 
-typedef int (*LoadSession)(SessionRecord**, const ProtocolAddress*, void*);
+typedef int (*LoadSession)(void*, SessionRecord**, const ProtocolAddress*, void*);
 
-typedef int (*StoreSession)(const ProtocolAddress*, const SessionRecord*, void*);
+typedef int (*StoreSession)(void*, const ProtocolAddress*, const SessionRecord*, void*);
 
 typedef struct {
+  void *ctx;
   LoadSession load_session;
   StoreSession store_session;
 } FfiSessionStoreStruct;
 
-typedef int (*GetIdentityKeyPair)(PrivateKey**, void*);
+typedef int (*GetIdentityKeyPair)(void*, PrivateKey**, void*);
 
-typedef int (*GetLocalRegistrationId)(uint32_t*, void*);
+typedef int (*GetLocalRegistrationId)(void*, uint32_t*, void*);
 
-typedef int (*SaveIdentityKey)(const ProtocolAddress*, const PublicKey*, void*);
+typedef int (*SaveIdentityKey)(void*, const ProtocolAddress*, const PublicKey*, void*);
 
-typedef int (*GetIdentityKey)(PublicKey**, const ProtocolAddress*, void*);
+typedef int (*GetIdentityKey)(void*, PublicKey**, const ProtocolAddress*, void*);
 
-typedef int (*IsTrustedIdentity)(const ProtocolAddress*, const PublicKey*, unsigned int, void*);
+typedef int (*IsTrustedIdentity)(void*, const ProtocolAddress*, const PublicKey*, unsigned int, void*);
 
 typedef struct {
+  void *ctx;
   GetIdentityKeyPair get_identity_key_pair;
   GetLocalRegistrationId get_local_registration_id;
   SaveIdentityKey save_identity;
@@ -99,35 +101,40 @@ typedef struct {
   IsTrustedIdentity is_trusted_identity;
 } FfiIdentityKeyStoreStruct;
 
-typedef int (*LoadPreKey)(PreKeyRecord**, uint32_t, void*);
+typedef int (*LoadPreKey)(void*, PreKeyRecord**, uint32_t, void*);
 
-typedef int (*StorePreKey)(uint32_t, const PreKeyRecord*, void*);
+typedef int (*StorePreKey)(void*, uint32_t, const PreKeyRecord*, void*);
 
-typedef int (*RemovePreKey)(uint32_t, void*);
+typedef int (*RemovePreKey)(void*, uint32_t, void*);
 
 typedef struct {
+  void *ctx;
   LoadPreKey load_pre_key;
   StorePreKey store_pre_key;
   RemovePreKey remove_pre_key;
 } FfiPreKeyStoreStruct;
 
-typedef int (*LoadSignedPreKey)(SignedPreKeyRecord**, uint32_t, void*);
+typedef int (*LoadSignedPreKey)(void*, SignedPreKeyRecord**, uint32_t, void*);
 
-typedef int (*StoreSignedPreKey)(uint32_t, const SignedPreKeyRecord*, void*);
+typedef int (*StoreSignedPreKey)(void*, uint32_t, const SignedPreKeyRecord*, void*);
 
 typedef struct {
+  void *ctx;
   LoadSignedPreKey load_signed_pre_key;
   StoreSignedPreKey store_signed_pre_key;
 } FfiSignedPreKeyStoreStruct;
 
-typedef int (*LoadSenderKey)(SenderKeyRecord**, const SenderKeyName*, void*);
+typedef int (*LoadSenderKey)(void*, SenderKeyRecord**, const SenderKeyName*, void*);
 
-typedef int (*StoreSenderKey)(const SenderKeyName*, const SenderKeyRecord*, void*);
+typedef int (*StoreSenderKey)(void*, const SenderKeyName*, const SenderKeyRecord*, void*);
 
 typedef struct {
+  void *ctx;
   LoadSenderKey load_sender_key;
   StoreSenderKey store_sender_key;
 } FfiSenderKeyStoreStruct;
+
+void signal_print_ptr(const void *p);
 
 void signal_free_string(const char *buf);
 
@@ -362,7 +369,8 @@ SignalFfiError *signal_sender_key_message_serialize(const SenderKeyMessage *obj,
                                                     const unsigned char **out,
                                                     size_t *out_len);
 
-SignalFfiError *signal_sender_key_message_verify_signature(const SenderKeyMessage *skm,
+SignalFfiError *signal_sender_key_message_verify_signature(unsigned int *result,
+                                                           const SenderKeyMessage *skm,
                                                            const PublicKey *pubkey);
 
 SignalFfiError *signal_sender_key_distribution_message_new(SenderKeyDistributionMessage **obj,
