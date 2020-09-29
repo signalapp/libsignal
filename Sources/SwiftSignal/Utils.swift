@@ -72,25 +72,24 @@ func createFfiSessionStoreStruct(_ store: SessionStore) throws -> FfiSessionStor
 }
 
 
-func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> FfiSenderKeyStoreStruct {
-    print("createFfiSenderKeyStoreStruct");
+class SenderKeyStoreWrapper {
+    var store: SenderKeyStore;
 
-    class SenderKeyStoreWrapper {
-        var store: SenderKeyStore;
-
-        init(store: SenderKeyStore) {
-            self.store = store;
-        }
-
-        func saveSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
-            try store.saveSenderKey(name: name, record: record, ctx: ctx);
-        }
-
-        func loadSenderKey(name: SenderKeyName, ctx: UnsafeMutableRawPointer?) throws -> Optional<SenderKeyRecord> {
-            try store.loadSenderKey(name: name, ctx: ctx);
-        }
-
+    init(store: SenderKeyStore) {
+        self.store = store;
     }
+
+    func saveSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+        try store.saveSenderKey(name: name, record: record, ctx: ctx);
+    }
+
+    func loadSenderKey(name: SenderKeyName, ctx: UnsafeMutableRawPointer?) throws -> Optional<SenderKeyRecord> {
+        try store.loadSenderKey(name: name, ctx: ctx);
+    }
+}
+
+func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> (FfiSenderKeyStoreStruct,SenderKeyStoreWrapper) {
+    print("createFfiSenderKeyStoreStruct");
 
     func ffiShimStoreSenderKey(store_ctx: UnsafeMutableRawPointer?,
                                sender_name: OpaquePointer?,
@@ -98,7 +97,7 @@ func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> FfiSenderK
                                ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             print("ffiShimStoreSenderKey");
-            var store = unsafeBitCast(store_ctx, to: SenderKeyStore.self);
+            let store = Unmanaged<SenderKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
             let sender_name = SenderKeyName(raw_ptr: sender_name);
             let record = SenderKeyRecord(raw_ptr: record);
             try store.saveSenderKey(name: sender_name, record: record, ctx: ctx);
@@ -115,7 +114,7 @@ func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> FfiSenderK
                               ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             print("ffiShimLoadSenderKey");
-            let store = unsafeBitCast(store_ctx, to: SenderKeyStore.self);
+            let store = Unmanaged<SenderKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
             let sender_name = SenderKeyName(raw_ptr: sender_name);
             let record = try store.loadSenderKey(name: sender_name, ctx: ctx);
             recordp!.pointee = record?.leakNativeHandle();
@@ -126,9 +125,11 @@ func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> FfiSenderK
         }
     }
 
-    return FfiSenderKeyStoreStruct(
-      ctx: unsafeBitCast(store, to: UnsafeMutableRawPointer.self),
-      //ctx: Unmanaged.passUnretained(store).toOpaque(),
+    let wrapper = SenderKeyStoreWrapper(store: store);
+
+    return (FfiSenderKeyStoreStruct(
+      //ctx: unsafeBitCast(wrapper, to: UnsafeMutableRawPointer.self),
+      ctx: Unmanaged.passUnretained(wrapper).toOpaque(),
       load_sender_key: ffiShimLoadSenderKey,
-      store_sender_key: ffiShimStoreSenderKey)
+      store_sender_key: ffiShimStoreSenderKey), wrapper)
 }

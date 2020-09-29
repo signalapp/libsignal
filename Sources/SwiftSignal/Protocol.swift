@@ -95,7 +95,7 @@ func GroupEncrypt(group_id: SenderKeyName,
                   store: SenderKeyStore,
                   ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
     var ffi = try createFfiSenderKeyStoreStruct(store);
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_group_encrypt_message(b,bl,group_id.nativeHandle(), message, message.count, &ffi, ctx) });
+    return try invokeFnReturningArray(fn: { (b,bl) in signal_group_encrypt_message(b,bl,group_id.nativeHandle(), message, message.count, &ffi.0, ctx) });
 }
 
 func GroupDecrypt(group_id: SenderKeyName,
@@ -103,7 +103,7 @@ func GroupDecrypt(group_id: SenderKeyName,
                   store: SenderKeyStore,
                   ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
     var ffi = try createFfiSenderKeyStoreStruct(store);
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_group_decrypt_message(b,bl,group_id.nativeHandle(), message, message.count, &ffi, ctx) });
+    return try invokeFnReturningArray(fn: { (b,bl) in signal_group_decrypt_message(b,bl,group_id.nativeHandle(), message, message.count, &ffi.0, ctx) });
 }
 
 func ProcessSenderKeyDistributionMessage(sender_name: SenderKeyName,
@@ -113,5 +113,5 @@ func ProcessSenderKeyDistributionMessage(sender_name: SenderKeyName,
     var ffi = try createFfiSenderKeyStoreStruct(store);
     try CheckError(signal_process_sender_key_distribution_message(sender_name.nativeHandle(),
                                                                   msg.nativeHandle(),
-                                                                  &ffi, ctx));
+                                                                  &ffi.0, ctx));
 }

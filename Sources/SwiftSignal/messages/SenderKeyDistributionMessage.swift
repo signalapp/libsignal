@@ -16,7 +16,7 @@ class SenderKeyDistributionMessage {
         var ffi = try createFfiSenderKeyStoreStruct(store);
 
         try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle(),
-                                                                     &ffi, ctx));
+                                                                     &ffi.0, ctx));
     }
 
     init(key_id: UInt32,
