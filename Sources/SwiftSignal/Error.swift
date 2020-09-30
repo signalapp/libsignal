@@ -29,9 +29,9 @@ public enum SignalError : Error {
 
 func CheckError(_ error: OpaquePointer?) throws {
     if error != nil {
-        let err_type = signal_error_get_type(error);
-        let err_str = try invokeFnReturningString(fn: { (b) in signal_error_get_message(error, b) });
-        signal_error_free(error);
+        let err_type = signal_error_get_type(error)
+        let err_str = try invokeFnReturningString(fn: { (b) in signal_error_get_message(error, b) })
+        signal_error_free(error)
 
         // FIXME: Swift is willing to import the SIGNAL_ERROR_CODE_xxx
         // values, and we can compare them to each other but cannot
@@ -85,6 +85,6 @@ func CheckError(_ error: OpaquePointer?) throws {
             throw SignalError.callback_error(err_str)
         default:
             throw SignalError.unknown(err_type, err_str)
-        };
+        }
     }
 }

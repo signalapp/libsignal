@@ -7,7 +7,7 @@ func hkdf(output_length: UInt32,
           salt: [UInt8],
           info: [UInt8]) throws -> Array<UInt8> {
 
-    var output = Array(repeating: UInt8(0x00), count: Int(output_length));
+    var output = Array(repeating: UInt8(0x00), count: Int(output_length))
 
     let error = signal_hkdf_derive(&output,
                                    Int(output_length),
@@ -17,10 +17,10 @@ func hkdf(output_length: UInt32,
                                    info,
                                    info.count,
                                    salt,
-                                   salt.count);
+                                   salt.count)
 
 
-    try CheckError(error);
+    try CheckError(error)
 
-    return output;
+    return output
 }

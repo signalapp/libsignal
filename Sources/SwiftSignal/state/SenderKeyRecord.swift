@@ -2,7 +2,7 @@ import SignalFfi
 import Foundation
 
 class SenderKeyRecord {
-    private var handle: OpaquePointer?;
+    private var handle: OpaquePointer?
 
     deinit {
         signal_sender_key_record_destroy(handle)

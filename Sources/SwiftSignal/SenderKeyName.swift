@@ -2,7 +2,7 @@ import SignalFfi
 import Foundation
 
 class SenderKeyName {
-    private var handle: OpaquePointer?;
+    private var handle: OpaquePointer?
 
     init(group_name: String, sender_name: String, device_id: UInt32) throws {
         try CheckError(signal_sender_key_name_new(&handle, group_name, sender_name, device_id))
