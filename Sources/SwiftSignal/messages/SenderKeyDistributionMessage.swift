@@ -13,7 +13,7 @@ class SenderKeyDistributionMessage {
     }
 
     init(name: SenderKeyName, store: SenderKeyStore, ctx: UnsafeMutableRawPointer?) throws {
-        var ffi = try createFfiSenderKeyStoreStruct(store);
+        var ffi = try createSenderKeyStore(store);
 
         try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle(),
                                                                      &ffi.0, ctx));

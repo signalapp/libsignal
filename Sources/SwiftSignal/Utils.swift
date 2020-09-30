@@ -53,21 +53,19 @@ func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?
     }
 }
 
-func createFfiIdentityKeyStoreStruct(_ store: IdentityKeyStore) throws -> FfiIdentityKeyStoreStruct {
-    var ffi = FfiIdentityKeyStoreStruct()
-    ffi.ctx = unsafeBitCast(store, to: UnsafeMutableRawPointer.self);
+func createIdentityKeyStore(_ store: IdentityKeyStore) throws -> SignalIdentityKeyStore {
     throw SignalError.internal_error("not implemented")
 }
 
-func createFfiPreKeyStoreStruct(_ store: PreKeyStore) throws -> FfiPreKeyStoreStruct {
+func createPreKeyStore(_ store: PreKeyStore) throws -> SignalPreKeyStore {
     throw SignalError.internal_error("not implemented")
 }
 
-func createFfiSignedPreKeyStoreStruct(_ store: SignedPreKeyStore) throws -> FfiSignedPreKeyStoreStruct {
+func createSignedPreKeyStore(_ store: SignedPreKeyStore) throws -> SignalSignedPreKeyStore {
     throw SignalError.internal_error("not implemented")
 }
 
-func createFfiSessionStoreStruct(_ store: SessionStore) throws -> FfiSessionStoreStruct {
+func createSessionStore(_ store: SessionStore) throws -> SignalSessionStore {
     throw SignalError.internal_error("not implemented")
 }
 
@@ -88,8 +86,8 @@ class SenderKeyStoreWrapper {
     }
 }
 
-func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> (FfiSenderKeyStoreStruct,SenderKeyStoreWrapper) {
-    print("createFfiSenderKeyStoreStruct");
+func createSenderKeyStore(_ store: SenderKeyStore) throws -> (SignalSenderKeyStore,SenderKeyStoreWrapper) {
+    print("createSenderKeyStore");
 
     func ffiShimStoreSenderKey(store_ctx: UnsafeMutableRawPointer?,
                                sender_name: OpaquePointer?,
@@ -127,7 +125,7 @@ func createFfiSenderKeyStoreStruct(_ store: SenderKeyStore) throws -> (FfiSender
 
     let wrapper = SenderKeyStoreWrapper(store: store);
 
-    return (FfiSenderKeyStoreStruct(
+    return (SignalSenderKeyStore(
       //ctx: unsafeBitCast(wrapper, to: UnsafeMutableRawPointer.self),
       ctx: Unmanaged.passUnretained(wrapper).toOpaque(),
       load_sender_key: ffiShimLoadSenderKey,
