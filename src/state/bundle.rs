@@ -11,7 +11,7 @@ use crate::IdentityKey;
 use crate::error::{Result, SignalProtocolError};
 use crate::state::{PreKeyId, SignedPreKeyId};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PreKeyBundle {
     registration_id: u32,
     device_id: u32,

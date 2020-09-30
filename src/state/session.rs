@@ -19,7 +19,7 @@ use prost::Message;
 use std::collections::VecDeque;
 use std::iter::FromIterator;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnacknowledgedPreKeyMessageItems {
     pre_key_id: Option<u32>,
     signed_pre_key_id: u32,

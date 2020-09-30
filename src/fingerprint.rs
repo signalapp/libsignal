@@ -13,7 +13,7 @@ use sha2::{digest::Digest, Sha512};
 use std::fmt;
 use subtle::ConstantTimeEq;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DisplayableFingerprint {
     local: String,
     remote: String,
@@ -65,7 +65,7 @@ impl DisplayableFingerprint {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ScannableFingerprint {
     version: u32,
     local_fingerprint: Vec<u8>,
@@ -142,7 +142,7 @@ impl ScannableFingerprint {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Fingerprint {
     pub display: DisplayableFingerprint,
     pub scannable: ScannableFingerprint,

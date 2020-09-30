@@ -44,7 +44,7 @@ impl SenderKeyName {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SenderMessageKey {
     iteration: u32,
     iv: Vec<u8>,

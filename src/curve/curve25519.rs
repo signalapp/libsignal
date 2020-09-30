@@ -19,7 +19,7 @@ const PRIVATE_KEY_LENGTH: usize = 32;
 const PUBLIC_KEY_LENGTH: usize = 32;
 const SIGNATURE_LENGTH: usize = 64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct KeyPair {
     public_key: [u8; PUBLIC_KEY_LENGTH],
     private_key: [u8; PRIVATE_KEY_LENGTH],
