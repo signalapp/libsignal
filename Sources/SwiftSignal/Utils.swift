@@ -87,17 +87,14 @@ class SenderKeyStoreWrapper {
 }
 
 func createSenderKeyStore(_ store: SenderKeyStore) throws -> (SignalSenderKeyStore,SenderKeyStoreWrapper) {
-    print("createSenderKeyStore");
-
     func ffiShimStoreSenderKey(store_ctx: UnsafeMutableRawPointer?,
                                sender_name: OpaquePointer?,
                                record: OpaquePointer?,
                                ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
-            print("ffiShimStoreSenderKey");
             let store = Unmanaged<SenderKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
-            let sender_name = SenderKeyName(raw_ptr: sender_name);
-            let record = SenderKeyRecord(raw_ptr: record);
+            let sender_name = try SenderKeyName(clone_from: sender_name);
+            let record = try SenderKeyRecord(clone_from: record);
             try store.saveSenderKey(name: sender_name, record: record, ctx: ctx);
             return 0;
         }
@@ -111,9 +108,8 @@ func createSenderKeyStore(_ store: SenderKeyStore) throws -> (SignalSenderKeySto
                               sender_name: OpaquePointer?,
                               ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
-            print("ffiShimLoadSenderKey");
             let store = Unmanaged<SenderKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
-            let sender_name = SenderKeyName(raw_ptr: sender_name);
+            let sender_name = try SenderKeyName(clone_from: sender_name);
             let record = try store.loadSenderKey(name: sender_name, ctx: ctx);
             recordp!.pointee = record?.leakNativeHandle();
             return 0;
@@ -126,7 +122,6 @@ func createSenderKeyStore(_ store: SenderKeyStore) throws -> (SignalSenderKeySto
     let wrapper = SenderKeyStoreWrapper(store: store);
 
     return (SignalSenderKeyStore(
-      //ctx: unsafeBitCast(wrapper, to: UnsafeMutableRawPointer.self),
       ctx: Unmanaged.passUnretained(wrapper).toOpaque(),
       load_sender_key: ffiShimLoadSenderKey,
       store_sender_key: ffiShimStoreSenderKey), wrapper)
