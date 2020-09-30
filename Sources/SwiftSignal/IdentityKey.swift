@@ -21,6 +21,13 @@ class IdentityKey {
     }
 }
 
+extension IdentityKey: Equatable {
+    static func == (lhs: IdentityKey, rhs: IdentityKey) -> Bool {
+        return lhs.publicKey() == rhs.publicKey()
+    }
+}
+
+
 class IdentityKeyPair {
     private let pubkey : PublicKey
     private let privkey : PrivateKey
