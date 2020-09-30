@@ -12,6 +12,27 @@ rename_variants = "QualifiedScreamingSnakeCase"
 [export]
 include = ["SignalErrorCode"]
 
+[export.rename]
+"Fingerprint" = "SignalFingerprint"
+"PreKeyBundle" = "SignalPreKeyBundle"
+"PreKeyRecord" = "SignalPreKeyRecord"
+"PreKeySignalMessage" = "SignalPreKeySignalMessage"
+"PrivateKey" = "SignalPrivateKey"
+"ProtocolAddress" = "SignalProtocolAddress"
+"PublicKey" = "SignalPublicKey"
+"SenderKeyDistributionMessage" = "SignalSenderKeyDistributionMessage"
+"SenderKeyMessage" = "SignalSenderKeyMessage"
+"SenderKeyName" = "SignalSenderKeyName"
+"SenderKeyRecord" = "SignalSenderKeyRecord"
+"SessionRecord" = "SignalSessionRecord"
+"SignedPreKeyRecord" = "SignalSignedPreKeyRecord"
+
+"FfiSessionStoreStruct" = "SignalSessionStore"
+"FfiIdentityKeyStoreStruct" = "SignalIdentityKeyStore"
+"FfiPreKeyStoreStruct" = "SignalPreKeyStore"
+"FfiSignedPreKeyStoreStruct" = "SignalSignedPreKeyStore"
+"FfiSenderKeyStoreStruct" = "SignalSenderKeyStore"
+
 [fn]
 sort_by = "None"
 

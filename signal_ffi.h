@@ -42,55 +42,55 @@ typedef enum {
   SIGNAL_ERROR_CODE_CALLBACK_ERROR = 100,
 } SignalErrorCode;
 
-typedef struct Fingerprint Fingerprint;
+typedef struct SignalFingerprint SignalFingerprint;
 
-typedef struct PreKeyBundle PreKeyBundle;
+typedef struct SignalPreKeyBundle SignalPreKeyBundle;
 
-typedef struct PreKeyRecord PreKeyRecord;
+typedef struct SignalPreKeyRecord SignalPreKeyRecord;
 
-typedef struct PreKeySignalMessage PreKeySignalMessage;
+typedef struct SignalPreKeySignalMessage SignalPreKeySignalMessage;
 
-typedef struct PrivateKey PrivateKey;
+typedef struct SignalPrivateKey SignalPrivateKey;
 
-typedef struct ProtocolAddress ProtocolAddress;
+typedef struct SignalProtocolAddress SignalProtocolAddress;
 
-typedef struct PublicKey PublicKey;
+typedef struct SignalPublicKey SignalPublicKey;
 
-typedef struct SenderKeyDistributionMessage SenderKeyDistributionMessage;
+typedef struct SignalSenderKeyDistributionMessage SignalSenderKeyDistributionMessage;
 
-typedef struct SenderKeyMessage SenderKeyMessage;
+typedef struct SignalSenderKeyMessage SignalSenderKeyMessage;
 
-typedef struct SenderKeyName SenderKeyName;
+typedef struct SignalSenderKeyName SignalSenderKeyName;
 
-typedef struct SenderKeyRecord SenderKeyRecord;
+typedef struct SignalSenderKeyRecord SignalSenderKeyRecord;
 
-typedef struct SessionRecord SessionRecord;
+typedef struct SignalSessionRecord SignalSessionRecord;
 
 typedef struct SignalFfiError SignalFfiError;
 
 typedef struct SignalMessage SignalMessage;
 
-typedef struct SignedPreKeyRecord SignedPreKeyRecord;
+typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 
-typedef int (*LoadSession)(void*, SessionRecord**, const ProtocolAddress*, void*);
+typedef int (*LoadSession)(void*, SignalSessionRecord**, const SignalProtocolAddress*, void*);
 
-typedef int (*StoreSession)(void*, const ProtocolAddress*, const SessionRecord*, void*);
+typedef int (*StoreSession)(void*, const SignalProtocolAddress*, const SignalSessionRecord*, void*);
 
 typedef struct {
   void *ctx;
   LoadSession load_session;
   StoreSession store_session;
-} FfiSessionStoreStruct;
+} SignalSessionStore;
 
-typedef int (*GetIdentityKeyPair)(void*, PrivateKey**, void*);
+typedef int (*GetIdentityKeyPair)(void*, SignalPrivateKey**, void*);
 
 typedef int (*GetLocalRegistrationId)(void*, uint32_t*, void*);
 
-typedef int (*SaveIdentityKey)(void*, const ProtocolAddress*, const PublicKey*, void*);
+typedef int (*SaveIdentityKey)(void*, const SignalProtocolAddress*, const SignalPublicKey*, void*);
 
-typedef int (*GetIdentityKey)(void*, PublicKey**, const ProtocolAddress*, void*);
+typedef int (*GetIdentityKey)(void*, SignalPublicKey**, const SignalProtocolAddress*, void*);
 
-typedef int (*IsTrustedIdentity)(void*, const ProtocolAddress*, const PublicKey*, unsigned int, void*);
+typedef int (*IsTrustedIdentity)(void*, const SignalProtocolAddress*, const SignalPublicKey*, unsigned int, void*);
 
 typedef struct {
   void *ctx;
@@ -99,11 +99,11 @@ typedef struct {
   SaveIdentityKey save_identity;
   GetIdentityKey get_identity;
   IsTrustedIdentity is_trusted_identity;
-} FfiIdentityKeyStoreStruct;
+} SignalIdentityKeyStore;
 
-typedef int (*LoadPreKey)(void*, PreKeyRecord**, uint32_t, void*);
+typedef int (*LoadPreKey)(void*, SignalPreKeyRecord**, uint32_t, void*);
 
-typedef int (*StorePreKey)(void*, uint32_t, const PreKeyRecord*, void*);
+typedef int (*StorePreKey)(void*, uint32_t, const SignalPreKeyRecord*, void*);
 
 typedef int (*RemovePreKey)(void*, uint32_t, void*);
 
@@ -112,27 +112,27 @@ typedef struct {
   LoadPreKey load_pre_key;
   StorePreKey store_pre_key;
   RemovePreKey remove_pre_key;
-} FfiPreKeyStoreStruct;
+} SignalPreKeyStore;
 
-typedef int (*LoadSignedPreKey)(void*, SignedPreKeyRecord**, uint32_t, void*);
+typedef int (*LoadSignedPreKey)(void*, SignalSignedPreKeyRecord**, uint32_t, void*);
 
-typedef int (*StoreSignedPreKey)(void*, uint32_t, const SignedPreKeyRecord*, void*);
+typedef int (*StoreSignedPreKey)(void*, uint32_t, const SignalSignedPreKeyRecord*, void*);
 
 typedef struct {
   void *ctx;
   LoadSignedPreKey load_signed_pre_key;
   StoreSignedPreKey store_signed_pre_key;
-} FfiSignedPreKeyStoreStruct;
+} SignalSignedPreKeyStore;
 
-typedef int (*LoadSenderKey)(void*, SenderKeyRecord**, const SenderKeyName*, void*);
+typedef int (*LoadSenderKey)(void*, SignalSenderKeyRecord**, const SignalSenderKeyName*, void*);
 
-typedef int (*StoreSenderKey)(void*, const SenderKeyName*, const SenderKeyRecord*, void*);
+typedef int (*StoreSenderKey)(void*, const SignalSenderKeyName*, const SignalSenderKeyRecord*, void*);
 
 typedef struct {
   void *ctx;
   LoadSenderKey load_sender_key;
   StoreSenderKey store_sender_key;
-} FfiSenderKeyStoreStruct;
+} SignalSenderKeyStore;
 
 void signal_print_ptr(const void *p);
 
@@ -156,81 +156,82 @@ SignalFfiError *signal_hkdf_derive(unsigned char *output,
                                    const unsigned char *info,
                                    size_t info_len);
 
-SignalFfiError *signal_address_new(ProtocolAddress **address,
+SignalFfiError *signal_address_new(SignalProtocolAddress **address,
                                    const char *name,
                                    unsigned int device_id);
 
-SignalFfiError *signal_address_get_name(const ProtocolAddress *obj, const char **out);
+SignalFfiError *signal_address_get_name(const SignalProtocolAddress *obj, const char **out);
 
-SignalFfiError *signal_address_get_device_id(const ProtocolAddress *obj, unsigned int *out);
+SignalFfiError *signal_address_get_device_id(const SignalProtocolAddress *obj, unsigned int *out);
 
-SignalFfiError *signal_address_destroy(ProtocolAddress *p);
+SignalFfiError *signal_address_destroy(SignalProtocolAddress *p);
 
-SignalFfiError *signal_publickey_deserialize(PublicKey **p,
+SignalFfiError *signal_publickey_deserialize(SignalPublicKey **p,
                                              const unsigned char *data,
                                              size_t data_len);
 
-SignalFfiError *signal_publickey_serialize(const PublicKey *obj,
+SignalFfiError *signal_publickey_serialize(const SignalPublicKey *obj,
                                            const unsigned char **out,
                                            size_t *out_len);
 
 SignalFfiError *signal_publickey_compare(int32_t *result,
-                                         const PublicKey *key1,
-                                         const PublicKey *key2);
+                                         const SignalPublicKey *key1,
+                                         const SignalPublicKey *key2);
 
-SignalFfiError *signal_publickey_verify(const PublicKey *key,
+SignalFfiError *signal_publickey_verify(const SignalPublicKey *key,
                                         unsigned char *result,
                                         const unsigned char *message,
                                         size_t message_len,
                                         const unsigned char *signature,
                                         size_t signature_len);
 
-SignalFfiError *signal_publickey_destroy(PublicKey *p);
+SignalFfiError *signal_publickey_destroy(SignalPublicKey *p);
 
-SignalFfiError *signal_privatekey_deserialize(PrivateKey **p,
+SignalFfiError *signal_privatekey_deserialize(SignalPrivateKey **p,
                                               const unsigned char *data,
                                               size_t data_len);
 
-SignalFfiError *signal_privatekey_serialize(const PrivateKey *obj,
+SignalFfiError *signal_privatekey_serialize(const SignalPrivateKey *obj,
                                             const unsigned char **out,
                                             size_t *out_len);
 
-SignalFfiError *signal_privatekey_generate(PrivateKey **key);
+SignalFfiError *signal_privatekey_generate(SignalPrivateKey **key);
 
-SignalFfiError *signal_privatekey_get_public_key(PublicKey **new_obj, const PrivateKey *obj);
+SignalFfiError *signal_privatekey_get_public_key(SignalPublicKey **new_obj,
+                                                 const SignalPrivateKey *obj);
 
 SignalFfiError *signal_privatekey_sign(const unsigned char **signature,
                                        size_t *signature_len,
-                                       const PrivateKey *key,
+                                       const SignalPrivateKey *key,
                                        const unsigned char *message,
                                        size_t message_len);
 
 SignalFfiError *signal_privatekey_agree(const unsigned char **shared_secret,
                                         size_t *shared_secret_len,
-                                        const PrivateKey *private_key,
-                                        const PublicKey *public_key);
+                                        const SignalPrivateKey *private_key,
+                                        const SignalPublicKey *public_key);
 
-SignalFfiError *signal_privatekey_destroy(PrivateKey *p);
+SignalFfiError *signal_privatekey_destroy(SignalPrivateKey *p);
 
 SignalFfiError *signal_identitykeypair_serialize(const unsigned char **output,
                                                  size_t *output_len,
-                                                 const PrivateKey *private_key,
-                                                 const PublicKey *public_key);
+                                                 const SignalPrivateKey *private_key,
+                                                 const SignalPublicKey *public_key);
 
-SignalFfiError *signal_identitykeypair_deserialize(PrivateKey **private_key,
-                                                   PublicKey **public_key,
+SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_key,
+                                                   SignalPublicKey **public_key,
                                                    const unsigned char *input,
                                                    size_t input_len);
 
-SignalFfiError *signal_session_record_deserialize(SessionRecord **p,
+SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **p,
                                                   const unsigned char *data,
                                                   size_t data_len);
 
-SignalFfiError *signal_session_record_serialize(const SessionRecord *obj,
+SignalFfiError *signal_session_record_serialize(const SignalSessionRecord *obj,
                                                 const unsigned char **out,
                                                 size_t *out_len);
 
-SignalFfiError *signal_session_record_destroy(SessionRecord *p);
+SignalFfiError *signal_session_record_destroy(SignalSessionRecord *p);
 
 SignalFfiError *signal_fingerprint_format(const char **fprint,
                                           const unsigned char *local,
@@ -238,21 +239,21 @@ SignalFfiError *signal_fingerprint_format(const char **fprint,
                                           const unsigned char *remote,
                                           size_t remote_len);
 
-SignalFfiError *signal_fingerprint_new(Fingerprint **obj,
+SignalFfiError *signal_fingerprint_new(SignalFingerprint **obj,
                                        unsigned int iterations,
                                        unsigned int version,
                                        const unsigned char *local_identifier,
                                        size_t local_identifier_len,
-                                       const PublicKey *local_key,
+                                       const SignalPublicKey *local_key,
                                        const unsigned char *remote_identifier,
                                        size_t remote_identifier_len,
-                                       const PublicKey *remote_key);
+                                       const SignalPublicKey *remote_key);
 
-SignalFfiError *signal_fingerprint_destroy(Fingerprint *p);
+SignalFfiError *signal_fingerprint_destroy(SignalFingerprint *p);
 
-SignalFfiError *signal_fingerprint_display_string(const Fingerprint *obj, const char **out);
+SignalFfiError *signal_fingerprint_display_string(const SignalFingerprint *obj, const char **out);
 
-SignalFfiError *signal_fingerprint_scannable_encoding(const Fingerprint *obj,
+SignalFfiError *signal_fingerprint_scannable_encoding(const SignalFingerprint *obj,
                                                       const unsigned char **out,
                                                       size_t *out_len);
 
@@ -270,17 +271,17 @@ SignalFfiError *signal_message_new(SignalMessage **obj,
                                    unsigned char message_version,
                                    const unsigned char *mac_key,
                                    size_t mac_key_len,
-                                   const PublicKey *sender_ratchet_key,
+                                   const SignalPublicKey *sender_ratchet_key,
                                    unsigned int counter,
                                    unsigned int previous_counter,
                                    const unsigned char *ciphertext,
                                    size_t ciphertext_len,
-                                   const PublicKey *sender_identity_key,
-                                   const PublicKey *receiver_identity_key);
+                                   const SignalPublicKey *sender_identity_key,
+                                   const SignalPublicKey *receiver_identity_key);
 
 SignalFfiError *signal_message_destroy(SignalMessage *p);
 
-SignalFfiError *signal_message_get_sender_ratchet_key(PublicKey **new_obj,
+SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **new_obj,
                                                       const SignalMessage *obj);
 
 SignalFfiError *signal_message_get_body(const SignalMessage *obj,
@@ -297,287 +298,292 @@ SignalFfiError *signal_message_get_counter(const SignalMessage *obj, unsigned in
 
 SignalFfiError *signal_message_verify_mac(unsigned int *result,
                                           const SignalMessage *handle,
-                                          const PublicKey *sender_identity_key,
-                                          const PublicKey *receiver_identity_key,
+                                          const SignalPublicKey *sender_identity_key,
+                                          const SignalPublicKey *receiver_identity_key,
                                           const unsigned char *mac_key,
                                           size_t mac_key_len);
 
-SignalFfiError *signal_pre_key_signal_message_deserialize(PreKeySignalMessage **p,
+SignalFfiError *signal_pre_key_signal_message_deserialize(SignalPreKeySignalMessage **p,
                                                           const unsigned char *data,
                                                           size_t data_len);
 
-SignalFfiError *signal_pre_key_signal_message_new(PreKeySignalMessage **obj,
+SignalFfiError *signal_pre_key_signal_message_new(SignalPreKeySignalMessage **obj,
                                                   unsigned char message_version,
                                                   unsigned int registration_id,
                                                   const unsigned int *pre_key_id,
                                                   unsigned int signed_pre_key_id,
-                                                  const PublicKey *base_key,
-                                                  const PublicKey *identity_key,
+                                                  const SignalPublicKey *base_key,
+                                                  const SignalPublicKey *identity_key,
                                                   const SignalMessage *signal_message);
 
-SignalFfiError *signal_pre_key_signal_message_destroy(PreKeySignalMessage *p);
+SignalFfiError *signal_pre_key_signal_message_destroy(SignalPreKeySignalMessage *p);
 
-SignalFfiError *signal_pre_key_signal_message_get_version(const PreKeySignalMessage *obj,
+SignalFfiError *signal_pre_key_signal_message_get_version(const SignalPreKeySignalMessage *obj,
                                                           unsigned int *out);
 
-SignalFfiError *signal_pre_key_signal_message_get_registration_id(const PreKeySignalMessage *obj,
+SignalFfiError *signal_pre_key_signal_message_get_registration_id(const SignalPreKeySignalMessage *obj,
                                                                   unsigned int *out);
 
-SignalFfiError *signal_pre_key_signal_message_get_pre_key_id(const PreKeySignalMessage *obj,
+SignalFfiError *signal_pre_key_signal_message_get_pre_key_id(const SignalPreKeySignalMessage *obj,
                                                              unsigned int *out);
 
-SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(const PreKeySignalMessage *obj,
+SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(const SignalPreKeySignalMessage *obj,
                                                                     unsigned int *out);
 
-SignalFfiError *signal_pre_key_signal_message_get_base_key(PublicKey **new_obj,
-                                                           const PreKeySignalMessage *obj);
+SignalFfiError *signal_pre_key_signal_message_get_base_key(SignalPublicKey **new_obj,
+                                                           const SignalPreKeySignalMessage *obj);
 
-SignalFfiError *signal_pre_key_signal_message_get_identity_key(PublicKey **new_obj,
-                                                               const PreKeySignalMessage *obj);
+SignalFfiError *signal_pre_key_signal_message_get_identity_key(SignalPublicKey **new_obj,
+                                                               const SignalPreKeySignalMessage *obj);
 
 SignalFfiError *signal_pre_key_signal_message_get_signal_message(SignalMessage **new_obj,
-                                                                 const PreKeySignalMessage *obj);
+                                                                 const SignalPreKeySignalMessage *obj);
 
-SignalFfiError *signal_pre_key_signal_message_serialize(const PreKeySignalMessage *obj,
+SignalFfiError *signal_pre_key_signal_message_serialize(const SignalPreKeySignalMessage *obj,
                                                         const unsigned char **out,
                                                         size_t *out_len);
 
-SignalFfiError *signal_sender_key_message_new(SenderKeyMessage **obj,
+SignalFfiError *signal_sender_key_message_new(SignalSenderKeyMessage **obj,
                                               unsigned int key_id,
                                               unsigned int iteration,
                                               const unsigned char *ciphertext,
                                               size_t ciphertext_len,
-                                              const PrivateKey *pk);
+                                              const SignalPrivateKey *pk);
 
-SignalFfiError *signal_sender_key_message_deserialize(SenderKeyMessage **p,
+SignalFfiError *signal_sender_key_message_deserialize(SignalSenderKeyMessage **p,
                                                       const unsigned char *data,
                                                       size_t data_len);
 
-SignalFfiError *signal_sender_key_message_destroy(SenderKeyMessage *p);
+SignalFfiError *signal_sender_key_message_destroy(SignalSenderKeyMessage *p);
 
-SignalFfiError *signal_sender_key_message_get_key_id(const SenderKeyMessage *obj,
+SignalFfiError *signal_sender_key_message_get_key_id(const SignalSenderKeyMessage *obj,
                                                      unsigned int *out);
 
-SignalFfiError *signal_sender_key_message_get_iteration(const SenderKeyMessage *obj,
+SignalFfiError *signal_sender_key_message_get_iteration(const SignalSenderKeyMessage *obj,
                                                         unsigned int *out);
 
-SignalFfiError *signal_sender_key_message_get_cipher_text(const SenderKeyMessage *obj,
+SignalFfiError *signal_sender_key_message_get_cipher_text(const SignalSenderKeyMessage *obj,
                                                           const unsigned char **out,
                                                           size_t *out_len);
 
-SignalFfiError *signal_sender_key_message_serialize(const SenderKeyMessage *obj,
+SignalFfiError *signal_sender_key_message_serialize(const SignalSenderKeyMessage *obj,
                                                     const unsigned char **out,
                                                     size_t *out_len);
 
 SignalFfiError *signal_sender_key_message_verify_signature(unsigned int *result,
-                                                           const SenderKeyMessage *skm,
-                                                           const PublicKey *pubkey);
+                                                           const SignalSenderKeyMessage *skm,
+                                                           const SignalPublicKey *pubkey);
 
-SignalFfiError *signal_sender_key_distribution_message_new(SenderKeyDistributionMessage **obj,
+SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistributionMessage **obj,
                                                            unsigned int key_id,
                                                            unsigned int iteration,
                                                            const unsigned char *chainkey,
                                                            size_t chainkey_len,
-                                                           const PublicKey *pk);
+                                                           const SignalPublicKey *pk);
 
-SignalFfiError *signal_sender_key_distribution_message_deserialize(SenderKeyDistributionMessage **p,
+SignalFfiError *signal_sender_key_distribution_message_deserialize(SignalSenderKeyDistributionMessage **p,
                                                                    const unsigned char *data,
                                                                    size_t data_len);
 
-SignalFfiError *signal_sender_key_distribution_message_destroy(SenderKeyDistributionMessage *p);
+SignalFfiError *signal_sender_key_distribution_message_destroy(SignalSenderKeyDistributionMessage *p);
 
-SignalFfiError *signal_sender_key_distribution_message_get_id(const SenderKeyDistributionMessage *obj,
+SignalFfiError *signal_sender_key_distribution_message_get_id(const SignalSenderKeyDistributionMessage *obj,
                                                               unsigned int *out);
 
-SignalFfiError *signal_sender_key_distribution_message_get_iteration(const SenderKeyDistributionMessage *obj,
+SignalFfiError *signal_sender_key_distribution_message_get_iteration(const SignalSenderKeyDistributionMessage *obj,
                                                                      unsigned int *out);
 
-SignalFfiError *signal_sender_key_distribution_message_get_chain_key(const SenderKeyDistributionMessage *obj,
+SignalFfiError *signal_sender_key_distribution_message_get_chain_key(const SignalSenderKeyDistributionMessage *obj,
                                                                      const unsigned char **out,
                                                                      size_t *out_len);
 
-SignalFfiError *signal_sender_key_distribution_message_get_signature_key(PublicKey **new_obj,
-                                                                         const SenderKeyDistributionMessage *obj);
+SignalFfiError *signal_sender_key_distribution_message_get_signature_key(SignalPublicKey **new_obj,
+                                                                         const SignalSenderKeyDistributionMessage *obj);
 
-SignalFfiError *signal_sender_key_distribution_message_serialize(const SenderKeyDistributionMessage *obj,
+SignalFfiError *signal_sender_key_distribution_message_serialize(const SignalSenderKeyDistributionMessage *obj,
                                                                  const unsigned char **out,
                                                                  size_t *out_len);
 
-SignalFfiError *signal_pre_key_bundle_new(PreKeyBundle **obj,
+SignalFfiError *signal_pre_key_bundle_new(SignalPreKeyBundle **obj,
                                           unsigned int registration_id,
                                           unsigned int device_id,
                                           const unsigned int *prekey_id,
-                                          const PublicKey *prekey,
+                                          const SignalPublicKey *prekey,
                                           unsigned int signed_prekey_id,
-                                          const PublicKey *signed_prekey,
+                                          const SignalPublicKey *signed_prekey,
                                           const unsigned char *signed_prekey_signature,
                                           size_t signed_prekey_signature_len,
-                                          const PublicKey *identity_key);
+                                          const SignalPublicKey *identity_key);
 
-SignalFfiError *signal_pre_key_bundle_destroy(PreKeyBundle *p);
+SignalFfiError *signal_pre_key_bundle_destroy(SignalPreKeyBundle *p);
 
-SignalFfiError *signal_pre_key_bundle_get_registration_id(const PreKeyBundle *obj,
+SignalFfiError *signal_pre_key_bundle_get_registration_id(const SignalPreKeyBundle *obj,
                                                           unsigned int *out);
 
-SignalFfiError *signal_pre_key_bundle_get_device_id(const PreKeyBundle *obj, unsigned int *out);
+SignalFfiError *signal_pre_key_bundle_get_device_id(const SignalPreKeyBundle *obj,
+                                                    unsigned int *out);
 
-SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_id(const PreKeyBundle *obj,
+SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_id(const SignalPreKeyBundle *obj,
                                                             unsigned int *out);
 
-SignalFfiError *signal_pre_key_bundle_get_pre_key_id(const PreKeyBundle *obj, unsigned int *out);
+SignalFfiError *signal_pre_key_bundle_get_pre_key_id(const SignalPreKeyBundle *obj,
+                                                     unsigned int *out);
 
-SignalFfiError *signal_pre_key_bundle_get_pre_key_public(PublicKey **new_obj,
-                                                         const PreKeyBundle *obj);
+SignalFfiError *signal_pre_key_bundle_get_pre_key_public(SignalPublicKey **new_obj,
+                                                         const SignalPreKeyBundle *obj);
 
-SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_public(PublicKey **new_obj,
-                                                                const PreKeyBundle *obj);
+SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_public(SignalPublicKey **new_obj,
+                                                                const SignalPreKeyBundle *obj);
 
-SignalFfiError *signal_pre_key_bundle_get_identity_key(PublicKey **new_obj,
-                                                       const PreKeyBundle *obj);
+SignalFfiError *signal_pre_key_bundle_get_identity_key(SignalPublicKey **new_obj,
+                                                       const SignalPreKeyBundle *obj);
 
-SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_signature(const PreKeyBundle *obj,
+SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_signature(const SignalPreKeyBundle *obj,
                                                                    const unsigned char **out,
                                                                    size_t *out_len);
 
-SignalFfiError *signal_signed_pre_key_record_new(SignedPreKeyRecord **obj,
+SignalFfiError *signal_signed_pre_key_record_new(SignalSignedPreKeyRecord **obj,
                                                  unsigned int id,
                                                  unsigned long long timestamp,
-                                                 const PublicKey *pub_key,
-                                                 const PrivateKey *priv_key,
+                                                 const SignalPublicKey *pub_key,
+                                                 const SignalPrivateKey *priv_key,
                                                  const unsigned char *signature,
                                                  size_t signature_len);
 
-SignalFfiError *signal_signed_pre_key_record_deserialize(SignedPreKeyRecord **p,
+SignalFfiError *signal_signed_pre_key_record_deserialize(SignalSignedPreKeyRecord **p,
                                                          const unsigned char *data,
                                                          size_t data_len);
 
-SignalFfiError *signal_signed_pre_key_record_get_id(const SignedPreKeyRecord *obj,
+SignalFfiError *signal_signed_pre_key_record_get_id(const SignalSignedPreKeyRecord *obj,
                                                     unsigned int *out);
 
-SignalFfiError *signal_signed_pre_key_record_get_timestamp(const SignedPreKeyRecord *obj,
+SignalFfiError *signal_signed_pre_key_record_get_timestamp(const SignalSignedPreKeyRecord *obj,
                                                            unsigned long long *out);
 
-SignalFfiError *signal_signed_pre_key_record_get_public_key(PublicKey **new_obj,
-                                                            const SignedPreKeyRecord *obj);
+SignalFfiError *signal_signed_pre_key_record_get_public_key(SignalPublicKey **new_obj,
+                                                            const SignalSignedPreKeyRecord *obj);
 
-SignalFfiError *signal_signed_pre_key_record_get_private_key(PrivateKey **new_obj,
-                                                             const SignedPreKeyRecord *obj);
+SignalFfiError *signal_signed_pre_key_record_get_private_key(SignalPrivateKey **new_obj,
+                                                             const SignalSignedPreKeyRecord *obj);
 
-SignalFfiError *signal_signed_pre_key_record_get_signature(const SignedPreKeyRecord *obj,
+SignalFfiError *signal_signed_pre_key_record_get_signature(const SignalSignedPreKeyRecord *obj,
                                                            const unsigned char **out,
                                                            size_t *out_len);
 
-SignalFfiError *signal_signed_pre_key_record_serialize(const SignedPreKeyRecord *obj,
+SignalFfiError *signal_signed_pre_key_record_serialize(const SignalSignedPreKeyRecord *obj,
                                                        const unsigned char **out,
                                                        size_t *out_len);
 
-SignalFfiError *signal_signed_pre_key_record_destroy(SignedPreKeyRecord *p);
+SignalFfiError *signal_signed_pre_key_record_destroy(SignalSignedPreKeyRecord *p);
 
-SignalFfiError *signal_pre_key_record_new(PreKeyRecord **obj,
+SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **obj,
                                           unsigned int id,
-                                          const PublicKey *pub_key,
-                                          const PrivateKey *priv_key);
+                                          const SignalPublicKey *pub_key,
+                                          const SignalPrivateKey *priv_key);
 
-SignalFfiError *signal_pre_key_record_deserialize(PreKeyRecord **p,
+SignalFfiError *signal_pre_key_record_deserialize(SignalPreKeyRecord **p,
                                                   const unsigned char *data,
                                                   size_t data_len);
 
-SignalFfiError *signal_pre_key_record_get_id(const PreKeyRecord *obj, unsigned int *out);
+SignalFfiError *signal_pre_key_record_get_id(const SignalPreKeyRecord *obj, unsigned int *out);
 
-SignalFfiError *signal_pre_key_record_get_public_key(PublicKey **new_obj, const PreKeyRecord *obj);
+SignalFfiError *signal_pre_key_record_get_public_key(SignalPublicKey **new_obj,
+                                                     const SignalPreKeyRecord *obj);
 
-SignalFfiError *signal_pre_key_record_get_private_key(PrivateKey **new_obj,
-                                                      const PreKeyRecord *obj);
+SignalFfiError *signal_pre_key_record_get_private_key(SignalPrivateKey **new_obj,
+                                                      const SignalPreKeyRecord *obj);
 
-SignalFfiError *signal_pre_key_record_serialize(const PreKeyRecord *obj,
+SignalFfiError *signal_pre_key_record_serialize(const SignalPreKeyRecord *obj,
                                                 const unsigned char **out,
                                                 size_t *out_len);
 
-SignalFfiError *signal_pre_key_record_destroy(PreKeyRecord *p);
+SignalFfiError *signal_pre_key_record_destroy(SignalPreKeyRecord *p);
 
-SignalFfiError *signal_sender_key_name_new(SenderKeyName **obj,
+SignalFfiError *signal_sender_key_name_new(SignalSenderKeyName **obj,
                                            const char *group_id,
                                            const char *sender_name,
                                            unsigned int sender_device_id);
 
-SignalFfiError *signal_sender_key_name_destroy(SenderKeyName *p);
+SignalFfiError *signal_sender_key_name_destroy(SignalSenderKeyName *p);
 
-SignalFfiError *signal_sender_key_name_get_group_id(const SenderKeyName *obj, const char **out);
+SignalFfiError *signal_sender_key_name_get_group_id(const SignalSenderKeyName *obj,
+                                                    const char **out);
 
-SignalFfiError *signal_sender_key_name_get_sender_name(const SenderKeyName *obj, const char **out);
+SignalFfiError *signal_sender_key_name_get_sender_name(const SignalSenderKeyName *obj,
+                                                       const char **out);
 
-SignalFfiError *signal_sender_key_name_get_sender_device_id(const SenderKeyName *obj,
+SignalFfiError *signal_sender_key_name_get_sender_device_id(const SignalSenderKeyName *obj,
                                                             unsigned int *out);
 
-SignalFfiError *signal_sender_key_record_new_fresh(SenderKeyRecord **obj);
+SignalFfiError *signal_sender_key_record_new_fresh(SignalSenderKeyRecord **obj);
 
-SignalFfiError *signal_sender_key_record_destroy(SenderKeyRecord *p);
+SignalFfiError *signal_sender_key_record_destroy(SignalSenderKeyRecord *p);
 
-SignalFfiError *signal_sender_key_record_deserialize(SenderKeyRecord **p,
+SignalFfiError *signal_sender_key_record_deserialize(SignalSenderKeyRecord **p,
                                                      const unsigned char *data,
                                                      size_t data_len);
 
-SignalFfiError *signal_sender_key_record_serialize(const SenderKeyRecord *obj,
+SignalFfiError *signal_sender_key_record_serialize(const SignalSenderKeyRecord *obj,
                                                    const unsigned char **out,
                                                    size_t *out_len);
 
-SignalFfiError *signal_process_prekey_bundle(PreKeyBundle *bundle,
-                                             const ProtocolAddress *protocol_address,
-                                             FfiSessionStoreStruct *session_store,
-                                             FfiIdentityKeyStoreStruct *identity_key_store,
+SignalFfiError *signal_process_prekey_bundle(SignalPreKeyBundle *bundle,
+                                             const SignalProtocolAddress *protocol_address,
+                                             SignalSessionStore *session_store,
+                                             SignalIdentityKeyStore *identity_key_store,
                                              void *ctx);
 
 SignalFfiError *signal_encrypt_message(const unsigned char **result,
                                        size_t *result_len,
                                        const unsigned char *ptext,
                                        size_t ptext_len,
-                                       const ProtocolAddress *protocol_address,
-                                       FfiSessionStoreStruct *session_store,
-                                       FfiIdentityKeyStoreStruct *identity_key_store,
+                                       const SignalProtocolAddress *protocol_address,
+                                       SignalSessionStore *session_store,
+                                       SignalIdentityKeyStore *identity_key_store,
                                        void *ctx);
 
 SignalFfiError *signal_decrypt_message(const unsigned char **result,
                                        size_t *result_len,
                                        const SignalMessage *message,
-                                       const ProtocolAddress *protocol_address,
-                                       FfiSessionStoreStruct *session_store,
-                                       FfiIdentityKeyStoreStruct *identity_key_store,
+                                       const SignalProtocolAddress *protocol_address,
+                                       SignalSessionStore *session_store,
+                                       SignalIdentityKeyStore *identity_key_store,
                                        void *ctx);
 
 SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **result,
                                                size_t *result_len,
-                                               const PreKeySignalMessage *message,
-                                               const ProtocolAddress *protocol_address,
-                                               FfiSessionStoreStruct *session_store,
-                                               FfiIdentityKeyStoreStruct *identity_key_store,
-                                               FfiPreKeyStoreStruct *prekey_store,
-                                               FfiSignedPreKeyStoreStruct *signed_prekey_store,
+                                               const SignalPreKeySignalMessage *message,
+                                               const SignalProtocolAddress *protocol_address,
+                                               SignalSessionStore *session_store,
+                                               SignalIdentityKeyStore *identity_key_store,
+                                               SignalPreKeyStore *prekey_store,
+                                               SignalSignedPreKeyStore *signed_prekey_store,
                                                void *ctx);
 
-SignalFfiError *signal_create_sender_key_distribution_message(SenderKeyDistributionMessage **obj,
-                                                              const SenderKeyName *sender_key_name,
-                                                              FfiSenderKeyStoreStruct *store,
+SignalFfiError *signal_create_sender_key_distribution_message(SignalSenderKeyDistributionMessage **obj,
+                                                              const SignalSenderKeyName *sender_key_name,
+                                                              SignalSenderKeyStore *store,
                                                               void *ctx);
 
-SignalFfiError *signal_process_sender_key_distribution_message(const SenderKeyName *sender_key_name,
-                                                               const SenderKeyDistributionMessage *sender_key_distribution_message,
-                                                               FfiSenderKeyStoreStruct *store,
+SignalFfiError *signal_process_sender_key_distribution_message(const SignalSenderKeyName *sender_key_name,
+                                                               const SignalSenderKeyDistributionMessage *sender_key_distribution_message,
+                                                               SignalSenderKeyStore *store,
                                                                void *ctx);
 
 SignalFfiError *signal_group_encrypt_message(const unsigned char **out,
                                              size_t *out_len,
-                                             const SenderKeyName *sender_key_name,
+                                             const SignalSenderKeyName *sender_key_name,
                                              const unsigned char *message,
                                              size_t message_len,
-                                             FfiSenderKeyStoreStruct *store,
+                                             SignalSenderKeyStore *store,
                                              void *ctx);
 
 SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
                                              size_t *out_len,
-                                             const SenderKeyName *sender_key_name,
+                                             const SignalSenderKeyName *sender_key_name,
                                              const unsigned char *message,
                                              size_t message_len,
-                                             FfiSenderKeyStoreStruct *store,
+                                             SignalSenderKeyStore *store,
                                              void *ctx);
 
 #endif /* SIGNAL_FFI_H_ */
