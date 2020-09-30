@@ -422,6 +422,22 @@ macro_rules! ffi_fn_get_new_boxed_obj {
 }
 
 #[macro_export]
+macro_rules! ffi_fn_clone {
+    ( $nm:ident clones $typ:ty) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $nm(
+            new_obj: *mut *mut $typ,
+            obj: *const $typ,
+        ) -> *mut SignalFfiError {
+            run_ffi_safe(|| {
+                let obj = native_handle_cast::<$typ>(obj)?;
+                box_object::<$typ>(new_obj, Ok(obj.clone()))
+            })
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! ffi_fn_get_new_boxed_optional_obj {
     ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
         #[no_mangle]
