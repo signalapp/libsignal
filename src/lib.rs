@@ -815,7 +815,7 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
             return Err(SignalProtocolError::InternalError("No identity key pair"));
         }
 
-        let priv_key = unsafe { key.as_ref() }.expect("verified non-null");
+        let priv_key = unsafe { Box::from_raw(key) };
         let pub_key = priv_key.public_key()?;
 
         Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), *priv_key))
@@ -960,8 +960,8 @@ impl PreKeyStore for FfiPreKeyStore {
             return Err(SignalProtocolError::InvalidPreKeyId);
         }
 
-        let record: PreKeyRecord = unsafe { record.as_ref() }.expect("validated").clone();
-        Ok(record)
+        let record = unsafe { Box::from_raw(record) };
+        Ok(*record.clone())
     }
 
     fn save_pre_key(
@@ -1048,8 +1048,9 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
             return Err(SignalProtocolError::InvalidSignedPreKeyId);
         }
 
-        let record: SignedPreKeyRecord = unsafe { record.as_ref() }.expect("validated").clone();
-        Ok(record)
+        let record = unsafe { Box::from_raw(record) };
+
+        Ok(*record.clone())
     }
 
     fn save_signed_pre_key(
@@ -1118,7 +1119,13 @@ impl SessionStore for FfiSessionStore {
             );
         }
 
-        Ok(unsafe { record.as_ref() }.cloned())
+        if record.is_null() {
+            return Ok(None);
+        }
+
+        let record = unsafe { Box::from_raw(record) };
+
+        Ok(Some(*record.clone()))
     }
 
     fn store_session(
@@ -1343,7 +1350,13 @@ impl SenderKeyStore for FfiSenderKeyStore {
             );
         }
 
-        Ok(unsafe { record.as_ref() }.cloned())
+        if record.is_null() {
+            return Ok(None);
+        }
+
+        let record = unsafe { Box::from_raw(record) };
+
+        Ok(Some(*record.clone()))
     }
 }
 
