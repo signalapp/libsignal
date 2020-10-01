@@ -72,66 +72,66 @@ typedef struct SignalMessage SignalMessage;
 
 typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 
-typedef int (*LoadSession)(void*, SignalSessionRecord**, const SignalProtocolAddress*, void*);
+typedef int (*SignalLoadSession)(void*, SignalSessionRecord**, const SignalProtocolAddress*, void*);
 
-typedef int (*StoreSession)(void*, const SignalProtocolAddress*, const SignalSessionRecord*, void*);
+typedef int (*SignalStoreSession)(void*, const SignalProtocolAddress*, const SignalSessionRecord*, void*);
 
 typedef struct {
   void *ctx;
-  LoadSession load_session;
-  StoreSession store_session;
+  SignalLoadSession load_session;
+  SignalStoreSession store_session;
 } SignalSessionStore;
 
-typedef int (*GetIdentityKeyPair)(void*, SignalPrivateKey**, void*);
+typedef int (*SignalGetIdentityKeyPair)(void*, SignalPrivateKey**, void*);
 
-typedef int (*GetLocalRegistrationId)(void*, uint32_t*, void*);
+typedef int (*SignalGetLocalRegistrationId)(void*, uint32_t*, void*);
 
-typedef int (*SaveIdentityKey)(void*, const SignalProtocolAddress*, const SignalPublicKey*, void*);
+typedef int (*SignalSaveIdentityKey)(void*, const SignalProtocolAddress*, const SignalPublicKey*, void*);
 
-typedef int (*GetIdentityKey)(void*, SignalPublicKey**, const SignalProtocolAddress*, void*);
+typedef int (*SignalGetIdentityKey)(void*, SignalPublicKey**, const SignalProtocolAddress*, void*);
 
-typedef int (*IsTrustedIdentity)(void*, const SignalProtocolAddress*, const SignalPublicKey*, unsigned int, void*);
+typedef int (*SignalIsTrustedIdentity)(void*, const SignalProtocolAddress*, const SignalPublicKey*, unsigned int, void*);
 
 typedef struct {
   void *ctx;
-  GetIdentityKeyPair get_identity_key_pair;
-  GetLocalRegistrationId get_local_registration_id;
-  SaveIdentityKey save_identity;
-  GetIdentityKey get_identity;
-  IsTrustedIdentity is_trusted_identity;
+  SignalGetIdentityKeyPair get_identity_key_pair;
+  SignalGetLocalRegistrationId get_local_registration_id;
+  SignalSaveIdentityKey save_identity;
+  SignalGetIdentityKey get_identity;
+  SignalIsTrustedIdentity is_trusted_identity;
 } SignalIdentityKeyStore;
 
-typedef int (*LoadPreKey)(void*, SignalPreKeyRecord**, uint32_t, void*);
+typedef int (*SignalLoadPreKey)(void*, SignalPreKeyRecord**, uint32_t, void*);
 
-typedef int (*StorePreKey)(void*, uint32_t, const SignalPreKeyRecord*, void*);
+typedef int (*SignalStorePreKey)(void*, uint32_t, const SignalPreKeyRecord*, void*);
 
-typedef int (*RemovePreKey)(void*, uint32_t, void*);
+typedef int (*SignalRemovePreKey)(void*, uint32_t, void*);
 
 typedef struct {
   void *ctx;
-  LoadPreKey load_pre_key;
-  StorePreKey store_pre_key;
-  RemovePreKey remove_pre_key;
+  SignalLoadPreKey load_pre_key;
+  SignalStorePreKey store_pre_key;
+  SignalRemovePreKey remove_pre_key;
 } SignalPreKeyStore;
 
-typedef int (*LoadSignedPreKey)(void*, SignalSignedPreKeyRecord**, uint32_t, void*);
+typedef int (*SignalLoadSignedPreKey)(void*, SignalSignedPreKeyRecord**, uint32_t, void*);
 
-typedef int (*StoreSignedPreKey)(void*, uint32_t, const SignalSignedPreKeyRecord*, void*);
+typedef int (*SignalStoreSignedPreKey)(void*, uint32_t, const SignalSignedPreKeyRecord*, void*);
 
 typedef struct {
   void *ctx;
-  LoadSignedPreKey load_signed_pre_key;
-  StoreSignedPreKey store_signed_pre_key;
+  SignalLoadSignedPreKey load_signed_pre_key;
+  SignalStoreSignedPreKey store_signed_pre_key;
 } SignalSignedPreKeyStore;
 
-typedef int (*LoadSenderKey)(void*, SignalSenderKeyRecord**, const SignalSenderKeyName*, void*);
+typedef int (*SignalLoadSenderKey)(void*, SignalSenderKeyRecord**, const SignalSenderKeyName*, void*);
 
-typedef int (*StoreSenderKey)(void*, const SignalSenderKeyName*, const SignalSenderKeyRecord*, void*);
+typedef int (*SignalStoreSenderKey)(void*, const SignalSenderKeyName*, const SignalSenderKeyRecord*, void*);
 
 typedef struct {
   void *ctx;
-  LoadSenderKey load_sender_key;
-  StoreSenderKey store_sender_key;
+  SignalLoadSenderKey load_sender_key;
+  SignalStoreSenderKey store_sender_key;
 } SignalSenderKeyStore;
 
 void signal_print_ptr(const void *p);
