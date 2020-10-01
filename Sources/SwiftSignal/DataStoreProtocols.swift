@@ -15,14 +15,14 @@ protocol IdentityKeyStore {
 }
 
 protocol PreKeyStore {
-    func getPreKey(prekeyId: UInt32, ctx: UnsafeMutableRawPointer?) throws -> PreKeyRecord
-    mutating func savePreKey(prekeyId: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
-    func removePreKey(prekeyId: UInt32, ctx: UnsafeMutableRawPointer?) throws
+    func loadPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> PreKeyRecord
+    mutating func storePreKey(id: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
+    func removePreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws
 }
 
 protocol SignedPreKeyStore {
-    func getSignedPreKey(signedPrekeyId: UInt32, ctx: UnsafeMutableRawPointer?) throws -> SignedPreKeyRecord
-    mutating func saveSignedPreKey(signedPrekeyId: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
+    func loadSignedPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> SignedPreKeyRecord
+    mutating func storeSignedPreKey(id: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
 }
 
 protocol SessionStore {
@@ -31,6 +31,6 @@ protocol SessionStore {
 }
 
 protocol SenderKeyStore {
-    mutating func saveSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws
+    mutating func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws
     func loadSenderKey(name: SenderKeyName, ctx: UnsafeMutableRawPointer?) throws -> SenderKeyRecord?
 }

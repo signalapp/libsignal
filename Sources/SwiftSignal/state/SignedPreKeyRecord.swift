@@ -12,6 +12,10 @@ class SignedPreKeyRecord {
         try CheckError(signal_signed_pre_key_record_deserialize(&handle, bytes, bytes.count))
     }
 
+    internal init(clone_from: OpaquePointer?) throws {
+        try CheckError(signal_signed_pre_key_record_clone(&handle, clone_from));
+    }
+
     func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_signed_pre_key_record_serialize(handle,b,bl) })
     }
@@ -34,5 +38,11 @@ class SignedPreKeyRecord {
 
     func getSignature() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_signed_pre_key_record_get_signature(handle,b,bl) })
+    }
+
+    internal func leakNativeHandle() -> OpaquePointer? {
+        let save = handle;
+        handle = nil;
+        return save;
     }
 }

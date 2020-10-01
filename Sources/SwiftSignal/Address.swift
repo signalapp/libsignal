@@ -14,6 +14,10 @@ class ProtocolAddress {
                                           device_id))
     }
 
+    internal init(clone_from: OpaquePointer?) throws {
+        try CheckError(signal_address_clone(&handle, clone_from))
+    }
+
     deinit {
         signal_address_destroy(handle)
     }

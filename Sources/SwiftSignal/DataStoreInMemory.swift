@@ -38,36 +38,36 @@ class InMemoryIdentityKeyStore : IdentityKeyStore {
 class InMemoryPreKeyStore : PreKeyStore {
     private var map : [UInt32 : PreKeyRecord] = [:]
 
-    func getPreKey(prekeyId: UInt32, ctx: UnsafeMutableRawPointer?) throws -> PreKeyRecord {
-        if let record = map[prekeyId] {
+    func loadPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> PreKeyRecord {
+        if let record = map[id] {
             return record;
         } else {
             throw SignalError.invalid_key_identifier("no prekey with this identifier")
         }
     }
 
-    func savePreKey(prekeyId: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
-        map[prekeyId] = record;
+    func storePreKey(id: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+        map[id] = record;
     }
 
-    func removePreKey(prekeyId: UInt32, ctx: UnsafeMutableRawPointer?) throws {
-        map.removeValue(forKey: prekeyId)
+    func removePreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws {
+        map.removeValue(forKey: id)
     }
 }
 
 class InMemorySignedPreKeyStore : SignedPreKeyStore {
     private var map : [UInt32 : SignedPreKeyRecord] = [:]
 
-    func getSignedPreKey(signedPrekeyId: UInt32, ctx: UnsafeMutableRawPointer?) throws -> SignedPreKeyRecord {
-        if let record = map[signedPrekeyId] {
+    func loadSignedPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> SignedPreKeyRecord {
+        if let record = map[id] {
             return record;
         } else {
             throw SignalError.invalid_key_identifier("no signed prekey with this identifier")
         }
     }
 
-    func saveSignedPreKey(signedPrekeyId: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
-        map[signedPrekeyId] = record;
+    func storeSignedPreKey(id: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+        map[id] = record;
     }
 }
 
@@ -87,7 +87,7 @@ class InMemorySessionStore : SessionStore {
 class InMemorySenderKeyStore : SenderKeyStore {
     private var map : [SenderKeyName : SenderKeyRecord] = [:]
 
-    func saveSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+    func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
         map[name] = record
     }
     func loadSenderKey(name: SenderKeyName, ctx: UnsafeMutableRawPointer?) throws -> SenderKeyRecord? {

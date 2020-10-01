@@ -12,6 +12,10 @@ class PreKeyRecord {
         try CheckError(signal_pre_key_record_deserialize(&handle, bytes, bytes.count))
     }
 
+    internal init(clone_from: OpaquePointer?) throws {
+        try CheckError(signal_pre_key_record_clone(&handle, clone_from));
+    }
+
     init(id: UInt32,
          pub_key: PublicKey,
          priv_key: PrivateKey) throws {
@@ -32,5 +36,11 @@ class PreKeyRecord {
 
     func getPrivateKey() throws -> PrivateKey {
         return try invokeFnReturningPrivateKey(fn: { (k) in signal_pre_key_record_get_private_key(k, handle) })
+    }
+
+    func leakNativeHandle() -> OpaquePointer? {
+        let save = handle
+        handle = nil
+        return save
     }
 }

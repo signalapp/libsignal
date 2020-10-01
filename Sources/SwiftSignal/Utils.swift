@@ -57,16 +57,192 @@ func createIdentityKeyStore(_ store: IdentityKeyStore) throws -> SignalIdentityK
     throw SignalError.internal_error("not implemented")
 }
 
-func createPreKeyStore(_ store: PreKeyStore) throws -> SignalPreKeyStore {
-    throw SignalError.internal_error("not implemented")
+class PreKeyStoreWrapper {
+    var store: PreKeyStore
+
+    init(store: PreKeyStore) {
+        self.store = store
+    }
+
+    func loadPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> Optional<PreKeyRecord> {
+        try store.loadPreKey(id: id, ctx: ctx)
+    }
+
+    func storePreKey(id: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+        try store.storePreKey(id: id, record: record, ctx: ctx)
+    }
+
+    func removePreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws {
+        try store.removePreKey(id: id, ctx: ctx)
+    }
 }
 
-func createSignedPreKeyStore(_ store: SignedPreKeyStore) throws -> SignalSignedPreKeyStore {
-    throw SignalError.internal_error("not implemented")
+func createPreKeyStore(_ store: PreKeyStore) throws -> (SignalPreKeyStore, PreKeyStoreWrapper) {
+    func ffiShimStorePreKey(store_ctx: UnsafeMutableRawPointer?,
+                                  id: UInt32,
+                                  record: OpaquePointer?,
+                                  ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<PreKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            let record = try PreKeyRecord(clone_from: record)
+            try store.storePreKey(id: id, record: record, ctx: ctx)
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+    func ffiShimLoadPreKey(store_ctx: UnsafeMutableRawPointer?,
+                                 recordp: UnsafeMutablePointer<OpaquePointer?>?,
+                                 id: UInt32,
+                                 ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<PreKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            let record = try store.loadPreKey(id: id, ctx: ctx)
+            recordp!.pointee = record?.leakNativeHandle()
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+    func ffiShimRemovePreKey(store_ctx: UnsafeMutableRawPointer?,
+                             id: UInt32,
+                             ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<PreKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            try store.removePreKey(id: id, ctx: ctx)
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+
+
+    let wrapper = PreKeyStoreWrapper(store: store)
+
+    return (SignalPreKeyStore(
+              ctx: Unmanaged.passUnretained(wrapper).toOpaque(),
+              load_pre_key: ffiShimLoadPreKey,
+              store_pre_key: ffiShimStorePreKey,
+              remove_pre_key: ffiShimRemovePreKey),
+            wrapper)
 }
 
-func createSessionStore(_ store: SessionStore) throws -> SignalSessionStore {
-    throw SignalError.internal_error("not implemented")
+class SignedPreKeyStoreWrapper {
+    var store: SignedPreKeyStore
+
+    init(store: SignedPreKeyStore) {
+        self.store = store
+    }
+
+    func loadSignedPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> Optional<SignedPreKeyRecord> {
+        try store.loadSignedPreKey(id: id, ctx: ctx)
+    }
+
+    func storeSignedPreKey(id: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+        try store.storeSignedPreKey(id: id, record: record, ctx: ctx)
+    }
+}
+
+func createSignedPreKeyStore(_ store: SignedPreKeyStore) throws -> (SignalSignedPreKeyStore, SignedPreKeyStoreWrapper) {
+    func ffiShimStoreSignedPreKey(store_ctx: UnsafeMutableRawPointer?,
+                                  id: UInt32,
+                                  record: OpaquePointer?,
+                                  ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<SignedPreKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            let record = try SignedPreKeyRecord(clone_from: record)
+            try store.storeSignedPreKey(id: id, record: record, ctx: ctx)
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+    func ffiShimLoadSignedPreKey(store_ctx: UnsafeMutableRawPointer?,
+                                 recordp: UnsafeMutablePointer<OpaquePointer?>?,
+                                 id: UInt32,
+                                 ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<SignedPreKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            let record = try store.loadSignedPreKey(id: id, ctx: ctx)
+            recordp!.pointee = record?.leakNativeHandle()
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+    let wrapper = SignedPreKeyStoreWrapper(store: store)
+
+    return (SignalSignedPreKeyStore(
+      ctx: Unmanaged.passUnretained(wrapper).toOpaque(),
+      load_signed_pre_key: ffiShimLoadSignedPreKey,
+      store_signed_pre_key: ffiShimStoreSignedPreKey), wrapper)
+}
+
+class SessionStoreWrapper {
+    var store: SessionStore
+
+    init(store: SessionStore) {
+        self.store = store
+    }
+
+    func loadSession(address: ProtocolAddress, ctx: UnsafeMutableRawPointer?) throws -> Optional<SessionRecord> {
+        try store.loadSession(address: address, ctx: ctx)
+    }
+
+    func storeSession(address: ProtocolAddress, record: SessionRecord, ctx: UnsafeMutableRawPointer?) throws {
+        try store.storeSession(address: address, record: record, ctx: ctx)
+    }
+}
+
+func createSessionStore(_ store: SessionStore) throws -> (SignalSessionStore, SessionStoreWrapper) {
+    func ffiShimStoreSession(store_ctx: UnsafeMutableRawPointer?,
+                             address: OpaquePointer?,
+                             record: OpaquePointer?,
+                             ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<SessionStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            let address = try ProtocolAddress(clone_from: address)
+            let record = try SessionRecord(clone_from: record)
+            try store.storeSession(address: address, record: record, ctx: ctx)
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+    func ffiShimLoadSession(store_ctx: UnsafeMutableRawPointer?,
+                            recordp: UnsafeMutablePointer<OpaquePointer?>?,
+                            address: OpaquePointer?,
+                            ctx: UnsafeMutableRawPointer?) -> Int32 {
+        do {
+            let store = Unmanaged<SessionStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
+            let address = try ProtocolAddress(clone_from: address)
+            let record = try store.loadSession(address: address, ctx: ctx)
+            recordp!.pointee = record?.leakNativeHandle()
+            return 0
+        }
+        catch {
+            return -1
+        }
+    }
+
+    let wrapper = SessionStoreWrapper(store: store)
+
+    return (SignalSessionStore(
+      ctx: Unmanaged.passUnretained(wrapper).toOpaque(),
+      load_session: ffiShimLoadSession,
+      store_session: ffiShimStoreSession), wrapper)
 }
 
 
@@ -77,8 +253,8 @@ class SenderKeyStoreWrapper {
         self.store = store
     }
 
-    func saveSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
-        try store.saveSenderKey(name: name, record: record, ctx: ctx)
+    func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws {
+        try store.storeSenderKey(name: name, record: record, ctx: ctx)
     }
 
     func loadSenderKey(name: SenderKeyName, ctx: UnsafeMutableRawPointer?) throws -> Optional<SenderKeyRecord> {
@@ -95,7 +271,7 @@ func createSenderKeyStore(_ store: SenderKeyStore) throws -> (SignalSenderKeySto
             let store = Unmanaged<SenderKeyStoreWrapper>.fromOpaque(store_ctx!).takeUnretainedValue()
             let sender_name = try SenderKeyName(clone_from: sender_name)
             let record = try SenderKeyRecord(clone_from: record)
-            try store.saveSenderKey(name: sender_name, record: record, ctx: ctx)
+            try store.storeSenderKey(name: sender_name, record: record, ctx: ctx)
             return 0
         }
         catch {

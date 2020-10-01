@@ -46,7 +46,7 @@ func SignalEncrypt(message: [UInt8],
     var ffi_identity = try createIdentityKeyStore(identity_store)
     return try invokeFnReturningArray(fn: { (b,bl) in signal_encrypt_message(b,bl,message,message.count,
                                                                              address.nativeHandle(),
-                                                                             &ffi_session, &ffi_identity, ctx) })
+                                                                             &ffi_session.0, &ffi_identity, ctx) })
 }
 
 func SignalDecrypt(message: SignalMessage,
@@ -58,7 +58,7 @@ func SignalDecrypt(message: SignalMessage,
     var ffi_identity = try createIdentityKeyStore(identity_store)
     return try invokeFnReturningArray(fn: { (b,bl) in signal_decrypt_message(b,bl,message.nativeHandle(),
                                                                              address.nativeHandle(),
-                                                                             &ffi_session, &ffi_identity, ctx) })
+                                                                             &ffi_session.0, &ffi_identity, ctx) })
 }
 
 func SignalDecryptPreKey(message: PreKeySignalMessage,
@@ -74,8 +74,8 @@ func SignalDecryptPreKey(message: PreKeySignalMessage,
     var ffi_spk = try createSignedPreKeyStore(signed_pre_key_store)
     return try invokeFnReturningArray(fn: { (b,bl) in signal_decrypt_pre_key_message(b,bl,message.nativeHandle(),
                                                                                      address.nativeHandle(),
-                                                                                     &ffi_session, &ffi_identity,
-                                                                                     &ffi_pk, &ffi_spk, ctx) })
+                                                                                     &ffi_session.0, &ffi_identity,
+                                                                                     &ffi_pk.0, &ffi_spk.0, ctx) })
 }
 
 func ProcessPreKeyBundle(bundle: PreKeyBundle,
@@ -87,7 +87,7 @@ func ProcessPreKeyBundle(bundle: PreKeyBundle,
     var ffi_identity = try createIdentityKeyStore(identity_store)
     try CheckError(signal_process_prekey_bundle(bundle.nativeHandle(),
                                                 address.nativeHandle(),
-                                                &ffi_session, &ffi_identity, ctx))
+                                                &ffi_session.0, &ffi_identity, ctx))
 }
 
 func GroupEncrypt(group_id: SenderKeyName,
