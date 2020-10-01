@@ -27,7 +27,7 @@ class PreKeyRecord {
     }
 
     func getId() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_pre_key_record_get_id(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_record_get_id(handle, i) })
     }
 
     func getPublicKey() throws -> PublicKey {

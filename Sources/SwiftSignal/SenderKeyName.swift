@@ -33,7 +33,7 @@ class SenderKeyName {
     }
 
     func getSenderDeviceId() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_sender_key_name_get_sender_device_id(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(handle, i) })
     }
 
     internal func nativeHandle() -> OpaquePointer? {

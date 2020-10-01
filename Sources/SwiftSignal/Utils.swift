@@ -18,14 +18,8 @@ func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, U
     return result
 }
 
-func invokeFnReturningUInt32(fn: (UnsafeMutablePointer<UInt32>?) -> SignalFfiErrorRef?) throws -> UInt32 {
-    var output : UInt32 = 0
-    try CheckError(fn(&output))
-    return output
-}
-
-func invokeFnReturningUInt64(fn: (UnsafeMutablePointer<UInt64>?) -> SignalFfiErrorRef?) throws -> UInt64 {
-    var output : UInt64 = 0
+func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
+    var output : Result = 0
     try CheckError(fn(&output))
     return output
 }

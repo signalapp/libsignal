@@ -21,11 +21,11 @@ class SignedPreKeyRecord {
     }
 
     func getId() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_signed_pre_key_record_get_id(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_signed_pre_key_record_get_id(handle, i) })
     }
 
     func getTimestamp() throws -> UInt64 {
-        return try invokeFnReturningUInt64(fn: { (i) in signal_signed_pre_key_record_get_timestamp(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_signed_pre_key_record_get_timestamp(handle, i) })
     }
 
     func getPublicKey() throws -> PublicKey {

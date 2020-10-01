@@ -40,11 +40,11 @@ class SenderKeyDistributionMessage {
     }
 
     func getId() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_sender_key_distribution_message_get_id(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_id(handle, i) })
     }
 
     func getIteration() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_sender_key_distribution_message_get_iteration(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_iteration(handle, i) })
     }
 
     func serialize() throws -> [UInt8] {

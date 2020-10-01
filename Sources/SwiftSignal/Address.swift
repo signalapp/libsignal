@@ -27,7 +27,7 @@ class ProtocolAddress {
     }
 
     func getDeviceId() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_address_get_device_id(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(handle, i) })
     }
 }
 

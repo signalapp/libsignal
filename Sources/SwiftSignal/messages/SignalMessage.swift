@@ -50,11 +50,11 @@ class SignalMessage {
     }
 
     func getMessageVersion() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_message_get_message_version(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_message_get_message_version(handle, i) })
     }
 
     func getCounter() throws -> UInt32 {
-        return try invokeFnReturningUInt32(fn: { (i) in signal_message_get_counter(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_message_get_counter(handle, i) })
     }
 
     func verifyMac(sender_identity_key: PublicKey,
