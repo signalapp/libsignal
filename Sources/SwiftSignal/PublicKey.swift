@@ -12,6 +12,10 @@ class PublicKey {
         handle = raw_ptr
     }
 
+    internal init(clone_from: OpaquePointer?) throws {
+        try CheckError(signal_publickey_clone(&handle, clone_from))
+    }
+
     deinit {
         signal_publickey_destroy(handle)
     }
@@ -39,6 +43,12 @@ class PublicKey {
 
     internal func nativeHandle() -> OpaquePointer? {
         return handle
+    }
+
+    internal func leakNativeHandle() -> OpaquePointer? {
+        let save = handle;
+        handle = nil
+        return save
     }
 }
 

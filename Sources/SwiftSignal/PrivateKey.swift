@@ -40,4 +40,10 @@ class PrivateKey {
     internal func nativeHandle() -> OpaquePointer? {
         return handle
     }
+
+    internal func leakNativeHandle() -> OpaquePointer? {
+        let save = handle
+        handle = nil
+        return save
+    }
 }
