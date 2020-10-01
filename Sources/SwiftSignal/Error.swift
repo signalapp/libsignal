@@ -33,55 +33,50 @@ func CheckError(_ error: OpaquePointer?) throws {
         let err_str = try invokeFnReturningString(fn: { (b) in signal_error_get_message(error, b) })
         signal_error_free(error)
 
-        // FIXME: Swift is willing to import the SIGNAL_ERROR_CODE_xxx
-        // values, and we can compare them to each other but cannot
-        // get their integer values without reflection - is there
-        // some other way?
-
-        switch err_type {
-        case 2:
+        switch SignalErrorCode(err_type) {
+        case SignalErrorCode_InvalidState:
             throw SignalError.invalid_state(err_str)
-        case 3:
+        case SignalErrorCode_InternalError:
             throw SignalError.internal_error(err_str)
-        case 4:
+        case SignalErrorCode_NullParameter:
             throw SignalError.null_parameter(err_str)
-        case 5:
+        case SignalErrorCode_InvalidArgument:
             throw SignalError.invalid_argument(err_str)
-        case 6:
+        case SignalErrorCode_InvalidType:
             throw SignalError.invalid_type(err_str)
-        case 7:
+        case SignalErrorCode_InvalidUtf8String:
             throw SignalError.invalid_utf8_string(err_str)
-        case 8:
+        case SignalErrorCode_InsufficientOutputSize:
             throw SignalError.insufficient_output_size(err_str)
-        case 10:
+        case SignalErrorCode_ProtobufError:
             throw SignalError.protobuf_error(err_str)
-        case 20:
+        case SignalErrorCode_InvalidCiphertext:
             throw SignalError.invalid_ciphertext(err_str)
-        case 21:
+        case SignalErrorCode_LegacyCiphertextVersion:
             throw SignalError.legacy_ciphertext_version(err_str)
-        case 22:
+        case SignalErrorCode_UnknownCiphertextVersion:
             throw SignalError.unknown_ciphertext_version(err_str)
-        case 23:
+        case SignalErrorCode_UnrecognizedMessageVersion:
             throw SignalError.unrecognized_message_version(err_str)
-        case 30:
+        case SignalErrorCode_InvalidMessage:
             throw SignalError.invalid_message(err_str)
-        case 40:
+        case SignalErrorCode_InvalidKey:
             throw SignalError.invalid_key(err_str)
-        case 41:
+        case SignalErrorCode_InvalidSignature:
             throw SignalError.invalid_signature(err_str)
-        case 50:
+        case SignalErrorCode_FingerprintIdentifierMismatch:
             throw SignalError.fingerprint_identifier_mismatch(err_str)
-        case 51:
+        case SignalErrorCode_FingerprintVersionMismatch:
             throw SignalError.fingerprint_version_mismatch(err_str)
-        case 60:
+        case SignalErrorCode_UntrustedIdentity:
             throw SignalError.untrusted_identity(err_str)
-        case 70:
+        case SignalErrorCode_InvalidKeyIdentifier:
             throw SignalError.invalid_key_identifier(err_str)
-        case 80:
+        case SignalErrorCode_SessionNotFound:
             throw SignalError.session_not_found(err_str)
-        case 90:
+        case SignalErrorCode_DuplicatedMessage:
             throw SignalError.duplicated_message(err_str)
-        case 100:
+        case SignalErrorCode_CallbackError:
             throw SignalError.callback_error(err_str)
         default:
             throw SignalError.unknown(err_type, err_str)
