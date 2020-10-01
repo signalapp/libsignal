@@ -1,7 +1,7 @@
 import SignalFfi
 import Foundation
 
-func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<Int8>?>?) -> OpaquePointer?) throws -> String {
+func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
     var output : UnsafePointer<Int8>? = nil
     try CheckError(fn(&output))
     let result = String(cString: output!)
@@ -9,7 +9,7 @@ func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<Int8>?>?) -
     return result
 }
 
-func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> OpaquePointer?) throws -> [UInt8] {
+func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output : UnsafePointer<UInt8>? = nil
     var output_len = 0
     try CheckError(fn(&output, &output_len))
@@ -18,31 +18,31 @@ func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, U
     return result
 }
 
-func invokeFnReturningUInt32(fn: (UnsafeMutablePointer<UInt32>?) -> OpaquePointer?) throws -> UInt32 {
+func invokeFnReturningUInt32(fn: (UnsafeMutablePointer<UInt32>?) -> SignalFfiErrorRef?) throws -> UInt32 {
     var output : UInt32 = 0
     try CheckError(fn(&output))
     return output
 }
 
-func invokeFnReturningUInt64(fn: (UnsafeMutablePointer<UInt64>?) -> OpaquePointer?) throws -> UInt64 {
+func invokeFnReturningUInt64(fn: (UnsafeMutablePointer<UInt64>?) -> SignalFfiErrorRef?) throws -> UInt64 {
     var output : UInt64 = 0
     try CheckError(fn(&output))
     return output
 }
 
-func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> OpaquePointer?) throws -> PublicKey {
+func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey {
     var pk_handle : OpaquePointer?
     try CheckError(fn(&pk_handle))
     return PublicKey(raw_ptr: pk_handle)
 }
 
-func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> OpaquePointer?) throws -> PrivateKey {
+func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PrivateKey {
     var pk_handle : OpaquePointer?
     try CheckError(fn(&pk_handle))
     return PrivateKey(raw_ptr: pk_handle)
 }
 
-func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> OpaquePointer?) throws -> Optional<PublicKey> {
+func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> Optional<PublicKey> {
     var pk_handle : OpaquePointer?
     try CheckError(fn(&pk_handle))
 
