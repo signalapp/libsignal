@@ -11,7 +11,7 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .systemLibrary(name: "SignalFfi"),
+        .systemLibrary(name: "SignalFfi", pkgConfig: "signal_ffi"),
         .target(name: "SwiftSignal", dependencies: ["SignalFfi"]),
         .testTarget(name: "SwiftSignalTests", dependencies: ["SwiftSignal"])
     ]
