@@ -54,7 +54,7 @@ pub unsafe extern "C" fn signal_error_get_message(
 pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u32 {
     match err.as_ref() {
         Some(err) => {
-            let code = err.signal_error_code();
+            let code : SignalErrorCode = err.into();
             num_traits::ToPrimitive::to_u32(&code).expect("Error enum can be converted to u32")
         }
         None => 0,

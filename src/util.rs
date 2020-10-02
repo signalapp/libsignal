@@ -52,9 +52,9 @@ pub enum SignalErrorCode {
     CallbackError = 100,
 }
 
-impl SignalFfiError {
-    pub fn signal_error_code(&self) -> SignalErrorCode {
-        match self {
+impl From<&SignalFfiError> for SignalErrorCode {
+    fn from(err: &SignalFfiError) -> Self {
+        match err {
             SignalFfiError::NullPointer => SignalErrorCode::NullParameter,
             SignalFfiError::InvalidType => SignalErrorCode::InvalidType,
             SignalFfiError::UnexpectedPanic(_) => SignalErrorCode::InternalError,
@@ -100,11 +100,20 @@ impl SignalFfiError {
                 SignalErrorCode::FingerprintVersionMismatch
             }
 
+            SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
+            | SignalFfiError::Signal(SignalProtocolError::InvalidCiphertext) => {
+                SignalErrorCode::InvalidCiphertext
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_)) => {
+                SignalErrorCode::UnrecognizedMessageVersion
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_)) => {
+                SignalErrorCode::UnknownCiphertextVersion
+            }
+
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(_))
-            | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-            | SignalFfiError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
-            | SignalFfiError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidCiphertext)
             | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding) => {
                 SignalErrorCode::InvalidMessage
             }
