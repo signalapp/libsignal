@@ -9,8 +9,8 @@ class CiphertextMessage {
         signal_ciphertext_message_destroy(handle)
     }
 
-    internal init(raw_ptr: OpaquePointer?) {
-        handle = raw_ptr;
+    internal init(owned raw_ptr: OpaquePointer?) {
+        handle = raw_ptr
     }
 
     func serialize() throws -> [UInt8] {
