@@ -12,6 +12,16 @@ class SignedPreKeyRecord {
         try CheckError(signal_signed_pre_key_record_deserialize(&handle, bytes, bytes.count))
     }
 
+    init(id: UInt32,
+         timestamp: UInt64,
+         priv_key: PrivateKey,
+         signature: [UInt8]) throws {
+        let pub_key = try priv_key.getPublicKey();
+        try CheckError(signal_signed_pre_key_record_new(&handle, id, timestamp,
+                                                        pub_key.nativeHandle(), priv_key.nativeHandle(),
+                                                        signature, signature.count));
+    }
+
     internal init(clone_from: OpaquePointer?) throws {
         try CheckError(signal_signed_pre_key_record_clone(&handle, clone_from));
     }

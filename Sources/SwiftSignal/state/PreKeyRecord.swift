@@ -22,6 +22,11 @@ class PreKeyRecord {
         try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle(), priv_key.nativeHandle()))
     }
 
+    init(id: UInt32, priv_key: PrivateKey) throws {
+        let pub_key = try priv_key.getPublicKey()
+        try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle(), priv_key.nativeHandle()))
+    }
+
     func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_pre_key_record_serialize(handle,b,bl) })
     }
