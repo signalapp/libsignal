@@ -12,9 +12,10 @@ class PrivateKey {
         handle = raw_ptr
     }
 
-    // Some more explicit syntax would be nice for this (eg PublicKey.generate() ??)
-    init() throws {
+    static func generate() throws -> PrivateKey {
+        var handle: OpaquePointer?
         try CheckError(signal_privatekey_generate(&handle))
+        return PrivateKey(raw_ptr: handle)
     }
 
     deinit {

@@ -35,7 +35,7 @@ class SwiftSignalTests: XCTestCase {
     }
 
     func testPkOperations() {
-        let sk = try! PrivateKey()
+        let sk = try! PrivateKey.generate()
 
         let sk_bytes = try! sk.serialize()
         let pk = try! sk.getPublicKey()
@@ -61,7 +61,7 @@ class SwiftSignalTests: XCTestCase {
         message[1] ^= 1
         XCTAssertEqual(try! pk.verifySignature(message: message, signature: signature), true)
 
-        let sk2 = try! PrivateKey()
+        let sk2 = try! PrivateKey.generate()
 
         let shared_secret1 = try! sk.keyAgreement(other_key: sk2.getPublicKey())
         let shared_secret2 = try! sk2.keyAgreement(other_key: sk.getPublicKey())
@@ -133,7 +133,7 @@ class SwiftSignalTests: XCTestCase {
 
         // testMismatchingFingerprints
 
-        let mitmIdentityKey = try! PrivateKey().getPublicKey()
+        let mitmIdentityKey = try! PrivateKey.generate().getPublicKey()
 
         let aliceFingerprintM = try! generator.createFor(version: VERSION_1,
                                                         local_identifier: aliceStableId,

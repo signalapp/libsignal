@@ -33,7 +33,7 @@ class IdentityKeyPair {
     private let privkey : PrivateKey
 
     init() throws {
-        privkey = try PrivateKey(); // generates new key
+        privkey = try PrivateKey.generate();
         pubkey = try privkey.getPublicKey()
     }
 
