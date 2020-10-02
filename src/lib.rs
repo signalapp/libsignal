@@ -817,7 +817,7 @@ pub struct FfiIdentityKeyStore {
 }
 
 impl FfiIdentityKeyStore {
-    fn new(store: *mut FfiIdentityKeyStoreStruct) -> Result<Self, SignalFfiError> {
+    fn new(store: *const FfiIdentityKeyStoreStruct) -> Result<Self, SignalFfiError> {
         Ok(Self {
             store: *unsafe { store.as_ref() }.ok_or(SignalFfiError::NullPointer)?,
         })
@@ -958,7 +958,7 @@ pub struct FfiPreKeyStore {
 }
 
 impl FfiPreKeyStore {
-    fn new(store: *mut FfiPreKeyStoreStruct) -> Result<Self, SignalFfiError> {
+    fn new(store: *const FfiPreKeyStoreStruct) -> Result<Self, SignalFfiError> {
         Ok(Self {
             store: *unsafe { store.as_ref() }.ok_or(SignalFfiError::NullPointer)?,
         })
@@ -1046,7 +1046,7 @@ pub struct FfiSignedPreKeyStore {
 }
 
 impl FfiSignedPreKeyStore {
-    fn new(store: *mut FfiSignedPreKeyStoreStruct) -> Result<Self, SignalFfiError> {
+    fn new(store: *const FfiSignedPreKeyStoreStruct) -> Result<Self, SignalFfiError> {
         Ok(Self {
             store: *unsafe { store.as_ref() }.ok_or(SignalFfiError::NullPointer)?,
         })
@@ -1121,7 +1121,7 @@ pub struct FfiSessionStore {
 }
 
 impl FfiSessionStore {
-    fn new(store: *mut FfiSessionStoreStruct) -> Result<Self, SignalFfiError> {
+    fn new(store: *const FfiSessionStoreStruct) -> Result<Self, SignalFfiError> {
         Ok(Self {
             store: *unsafe { store.as_ref() }.ok_or(SignalFfiError::NullPointer)?,
         })
@@ -1182,8 +1182,8 @@ impl SessionStore for FfiSessionStore {
 pub unsafe extern "C" fn signal_process_prekey_bundle(
     bundle: *mut PreKeyBundle,
     protocol_address: *const ProtocolAddress,
-    session_store: *mut FfiSessionStoreStruct,
-    identity_key_store: *mut FfiIdentityKeyStoreStruct,
+    session_store: *const FfiSessionStoreStruct,
+    identity_key_store: *const FfiIdentityKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1214,8 +1214,8 @@ pub unsafe extern "C" fn signal_encrypt_message(
     ptext: *const c_uchar,
     ptext_len: size_t,
     protocol_address: *const ProtocolAddress,
-    session_store: *mut FfiSessionStoreStruct,
-    identity_key_store: *mut FfiIdentityKeyStoreStruct,
+    session_store: *const FfiSessionStoreStruct,
+    identity_key_store: *const FfiIdentityKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1253,8 +1253,8 @@ pub unsafe extern "C" fn signal_decrypt_message(
     result_len: *mut size_t,
     message: *const SignalMessage,
     protocol_address: *const ProtocolAddress,
-    session_store: *mut FfiSessionStoreStruct,
-    identity_key_store: *mut FfiIdentityKeyStoreStruct,
+    session_store: *const FfiSessionStoreStruct,
+    identity_key_store: *const FfiIdentityKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1283,10 +1283,10 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
     result_len: *mut size_t,
     message: *const PreKeySignalMessage,
     protocol_address: *const ProtocolAddress,
-    session_store: *mut FfiSessionStoreStruct,
-    identity_key_store: *mut FfiIdentityKeyStoreStruct,
-    prekey_store: *mut FfiPreKeyStoreStruct,
-    signed_prekey_store: *mut FfiSignedPreKeyStoreStruct,
+    session_store: *const FfiSessionStoreStruct,
+    identity_key_store: *const FfiIdentityKeyStoreStruct,
+    prekey_store: *const FfiPreKeyStoreStruct,
+    signed_prekey_store: *const FfiSignedPreKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1331,7 +1331,7 @@ pub struct FfiSenderKeyStore {
 }
 
 impl FfiSenderKeyStore {
-    fn new(store: *mut FfiSenderKeyStoreStruct) -> Result<Self, SignalFfiError> {
+    fn new(store: *const FfiSenderKeyStoreStruct) -> Result<Self, SignalFfiError> {
         Ok(Self {
             store: *unsafe { store.as_ref() }.ok_or(SignalFfiError::NullPointer)?,
         })
@@ -1392,7 +1392,7 @@ impl SenderKeyStore for FfiSenderKeyStore {
 pub unsafe extern "C" fn signal_create_sender_key_distribution_message(
     obj: *mut *mut SenderKeyDistributionMessage,
     sender_key_name: *const SenderKeyName,
-    store: *mut FfiSenderKeyStoreStruct,
+    store: *const FfiSenderKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1419,7 +1419,7 @@ pub unsafe extern "C" fn signal_create_sender_key_distribution_message(
 pub unsafe extern "C" fn signal_process_sender_key_distribution_message(
     sender_key_name: *const SenderKeyName,
     sender_key_distribution_message: *const SenderKeyDistributionMessage,
-    store: *mut FfiSenderKeyStoreStruct,
+    store: *const FfiSenderKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1446,7 +1446,7 @@ pub unsafe extern "C" fn signal_group_encrypt_message(
     sender_key_name: *const SenderKeyName,
     message: *const c_uchar,
     message_len: size_t,
-    store: *mut FfiSenderKeyStoreStruct,
+    store: *const FfiSenderKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -1472,7 +1472,7 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
     sender_key_name: *const SenderKeyName,
     message: *const c_uchar,
     message_len: size_t,
-    store: *mut FfiSenderKeyStoreStruct,
+    store: *const FfiSenderKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
