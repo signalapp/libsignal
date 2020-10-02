@@ -27,8 +27,7 @@ signal_ffi.h: src/*.rs Cargo.toml cbindgen.toml
 
 pkg-config: target/$(CONFIG)/signal_ffi.pc
 
-target/%/signal_ffi.pc: signal_ffi.pc.in
-	echo build_dir=$(CURDIR)/target/$(CONFIG) > $@
-	cat $^ >> $@
+target/%/signal_ffi.pc: signal_ffi.pc
+	cp $^ $@
 
 .PHONY: default clean rust cbindgen pkg-config
