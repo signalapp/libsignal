@@ -1,0 +1,4 @@
+module SignalFfi {
+	umbrella header "swift_signal.h"
+	link "signal_ffi"
+}
