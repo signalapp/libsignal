@@ -1209,8 +1209,7 @@ pub unsafe extern "C" fn signal_process_prekey_bundle(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_encrypt_message(
-    result: *mut *const c_uchar,
-    result_len: *mut size_t,
+    msg: *mut *mut CiphertextMessage,
     ptext: *const c_uchar,
     ptext_len: size_t,
     protocol_address: *const ProtocolAddress,
@@ -1231,19 +1230,34 @@ pub unsafe extern "C" fn signal_encrypt_message(
             &mut session_store,
             &mut identity_key_store,
             Some(ctx),
-        )?;
+        );
 
-        let ctext = match ctext {
-            CiphertextMessage::SignalMessage(m) => m.serialized().to_vec(),
-            CiphertextMessage::PreKeySignalMessage(m) => m.serialized().to_vec(),
-            _ => {
-                return Err(SignalFfiError::Signal(SignalProtocolError::InternalError(
-                    "Unexpected result type from message_encrypt",
-                )))
-            }
-        };
+        box_object(msg, ctext)
+    })
+}
 
-        write_bytearray_to(result, result_len, Ok(ctext))
+ffi_fn_destroy!(signal_ciphertext_message_destroy destroys CiphertextMessage);
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_ciphertext_message_type(
+    typ: *mut u8,
+    msg: *const CiphertextMessage) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let msg = native_handle_cast::<CiphertextMessage>(msg)?;
+        *typ = msg.message_type().encoding();
+        Ok(())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_ciphertext_message_serialize(
+    result: *mut *const c_uchar,
+    result_len: *mut size_t,
+    msg: *const CiphertextMessage) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let msg = native_handle_cast::<CiphertextMessage>(msg)?;
+        let bits = msg.serialize();
+        write_bytearray_to(result, result_len, Ok(bits))
     })
 }
 

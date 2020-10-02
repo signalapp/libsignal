@@ -42,6 +42,8 @@ typedef enum {
   SignalErrorCode_CallbackError = 100,
 } SignalErrorCode;
 
+typedef struct SignalCiphertextMessage SignalCiphertextMessage;
+
 typedef struct SignalFingerprint SignalFingerprint;
 
 typedef struct SignalPreKeyBundle SignalPreKeyBundle;
@@ -571,14 +573,21 @@ SignalFfiError *signal_process_prekey_bundle(SignalPreKeyBundle *bundle,
                                              const SignalIdentityKeyStore *identity_key_store,
                                              void *ctx);
 
-SignalFfiError *signal_encrypt_message(const unsigned char **result,
-                                       size_t *result_len,
+SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **msg,
                                        const unsigned char *ptext,
                                        size_t ptext_len,
                                        const SignalProtocolAddress *protocol_address,
                                        const SignalSessionStore *session_store,
                                        const SignalIdentityKeyStore *identity_key_store,
                                        void *ctx);
+
+SignalFfiError *signal_ciphertext_message_destroy(SignalCiphertextMessage *p);
+
+SignalFfiError *signal_ciphertext_message_type(uint8_t *typ, const SignalCiphertextMessage *msg);
+
+SignalFfiError *signal_ciphertext_message_serialize(const unsigned char **result,
+                                                    size_t *result_len,
+                                                    const SignalCiphertextMessage *msg);
 
 SignalFfiError *signal_decrypt_message(const unsigned char **result,
                                        size_t *result_len,
