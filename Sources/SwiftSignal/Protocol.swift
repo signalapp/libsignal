@@ -41,11 +41,11 @@ func SignalEncrypt(message: [UInt8],
                    address: ProtocolAddress,
                    session_store: SessionStore,
                    identity_store: IdentityKeyStore,
-                   ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
+                   ctx: UnsafeMutableRawPointer?) throws -> CiphertextMessage {
     return try withSessionStore(session_store) { ffi_session_store in
         try withIdentityKeyStore(identity_store) { ffi_identity_store in
-            try invokeFnReturningArray {
-                signal_encrypt_message($0, $1, message, message.count, address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx)
+            try invokeFnReturningCiphertextMessage {
+                signal_encrypt_message($0, message, message.count, address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx)
             }
         }
     }
