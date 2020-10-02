@@ -42,11 +42,13 @@ func SignalEncrypt(message: [UInt8],
                    session_store: SessionStore,
                    identity_store: IdentityKeyStore,
                    ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    var ffi_session = try createSessionStore(session_store)
-    var ffi_identity = try createIdentityKeyStore(identity_store)
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_encrypt_message(b,bl,message,message.count,
-                                                                             address.nativeHandle(),
-                                                                             &ffi_session.0, &ffi_identity.0, ctx) })
+    return try withSessionStore(session_store) { ffi_session_store in
+        try withIdentityKeyStore(identity_store) { ffi_identity_store in
+            try invokeFnReturningArray {
+                signal_encrypt_message($0, $1, message, message.count, address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx)
+            }
+        }
+    }
 }
 
 func SignalDecrypt(message: SignalMessage,
@@ -54,11 +56,13 @@ func SignalDecrypt(message: SignalMessage,
                    session_store: SessionStore,
                    identity_store: IdentityKeyStore,
                    ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    var ffi_session = try createSessionStore(session_store)
-    var ffi_identity = try createIdentityKeyStore(identity_store)
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_decrypt_message(b,bl,message.nativeHandle(),
-                                                                             address.nativeHandle(),
-                                                                             &ffi_session.0, &ffi_identity.0, ctx) })
+    return try withSessionStore(session_store) { ffi_session_store in
+        try withIdentityKeyStore(identity_store) { ffi_identity_store in
+            try invokeFnReturningArray {
+                signal_decrypt_message($0, $1, message.nativeHandle(), address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx)
+            }
+        }
+    }
 }
 
 func SignalDecryptPreKey(message: PreKeySignalMessage,
@@ -68,14 +72,17 @@ func SignalDecryptPreKey(message: PreKeySignalMessage,
                          pre_key_store: PreKeyStore,
                          signed_pre_key_store: SignedPreKeyStore,
                          ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    var ffi_session = try createSessionStore(session_store)
-    var ffi_identity = try createIdentityKeyStore(identity_store)
-    var ffi_pk = try createPreKeyStore(pre_key_store)
-    var ffi_spk = try createSignedPreKeyStore(signed_pre_key_store)
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_decrypt_pre_key_message(b,bl,message.nativeHandle(),
-                                                                                     address.nativeHandle(),
-                                                                                     &ffi_session.0, &ffi_identity.0,
-                                                                                     &ffi_pk.0, &ffi_spk.0, ctx) })
+    return try withSessionStore(session_store) { ffi_session_store in
+        try withIdentityKeyStore(identity_store) { ffi_identity_store in
+            try withPreKeyStore(pre_key_store) { ffi_pre_key_store in
+                try withSignedPreKeyStore(signed_pre_key_store) { ffi_signed_pre_key_store in
+                    try invokeFnReturningArray {
+                        signal_decrypt_pre_key_message($0, $1, message.nativeHandle(), address.nativeHandle(), ffi_session_store, ffi_identity_store, ffi_pre_key_store, ffi_signed_pre_key_store, ctx)
+                    }
+                }
+            }
+        }
+    }
 }
 
 func ProcessPreKeyBundle(bundle: PreKeyBundle,
@@ -83,35 +90,42 @@ func ProcessPreKeyBundle(bundle: PreKeyBundle,
                          session_store: SessionStore,
                          identity_store: IdentityKeyStore,
                          ctx: UnsafeMutableRawPointer?) throws {
-    var ffi_session = try createSessionStore(session_store)
-    var ffi_identity = try createIdentityKeyStore(identity_store)
-    try CheckError(signal_process_prekey_bundle(bundle.nativeHandle(),
-                                                address.nativeHandle(),
-                                                &ffi_session.0, &ffi_identity.0, ctx))
+    return try withSessionStore(session_store) { ffi_session_store in
+        try withIdentityKeyStore(identity_store) { ffi_identity_store in
+            try CheckError(signal_process_prekey_bundle(bundle.nativeHandle(), address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx))
+        }
+    }
 }
 
 func GroupEncrypt(group_id: SenderKeyName,
                   message: [UInt8],
                   store: SenderKeyStore,
                   ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    var ffi = try createSenderKeyStore(store)
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_group_encrypt_message(b,bl,group_id.nativeHandle(), message, message.count, &ffi.0, ctx) })
+    return try withSenderKeyStore(store) { ffiStore in
+        return try invokeFnReturningArray {
+            signal_group_encrypt_message($0, $1, group_id.nativeHandle(), message, message.count, ffiStore, ctx)
+        }
+    }
 }
 
 func GroupDecrypt(group_id: SenderKeyName,
                   message: [UInt8],
                   store: SenderKeyStore,
                   ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    var ffi = try createSenderKeyStore(store)
-    return try invokeFnReturningArray(fn: { (b,bl) in signal_group_decrypt_message(b,bl,group_id.nativeHandle(), message, message.count, &ffi.0, ctx) })
+    return try withSenderKeyStore(store) { ffiStore in
+        return try invokeFnReturningArray {
+            signal_group_decrypt_message($0, $1, group_id.nativeHandle(), message, message.count, ffiStore, ctx)
+        }
+    }
 }
 
 func ProcessSenderKeyDistributionMessage(sender_name: SenderKeyName,
                                          msg: SenderKeyDistributionMessage,
                                          store: SenderKeyStore,
                                          ctx: UnsafeMutableRawPointer?) throws {
-    var ffi = try createSenderKeyStore(store)
-    try CheckError(signal_process_sender_key_distribution_message(sender_name.nativeHandle(),
-                                                                  msg.nativeHandle(),
-                                                                  &ffi.0, ctx))
+    try withSenderKeyStore(store) {
+        try CheckError(signal_process_sender_key_distribution_message(sender_name.nativeHandle(),
+                                                                      msg.nativeHandle(),
+                                                                      $0, ctx))
+    }
 }

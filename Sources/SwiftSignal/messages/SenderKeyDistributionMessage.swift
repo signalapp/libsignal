@@ -13,9 +13,10 @@ class SenderKeyDistributionMessage {
     }
 
     init(name: SenderKeyName, store: SenderKeyStore, ctx: UnsafeMutableRawPointer?) throws {
-        var ffi = try createSenderKeyStore(store)
-        try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle(),
-                                                                     &ffi.0, ctx))
+        try withSenderKeyStore(store) {
+            try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle(),
+                                                                         $0, ctx))
+        }
     }
 
     init(key_id: UInt32,

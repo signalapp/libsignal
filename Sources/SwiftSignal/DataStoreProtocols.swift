@@ -6,31 +6,31 @@ enum Direction {
     case Receiving
 }
 
-protocol IdentityKeyStore {
+protocol IdentityKeyStore: AnyObject {
     func getIdentityKeyPair(ctx: UnsafeMutableRawPointer?) throws -> IdentityKeyPair
     func getLocalRegistrationId(ctx: UnsafeMutableRawPointer?) throws -> UInt32
-    mutating func saveIdentity(address: ProtocolAddress, identity: IdentityKey, ctx: UnsafeMutableRawPointer?) throws -> Bool
+    func saveIdentity(address: ProtocolAddress, identity: IdentityKey, ctx: UnsafeMutableRawPointer?) throws -> Bool
     func isTrustedIdentity(address: ProtocolAddress, identity: IdentityKey, direction: Direction, ctx: UnsafeMutableRawPointer?) throws -> Bool
     func getIdentity(address: ProtocolAddress, ctx: UnsafeMutableRawPointer?) throws -> Optional<IdentityKey>
 }
 
-protocol PreKeyStore {
+protocol PreKeyStore: AnyObject {
     func loadPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> PreKeyRecord
-    mutating func storePreKey(id: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
+    func storePreKey(id: UInt32, record: PreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
     func removePreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws
 }
 
-protocol SignedPreKeyStore {
+protocol SignedPreKeyStore: AnyObject {
     func loadSignedPreKey(id: UInt32, ctx: UnsafeMutableRawPointer?) throws -> SignedPreKeyRecord
-    mutating func storeSignedPreKey(id: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
+    func storeSignedPreKey(id: UInt32, record: SignedPreKeyRecord, ctx: UnsafeMutableRawPointer?) throws
 }
 
-protocol SessionStore {
+protocol SessionStore: AnyObject {
     func loadSession(address: ProtocolAddress, ctx: UnsafeMutableRawPointer?) throws -> Optional<SessionRecord>
-    mutating func storeSession(address: ProtocolAddress, record: SessionRecord, ctx: UnsafeMutableRawPointer?) throws
+    func storeSession(address: ProtocolAddress, record: SessionRecord, ctx: UnsafeMutableRawPointer?) throws
 }
 
-protocol SenderKeyStore {
-    mutating func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws
+protocol SenderKeyStore: AnyObject {
+    func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, ctx: UnsafeMutableRawPointer?) throws
     func loadSenderKey(name: SenderKeyName, ctx: UnsafeMutableRawPointer?) throws -> SenderKeyRecord?
 }
