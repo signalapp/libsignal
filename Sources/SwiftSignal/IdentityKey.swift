@@ -42,8 +42,8 @@ class IdentityKeyPair {
         var privkey_ptr : OpaquePointer?
         try CheckError(signal_identitykeypair_deserialize(&pubkey_ptr, &privkey_ptr, bytes, bytes.count))
 
-        pubkey = PublicKey(raw_ptr: pubkey_ptr)
-        privkey = PrivateKey(raw_ptr: privkey_ptr)
+        pubkey = PublicKey(owned: pubkey_ptr!)
+        privkey = PrivateKey(owned: privkey_ptr!)
     }
 
     func serialize() throws -> [UInt8] {

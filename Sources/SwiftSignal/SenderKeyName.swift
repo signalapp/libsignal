@@ -1,43 +1,45 @@
 import SignalFfi
 import Foundation
 
-class SenderKeyName {
-    private var handle: OpaquePointer?
-
-    init(group_name: String, sender_name: String, device_id: UInt32) throws {
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender_name, device_id))
-    }
-
-    init(group_name: String, sender: ProtocolAddress) throws {
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender.getName(), sender.getDeviceId()))
-    }
-
-    internal init(raw_ptr: OpaquePointer?) {
-        handle = raw_ptr
-    }
-
-    internal init(clone_from: OpaquePointer?) throws {
-        try CheckError(signal_sender_key_name_clone(&handle, clone_from))
-    }
-
-    deinit {
+class SenderKeyName: ClonableHandleOwner {
+    override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_sender_key_name_destroy(handle)
     }
 
+    override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+        return signal_sender_key_name_clone(&newHandle, currentHandle)
+    }
+
+    init(group_name: String, sender_name: String, device_id: UInt32) throws {
+        var handle: OpaquePointer?
+        try CheckError(signal_sender_key_name_new(&handle, group_name, sender_name, device_id))
+        super.init(owned: handle!)
+    }
+
+    init(group_name: String, sender: ProtocolAddress) throws {
+        var handle: OpaquePointer?
+        try CheckError(signal_sender_key_name_new(&handle, group_name, sender.getName(), sender.getDeviceId()))
+        super.init(owned: handle!)
+    }
+
+    internal override init(owned handle: OpaquePointer) {
+        super.init(owned: handle)
+    }
+
+    internal override init(unowned handle: OpaquePointer?) {
+        super.init(unowned: handle)
+    }
+
     func getGroupId() throws -> String {
-        return try invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(handle, b) })
+        return try invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(nativeHandle(), b) })
     }
 
     func getSenderName() throws -> String {
-        return try invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(handle, b) })
+        return try invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(nativeHandle(), b) })
     }
 
     func getSenderDeviceId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(handle, i) })
-    }
-
-    internal func nativeHandle() -> OpaquePointer? {
-        return handle
+        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(nativeHandle(), i) })
     }
 }
 

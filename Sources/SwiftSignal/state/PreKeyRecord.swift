@@ -1,30 +1,40 @@
 import SignalFfi
 import Foundation
 
-class PreKeyRecord {
+class PreKeyRecord: ClonableHandleOwner {
     private var handle: OpaquePointer?
 
-    deinit {
+    override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_pre_key_record_destroy(handle)
     }
 
-    init(bytes: [UInt8]) throws {
-        try CheckError(signal_pre_key_record_deserialize(&handle, bytes, bytes.count))
+    override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+        return signal_pre_key_record_clone(&newHandle, currentHandle)
     }
 
-    internal init(clone_from: OpaquePointer?) throws {
-        try CheckError(signal_pre_key_record_clone(&handle, clone_from));
+    init(bytes: [UInt8]) throws {
+        var handle: OpaquePointer?
+        try CheckError(signal_pre_key_record_deserialize(&handle, bytes, bytes.count))
+        super.init(owned: handle!)
+    }
+
+    internal override init(unowned handle: OpaquePointer?) {
+        super.init(unowned: handle)
     }
 
     init(id: UInt32,
          pub_key: PublicKey,
          priv_key: PrivateKey) throws {
+        var handle: OpaquePointer?
         try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle(), priv_key.nativeHandle()))
+        super.init(owned: handle!)
     }
 
     init(id: UInt32, priv_key: PrivateKey) throws {
         let pub_key = try priv_key.getPublicKey()
+        var handle: OpaquePointer?
         try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle(), priv_key.nativeHandle()))
+        super.init(owned: handle!)
     }
 
     func serialize() throws -> [UInt8] {
@@ -41,11 +51,5 @@ class PreKeyRecord {
 
     func getPrivateKey() throws -> PrivateKey {
         return try invokeFnReturningPrivateKey(fn: { (k) in signal_pre_key_record_get_private_key(k, handle) })
-    }
-
-    func leakNativeHandle() -> OpaquePointer? {
-        let save = handle
-        handle = nil
-        return save
     }
 }

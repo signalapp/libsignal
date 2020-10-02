@@ -1,32 +1,36 @@
 import SignalFfi
 import Foundation
 
-class PublicKey {
-    private var handle: OpaquePointer?
-
+class PublicKey: ClonableHandleOwner {
     init(_ bytes: [UInt8]) throws {
+        var handle: OpaquePointer?
         try CheckError(signal_publickey_deserialize(&handle, bytes, bytes.count))
+        super.init(owned: handle!)
     }
 
-    internal init(raw_ptr: OpaquePointer?) {
-        handle = raw_ptr
+    internal override init(owned handle: OpaquePointer) {
+        super.init(owned: handle)
     }
 
-    internal init(clone_from: OpaquePointer?) throws {
-        try CheckError(signal_publickey_clone(&handle, clone_from))
+    internal override init(unowned handle: OpaquePointer?) {
+        super.init(unowned: handle)
     }
 
-    deinit {
+    override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_publickey_destroy(handle)
     }
 
+    override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+        return signal_publickey_clone(&newHandle, currentHandle)
+    }
+
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_publickey_serialize(handle,b,bl) })
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_publickey_serialize(nativeHandle(),b,bl) })
     }
 
     func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {
         var result : UInt8 = 0
-        try CheckError(signal_publickey_verify(handle, &result, message, message.count, signature, signature.count))
+        try CheckError(signal_publickey_verify(nativeHandle(), &result, message, message.count, signature, signature.count))
 
         if result == 1 {
             return true
@@ -37,18 +41,8 @@ class PublicKey {
 
     func compareWith(other_key: PublicKey) throws -> Int32 {
         var result : Int32 = 0
-        try CheckError(signal_publickey_compare(&result, handle, other_key.handle))
+        try CheckError(signal_publickey_compare(&result, nativeHandle(), other_key.nativeHandle()))
         return result
-    }
-
-    internal func nativeHandle() -> OpaquePointer? {
-        return handle
-    }
-
-    internal func leakNativeHandle() -> OpaquePointer? {
-        let save = handle;
-        handle = nil
-        return save
     }
 }
 

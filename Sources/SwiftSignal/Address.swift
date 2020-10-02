@@ -1,33 +1,33 @@
 import SignalFfi
 import Foundation
 
-class ProtocolAddress {
-    private var handle: OpaquePointer?
-
-    internal func nativeHandle() -> OpaquePointer? {
-        return handle
-    }
-
+class ProtocolAddress: ClonableHandleOwner {
     init(name: String, device_id: UInt32) throws {
+        var handle: OpaquePointer?
         try CheckError(signal_address_new(&handle,
                                           name,
                                           device_id))
+        super.init(owned: handle!)
     }
 
-    internal init(clone_from: OpaquePointer?) throws {
-        try CheckError(signal_address_clone(&handle, clone_from))
+    internal override init(unowned handle: OpaquePointer?) {
+        super.init(unowned: handle)
     }
 
-    deinit {
+    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+        return signal_address_clone(&newHandle, currentHandle)
+    }
+
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_address_destroy(handle)
     }
 
     func getName() throws -> String {
-        return try invokeFnReturningString(fn: { (b) in signal_address_get_name(handle, b) })
+        return try invokeFnReturningString(fn: { (b) in signal_address_get_name(nativeHandle(), b) })
     }
 
     func getDeviceId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(handle, i) })
+        return try invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(nativeHandle(), i) })
     }
 }
 
