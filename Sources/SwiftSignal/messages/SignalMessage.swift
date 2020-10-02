@@ -8,7 +8,7 @@ class SignalMessage {
         signal_message_destroy(handle)
     }
 
-    internal init(raw_ptr: OpaquePointer?) {
+    internal init(owned raw_ptr: OpaquePointer?) {
         handle = raw_ptr
     }
 

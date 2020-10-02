@@ -45,7 +45,7 @@ func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?
 func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> CiphertextMessage {
     var handle : OpaquePointer?
     try CheckError(fn(&handle))
-    return CiphertextMessage(raw_ptr: handle)
+    return CiphertextMessage(owned: handle)
 }
 
 func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePointer<SignalIdentityKeyStore>) throws -> Result) throws -> Result {

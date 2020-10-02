@@ -70,7 +70,7 @@ class PreKeySignalMessage {
     func getSignalMessage() throws -> SignalMessage {
         var m : OpaquePointer?
         try CheckError(signal_pre_key_signal_message_get_signal_message(&m, handle))
-        return SignalMessage(raw_ptr: m)
+        return SignalMessage(owned: m)
     }
 
     internal func nativeHandle() -> OpaquePointer? {
