@@ -1,0 +1,42 @@
+name: CI
+
+on: [pull_request]
+
+jobs:
+  build_and_test:
+    name: Build and Test
+
+    runs-on: macOS-latest
+
+    env:
+      PKG_CONFIG_PATH: ${{ github.workspace }}/libsignal-ffi/target/debug
+
+    steps:
+      - name: Install nightly rust (needed for libsignal-ffi)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+
+      - name: Configure git to use HTTPS
+        run: git config --global url."https://github.com".insteadOf ssh://git@github.com
+
+      - name: Check out libsignal-protocol-swift
+        uses: actions/checkout@v2
+
+      - name: Check out libsignal-ffi
+        uses: actions/checkout@v2
+        with:
+          repository: signalapp/libsignal-ffi
+          path: libsignal-ffi
+
+      - name: Build libsignal-ffi
+        run: make -C libsignal-ffi
+
+      - name: Build libsignal-protocol-swift
+        run: swift build -v
+
+      - name: Run tests
+        run: swift test -v
+
