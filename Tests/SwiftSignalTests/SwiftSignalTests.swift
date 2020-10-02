@@ -183,7 +183,7 @@ class SwiftSignalTests: XCTestCase {
         let sender = try! ProtocolAddress(name: "+14159999111", device_id: 4)
         let group_id = try! SenderKeyName(group_name: "summer camp", sender: sender)
 
-        let a_store = InMemorySenderKeyStore()
+        let a_store = try! InMemorySignalProtocolStore()
 
         let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, ctx: nil)
 
@@ -193,7 +193,7 @@ class SwiftSignalTests: XCTestCase {
 
         let a_ctext = try! GroupEncrypt(group_id: group_id, message: [1,2,3], store: a_store, ctx: nil)
 
-        let b_store = InMemorySenderKeyStore()
+        let b_store = try! InMemorySignalProtocolStore()
         try! ProcessSenderKeyDistributionMessage(sender_name: group_id,
                                                  msg: skdm_r,
                                                  store: b_store,
@@ -203,15 +203,107 @@ class SwiftSignalTests: XCTestCase {
         XCTAssertEqual(b_ptext, [1,2,3])
     }
 
+    func testSessionCipher() {
+        let alice_address = try! ProtocolAddress(name: "+14151111111", device_id: 1)
+        let bob_address = try! ProtocolAddress(name: "+14151111112", device_id: 1)
+
+        let alice_store = try! InMemorySignalProtocolStore()
+        let bob_store = try! InMemorySignalProtocolStore()
+
+        let bob_pre_key = try! PrivateKey.generate()
+        let bob_signed_pre_key = try! PrivateKey.generate()
+
+        let bob_signed_pre_key_public = try! bob_signed_pre_key.getPublicKey().serialize()
+
+        let bob_identity_key = try! bob_store.getIdentityKeyPair(ctx: nil).identityKey();
+        let bob_signed_pre_key_signature = try! bob_store.getIdentityKeyPair(ctx: nil).privateKey().generateSignature(message: bob_signed_pre_key_public)
+
+        let prekey_id : UInt32 = 4570;
+        let signed_prekey_id : UInt32 = 3006;
+
+        let bob_bundle = try! PreKeyBundle(registration_id: try! bob_store.getLocalRegistrationId(ctx: nil),
+                                           device_id: 9,
+                                           prekey_id: prekey_id,
+                                           prekey: bob_pre_key.getPublicKey(),
+                                           signed_prekey_id: signed_prekey_id,
+                                           signed_prekey: try! bob_signed_pre_key.getPublicKey(),
+                                           signed_prekey_signature: bob_signed_pre_key_signature,
+                                           identity_key: bob_identity_key)
+
+        // Alice processes the bundle:
+        try! ProcessPreKeyBundle(bundle: bob_bundle,
+                                 address: bob_address,
+                                 session_store: alice_store,
+                                 identity_store: alice_store,
+                                 ctx: nil)
+
+        // Bob does the same:
+        try! bob_store.storePreKey(id: prekey_id,
+                                   record: PreKeyRecord(id: prekey_id, priv_key: bob_pre_key),
+                                   ctx: nil);
+
+        try! bob_store.storeSignedPreKey(id: signed_prekey_id,
+                                         record: SignedPreKeyRecord(
+                                           id: signed_prekey_id,
+                                           timestamp: 42000,
+                                           priv_key: bob_signed_pre_key,
+                                           signature: bob_signed_pre_key_signature
+                                         ),
+                                         ctx: nil);
+
+        // Alice sends a message:
+        let ptext_a : [UInt8] = [8,6,7,5,3,0,9];
+
+        let ctext_a = try! SignalEncrypt(message: ptext_a,
+                                         address: bob_address,
+                                         session_store: alice_store,
+                                         identity_store: alice_store,
+                                         ctx: nil)
+
+        XCTAssertEqual(try! ctext_a.messageType(), 3); // prekey
+
+        let ctext_b = try! PreKeySignalMessage(bytes: try! ctext_a.serialize())
+
+        let ptext_b = try! SignalDecryptPreKey(message: ctext_b,
+                                               address: alice_address,
+                                               session_store: bob_store,
+                                               identity_store: bob_store,
+                                               pre_key_store: bob_store,
+                                               signed_pre_key_store: bob_store,
+                                               ctx: nil)
+
+        XCTAssertEqual(ptext_a, ptext_b)
+
+        // Bob replies
+        let ptext2_b : [UInt8] = [23];
+
+        let ctext2_b = try! SignalEncrypt(message: ptext2_b,
+                                          address: alice_address,
+                                          session_store: bob_store,
+                                          identity_store: bob_store,
+                                          ctx: nil)
+
+        XCTAssertEqual(try! ctext2_b.messageType(), 2); // normal message
+
+        let ctext2_a = try! SignalMessage(bytes: try! ctext2_b.serialize())
+
+        let ptext2_a = try! SignalDecrypt(message: ctext2_a,
+                                          address: bob_address,
+                                          session_store: alice_store,
+                                          identity_store: alice_store,
+                                          ctx: nil)
+
+        XCTAssertEqual(ptext2_a, ptext2_b)
+    }
+
     static var allTests: [(String, (SwiftSignalTests) -> () throws -> Void)] {
         return [
-          /*
           ("testAddreses", testAddress),
           ("testFingerprint", testFingerprint),
           ("testPkOperations", testPkOperations),
           ("testHkdf", testHkdf),
-           */
           ("testGroupCipher", testGroupCipher),
+          ("testSessionCipher", testSessionCipher),
         ]
     }
 }
