@@ -334,7 +334,7 @@ ffi_fn_get_bytearray!(signal_fingerprint_scannable_encoding(Fingerprint) using
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_compare(
-    result: *mut c_uchar,
+    result: *mut bool,
     fprint1: *const c_uchar,
     fprint1_len: size_t,
     fprint2: *const c_uchar,
@@ -348,9 +348,7 @@ pub unsafe extern "C" fn signal_fingerprint_compare(
         let fprint2 = as_slice(fprint2, fprint2_len)?;
 
         let fprint1 = ScannableFingerprint::deserialize(&fprint1)?;
-        let same = fprint1.compare(&fprint2)?;
-
-        *result = same as u8;
+        *result = fprint1.compare(&fprint2)?;
         Ok(())
     })
 }
