@@ -13,46 +13,46 @@ class PreKeyBundle {
     }
 
     // with a prekey
-    init(registration_id: UInt32,
-         device_id: UInt32,
-         prekey_id: UInt32,
+    init(registrationId: UInt32,
+         deviceId: UInt32,
+         prekeyId: UInt32,
          prekey: PublicKey,
-         signed_prekey_id: UInt32,
-         signed_prekey: PublicKey,
-         signed_prekey_signature: [UInt8],
-         identity_key: IdentityKey) throws {
+         signedPrekeyId: UInt32,
+         signedPrekey: PublicKey,
+         signedPrekeySignature: [UInt8],
+         identity identityKey: IdentityKey) throws {
 
         // Why is this required??
-        var prekey_id = prekey_id
-        try CheckError(signal_pre_key_bundle_new(&handle,
-                                                 registration_id,
-                                                 device_id,
+        var prekey_id = prekeyId
+        try checkError(signal_pre_key_bundle_new(&handle,
+                                                 registrationId,
+                                                 deviceId,
                                                  &prekey_id,
                                                  prekey.nativeHandle,
-                                                 signed_prekey_id,
-                                                 signed_prekey.nativeHandle,
-                                                 signed_prekey_signature,
-                                                 signed_prekey_signature.count,
-                                                 identity_key.publicKey.nativeHandle))
+                                                 signedPrekeyId,
+                                                 signedPrekey.nativeHandle,
+                                                 signedPrekeySignature,
+                                                 signedPrekeySignature.count,
+                                                 identityKey.publicKey.nativeHandle))
     }
 
     // without a prekey
-    init(registration_id: UInt32,
-         device_id: UInt32,
-         signed_prekey_id: UInt32,
-         signed_prekey: PublicKey,
-         signed_prekey_signature: [UInt8],
-         identity_key: IdentityKey) throws {
-        try CheckError(signal_pre_key_bundle_new(&handle,
-                                                 registration_id,
-                                                 device_id,
+    init(registrationId: UInt32,
+         deviceId: UInt32,
+         signedPrekeyId: UInt32,
+         signedPrekey: PublicKey,
+         signedPrekeySignature: [UInt8],
+         identity identityKey: IdentityKey) throws {
+        try checkError(signal_pre_key_bundle_new(&handle,
+                                                 registrationId,
+                                                 deviceId,
                                                  nil,
                                                  nil,
-                                                 signed_prekey_id,
-                                                 signed_prekey.nativeHandle,
-                                                 signed_prekey_signature,
-                                                 signed_prekey_signature.count,
-                                                 identity_key.publicKey.nativeHandle))
+                                                 signedPrekeyId,
+                                                 signedPrekey.nativeHandle,
+                                                 signedPrekeySignature,
+                                                 signedPrekeySignature.count,
+                                                 identityKey.publicKey.nativeHandle))
 
     }
 
@@ -84,7 +84,7 @@ class PreKeyBundle {
 
     func getIdentityKey() throws -> IdentityKey {
         let pk = try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_bundle_get_identity_key(k, handle) })
-        return IdentityKey(pk: pk)
+        return IdentityKey(publicKey: pk)
     }
 
     func getSignedPreKeyPublic() throws -> PublicKey {

@@ -4,7 +4,7 @@ import Foundation
 class PublicKey: ClonableHandleOwner {
     init(_ bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_publickey_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_publickey_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 
@@ -30,25 +30,25 @@ class PublicKey: ClonableHandleOwner {
 
     func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {
         var result: Bool = false
-        try CheckError(signal_publickey_verify(nativeHandle, &result, message, message.count, signature, signature.count))
+        try checkError(signal_publickey_verify(nativeHandle, &result, message, message.count, signature, signature.count))
         return result
     }
 
-    func compareWith(other_key: PublicKey) -> Int32 {
+    func compare(_ other: PublicKey) -> Int32 {
         var result : Int32 = 0
-        try! CheckError(signal_publickey_compare(&result, nativeHandle, other_key.nativeHandle))
+        try! checkError(signal_publickey_compare(&result, nativeHandle, other.nativeHandle))
         return result
     }
 }
 
 extension PublicKey: Equatable {
     static func == (lhs: PublicKey, rhs: PublicKey) -> Bool {
-        return lhs.compareWith(other_key: rhs) == 0
+        return lhs.compare(rhs) == 0
     }
 }
 
 extension PublicKey: Comparable {
     static func < (lhs: PublicKey, rhs: PublicKey) -> Bool {
-        return lhs.compareWith(other_key: rhs) < 0
+        return lhs.compare(rhs) < 0
     }
 }

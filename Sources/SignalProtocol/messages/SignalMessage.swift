@@ -13,28 +13,28 @@ class SignalMessage {
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_message_deserialize(&handle, bytes, bytes.count))
     }
 
     init(version: UInt8,
-         mac_key: [UInt8],
-         sender_ratchet_key: PublicKey,
+         macKey: [UInt8],
+         senderRatchetKey: PublicKey,
          counter: UInt32,
-         previous_counter: UInt32,
+         previousCounter: UInt32,
          ciphertext: [UInt8],
-         sender_identity_key: PublicKey,
-         receiver_identity_key: PublicKey) throws {
-        try CheckError(signal_message_new(&handle,
+         sender senderIdentityKey: PublicKey,
+         receiver receiverIdentityKey: PublicKey) throws {
+        try checkError(signal_message_new(&handle,
                                           version,
-                                          mac_key,
-                                          mac_key.count,
-                                          sender_ratchet_key.nativeHandle,
+                                          macKey,
+                                          macKey.count,
+                                          senderRatchetKey.nativeHandle,
                                           counter,
-                                          previous_counter,
+                                          previousCounter,
                                           ciphertext,
                                           ciphertext.count,
-                                          sender_identity_key.nativeHandle,
-                                          receiver_identity_key.nativeHandle))
+                                          senderIdentityKey.nativeHandle,
+                                          receiverIdentityKey.nativeHandle))
     }
 
     func getSenderRatchetKey() throws -> PublicKey {
@@ -57,16 +57,16 @@ class SignalMessage {
         return try invokeFnReturningInteger(fn: { (i) in signal_message_get_counter(handle, i) })
     }
 
-    func verifyMac(sender_identity_key: PublicKey,
-                   receiver_identity_key: PublicKey,
-                   mac_key: [UInt8]) throws -> Bool {
+    func verifyMac(sender: PublicKey,
+                   receiver: PublicKey,
+                   macKey: [UInt8]) throws -> Bool {
         var result: Bool = false
-        try CheckError(signal_message_verify_mac(&result,
+        try checkError(signal_message_verify_mac(&result,
                                                  handle,
-                                                 sender_identity_key.nativeHandle,
-                                                 receiver_identity_key.nativeHandle,
-                                                 mac_key,
-                                                 mac_key.count))
+                                                 sender.nativeHandle,
+                                                 receiver.nativeHandle,
+                                                 macKey,
+                                                 macKey.count))
         return result
     }
 

@@ -29,7 +29,7 @@ public enum SignalError : Error {
 
 typealias SignalFfiErrorRef = OpaquePointer
 
-func CheckError(_ error: SignalFfiErrorRef?) throws {
+func checkError(_ error: SignalFfiErrorRef?) throws {
     guard let error = error else { return }
 
     let err_type = signal_error_get_type(error)

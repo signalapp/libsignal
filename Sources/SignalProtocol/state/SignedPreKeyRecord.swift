@@ -12,18 +12,18 @@ class SignedPreKeyRecord: ClonableHandleOwner {
 
     init(bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_signed_pre_key_record_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_signed_pre_key_record_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 
     init(id: UInt32,
          timestamp: UInt64,
-         priv_key: PrivateKey,
+         privateKey: PrivateKey,
          signature: [UInt8]) throws {
-        let pub_key = try priv_key.getPublicKey();
+        let pub_key = try privateKey.getPublicKey();
         var handle: OpaquePointer?
-        try CheckError(signal_signed_pre_key_record_new(&handle, id, timestamp,
-                                                        pub_key.nativeHandle, priv_key.nativeHandle,
+        try checkError(signal_signed_pre_key_record_new(&handle, id, timestamp,
+                                                        pub_key.nativeHandle, privateKey.nativeHandle,
                                                         signature, signature.count));
         super.init(owned: handle!)
     }

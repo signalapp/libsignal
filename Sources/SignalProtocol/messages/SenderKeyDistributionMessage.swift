@@ -12,28 +12,28 @@ class SenderKeyDistributionMessage {
         return handle
     }
 
-    init(name: SenderKeyName, store: SenderKeyStore, ctx: UnsafeMutableRawPointer?) throws {
+    init(name: SenderKeyName, store: SenderKeyStore, context: UnsafeMutableRawPointer?) throws {
         try withSenderKeyStore(store) {
-            try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
-                                                                         $0, ctx))
+            try checkError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
+                                                                         $0, context))
         }
     }
 
-    init(key_id: UInt32,
+    init(keyId: UInt32,
          iteration: UInt32,
-         chain_key: [UInt8],
-         pk: PublicKey) throws {
+         chainKey: [UInt8],
+         publicKey: PublicKey) throws {
 
-        try CheckError(signal_sender_key_distribution_message_new(&handle,
-                                                                  key_id,
+        try checkError(signal_sender_key_distribution_message_new(&handle,
+                                                                  keyId,
                                                                   iteration,
-                                                                  chain_key,
-                                                                  chain_key.count,
-                                                                  pk.nativeHandle))
+                                                                  chainKey,
+                                                                  chainKey.count,
+                                                                  publicKey.nativeHandle))
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
     }
 
     func getSignatureKey() throws -> PublicKey {
@@ -52,7 +52,7 @@ class SenderKeyDistributionMessage {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_distribution_message_serialize(handle,b,bl) })
     }
 
-    func chain_key() throws -> [UInt8] {
+    func chainKey() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_distribution_message_get_chain_key(handle,b,bl) })
     }
 }

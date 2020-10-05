@@ -12,18 +12,17 @@ class SignalProtocolTests: XCTestCase {
         let salt : [UInt8] = []
         let okm : [UInt8] = [0x8d, 0xa4, 0xe7, 0x75]
 
-        let output_length = UInt32(okm.count)
         let version = UInt32(3)
-        let derived = try! hkdf(output_length: output_length,
+        let derived = try! hkdf(outputLength: okm.count,
                                 version: version,
-                                input_key_material: ikm,
+                                inputKeyMaterial: ikm,
                                 salt: salt,
                                 info: info)
         XCTAssertEqual(derived, okm)
 
-        XCTAssertThrowsError(try hkdf(output_length: output_length,
-                                  version: 19,
-                                  input_key_material: ikm,
+        XCTAssertThrowsError(try hkdf(outputLength: okm.count,
+                                      version: 19,
+                                      inputKeyMaterial: ikm,
                                   salt: salt,
                                   info: info))
     }
@@ -63,8 +62,8 @@ class SignalProtocolTests: XCTestCase {
 
         let sk2 = try! PrivateKey.generate()
 
-        let shared_secret1 = try! sk.keyAgreement(other_key: sk2.getPublicKey())
-        let shared_secret2 = try! sk2.keyAgreement(other_key: sk.getPublicKey())
+        let shared_secret1 = try! sk.keyAgreement(with: sk2.getPublicKey())
+        let shared_secret2 = try! sk2.keyAgreement(with: sk.getPublicKey())
 
         XCTAssertEqual(shared_secret1, shared_secret2)
     }
@@ -93,17 +92,17 @@ class SignalProtocolTests: XCTestCase {
 
         let generator = NumericFingerprintGenerator(iterations: 5200)
 
-        let aliceFingerprint = try! generator.createFor(version: VERSION_1,
-                                                        local_identifier: aliceStableId,
-                                                        local_key: aliceIdentityKey,
-                                                        remote_identifier: bobStableId,
-                                                        remote_key: bobIdentityKey)
+        let aliceFingerprint = try! generator.create(version: VERSION_1,
+                                                     localIdentifier: aliceStableId,
+                                                     localKey: aliceIdentityKey,
+                                                     remoteIdentifier: bobStableId,
+                                                     remoteKey: bobIdentityKey)
 
-        let bobFingerprint = try! generator.createFor(version: VERSION_1,
-                                                      local_identifier: bobStableId,
-                                                      local_key: bobIdentityKey,
-                                                      remote_identifier: aliceStableId,
-                                                      remote_key: aliceIdentityKey)
+        let bobFingerprint = try! generator.create(version: VERSION_1,
+                                                   localIdentifier: bobStableId,
+                                                   localKey: bobIdentityKey,
+                                                   remoteIdentifier: aliceStableId,
+                                                   remoteKey: aliceIdentityKey)
 
         XCTAssertEqual(aliceFingerprint.displayable.formatted, DISPLAYABLE_FINGERPRINT_V1)
         XCTAssertEqual(bobFingerprint.displayable.formatted, DISPLAYABLE_FINGERPRINT_V1)
@@ -113,17 +112,17 @@ class SignalProtocolTests: XCTestCase {
 
         // testVectorsVersion2
 
-        let aliceFingerprint2 = try! generator.createFor(version: VERSION_2,
-                                                        local_identifier: aliceStableId,
-                                                        local_key: aliceIdentityKey,
-                                                        remote_identifier: bobStableId,
-                                                        remote_key: bobIdentityKey)
+        let aliceFingerprint2 = try! generator.create(version: VERSION_2,
+                                                      localIdentifier: aliceStableId,
+                                                      localKey: aliceIdentityKey,
+                                                      remoteIdentifier: bobStableId,
+                                                      remoteKey: bobIdentityKey)
 
-        let bobFingerprint2 = try! generator.createFor(version: VERSION_2,
-                                                      local_identifier: bobStableId,
-                                                      local_key: bobIdentityKey,
-                                                      remote_identifier: aliceStableId,
-                                                      remote_key: aliceIdentityKey)
+        let bobFingerprint2 = try! generator.create(version: VERSION_2,
+                                                    localIdentifier: bobStableId,
+                                                    localKey: bobIdentityKey,
+                                                    remoteIdentifier: aliceStableId,
+                                                    remoteKey: aliceIdentityKey)
 
         XCTAssertEqual(aliceFingerprint2.displayable.formatted, DISPLAYABLE_FINGERPRINT_V2)
         XCTAssertEqual(bobFingerprint2.displayable.formatted, DISPLAYABLE_FINGERPRINT_V2)
@@ -135,23 +134,23 @@ class SignalProtocolTests: XCTestCase {
 
         let mitmIdentityKey = try! PrivateKey.generate().getPublicKey()
 
-        let aliceFingerprintM = try! generator.createFor(version: VERSION_1,
-                                                        local_identifier: aliceStableId,
-                                                        local_key: aliceIdentityKey,
-                                                        remote_identifier: bobStableId,
-                                                        remote_key: mitmIdentityKey)
+        let aliceFingerprintM = try! generator.create(version: VERSION_1,
+                                                      localIdentifier: aliceStableId,
+                                                      localKey: aliceIdentityKey,
+                                                      remoteIdentifier: bobStableId,
+                                                      remoteKey: mitmIdentityKey)
 
-        let bobFingerprintM = try! generator.createFor(version: VERSION_1,
-                                                      local_identifier: bobStableId,
-                                                      local_key: bobIdentityKey,
-                                                      remote_identifier: aliceStableId,
-                                                      remote_key: aliceIdentityKey)
+        let bobFingerprintM = try! generator.create(version: VERSION_1,
+                                                    localIdentifier: bobStableId,
+                                                    localKey: bobIdentityKey,
+                                                    remoteIdentifier: aliceStableId,
+                                                    remoteKey: aliceIdentityKey)
 
         XCTAssertNotEqual(aliceFingerprintM.displayable.formatted,
                           bobFingerprintM.displayable.formatted)
 
-        XCTAssertEqual(try! bobFingerprintM.scannable.compareWith(other: aliceFingerprintM.scannable), false)
-        XCTAssertEqual(try! aliceFingerprintM.scannable.compareWith(other: bobFingerprintM.scannable), false)
+        XCTAssertEqual(try! bobFingerprintM.scannable.compare(against: aliceFingerprintM.scannable), false)
+        XCTAssertEqual(try! aliceFingerprintM.scannable.compare(against: bobFingerprintM.scannable), false)
 
         XCTAssertEqual(aliceFingerprintM.displayable.formatted.count, 60)
 
@@ -159,46 +158,46 @@ class SignalProtocolTests: XCTestCase {
 
         let badBobStableId : [UInt8] = [UInt8]("+14153333334".utf8)
 
-        let aliceFingerprintI = try! generator.createFor(version: VERSION_1,
-                                                        local_identifier: aliceStableId,
-                                                        local_key: aliceIdentityKey,
-                                                        remote_identifier: badBobStableId,
-                                                        remote_key: bobIdentityKey)
+        let aliceFingerprintI = try! generator.create(version: VERSION_1,
+                                                      localIdentifier: aliceStableId,
+                                                      localKey: aliceIdentityKey,
+                                                      remoteIdentifier: badBobStableId,
+                                                      remoteKey: bobIdentityKey)
 
-        let bobFingerprintI = try! generator.createFor(version: VERSION_1,
-                                                      local_identifier: bobStableId,
-                                                      local_key: bobIdentityKey,
-                                                      remote_identifier: aliceStableId,
-                                                      remote_key: aliceIdentityKey)
+        let bobFingerprintI = try! generator.create(version: VERSION_1,
+                                                    localIdentifier: bobStableId,
+                                                    localKey: bobIdentityKey,
+                                                    remoteIdentifier: aliceStableId,
+                                                    remoteKey: aliceIdentityKey)
 
         XCTAssertNotEqual(aliceFingerprintI.displayable.formatted,
                           bobFingerprintI.displayable.formatted)
 
-        XCTAssertEqual(try! bobFingerprintI.scannable.compareWith(other: aliceFingerprintI.scannable), false)
-        XCTAssertEqual(try! aliceFingerprintI.scannable.compareWith(other: bobFingerprintI.scannable), false)
+        XCTAssertEqual(try! bobFingerprintI.scannable.compare(against: aliceFingerprintI.scannable), false)
+        XCTAssertEqual(try! aliceFingerprintI.scannable.compare(against: bobFingerprintI.scannable), false)
     }
 
     func testGroupCipher() {
 
         let sender = try! ProtocolAddress(name: "+14159999111", device_id: 4)
-        let group_id = try! SenderKeyName(group_name: "summer camp", sender: sender)
+        let group_id = try! SenderKeyName(groupName: "summer camp", sender: sender)
 
         let a_store = try! InMemorySignalProtocolStore()
 
-        let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, ctx: nil)
+        let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, context: nil)
 
         let skdm_bits = try! skdm.serialize()
 
         let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
 
-        let a_ctext = try! GroupEncrypt(group_id: group_id, message: [1,2,3], store: a_store, ctx: nil)
+        let a_ctext = try! groupEncrypt(groupId: group_id, message: [1,2,3], store: a_store, context: nil)
 
         let b_store = try! InMemorySignalProtocolStore()
-        try! ProcessSenderKeyDistributionMessage(sender_name: group_id,
-                                                 msg: skdm_r,
+        try! processSenderKeyDistributionMessage(sender: group_id,
+                                                 message: skdm_r,
                                                  store: b_store,
-                                                 ctx: nil)
-        let b_ptext = try! GroupDecrypt(group_id: group_id, message: a_ctext, store: b_store, ctx: nil)
+                                                 context: nil)
+        let b_ptext = try! groupDecrypt(groupId: group_id, message: a_ctext, store: b_store, context: nil)
 
         XCTAssertEqual(b_ptext, [1,2,3])
     }
@@ -221,31 +220,31 @@ class SignalProtocolTests: XCTestCase {
         let prekey_id : UInt32 = 4570;
         let signed_prekey_id : UInt32 = 3006;
 
-        let bob_bundle = try! PreKeyBundle(registration_id: try! bob_store.localRegistrationId(context: nil),
-                                           device_id: 9,
-                                           prekey_id: prekey_id,
+        let bob_bundle = try! PreKeyBundle(registrationId: try! bob_store.localRegistrationId(context: nil),
+                                           deviceId: 9,
+                                           prekeyId: prekey_id,
                                            prekey: bob_pre_key.getPublicKey(),
-                                           signed_prekey_id: signed_prekey_id,
-                                           signed_prekey: try! bob_signed_pre_key.getPublicKey(),
-                                           signed_prekey_signature: bob_signed_pre_key_signature,
-                                           identity_key: bob_identity_key)
+                                           signedPrekeyId: signed_prekey_id,
+                                           signedPrekey: try! bob_signed_pre_key.getPublicKey(),
+                                           signedPrekeySignature: bob_signed_pre_key_signature,
+                                           identity: bob_identity_key)
 
         // Alice processes the bundle:
-        try! ProcessPreKeyBundle(bundle: bob_bundle,
-                                 address: bob_address,
-                                 session_store: alice_store,
-                                 identity_store: alice_store,
-                                 ctx: nil)
+        try! processPreKeyBundle(bob_bundle,
+                                 for: bob_address,
+                                 sessionStore: alice_store,
+                                 identityStore: alice_store,
+                                 context: nil)
 
         // Bob does the same:
-        try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, priv_key: bob_pre_key),
+        try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, privateKey: bob_pre_key),
                                    id: prekey_id,
                                    context: nil)
 
         try! bob_store.storeSignedPreKey(SignedPreKeyRecord(
                                            id: signed_prekey_id,
                                            timestamp: 42000,
-                                           priv_key: bob_signed_pre_key,
+            privateKey: bob_signed_pre_key,
                                            signature: bob_signed_pre_key_signature
                                          ),
                                          id: signed_prekey_id,
@@ -254,44 +253,44 @@ class SignalProtocolTests: XCTestCase {
         // Alice sends a message:
         let ptext_a : [UInt8] = [8,6,7,5,3,0,9];
 
-        let ctext_a = try! SignalEncrypt(message: ptext_a,
-                                         address: bob_address,
-                                         session_store: alice_store,
-                                         identity_store: alice_store,
-                                         ctx: nil)
+        let ctext_a = try! signalEncrypt(message: ptext_a,
+                                         for: bob_address,
+                                         sessionStore: alice_store,
+                                         identityStore: alice_store,
+                                         context: nil)
 
         XCTAssertEqual(try! ctext_a.messageType(), 3); // prekey
 
         let ctext_b = try! PreKeySignalMessage(bytes: try! ctext_a.serialize())
 
-        let ptext_b = try! SignalDecryptPreKey(message: ctext_b,
-                                               address: alice_address,
-                                               session_store: bob_store,
-                                               identity_store: bob_store,
-                                               pre_key_store: bob_store,
-                                               signed_pre_key_store: bob_store,
-                                               ctx: nil)
+        let ptext_b = try! signalDecryptPreKey(message: ctext_b,
+                                               from: alice_address,
+                                               sessionStore: bob_store,
+                                               identityStore: bob_store,
+                                               preKeyStore: bob_store,
+                                               signedPreKeyStore: bob_store,
+                                               context: nil)
 
         XCTAssertEqual(ptext_a, ptext_b)
 
         // Bob replies
         let ptext2_b : [UInt8] = [23];
 
-        let ctext2_b = try! SignalEncrypt(message: ptext2_b,
-                                          address: alice_address,
-                                          session_store: bob_store,
-                                          identity_store: bob_store,
-                                          ctx: nil)
+        let ctext2_b = try! signalEncrypt(message: ptext2_b,
+                                          for: alice_address,
+                                          sessionStore: bob_store,
+                                          identityStore: bob_store,
+                                          context: nil)
 
         XCTAssertEqual(try! ctext2_b.messageType(), 2); // normal message
 
         let ctext2_a = try! SignalMessage(bytes: try! ctext2_b.serialize())
 
-        let ptext2_a = try! SignalDecrypt(message: ctext2_a,
-                                          address: bob_address,
-                                          session_store: alice_store,
-                                          identity_store: alice_store,
-                                          ctx: nil)
+        let ptext2_a = try! signalDecrypt(message: ctext2_a,
+                                          from: bob_address,
+                                          sessionStore: alice_store,
+                                          identityStore: alice_store,
+                                          context: nil)
 
         XCTAssertEqual(ptext2_a, ptext2_b)
     }

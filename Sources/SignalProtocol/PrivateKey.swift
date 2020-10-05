@@ -4,7 +4,7 @@ import Foundation
 class PrivateKey: ClonableHandleOwner {
     init(_ bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_privatekey_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_privatekey_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 
@@ -14,7 +14,7 @@ class PrivateKey: ClonableHandleOwner {
 
     static func generate() throws -> PrivateKey {
         var handle: OpaquePointer?
-        try CheckError(signal_privatekey_generate(&handle))
+        try checkError(signal_privatekey_generate(&handle))
         return PrivateKey(owned: handle!)
     }
 
@@ -34,8 +34,8 @@ class PrivateKey: ClonableHandleOwner {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_sign(b,bl,nativeHandle,message,message.count) })
     }
 
-    func keyAgreement(other_key: PublicKey) throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_agree(b,bl,nativeHandle,other_key.nativeHandle) })
+    func keyAgreement(with other: PublicKey) throws -> [UInt8] {
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_agree(b,bl,nativeHandle,other.nativeHandle) })
     }
 
     func getPublicKey() throws -> PublicKey {

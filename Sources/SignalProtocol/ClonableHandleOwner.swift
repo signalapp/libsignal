@@ -32,7 +32,7 @@ class ClonableHandleOwner {
         }
         var newHandle: OpaquePointer?
         // Automatic cloning must not fail.
-        try! CheckError(Self.cloneNativeHandle(&newHandle, currentHandle: currentHandle))
+        try! checkError(Self.cloneNativeHandle(&newHandle, currentHandle: currentHandle))
         self.handle = .owned(newHandle!)
     }
 
@@ -93,6 +93,6 @@ func cloneOrTakeHandle<Owner: ClonableHandleOwner>(from handleOwner: inout Owner
     }
 
     var result: OpaquePointer?
-    try CheckError(type(of: handleOwner).cloneNativeHandle(&result, currentHandle: handleOwner.nativeHandle))
+    try checkError(type(of: handleOwner).cloneNativeHandle(&result, currentHandle: handleOwner.nativeHandle))
     return result
 }

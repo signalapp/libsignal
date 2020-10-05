@@ -10,15 +10,15 @@ class SenderKeyName: ClonableHandleOwner {
         return signal_sender_key_name_clone(&newHandle, currentHandle)
     }
 
-    init(group_name: String, sender_name: String, device_id: UInt32) throws {
+    init(groupName: String, senderName: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender_name, device_id))
+        try checkError(signal_sender_key_name_new(&handle, groupName, senderName, deviceId))
         super.init(owned: handle!)
     }
 
-    init(group_name: String, sender: ProtocolAddress) throws {
+    init(groupName: String, sender: ProtocolAddress) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender.name, sender.deviceId))
+        try checkError(signal_sender_key_name_new(&handle, groupName, sender.name, sender.deviceId))
         super.init(owned: handle!)
     }
 

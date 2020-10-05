@@ -1,26 +1,26 @@
 import SignalFfi
 import Foundation
 
-func hkdf(output_length: UInt32,
+func hkdf(outputLength: Int,
           version: UInt32,
-          input_key_material: [UInt8],
+          inputKeyMaterial: [UInt8],
           salt: [UInt8],
-          info: [UInt8]) throws -> Array<UInt8> {
+          info: [UInt8]) throws -> [UInt8] {
 
-    var output = Array(repeating: UInt8(0x00), count: Int(output_length))
+    var output = Array(repeating: UInt8(0x00), count: outputLength)
 
     let error = signal_hkdf_derive(&output,
-                                   Int(output_length),
+                                   outputLength,
                                    Int32(version),
-                                   input_key_material,
-                                   input_key_material.count,
+                                   inputKeyMaterial,
+                                   inputKeyMaterial.count,
                                    info,
                                    info.count,
                                    salt,
                                    salt.count)
 
 
-    try CheckError(error)
+    try checkError(error)
 
     return output
 }

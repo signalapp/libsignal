@@ -4,8 +4,8 @@ import Foundation
 struct IdentityKey: Equatable {
     let publicKey: PublicKey
 
-    init(pk: PublicKey) {
-        publicKey = pk
+    init(publicKey: PublicKey) {
+        self.publicKey = publicKey
     }
 
     init(bytes: [UInt8]) throws {
@@ -30,7 +30,7 @@ struct IdentityKeyPair {
     init(bytes: [UInt8]) throws {
         var pubkey_ptr : OpaquePointer?
         var privkey_ptr : OpaquePointer?
-        try CheckError(signal_identitykeypair_deserialize(&pubkey_ptr, &privkey_ptr, bytes, bytes.count))
+        try checkError(signal_identitykeypair_deserialize(&pubkey_ptr, &privkey_ptr, bytes, bytes.count))
 
         publicKey = PublicKey(owned: pubkey_ptr!)
         privateKey = PrivateKey(owned: privkey_ptr!)
@@ -43,6 +43,6 @@ struct IdentityKeyPair {
     }
 
     var identityKey: IdentityKey {
-        return IdentityKey(pk: publicKey)
+        return IdentityKey(publicKey: publicKey)
     }
 }

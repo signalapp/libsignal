@@ -4,7 +4,7 @@ import Foundation
 class ProtocolAddress: ClonableHandleOwner {
     init(name: String, device_id: UInt32) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_address_new(&handle,
+        try checkError(signal_address_new(&handle,
                                           name,
                                           device_id))
         super.init(owned: handle!)

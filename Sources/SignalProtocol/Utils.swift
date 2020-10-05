@@ -3,7 +3,7 @@ import Foundation
 
 func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
     var output : UnsafePointer<Int8>? = nil
-    try CheckError(fn(&output))
+    try checkError(fn(&output))
     let result = String(cString: output!)
     signal_free_string(output)
     return result
@@ -12,7 +12,7 @@ func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) 
 func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output : UnsafePointer<UInt8>? = nil
     var output_len = 0
-    try CheckError(fn(&output, &output_len))
+    try checkError(fn(&output, &output_len))
     let result = Array(UnsafeBufferPointer(start: output, count: output_len))
     signal_free_buffer(output, output_len)
     return result
@@ -20,31 +20,31 @@ func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, U
 
 func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
     var output : Result = 0
-    try CheckError(fn(&output))
+    try checkError(fn(&output))
     return output
 }
 
 func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey {
     var pk_handle : OpaquePointer?
-    try CheckError(fn(&pk_handle))
+    try checkError(fn(&pk_handle))
     return PublicKey(owned: pk_handle!)
 }
 
 func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PrivateKey {
     var pk_handle : OpaquePointer?
-    try CheckError(fn(&pk_handle))
+    try checkError(fn(&pk_handle))
     return PrivateKey(owned: pk_handle!)
 }
 
 func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> Optional<PublicKey> {
     var pk_handle : OpaquePointer?
-    try CheckError(fn(&pk_handle))
+    try checkError(fn(&pk_handle))
     return pk_handle.map { PublicKey(owned: $0) }
 }
 
 func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> CiphertextMessage {
     var handle : OpaquePointer?
-    try CheckError(fn(&handle))
+    try checkError(fn(&handle))
     return CiphertextMessage(owned: handle)
 }
 
@@ -87,7 +87,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             defer { cloneOrForgetAsNeeded(&address) }
             var public_key = PublicKey(unowned: public_key)
             defer { cloneOrForgetAsNeeded(&public_key) }
-            let identity = IdentityKey(pk: public_key)
+            let identity = IdentityKey(publicKey: public_key)
             let new_id = try store.saveIdentity(identity, for: address, context: ctx)
             if new_id {
                 return 1
@@ -142,7 +142,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
                 assertionFailure("unexpected direction value")
                 return -1
             }
-            let identity = IdentityKey(pk: public_key)
+            let identity = IdentityKey(publicKey: public_key)
             let trusted = try store.isTrustedIdentity(identity, for: address, direction: direction, context: ctx)
             return trusted ? 1 : 0
         }

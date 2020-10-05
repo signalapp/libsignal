@@ -12,7 +12,7 @@ class SessionRecord: ClonableHandleOwner {
 
     init(bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_session_record_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_session_record_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 

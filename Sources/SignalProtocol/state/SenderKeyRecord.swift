@@ -14,7 +14,7 @@ class SenderKeyRecord: ClonableHandleOwner {
 
     init(bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_record_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_sender_key_record_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 
@@ -28,7 +28,7 @@ class SenderKeyRecord: ClonableHandleOwner {
 
     init() throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_record_new_fresh(&handle))
+        try checkError(signal_sender_key_record_new_fresh(&handle))
         super.init(owned: handle!)
     }
 

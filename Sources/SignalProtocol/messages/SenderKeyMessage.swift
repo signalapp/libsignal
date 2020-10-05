@@ -8,22 +8,22 @@ class SenderKeyMessage {
         signal_sender_key_message_destroy(handle)
     }
 
-    init(key_id: UInt32,
+    init(keyId: UInt32,
          iteration: UInt32,
-         chain_key: [UInt8],
+         chainKey: [UInt8],
          ciphertext: [UInt8],
-         pk: PrivateKey) throws {
+         privateKey: PrivateKey) throws {
 
-        try CheckError(signal_sender_key_message_new(&handle,
-                                                     key_id,
+        try checkError(signal_sender_key_message_new(&handle,
+                                                     keyId,
                                                      iteration,
                                                      ciphertext,
                                                      ciphertext.count,
-                                                     pk.nativeHandle))
+                                                     privateKey.nativeHandle))
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_sender_key_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_sender_key_message_deserialize(&handle, bytes, bytes.count))
     }
 
     func getKeyId() throws -> UInt32 {
@@ -42,9 +42,9 @@ class SenderKeyMessage {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_message_get_cipher_text(handle,b,bl) })
     }
 
-    func verifySignature(key: PrivateKey) throws -> Bool {
+    func verifySignature(against key: PrivateKey) throws -> Bool {
         var result: Bool = false
-        try CheckError(signal_sender_key_message_verify_signature(&result, handle, key.nativeHandle))
+        try checkError(signal_sender_key_message_verify_signature(&result, handle, key.nativeHandle))
         return result
     }
 }

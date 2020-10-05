@@ -9,27 +9,27 @@ class PreKeySignalMessage {
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_pre_key_signal_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_pre_key_signal_message_deserialize(&handle, bytes, bytes.count))
     }
 
     init(version: UInt8,
-         registration_id: UInt32,
-         pre_key_id: Optional<UInt32>,
-         signed_pre_key_id: UInt32,
-         base_key: PublicKey,
-         identity_key: PublicKey,
+         registrationId: UInt32,
+         preKeyId: Optional<UInt32>,
+         signedPreKeyId: UInt32,
+         baseKey: PublicKey,
+         identityKey: PublicKey,
          message: SignalMessage) throws {
 
         // XXX why is var needed here? pointer arg is const so let should be ok
-        var pre_key_id = pre_key_id ?? 0xFFFFFFFF
+        var pre_key_id = preKeyId ?? 0xFFFFFFFF
 
-        try CheckError(signal_pre_key_signal_message_new(&handle,
+        try checkError(signal_pre_key_signal_message_new(&handle,
                                                          version,
-                                                         registration_id,
+                                                         registrationId,
                                                          &pre_key_id,
-                                                         signed_pre_key_id,
-                                                         base_key.nativeHandle,
-                                                         identity_key.nativeHandle,
+                                                         signedPreKeyId,
+                                                         baseKey.nativeHandle,
+                                                         identityKey.nativeHandle,
                                                          message.nativeHandle))
     }
 
@@ -69,7 +69,7 @@ class PreKeySignalMessage {
 
     func getSignalMessage() throws -> SignalMessage {
         var m : OpaquePointer?
-        try CheckError(signal_pre_key_signal_message_get_signal_message(&m, handle))
+        try checkError(signal_pre_key_signal_message_get_signal_message(&m, handle))
         return SignalMessage(owned: m)
     }
 
