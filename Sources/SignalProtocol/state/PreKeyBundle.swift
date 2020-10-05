@@ -77,7 +77,7 @@ class PreKeyBundle {
         }
     }
 
-    func preKeyPublic() throws -> Optional<PublicKey> {
+    func preKeyPublic() throws -> PublicKey? {
         return try invokeFnReturningOptionalPublicKey(fn: { (k) in signal_pre_key_bundle_get_pre_key_public(k, handle) })
     }
 

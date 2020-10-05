@@ -13,7 +13,7 @@ class PreKeySignalMessage {
 
     init(version: UInt8,
          registrationId: UInt32,
-         preKeyId: Optional<UInt32>,
+         preKeyId: UInt32?,
          signedPreKeyId: UInt32,
          baseKey: PublicKey,
          identityKey: PublicKey,

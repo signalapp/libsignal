@@ -37,7 +37,7 @@ class InMemorySignalProtocolStore : IdentityKeyStore, PreKeyStore, SignedPreKeyS
         }
     }
 
-    func identity(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> Optional<IdentityKey> {
+    func identity(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> IdentityKey? {
         return publicKeys[address]
     }
 
@@ -69,7 +69,7 @@ class InMemorySignalProtocolStore : IdentityKeyStore, PreKeyStore, SignedPreKeyS
         signedPrekeyMap[id] = record;
     }
 
-    func loadSession(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> Optional<SessionRecord> {
+    func loadSession(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> SessionRecord? {
         return sessionMap[address];
     }
 

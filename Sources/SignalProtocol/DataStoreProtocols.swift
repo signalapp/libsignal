@@ -10,7 +10,7 @@ protocol IdentityKeyStore: AnyObject {
     func localRegistrationId(context: UnsafeMutableRawPointer?) throws -> UInt32
     func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> Bool
     func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: UnsafeMutableRawPointer?) throws -> Bool
-    func identity(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> Optional<IdentityKey>
+    func identity(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> IdentityKey?
 }
 
 protocol PreKeyStore: AnyObject {

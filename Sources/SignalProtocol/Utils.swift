@@ -35,7 +35,7 @@ func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> 
     return PrivateKey(owned: pk_handle!)
 }
 
-func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> Optional<PublicKey> {
+func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey? {
     var pk_handle : OpaquePointer?
     try checkError(fn(&pk_handle))
     return pk_handle.map { PublicKey(owned: $0) }
