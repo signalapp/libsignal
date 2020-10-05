@@ -29,14 +29,9 @@ class PublicKey: ClonableHandleOwner {
     }
 
     func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {
-        var result : UInt8 = 0
+        var result: Bool = false
         try CheckError(signal_publickey_verify(nativeHandle(), &result, message, message.count, signature, signature.count))
-
-        if result == 1 {
-            return true
-        } else {
-            return false
-        }
+        return result
     }
 
     func compareWith(other_key: PublicKey) throws -> Int32 {

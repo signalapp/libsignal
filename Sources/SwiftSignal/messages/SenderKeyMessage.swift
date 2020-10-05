@@ -43,13 +43,8 @@ class SenderKeyMessage {
     }
 
     func verifySignature(key: PrivateKey) throws -> Bool {
-        var result : UInt32 = 0
+        var result: Bool = false
         try CheckError(signal_sender_key_message_verify_signature(&result, handle, key.nativeHandle()))
-
-        if result == 1 {
-            return true
-        } else {
-            return false
-        }
+        return result
     }
 }
