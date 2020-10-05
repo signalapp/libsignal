@@ -1,40 +1,30 @@
 import SignalFfi
 import Foundation
 
-struct IdentityKey {
-    private let key : PublicKey
+struct IdentityKey: Equatable {
+    let publicKey: PublicKey
 
     init(pk: PublicKey) {
-        key = pk
+        publicKey = pk
     }
 
     init(bytes: [UInt8]) throws {
-        key = try PublicKey(bytes)
+        publicKey = try PublicKey(bytes)
     }
 
     func serialize() throws -> [UInt8] {
-        return try key.serialize()
-    }
-
-    func publicKey() -> PublicKey {
-        return key
-    }
-}
-
-extension IdentityKey: Equatable {
-    static func == (lhs: IdentityKey, rhs: IdentityKey) -> Bool {
-        return lhs.publicKey() == rhs.publicKey()
+        return try publicKey.serialize()
     }
 }
 
 
 struct IdentityKeyPair {
-    private let pubkey : PublicKey
-    private let privkey : PrivateKey
+    let publicKey: PublicKey
+    let privateKey: PrivateKey
 
     init() throws {
-        privkey = try PrivateKey.generate();
-        pubkey = try privkey.getPublicKey()
+        privateKey = try PrivateKey.generate();
+        publicKey = try privateKey.getPublicKey()
     }
 
     init(bytes: [UInt8]) throws {
@@ -42,23 +32,17 @@ struct IdentityKeyPair {
         var privkey_ptr : OpaquePointer?
         try CheckError(signal_identitykeypair_deserialize(&pubkey_ptr, &privkey_ptr, bytes, bytes.count))
 
-        pubkey = PublicKey(owned: pubkey_ptr!)
-        privkey = PrivateKey(owned: privkey_ptr!)
+        publicKey = PublicKey(owned: pubkey_ptr!)
+        privateKey = PrivateKey(owned: privkey_ptr!)
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_identitykeypair_serialize(b,bl,pubkey.nativeHandle(), privkey.nativeHandle()) })
+        return try invokeFnReturningArray {
+            signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle(), privateKey.nativeHandle())
+        }
     }
 
-    func publicKey() -> PublicKey {
-        return pubkey
-    }
-
-    func privateKey() -> PrivateKey {
-        return privkey
-    }
-
-    func identityKey() -> IdentityKey {
-        return IdentityKey(pk: publicKey())
+    var identityKey: IdentityKey {
+        return IdentityKey(pk: publicKey)
     }
 }

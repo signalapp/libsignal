@@ -215,8 +215,8 @@ class SwiftSignalTests: XCTestCase {
 
         let bob_signed_pre_key_public = try! bob_signed_pre_key.getPublicKey().serialize()
 
-        let bob_identity_key = try! bob_store.getIdentityKeyPair(ctx: nil).identityKey();
-        let bob_signed_pre_key_signature = try! bob_store.getIdentityKeyPair(ctx: nil).privateKey().generateSignature(message: bob_signed_pre_key_public)
+        let bob_identity_key = try! bob_store.getIdentityKeyPair(ctx: nil).identityKey
+        let bob_signed_pre_key_signature = try! bob_store.getIdentityKeyPair(ctx: nil).privateKey.generateSignature(message: bob_signed_pre_key_public)
 
         let prekey_id : UInt32 = 4570;
         let signed_prekey_id : UInt32 = 3006;
