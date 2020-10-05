@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 public enum SignalError : Error {
     case invalidState(String)

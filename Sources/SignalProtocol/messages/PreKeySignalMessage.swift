@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class PreKeySignalMessage {
     private var handle: OpaquePointer?

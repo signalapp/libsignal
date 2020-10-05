@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 /*
  SignalFfiError *signal_process_prekey_bundle(PreKeyBundle *bundle,

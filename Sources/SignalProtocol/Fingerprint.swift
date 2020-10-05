@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 struct DisplayableFingerprint {
     let formatted: String

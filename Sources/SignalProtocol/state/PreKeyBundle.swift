@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class PreKeyBundle {
     private var handle: OpaquePointer?

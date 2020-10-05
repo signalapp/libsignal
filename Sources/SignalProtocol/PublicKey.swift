@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class PublicKey: ClonableHandleOwner {
     init(_ bytes: [UInt8]) throws {

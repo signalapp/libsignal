@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class ProtocolAddress: ClonableHandleOwner {
     init(name: String, device_id: UInt32) throws {

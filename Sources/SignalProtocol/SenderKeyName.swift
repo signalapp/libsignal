@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SenderKeyName: ClonableHandleOwner {
     override class func destroyNativeHandle(_ handle: OpaquePointer) {

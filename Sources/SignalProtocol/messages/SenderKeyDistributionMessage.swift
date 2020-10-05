@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SenderKeyDistributionMessage {
     private var handle: OpaquePointer?

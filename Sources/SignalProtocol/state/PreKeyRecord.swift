@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class PreKeyRecord: ClonableHandleOwner {
     private var handle: OpaquePointer?

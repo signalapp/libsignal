@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 func hkdf(outputLength: Int,
           version: UInt32,

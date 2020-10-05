@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 struct IdentityKey: Equatable {
     let publicKey: PublicKey

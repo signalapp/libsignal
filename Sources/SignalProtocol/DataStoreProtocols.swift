@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 enum Direction {
     case sending

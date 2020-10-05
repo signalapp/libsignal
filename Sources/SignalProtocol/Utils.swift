@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
     var output : UnsafePointer<Int8>? = nil

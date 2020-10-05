@@ -1,6 +1,4 @@
-
 import SignalFfi
-import Foundation
 
 class CiphertextMessage {
     private var handle: OpaquePointer?

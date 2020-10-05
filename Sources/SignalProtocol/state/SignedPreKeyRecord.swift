@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SignedPreKeyRecord: ClonableHandleOwner {
     override class func destroyNativeHandle(_ handle: OpaquePointer) {
