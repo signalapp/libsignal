@@ -83,9 +83,9 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
                              ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: IdentityKeyStore.self).pointee
-            var address = ProtocolAddress(unowned: address)
+            var address = ProtocolAddress(borrowing: address)
             defer { cloneOrForgetAsNeeded(&address) }
-            var public_key = PublicKey(unowned: public_key)
+            var public_key = PublicKey(borrowing: public_key)
             defer { cloneOrForgetAsNeeded(&public_key) }
             let identity = IdentityKey(publicKey: public_key)
             let new_id = try store.saveIdentity(identity, for: address, context: ctx)
@@ -106,7 +106,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
                             ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: IdentityKeyStore.self).pointee
-            var address = ProtocolAddress(unowned: address)
+            var address = ProtocolAddress(borrowing: address)
             defer { cloneOrForgetAsNeeded(&address) }
             if let pk = try store.identity(for: address, context: ctx) {
                 var publicKey = pk.publicKey
@@ -128,9 +128,9 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
                                   ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: IdentityKeyStore.self).pointee
-            var address = ProtocolAddress(unowned: address)
+            var address = ProtocolAddress(borrowing: address)
             defer { cloneOrForgetAsNeeded(&address) }
-            var public_key = PublicKey(unowned: public_key)
+            var public_key = PublicKey(borrowing: public_key)
             defer { cloneOrForgetAsNeeded(&public_key) }
             let direction: Direction
             switch SignalDirection(raw_direction) {
@@ -172,7 +172,7 @@ func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<Signal
                             ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: PreKeyStore.self).pointee
-            var record = PreKeyRecord(unowned: record)
+            var record = PreKeyRecord(borrowing: record)
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storePreKey(record, id: id, context: ctx)
             return 0
@@ -229,7 +229,7 @@ func withSignedPreKeyStore<Result>(_ store: SignedPreKeyStore, _ body: (UnsafePo
                                   ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: SignedPreKeyStore.self).pointee
-            var record = SignedPreKeyRecord(unowned: record)
+            var record = SignedPreKeyRecord(borrowing: record)
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storeSignedPreKey(record, id: id, context: ctx)
             return 0
@@ -272,9 +272,9 @@ func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<Sign
                              ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: SessionStore.self).pointee
-            var address = ProtocolAddress(unowned: address)
+            var address = ProtocolAddress(borrowing: address)
             defer { cloneOrForgetAsNeeded(&address) }
-            var record = SessionRecord(unowned: record)
+            var record = SessionRecord(borrowing: record)
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storeSession(record, for: address, context: ctx)
             return 0
@@ -290,7 +290,7 @@ func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<Sign
                             ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: SessionStore.self).pointee
-            var address = ProtocolAddress(unowned: address)
+            var address = ProtocolAddress(borrowing: address)
             defer { cloneOrForgetAsNeeded(&address) }
             if var record = try store.loadSession(for: address, context: ctx) {
                 recordp!.pointee = try cloneOrTakeHandle(from: &record)
@@ -322,9 +322,9 @@ func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<
                                ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: SenderKeyStore.self).pointee
-            var sender_name = SenderKeyName(unowned: sender_name)
+            var sender_name = SenderKeyName(borrowing: sender_name)
             defer { cloneOrForgetAsNeeded(&sender_name) }
-            var record = SenderKeyRecord(unowned: record)
+            var record = SenderKeyRecord(borrowing: record)
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storeSenderKey(name: sender_name, record: record, context: ctx)
             return 0
@@ -340,7 +340,7 @@ func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<
                               ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: SenderKeyStore.self).pointee
-            var sender_name = SenderKeyName(unowned: sender_name)
+            var sender_name = SenderKeyName(borrowing: sender_name)
             defer { cloneOrForgetAsNeeded(&sender_name) }
             if var record = try store.loadSenderKey(name: sender_name, context: ctx) {
                 recordp!.pointee = try cloneOrTakeHandle(from: &record)

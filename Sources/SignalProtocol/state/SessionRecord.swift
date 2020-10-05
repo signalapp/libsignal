@@ -16,8 +16,8 @@ class SessionRecord: ClonableHandleOwner {
         super.init(owned: handle!)
     }
 
-    internal override init(unowned handle: OpaquePointer?) {
-        super.init(unowned: handle)
+    internal override init(borrowing handle: OpaquePointer?) {
+        super.init(borrowing: handle)
     }
 
     func serialize() throws -> [UInt8] {

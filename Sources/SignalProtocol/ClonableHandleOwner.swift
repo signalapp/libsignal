@@ -1,19 +1,18 @@
 class ClonableHandleOwner {
     enum MaybeOwnedHandle {
-        case none
-        case unowned(OpaquePointer)
+        case borrowed(OpaquePointer)
         case owned(OpaquePointer)
     }
 
-    private var handle: MaybeOwnedHandle
+    private var handle: MaybeOwnedHandle?
 
     internal var nativeHandle: OpaquePointer? {
         switch handle {
-        case .none:
+        case nil:
             return nil
-        case .unowned(let handle):
+        case .borrowed(let handle)?:
             return handle
-        case .owned(let handle):
+        case .owned(let handle)?:
             return handle
         }
     }
@@ -22,12 +21,12 @@ class ClonableHandleOwner {
         self.handle = .owned(handle)
     }
 
-    internal init(unowned handle: OpaquePointer?) {
-        self.handle = handle.map { .unowned($0) } ?? .none
+    internal init(borrowing handle: OpaquePointer?) {
+        self.handle = handle.map { .borrowed($0) }
     }
 
     internal func replaceWithClone() {
-        guard case .unowned(let currentHandle) = self.handle else {
+        guard case .borrowed(let currentHandle)? = self.handle else {
             preconditionFailure("replaceWithClone() called for a handle that's already owned")
         }
         var newHandle: OpaquePointer?
@@ -37,18 +36,18 @@ class ClonableHandleOwner {
     }
 
     fileprivate func takeNativeHandle() -> OpaquePointer? {
-        if case .unowned = self.handle {
-            preconditionFailure("unowned handle may have escaped")
+        if case .borrowed? = self.handle {
+            preconditionFailure("borrowed handle may have escaped")
         }
-        defer { handle = .none }
+        defer { handle = nil }
         return nativeHandle
     }
 
-    fileprivate func forgetUnownedHandle() {
-        guard case .unowned = self.handle else {
-            preconditionFailure("forgetUnownedHandle() called for an owned handle")
+    fileprivate func forgetBorrowedHandle() {
+        guard case .borrowed? = self.handle else {
+            preconditionFailure("forgetBorrowedHandle() called for an owned handle")
         }
-        handle = .none
+        handle = nil
     }
 
     internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
@@ -61,11 +60,11 @@ class ClonableHandleOwner {
 
     deinit {
         switch handle {
-        case .none:
+        case nil:
             return
-        case .unowned(_):
-            preconditionFailure("unowned handle may have escaped")
-        case .owned(let handle):
+        case .borrowed(_)?:
+            preconditionFailure("borrowed handle may have escaped")
+        case .owned(let handle)?:
             Self.destroyNativeHandle(handle)
         }
     }
@@ -77,7 +76,7 @@ class ClonableHandleOwner {
 /// Checking this requires using `inout`; the reference itself won't be modified.
 func cloneOrForgetAsNeeded<Owner: ClonableHandleOwner>(_ handleOwner: inout Owner) {
     if isKnownUniquelyReferenced(&handleOwner) {
-        handleOwner.forgetUnownedHandle()
+        handleOwner.forgetBorrowedHandle()
     } else {
         handleOwner.replaceWithClone()
     }
