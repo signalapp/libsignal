@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "SwiftSignal",
+    name: "SignalProtocol",
     products: [
         .library(
-            name: "SwiftSignal",
-            targets: ["SwiftSignal"]
+            name: "SignalProtocol",
+            targets: ["SignalProtocol"]
         )
     ],
     dependencies: [],
     targets: [
         .systemLibrary(name: "SignalFfi", pkgConfig: "signal_ffi"),
-        .target(name: "SwiftSignal", dependencies: ["SignalFfi"]),
-        .testTarget(name: "SwiftSignalTests", dependencies: ["SwiftSignal"])
+        .target(name: "SignalProtocol", dependencies: ["SignalFfi"]),
+        .testTarget(name: "SignalProtocolTests", dependencies: ["SignalProtocol"])
     ]
 )

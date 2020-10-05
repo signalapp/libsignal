@@ -1,6 +1,6 @@
 import XCTest
-@testable import SwiftSignalTests
+@testable import SignalProtocolTests
 
 XCTMain([
-     testCase(SwiftSignalTests.allTests)
+     testCase(SignalProtocolTests.allTests)
 ])
