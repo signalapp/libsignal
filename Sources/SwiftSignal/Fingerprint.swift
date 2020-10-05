@@ -17,15 +17,10 @@ class ScannableFingerprint {
     }
 
     func compareWith(other: ScannableFingerprint) throws -> Bool {
-        var result : UInt8 = 0
+        var result: Bool = false
         try CheckError(signal_fingerprint_compare(&result, encoding, encoding.count,
                                                   other.encoding, other.encoding.count))
-
-        if result == 1 {
-            return true
-        } else {
-            return false
-        }
+        return result
     }
 }
 
