@@ -56,19 +56,19 @@ class PreKeyBundle {
 
     }
 
-    func getRegistrationId() throws -> UInt32 {
+    func registrationId() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_bundle_get_registration_id(handle, i) })
     }
 
-    func getDeviceId() throws -> UInt32 {
+    func deviceId() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_bundle_get_device_id(handle, i) })
     }
 
-    func getSignedPreKeyId() throws -> UInt32 {
+    func signedPreKeyId() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_bundle_get_signed_pre_key_id(handle, i) })
     }
 
-    func getPreKeyId() throws -> Optional<UInt32> {
+    func preKeyId() throws -> UInt32? {
         let prekey_id = try invokeFnReturningInteger(fn: { (i) in signal_pre_key_bundle_get_signed_pre_key_id(handle, i) })
 
         if prekey_id == 0xFFFFFFFF {
@@ -78,20 +78,20 @@ class PreKeyBundle {
         }
     }
 
-    func getPreKeyPublic() throws -> Optional<PublicKey> {
+    func preKeyPublic() throws -> Optional<PublicKey> {
         return try invokeFnReturningOptionalPublicKey(fn: { (k) in signal_pre_key_bundle_get_pre_key_public(k, handle) })
     }
 
-    func getIdentityKey() throws -> IdentityKey {
+    func identityKey() throws -> IdentityKey {
         let pk = try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_bundle_get_identity_key(k, handle) })
         return IdentityKey(publicKey: pk)
     }
 
-    func getSignedPreKeyPublic() throws -> PublicKey {
+    func signedPreKeyPublic() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_bundle_get_signed_pre_key_public(k, handle) })
     }
 
-    func getSignedPreKeySignature() throws -> [UInt8] {
+    func signedPreKeySignature() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_pre_key_bundle_get_signed_pre_key_signature(handle,b,bl) })
     }
 }

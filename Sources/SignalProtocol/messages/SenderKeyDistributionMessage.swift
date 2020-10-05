@@ -36,15 +36,15 @@ class SenderKeyDistributionMessage {
         try checkError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
     }
 
-    func getSignatureKey() throws -> PublicKey {
+    func signatureKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_sender_key_distribution_message_get_signature_key(k, handle) })
     }
 
-    func getId() throws -> UInt32 {
+    func id() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_id(handle, i) })
     }
 
-    func getIteration() throws -> UInt32 {
+    func iteration() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_iteration(handle, i) })
     }
 

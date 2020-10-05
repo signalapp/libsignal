@@ -24,7 +24,7 @@ struct IdentityKeyPair {
 
     private init() throws {
         privateKey = try PrivateKey.generate();
-        publicKey = try privateKey.getPublicKey()
+        publicKey = try privateKey.publicKey()
     }
 
     static func generate() throws -> IdentityKeyPair {

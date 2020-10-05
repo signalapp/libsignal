@@ -37,15 +37,15 @@ class PreKeySignalMessage {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_pre_key_signal_message_serialize(handle,b,bl) })
     }
 
-    func getVersion() throws -> UInt32 {
+    func version() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_version(handle, i) })
     }
 
-    func getRegistrationId() throws -> UInt32 {
+    func registrationId() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_registration_id(handle, i) })
     }
 
-    func getPreKeyId() throws -> Optional<UInt32> {
+    func preKeyId() throws -> UInt32? {
         let id = try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_pre_key_id(handle, i) })
 
         if id == 0xFFFFFFFF {
@@ -55,19 +55,19 @@ class PreKeySignalMessage {
         }
     }
 
-    func getSignedPreKeyId() throws -> UInt32 {
+    func signedPreKeyId() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_signed_pre_key_id(handle, i) })
     }
 
-    func getBaseKey() throws -> PublicKey {
+    func baseKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_signal_message_get_base_key(k, handle) })
     }
 
-    func getIdentityKey() throws -> PublicKey {
+    func identityKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_signal_message_get_identity_key(k, handle) })
     }
 
-    func getSignalMessage() throws -> SignalMessage {
+    func signalMessage() throws -> SignalMessage {
         var m : OpaquePointer?
         try checkError(signal_pre_key_signal_message_get_signal_message(&m, handle))
         return SignalMessage(owned: m)

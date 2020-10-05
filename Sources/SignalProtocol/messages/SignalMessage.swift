@@ -37,23 +37,23 @@ class SignalMessage {
                                           receiverIdentityKey.nativeHandle))
     }
 
-    func getSenderRatchetKey() throws -> PublicKey {
+    func senderRatchetKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_message_get_sender_ratchet_key(k, handle) })
     }
 
-    func getBody() throws -> [UInt8] {
+    func body() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_message_get_body(handle,b,bl) })
     }
 
-    func getSerialized() throws -> [UInt8] {
+    func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_message_get_serialized(handle,b,bl) })
     }
 
-    func getMessageVersion() throws -> UInt32 {
+    func messageVersion() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_message_get_message_version(handle, i) })
     }
 
-    func getCounter() throws -> UInt32 {
+    func counter() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_message_get_counter(handle, i) })
     }
 

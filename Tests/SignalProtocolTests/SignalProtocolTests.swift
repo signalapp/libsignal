@@ -37,10 +37,10 @@ class SignalProtocolTests: XCTestCase {
         let sk = try! PrivateKey.generate()
 
         let sk_bytes = try! sk.serialize()
-        let pk = try! sk.getPublicKey()
+        let pk = try! sk.publicKey()
 
         let sk_reloaded = try! PrivateKey(sk_bytes)
-        let pk_reloaded = try! sk_reloaded.getPublicKey()
+        let pk_reloaded = try! sk_reloaded.publicKey()
 
         XCTAssertEqual(pk, pk_reloaded)
 
@@ -62,8 +62,8 @@ class SignalProtocolTests: XCTestCase {
 
         let sk2 = try! PrivateKey.generate()
 
-        let shared_secret1 = try! sk.keyAgreement(with: sk2.getPublicKey())
-        let shared_secret2 = try! sk2.keyAgreement(with: sk.getPublicKey())
+        let shared_secret1 = try! sk.keyAgreement(with: sk2.publicKey())
+        let shared_secret2 = try! sk2.keyAgreement(with: sk.publicKey())
 
         XCTAssertEqual(shared_secret1, shared_secret2)
     }
@@ -132,7 +132,7 @@ class SignalProtocolTests: XCTestCase {
 
         // testMismatchingFingerprints
 
-        let mitmIdentityKey = try! PrivateKey.generate().getPublicKey()
+        let mitmIdentityKey = try! PrivateKey.generate().publicKey()
 
         let aliceFingerprintM = try! generator.create(version: VERSION_1,
                                                       localIdentifier: aliceStableId,
@@ -212,7 +212,7 @@ class SignalProtocolTests: XCTestCase {
         let bob_pre_key = try! PrivateKey.generate()
         let bob_signed_pre_key = try! PrivateKey.generate()
 
-        let bob_signed_pre_key_public = try! bob_signed_pre_key.getPublicKey().serialize()
+        let bob_signed_pre_key_public = try! bob_signed_pre_key.publicKey().serialize()
 
         let bob_identity_key = try! bob_store.identityKeyPair(context: nil).identityKey
         let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: nil).privateKey.generateSignature(message: bob_signed_pre_key_public)
@@ -223,9 +223,9 @@ class SignalProtocolTests: XCTestCase {
         let bob_bundle = try! PreKeyBundle(registrationId: try! bob_store.localRegistrationId(context: nil),
                                            deviceId: 9,
                                            prekeyId: prekey_id,
-                                           prekey: bob_pre_key.getPublicKey(),
+                                           prekey: bob_pre_key.publicKey(),
                                            signedPrekeyId: signed_prekey_id,
-                                           signedPrekey: try! bob_signed_pre_key.getPublicKey(),
+                                           signedPrekey: try! bob_signed_pre_key.publicKey(),
                                            signedPrekeySignature: bob_signed_pre_key_signature,
                                            identity: bob_identity_key)
 

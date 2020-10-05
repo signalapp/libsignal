@@ -26,11 +26,11 @@ class SenderKeyMessage {
         try checkError(signal_sender_key_message_deserialize(&handle, bytes, bytes.count))
     }
 
-    func getKeyId() throws -> UInt32 {
+    func keyId() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_message_get_key_id(handle, i) })
     }
 
-    func getIteration() throws -> UInt32 {
+    func iteration() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_message_get_iteration(handle, i) })
     }
 
@@ -38,7 +38,7 @@ class SenderKeyMessage {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_message_serialize(handle,b,bl) })
     }
 
-    func getCiphertext() throws -> [UInt8] {
+    func ciphertext() throws -> [UInt8] {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_message_get_cipher_text(handle,b,bl) })
     }
 

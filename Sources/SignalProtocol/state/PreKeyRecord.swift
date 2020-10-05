@@ -31,7 +31,7 @@ class PreKeyRecord: ClonableHandleOwner {
     }
 
     init(id: UInt32, privateKey: PrivateKey) throws {
-        let pub_key = try privateKey.getPublicKey()
+        let pub_key = try privateKey.publicKey()
         var handle: OpaquePointer?
         try checkError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle, privateKey.nativeHandle))
         super.init(owned: handle!)
@@ -41,15 +41,15 @@ class PreKeyRecord: ClonableHandleOwner {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_pre_key_record_serialize(handle,b,bl) })
     }
 
-    func getId() throws -> UInt32 {
+    func id() throws -> UInt32 {
         return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_record_get_id(handle, i) })
     }
 
-    func getPublicKey() throws -> PublicKey {
+    func publicKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_record_get_public_key(k, handle) })
     }
 
-    func getPrivateKey() throws -> PrivateKey {
+    func privateKey() throws -> PrivateKey {
         return try invokeFnReturningPrivateKey(fn: { (k) in signal_pre_key_record_get_private_key(k, handle) })
     }
 }

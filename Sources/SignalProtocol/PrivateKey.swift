@@ -38,7 +38,7 @@ class PrivateKey: ClonableHandleOwner {
         return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_agree(b,bl,nativeHandle,other.nativeHandle) })
     }
 
-    func getPublicKey() throws -> PublicKey {
+    func publicKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey(fn: { (k) in signal_privatekey_get_public_key(k, nativeHandle) })
     }
 
