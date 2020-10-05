@@ -60,21 +60,14 @@ class SignalMessage {
     func verifyMac(sender_identity_key: PublicKey,
                    receiver_identity_key: PublicKey,
                    mac_key: [UInt8]) throws -> Bool {
-
-        var result : UInt32 = 0
-
+        var result: Bool = false
         try CheckError(signal_message_verify_mac(&result,
                                                  handle,
                                                  sender_identity_key.nativeHandle(),
                                                  receiver_identity_key.nativeHandle(),
                                                  mac_key,
                                                  mac_key.count))
-
-        if result == 0 {
-            return true
-        } else {
-            return false
-        }
+        return result
     }
 
     internal func nativeHandle() -> OpaquePointer? {
