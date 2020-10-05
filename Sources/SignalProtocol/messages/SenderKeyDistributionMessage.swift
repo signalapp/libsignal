@@ -8,13 +8,13 @@ class SenderKeyDistributionMessage {
         signal_sender_key_distribution_message_destroy(handle)
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 
     init(name: SenderKeyName, store: SenderKeyStore, ctx: UnsafeMutableRawPointer?) throws {
         try withSenderKeyStore(store) {
-            try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle(),
+            try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
                                                                          $0, ctx))
         }
     }
@@ -29,7 +29,7 @@ class SenderKeyDistributionMessage {
                                                                   iteration,
                                                                   chain_key,
                                                                   chain_key.count,
-                                                                  pk.nativeHandle()))
+                                                                  pk.nativeHandle))
     }
 
     init(bytes: [UInt8]) throws {

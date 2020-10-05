@@ -28,13 +28,13 @@ class SignalMessage {
                                           version,
                                           mac_key,
                                           mac_key.count,
-                                          sender_ratchet_key.nativeHandle(),
+                                          sender_ratchet_key.nativeHandle,
                                           counter,
                                           previous_counter,
                                           ciphertext,
                                           ciphertext.count,
-                                          sender_identity_key.nativeHandle(),
-                                          receiver_identity_key.nativeHandle()))
+                                          sender_identity_key.nativeHandle,
+                                          receiver_identity_key.nativeHandle))
     }
 
     func getSenderRatchetKey() throws -> PublicKey {
@@ -63,14 +63,14 @@ class SignalMessage {
         var result: Bool = false
         try CheckError(signal_message_verify_mac(&result,
                                                  handle,
-                                                 sender_identity_key.nativeHandle(),
-                                                 receiver_identity_key.nativeHandle(),
+                                                 sender_identity_key.nativeHandle,
+                                                 receiver_identity_key.nativeHandle,
                                                  mac_key,
                                                  mac_key.count))
         return result
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 

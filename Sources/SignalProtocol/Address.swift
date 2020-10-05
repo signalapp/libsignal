@@ -23,11 +23,11 @@ class ProtocolAddress: ClonableHandleOwner {
     }
 
     var name: String {
-        return try! invokeFnReturningString(fn: { (b) in signal_address_get_name(nativeHandle(), b) })
+        return try! invokeFnReturningString(fn: { (b) in signal_address_get_name(nativeHandle, b) })
     }
 
     var deviceId: UInt32 {
-        return try! invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(nativeHandle(), i) })
+        return try! invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(nativeHandle, i) })
     }
 }
 

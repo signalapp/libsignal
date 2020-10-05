@@ -50,9 +50,9 @@ struct NumericFingerprintGenerator {
     var obj : OpaquePointer?
     try CheckError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
                                           local_identifier, local_identifier.count,
-                                          local_key.nativeHandle(),
+                                          local_key.nativeHandle,
                                           remote_identifier, remote_identifier.count,
-                                          remote_key.nativeHandle()))
+                                          remote_key.nativeHandle))
 
     let fprint_str = try invokeFnReturningString(fn: { (b) in signal_fingerprint_display_string(obj, b) })
     let displayable = DisplayableFingerprint(formatted: fprint_str)

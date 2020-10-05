@@ -135,9 +135,9 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             let direction: Direction
             switch SignalDirection(raw_direction) {
             case SignalDirection_Sending:
-                direction = .sending
+                direction = .Sending
             case SignalDirection_Receiving:
-                direction = .receiving
+                direction = .Receiving
             default:
                 assertionFailure("unexpected direction value")
                 return -1

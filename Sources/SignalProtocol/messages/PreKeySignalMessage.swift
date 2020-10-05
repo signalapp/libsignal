@@ -28,9 +28,9 @@ class PreKeySignalMessage {
                                                          registration_id,
                                                          &pre_key_id,
                                                          signed_pre_key_id,
-                                                         base_key.nativeHandle(),
-                                                         identity_key.nativeHandle(),
-                                                         message.nativeHandle()))
+                                                         base_key.nativeHandle,
+                                                         identity_key.nativeHandle,
+                                                         message.nativeHandle))
     }
 
     func serialize() throws -> [UInt8] {
@@ -73,7 +73,7 @@ class PreKeySignalMessage {
         return SignalMessage(owned: m)
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 }

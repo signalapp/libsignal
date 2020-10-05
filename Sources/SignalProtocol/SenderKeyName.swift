@@ -31,15 +31,15 @@ class SenderKeyName: ClonableHandleOwner {
     }
 
     var groupId: String {
-        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(nativeHandle(), b) })
+        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(nativeHandle, b) })
     }
 
     var senderName: String {
-        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(nativeHandle(), b) })
+        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(nativeHandle, b) })
     }
 
     var senderDeviceId: UInt32 {
-        return try! invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(nativeHandle(), i) })
+        return try! invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(nativeHandle, i) })
     }
 }
 

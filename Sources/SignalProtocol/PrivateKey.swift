@@ -27,19 +27,19 @@ class PrivateKey: ClonableHandleOwner {
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_serialize(nativeHandle(),b,bl) })
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_serialize(nativeHandle,b,bl) })
     }
 
     func generateSignature(message: [UInt8]) throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_sign(b,bl,nativeHandle(),message,message.count) })
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_sign(b,bl,nativeHandle,message,message.count) })
     }
 
     func keyAgreement(other_key: PublicKey) throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_agree(b,bl,nativeHandle(),other_key.nativeHandle()) })
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_privatekey_agree(b,bl,nativeHandle,other_key.nativeHandle) })
     }
 
     func getPublicKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_privatekey_get_public_key(k, nativeHandle()) })
+        return try invokeFnReturningPublicKey(fn: { (k) in signal_privatekey_get_public_key(k, nativeHandle) })
     }
 
 }

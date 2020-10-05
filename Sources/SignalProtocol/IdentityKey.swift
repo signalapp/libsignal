@@ -38,7 +38,7 @@ struct IdentityKeyPair {
 
     func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray {
-            signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle(), privateKey.nativeHandle())
+            signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle, privateKey.nativeHandle)
         }
     }
 

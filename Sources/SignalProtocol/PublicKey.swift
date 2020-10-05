@@ -25,18 +25,18 @@ class PublicKey: ClonableHandleOwner {
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_publickey_serialize(nativeHandle(),b,bl) })
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_publickey_serialize(nativeHandle,b,bl) })
     }
 
     func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {
         var result: Bool = false
-        try CheckError(signal_publickey_verify(nativeHandle(), &result, message, message.count, signature, signature.count))
+        try CheckError(signal_publickey_verify(nativeHandle, &result, message, message.count, signature, signature.count))
         return result
     }
 
     func compareWith(other_key: PublicKey) -> Int32 {
         var result : Int32 = 0
-        try! CheckError(signal_publickey_compare(&result, nativeHandle(), other_key.nativeHandle()))
+        try! CheckError(signal_publickey_compare(&result, nativeHandle, other_key.nativeHandle))
         return result
     }
 }

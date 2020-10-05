@@ -8,7 +8,7 @@ class PreKeyBundle {
         signal_pre_key_bundle_destroy(handle)
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 
@@ -28,12 +28,12 @@ class PreKeyBundle {
                                                  registration_id,
                                                  device_id,
                                                  &prekey_id,
-                                                 prekey.nativeHandle(),
+                                                 prekey.nativeHandle,
                                                  signed_prekey_id,
-                                                 signed_prekey.nativeHandle(),
+                                                 signed_prekey.nativeHandle,
                                                  signed_prekey_signature,
                                                  signed_prekey_signature.count,
-                                                 identity_key.publicKey.nativeHandle()))
+                                                 identity_key.publicKey.nativeHandle))
     }
 
     // without a prekey
@@ -49,10 +49,10 @@ class PreKeyBundle {
                                                  nil,
                                                  nil,
                                                  signed_prekey_id,
-                                                 signed_prekey.nativeHandle(),
+                                                 signed_prekey.nativeHandle,
                                                  signed_prekey_signature,
                                                  signed_prekey_signature.count,
-                                                 identity_key.publicKey.nativeHandle()))
+                                                 identity_key.publicKey.nativeHandle))
 
     }
 

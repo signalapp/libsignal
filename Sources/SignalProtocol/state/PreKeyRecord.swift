@@ -26,14 +26,14 @@ class PreKeyRecord: ClonableHandleOwner {
          pub_key: PublicKey,
          priv_key: PrivateKey) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle(), priv_key.nativeHandle()))
+        try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle, priv_key.nativeHandle))
         super.init(owned: handle!)
     }
 
     init(id: UInt32, priv_key: PrivateKey) throws {
         let pub_key = try priv_key.getPublicKey()
         var handle: OpaquePointer?
-        try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle(), priv_key.nativeHandle()))
+        try CheckError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle, priv_key.nativeHandle))
         super.init(owned: handle!)
     }
 

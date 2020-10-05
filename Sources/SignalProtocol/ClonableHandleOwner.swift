@@ -7,7 +7,7 @@ class ClonableHandleOwner {
 
     private var handle: MaybeOwnedHandle
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         switch handle {
         case .none:
             return nil
@@ -41,7 +41,7 @@ class ClonableHandleOwner {
             preconditionFailure("unowned handle may have escaped")
         }
         defer { handle = .none }
-        return nativeHandle()
+        return nativeHandle
     }
 
     fileprivate func forgetUnownedHandle() {
@@ -93,6 +93,6 @@ func cloneOrTakeHandle<Owner: ClonableHandleOwner>(from handleOwner: inout Owner
     }
 
     var result: OpaquePointer?
-    try CheckError(type(of: handleOwner).cloneNativeHandle(&result, currentHandle: handleOwner.nativeHandle()))
+    try CheckError(type(of: handleOwner).cloneNativeHandle(&result, currentHandle: handleOwner.nativeHandle))
     return result
 }

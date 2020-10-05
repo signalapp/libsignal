@@ -21,6 +21,6 @@ class SessionRecord: ClonableHandleOwner {
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_session_record_serialize(nativeHandle(),b,bl) })
+        return try invokeFnReturningArray(fn: { (b,bl) in signal_session_record_serialize(nativeHandle,b,bl) })
     }
 }

@@ -19,7 +19,7 @@ class SenderKeyMessage {
                                                      iteration,
                                                      ciphertext,
                                                      ciphertext.count,
-                                                     pk.nativeHandle()))
+                                                     pk.nativeHandle))
     }
 
     init(bytes: [UInt8]) throws {
@@ -44,7 +44,7 @@ class SenderKeyMessage {
 
     func verifySignature(key: PrivateKey) throws -> Bool {
         var result: Bool = false
-        try CheckError(signal_sender_key_message_verify_signature(&result, handle, key.nativeHandle()))
+        try CheckError(signal_sender_key_message_verify_signature(&result, handle, key.nativeHandle))
         return result
     }
 }
