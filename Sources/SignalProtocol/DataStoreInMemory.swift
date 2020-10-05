@@ -45,7 +45,7 @@ class InMemorySignalProtocolStore : IdentityKeyStore, PreKeyStore, SignedPreKeyS
         if let record = prekey_map[id] {
             return record;
         } else {
-            throw SignalError.invalid_key_identifier("no prekey with this identifier")
+            throw SignalError.invalidKeyIdentifier("no prekey with this identifier")
         }
     }
 
@@ -61,7 +61,7 @@ class InMemorySignalProtocolStore : IdentityKeyStore, PreKeyStore, SignedPreKeyS
         if let record = signed_prekey_map[id] {
             return record;
         } else {
-            throw SignalError.invalid_key_identifier("no signed prekey with this identifier")
+            throw SignalError.invalidKeyIdentifier("no signed prekey with this identifier")
         }
     }
 

@@ -2,8 +2,8 @@ import SignalFfi
 import Foundation
 
 enum Direction {
-    case Sending
-    case Receiving
+    case sending
+    case receiving
 }
 
 protocol IdentityKeyStore: AnyObject {
