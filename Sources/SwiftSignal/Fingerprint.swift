@@ -24,12 +24,6 @@ class ScannableFingerprint {
     }
 }
 
-extension ScannableFingerprint: Equatable {
-    static func == (lhs: ScannableFingerprint, rhs: ScannableFingerprint) -> Bool {
-        return try! lhs.compareWith(other: rhs)
-    }
-}
-
 class Fingerprint {
     let scannable : ScannableFingerprint
     let displayable: DisplayableFingerprint
