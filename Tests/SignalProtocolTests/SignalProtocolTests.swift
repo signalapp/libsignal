@@ -215,13 +215,13 @@ class SignalProtocolTests: XCTestCase {
 
         let bob_signed_pre_key_public = try! bob_signed_pre_key.getPublicKey().serialize()
 
-        let bob_identity_key = try! bob_store.getIdentityKeyPair(ctx: nil).identityKey
-        let bob_signed_pre_key_signature = try! bob_store.getIdentityKeyPair(ctx: nil).privateKey.generateSignature(message: bob_signed_pre_key_public)
+        let bob_identity_key = try! bob_store.identityKeyPair(context: nil).identityKey
+        let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: nil).privateKey.generateSignature(message: bob_signed_pre_key_public)
 
         let prekey_id : UInt32 = 4570;
         let signed_prekey_id : UInt32 = 3006;
 
-        let bob_bundle = try! PreKeyBundle(registration_id: try! bob_store.getLocalRegistrationId(ctx: nil),
+        let bob_bundle = try! PreKeyBundle(registration_id: try! bob_store.localRegistrationId(context: nil),
                                            device_id: 9,
                                            prekey_id: prekey_id,
                                            prekey: bob_pre_key.getPublicKey(),
@@ -238,18 +238,18 @@ class SignalProtocolTests: XCTestCase {
                                  ctx: nil)
 
         // Bob does the same:
-        try! bob_store.storePreKey(id: prekey_id,
-                                   record: PreKeyRecord(id: prekey_id, priv_key: bob_pre_key),
-                                   ctx: nil);
+        try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, priv_key: bob_pre_key),
+                                   id: prekey_id,
+                                   context: nil)
 
-        try! bob_store.storeSignedPreKey(id: signed_prekey_id,
-                                         record: SignedPreKeyRecord(
+        try! bob_store.storeSignedPreKey(SignedPreKeyRecord(
                                            id: signed_prekey_id,
                                            timestamp: 42000,
                                            priv_key: bob_signed_pre_key,
                                            signature: bob_signed_pre_key_signature
                                          ),
-                                         ctx: nil);
+                                         id: signed_prekey_id,
+                                         context: nil)
 
         // Alice sends a message:
         let ptext_a : [UInt8] = [8,6,7,5,3,0,9];
