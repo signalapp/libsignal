@@ -158,21 +158,19 @@ pub unsafe extern "C" fn signal_publickey_compare(
 #[no_mangle]
 pub unsafe extern "C" fn signal_publickey_verify(
     key: *const PublicKey,
-    result: *mut c_uchar,
+    result: *mut bool,
     message: *const c_uchar,
     message_len: size_t,
     signature: *const c_uchar,
     signature_len: size_t,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
-        *result = 0; // pre-set to invalid state
+        *result = false; // pre-set to invalid state
         let key = native_handle_cast::<PublicKey>(key)?;
         let message = as_slice(message, message_len)?;
         let signature = as_slice(signature, signature_len)?;
 
-        let valid = key.verify_signature(&message, &signature)?;
-
-        *result = if valid { 1 } else { 0 };
+        *result = key.verify_signature(&message, &signature)?;
         Ok(())
     })
 }
@@ -412,7 +410,7 @@ ffi_fn_get_uint32!(signal_message_get_counter(SignalMessage) using
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_message_verify_mac(
-    result: *mut c_uint,
+    result: *mut bool,
     handle: *const SignalMessage,
     sender_identity_key: *const PublicKey,
     receiver_identity_key: *const PublicKey,
@@ -425,13 +423,11 @@ pub unsafe extern "C" fn signal_message_verify_mac(
         let receiver_identity_key = native_handle_cast::<PublicKey>(receiver_identity_key)?;
         let mac_key = as_slice(mac_key, mac_key_len)?;
 
-        let valid = msg.verify_mac(
+        *result = msg.verify_mac(
             &IdentityKey::new(*sender_identity_key),
             &IdentityKey::new(*receiver_identity_key),
             &mac_key,
         )?;
-
-        *result = valid as u32;
         Ok(())
     })
 }
@@ -534,7 +530,7 @@ ffi_fn_get_bytearray!(signal_sender_key_message_serialize(SenderKeyMessage) usin
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sender_key_message_verify_signature(
-    result: *mut c_uint,
+    result: *mut bool,
     skm: *const SenderKeyMessage,
     pubkey: *const PublicKey,
 ) -> *mut SignalFfiError {
@@ -542,9 +538,7 @@ pub unsafe extern "C" fn signal_sender_key_message_verify_signature(
         let skm = native_handle_cast::<SenderKeyMessage>(skm)?;
         let pubkey = native_handle_cast::<PublicKey>(pubkey)?;
 
-        let valid = skm.verify_signature(pubkey)?;
-
-        *result = if valid { 1 } else { 0 };
+        *result = skm.verify_signature(pubkey)?;
         Ok(())
     })
 }
