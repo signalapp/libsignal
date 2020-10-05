@@ -30,8 +30,8 @@ class SwiftSignalTests: XCTestCase {
 
     func testAddress() {
         let addr = try! ProtocolAddress(name: "addr1", device_id: 5)
-        XCTAssertEqual(try! addr.getName(), "addr1")
-        XCTAssertEqual(try! addr.getDeviceId(), 5)
+        XCTAssertEqual(addr.name, "addr1")
+        XCTAssertEqual(addr.deviceId, 5)
     }
 
     func testPkOperations() {
