@@ -22,9 +22,13 @@ struct IdentityKeyPair {
     let publicKey: PublicKey
     let privateKey: PrivateKey
 
-    init() throws {
+    private init() throws {
         privateKey = try PrivateKey.generate();
         publicKey = try privateKey.getPublicKey()
+    }
+
+    static func generate() throws -> IdentityKeyPair {
+        return try IdentityKeyPair()
     }
 
     init(bytes: [UInt8]) throws {

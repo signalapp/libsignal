@@ -9,7 +9,7 @@ class InMemorySignalProtocolStore : IdentityKeyStore, PreKeyStore, SignedPreKeyS
     private var senderKeyMap : [SenderKeyName : SenderKeyRecord] = [:]
 
     init() throws {
-        privateKey = try IdentityKeyPair();
+        privateKey = try IdentityKeyPair.generate()
         deviceId = UInt32.random(in: 0...65535)
     }
 
