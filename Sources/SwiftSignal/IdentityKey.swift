@@ -1,7 +1,7 @@
 import SignalFfi
 import Foundation
 
-class IdentityKey {
+struct IdentityKey {
     private let key : PublicKey
 
     init(pk: PublicKey) {
@@ -28,7 +28,7 @@ extension IdentityKey: Equatable {
 }
 
 
-class IdentityKeyPair {
+struct IdentityKeyPair {
     private let pubkey : PublicKey
     private let privkey : PrivateKey
 
