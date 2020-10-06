@@ -124,7 +124,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
     func ffiShimIsTrustedIdentity(store_ctx: UnsafeMutableRawPointer?,
                                   address: OpaquePointer?,
                                   public_key: OpaquePointer?,
-                                  direction: UInt32,
+                                  raw_direction: UInt32,
                                   ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: IdentityKeyStore.self).pointee
@@ -132,7 +132,16 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             defer { cloneOrForgetAsNeeded(&address) }
             var public_key = PublicKey(unowned: public_key)
             defer { cloneOrForgetAsNeeded(&public_key) }
-            let direction = direction == 0 ? Direction.Sending : Direction.Receiving
+            let direction: Direction
+            switch SignalDirection(raw_direction) {
+            case SignalDirection_Sending:
+                direction = .sending
+            case SignalDirection_Receiving:
+                direction = .receiving
+            default:
+                assertionFailure("unexpected direction value")
+                return -1
+            }
             let identity = IdentityKey(pk: public_key)
             let trusted = try store.isTrustedIdentity(address: address, identity: identity, direction: direction, ctx: ctx)
             return trusted ? 1 : 0
