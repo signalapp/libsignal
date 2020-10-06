@@ -2,5 +2,5 @@ import XCTest
 @testable import SignalProtocolTests
 
 XCTMain([
-     testCase(SignalProtocolTests.allTests)
+     testCase(PublicAPITests.allTests)
 ])
