@@ -3,6 +3,7 @@
 
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
+use num_derive::ToPrimitive;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 
@@ -784,14 +785,21 @@ ffi_fn_deserialize!(signal_sender_key_record_deserialize(SenderKeyRecord) is Sen
 ffi_fn_get_bytearray!(signal_sender_key_record_serialize(SenderKeyRecord) using
                       |sks: &SenderKeyRecord| sks.serialize());
 
-type GetIdentityKeyPair = extern "C" fn(*mut c_void, *mut *mut PrivateKey, *mut c_void) -> c_int;
-type GetLocalRegistrationId = extern "C" fn(*mut c_void, *mut u32, *mut c_void) -> c_int;
+type GetIdentityKeyPair = extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
+type GetLocalRegistrationId = extern "C" fn(store_ctx: *mut c_void, idp: *mut u32, ctx: *mut c_void) -> c_int;
 type GetIdentityKey =
-    extern "C" fn(*mut c_void, *mut *mut PublicKey, *const ProtocolAddress, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, public_keyp: *mut *mut PublicKey, address: *const ProtocolAddress, ctx: *mut c_void) -> c_int;
 type SaveIdentityKey =
-    extern "C" fn(*mut c_void, *const ProtocolAddress, *const PublicKey, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, public_key: *const PublicKey, ctx: *mut c_void) -> c_int;
 type IsTrustedIdentity =
-    extern "C" fn(*mut c_void, *const ProtocolAddress, *const PublicKey, c_uint, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, public_key: *const PublicKey, direction: c_uint, ctx: *mut c_void) -> c_int;
+
+#[derive(Debug, ToPrimitive)]
+#[repr(C)]
+pub enum FfiDirection {
+  Sending = 0,
+  Receiving = 1
+}
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -884,13 +892,13 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let direction = if direction == Direction::Sending {
-            0
-        } else {
-            1
+        let direction = match direction {
+          Direction::Sending => FfiDirection::Sending,
+          Direction::Receiving => FfiDirection::Receiving,
         };
+        let primitive_direction = num_traits::ToPrimitive::to_u32(&direction).unwrap();
         let result =
-            (self.store.is_trusted_identity)(self.store.ctx, &*address, &*identity.public_key(), direction, ctx);
+            (self.store.is_trusted_identity)(self.store.ctx, &*address, &*identity.public_key(), primitive_direction, ctx);
 
         match result {
             0 => Ok(false),
@@ -932,9 +940,9 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
     }
 }
 
-type LoadPreKey = extern "C" fn(*mut c_void, *mut *mut PreKeyRecord, u32, *mut c_void) -> c_int;
-type StorePreKey = extern "C" fn(*mut c_void, u32, *const PreKeyRecord, *mut c_void) -> c_int;
-type RemovePreKey = extern "C" fn(*mut c_void, u32, *mut c_void) -> c_int;
+type LoadPreKey = extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut PreKeyRecord, id: u32, ctx: *mut c_void) -> c_int;
+type StorePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const PreKeyRecord, ctx: *mut c_void) -> c_int;
+type RemovePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, ctx: *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1022,8 +1030,8 @@ impl PreKeyStore for FfiPreKeyStore {
     }
 }
 
-type LoadSignedPreKey = extern "C" fn(*mut c_void, *mut *mut SignedPreKeyRecord, u32, *mut c_void) -> c_int;
-type StoreSignedPreKey = extern "C" fn(*mut c_void, u32, *const SignedPreKeyRecord, *mut c_void) -> c_int;
+type LoadSignedPreKey = extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut SignedPreKeyRecord, id: u32, ctx: *mut c_void) -> c_int;
+type StoreSignedPreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const SignedPreKeyRecord, ctx: *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1096,9 +1104,9 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
 }
 
 type LoadSession =
-    extern "C" fn(*mut c_void, *mut *mut SessionRecord, *const ProtocolAddress, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut SessionRecord, address: *const ProtocolAddress, ctx: *mut c_void) -> c_int;
 type StoreSession =
-    extern "C" fn(*mut c_void, *const ProtocolAddress, *const SessionRecord, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, record: *const SessionRecord, ctx: *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1320,9 +1328,9 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
 }
 
 type LoadSenderKey =
-    extern "C" fn(*mut c_void, *mut *mut SenderKeyRecord, *const SenderKeyName, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, *mut *mut SenderKeyRecord, *const SenderKeyName, ctx: *mut c_void) -> c_int;
 type StoreSenderKey =
-    extern "C" fn(*mut c_void, *const SenderKeyName, *const SenderKeyRecord, *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, *const SenderKeyName, *const SenderKeyRecord, ctx: *mut c_void) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
