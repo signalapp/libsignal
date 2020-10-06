@@ -370,7 +370,7 @@ pub fn write_uint64_to(
     }
 }
 
-pub fn write_bytearray_to<T: AsRef<[u8]>>(
+pub fn write_bytearray_to<T: Into<Box<[u8]>>>(
     out: *mut *const c_uchar,
     out_len: *mut size_t,
     value: Result<T, SignalProtocolError>,
@@ -381,7 +381,7 @@ pub fn write_bytearray_to<T: AsRef<[u8]>>(
 
     match value {
         Ok(value) => {
-            let value : Box<[u8]> = value.as_ref().to_vec().into_boxed_slice();
+            let value : Box<[u8]> = value.into();
 
             unsafe {
                 *out_len = value.len();
