@@ -3,6 +3,7 @@
 
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
+use num_derive::ToPrimitive;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 
@@ -793,6 +794,13 @@ type SaveIdentityKey =
 type IsTrustedIdentity =
     extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, public_key: *const PublicKey, direction: c_uint, ctx: *mut c_void) -> c_int;
 
+#[derive(Debug, ToPrimitive)]
+#[repr(C)]
+pub enum FfiDirection {
+  Sending = 0,
+  Receiving = 1
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct FfiIdentityKeyStoreStruct {
@@ -884,13 +892,13 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let direction = if direction == Direction::Sending {
-            0
-        } else {
-            1
+        let direction = match direction {
+          Direction::Sending => FfiDirection::Sending,
+          Direction::Receiving => FfiDirection::Receiving,
         };
+        let primitive_direction = num_traits::ToPrimitive::to_u32(&direction).unwrap();
         let result =
-            (self.store.is_trusted_identity)(self.store.ctx, &*address, &*identity.public_key(), direction, ctx);
+            (self.store.is_trusted_identity)(self.store.ctx, &*address, &*identity.public_key(), primitive_direction, ctx);
 
         match result {
             0 => Ok(false),
