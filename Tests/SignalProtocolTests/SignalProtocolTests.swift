@@ -1,7 +1,7 @@
 import XCTest
-@testable import SwiftSignal
+@testable import SignalProtocol
 
-class SwiftSignalTests: XCTestCase {
+class SignalProtocolTests: XCTestCase {
     func testHkdf() {
 
         let ikm : [UInt8] = [
@@ -296,7 +296,7 @@ class SwiftSignalTests: XCTestCase {
         XCTAssertEqual(ptext2_a, ptext2_b)
     }
 
-    static var allTests: [(String, (SwiftSignalTests) -> () throws -> Void)] {
+    static var allTests: [(String, (SignalProtocolTests) -> () throws -> Void)] {
         return [
           ("testAddreses", testAddress),
           ("testFingerprint", testFingerprint),
