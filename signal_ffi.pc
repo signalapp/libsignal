@@ -1,0 +1,3 @@
+Name: signal_ffi
+Cflags: -I${pcfiledir}
+Libs: -L${pcfiledir} -lsignal_ffi

@@ -1,0 +1,34 @@
+name: CI
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: Build
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install nightly rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+
+      - name: Check out libsignal-ffi
+        uses: actions/checkout@v2
+        with:
+          path: libsignal-ffi
+
+      - name: Check out libsignal-protocol-rust
+        uses: actions/checkout@v2
+        with:
+          repository: signalapp/libsignal-protocol-rust
+          path: libsignal-protocol-rust
+
+      - name: Build libsignal-ffi
+        run: make -C libsignal-ffi
+
+# TODO: In the future, we should also run tests for our clients,
+# to make sure a change doesn't break them (at least not unexpectedly).
