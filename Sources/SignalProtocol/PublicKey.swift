@@ -1,7 +1,7 @@
 import SignalFfi
 
-class PublicKey: ClonableHandleOwner {
-    init(_ bytes: [UInt8]) throws {
+public class PublicKey: ClonableHandleOwner {
+    public init(_ bytes: [UInt8]) throws {
         var handle: OpaquePointer?
         try checkError(signal_publickey_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
@@ -15,27 +15,27 @@ class PublicKey: ClonableHandleOwner {
         super.init(borrowing: handle)
     }
 
-    override class func destroyNativeHandle(_ handle: OpaquePointer) {
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_publickey_destroy(handle)
     }
 
-    override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_publickey_clone(&newHandle, currentHandle)
     }
 
-    func serialize() throws -> [UInt8] {
+    public func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray {
             signal_publickey_serialize(nativeHandle, $0, $1)
         }
     }
 
-    func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {
+    public func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {
         var result: Bool = false
         try checkError(signal_publickey_verify(nativeHandle, &result, message, message.count, signature, signature.count))
         return result
     }
 
-    func compare(_ other: PublicKey) -> Int32 {
+    public func compare(_ other: PublicKey) -> Int32 {
         var result: Int32 = 0
         try! checkError(signal_publickey_compare(&result, nativeHandle, other.nativeHandle))
         return result
@@ -43,13 +43,13 @@ class PublicKey: ClonableHandleOwner {
 }
 
 extension PublicKey: Equatable {
-    static func == (lhs: PublicKey, rhs: PublicKey) -> Bool {
+    public static func == (lhs: PublicKey, rhs: PublicKey) -> Bool {
         return lhs.compare(rhs) == 0
     }
 }
 
 extension PublicKey: Comparable {
-    static func < (lhs: PublicKey, rhs: PublicKey) -> Bool {
+    public static func < (lhs: PublicKey, rhs: PublicKey) -> Bool {
         return lhs.compare(rhs) < 0
     }
 }

@@ -1,6 +1,6 @@
 import SignalFfi
 
-func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
+internal func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
     var output: UnsafePointer<Int8>?
     try checkError(fn(&output))
     let result = String(cString: output!)
@@ -8,7 +8,7 @@ func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) 
     return result
 }
 
-func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
+internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output: UnsafePointer<UInt8>?
     var output_len = 0
     try checkError(fn(&output, &output_len))
@@ -17,37 +17,37 @@ func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, U
     return result
 }
 
-func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
+internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
     var output: Result = 0
     try checkError(fn(&output))
     return output
 }
 
-func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey {
+internal func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey {
     var pk_handle: OpaquePointer?
     try checkError(fn(&pk_handle))
     return PublicKey(owned: pk_handle!)
 }
 
-func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PrivateKey {
+internal func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PrivateKey {
     var pk_handle: OpaquePointer?
     try checkError(fn(&pk_handle))
     return PrivateKey(owned: pk_handle!)
 }
 
-func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey? {
+internal func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey? {
     var pk_handle: OpaquePointer?
     try checkError(fn(&pk_handle))
     return pk_handle.map { PublicKey(owned: $0) }
 }
 
-func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> CiphertextMessage {
+internal func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> CiphertextMessage {
     var handle: OpaquePointer?
     try checkError(fn(&handle))
     return CiphertextMessage(owned: handle)
 }
 
-func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePointer<SignalIdentityKeyStore>) throws -> Result) throws -> Result {
+internal func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePointer<SignalIdentityKeyStore>) throws -> Result) throws -> Result {
     func ffiShimGetIdentityKeyPair(store_ctx: UnsafeMutableRawPointer?,
                                    keyp: UnsafeMutablePointer<OpaquePointer?>?,
                                    ctx: UnsafeMutableRawPointer?) -> Int32 {
@@ -159,7 +159,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
     }
 }
 
-func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<SignalPreKeyStore>) throws -> Result) throws -> Result {
+internal func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<SignalPreKeyStore>) throws -> Result) throws -> Result {
     func ffiShimStorePreKey(store_ctx: UnsafeMutableRawPointer?,
                             id: UInt32,
                             record: OpaquePointer?,
@@ -213,7 +213,7 @@ func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<Signal
     }
 }
 
-func withSignedPreKeyStore<Result>(_ store: SignedPreKeyStore, _ body: (UnsafePointer<SignalSignedPreKeyStore>) throws -> Result) throws -> Result {
+internal func withSignedPreKeyStore<Result>(_ store: SignedPreKeyStore, _ body: (UnsafePointer<SignalSignedPreKeyStore>) throws -> Result) throws -> Result {
     func ffiShimStoreSignedPreKey(store_ctx: UnsafeMutableRawPointer?,
                                   id: UInt32,
                                   record: OpaquePointer?,
@@ -254,7 +254,7 @@ func withSignedPreKeyStore<Result>(_ store: SignedPreKeyStore, _ body: (UnsafePo
     }
 }
 
-func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<SignalSessionStore>) throws -> Result) throws -> Result {
+internal func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<SignalSessionStore>) throws -> Result) throws -> Result {
     func ffiShimStoreSession(store_ctx: UnsafeMutableRawPointer?,
                              address: OpaquePointer?,
                              record: OpaquePointer?,
@@ -302,7 +302,7 @@ func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<Sign
     }
 }
 
-func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<SignalSenderKeyStore>) throws -> Result) rethrows -> Result {
+internal func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<SignalSenderKeyStore>) throws -> Result) rethrows -> Result {
     func ffiShimStoreSenderKey(store_ctx: UnsafeMutableRawPointer?,
                                sender_name: OpaquePointer?,
                                record: OpaquePointer?,

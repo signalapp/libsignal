@@ -1,21 +1,21 @@
 import SignalFfi
 
-struct DisplayableFingerprint {
-    let formatted: String
+public struct DisplayableFingerprint {
+    public let formatted: String
 
     internal init(formatted: String) {
         self.formatted = formatted
     }
 }
 
-struct ScannableFingerprint {
-    let encoding: [UInt8]
+public struct ScannableFingerprint {
+    public let encoding: [UInt8]
 
     internal init(encoding: [UInt8]) {
         self.encoding = encoding
     }
 
-    func compare(against other: ScannableFingerprint) throws -> Bool {
+    public func compare(against other: ScannableFingerprint) throws -> Bool {
         var result: Bool = false
         try checkError(signal_fingerprint_compare(&result, encoding, encoding.count,
                                                   other.encoding, other.encoding.count))
@@ -23,9 +23,9 @@ struct ScannableFingerprint {
     }
 }
 
-struct Fingerprint {
-    let scannable: ScannableFingerprint
-    let displayable: DisplayableFingerprint
+public struct Fingerprint {
+    public let scannable: ScannableFingerprint
+    public let displayable: DisplayableFingerprint
 
     internal init(displayable: DisplayableFingerprint, scannable: ScannableFingerprint) {
         self.displayable = displayable
@@ -33,18 +33,18 @@ struct Fingerprint {
     }
 }
 
-struct NumericFingerprintGenerator {
+public struct NumericFingerprintGenerator {
     private let iterations: Int
 
-    init(iterations: Int) {
+    public init(iterations: Int) {
         self.iterations = iterations
     }
 
-    func create(version: Int,
-                localIdentifier: [UInt8],
-                localKey: PublicKey,
-                remoteIdentifier: [UInt8],
-                remoteKey: PublicKey) throws -> Fingerprint {
+    public func create(version: Int,
+                       localIdentifier: [UInt8],
+                       localKey: PublicKey,
+                       remoteIdentifier: [UInt8],
+                       remoteKey: PublicKey) throws -> Fingerprint {
 
         var obj: OpaquePointer?
         try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
