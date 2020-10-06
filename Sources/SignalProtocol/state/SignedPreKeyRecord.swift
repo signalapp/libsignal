@@ -23,7 +23,7 @@ class SignedPreKeyRecord: ClonableHandleOwner {
         var handle: OpaquePointer?
         try checkError(signal_signed_pre_key_record_new(&handle, id, timestamp,
                                                         publicKey.nativeHandle, privateKey.nativeHandle,
-                                                        signature, signature.count));
+                                                        signature, signature.count))
         super.init(owned: handle!)
     }
 

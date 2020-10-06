@@ -36,7 +36,7 @@ class PublicKey: ClonableHandleOwner {
     }
 
     func compare(_ other: PublicKey) -> Int32 {
-        var result : Int32 = 0
+        var result: Int32 = 0
         try! checkError(signal_publickey_compare(&result, nativeHandle, other.nativeHandle))
         return result
     }

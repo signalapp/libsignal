@@ -16,13 +16,12 @@ struct IdentityKey: Equatable {
     }
 }
 
-
 struct IdentityKeyPair {
     let publicKey: PublicKey
     let privateKey: PrivateKey
 
     private init() throws {
-        privateKey = try PrivateKey.generate();
+        privateKey = try PrivateKey.generate()
         publicKey = try privateKey.publicKey()
     }
 

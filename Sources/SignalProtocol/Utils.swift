@@ -1,7 +1,7 @@
 import SignalFfi
 
 func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
-    var output : UnsafePointer<Int8>? = nil
+    var output: UnsafePointer<Int8>?
     try checkError(fn(&output))
     let result = String(cString: output!)
     signal_free_string(output)
@@ -9,7 +9,7 @@ func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) 
 }
 
 func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
-    var output : UnsafePointer<UInt8>? = nil
+    var output: UnsafePointer<UInt8>?
     var output_len = 0
     try checkError(fn(&output, &output_len))
     let result = Array(UnsafeBufferPointer(start: output, count: output_len))
@@ -18,31 +18,31 @@ func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, U
 }
 
 func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
-    var output : Result = 0
+    var output: Result = 0
     try checkError(fn(&output))
     return output
 }
 
 func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey {
-    var pk_handle : OpaquePointer?
+    var pk_handle: OpaquePointer?
     try checkError(fn(&pk_handle))
     return PublicKey(owned: pk_handle!)
 }
 
 func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PrivateKey {
-    var pk_handle : OpaquePointer?
+    var pk_handle: OpaquePointer?
     try checkError(fn(&pk_handle))
     return PrivateKey(owned: pk_handle!)
 }
 
 func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey? {
-    var pk_handle : OpaquePointer?
+    var pk_handle: OpaquePointer?
     try checkError(fn(&pk_handle))
     return pk_handle.map { PublicKey(owned: $0) }
 }
 
 func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> CiphertextMessage {
-    var handle : OpaquePointer?
+    var handle: OpaquePointer?
     try checkError(fn(&handle))
     return CiphertextMessage(owned: handle)
 }
@@ -56,8 +56,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             var privateKey = try store.identityKeyPair(context: ctx).privateKey
             keyp!.pointee = try cloneOrTakeHandle(from: &privateKey)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -68,10 +67,9 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
         do {
             let store = store_ctx!.assumingMemoryBound(to: IdentityKeyStore.self).pointee
             let id = try store.localRegistrationId(context: ctx)
-            idp!.pointee = id;
+            idp!.pointee = id
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -93,8 +91,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             } else {
                 return 0
             }
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -114,8 +111,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
                 public_key!.pointee = nil
             }
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -144,8 +140,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             let identity = IdentityKey(publicKey: public_key)
             let trusted = try store.isTrustedIdentity(identity, for: address, direction: direction, context: ctx)
             return trusted ? 1 : 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -175,8 +170,7 @@ func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<Signal
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storePreKey(record, id: id, context: ctx)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -190,8 +184,7 @@ func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<Signal
             var record = try store.loadPreKey(id: id, context: ctx)
             recordp!.pointee = try cloneOrTakeHandle(from: &record)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -203,8 +196,7 @@ func withPreKeyStore<Result>(_ store: PreKeyStore, _ body: (UnsafePointer<Signal
             let store = store_ctx!.assumingMemoryBound(to: PreKeyStore.self).pointee
             try store.removePreKey(id: id, context: ctx)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -232,8 +224,7 @@ func withSignedPreKeyStore<Result>(_ store: SignedPreKeyStore, _ body: (UnsafePo
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storeSignedPreKey(record, id: id, context: ctx)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -247,8 +238,7 @@ func withSignedPreKeyStore<Result>(_ store: SignedPreKeyStore, _ body: (UnsafePo
             var record = try store.loadSignedPreKey(id: id, context: ctx)
             recordp!.pointee = try cloneOrTakeHandle(from: &record)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -277,8 +267,7 @@ func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<Sign
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storeSession(record, for: address, context: ctx)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -297,8 +286,7 @@ func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePointer<Sign
                 recordp!.pointee = nil
             }
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -327,8 +315,7 @@ func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<
             defer { cloneOrForgetAsNeeded(&record) }
             try store.storeSenderKey(name: sender_name, record: record, context: ctx)
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }
@@ -347,8 +334,7 @@ func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<
                 recordp!.pointee = nil
             }
             return 0
-        }
-        catch {
+        } catch {
             return -1
         }
     }

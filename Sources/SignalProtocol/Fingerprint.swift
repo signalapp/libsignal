@@ -24,7 +24,7 @@ struct ScannableFingerprint {
 }
 
 struct Fingerprint {
-    let scannable : ScannableFingerprint
+    let scannable: ScannableFingerprint
     let displayable: DisplayableFingerprint
 
     internal init(displayable: DisplayableFingerprint, scannable: ScannableFingerprint) {
@@ -46,7 +46,7 @@ struct NumericFingerprintGenerator {
                 remoteIdentifier: [UInt8],
                 remoteKey: PublicKey) throws -> Fingerprint {
 
-        var obj : OpaquePointer?
+        var obj: OpaquePointer?
         try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
                                               localIdentifier, localIdentifier.count,
                                               localKey.nativeHandle,

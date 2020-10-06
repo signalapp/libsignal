@@ -1,6 +1,6 @@
 import SignalFfi
 
-public enum SignalError : Error {
+public enum SignalError: Error {
     case invalidState(String)
     case internalError(String)
     case nullParameter(String)

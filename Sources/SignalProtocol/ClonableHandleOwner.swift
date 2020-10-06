@@ -62,7 +62,7 @@ class ClonableHandleOwner {
         switch handle {
         case nil:
             return
-        case .borrowed(_)?:
+        case .borrowed?:
             preconditionFailure("borrowed handle may have escaped")
         case .owned(let handle)?:
             Self.destroyNativeHandle(handle)
