@@ -36,6 +36,65 @@ fn group_no_send_session() -> Result<(), SignalProtocolError> {
     Ok(())
 }
 
+pub struct ContextUsingSenderKeyStore {
+    store: InMemSenderKeyStore,
+    expected_context: Context,
+}
+
+impl ContextUsingSenderKeyStore {
+    pub fn new(expected_context: Context) -> Self {
+        Self {
+            store: InMemSenderKeyStore::new(),
+            expected_context,
+        }
+    }
+}
+
+impl SenderKeyStore for ContextUsingSenderKeyStore {
+    fn store_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        record: &SenderKeyRecord,
+        ctx: Context,
+    ) -> Result<(), SignalProtocolError> {
+        assert_eq!(ctx, self.expected_context);
+        self.store.store_sender_key(sender_key_name, record, ctx)
+    }
+
+    fn load_sender_key(
+        &mut self,
+        sender_key_name: &SenderKeyName,
+        ctx: Context,
+    ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
+        assert_eq!(ctx, self.expected_context);
+        self.store.load_sender_key(sender_key_name, ctx)
+    }
+}
+
+#[test]
+fn group_using_context_arg() -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng;
+
+    let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
+    let group_sender =
+        SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+
+    let x = Box::new(1);
+
+    let context = Some(Box::into_raw(x) as _);
+
+    let mut alice_store = ContextUsingSenderKeyStore::new(context);
+
+    let _sent_distribution_message = create_sender_key_distribution_message(
+        &group_sender,
+        &mut alice_store,
+        &mut csprng,
+        context,
+    )?;
+
+    Ok(())
+}
+
 #[test]
 fn group_no_recv_session() -> Result<(), SignalProtocolError> {
     let mut csprng = OsRng;
