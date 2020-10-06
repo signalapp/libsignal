@@ -7,8 +7,8 @@ class SignalMessage {
         signal_message_destroy(handle)
     }
 
-    internal init(owned raw_ptr: OpaquePointer?) {
-        handle = raw_ptr
+    internal init(owned rawPtr: OpaquePointer?) {
+        handle = rawPtr
     }
 
     init(bytes: [UInt8]) throws {
@@ -37,23 +37,33 @@ class SignalMessage {
     }
 
     func senderRatchetKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_message_get_sender_ratchet_key(k, handle) })
+        return try invokeFnReturningPublicKey {
+            signal_message_get_sender_ratchet_key($0, handle)
+        }
     }
 
     func body() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_message_get_body(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_message_get_body(handle, $0, $1)
+        }
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_message_get_serialized(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_message_get_serialized(handle, $0, $1)
+        }
     }
 
     func messageVersion() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_message_get_message_version(handle, i) })
+        return try invokeFnReturningInteger {
+            signal_message_get_message_version(handle, $0)
+        }
     }
 
     func counter() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_message_get_counter(handle, i) })
+        return try invokeFnReturningInteger {
+            signal_message_get_counter(handle, $0)
+        }
     }
 
     func verifyMac(sender: PublicKey,

@@ -36,22 +36,32 @@ class SenderKeyDistributionMessage {
     }
 
     func signatureKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_sender_key_distribution_message_get_signature_key(k, handle) })
+        return try invokeFnReturningPublicKey {
+            signal_sender_key_distribution_message_get_signature_key($0, handle)
+        }
     }
 
     func id() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_id(handle, i) })
+        return try invokeFnReturningInteger {
+            signal_sender_key_distribution_message_get_id(handle, $0)
+        }
     }
 
     func iteration() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_iteration(handle, i) })
+        return try invokeFnReturningInteger {
+            signal_sender_key_distribution_message_get_iteration(handle, $0)
+        }
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_distribution_message_serialize(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_sender_key_distribution_message_serialize(handle, $0, $1)
+        }
     }
 
     func chainKey() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_distribution_message_get_chain_key(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_sender_key_distribution_message_get_chain_key(handle, $0, $1)
+        }
     }
 }

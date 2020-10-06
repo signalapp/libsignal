@@ -30,25 +30,33 @@ class PreKeyRecord: ClonableHandleOwner {
     }
 
     init(id: UInt32, privateKey: PrivateKey) throws {
-        let pub_key = try privateKey.publicKey()
+        let publicKey = try privateKey.publicKey()
         var handle: OpaquePointer?
-        try checkError(signal_pre_key_record_new(&handle, id, pub_key.nativeHandle, privateKey.nativeHandle))
+        try checkError(signal_pre_key_record_new(&handle, id, publicKey.nativeHandle, privateKey.nativeHandle))
         super.init(owned: handle!)
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_pre_key_record_serialize(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_pre_key_record_serialize(handle, $0, $1)
+        }
     }
 
     func id() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_record_get_id(handle, i) })
+        return try invokeFnReturningInteger {
+            signal_pre_key_record_get_id(handle, $0)
+        }
     }
 
     func publicKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_record_get_public_key(k, handle) })
+        return try invokeFnReturningPublicKey {
+            signal_pre_key_record_get_public_key($0, handle)
+        }
     }
 
     func privateKey() throws -> PrivateKey {
-        return try invokeFnReturningPrivateKey(fn: { (k) in signal_pre_key_record_get_private_key(k, handle) })
+        return try invokeFnReturningPrivateKey {
+            signal_pre_key_record_get_private_key($0, handle)
+        }
     }
 }

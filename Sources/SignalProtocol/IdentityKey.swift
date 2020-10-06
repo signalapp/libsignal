@@ -31,12 +31,12 @@ struct IdentityKeyPair {
     }
 
     init(bytes: [UInt8]) throws {
-        var pubkey_ptr : OpaquePointer?
-        var privkey_ptr : OpaquePointer?
-        try checkError(signal_identitykeypair_deserialize(&pubkey_ptr, &privkey_ptr, bytes, bytes.count))
+        var pubkeyPtr: OpaquePointer?
+        var privkeyPtr: OpaquePointer?
+        try checkError(signal_identitykeypair_deserialize(&pubkeyPtr, &privkeyPtr, bytes, bytes.count))
 
-        publicKey = PublicKey(owned: pubkey_ptr!)
-        privateKey = PrivateKey(owned: privkey_ptr!)
+        publicKey = PublicKey(owned: pubkeyPtr!)
+        privateKey = PrivateKey(owned: privkeyPtr!)
     }
 
     func serialize() throws -> [UInt8] {

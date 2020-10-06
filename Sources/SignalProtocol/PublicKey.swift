@@ -24,7 +24,9 @@ class PublicKey: ClonableHandleOwner {
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_publickey_serialize(nativeHandle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_publickey_serialize(nativeHandle, $0, $1)
+        }
     }
 
     func verifySignature(message: [UInt8], signature: [UInt8]) throws -> Bool {

@@ -41,10 +41,10 @@ func signalEncrypt(message: [UInt8],
                    sessionStore: SessionStore,
                    identityStore: IdentityKeyStore,
                    context: UnsafeMutableRawPointer?) throws -> CiphertextMessage {
-    return try withSessionStore(sessionStore) { ffi_session_store in
-        try withIdentityKeyStore(identityStore) { ffi_identity_store in
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
             try invokeFnReturningCiphertextMessage {
-                signal_encrypt_message($0, message, message.count, address.nativeHandle, ffi_session_store, ffi_identity_store, context)
+                signal_encrypt_message($0, message, message.count, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
             }
         }
     }
@@ -55,10 +55,10 @@ func signalDecrypt(message: SignalMessage,
                    sessionStore: SessionStore,
                    identityStore: IdentityKeyStore,
                    context: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    return try withSessionStore(sessionStore) { ffi_session_store in
-        try withIdentityKeyStore(identityStore) { ffi_identity_store in
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
             try invokeFnReturningArray {
-                signal_decrypt_message($0, $1, message.nativeHandle, address.nativeHandle, ffi_session_store, ffi_identity_store, context)
+                signal_decrypt_message($0, $1, message.nativeHandle, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
             }
         }
     }
@@ -71,12 +71,12 @@ func signalDecryptPreKey(message: PreKeySignalMessage,
                          preKeyStore: PreKeyStore,
                          signedPreKeyStore: SignedPreKeyStore,
                          context: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    return try withSessionStore(sessionStore) { ffi_session_store in
-        try withIdentityKeyStore(identityStore) { ffi_identity_store in
-            try withPreKeyStore(preKeyStore) { ffi_pre_key_store in
-                try withSignedPreKeyStore(signedPreKeyStore) { ffi_signed_pre_key_store in
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+            try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
+                try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
                     try invokeFnReturningArray {
-                        signal_decrypt_pre_key_message($0, $1, message.nativeHandle, from.nativeHandle, ffi_session_store, ffi_identity_store, ffi_pre_key_store, ffi_signed_pre_key_store, context)
+                        signal_decrypt_pre_key_message($0, $1, message.nativeHandle, from.nativeHandle, ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, context)
                     }
                 }
             }
@@ -89,9 +89,9 @@ func processPreKeyBundle(_ bundle: PreKeyBundle,
                          sessionStore: SessionStore,
                          identityStore: IdentityKeyStore,
                          context: UnsafeMutableRawPointer?) throws {
-    return try withSessionStore(sessionStore) { ffi_session_store in
-        try withIdentityKeyStore(identityStore) { ffi_identity_store in
-            try checkError(signal_process_prekey_bundle(bundle.nativeHandle, address.nativeHandle, ffi_session_store, ffi_identity_store, context))
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+            try checkError(signal_process_prekey_bundle(bundle.nativeHandle, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context))
         }
     }
 }

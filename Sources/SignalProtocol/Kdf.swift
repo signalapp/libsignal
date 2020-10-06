@@ -18,7 +18,6 @@ func hkdf(outputLength: Int,
                                    salt,
                                    salt.count)
 
-
     try checkError(error)
 
     return output

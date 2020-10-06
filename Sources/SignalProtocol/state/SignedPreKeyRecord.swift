@@ -19,10 +19,10 @@ class SignedPreKeyRecord: ClonableHandleOwner {
          timestamp: UInt64,
          privateKey: PrivateKey,
          signature: [UInt8]) throws {
-        let pub_key = try privateKey.publicKey()
+        let publicKey = try privateKey.publicKey()
         var handle: OpaquePointer?
         try checkError(signal_signed_pre_key_record_new(&handle, id, timestamp,
-                                                        pub_key.nativeHandle, privateKey.nativeHandle,
+                                                        publicKey.nativeHandle, privateKey.nativeHandle,
                                                         signature, signature.count));
         super.init(owned: handle!)
     }
@@ -32,26 +32,38 @@ class SignedPreKeyRecord: ClonableHandleOwner {
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_signed_pre_key_record_serialize(nativeHandle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_signed_pre_key_record_serialize(nativeHandle, $0, $1)
+        }
     }
 
     func id() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_signed_pre_key_record_get_id(nativeHandle, i) })
+        return try invokeFnReturningInteger {
+            signal_signed_pre_key_record_get_id(nativeHandle, $0)
+        }
     }
 
     func timestamp() throws -> UInt64 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_signed_pre_key_record_get_timestamp(nativeHandle, i) })
+        return try invokeFnReturningInteger {
+            signal_signed_pre_key_record_get_timestamp(nativeHandle, $0)
+        }
     }
 
     func publicKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_signed_pre_key_record_get_public_key(k, nativeHandle) })
+        return try invokeFnReturningPublicKey {
+            signal_signed_pre_key_record_get_public_key($0, nativeHandle)
+        }
     }
 
     func privateKey() throws -> PrivateKey {
-        return try invokeFnReturningPrivateKey(fn: { (k) in signal_signed_pre_key_record_get_private_key(k, nativeHandle) })
+        return try invokeFnReturningPrivateKey {
+            signal_signed_pre_key_record_get_private_key($0, nativeHandle)
+        }
     }
 
     func signature() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_signed_pre_key_record_get_signature(nativeHandle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_signed_pre_key_record_get_signature(nativeHandle, $0, $1)
+        }
     }
 }

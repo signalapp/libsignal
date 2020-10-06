@@ -31,59 +31,59 @@ typealias SignalFfiErrorRef = OpaquePointer
 func checkError(_ error: SignalFfiErrorRef?) throws {
     guard let error = error else { return }
 
-    let err_type = signal_error_get_type(error)
+    let errType = signal_error_get_type(error)
     // If this actually throws we'd have an infinite loop before we hit the 'try!'.
-    let err_str = try! invokeFnReturningString {
+    let errStr = try! invokeFnReturningString {
         signal_error_get_message(error, $0)
     }
     signal_error_free(error)
 
-    switch SignalErrorCode(err_type) {
+    switch SignalErrorCode(errType) {
     case SignalErrorCode_InvalidState:
-        throw SignalError.invalidState(err_str)
+        throw SignalError.invalidState(errStr)
     case SignalErrorCode_InternalError:
-        throw SignalError.internalError(err_str)
+        throw SignalError.internalError(errStr)
     case SignalErrorCode_NullParameter:
-        throw SignalError.nullParameter(err_str)
+        throw SignalError.nullParameter(errStr)
     case SignalErrorCode_InvalidArgument:
-        throw SignalError.invalidArgument(err_str)
+        throw SignalError.invalidArgument(errStr)
     case SignalErrorCode_InvalidType:
-        throw SignalError.invalidType(err_str)
+        throw SignalError.invalidType(errStr)
     case SignalErrorCode_InvalidUtf8String:
-        throw SignalError.invalidUtf8String(err_str)
+        throw SignalError.invalidUtf8String(errStr)
     case SignalErrorCode_InsufficientOutputSize:
-        throw SignalError.insufficientOutputSize(err_str)
+        throw SignalError.insufficientOutputSize(errStr)
     case SignalErrorCode_ProtobufError:
-        throw SignalError.protobufError(err_str)
+        throw SignalError.protobufError(errStr)
     case SignalErrorCode_InvalidCiphertext:
-        throw SignalError.invalidCiphertext(err_str)
+        throw SignalError.invalidCiphertext(errStr)
     case SignalErrorCode_LegacyCiphertextVersion:
-        throw SignalError.legacyCiphertextVersion(err_str)
+        throw SignalError.legacyCiphertextVersion(errStr)
     case SignalErrorCode_UnknownCiphertextVersion:
-        throw SignalError.unknownCiphertextVersion(err_str)
+        throw SignalError.unknownCiphertextVersion(errStr)
     case SignalErrorCode_UnrecognizedMessageVersion:
-        throw SignalError.unrecognizedMessageVersion(err_str)
+        throw SignalError.unrecognizedMessageVersion(errStr)
     case SignalErrorCode_InvalidMessage:
-        throw SignalError.invalidMessage(err_str)
+        throw SignalError.invalidMessage(errStr)
     case SignalErrorCode_InvalidKey:
-        throw SignalError.invalidKey(err_str)
+        throw SignalError.invalidKey(errStr)
     case SignalErrorCode_InvalidSignature:
-        throw SignalError.invalidSignature(err_str)
+        throw SignalError.invalidSignature(errStr)
     case SignalErrorCode_FingerprintIdentifierMismatch:
-        throw SignalError.fingerprintIdentifierMismatch(err_str)
+        throw SignalError.fingerprintIdentifierMismatch(errStr)
     case SignalErrorCode_FingerprintVersionMismatch:
-        throw SignalError.fingerprintVersionMismatch(err_str)
+        throw SignalError.fingerprintVersionMismatch(errStr)
     case SignalErrorCode_UntrustedIdentity:
-        throw SignalError.untrustedIdentity(err_str)
+        throw SignalError.untrustedIdentity(errStr)
     case SignalErrorCode_InvalidKeyIdentifier:
-        throw SignalError.invalidKeyIdentifier(err_str)
+        throw SignalError.invalidKeyIdentifier(errStr)
     case SignalErrorCode_SessionNotFound:
-        throw SignalError.sessionNotFound(err_str)
+        throw SignalError.sessionNotFound(errStr)
     case SignalErrorCode_DuplicatedMessage:
-        throw SignalError.duplicatedMessage(err_str)
+        throw SignalError.duplicatedMessage(errStr)
     case SignalErrorCode_CallbackError:
-        throw SignalError.callbackError(err_str)
+        throw SignalError.callbackError(errStr)
     default:
-        throw SignalError.unknown(err_type, err_str)
+        throw SignalError.unknown(errType, errStr)
     }
 }
