@@ -18,7 +18,7 @@ class SenderKeyName: ClonableHandleOwner {
 
     init(group_name: String, sender: ProtocolAddress) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender.getName(), sender.getDeviceId()))
+        try CheckError(signal_sender_key_name_new(&handle, group_name, sender.name, sender.deviceId))
         super.init(owned: handle!)
     }
 
@@ -30,44 +30,36 @@ class SenderKeyName: ClonableHandleOwner {
         super.init(unowned: handle)
     }
 
-    func getGroupId() throws -> String {
-        return try invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(nativeHandle(), b) })
+    var groupId: String {
+        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(nativeHandle(), b) })
     }
 
-    func getSenderName() throws -> String {
-        return try invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(nativeHandle(), b) })
+    var senderName: String {
+        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(nativeHandle(), b) })
     }
 
-    func getSenderDeviceId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(nativeHandle(), i) })
+    var senderDeviceId: UInt32 {
+        return try! invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(nativeHandle(), i) })
     }
 }
 
 extension SenderKeyName: Hashable {
     static func == (lhs: SenderKeyName, rhs: SenderKeyName) -> Bool {
-        let lhsDeviceId = try! lhs.getSenderDeviceId()
-        let rhsDeviceId = try! rhs.getSenderDeviceId()
-
-        if lhsDeviceId != rhsDeviceId {
+        if lhs.senderDeviceId != rhs.senderDeviceId {
             return false
         }
 
-        let lhsName = try! lhs.getSenderName()
-        let rhsName = try! rhs.getSenderName()
-
-        if lhsName != rhsName {
+        if lhs.senderName != rhs.senderName {
             return false
         }
 
-        let lhsGroupId = try! lhs.getGroupId()
-        let rhsGroupId = try! rhs.getGroupId()
-        return lhsGroupId == rhsGroupId
+        return lhs.groupId == rhs.groupId
 
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(try! getGroupId())
-        hasher.combine(try! getSenderName())
-        hasher.combine(try! getSenderDeviceId())
+        hasher.combine(self.senderDeviceId)
+        hasher.combine(self.senderName)
+        hasher.combine(self.groupId)
     }
 }

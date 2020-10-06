@@ -54,7 +54,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
                                    ctx: UnsafeMutableRawPointer?) -> Int32 {
         do {
             let store = store_ctx!.assumingMemoryBound(to: IdentityKeyStore.self).pointee
-            var privateKey = try store.getIdentityKeyPair(ctx: ctx).privateKey()
+            var privateKey = try store.getIdentityKeyPair(ctx: ctx).privateKey
             keyp!.pointee = try cloneOrTakeHandle(from: &privateKey)
             return 0
         }
@@ -109,7 +109,7 @@ func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePoin
             var address = ProtocolAddress(unowned: address)
             defer { cloneOrForgetAsNeeded(&address) }
             if let pk = try store.getIdentity(address: address, ctx: ctx) {
-                var publicKey = pk.publicKey()
+                var publicKey = pk.publicKey
                 public_key!.pointee = try cloneOrTakeHandle(from: &publicKey)
             } else {
                 public_key!.pointee = nil

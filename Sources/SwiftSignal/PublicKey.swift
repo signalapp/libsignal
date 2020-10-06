@@ -34,21 +34,21 @@ class PublicKey: ClonableHandleOwner {
         return result
     }
 
-    func compareWith(other_key: PublicKey) throws -> Int32 {
+    func compareWith(other_key: PublicKey) -> Int32 {
         var result : Int32 = 0
-        try CheckError(signal_publickey_compare(&result, nativeHandle(), other_key.nativeHandle()))
+        try! CheckError(signal_publickey_compare(&result, nativeHandle(), other_key.nativeHandle()))
         return result
     }
 }
 
 extension PublicKey: Equatable {
     static func == (lhs: PublicKey, rhs: PublicKey) -> Bool {
-        return try! lhs.compareWith(other_key: rhs) == 0
+        return lhs.compareWith(other_key: rhs) == 0
     }
 }
 
 extension PublicKey: Comparable {
     static func < (lhs: PublicKey, rhs: PublicKey) -> Bool {
-        return try! lhs.compareWith(other_key: rhs) < 0
+        return lhs.compareWith(other_key: rhs) < 0
     }
 }

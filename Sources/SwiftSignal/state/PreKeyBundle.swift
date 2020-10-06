@@ -33,7 +33,7 @@ class PreKeyBundle {
                                                  signed_prekey.nativeHandle(),
                                                  signed_prekey_signature,
                                                  signed_prekey_signature.count,
-                                                 identity_key.publicKey().nativeHandle()))
+                                                 identity_key.publicKey.nativeHandle()))
     }
 
     // without a prekey
@@ -52,7 +52,7 @@ class PreKeyBundle {
                                                  signed_prekey.nativeHandle(),
                                                  signed_prekey_signature,
                                                  signed_prekey_signature.count,
-                                                 identity_key.publicKey().nativeHandle()))
+                                                 identity_key.publicKey.nativeHandle()))
 
     }
 

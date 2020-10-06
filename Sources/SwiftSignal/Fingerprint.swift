@@ -1,7 +1,7 @@
 import SignalFfi
 import Foundation
 
-class DisplayableFingerprint {
+struct DisplayableFingerprint {
     let formatted: String
 
     internal init(formatted: String) {
@@ -9,7 +9,7 @@ class DisplayableFingerprint {
     }
 }
 
-class ScannableFingerprint {
+struct ScannableFingerprint {
     let encoding: [UInt8]
 
     internal init(encoding: [UInt8]) {
@@ -24,7 +24,7 @@ class ScannableFingerprint {
     }
 }
 
-class Fingerprint {
+struct Fingerprint {
     let scannable : ScannableFingerprint
     let displayable: DisplayableFingerprint
 
@@ -34,7 +34,7 @@ class Fingerprint {
     }
 }
 
-class NumericFingerprintGenerator {
+struct NumericFingerprintGenerator {
     private let iterations: Int
 
     init(iterations: Int) {

@@ -22,31 +22,26 @@ class ProtocolAddress: ClonableHandleOwner {
         signal_address_destroy(handle)
     }
 
-    func getName() throws -> String {
-        return try invokeFnReturningString(fn: { (b) in signal_address_get_name(nativeHandle(), b) })
+    var name: String {
+        return try! invokeFnReturningString(fn: { (b) in signal_address_get_name(nativeHandle(), b) })
     }
 
-    func getDeviceId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(nativeHandle(), i) })
+    var deviceId: UInt32 {
+        return try! invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(nativeHandle(), i) })
     }
 }
 
 extension ProtocolAddress: Hashable {
     static func == (lhs: ProtocolAddress, rhs: ProtocolAddress) -> Bool {
-        let lhsDeviceId = try! lhs.getDeviceId()
-        let rhsDeviceId = try! rhs.getDeviceId()
-
-        if lhsDeviceId != rhsDeviceId {
+        if lhs.deviceId != rhs.deviceId {
             return false
         }
 
-        let lhsSenderName = try! lhs.getName()
-        let rhsSenderName = try! rhs.getName()
-        return lhsSenderName == rhsSenderName
+        return lhs.name == rhs.name
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(try! getName())
-        hasher.combine(try! getDeviceId())
+        hasher.combine(self.name)
+        hasher.combine(self.deviceId)
     }
 }
