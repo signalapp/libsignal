@@ -40,3 +40,16 @@ jobs:
       - name: Run tests
         run: swift test -v
 
+  lint:
+    name: Lint
+
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: brew install swiftlint
+
+      - name: Run lint
+        run: swiftlint lint --reporter github-actions-logging
