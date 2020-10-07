@@ -34,11 +34,20 @@ jobs:
       - name: Build libsignal-ffi
         run: make -C libsignal-ffi
 
-      - name: Build libsignal-protocol-swift
-        run: swift build -v
+      - name: Build libsignal-protocol-swift and run tests
+        run: swift test -v --enable-code-coverage
 
-      - name: Run tests
-        run: swift test -v
+      - name: Generate coverage report
+        run: xcrun llvm-cov show --format=html --instr-profile .build/x86_64-apple-macosx/debug/codecov/default.profdata .build/x86_64-apple-macosx/debug/*.xctest/Contents/MacOS/* Sources --output-dir coverage-report
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v2
+        with:
+          name: Coverage
+          path: coverage-report
+
+      - name: Summarize coverage
+        run: xcrun llvm-cov report --instr-profile .build/x86_64-apple-macosx/debug/codecov/default.profdata .build/x86_64-apple-macosx/debug/*.xctest/Contents/MacOS/* Sources
 
   lint:
     name: Lint
