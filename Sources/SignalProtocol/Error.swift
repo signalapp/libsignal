@@ -26,9 +26,9 @@ public enum SignalError: Error {
     case unknown(UInt32, String)
 }
 
-typealias SignalFfiErrorRef = OpaquePointer
+internal typealias SignalFfiErrorRef = OpaquePointer
 
-func checkError(_ error: SignalFfiErrorRef?) throws {
+internal func checkError(_ error: SignalFfiErrorRef?) throws {
     guard let error = error else { return }
 
     let errType = signal_error_get_type(error)

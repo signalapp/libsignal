@@ -1,5 +1,5 @@
-class ClonableHandleOwner {
-    enum MaybeOwnedHandle {
+public class ClonableHandleOwner {
+    private enum MaybeOwnedHandle {
         case borrowed(OpaquePointer)
         case owned(OpaquePointer)
     }
@@ -74,7 +74,7 @@ class ClonableHandleOwner {
 ///
 /// As an optimization, steals the handle if `handleOwner` has no other references.
 /// Checking this requires using `inout`; the reference itself won't be modified.
-func cloneOrForgetAsNeeded<Owner: ClonableHandleOwner>(_ handleOwner: inout Owner) {
+internal func cloneOrForgetAsNeeded<Owner: ClonableHandleOwner>(_ handleOwner: inout Owner) {
     if isKnownUniquelyReferenced(&handleOwner) {
         handleOwner.forgetBorrowedHandle()
     } else {
@@ -86,7 +86,7 @@ func cloneOrForgetAsNeeded<Owner: ClonableHandleOwner>(_ handleOwner: inout Owne
 ///
 /// As an optimization, steals the handle if `handleOwner` has no other references.
 /// Checking this requires using `inout`; the reference itself won't be modified.
-func cloneOrTakeHandle<Owner: ClonableHandleOwner>(from handleOwner: inout Owner) throws -> OpaquePointer? {
+internal func cloneOrTakeHandle<Owner: ClonableHandleOwner>(from handleOwner: inout Owner) throws -> OpaquePointer? {
     if isKnownUniquelyReferenced(&handleOwner) {
         return handleOwner.takeNativeHandle()
     }

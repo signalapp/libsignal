@@ -1,7 +1,7 @@
 import XCTest
-@testable import SignalProtocol
+import SignalProtocol
 
-class SignalProtocolTests: XCTestCase {
+class PublicAPITests: XCTestCase {
     func testHkdf() {
 
         let ikm: [UInt8] = [
@@ -295,7 +295,7 @@ class SignalProtocolTests: XCTestCase {
         XCTAssertEqual(ptext2_a, ptext2_b)
     }
 
-    static var allTests: [(String, (SignalProtocolTests) -> () throws -> Void)] {
+    static var allTests: [(String, (PublicAPITests) -> () throws -> Void)] {
         return [
           ("testAddreses", testAddress),
           ("testFingerprint", testFingerprint),
