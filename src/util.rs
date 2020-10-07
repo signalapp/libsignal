@@ -283,7 +283,7 @@ pub unsafe fn get_optional_uint32(p: *const c_uint) -> Option<u32> {
         return None;
     }
 
-    return Some(*p);
+    Some(*p)
 }
 
 pub unsafe fn read_c_string(cstr: *const c_char) -> Result<String, SignalFfiError> {
@@ -389,7 +389,7 @@ pub fn write_bytearray_to<T: Into<Box<[u8]>>>(
 
     match value {
         Ok(value) => {
-            let value : Box<[u8]> = value.into();
+            let value: Box<[u8]> = value.into();
 
             unsafe {
                 *out_len = value.len();
