@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SignalMessage {
     private var handle: OpaquePointer?
@@ -8,69 +7,79 @@ class SignalMessage {
         signal_message_destroy(handle)
     }
 
-    internal init(owned raw_ptr: OpaquePointer?) {
-        handle = raw_ptr
+    internal init(owned rawPtr: OpaquePointer?) {
+        handle = rawPtr
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_message_deserialize(&handle, bytes, bytes.count))
     }
 
     init(version: UInt8,
-         mac_key: [UInt8],
-         sender_ratchet_key: PublicKey,
+         macKey: [UInt8],
+         senderRatchetKey: PublicKey,
          counter: UInt32,
-         previous_counter: UInt32,
+         previousCounter: UInt32,
          ciphertext: [UInt8],
-         sender_identity_key: PublicKey,
-         receiver_identity_key: PublicKey) throws {
-        try CheckError(signal_message_new(&handle,
+         sender senderIdentityKey: PublicKey,
+         receiver receiverIdentityKey: PublicKey) throws {
+        try checkError(signal_message_new(&handle,
                                           version,
-                                          mac_key,
-                                          mac_key.count,
-                                          sender_ratchet_key.nativeHandle(),
+                                          macKey,
+                                          macKey.count,
+                                          senderRatchetKey.nativeHandle,
                                           counter,
-                                          previous_counter,
+                                          previousCounter,
                                           ciphertext,
                                           ciphertext.count,
-                                          sender_identity_key.nativeHandle(),
-                                          receiver_identity_key.nativeHandle()))
+                                          senderIdentityKey.nativeHandle,
+                                          receiverIdentityKey.nativeHandle))
     }
 
-    func getSenderRatchetKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_message_get_sender_ratchet_key(k, handle) })
+    func senderRatchetKey() throws -> PublicKey {
+        return try invokeFnReturningPublicKey {
+            signal_message_get_sender_ratchet_key($0, handle)
+        }
     }
 
-    func getBody() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_message_get_body(handle,b,bl) })
+    func body() throws -> [UInt8] {
+        return try invokeFnReturningArray {
+            signal_message_get_body(handle, $0, $1)
+        }
     }
 
-    func getSerialized() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_message_get_serialized(handle,b,bl) })
+    func serialize() throws -> [UInt8] {
+        return try invokeFnReturningArray {
+            signal_message_get_serialized(handle, $0, $1)
+        }
     }
 
-    func getMessageVersion() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_message_get_message_version(handle, i) })
+    func messageVersion() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_message_get_message_version(handle, $0)
+        }
     }
 
-    func getCounter() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_message_get_counter(handle, i) })
+    func counter() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_message_get_counter(handle, $0)
+        }
     }
 
-    func verifyMac(sender_identity_key: PublicKey,
-                   receiver_identity_key: PublicKey,
-                   mac_key: [UInt8]) throws -> Bool {
+    func verifyMac(sender: PublicKey,
+                   receiver: PublicKey,
+                   macKey: [UInt8]) throws -> Bool {
         var result: Bool = false
-        try CheckError(signal_message_verify_mac(&result,
+        try checkError(signal_message_verify_mac(&result,
                                                  handle,
-                                                 sender_identity_key.nativeHandle(),
-                                                 receiver_identity_key.nativeHandle(),
-                                                 mac_key,
-                                                 mac_key.count))
+                                                 sender.nativeHandle,
+                                                 receiver.nativeHandle,
+                                                 macKey,
+                                                 macKey.count))
         return result
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 

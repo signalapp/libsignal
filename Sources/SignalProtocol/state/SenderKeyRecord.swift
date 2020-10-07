@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SenderKeyRecord: ClonableHandleOwner {
     override class func destroyNativeHandle(_ handle: OpaquePointer) {
@@ -14,7 +13,7 @@ class SenderKeyRecord: ClonableHandleOwner {
 
     init(bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_record_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_sender_key_record_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 
@@ -22,17 +21,19 @@ class SenderKeyRecord: ClonableHandleOwner {
         super.init(owned: handle)
     }
 
-    internal override init(unowned handle: OpaquePointer?) {
-        super.init(unowned: handle)
+    internal override init(borrowing handle: OpaquePointer?) {
+        super.init(borrowing: handle)
     }
 
     init() throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_record_new_fresh(&handle))
+        try checkError(signal_sender_key_record_new_fresh(&handle))
         super.init(owned: handle!)
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_record_serialize(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_sender_key_record_serialize(handle, $0, $1)
+        }
     }
 }

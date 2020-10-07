@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class PreKeySignalMessage {
     private var handle: OpaquePointer?
@@ -9,71 +8,84 @@ class PreKeySignalMessage {
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_pre_key_signal_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_pre_key_signal_message_deserialize(&handle, bytes, bytes.count))
     }
 
     init(version: UInt8,
-         registration_id: UInt32,
-         pre_key_id: Optional<UInt32>,
-         signed_pre_key_id: UInt32,
-         base_key: PublicKey,
-         identity_key: PublicKey,
+         registrationId: UInt32,
+         preKeyId: UInt32?,
+         signedPreKeyId: UInt32,
+         baseKey: PublicKey,
+         identityKey: PublicKey,
          message: SignalMessage) throws {
 
-        // XXX why is var needed here? pointer arg is const so let should be ok
-        var pre_key_id = pre_key_id ?? 0xFFFFFFFF
+        var preKeyId = preKeyId ?? 0xFFFFFFFF
 
-        try CheckError(signal_pre_key_signal_message_new(&handle,
+        try checkError(signal_pre_key_signal_message_new(&handle,
                                                          version,
-                                                         registration_id,
-                                                         &pre_key_id,
-                                                         signed_pre_key_id,
-                                                         base_key.nativeHandle(),
-                                                         identity_key.nativeHandle(),
-                                                         message.nativeHandle()))
+                                                         registrationId,
+                                                         &preKeyId,
+                                                         signedPreKeyId,
+                                                         baseKey.nativeHandle,
+                                                         identityKey.nativeHandle,
+                                                         message.nativeHandle))
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_pre_key_signal_message_serialize(handle,b,bl) })
-    }
-
-    func getVersion() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_version(handle, i) })
-    }
-
-    func getRegistrationId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_registration_id(handle, i) })
-    }
-
-    func getPreKeyId() throws -> Optional<UInt32> {
-        let id = try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_pre_key_id(handle, i) })
-
-        if id == 0xFFFFFFFF {
-            return Optional.none
-        } else {
-            return Optional.some(id)
+        return try invokeFnReturningArray {
+            signal_pre_key_signal_message_serialize(handle, $0, $1)
         }
     }
 
-    func getSignedPreKeyId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_pre_key_signal_message_get_signed_pre_key_id(handle, i) })
+    func version() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_pre_key_signal_message_get_version(handle, $0)
+        }
     }
 
-    func getBaseKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_signal_message_get_base_key(k, handle) })
+    func registrationId() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_pre_key_signal_message_get_registration_id(handle, $0)
+        }
     }
 
-    func getIdentityKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_pre_key_signal_message_get_identity_key(k, handle) })
+    func preKeyId() throws -> UInt32? {
+        let id = try invokeFnReturningInteger {
+            signal_pre_key_signal_message_get_pre_key_id(handle, $0)
+        }
+
+        if id == 0xFFFFFFFF {
+            return nil
+        } else {
+            return id
+        }
     }
 
-    func getSignalMessage() throws -> SignalMessage {
-        var m : OpaquePointer?
-        try CheckError(signal_pre_key_signal_message_get_signal_message(&m, handle))
+    func signedPreKeyId() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_pre_key_signal_message_get_signed_pre_key_id(handle, $0)
+        }
+    }
+
+    func baseKey() throws -> PublicKey {
+        return try invokeFnReturningPublicKey {
+            signal_pre_key_signal_message_get_base_key($0, handle)
+        }
+    }
+
+    func identityKey() throws -> PublicKey {
+        return try invokeFnReturningPublicKey {
+            signal_pre_key_signal_message_get_identity_key($0, handle)
+        }
+    }
+
+    func signalMessage() throws -> SignalMessage {
+        var m: OpaquePointer?
+        try checkError(signal_pre_key_signal_message_get_signal_message(&m, handle))
         return SignalMessage(owned: m)
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 }

@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SenderKeyDistributionMessage {
     private var handle: OpaquePointer?
@@ -8,51 +7,61 @@ class SenderKeyDistributionMessage {
         signal_sender_key_distribution_message_destroy(handle)
     }
 
-    internal func nativeHandle() -> OpaquePointer? {
+    internal var nativeHandle: OpaquePointer? {
         return handle
     }
 
-    init(name: SenderKeyName, store: SenderKeyStore, ctx: UnsafeMutableRawPointer?) throws {
+    init(name: SenderKeyName, store: SenderKeyStore, context: UnsafeMutableRawPointer?) throws {
         try withSenderKeyStore(store) {
-            try CheckError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle(),
-                                                                         $0, ctx))
+            try checkError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
+                                                                         $0, context))
         }
     }
 
-    init(key_id: UInt32,
+    init(keyId: UInt32,
          iteration: UInt32,
-         chain_key: [UInt8],
-         pk: PublicKey) throws {
+         chainKey: [UInt8],
+         publicKey: PublicKey) throws {
 
-        try CheckError(signal_sender_key_distribution_message_new(&handle,
-                                                                  key_id,
+        try checkError(signal_sender_key_distribution_message_new(&handle,
+                                                                  keyId,
                                                                   iteration,
-                                                                  chain_key,
-                                                                  chain_key.count,
-                                                                  pk.nativeHandle()))
+                                                                  chainKey,
+                                                                  chainKey.count,
+                                                                  publicKey.nativeHandle))
     }
 
     init(bytes: [UInt8]) throws {
-        try CheckError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
     }
 
-    func getSignatureKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey(fn: { (k) in signal_sender_key_distribution_message_get_signature_key(k, handle) })
+    func signatureKey() throws -> PublicKey {
+        return try invokeFnReturningPublicKey {
+            signal_sender_key_distribution_message_get_signature_key($0, handle)
+        }
     }
 
-    func getId() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_id(handle, i) })
+    func id() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_sender_key_distribution_message_get_id(handle, $0)
+        }
     }
 
-    func getIteration() throws -> UInt32 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_sender_key_distribution_message_get_iteration(handle, i) })
+    func iteration() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_sender_key_distribution_message_get_iteration(handle, $0)
+        }
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_distribution_message_serialize(handle,b,bl) })
+        return try invokeFnReturningArray {
+            signal_sender_key_distribution_message_serialize(handle, $0, $1)
+        }
     }
 
-    func chain_key() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_sender_key_distribution_message_get_chain_key(handle,b,bl) })
+    func chainKey() throws -> [UInt8] {
+        return try invokeFnReturningArray {
+            signal_sender_key_distribution_message_get_chain_key(handle, $0, $1)
+        }
     }
 }

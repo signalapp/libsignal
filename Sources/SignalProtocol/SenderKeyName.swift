@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SenderKeyName: ClonableHandleOwner {
     override class func destroyNativeHandle(_ handle: OpaquePointer) {
@@ -10,15 +9,15 @@ class SenderKeyName: ClonableHandleOwner {
         return signal_sender_key_name_clone(&newHandle, currentHandle)
     }
 
-    init(group_name: String, sender_name: String, device_id: UInt32) throws {
+    init(groupName: String, senderName: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender_name, device_id))
+        try checkError(signal_sender_key_name_new(&handle, groupName, senderName, deviceId))
         super.init(owned: handle!)
     }
 
-    init(group_name: String, sender: ProtocolAddress) throws {
+    init(groupName: String, sender: ProtocolAddress) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_sender_key_name_new(&handle, group_name, sender.name, sender.deviceId))
+        try checkError(signal_sender_key_name_new(&handle, groupName, sender.name, sender.deviceId))
         super.init(owned: handle!)
     }
 
@@ -26,20 +25,26 @@ class SenderKeyName: ClonableHandleOwner {
         super.init(owned: handle)
     }
 
-    internal override init(unowned handle: OpaquePointer?) {
-        super.init(unowned: handle)
+    internal override init(borrowing handle: OpaquePointer?) {
+        super.init(borrowing: handle)
     }
 
     var groupId: String {
-        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_group_id(nativeHandle(), b) })
+        return try! invokeFnReturningString {
+            signal_sender_key_name_get_group_id(nativeHandle, $0)
+        }
     }
 
     var senderName: String {
-        return try! invokeFnReturningString(fn: { (b) in signal_sender_key_name_get_sender_name(nativeHandle(), b) })
+        return try! invokeFnReturningString {
+            signal_sender_key_name_get_sender_name(nativeHandle, $0)
+        }
     }
 
     var senderDeviceId: UInt32 {
-        return try! invokeFnReturningInteger(fn: { (i) in signal_sender_key_name_get_sender_device_id(nativeHandle(), i) })
+        return try! invokeFnReturningInteger {
+            signal_sender_key_name_get_sender_device_id(nativeHandle, $0)
+        }
     }
 }
 

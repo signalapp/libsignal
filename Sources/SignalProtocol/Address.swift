@@ -1,17 +1,16 @@
 import SignalFfi
-import Foundation
 
 class ProtocolAddress: ClonableHandleOwner {
     init(name: String, device_id: UInt32) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_address_new(&handle,
+        try checkError(signal_address_new(&handle,
                                           name,
                                           device_id))
         super.init(owned: handle!)
     }
 
-    internal override init(unowned handle: OpaquePointer?) {
-        super.init(unowned: handle)
+    internal override init(borrowing handle: OpaquePointer?) {
+        super.init(borrowing: handle)
     }
 
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
@@ -23,11 +22,15 @@ class ProtocolAddress: ClonableHandleOwner {
     }
 
     var name: String {
-        return try! invokeFnReturningString(fn: { (b) in signal_address_get_name(nativeHandle(), b) })
+        return try! invokeFnReturningString {
+            signal_address_get_name(nativeHandle, $0)
+        }
     }
 
     var deviceId: UInt32 {
-        return try! invokeFnReturningInteger(fn: { (i) in signal_address_get_device_id(nativeHandle(), i) })
+        return try! invokeFnReturningInteger {
+            signal_address_get_device_id(nativeHandle, $0)
+        }
     }
 }
 

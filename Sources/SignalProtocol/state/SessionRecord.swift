@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 class SessionRecord: ClonableHandleOwner {
     override class func destroyNativeHandle(_ handle: OpaquePointer) {
@@ -12,15 +11,17 @@ class SessionRecord: ClonableHandleOwner {
 
     init(bytes: [UInt8]) throws {
         var handle: OpaquePointer?
-        try CheckError(signal_session_record_deserialize(&handle, bytes, bytes.count))
+        try checkError(signal_session_record_deserialize(&handle, bytes, bytes.count))
         super.init(owned: handle!)
     }
 
-    internal override init(unowned handle: OpaquePointer?) {
-        super.init(unowned: handle)
+    internal override init(borrowing handle: OpaquePointer?) {
+        super.init(borrowing: handle)
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_session_record_serialize(nativeHandle(),b,bl) })
+        return try invokeFnReturningArray {
+            signal_session_record_serialize(nativeHandle, $0, $1)
+        }
     }
 }

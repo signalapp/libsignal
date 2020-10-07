@@ -1,5 +1,4 @@
 import SignalFfi
-import Foundation
 
 /*
  SignalFfiError *signal_process_prekey_bundle(PreKeyBundle *bundle,
@@ -37,47 +36,47 @@ SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **result,
 
  */
 
-func SignalEncrypt(message: [UInt8],
-                   address: ProtocolAddress,
-                   session_store: SessionStore,
-                   identity_store: IdentityKeyStore,
-                   ctx: UnsafeMutableRawPointer?) throws -> CiphertextMessage {
-    return try withSessionStore(session_store) { ffi_session_store in
-        try withIdentityKeyStore(identity_store) { ffi_identity_store in
+func signalEncrypt(message: [UInt8],
+                   for address: ProtocolAddress,
+                   sessionStore: SessionStore,
+                   identityStore: IdentityKeyStore,
+                   context: UnsafeMutableRawPointer?) throws -> CiphertextMessage {
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
             try invokeFnReturningCiphertextMessage {
-                signal_encrypt_message($0, message, message.count, address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx)
+                signal_encrypt_message($0, message, message.count, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
             }
         }
     }
 }
 
-func SignalDecrypt(message: SignalMessage,
-                   address: ProtocolAddress,
-                   session_store: SessionStore,
-                   identity_store: IdentityKeyStore,
-                   ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    return try withSessionStore(session_store) { ffi_session_store in
-        try withIdentityKeyStore(identity_store) { ffi_identity_store in
+func signalDecrypt(message: SignalMessage,
+                   from address: ProtocolAddress,
+                   sessionStore: SessionStore,
+                   identityStore: IdentityKeyStore,
+                   context: UnsafeMutableRawPointer?) throws -> [UInt8] {
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
             try invokeFnReturningArray {
-                signal_decrypt_message($0, $1, message.nativeHandle(), address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx)
+                signal_decrypt_message($0, $1, message.nativeHandle, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
             }
         }
     }
 }
 
-func SignalDecryptPreKey(message: PreKeySignalMessage,
-                         address: ProtocolAddress,
-                         session_store: SessionStore,
-                         identity_store: IdentityKeyStore,
-                         pre_key_store: PreKeyStore,
-                         signed_pre_key_store: SignedPreKeyStore,
-                         ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    return try withSessionStore(session_store) { ffi_session_store in
-        try withIdentityKeyStore(identity_store) { ffi_identity_store in
-            try withPreKeyStore(pre_key_store) { ffi_pre_key_store in
-                try withSignedPreKeyStore(signed_pre_key_store) { ffi_signed_pre_key_store in
+func signalDecryptPreKey(message: PreKeySignalMessage,
+                         from: ProtocolAddress,
+                         sessionStore: SessionStore,
+                         identityStore: IdentityKeyStore,
+                         preKeyStore: PreKeyStore,
+                         signedPreKeyStore: SignedPreKeyStore,
+                         context: UnsafeMutableRawPointer?) throws -> [UInt8] {
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+            try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
+                try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
                     try invokeFnReturningArray {
-                        signal_decrypt_pre_key_message($0, $1, message.nativeHandle(), address.nativeHandle(), ffi_session_store, ffi_identity_store, ffi_pre_key_store, ffi_signed_pre_key_store, ctx)
+                        signal_decrypt_pre_key_message($0, $1, message.nativeHandle, from.nativeHandle, ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, context)
                     }
                 }
             }
@@ -85,47 +84,47 @@ func SignalDecryptPreKey(message: PreKeySignalMessage,
     }
 }
 
-func ProcessPreKeyBundle(bundle: PreKeyBundle,
-                         address: ProtocolAddress,
-                         session_store: SessionStore,
-                         identity_store: IdentityKeyStore,
-                         ctx: UnsafeMutableRawPointer?) throws {
-    return try withSessionStore(session_store) { ffi_session_store in
-        try withIdentityKeyStore(identity_store) { ffi_identity_store in
-            try CheckError(signal_process_prekey_bundle(bundle.nativeHandle(), address.nativeHandle(), ffi_session_store, ffi_identity_store, ctx))
+func processPreKeyBundle(_ bundle: PreKeyBundle,
+                         for address: ProtocolAddress,
+                         sessionStore: SessionStore,
+                         identityStore: IdentityKeyStore,
+                         context: UnsafeMutableRawPointer?) throws {
+    return try withSessionStore(sessionStore) { ffiSessionStore in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+            try checkError(signal_process_prekey_bundle(bundle.nativeHandle, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context))
         }
     }
 }
 
-func GroupEncrypt(group_id: SenderKeyName,
+func groupEncrypt(groupId: SenderKeyName,
                   message: [UInt8],
                   store: SenderKeyStore,
-                  ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
+                  context: UnsafeMutableRawPointer?) throws -> [UInt8] {
     return try withSenderKeyStore(store) { ffiStore in
         return try invokeFnReturningArray {
-            signal_group_encrypt_message($0, $1, group_id.nativeHandle(), message, message.count, ffiStore, ctx)
+            signal_group_encrypt_message($0, $1, groupId.nativeHandle, message, message.count, ffiStore, context)
         }
     }
 }
 
-func GroupDecrypt(group_id: SenderKeyName,
+func groupDecrypt(groupId: SenderKeyName,
                   message: [UInt8],
                   store: SenderKeyStore,
-                  ctx: UnsafeMutableRawPointer?) throws -> [UInt8] {
+                  context: UnsafeMutableRawPointer?) throws -> [UInt8] {
     return try withSenderKeyStore(store) { ffiStore in
         return try invokeFnReturningArray {
-            signal_group_decrypt_message($0, $1, group_id.nativeHandle(), message, message.count, ffiStore, ctx)
+            signal_group_decrypt_message($0, $1, groupId.nativeHandle, message, message.count, ffiStore, context)
         }
     }
 }
 
-func ProcessSenderKeyDistributionMessage(sender_name: SenderKeyName,
-                                         msg: SenderKeyDistributionMessage,
+func processSenderKeyDistributionMessage(sender: SenderKeyName,
+                                         message: SenderKeyDistributionMessage,
                                          store: SenderKeyStore,
-                                         ctx: UnsafeMutableRawPointer?) throws {
+                                         context: UnsafeMutableRawPointer?) throws {
     try withSenderKeyStore(store) {
-        try CheckError(signal_process_sender_key_distribution_message(sender_name.nativeHandle(),
-                                                                      msg.nativeHandle(),
-                                                                      $0, ctx))
+        try checkError(signal_process_sender_key_distribution_message(sender.nativeHandle,
+                                                                      message.nativeHandle,
+                                                                      $0, context))
     }
 }

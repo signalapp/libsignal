@@ -1,6 +1,4 @@
-
 import SignalFfi
-import Foundation
 
 class CiphertextMessage {
     private var handle: OpaquePointer?
@@ -9,15 +7,19 @@ class CiphertextMessage {
         signal_ciphertext_message_destroy(handle)
     }
 
-    internal init(owned raw_ptr: OpaquePointer?) {
-        handle = raw_ptr
+    internal init(owned rawPtr: OpaquePointer?) {
+        handle = rawPtr
     }
 
     func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray(fn: { (b,bl) in signal_ciphertext_message_serialize(b,bl,handle) })
+        return try invokeFnReturningArray {
+            signal_ciphertext_message_serialize($0, $1, handle)
+        }
     }
 
     func messageType() throws -> UInt8 {
-        return try invokeFnReturningInteger(fn: { (i) in signal_ciphertext_message_type(i, handle) })
+        return try invokeFnReturningInteger {
+            signal_ciphertext_message_type($0, handle)
+        }
     }
 }

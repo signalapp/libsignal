@@ -1,11 +1,10 @@
 import SignalFfi
-import Foundation
 
 struct IdentityKey: Equatable {
     let publicKey: PublicKey
 
-    init(pk: PublicKey) {
-        publicKey = pk
+    init(publicKey: PublicKey) {
+        self.publicKey = publicKey
     }
 
     init(bytes: [UInt8]) throws {
@@ -17,32 +16,35 @@ struct IdentityKey: Equatable {
     }
 }
 
-
 struct IdentityKeyPair {
     let publicKey: PublicKey
     let privateKey: PrivateKey
 
-    init() throws {
-        privateKey = try PrivateKey.generate();
-        publicKey = try privateKey.getPublicKey()
+    private init() throws {
+        privateKey = try PrivateKey.generate()
+        publicKey = try privateKey.publicKey()
+    }
+
+    static func generate() throws -> IdentityKeyPair {
+        return try IdentityKeyPair()
     }
 
     init(bytes: [UInt8]) throws {
-        var pubkey_ptr : OpaquePointer?
-        var privkey_ptr : OpaquePointer?
-        try CheckError(signal_identitykeypair_deserialize(&pubkey_ptr, &privkey_ptr, bytes, bytes.count))
+        var pubkeyPtr: OpaquePointer?
+        var privkeyPtr: OpaquePointer?
+        try checkError(signal_identitykeypair_deserialize(&pubkeyPtr, &privkeyPtr, bytes, bytes.count))
 
-        publicKey = PublicKey(owned: pubkey_ptr!)
-        privateKey = PrivateKey(owned: privkey_ptr!)
+        publicKey = PublicKey(owned: pubkeyPtr!)
+        privateKey = PrivateKey(owned: privkeyPtr!)
     }
 
     func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray {
-            signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle(), privateKey.nativeHandle())
+            signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle, privateKey.nativeHandle)
         }
     }
 
     var identityKey: IdentityKey {
-        return IdentityKey(pk: publicKey)
+        return IdentityKey(publicKey: publicKey)
     }
 }
