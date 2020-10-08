@@ -12,6 +12,11 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         deviceId = UInt32.random(in: 0...65535)
     }
 
+    public init(identity: IdentityKeyPair, deviceId: UInt32) {
+        self.privateKey = identity
+        self.deviceId = deviceId
+    }
+
     public func identityKeyPair(context: UnsafeMutableRawPointer?) throws -> IdentityKeyPair {
         return privateKey
     }
