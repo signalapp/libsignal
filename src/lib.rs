@@ -100,7 +100,7 @@ pub unsafe extern "C" fn signal_hkdf_derive(
 
         let kdf_output = match salt {
             Some(salt) => {
-                hkdf.derive_salted_secrets(input_key_material, info, salt, output_length)?
+                hkdf.derive_salted_secrets(input_key_material, salt, info, output_length)?
             }
             None => hkdf.derive_secrets(input_key_material, info, output_length)?,
         };
