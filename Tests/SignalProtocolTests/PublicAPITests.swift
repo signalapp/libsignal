@@ -28,7 +28,7 @@ class PublicAPITests: XCTestCase {
     }
 
     func testAddress() {
-        let addr = try! ProtocolAddress(name: "addr1", device_id: 5)
+        let addr = try! ProtocolAddress(name: "addr1", deviceId: 5)
         XCTAssertEqual(addr.name, "addr1")
         XCTAssertEqual(addr.deviceId, 5)
     }
@@ -179,7 +179,7 @@ class PublicAPITests: XCTestCase {
 
     func testGroupCipher() {
 
-        let sender = try! ProtocolAddress(name: "+14159999111", device_id: 4)
+        let sender = try! ProtocolAddress(name: "+14159999111", deviceId: 4)
         let group_id = try! SenderKeyName(groupName: "summer camp", sender: sender)
 
         let a_store = try! InMemorySignalProtocolStore()
@@ -203,8 +203,8 @@ class PublicAPITests: XCTestCase {
     }
 
     func testSessionCipher() {
-        let alice_address = try! ProtocolAddress(name: "+14151111111", device_id: 1)
-        let bob_address = try! ProtocolAddress(name: "+14151111112", device_id: 1)
+        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
 
         let alice_store = try! InMemorySignalProtocolStore()
         let bob_store = try! InMemorySignalProtocolStore()

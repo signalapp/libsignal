@@ -20,13 +20,10 @@ public struct IdentityKeyPair {
     public let publicKey: PublicKey
     public let privateKey: PrivateKey
 
-    private init() throws {
-        privateKey = try PrivateKey.generate()
-        publicKey = try privateKey.publicKey()
-    }
-
     public static func generate() throws -> IdentityKeyPair {
-        return try IdentityKeyPair()
+        let privateKey = try PrivateKey.generate()
+        let publicKey = try privateKey.publicKey()
+        return IdentityKeyPair(publicKey: publicKey, privateKey: privateKey)
     }
 
     public init(bytes: [UInt8]) throws {
@@ -36,6 +33,11 @@ public struct IdentityKeyPair {
 
         publicKey = PublicKey(owned: pubkeyPtr!)
         privateKey = PrivateKey(owned: privkeyPtr!)
+    }
+
+    public init(publicKey: PublicKey, privateKey: PrivateKey) {
+        self.publicKey = publicKey
+        self.privateKey = privateKey
     }
 
     public func serialize() throws -> [UInt8] {
