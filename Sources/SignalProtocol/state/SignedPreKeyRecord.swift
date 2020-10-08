@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public class SignedPreKeyRecord: ClonableHandleOwner {
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
@@ -9,21 +10,27 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
         return signal_signed_pre_key_record_clone(&newHandle, currentHandle)
     }
 
-    public init(bytes: [UInt8]) throws {
-        var handle: OpaquePointer?
-        try checkError(signal_signed_pre_key_record_deserialize(&handle, bytes, bytes.count))
+    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_signed_pre_key_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            return result
+        }
         super.init(owned: handle!)
     }
 
-    public init(id: UInt32,
-                timestamp: UInt64,
-                privateKey: PrivateKey,
-                signature: [UInt8]) throws {
+    public init<Bytes: ContiguousBytes>(id: UInt32,
+                                        timestamp: UInt64,
+                                        privateKey: PrivateKey,
+                                        signature: Bytes) throws {
         let publicKey = try privateKey.publicKey()
-        var handle: OpaquePointer?
-        try checkError(signal_signed_pre_key_record_new(&handle, id, timestamp,
-                                                        publicKey.nativeHandle, privateKey.nativeHandle,
-                                                        signature, signature.count))
+        let handle: OpaquePointer? = try signature.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_signed_pre_key_record_new(&result, id, timestamp,
+                                                            publicKey.nativeHandle, privateKey.nativeHandle,
+                                                            $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            return result
+        }
         super.init(owned: handle!)
     }
 

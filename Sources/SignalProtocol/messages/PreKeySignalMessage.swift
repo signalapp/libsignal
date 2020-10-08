@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public class PreKeySignalMessage {
     private var handle: OpaquePointer?
@@ -7,8 +8,12 @@ public class PreKeySignalMessage {
         signal_pre_key_signal_message_destroy(handle)
     }
 
-    public init(bytes: [UInt8]) throws {
-        try checkError(signal_pre_key_signal_message_deserialize(&handle, bytes, bytes.count))
+    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+        handle = try bytes.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_pre_key_signal_message_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            return result
+        }
     }
 
     public init(version: UInt8,

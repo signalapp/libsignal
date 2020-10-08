@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 /*
  SignalFfiError *signal_process_prekey_bundle(PreKeyBundle *bundle,
@@ -36,15 +37,17 @@ SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **result,
 
  */
 
-public func signalEncrypt(message: [UInt8],
-                          for address: ProtocolAddress,
-                          sessionStore: SessionStore,
-                          identityStore: IdentityKeyStore,
-                          context: UnsafeMutableRawPointer?) throws -> CiphertextMessage {
-    return try withSessionStore(sessionStore) { ffiSessionStore in
-        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-            try invokeFnReturningCiphertextMessage {
-                signal_encrypt_message($0, message, message.count, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
+public func signalEncrypt<Bytes: ContiguousBytes>(message: Bytes,
+                                                  for address: ProtocolAddress,
+                                                  sessionStore: SessionStore,
+                                                  identityStore: IdentityKeyStore,
+                                                  context: UnsafeMutableRawPointer?) throws -> CiphertextMessage {
+    return try message.withUnsafeBytes { messageBytes in
+        try withSessionStore(sessionStore) { ffiSessionStore in
+            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                try invokeFnReturningCiphertextMessage {
+                    signal_encrypt_message($0, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
+                }
             }
         }
     }
@@ -96,24 +99,28 @@ public func processPreKeyBundle(_ bundle: PreKeyBundle,
     }
 }
 
-public func groupEncrypt(groupId: SenderKeyName,
-                         message: [UInt8],
-                         store: SenderKeyStore,
-                         context: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    return try withSenderKeyStore(store) { ffiStore in
-        return try invokeFnReturningArray {
-            signal_group_encrypt_message($0, $1, groupId.nativeHandle, message, message.count, ffiStore, context)
+public func groupEncrypt<Bytes: ContiguousBytes>(groupId: SenderKeyName,
+                                                 message: Bytes,
+                                                 store: SenderKeyStore,
+                                                 context: UnsafeMutableRawPointer?) throws -> [UInt8] {
+    return try message.withUnsafeBytes { messageBytes in
+        return try withSenderKeyStore(store) { ffiStore in
+            return try invokeFnReturningArray {
+                signal_group_encrypt_message($0, $1, groupId.nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
+            }
         }
     }
 }
 
-public func groupDecrypt(groupId: SenderKeyName,
-                         message: [UInt8],
-                         store: SenderKeyStore,
-                         context: UnsafeMutableRawPointer?) throws -> [UInt8] {
-    return try withSenderKeyStore(store) { ffiStore in
-        return try invokeFnReturningArray {
-            signal_group_decrypt_message($0, $1, groupId.nativeHandle, message, message.count, ffiStore, context)
+public func groupDecrypt<Bytes: ContiguousBytes>(groupId: SenderKeyName,
+                                                 message: Bytes,
+                                                 store: SenderKeyStore,
+                                                 context: UnsafeMutableRawPointer?) throws -> [UInt8] {
+    return try message.withUnsafeBytes { messageBytes in
+        return try withSenderKeyStore(store) { ffiStore in
+            return try invokeFnReturningArray {
+                signal_group_decrypt_message($0, $1, groupId.nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
+            }
         }
     }
 }

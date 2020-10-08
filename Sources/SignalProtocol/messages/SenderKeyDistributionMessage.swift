@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public class SenderKeyDistributionMessage {
     private var handle: OpaquePointer?
@@ -18,17 +19,20 @@ public class SenderKeyDistributionMessage {
         }
     }
 
-    public init(keyId: UInt32,
-                iteration: UInt32,
-                chainKey: [UInt8],
-                publicKey: PublicKey) throws {
-
-        try checkError(signal_sender_key_distribution_message_new(&handle,
-                                                                  keyId,
-                                                                  iteration,
-                                                                  chainKey,
-                                                                  chainKey.count,
-                                                                  publicKey.nativeHandle))
+    public init<Bytes: ContiguousBytes>(keyId: UInt32,
+                                        iteration: UInt32,
+                                        chainKey: Bytes,
+                                        publicKey: PublicKey) throws {
+        handle = try chainKey.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_sender_key_distribution_message_new(&result,
+                                                                      keyId,
+                                                                      iteration,
+                                                                      $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                                      $0.count,
+                                                                      publicKey.nativeHandle))
+            return result
+        }
     }
 
     public init(bytes: [UInt8]) throws {

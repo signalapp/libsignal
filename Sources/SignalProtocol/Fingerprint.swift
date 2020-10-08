@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public struct DisplayableFingerprint {
     public let formatted: String
@@ -40,18 +41,22 @@ public struct NumericFingerprintGenerator {
         self.iterations = iterations
     }
 
-    public func create(version: Int,
-                       localIdentifier: [UInt8],
-                       localKey: PublicKey,
-                       remoteIdentifier: [UInt8],
-                       remoteKey: PublicKey) throws -> Fingerprint {
-
+    public func create<LocalBytes, RemoteBytes>(version: Int,
+                                                localIdentifier: LocalBytes,
+                                                localKey: PublicKey,
+                                                remoteIdentifier: RemoteBytes,
+                                                remoteKey: PublicKey) throws -> Fingerprint
+    where LocalBytes: ContiguousBytes, RemoteBytes: ContiguousBytes {
         var obj: OpaquePointer?
-        try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
-                                              localIdentifier, localIdentifier.count,
-                                              localKey.nativeHandle,
-                                              remoteIdentifier, remoteIdentifier.count,
-                                              remoteKey.nativeHandle))
+        try localIdentifier.withUnsafeBytes { localBytes in
+            try remoteIdentifier.withUnsafeBytes { remoteBytes in
+                try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
+                                                      localBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), localBytes.count,
+                                                      localKey.nativeHandle,
+                                                      remoteBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), remoteBytes.count,
+                                                      remoteKey.nativeHandle))
+            }
+        }
 
         let fprintStr = try invokeFnReturningString {
             signal_fingerprint_display_string(obj, $0)

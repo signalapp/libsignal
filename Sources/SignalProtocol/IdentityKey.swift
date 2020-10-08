@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public struct IdentityKey: Equatable {
     public let publicKey: PublicKey
@@ -7,7 +8,7 @@ public struct IdentityKey: Equatable {
         self.publicKey = publicKey
     }
 
-    public init(bytes: [UInt8]) throws {
+    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         publicKey = try PublicKey(bytes)
     }
 
@@ -26,10 +27,12 @@ public struct IdentityKeyPair {
         return IdentityKeyPair(publicKey: publicKey, privateKey: privateKey)
     }
 
-    public init(bytes: [UInt8]) throws {
+    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         var pubkeyPtr: OpaquePointer?
         var privkeyPtr: OpaquePointer?
-        try checkError(signal_identitykeypair_deserialize(&pubkeyPtr, &privkeyPtr, bytes, bytes.count))
+        try bytes.withUnsafeBytes {
+            try checkError(signal_identitykeypair_deserialize(&pubkeyPtr, &privkeyPtr, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+        }
 
         publicKey = PublicKey(owned: pubkeyPtr!)
         privateKey = PrivateKey(owned: privkeyPtr!)
