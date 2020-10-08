@@ -1,11 +1,11 @@
 import SignalFfi
 
 public class ProtocolAddress: ClonableHandleOwner {
-    public init(name: String, device_id: UInt32) throws {
+    public init(name: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?
         try checkError(signal_address_new(&handle,
                                           name,
-                                          device_id))
+                                          deviceId))
         super.init(owned: handle!)
     }
 
