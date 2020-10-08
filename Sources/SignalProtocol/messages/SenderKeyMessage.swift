@@ -9,7 +9,6 @@ public class SenderKeyMessage {
 
     public init(keyId: UInt32,
                 iteration: UInt32,
-                chainKey: [UInt8],
                 ciphertext: [UInt8],
                 privateKey: PrivateKey) throws {
 
