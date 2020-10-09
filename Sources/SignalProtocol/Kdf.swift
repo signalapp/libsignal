@@ -13,10 +13,10 @@ public func hkdf(outputLength: Int,
                                    Int32(version),
                                    inputKeyMaterial,
                                    inputKeyMaterial.count,
-                                   info,
-                                   info.count,
                                    salt,
-                                   salt.count)
+                                   salt.count,
+                                   info,
+                                   info.count)
 
     try checkError(error)
 
