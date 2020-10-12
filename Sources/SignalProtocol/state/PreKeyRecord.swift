@@ -2,8 +2,6 @@ import SignalFfi
 import Foundation
 
 public class PreKeyRecord: ClonableHandleOwner {
-    private var handle: OpaquePointer?
-
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_pre_key_record_destroy(handle)
     }
@@ -42,25 +40,25 @@ public class PreKeyRecord: ClonableHandleOwner {
 
     public func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray {
-            signal_pre_key_record_serialize(handle, $0, $1)
+            signal_pre_key_record_serialize(nativeHandle, $0, $1)
         }
     }
 
     public func id() throws -> UInt32 {
         return try invokeFnReturningInteger {
-            signal_pre_key_record_get_id(handle, $0)
+            signal_pre_key_record_get_id(nativeHandle, $0)
         }
     }
 
     public func publicKey() throws -> PublicKey {
         return try invokeFnReturningPublicKey {
-            signal_pre_key_record_get_public_key($0, handle)
+            signal_pre_key_record_get_public_key($0, nativeHandle)
         }
     }
 
     public func privateKey() throws -> PrivateKey {
         return try invokeFnReturningPrivateKey {
-            signal_pre_key_record_get_private_key($0, handle)
+            signal_pre_key_record_get_private_key($0, nativeHandle)
         }
     }
 }
