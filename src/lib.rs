@@ -88,22 +88,11 @@ pub unsafe extern "C" fn signal_hkdf_derive(
 
         let output_buffer = as_slice_mut(output, output_length)?;
         let input_key_material = as_slice(input_key_material, input_key_material_len)?;
+        let salt = as_slice(salt, salt_len)?;
         let info = as_slice(info, info_len)?;
 
-        let salt = if salt.is_null() {
-            None
-        } else {
-            Some(as_slice(salt, salt_len)?)
-        };
-
         let hkdf = HKDF::new(version as u32)?;
-
-        let kdf_output = match salt {
-            Some(salt) => {
-                hkdf.derive_salted_secrets(input_key_material, salt, info, output_length)?
-            }
-            None => hkdf.derive_secrets(input_key_material, info, output_length)?,
-        };
+        let kdf_output = hkdf.derive_salted_secrets(input_key_material, salt, info, output_length)?;
 
         output_buffer.copy_from_slice(&kdf_output);
 

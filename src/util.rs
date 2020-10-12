@@ -231,7 +231,11 @@ pub unsafe fn as_slice<'a>(
     input_len: size_t,
 ) -> Result<&'a [u8], SignalFfiError> {
     if input.is_null() {
-        return Err(SignalFfiError::NullPointer);
+        if input_len != 0 {
+            return Err(SignalFfiError::NullPointer);
+        }
+        // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+        return Ok(&[]);
     }
 
     Ok(std::slice::from_raw_parts(input, input_len as usize))
@@ -242,7 +246,11 @@ pub unsafe fn as_slice_mut<'a>(
     input_len: size_t,
 ) -> Result<&'a mut [u8], SignalFfiError> {
     if input.is_null() {
-        return Err(SignalFfiError::NullPointer);
+        if input_len != 0 {
+            return Err(SignalFfiError::NullPointer);
+        }
+        // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+        return Ok(&mut []);
     }
 
     Ok(std::slice::from_raw_parts_mut(input, input_len as usize))
