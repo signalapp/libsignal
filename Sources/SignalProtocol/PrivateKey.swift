@@ -1,9 +1,13 @@
 import SignalFfi
+import Foundation
 
 public class PrivateKey: ClonableHandleOwner {
-    public init(_ bytes: [UInt8]) throws {
-        var handle: OpaquePointer?
-        try checkError(signal_privatekey_deserialize(&handle, bytes, bytes.count))
+    public init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
+        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_privatekey_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            return result
+        }
         super.init(owned: handle!)
     }
 
@@ -31,9 +35,11 @@ public class PrivateKey: ClonableHandleOwner {
         }
     }
 
-    public func generateSignature(message: [UInt8]) throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_privatekey_sign($0, $1, nativeHandle, message, message.count)
+    public func generateSignature<Bytes: ContiguousBytes>(message: Bytes) throws -> [UInt8] {
+        return try message.withUnsafeBytes { messageBytes in
+            try invokeFnReturningArray {
+                signal_privatekey_sign($0, $1, nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count)
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public class SignalMessage {
     private var handle: OpaquePointer?
@@ -11,29 +12,40 @@ public class SignalMessage {
         handle = rawPtr
     }
 
-    public init(bytes: [UInt8]) throws {
-        try checkError(signal_message_deserialize(&handle, bytes, bytes.count))
+    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+        handle = try bytes.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_message_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            return result
+        }
     }
 
-    public init(version: UInt8,
-                macKey: [UInt8],
-                senderRatchetKey: PublicKey,
-                counter: UInt32,
-                previousCounter: UInt32,
-                ciphertext: [UInt8],
-                sender senderIdentityKey: PublicKey,
-                receiver receiverIdentityKey: PublicKey) throws {
-        try checkError(signal_message_new(&handle,
-                                          version,
-                                          macKey,
-                                          macKey.count,
-                                          senderRatchetKey.nativeHandle,
-                                          counter,
-                                          previousCounter,
-                                          ciphertext,
-                                          ciphertext.count,
-                                          senderIdentityKey.nativeHandle,
-                                          receiverIdentityKey.nativeHandle))
+    public init<MacBytes, CiphertextBytes>(version: UInt8,
+                                           macKey: MacBytes,
+                                           senderRatchetKey: PublicKey,
+                                           counter: UInt32,
+                                           previousCounter: UInt32,
+                                           ciphertext: CiphertextBytes,
+                                           sender senderIdentityKey: PublicKey,
+                                           receiver receiverIdentityKey: PublicKey) throws
+    where MacBytes: ContiguousBytes, CiphertextBytes: ContiguousBytes {
+        handle = try macKey.withUnsafeBytes { macBytes in
+            try ciphertext.withUnsafeBytes { ciphertextBytes in
+                var result: OpaquePointer?
+                try checkError(signal_message_new(&result,
+                                                  version,
+                                                  macBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                  macBytes.count,
+                                                  senderRatchetKey.nativeHandle,
+                                                  counter,
+                                                  previousCounter,
+                                                  ciphertextBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                  ciphertextBytes.count,
+                                                  senderIdentityKey.nativeHandle,
+                                                  receiverIdentityKey.nativeHandle))
+                return result
+            }
+        }
     }
 
     public func senderRatchetKey() throws -> PublicKey {
@@ -66,17 +78,19 @@ public class SignalMessage {
         }
     }
 
-    public func verifyMac(sender: PublicKey,
-                          receiver: PublicKey,
-                          macKey: [UInt8]) throws -> Bool {
-        var result: Bool = false
-        try checkError(signal_message_verify_mac(&result,
-                                                 handle,
-                                                 sender.nativeHandle,
-                                                 receiver.nativeHandle,
-                                                 macKey,
-                                                 macKey.count))
-        return result
+    public func verifyMac<Bytes: ContiguousBytes>(sender: PublicKey,
+                                                  receiver: PublicKey,
+                                                  macKey: Bytes) throws -> Bool {
+        return try macKey.withUnsafeBytes {
+            var result: Bool = false
+            try checkError(signal_message_verify_mac(&result,
+                                                     handle,
+                                                     sender.nativeHandle,
+                                                     receiver.nativeHandle,
+                                                     $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                     $0.count))
+            return result
+        }
     }
 
     internal var nativeHandle: OpaquePointer? {

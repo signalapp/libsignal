@@ -1,4 +1,5 @@
 import SignalFfi
+import Foundation
 
 public class SenderKeyMessage {
     private var handle: OpaquePointer?
@@ -7,21 +8,28 @@ public class SenderKeyMessage {
         signal_sender_key_message_destroy(handle)
     }
 
-    public init(keyId: UInt32,
-                iteration: UInt32,
-                ciphertext: [UInt8],
-                privateKey: PrivateKey) throws {
-
-        try checkError(signal_sender_key_message_new(&handle,
-                                                     keyId,
-                                                     iteration,
-                                                     ciphertext,
-                                                     ciphertext.count,
-                                                     privateKey.nativeHandle))
+    public init<Bytes: ContiguousBytes>(keyId: UInt32,
+                                        iteration: UInt32,
+                                        ciphertext: Bytes,
+                                        privateKey: PrivateKey) throws {
+        handle = try ciphertext.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_sender_key_message_new(&result,
+                                                         keyId,
+                                                         iteration,
+                                                         $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                         $0.count,
+                                                         privateKey.nativeHandle))
+            return result
+        }
     }
 
-    public init(bytes: [UInt8]) throws {
-        try checkError(signal_sender_key_message_deserialize(&handle, bytes, bytes.count))
+    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+        handle = try bytes.withUnsafeBytes {
+            var result: OpaquePointer?
+            try checkError(signal_sender_key_message_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            return result
+        }
     }
 
     public func keyId() throws -> UInt32 {
