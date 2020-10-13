@@ -1,5 +1,7 @@
 CONFIG ?= debug
 
+TARGET_DIR := target/$(CARGO_BUILD_TARGET)/$(CONFIG)
+
 ifeq ($(CONFIG),debug)
   CARGO_CONFIG_FLAG :=
 else ifeq ($(CONFIG),release)
@@ -17,15 +19,15 @@ clean:
 rust: src/*.rs Cargo.toml
 	cargo build $(CARGO_CONFIG_FLAG)
 
-cbindgen: target/$(CONFIG)/signal_ffi.h
+cbindgen: $(TARGET_DIR)/signal_ffi.h
 
 target/%/signal_ffi.h: signal_ffi.h
 	cp $^ $@
 
 signal_ffi.h: src/*.rs Cargo.toml cbindgen.toml
-	rustup run nightly cbindgen -o $@
+	unset CARGO_BUILD_TARGET && rustup run nightly cbindgen -o $@
 
-pkg-config: target/$(CONFIG)/signal_ffi.pc
+pkg-config: $(TARGET_DIR)/signal_ffi.pc
 
 target/%/signal_ffi.pc: signal_ffi.pc
 	cp $^ $@
