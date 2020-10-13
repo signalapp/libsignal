@@ -15,7 +15,7 @@ use std::convert::TryFrom;
 
 use prost::Message;
 
-#[derive(Debug, PartialOrd, Clone, Copy)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 pub struct IdentityKey {
     public_key: curve::PublicKey,
 }
@@ -52,20 +52,6 @@ impl TryFrom<&[u8]> for IdentityKey {
 impl From<curve::PublicKey> for IdentityKey {
     fn from(value: curve::PublicKey) -> Self {
         Self { public_key: value }
-    }
-}
-
-impl Eq for IdentityKey {}
-
-impl PartialEq for IdentityKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.public_key == other.public_key
-    }
-}
-
-impl Ord for IdentityKey {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.public_key.cmp(&other.public_key)
     }
 }
 
