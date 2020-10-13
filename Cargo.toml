@@ -9,8 +9,7 @@ name = "signal_ffi"
 crate-type = ["dylib"]
 
 [dependencies]
-libsignal-protocol-rust = { path = "../libsignal-protocol-rust" }
-#libsignal-protocol-rust = { git = "ssh://git@github.com/signalapp/libsignal-protocol-rust.git" }
+libsignal-protocol-rust = { git = "ssh://git@github.com/signalapp/libsignal-protocol-rust.git" }
 rand = "0.7.3"
 libc = "0.2"
 num-traits = "0.2"
