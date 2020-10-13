@@ -55,7 +55,7 @@ pub unsafe extern "C" fn signal_error_get_message(
 pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u32 {
     match err.as_ref() {
         Some(err) => {
-            let code : SignalErrorCode = err.into();
+            let code: SignalErrorCode = err.into();
             num_traits::ToPrimitive::to_u32(&code).expect("Error enum can be converted to u32")
         }
         None => 0,
@@ -92,7 +92,8 @@ pub unsafe extern "C" fn signal_hkdf_derive(
         let info = as_slice(info, info_len)?;
 
         let hkdf = HKDF::new(version as u32)?;
-        let kdf_output = hkdf.derive_salted_secrets(input_key_material, salt, info, output_length)?;
+        let kdf_output =
+            hkdf.derive_salted_secrets(input_key_material, salt, info, output_length)?;
 
         output_buffer.copy_from_slice(&kdf_output);
 
@@ -774,20 +775,35 @@ ffi_fn_deserialize!(signal_sender_key_record_deserialize(SenderKeyRecord) is Sen
 ffi_fn_get_bytearray!(signal_sender_key_record_serialize(SenderKeyRecord) using
                       |sks: &SenderKeyRecord| sks.serialize());
 
-type GetIdentityKeyPair = extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
-type GetLocalRegistrationId = extern "C" fn(store_ctx: *mut c_void, idp: *mut u32, ctx: *mut c_void) -> c_int;
-type GetIdentityKey =
-    extern "C" fn(store_ctx: *mut c_void, public_keyp: *mut *mut PublicKey, address: *const ProtocolAddress, ctx: *mut c_void) -> c_int;
-type SaveIdentityKey =
-    extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, public_key: *const PublicKey, ctx: *mut c_void) -> c_int;
-type IsTrustedIdentity =
-    extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, public_key: *const PublicKey, direction: c_uint, ctx: *mut c_void) -> c_int;
+type GetIdentityKeyPair =
+    extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
+type GetLocalRegistrationId =
+    extern "C" fn(store_ctx: *mut c_void, idp: *mut u32, ctx: *mut c_void) -> c_int;
+type GetIdentityKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    public_keyp: *mut *mut PublicKey,
+    address: *const ProtocolAddress,
+    ctx: *mut c_void,
+) -> c_int;
+type SaveIdentityKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    address: *const ProtocolAddress,
+    public_key: *const PublicKey,
+    ctx: *mut c_void,
+) -> c_int;
+type IsTrustedIdentity = extern "C" fn(
+    store_ctx: *mut c_void,
+    address: *const ProtocolAddress,
+    public_key: *const PublicKey,
+    direction: c_uint,
+    ctx: *mut c_void,
+) -> c_int;
 
 #[derive(Debug, ToPrimitive)]
 #[repr(C)]
 pub enum FfiDirection {
-  Sending = 0,
-  Receiving = 1
+    Sending = 0,
+    Receiving = 1,
 }
 
 #[repr(C)]
@@ -862,7 +878,8 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store.save_identity)(self.store.ctx, &*address, &*identity.public_key(), ctx);
+        let result =
+            (self.store.save_identity)(self.store.ctx, &*address, &*identity.public_key(), ctx);
 
         match result {
             0 => Ok(false),
@@ -882,12 +899,17 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
     ) -> Result<bool, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let direction = match direction {
-          Direction::Sending => FfiDirection::Sending,
-          Direction::Receiving => FfiDirection::Receiving,
+            Direction::Sending => FfiDirection::Sending,
+            Direction::Receiving => FfiDirection::Receiving,
         };
         let primitive_direction = num_traits::ToPrimitive::to_u32(&direction).unwrap();
-        let result =
-            (self.store.is_trusted_identity)(self.store.ctx, &*address, &*identity.public_key(), primitive_direction, ctx);
+        let result = (self.store.is_trusted_identity)(
+            self.store.ctx,
+            &*address,
+            &*identity.public_key(),
+            primitive_direction,
+            ctx,
+        );
 
         match result {
             0 => Ok(false),
@@ -929,8 +951,18 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
     }
 }
 
-type LoadPreKey = extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut PreKeyRecord, id: u32, ctx: *mut c_void) -> c_int;
-type StorePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const PreKeyRecord, ctx: *mut c_void) -> c_int;
+type LoadPreKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    recordp: *mut *mut PreKeyRecord,
+    id: u32,
+    ctx: *mut c_void,
+) -> c_int;
+type StorePreKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    id: u32,
+    record: *const PreKeyRecord,
+    ctx: *mut c_void,
+) -> c_int;
 type RemovePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, ctx: *mut c_void) -> c_int;
 
 #[repr(C)]
@@ -978,7 +1010,7 @@ impl PreKeyStore for FfiPreKeyStore {
         }
 
         let record = unsafe { Box::from_raw(record) };
-        Ok(*record.clone())
+        Ok(*record)
     }
 
     fn save_pre_key(
@@ -1019,8 +1051,18 @@ impl PreKeyStore for FfiPreKeyStore {
     }
 }
 
-type LoadSignedPreKey = extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut SignedPreKeyRecord, id: u32, ctx: *mut c_void) -> c_int;
-type StoreSignedPreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const SignedPreKeyRecord, ctx: *mut c_void) -> c_int;
+type LoadSignedPreKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    recordp: *mut *mut SignedPreKeyRecord,
+    id: u32,
+    ctx: *mut c_void,
+) -> c_int;
+type StoreSignedPreKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    id: u32,
+    record: *const SignedPreKeyRecord,
+    ctx: *mut c_void,
+) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1067,7 +1109,7 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
 
         let record = unsafe { Box::from_raw(record) };
 
-        Ok(*record.clone())
+        Ok(*record)
     }
 
     fn save_signed_pre_key(
@@ -1092,10 +1134,18 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
     }
 }
 
-type LoadSession =
-    extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut SessionRecord, address: *const ProtocolAddress, ctx: *mut c_void) -> c_int;
-type StoreSession =
-    extern "C" fn(store_ctx: *mut c_void, address: *const ProtocolAddress, record: *const SessionRecord, ctx: *mut c_void) -> c_int;
+type LoadSession = extern "C" fn(
+    store_ctx: *mut c_void,
+    recordp: *mut *mut SessionRecord,
+    address: *const ProtocolAddress,
+    ctx: *mut c_void,
+) -> c_int;
+type StoreSession = extern "C" fn(
+    store_ctx: *mut c_void,
+    address: *const ProtocolAddress,
+    record: *const SessionRecord,
+    ctx: *mut c_void,
+) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1142,7 +1192,7 @@ impl SessionStore for FfiSessionStore {
 
         let record = unsafe { Box::from_raw(record) };
 
-        Ok(Some(*record.clone()))
+        Ok(Some(*record))
     }
 
     fn store_session(
@@ -1230,7 +1280,8 @@ ffi_fn_destroy!(signal_ciphertext_message_destroy destroys CiphertextMessage);
 #[no_mangle]
 pub unsafe extern "C" fn signal_ciphertext_message_type(
     typ: *mut u8,
-    msg: *const CiphertextMessage) -> *mut SignalFfiError {
+    msg: *const CiphertextMessage,
+) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let msg = native_handle_cast::<CiphertextMessage>(msg)?;
         *typ = msg.message_type().encoding();
@@ -1242,7 +1293,8 @@ pub unsafe extern "C" fn signal_ciphertext_message_type(
 pub unsafe extern "C" fn signal_ciphertext_message_serialize(
     result: *mut *const c_uchar,
     result_len: *mut size_t,
-    msg: *const CiphertextMessage) -> *mut SignalFfiError {
+    msg: *const CiphertextMessage,
+) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let msg = native_handle_cast::<CiphertextMessage>(msg)?;
         let bits = msg.serialize();
@@ -1316,10 +1368,18 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
     })
 }
 
-type LoadSenderKey =
-    extern "C" fn(store_ctx: *mut c_void, *mut *mut SenderKeyRecord, *const SenderKeyName, ctx: *mut c_void) -> c_int;
-type StoreSenderKey =
-    extern "C" fn(store_ctx: *mut c_void, *const SenderKeyName, *const SenderKeyRecord, ctx: *mut c_void) -> c_int;
+type LoadSenderKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    *mut *mut SenderKeyRecord,
+    *const SenderKeyName,
+    ctx: *mut c_void,
+) -> c_int;
+type StoreSenderKey = extern "C" fn(
+    store_ctx: *mut c_void,
+    *const SenderKeyName,
+    *const SenderKeyRecord,
+    ctx: *mut c_void,
+) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1349,7 +1409,8 @@ impl SenderKeyStore for FfiSenderKeyStore {
         ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store.store_sender_key)(self.store.ctx, &*sender_key_name, &*record, ctx);
+        let result =
+            (self.store.store_sender_key)(self.store.ctx, &*sender_key_name, &*record, ctx);
 
         if result != 0 {
             return Err(
@@ -1370,7 +1431,8 @@ impl SenderKeyStore for FfiSenderKeyStore {
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.store.load_sender_key)(self.store.ctx, &mut record, &*sender_key_name, ctx);
+        let result =
+            (self.store.load_sender_key)(self.store.ctx, &mut record, &*sender_key_name, ctx);
 
         if result != 0 {
             return Err(
@@ -1387,7 +1449,7 @@ impl SenderKeyStore for FfiSenderKeyStore {
 
         let record = unsafe { Box::from_raw(record) };
 
-        Ok(Some(*record.clone()))
+        Ok(Some(*record))
     }
 }
 
