@@ -18,17 +18,12 @@ jobs:
 
       - name: Check out libsignal-ffi
         uses: actions/checkout@v2
-        with:
-          path: libsignal-ffi
 
-      - name: Check out libsignal-protocol-rust
-        uses: actions/checkout@v2
-        with:
-          repository: signalapp/libsignal-protocol-rust
-          path: libsignal-protocol-rust
+      - name: Configure git to use HTTPS
+        run: git config --global url."https://github.com".insteadOf ssh://git@github.com
 
       - name: Build libsignal-ffi
-        run: make -C libsignal-ffi
+        run: make
 
 # TODO: In the future, we should also run tests for our clients,
 # to make sure a change doesn't break them (at least not unexpectedly).
@@ -42,19 +37,12 @@ jobs:
     steps:
       - name: Check out libsignal-ffi
         uses: actions/checkout@v2
-        with:
-          path: libsignal-ffi
 
-      - name: Check out libsignal-protocol-rust
-        uses: actions/checkout@v2
-        with:
-          repository: signalapp/libsignal-protocol-rust
-          path: libsignal-protocol-rust
+      - name: Configure git to use HTTPS
+        run: git config --global url."https://github.com".insteadOf ssh://git@github.com
 
       - name: Rustfmt check
         run: cargo fmt -- --check
-        working-directory: libsignal-ffi
 
       - name: Clippy
         run: cargo clippy
-        working-directory: libsignal-ffi
