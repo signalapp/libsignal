@@ -1,18 +1,29 @@
 // swift-tools-version:5.0
 import PackageDescription
 
+let rustBuildDir = "../target/debug/"
+
 let package = Package(
-    name: "SignalProtocol",
+    name: "SignalClient",
     products: [
         .library(
-            name: "SignalProtocol",
+            name: "SignalClient",
             targets: ["SignalProtocol"]
         )
     ],
     dependencies: [],
     targets: [
-        .systemLibrary(name: "SignalFfi", pkgConfig: "signal_ffi"),
-        .target(name: "SignalProtocol", dependencies: ["SignalFfi"]),
-        .testTarget(name: "SignalProtocolTests", dependencies: ["SignalProtocol"])
+        .systemLibrary(name: "SignalFfi"),
+        .target(
+            name: "SignalProtocol",
+            dependencies: ["SignalFfi"],
+            swiftSettings: [.unsafeFlags(["-I", rustBuildDir])]
+        ),
+        .testTarget(
+            name: "SignalProtocolTests",
+            dependencies: ["SignalProtocol"],
+            swiftSettings: [.unsafeFlags(["-I", rustBuildDir])],
+            linkerSettings: [.unsafeFlags(["\(rustBuildDir)/libsignal_ffi.a"])]
+        )
     ]
 )
