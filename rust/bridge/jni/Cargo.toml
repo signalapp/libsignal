@@ -11,6 +11,6 @@ crate-type = ["dylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libsignal-protocol-rust = { git = "ssh://git@github.com/signalapp/libsignal-protocol-rust.git" }
+libsignal-protocol-rust = { path = "../../protocol" }
 jni = "0.17"
 rand = "0.7.3"
