@@ -3,15 +3,16 @@ name: Rust
 on:
   push:
     branches: [ master ]
+    paths-ignore: ['swift']
   pull_request:
     branches: [ master ]
+    paths-ignore: ['swift']
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
