@@ -1,0 +1,16 @@
+[package]
+name = "libsignal-ffi"
+version = "0.1.0"
+authors = ["Jack Lloyd <jack@signal.org>"]
+edition = "2018"
+
+[lib]
+name = "signal_ffi"
+crate-type = ["dylib"]
+
+[dependencies]
+libsignal-protocol-rust = { git = "ssh://git@github.com/signalapp/libsignal-protocol-rust.git" }
+rand = "0.7.3"
+libc = "0.2"
+num-traits = "0.2"
+num-derive = "0.3"
