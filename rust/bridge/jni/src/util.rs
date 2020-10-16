@@ -1,3 +1,10 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
 use jni::objects::{JObject, JString, JThrowable, JValue};
 use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
