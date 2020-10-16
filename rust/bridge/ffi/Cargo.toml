@@ -14,3 +14,6 @@ rand = "0.7.3"
 libc = "0.2"
 num-traits = "0.2"
 num-derive = "0.3"
+
+[build-dependencies]
+cbindgen = "0.14"
