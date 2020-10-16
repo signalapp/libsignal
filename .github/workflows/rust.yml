@@ -15,6 +15,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install nightly rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+        profile: minimal
+        components: rustfmt, clippy
     - uses: actions/checkout@v2
     - name: Rustfmt check
       run: cargo fmt -- --check
