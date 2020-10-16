@@ -1,0 +1,9 @@
+disabled_rules:
+- cyclomatic_complexity
+- force_try
+- function_body_length
+- function_parameter_count
+- identifier_name
+- line_length
+- trailing_comma
+- type_body_length
