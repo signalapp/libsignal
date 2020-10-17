@@ -34,7 +34,5 @@ sort_by = "None"
 parse_deps = true
 include = ["libsignal-protocol-rust"]
 
-clean = true
-
 [parse.expand]
 crates = ["libsignal-ffi"]
