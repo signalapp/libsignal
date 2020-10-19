@@ -806,8 +806,9 @@ pub struct JniIdentityKeyStore<'a> {
 }
 
 impl<'a> JniIdentityKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Self {
-        Self { env, store }
+    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+        check_jobject_type(&env, store, "org/whispersystems/libsignal/state/IdentityKeyStore")?;
+        Ok(Self { env, store })
     }
 }
 
@@ -986,8 +987,9 @@ pub struct JniPreKeyStore<'a> {
 }
 
 impl<'a> JniPreKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Self {
-        Self { env, store }
+    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+        check_jobject_type(&env, store, "org/whispersystems/libsignal/state/PreKeyStore")?;
+        Ok(Self { env, store })
     }
 }
 
@@ -1068,8 +1070,9 @@ pub struct JniSignedPreKeyStore<'a> {
 }
 
 impl<'a> JniSignedPreKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Self {
-        Self { env, store }
+    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+        check_jobject_type(&env, store, "org/whispersystems/libsignal/state/SignedPreKeyStore")?;
+        Ok(Self { env, store })
     }
 }
 
@@ -1143,8 +1146,9 @@ pub struct JniSessionStore<'a> {
 }
 
 impl<'a> JniSessionStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Self {
-        Self { env, store }
+    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+        check_jobject_type(&env, store, "org/whispersystems/libsignal/state/SessionStore")?;
+        Ok(Self { env, store })
     }
 }
 
@@ -1211,48 +1215,6 @@ impl<'a> SessionStore for JniSessionStore<'a> {
     }
 }
 
-fn create_identity_store<'a>(
-    env: &'a JNIEnv,
-    obj: jobject,
-) -> Result<JniIdentityKeyStore<'a>, SignalJniError> {
-    let identity_key_store = check_jobject_type(
-        &env,
-        obj,
-        "org/whispersystems/libsignal/state/IdentityKeyStore",
-    )?;
-    Ok(JniIdentityKeyStore::new(&env, identity_key_store))
-}
-
-fn create_session_store<'a>(
-    env: &'a JNIEnv,
-    obj: jobject,
-) -> Result<JniSessionStore<'a>, SignalJniError> {
-    let session_store =
-        check_jobject_type(&env, obj, "org/whispersystems/libsignal/state/SessionStore")?;
-    Ok(JniSessionStore::new(&env, session_store))
-}
-
-fn create_prekey_store<'a>(
-    env: &'a JNIEnv,
-    obj: jobject,
-) -> Result<JniPreKeyStore<'a>, SignalJniError> {
-    let prekey_store =
-        check_jobject_type(&env, obj, "org/whispersystems/libsignal/state/PreKeyStore")?;
-    Ok(JniPreKeyStore::new(&env, prekey_store))
-}
-
-fn create_signed_prekey_store<'a>(
-    env: &'a JNIEnv,
-    obj: jobject,
-) -> Result<JniSignedPreKeyStore<'a>, SignalJniError> {
-    let signed_prekey_store = check_jobject_type(
-        &env,
-        obj,
-        "org/whispersystems/libsignal/state/SignedPreKeyStore",
-    )?;
-    Ok(JniSignedPreKeyStore::new(&env, signed_prekey_store))
-}
-
 #[no_mangle]
 pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_nativeProcessPreKeyBundle(
     env: JNIEnv,
@@ -1266,8 +1228,8 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_n
         let bundle = native_handle_cast::<PreKeyBundle>(bundle)?;
         let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
 
-        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
-        let mut session_store = create_session_store(&env, session_store)?;
+        let mut identity_key_store = JniIdentityKeyStore::new(&env, identity_key_store)?;
+        let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
         process_prekey_bundle(
@@ -1296,8 +1258,8 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
         let message = env.convert_byte_array(message)?;
         let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
 
-        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
-        let mut session_store = create_session_store(&env, session_store)?;
+        let mut identity_key_store = JniIdentityKeyStore::new(&env, identity_key_store)?;
+        let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let ctext = message_encrypt(
             &message,
@@ -1340,8 +1302,8 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
         let message = native_handle_cast::<SignalMessage>(message)?;
         let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
 
-        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
-        let mut session_store = create_session_store(&env, session_store)?;
+        let mut identity_key_store = JniIdentityKeyStore::new(&env, identity_key_store)?;
+        let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
         let ptext = message_decrypt_signal(
@@ -1371,10 +1333,10 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
     run_ffi_safe(&env, || {
         let message = native_handle_cast::<PreKeySignalMessage>(message)?;
         let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
-        let mut identity_key_store = create_identity_store(&env, identity_key_store)?;
-        let mut session_store = create_session_store(&env, session_store)?;
-        let mut prekey_store = create_prekey_store(&env, prekey_store)?;
-        let mut signed_prekey_store = create_signed_prekey_store(&env, signed_prekey_store)?;
+        let mut identity_key_store = JniIdentityKeyStore::new(&env, identity_key_store)?;
+        let mut session_store = JniSessionStore::new(&env, session_store)?;
+        let mut prekey_store = JniPreKeyStore::new(&env, prekey_store)?;
+        let mut signed_prekey_store = JniSignedPreKeyStore::new(&env, signed_prekey_store)?;
 
         let mut csprng = rand::rngs::OsRng;
         let ptext = message_decrypt_prekey(
@@ -1398,8 +1360,9 @@ pub struct JniSenderKeyStore<'a> {
 }
 
 impl<'a> JniSenderKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Self {
-        Self { env, store }
+    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+        check_jobject_type(&env, store, "org/whispersystems/libsignal/groups/state/SenderKeyStore")?;
+        Ok(Self { env, store })
     }
 }
 
@@ -1483,13 +1446,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
 ) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
-        let store = check_jobject_type(
-            &env,
-            store,
-            "org/whispersystems/libsignal/groups/state/SenderKeyStore",
-        )?;
-
-        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
         let mut csprng = rand::rngs::OsRng;
 
         let skdm = create_sender_key_distribution_message(
@@ -1514,13 +1471,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
         let sender_key_distribution_message =
             native_handle_cast::<SenderKeyDistributionMessage>(sender_key_distribution_message)?;
-        let store = check_jobject_type(
-            &env,
-            store,
-            "org/whispersystems/libsignal/groups/state/SenderKeyStore",
-        )?;
-
-        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
         process_sender_key_distribution_message(
             sender_key_name,
@@ -1543,13 +1494,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
         let message = env.convert_byte_array(message)?;
-        let store = check_jobject_type(
-            &env,
-            store,
-            "org/whispersystems/libsignal/groups/state/SenderKeyStore",
-        )?;
-
-        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
         let mut rng = rand::rngs::OsRng;
 
@@ -1576,13 +1521,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
         let message = env.convert_byte_array(message)?;
-        let store = check_jobject_type(
-            &env,
-            store,
-            "org/whispersystems/libsignal/groups/state/SenderKeyStore",
-        )?;
-
-        let mut sender_key_store = JniSenderKeyStore::new(&env, store);
+        let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
         let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name, None)?;
 
