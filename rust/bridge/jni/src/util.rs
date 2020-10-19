@@ -362,7 +362,7 @@ pub fn check_jobject_type(
     env: &JNIEnv,
     obj: jobject,
     class_name: &'static str,
-) -> Result<jobject, SignalJniError> {
+) -> Result<(), SignalJniError> {
     if obj.is_null() {
         return Err(SignalJniError::NullHandle);
     }
@@ -373,7 +373,7 @@ pub fn check_jobject_type(
         return Err(SignalJniError::BadJniParameter(class_name));
     }
 
-    Ok(obj)
+    Ok(())
 }
 
 pub fn get_object_with_native_handle<T: 'static + Clone>(
