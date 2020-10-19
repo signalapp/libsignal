@@ -1,25 +1,30 @@
 # Overview
 
-libsignal-protocol-swift is a Swift binding to libsignal-protocol-rust via libsignal-ffi
+This is a binding to the Signal client code in rust/, implemented on top of the C FFI in rust/bridge/ffi/. It's set up as a CocoaPod for integration into the Signal iOS client and as a Swift Package for local development.
 
-Work in progress.  Subject to change without notice, use outside Signal not yet recommended.
 
-# Legal things
-## Cryptography Notice
+# Use as CocoaPod
 
-This distribution includes cryptographic software. The country in which you currently reside may have restrictions on
-the import, possession, use, and/or re-export to another country, of encryption software.  BEFORE using any encryption
-software, please check your country's laws, regulations and policies concerning the import, possession, or use, and
-re-export of encryption software, to see if this is permitted.  See <http://www.wassenaar.org/> for more information.
+1. Make sure you are using `use_frameworks!` in your Podfile. SignalClient is a Swift pod and as such cannot be compiled as a plain library.
 
-The U.S. Government Department of Commerce, Bureau of Industry and Security (BIS), has classified this software as
-Export Commodity Control Number (ECCN) 5D002.C.1, which includes information security software using or performing
-cryptographic functions with asymmetric algorithms.  The form and manner of this distribution makes it eligible for
-export under the License Exception ENC Technology Software Unrestricted (TSU) exception (see the BIS Export
-Administration Regulations, Section 740.13) for both object code and source code.
+2. Add 'SignalClient' as a dependency in your Podfile:
 
-## License
+        pod 'SignalClient', git: 'https://github.com/signalapp/libsignal-client.git'
 
-Copyright 2020 Signal Messenger, LLC
+3. Build as usual. The Rust library will be built as a script phase and linked into the built SignalClient.framework.
 
-Licensed under the AGPLv3: http://www.gnu.org/licenses/agpl-3.0.html
+## Development as a CocoaPod
+
+Instead of a git-based dependency, use a path-based dependency to treat SignalClient as a development pod.
+
+
+# Development as a Swift Package
+
+1. Build the Rust library using `bin/build-ffi -d`. (The Package.swift is configured to use the debug build of the Rust libraries, since they are likely being developed in tandom.)
+
+2. Use `swift build` and `swift test` as usual from within the `swift/` directory.
+
+
+## Use as a Swift Package
+
+...is not supported. In theory we could make this work through the use of a custom pkg-config file and requiring clients to set `PKG_CONFIG_PATH` (or install the Rust build products), but since Signal itself does not use this configuration it's considered extra maintenance burden. Development as a package is supported as a lightweight convenience (as well as a cross-platform one), but the CocoaPods build is considered the canonical one.
