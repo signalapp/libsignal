@@ -1,5 +1,5 @@
 import XCTest
-import SignalProtocol
+import SignalClient
 
 class PublicAPITests: XCTestCase {
     func testHkdfSimple() {

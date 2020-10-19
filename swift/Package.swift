@@ -8,20 +8,20 @@ let package = Package(
     products: [
         .library(
             name: "SignalClient",
-            targets: ["SignalProtocol"]
+            targets: ["SignalClient"]
         )
     ],
     dependencies: [],
     targets: [
         .systemLibrary(name: "SignalFfi"),
         .target(
-            name: "SignalProtocol",
+            name: "SignalClient",
             dependencies: ["SignalFfi"],
             swiftSettings: [.unsafeFlags(["-I", rustBuildDir])]
         ),
         .testTarget(
-            name: "SignalProtocolTests",
-            dependencies: ["SignalProtocol"],
+            name: "SignalClientTests",
+            dependencies: ["SignalClient"],
             swiftSettings: [.unsafeFlags(["-I", rustBuildDir])],
             linkerSettings: [.unsafeFlags(["\(rustBuildDir)/libsignal_ffi.a"])]
         )

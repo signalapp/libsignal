@@ -1,5 +1,5 @@
 import XCTest
-@testable import SignalProtocolTests
+@testable import SignalClientTests
 
 XCTMain([
      testCase(PublicAPITests.allTests)
