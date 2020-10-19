@@ -6,7 +6,7 @@ edition = "2018"
 
 [lib]
 name = "signal_ffi"
-crate-type = ["dylib"]
+crate-type = ["staticlib"]
 
 [dependencies]
 libsignal-protocol-rust = { path = "../../protocol" }
