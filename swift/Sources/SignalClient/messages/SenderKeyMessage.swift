@@ -56,7 +56,7 @@ public class SenderKeyMessage {
         }
     }
 
-    public func verifySignature(against key: PrivateKey) throws -> Bool {
+    public func verifySignature(against key: PublicKey) throws -> Bool {
         var result: Bool = false
         try checkError(signal_sender_key_message_verify_signature(&result, handle, key.nativeHandle))
         return result
