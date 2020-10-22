@@ -10,7 +10,6 @@
 
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
-use num_derive::ToPrimitive;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
@@ -64,7 +63,7 @@ pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u3
     match err.as_ref() {
         Some(err) => {
             let code: SignalErrorCode = err.into();
-            num_traits::ToPrimitive::to_u32(&code).expect("Error enum can be converted to u32")
+            code as u32
         }
         None => 0,
     }
@@ -807,7 +806,7 @@ type IsTrustedIdentity = extern "C" fn(
     ctx: *mut c_void,
 ) -> c_int;
 
-#[derive(Debug, ToPrimitive)]
+#[derive(Debug)]
 #[repr(C)]
 pub enum FfiDirection {
     Sending = 0,
@@ -910,12 +909,11 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
             Direction::Sending => FfiDirection::Sending,
             Direction::Receiving => FfiDirection::Receiving,
         };
-        let primitive_direction = num_traits::ToPrimitive::to_u32(&direction).unwrap();
         let result = (self.store.is_trusted_identity)(
             self.store.ctx,
             &*address,
             &*identity.public_key(),
-            primitive_direction,
+            direction as u32,
             ctx,
         );
 
@@ -1285,7 +1283,7 @@ pub unsafe extern "C" fn signal_encrypt_message(
 
 ffi_fn_destroy!(signal_ciphertext_message_destroy destroys CiphertextMessage);
 
-#[derive(Debug, ToPrimitive)]
+#[derive(Debug)]
 #[repr(C)]
 pub enum FfiCiphertextMessageType {
     Whisper = 2,
