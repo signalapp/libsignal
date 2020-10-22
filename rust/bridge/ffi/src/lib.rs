@@ -11,6 +11,7 @@
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
 use num_derive::ToPrimitive;
+use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 
@@ -1284,6 +1285,32 @@ pub unsafe extern "C" fn signal_encrypt_message(
 
 ffi_fn_destroy!(signal_ciphertext_message_destroy destroys CiphertextMessage);
 
+#[derive(Debug, ToPrimitive)]
+#[repr(C)]
+pub enum FfiCiphertextMessageType {
+    Whisper = 2,
+    PreKey = 3,
+    SenderKey = 4,
+    SenderKeyDistribution = 5,
+}
+
+const_assert_eq!(
+    FfiCiphertextMessageType::Whisper as u8,
+    CiphertextMessageType::Whisper as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::PreKey as u8,
+    CiphertextMessageType::PreKey as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::SenderKey as u8,
+    CiphertextMessageType::SenderKey as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::SenderKeyDistribution as u8,
+    CiphertextMessageType::SenderKeyDistribution as u8
+);
+
 #[no_mangle]
 pub unsafe extern "C" fn signal_ciphertext_message_type(
     typ: *mut u8,
@@ -1291,7 +1318,7 @@ pub unsafe extern "C" fn signal_ciphertext_message_type(
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let msg = native_handle_cast::<CiphertextMessage>(msg)?;
-        *typ = msg.message_type().encoding();
+        *typ = msg.message_type() as u8;
         Ok(())
     })
 }

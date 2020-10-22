@@ -279,7 +279,7 @@ class PublicAPITests: XCTestCase {
                                          identityStore: alice_store,
                                          context: nil)
 
-        XCTAssertEqual(try! ctext_a.messageType(), 3); // prekey
+        XCTAssertEqual(try! ctext_a.messageType(), .preKey)
 
         let ctext_b = try! PreKeySignalMessage(bytes: try! ctext_a.serialize())
 
@@ -302,7 +302,7 @@ class PublicAPITests: XCTestCase {
                                           identityStore: bob_store,
                                           context: nil)
 
-        XCTAssertEqual(try! ctext2_b.messageType(), 2); // normal message
+        XCTAssertEqual(try! ctext2_b.messageType(), .whisper)
 
         let ctext2_a = try! SignalMessage(bytes: try! ctext2_b.serialize())
 
