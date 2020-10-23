@@ -2,5 +2,6 @@ import XCTest
 @testable import SignalClientTests
 
 XCTMain([
-     testCase(PublicAPITests.allTests)
+     testCase(ClonableHandleOwnerTests.allTests),
+     testCase(PublicAPITests.allTests),
 ])
