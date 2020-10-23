@@ -3,10 +3,10 @@ name: Rust
 on:
   push:
     branches: [ master ]
-    paths-ignore: ['swift']
+    paths-ignore: ['swift/**']
   pull_request:
     branches: [ master ]
-    paths-ignore: ['swift']
+    paths-ignore: ['swift/**']
 
 env:
   CARGO_TERM_COLOR: always
