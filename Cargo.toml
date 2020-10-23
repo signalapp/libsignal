@@ -3,5 +3,6 @@ members = [
     "rust/aes-gcm-siv",
     "rust/protocol",
     "rust/bridge/ffi",
-    "rust/bridge/jni"
+    "rust/bridge/jni",
+    "rust/bridge/node"
 ]
