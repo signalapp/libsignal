@@ -11,7 +11,7 @@
     "eslint": "cd node && eslint .",
     "lint": "yarn eslint && yarn tslint",
     "tslint": "tslint --format stylish --project node",
-    "format": "prettier --write package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'"
+    "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
   },
   "license": "AGPL-3.0-only",
   "dependencies": {
