@@ -1,0 +1,41 @@
+{
+  "name": "signal-client",
+  "version": "0.1.0",
+  "main": "node/dist/index.js",
+  "types": "node/dist/index.d.ts",
+  "scripts": {
+    "build": "b() { bin/build-node-bridge $@ && yarn tsc; }; b",
+    "tsc": "tsc -p node && cp node/*.d.ts node/dist",
+    "clean": "rimraf node/dist",
+    "test": "electron-mocha --recursive node/dist/test",
+    "eslint": "cd node && eslint .",
+    "lint": "yarn eslint && yarn tslint",
+    "tslint": "tslint --format stylish --project node",
+    "format": "prettier --write package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'"
+  },
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "typescript": "3.7.4"
+  },
+  "devDependencies": {
+    "@types/chai": "4.2.7",
+    "@types/mocha": "5.2.7",
+    "@types/node": "13.1.8",
+    "chai": "4.2.0",
+    "electron": "8.2.5",
+    "electron-build-env": "^0.2.0",
+    "electron-mocha": "8.1.1",
+    "eslint": "4.18.2",
+    "eslint-config-airbnb-base": "12.1.0",
+    "eslint-config-prettier": "2.9.0",
+    "eslint-plugin-import": "2.8.0",
+    "eslint-plugin-mocha": "4.12.1",
+    "eslint-plugin-more": "0.3.1",
+    "mocha": "7.1.1",
+    "prettier": "1.19.1",
+    "rimraf": "3.0.1",
+    "tslint": "5.13.0",
+    "tslint-microsoft-contrib": "6.2.0",
+    "tslint-react": "3.6.0"
+  }
+}

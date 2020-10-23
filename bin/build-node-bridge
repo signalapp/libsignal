@@ -1,0 +1,59 @@
+#!/bin/sh
+
+#
+# Copyright 2020 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+set -e
+
+cd $(dirname "$0")/..
+. bin/build-helpers.sh
+
+usage() {
+  cat >&2 <<END
+Usage: $(basename "$0") [-d] [-o DIR/]
+
+Options:
+	-d -- debug build (default is release)
+	-o -- where to copy the built module (default: node/dist/)
+END
+}
+
+CARGO_PROFILE_ARG=--release
+CARGO_PROFILE_DIR=release
+NODE_DIST_DIR=node/dist/
+
+while [ "$1" != "" ]; do
+  case $1 in
+    -d | --debug )
+      CARGO_PROFILE_ARG=
+      CARGO_PROFILE_DIR=debug
+      ;;
+    -o )
+      shift
+      NODE_DIST_DIR="$1"
+      ;;
+    -h | --help )
+      usage
+      exit
+      ;;
+    * )
+      usage
+      exit 1
+  esac
+  shift
+done
+
+check_rust
+
+echo_then_run yarn electron-build-env cargo build -p libsignal-node ${CARGO_PROFILE_ARG}
+
+for possible_library_name in libsignal_node.dylib libsignal_node.so signal_node.dll; do
+  possible_library_path="target/${CARGO_PROFILE_DIR}/${possible_library_name}"
+  if [ -e "${possible_library_path}" ]; then
+    echo_then_run mkdir -p "${NODE_DIST_DIR}"
+    echo_then_run cp "${possible_library_path}" "${NODE_DIST_DIR}"libsignal_client.node
+    break
+  fi
+done
