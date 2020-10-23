@@ -28,21 +28,10 @@ pub enum CiphertextMessage {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum CiphertextMessageType {
-    Whisper,
-    PreKey,
-    SenderKey,
-    SenderKeyDistribution,
-}
-
-impl CiphertextMessageType {
-    pub fn encoding(&self) -> u8 {
-        match self {
-            CiphertextMessageType::Whisper => 2,
-            CiphertextMessageType::PreKey => 3,
-            CiphertextMessageType::SenderKey => 4,
-            CiphertextMessageType::SenderKeyDistribution => 5,
-        }
-    }
+    Whisper = 2,
+    PreKey = 3,
+    SenderKey = 4,
+    SenderKeyDistribution = 5,
 }
 
 impl CiphertextMessage {

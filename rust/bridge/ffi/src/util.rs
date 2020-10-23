@@ -7,7 +7,6 @@
 
 use libc::{c_char, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
-use num_derive::ToPrimitive;
 use std::ffi::{CStr, CString};
 use std::fmt;
 
@@ -22,7 +21,7 @@ pub enum SignalFfiError {
     InvalidType,
 }
 
-#[derive(Debug, ToPrimitive)]
+#[derive(Debug)]
 #[repr(C)]
 pub enum SignalErrorCode {
     UnknownError = 1,
