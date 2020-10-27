@@ -14,7 +14,7 @@ describe('SignalClient', () => {
     assert(a.serialize().equals(a.serialize()), 'repeatable');
     assert(
       !a.serialize().equals(b.serialize()),
-      'different for different keys'
+      'different for different keys',
     );
   });
 });

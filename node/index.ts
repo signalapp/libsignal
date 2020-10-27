@@ -3,4 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-export * from './libsignal_client';
+import * as SignalClient from './libsignal_client';
+// 'bindings' is only supported as a CommonJS-style module.
+// tslint:disable-next-line:no-require-imports
+import bindings = require('bindings');
+export const { PrivateKey } = bindings(
+  'libsignal_client',
+) as typeof SignalClient;
