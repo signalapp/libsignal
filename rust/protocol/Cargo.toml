@@ -16,9 +16,9 @@ repository = "https://github.com/signalapp/libsignal-protocol-rust"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aes = "0.5"
+aes = "0.6"
 arrayref = "0.3.6"
-block-modes = "0.6"
+block-modes = "0.7"
 bytes = "0.5"
 curve25519-dalek = "3.0.0"
 hmac = "0.9.0"
