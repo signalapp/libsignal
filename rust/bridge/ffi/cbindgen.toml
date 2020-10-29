@@ -1,6 +1,11 @@
+#
+# Copyright (C) 2020 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
 language = "C"
 
-header = "/*\nCopyright (C) 2020 Signal Messenger, LLC.\nAll rights reserved.\n\nSPDX-License-Identifier: GPL-3.0-only\n*/\n"
+header = "/*\nCopyright (C) 2020 Signal Messenger, LLC.\nSPDX-License-Identifier: AGPL-3.0-only\n*/\n"
 
 include_guard = "SIGNAL_FFI_H_"
 
