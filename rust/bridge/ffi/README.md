@@ -21,5 +21,5 @@ Administration Regulations, Section 740.13) for both object code and source code
 
 Copyright 2020 Signal Messenger, LLC
 
-Licensed under the GPLv3: http://www.gnu.org/licenses/gpl-3.0.html
+Licensed under the AGPLv3: http://www.gnu.org/licenses/agpl-3.0.html
 
