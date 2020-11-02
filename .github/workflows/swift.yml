@@ -10,8 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build and Test
+  build_as_package:
+    name: Build as Swift Package
 
     runs-on: macOS-latest
 
@@ -49,3 +49,28 @@ jobs:
     - name: Summarize coverage
       run: xcrun llvm-cov report --instr-profile .build/x86_64-apple-macosx/debug/codecov/default.profdata .build/x86_64-apple-macosx/debug/*.xctest/Contents/MacOS/* Sources
       working-directory: swift
+
+  build_as_cocoapod:
+    name: Build as CocoaPod
+    runs-on: macOS-latest
+    steps:
+      - name: Install nightly rust (needed for libsignal-ffi)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+          target: x86_64-apple-ios
+
+      - uses: actions/checkout@v2
+
+      - name: Check out libsignal-ffi
+        uses: actions/checkout@v2
+        with:
+          repository: signalapp/libsignal-ffi
+          path: libsignal-ffi
+
+      - name: Run pod lint
+        # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
+        # FIXME: --allow-warnings because the repository isn't public yet.
+        run: pod lib lint --verbose --skip-import-validation --allow-warnings
