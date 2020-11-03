@@ -1,26 +1,21 @@
 // For reference: https://github.com/airbnb/javascript
 
 module.exports = {
+  root: true,
+
+  parserOptions: {
+    project: './tsconfig.json',
+  },
+
   settings: {
     'import/core-modules': ['electron'],
   },
 
-  extends: ['airbnb-base', 'prettier'],
+  plugins: ['mocha', 'more', '@typescript-eslint'],
 
-  plugins: ['mocha', 'more'],
+  extends: ['airbnb-typescript/base'],
 
   rules: {
-    'comma-dangle': [
-      'error',
-      {
-        arrays: 'always-multiline',
-        objects: 'always-multiline',
-        imports: 'always-multiline',
-        exports: 'always-multiline',
-        functions: 'never',
-      },
-    ],
-
     // prevents us from accidentally checking in exclusive tests (`.only`):
     'mocha/no-exclusive-tests': 'error',
 
@@ -44,6 +39,9 @@ module.exports = {
       'single',
       { avoidEscape: true, allowTemplateLiterals: false },
     ],
+
+    '@typescript-eslint/no-require-imports': 'error',
+    '@typescript-eslint/consistent-type-assertions': 'error',
 
     // Prettier overrides:
     'arrow-parens': 'off',

@@ -4,9 +4,9 @@
 //
 
 import * as SignalClient from './libsignal_client';
-// 'bindings' is only supported as a CommonJS-style module.
-// tslint:disable-next-line:no-require-imports
-import bindings = require('bindings');
+import bindings = require('bindings'); // eslint-disable-line import/order, @typescript-eslint/no-require-imports
+
+// eslint-disable-next-line import/prefer-default-export
 export const { PrivateKey } = bindings(
   'libsignal_client',
 ) as typeof SignalClient;
