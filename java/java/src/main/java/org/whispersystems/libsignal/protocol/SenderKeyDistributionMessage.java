@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal.protocol;
 
+import org.signal.client.internal.Native;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -17,65 +18,29 @@ import org.whispersystems.libsignal.util.ByteUtil;
 
 public class SenderKeyDistributionMessage implements CiphertextMessage {
 
-  private final int         id;
-  private final int         iteration;
-  private final byte[]      chainKey;
-  private final ECPublicKey signatureKey;
-  private final byte[]      serialized;
+
+  private final long handle;
+
+  @Override
+  protected void finalize() {
+     Native.SenderKeyDistributionMessage_Destroy(this.handle);
+  }
+
+  public SenderKeyDistributionMessage(long handle) {
+    this.handle = handle;
+  }
 
   public SenderKeyDistributionMessage(int id, int iteration, byte[] chainKey, ECPublicKey signatureKey) {
-    byte[] version = {ByteUtil.intsToByteHighAndLow(CURRENT_VERSION, CURRENT_VERSION)};
-    byte[] protobuf = SignalProtos.SenderKeyDistributionMessage.newBuilder()
-                                                               .setId(id)
-                                                               .setIteration(iteration)
-                                                               .setChainKey(ByteString.copyFrom(chainKey))
-                                                               .setSigningKey(ByteString.copyFrom(signatureKey.serialize()))
-                                                               .build().toByteArray();
-
-    this.id           = id;
-    this.iteration    = iteration;
-    this.chainKey     = chainKey;
-    this.signatureKey = signatureKey;
-    this.serialized   = ByteUtil.combine(version, protobuf);
+    handle = Native.SenderKeyDistributionMessage_New(id, iteration, chainKey, signatureKey.nativeHandle());
   }
 
   public SenderKeyDistributionMessage(byte[] serialized) throws LegacyMessageException, InvalidMessageException {
-    try {
-      byte[][] messageParts = ByteUtil.split(serialized, 1, serialized.length - 1);
-      byte     version      = messageParts[0][0];
-      byte[]   message      = messageParts[1];
-
-      if (ByteUtil.highBitsToInt(version) < CiphertextMessage.CURRENT_VERSION) {
-        throw new LegacyMessageException("Legacy message: " + ByteUtil.highBitsToInt(version));
-      }
-
-      if (ByteUtil.highBitsToInt(version) > CURRENT_VERSION) {
-        throw new InvalidMessageException("Unknown version: " + ByteUtil.highBitsToInt(version));
-      }
-
-      SignalProtos.SenderKeyDistributionMessage distributionMessage = SignalProtos.SenderKeyDistributionMessage.parseFrom(message);
-
-      if (!distributionMessage.hasId()        ||
-          !distributionMessage.hasIteration() ||
-          !distributionMessage.hasChainKey()  ||
-          !distributionMessage.hasSigningKey())
-      {
-        throw new InvalidMessageException("Incomplete message.");
-      }
-
-      this.serialized   = serialized;
-      this.id           = distributionMessage.getId();
-      this.iteration    = distributionMessage.getIteration();
-      this.chainKey     = distributionMessage.getChainKey().toByteArray();
-      this.signatureKey = Curve.decodePoint(distributionMessage.getSigningKey().toByteArray(), 0);
-    } catch (InvalidProtocolBufferException | InvalidKeyException e) {
-      throw new InvalidMessageException(e);
-    }
+    handle = Native.SenderKeyDistributionMessage_Deserialize(serialized);
   }
 
   @Override
   public byte[] serialize() {
-    return serialized;
+    return Native.SenderKeyDistributionMessage_GetSerialized(this.handle);
   }
 
   @Override
@@ -84,18 +49,22 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
   }
 
   public int getIteration() {
-    return iteration;
+    return Native.SenderKeyDistributionMessage_GetIteration(this.handle);
   }
 
   public byte[] getChainKey() {
-    return chainKey;
+    return Native.SenderKeyDistributionMessage_GetChainKey(this.handle);
   }
 
   public ECPublicKey getSignatureKey() {
-    return signatureKey;
+    return new ECPublicKey(Native.SenderKeyDistributionMessage_GetSignatureKey(this.handle));
   }
 
   public int getId() {
-    return id;
+    return Native.SenderKeyDistributionMessage_GetId(this.handle);
+  }
+
+  public long nativeHandle() {
+    return this.handle;
   }
 }

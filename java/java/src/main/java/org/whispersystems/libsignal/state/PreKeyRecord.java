@@ -5,52 +5,45 @@
  */
 package org.whispersystems.libsignal.state;
 
-import com.google.protobuf.ByteString;
-
+import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.InvalidKeyException;
-import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 import java.io.IOException;
 
-import static org.whispersystems.libsignal.state.StorageProtos.PreKeyRecordStructure;
-
 public class PreKeyRecord {
+  private long handle;
 
-  private PreKeyRecordStructure structure;
+  @Override
+  protected void finalize() {
+    Native.PreKeyRecord_Destroy(this.handle);
+  }
 
   public PreKeyRecord(int id, ECKeyPair keyPair) {
-    this.structure = PreKeyRecordStructure.newBuilder()
-                                          .setId(id)
-                                          .setPublicKey(ByteString.copyFrom(keyPair.getPublicKey()
-                                                                                   .serialize()))
-                                          .setPrivateKey(ByteString.copyFrom(keyPair.getPrivateKey()
-                                                                                    .serialize()))
-                                          .build();
+    this.handle = Native.PreKeyRecord_New(id, keyPair.getPublicKey().nativeHandle(), keyPair.getPrivateKey().nativeHandle());
   }
 
   public PreKeyRecord(byte[] serialized) throws IOException {
-    this.structure = PreKeyRecordStructure.parseFrom(serialized);
+    this.handle = Native.PreKeyRecord_Deserialize(serialized);
   }
 
   public int getId() {
-    return this.structure.getId();
+    return Native.PreKeyRecord_GetId(this.handle);
   }
 
   public ECKeyPair getKeyPair() {
-    try {
-      ECPublicKey publicKey = Curve.decodePoint(this.structure.getPublicKey().toByteArray(), 0);
-      ECPrivateKey privateKey = Curve.decodePrivatePoint(this.structure.getPrivateKey().toByteArray());
-
-      return new ECKeyPair(publicKey, privateKey);
-    } catch (InvalidKeyException e) {
-      throw new AssertionError(e);
-    }
+    ECPublicKey publicKey = new ECPublicKey(Native.PreKeyRecord_GetPublicKey(this.handle));
+    ECPrivateKey privateKey = new ECPrivateKey(Native.PreKeyRecord_GetPrivateKey(this.handle));
+    return new ECKeyPair(publicKey, privateKey);
   }
 
   public byte[] serialize() {
-    return this.structure.toByteArray();
+    return Native.PreKeyRecord_GetSerialized(this.handle);
+  }
+
+  public long nativeHandle() {
+    return this.handle;
   }
 }

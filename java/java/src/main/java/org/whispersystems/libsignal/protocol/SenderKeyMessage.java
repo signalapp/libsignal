@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal.protocol;
 
+import org.signal.client.internal.Native;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -20,103 +21,46 @@ import java.text.ParseException;
 
 public class SenderKeyMessage implements CiphertextMessage {
 
-  private static final int SIGNATURE_LENGTH = 64;
 
-  private final int         messageVersion;
-  private final int         keyId;
-  private final int         iteration;
-  private final byte[]      ciphertext;
-  private final byte[]      serialized;
+
+  private long handle;
+
+  @Override
+  protected void finalize() {
+     Native.SenderKeyMessage_Destroy(this.handle);
+  }
 
   public SenderKeyMessage(byte[] serialized) throws InvalidMessageException, LegacyMessageException {
-    try {
-      byte[][] messageParts = ByteUtil.split(serialized, 1, serialized.length - 1 - SIGNATURE_LENGTH, SIGNATURE_LENGTH);
-      byte     version      = messageParts[0][0];
-      byte[]   message      = messageParts[1];
-      byte[]   signature    = messageParts[2];
-
-      if (ByteUtil.highBitsToInt(version) < 3) {
-        throw new LegacyMessageException("Legacy message: " + ByteUtil.highBitsToInt(version));
-      }
-
-      if (ByteUtil.highBitsToInt(version) > CURRENT_VERSION) {
-        throw new InvalidMessageException("Unknown version: " + ByteUtil.highBitsToInt(version));
-      }
-
-      SignalProtos.SenderKeyMessage senderKeyMessage = SignalProtos.SenderKeyMessage.parseFrom(message);
-
-      if (!senderKeyMessage.hasId() ||
-          !senderKeyMessage.hasIteration() ||
-          !senderKeyMessage.hasCiphertext())
-      {
-        throw new InvalidMessageException("Incomplete message.");
-      }
-
-      this.serialized     = serialized;
-      this.messageVersion = ByteUtil.highBitsToInt(version);
-      this.keyId          = senderKeyMessage.getId();
-      this.iteration      = senderKeyMessage.getIteration();
-      this.ciphertext     = senderKeyMessage.getCiphertext().toByteArray();
-    } catch (InvalidProtocolBufferException | ParseException e) {
-      throw new InvalidMessageException(e);
-    }
+    handle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 
   public SenderKeyMessage(int keyId, int iteration, byte[] ciphertext, ECPrivateKey signatureKey) {
-    byte[] version = {ByteUtil.intsToByteHighAndLow(CURRENT_VERSION, CURRENT_VERSION)};
-    byte[] message = SignalProtos.SenderKeyMessage.newBuilder()
-                                                  .setId(keyId)
-                                                  .setIteration(iteration)
-                                                  .setCiphertext(ByteString.copyFrom(ciphertext))
-                                                  .build().toByteArray();
-
-    byte[] signature = getSignature(signatureKey, ByteUtil.combine(version, message));
-
-    this.serialized       = ByteUtil.combine(version, message, signature);
-    this.messageVersion   = CURRENT_VERSION;
-    this.keyId            = keyId;
-    this.iteration        = iteration;
-    this.ciphertext       = ciphertext;
+    handle = Native.SenderKeyMessage_New(keyId, iteration, ciphertext, signatureKey.nativeHandle());
   }
 
   public int getKeyId() {
-    return keyId;
+    return Native.SenderKeyMessage_GetKeyId(this.handle);
   }
 
   public int getIteration() {
-    return iteration;
+    return Native.SenderKeyMessage_GetIteration(this.handle);
   }
 
   public byte[] getCipherText() {
-    return ciphertext;
+    return Native.SenderKeyMessage_GetCipherText(this.handle);
   }
 
   public void verifySignature(ECPublicKey signatureKey)
       throws InvalidMessageException
   {
-    try {
-      byte[][] parts    = ByteUtil.split(serialized, serialized.length - SIGNATURE_LENGTH, SIGNATURE_LENGTH);
-
-      if (!Curve.verifySignature(signatureKey, parts[0], parts[1])) {
-        throw new InvalidMessageException("Invalid signature!");
-      }
-
-    } catch (InvalidKeyException e) {
-      throw new InvalidMessageException(e);
-    }
-  }
-
-  private byte[] getSignature(ECPrivateKey signatureKey, byte[] serialized) {
-    try {
-      return Curve.calculateSignature(signatureKey, serialized);
-    } catch (InvalidKeyException e) {
-      throw new AssertionError(e);
+    if(!Native.SenderKeyMessage_VerifySignature(this.handle, signatureKey.nativeHandle())) {
+      throw new InvalidMessageException("Invalid signature!");
     }
   }
 
   @Override
   public byte[] serialize() {
-    return serialized;
+    return Native.SenderKeyMessage_GetSerialized(this.handle);
   }
 
   @Override

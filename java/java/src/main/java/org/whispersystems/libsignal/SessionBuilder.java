@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal;
 
+import org.signal.client.internal.Native;
 
 import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
@@ -12,9 +13,6 @@ import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.logging.Log;
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
-import org.whispersystems.libsignal.ratchet.AliceSignalProtocolParameters;
-import org.whispersystems.libsignal.ratchet.BobSignalProtocolParameters;
-import org.whispersystems.libsignal.ratchet.RatchetingSession;
 import org.whispersystems.libsignal.state.IdentityKeyStore;
 import org.whispersystems.libsignal.state.PreKeyBundle;
 import org.whispersystems.libsignal.state.PreKeyStore;
@@ -42,7 +40,6 @@ import org.whispersystems.libsignal.util.guava.Optional;
  * @author Moxie Marlinspike
  */
 public class SessionBuilder {
-
   private static final String TAG = SessionBuilder.class.getSimpleName();
 
   private final SessionStore      sessionStore;
@@ -82,76 +79,6 @@ public class SessionBuilder {
   }
 
   /**
-   * Build a new session from a received {@link PreKeySignalMessage}.
-   *
-   * After a session is constructed in this way, the embedded {@link SignalMessage}
-   * can be decrypted.
-   *
-   * @param message The received {@link PreKeySignalMessage}.
-   * @throws org.whispersystems.libsignal.InvalidKeyIdException when there is no local
-   *                                                             {@link org.whispersystems.libsignal.state.PreKeyRecord}
-   *                                                             that corresponds to the PreKey ID in
-   *                                                             the message.
-   * @throws org.whispersystems.libsignal.InvalidKeyException when the message is formatted incorrectly.
-   * @throws org.whispersystems.libsignal.UntrustedIdentityException when the {@link IdentityKey} of the sender is untrusted.
-   */
-  /*package*/ Optional<Integer> process(SessionRecord sessionRecord, PreKeySignalMessage message)
-      throws InvalidKeyIdException, InvalidKeyException, UntrustedIdentityException
-  {
-    IdentityKey theirIdentityKey = message.getIdentityKey();
-
-    if (!identityKeyStore.isTrustedIdentity(remoteAddress, theirIdentityKey, IdentityKeyStore.Direction.RECEIVING)) {
-      throw new UntrustedIdentityException(remoteAddress.getName(), theirIdentityKey);
-    }
-
-    Optional<Integer> unsignedPreKeyId = processV3(sessionRecord, message);
-
-    identityKeyStore.saveIdentity(remoteAddress, theirIdentityKey);
-
-    return unsignedPreKeyId;
-  }
-
-  private Optional<Integer> processV3(SessionRecord sessionRecord, PreKeySignalMessage message)
-      throws UntrustedIdentityException, InvalidKeyIdException, InvalidKeyException
-  {
-
-    if (sessionRecord.hasSessionState(message.getMessageVersion(), message.getBaseKey().serialize())) {
-      Log.w(TAG, "We've already setup a session for this V3 message, letting bundled message fall through...");
-      return Optional.absent();
-    }
-
-    ECKeyPair ourSignedPreKey = signedPreKeyStore.loadSignedPreKey(message.getSignedPreKeyId()).getKeyPair();
-
-    BobSignalProtocolParameters.Builder parameters = BobSignalProtocolParameters.newBuilder();
-
-    parameters.setTheirBaseKey(message.getBaseKey())
-              .setTheirIdentityKey(message.getIdentityKey())
-              .setOurIdentityKey(identityKeyStore.getIdentityKeyPair())
-              .setOurSignedPreKey(ourSignedPreKey)
-              .setOurRatchetKey(ourSignedPreKey);
-
-    if (message.getPreKeyId().isPresent()) {
-      parameters.setOurOneTimePreKey(Optional.of(preKeyStore.loadPreKey(message.getPreKeyId().get()).getKeyPair()));
-    } else {
-      parameters.setOurOneTimePreKey(Optional.<ECKeyPair>absent());
-    }
-
-    if (!sessionRecord.isFresh()) sessionRecord.archiveCurrentState();
-
-    RatchetingSession.initializeSession(sessionRecord.getSessionState(), parameters.create());
-
-    sessionRecord.getSessionState().setLocalRegistrationId(identityKeyStore.getLocalRegistrationId());
-    sessionRecord.getSessionState().setRemoteRegistrationId(message.getRegistrationId());
-    sessionRecord.getSessionState().setAliceBaseKey(message.getBaseKey().serialize());
-
-    if (message.getPreKeyId().isPresent()) {
-      return message.getPreKeyId();
-    } else {
-      return Optional.absent();
-    }
-  }
-
-  /**
    * Build a new session from a {@link org.whispersystems.libsignal.state.PreKeyBundle} retrieved from
    * a server.
    *
@@ -164,49 +91,10 @@ public class SessionBuilder {
    */
   public void process(PreKeyBundle preKey) throws InvalidKeyException, UntrustedIdentityException {
     synchronized (SessionCipher.SESSION_LOCK) {
-      if (!identityKeyStore.isTrustedIdentity(remoteAddress, preKey.getIdentityKey(), IdentityKeyStore.Direction.SENDING)) {
-        throw new UntrustedIdentityException(remoteAddress.getName(), preKey.getIdentityKey());
-      }
-
-      if (preKey.getSignedPreKey() != null &&
-          !Curve.verifySignature(preKey.getIdentityKey().getPublicKey(),
-                                 preKey.getSignedPreKey().serialize(),
-                                 preKey.getSignedPreKeySignature()))
-      {
-        throw new InvalidKeyException("Invalid signature on device key!");
-      }
-
-      if (preKey.getSignedPreKey() == null) {
-        throw new InvalidKeyException("No signed prekey!");
-      }
-
-      SessionRecord         sessionRecord        = sessionStore.loadSession(remoteAddress);
-      ECKeyPair             ourBaseKey           = Curve.generateKeyPair();
-      ECPublicKey           theirSignedPreKey    = preKey.getSignedPreKey();
-      Optional<ECPublicKey> theirOneTimePreKey   = Optional.fromNullable(preKey.getPreKey());
-      Optional<Integer>     theirOneTimePreKeyId = theirOneTimePreKey.isPresent() ? Optional.of(preKey.getPreKeyId()) :
-                                                                                    Optional.<Integer>absent();
-
-      AliceSignalProtocolParameters.Builder parameters = AliceSignalProtocolParameters.newBuilder();
-
-      parameters.setOurBaseKey(ourBaseKey)
-                .setOurIdentityKey(identityKeyStore.getIdentityKeyPair())
-                .setTheirIdentityKey(preKey.getIdentityKey())
-                .setTheirSignedPreKey(theirSignedPreKey)
-                .setTheirRatchetKey(theirSignedPreKey)
-                .setTheirOneTimePreKey(theirOneTimePreKey);
-
-      if (!sessionRecord.isFresh()) sessionRecord.archiveCurrentState();
-
-      RatchetingSession.initializeSession(sessionRecord.getSessionState(), parameters.create());
-
-      sessionRecord.getSessionState().setUnacknowledgedPreKeyMessage(theirOneTimePreKeyId, preKey.getSignedPreKeyId(), ourBaseKey.getPublicKey());
-      sessionRecord.getSessionState().setLocalRegistrationId(identityKeyStore.getLocalRegistrationId());
-      sessionRecord.getSessionState().setRemoteRegistrationId(preKey.getRegistrationId());
-      sessionRecord.getSessionState().setAliceBaseKey(ourBaseKey.getPublicKey().serialize());
-
-      identityKeyStore.saveIdentity(remoteAddress, preKey.getIdentityKey());
-      sessionStore.storeSession(remoteAddress, sessionRecord);
+      Native.SessionBuilder_ProcessPreKeyBundle(preKey.nativeHandle(),
+                          remoteAddress.nativeHandle(),
+                          sessionStore,
+                          identityKeyStore);
     }
   }
 

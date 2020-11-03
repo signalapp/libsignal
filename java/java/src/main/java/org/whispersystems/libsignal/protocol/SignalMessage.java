@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal.protocol;
 
+import org.signal.client.internal.Native;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -16,57 +17,22 @@ import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.util.ByteUtil;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.text.ParseException;
-
-import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 public class SignalMessage implements CiphertextMessage {
+  private final long handle;
 
-  private static final int MAC_LENGTH = 8;
-
-  private final int         messageVersion;
-  private final ECPublicKey senderRatchetKey;
-  private final int         counter;
-  private final int         previousCounter;
-  private final byte[]      ciphertext;
-  private final byte[]      serialized;
+  @Override
+  protected void finalize() {
+     Native.SignalMessage_Destroy(this.handle);
+  }
 
   public SignalMessage(byte[] serialized) throws InvalidMessageException, LegacyMessageException {
-    try {
-      byte[][] messageParts = ByteUtil.split(serialized, 1, serialized.length - 1 - MAC_LENGTH, MAC_LENGTH);
-      byte     version      = messageParts[0][0];
-      byte[]   message      = messageParts[1];
-      byte[]   mac          = messageParts[2];
+    handle = Native.SignalMessage_Deserialize(serialized);
+  }
 
-      if (ByteUtil.highBitsToInt(version) < CURRENT_VERSION) {
-        throw new LegacyMessageException("Legacy message: " + ByteUtil.highBitsToInt(version));
-      }
-
-      if (ByteUtil.highBitsToInt(version) > CURRENT_VERSION) {
-        throw new InvalidMessageException("Unknown version: " + ByteUtil.highBitsToInt(version));
-      }
-
-      SignalProtos.SignalMessage whisperMessage = SignalProtos.SignalMessage.parseFrom(message);
-
-      if (!whisperMessage.hasCiphertext() ||
-          !whisperMessage.hasCounter() ||
-          !whisperMessage.hasRatchetKey())
-      {
-        throw new InvalidMessageException("Incomplete message.");
-      }
-
-      this.serialized       = serialized;
-      this.senderRatchetKey = Curve.decodePoint(whisperMessage.getRatchetKey().toByteArray(), 0);
-      this.messageVersion   = ByteUtil.highBitsToInt(version);
-      this.counter          = whisperMessage.getCounter();
-      this.previousCounter  = whisperMessage.getPreviousCounter();
-      this.ciphertext       = whisperMessage.getCiphertext().toByteArray();
-    } catch (InvalidProtocolBufferException | InvalidKeyException | ParseException e) {
-      throw new InvalidMessageException(e);
-    }
+  public SignalMessage(long handle) {
+    this.handle = handle;
   }
 
   public SignalMessage(int messageVersion, SecretKeySpec macKey, ECPublicKey senderRatchetKey,
@@ -74,78 +40,51 @@ public class SignalMessage implements CiphertextMessage {
                        IdentityKey senderIdentityKey,
                        IdentityKey receiverIdentityKey)
   {
-    byte[] version = {ByteUtil.intsToByteHighAndLow(messageVersion, CURRENT_VERSION)};
-    byte[] message = SignalProtos.SignalMessage.newBuilder()
-                                               .setRatchetKey(ByteString.copyFrom(senderRatchetKey.serialize()))
-                                               .setCounter(counter)
-                                               .setPreviousCounter(previousCounter)
-                                               .setCiphertext(ByteString.copyFrom(ciphertext))
-                                               .build().toByteArray();
-
-    byte[] mac     = getMac(senderIdentityKey, receiverIdentityKey, macKey, ByteUtil.combine(version, message));
-
-    this.serialized       = ByteUtil.combine(version, message, mac);
-    this.senderRatchetKey = senderRatchetKey;
-    this.counter          = counter;
-    this.previousCounter  = previousCounter;
-    this.ciphertext       = ciphertext;
-    this.messageVersion   = messageVersion;
+    handle = Native.SignalMessage_New(messageVersion, macKey.getEncoded(), senderRatchetKey.nativeHandle(),
+                 counter, previousCounter, ciphertext,
+                 senderIdentityKey.getPublicKey().nativeHandle(),
+                 receiverIdentityKey.getPublicKey().nativeHandle());
   }
 
   public ECPublicKey getSenderRatchetKey()  {
-    return senderRatchetKey;
+    return new ECPublicKey(Native.SignalMessage_GetSenderRatchetKey(this.handle));
   }
 
   public int getMessageVersion() {
-    return messageVersion;
+    return Native.SignalMessage_GetMessageVersion(this.handle);
   }
 
   public int getCounter() {
-    return counter;
+    return Native.SignalMessage_GetCounter(this.handle);
   }
 
   public byte[] getBody() {
-    return ciphertext;
+    return Native.SignalMessage_GetBody(this.handle);
   }
 
   public void verifyMac(IdentityKey senderIdentityKey, IdentityKey receiverIdentityKey, SecretKeySpec macKey)
       throws InvalidMessageException
   {
-    byte[][] parts    = ByteUtil.split(serialized, serialized.length - MAC_LENGTH, MAC_LENGTH);
-    byte[]   ourMac   = getMac(senderIdentityKey, receiverIdentityKey, macKey, parts[0]);
-    byte[]   theirMac = parts[1];
-
-    if (!MessageDigest.isEqual(ourMac, theirMac)) {
+    if(!Native.SignalMessage_VerifyMac(this.handle,
+                  senderIdentityKey.getPublicKey().nativeHandle(),
+                  receiverIdentityKey.getPublicKey().nativeHandle(),
+                  macKey.getEncoded())) {
       throw new InvalidMessageException("Bad Mac!");
-    }
-  }
-
-  private byte[] getMac(IdentityKey senderIdentityKey,
-                        IdentityKey receiverIdentityKey,
-                        SecretKeySpec macKey, byte[] serialized)
-  {
-    try {
-      Mac mac = Mac.getInstance("HmacSHA256");
-      mac.init(macKey);
-
-      mac.update(senderIdentityKey.getPublicKey().serialize());
-      mac.update(receiverIdentityKey.getPublicKey().serialize());
-
-      byte[] fullMac = mac.doFinal(serialized);
-      return ByteUtil.trim(fullMac, MAC_LENGTH);
-    } catch (NoSuchAlgorithmException | java.security.InvalidKeyException e) {
-      throw new AssertionError(e);
     }
   }
 
   @Override
   public byte[] serialize() {
-    return serialized;
+    return Native.SignalMessage_GetSerialized(this.handle);
   }
 
   @Override
   public int getType() {
     return CiphertextMessage.WHISPER_TYPE;
+  }
+
+  public long nativeHandle() {
+    return this.handle;
   }
 
   public static boolean isLegacy(byte[] message) {

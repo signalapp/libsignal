@@ -55,10 +55,7 @@ repositories {
 }
 
 dependencies {
-    compile "org.whispersystems:curve25519-android:${curve25519_version}"
-    compile (project(':java')) {
-        exclude group: 'org.whispersystems', module: 'curve25519-java'
-    }
+    api project(':java')
 }
 
 def isReleaseBuild() {
@@ -131,3 +128,6 @@ task installArchives(type: Upload) {
     }
 }
 
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn ':makeAndroid'
+}

@@ -5,47 +5,27 @@
  */
 package org.whispersystems.libsignal.fingerprint;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-
-import org.whispersystems.libsignal.fingerprint.FingerprintProtos.CombinedFingerprints;
-import org.whispersystems.libsignal.fingerprint.FingerprintProtos.LogicalFingerprint;
-import org.whispersystems.libsignal.util.ByteUtil;
-
-import java.security.MessageDigest;
-
+import org.signal.client.internal.Native;
 public class ScannableFingerprint {
+  static {
+  }
 
-  private final int                  version;
-  private final CombinedFingerprints fingerprints;
 
-  ScannableFingerprint(int version, byte[] localFingerprintData, byte[] remoteFingerprintData)
-  {
-    LogicalFingerprint localFingerprint = LogicalFingerprint.newBuilder()
-                                                            .setContent(ByteString.copyFrom(ByteUtil.trim(localFingerprintData, 32)))
-                                                            .build();
+  private final byte[] encodedFingerprint;
 
-    LogicalFingerprint remoteFingerprint = LogicalFingerprint.newBuilder()
-                                                             .setContent(ByteString.copyFrom(ByteUtil.trim(remoteFingerprintData, 32)))
-                                                             .build();
-
-    this.version      = version;
-    this.fingerprints = CombinedFingerprints.newBuilder()
-                                            .setVersion(version)
-                                            .setLocalFingerprint(localFingerprint)
-                                            .setRemoteFingerprint(remoteFingerprint)
-                                            .build();
+  ScannableFingerprint(byte[] encodedFingerprint) {
+    this.encodedFingerprint = encodedFingerprint;
   }
 
   /**
    * @return A byte string to be displayed in a QR code.
    */
   public byte[] getSerialized() {
-    return fingerprints.toByteArray();
+    return this.encodedFingerprint;
   }
 
   /**
-   * Compare a scanned QR code with what we expect.
+   * Native.ScannableFingerprint_Compare a scanned QR code with what we expect.
    *
    * @param scannedFingerprintData The scanned data
    * @return True if matching, otherwise false.
@@ -55,19 +35,6 @@ public class ScannableFingerprint {
       throws FingerprintVersionMismatchException,
              FingerprintParsingException
   {
-    try {
-      CombinedFingerprints scanned = CombinedFingerprints.parseFrom(scannedFingerprintData);
-
-      if (!scanned.hasRemoteFingerprint() || !scanned.hasLocalFingerprint() ||
-          !scanned.hasVersion() || scanned.getVersion() != version)
-      {
-        throw new FingerprintVersionMismatchException(scanned.getVersion(), version);
-      }
-
-      return MessageDigest.isEqual(fingerprints.getLocalFingerprint().getContent().toByteArray(), scanned.getRemoteFingerprint().getContent().toByteArray()) &&
-             MessageDigest.isEqual(fingerprints.getRemoteFingerprint().getContent().toByteArray(), scanned.getLocalFingerprint().getContent().toByteArray());
-    } catch (InvalidProtocolBufferException e) {
-      throw new FingerprintParsingException(e);
-    }
+    return Native.ScannableFingerprint_Compare(this.encodedFingerprint, scannedFingerprintData);
   }
 }

@@ -12,7 +12,7 @@ license = "AGPL-3.0-only"
 
 [lib]
 name = "signal_jni"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

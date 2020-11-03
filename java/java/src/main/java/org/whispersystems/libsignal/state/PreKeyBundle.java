@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal.state;
 
+import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
@@ -15,87 +16,93 @@ import org.whispersystems.libsignal.ecc.ECPublicKey;
  * @author Moxie Marlinspike
  */
 public class PreKeyBundle {
+  private long handle;
 
-  private int         registrationId;
-
-  private int         deviceId;
-
-  private int         preKeyId;
-  private ECPublicKey preKeyPublic;
-
-  private int         signedPreKeyId;
-  private ECPublicKey signedPreKeyPublic;
-  private byte[]      signedPreKeySignature;
-
-  private IdentityKey identityKey;
+  @Override
+  protected void finalize() {
+    Native.PreKeyBundle_Destroy(this.handle);
+  }
 
   public PreKeyBundle(int registrationId, int deviceId, int preKeyId, ECPublicKey preKeyPublic,
                       int signedPreKeyId, ECPublicKey signedPreKeyPublic, byte[] signedPreKeySignature,
                       IdentityKey identityKey)
   {
-    this.registrationId        = registrationId;
-    this.deviceId              = deviceId;
-    this.preKeyId              = preKeyId;
-    this.preKeyPublic          = preKeyPublic;
-    this.signedPreKeyId        = signedPreKeyId;
-    this.signedPreKeyPublic    = signedPreKeyPublic;
-    this.signedPreKeySignature = signedPreKeySignature;
-    this.identityKey           = identityKey;
+    long preKeyPublicHandle = 0;
+    if(preKeyPublic != null) {
+      preKeyPublicHandle = preKeyPublic.nativeHandle();
+    } else {
+      preKeyId = -1;
+    }
+
+    this.handle = Native.PreKeyBundle_New(registrationId, deviceId, preKeyId,
+                      preKeyPublicHandle,
+                      signedPreKeyId,
+                      signedPreKeyPublic.nativeHandle(),
+                      signedPreKeySignature,
+                      identityKey.getPublicKey().nativeHandle());
   }
 
   /**
    * @return the device ID this PreKey belongs to.
    */
   public int getDeviceId() {
-    return deviceId;
+    return Native.PreKeyBundle_GetDeviceId(this.handle);
   }
 
   /**
    * @return the unique key ID for this PreKey.
    */
   public int getPreKeyId() {
-    return preKeyId;
+    return Native.PreKeyBundle_GetPreKeyId(this.handle);
   }
 
   /**
    * @return the public key for this PreKey.
    */
   public ECPublicKey getPreKey() {
-    return preKeyPublic;
+    long handle = Native.PreKeyBundle_GetPreKeyPublic(this.handle);
+    if(handle != 0) {
+      return new ECPublicKey(handle);
+    }
+    return null;
   }
 
   /**
    * @return the unique key ID for this signed prekey.
    */
   public int getSignedPreKeyId() {
-    return signedPreKeyId;
+    return Native.PreKeyBundle_GetSignedPreKeyId(this.handle);
   }
 
   /**
    * @return the signed prekey for this PreKeyBundle.
    */
   public ECPublicKey getSignedPreKey() {
-    return signedPreKeyPublic;
+    return new ECPublicKey(Native.PreKeyBundle_GetSignedPreKeyPublic(this.handle));
   }
 
   /**
    * @return the signature over the signed  prekey.
    */
   public byte[] getSignedPreKeySignature() {
-    return signedPreKeySignature;
+    return Native.PreKeyBundle_GetSignedPreKeySignature(this.handle);
   }
 
   /**
    * @return the {@link org.whispersystems.libsignal.IdentityKey} of this PreKeys owner.
    */
   public IdentityKey getIdentityKey() {
-    return identityKey;
+    return new IdentityKey(new ECPublicKey(Native.PreKeyBundle_GetIdentityKey(this.handle)));
   }
 
   /**
    * @return the registration ID associated with this PreKey.
    */
   public int getRegistrationId() {
-    return registrationId;
+    return Native.PreKeyBundle_GetRegistrationId(this.handle);
+  }
+
+  public long nativeHandle() {
+    return this.handle;
   }
 }

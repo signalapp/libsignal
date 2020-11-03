@@ -28,6 +28,10 @@ public class IdentityKey {
     this.publicKey = Curve.decodePoint(bytes, offset);
   }
 
+  public IdentityKey(byte[] bytes) throws InvalidKeyException {
+    this.publicKey = Curve.decodePoint(bytes, 0);
+  }
+
   public ECPublicKey getPublicKey() {
     return publicKey;
   }

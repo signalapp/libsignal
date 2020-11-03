@@ -67,17 +67,6 @@ public class SessionRecord {
     return sessionState;
   }
 
-  /**
-   * @return the list of all currently maintained "previous" session states.
-   */
-  public List<SessionState> getPreviousSessionStates() {
-    return previousStates;
-  }
-
-  public void removePreviousSessionStates() {
-    previousStates.clear();
-  }
-
   public boolean isFresh() {
     return fresh;
   }

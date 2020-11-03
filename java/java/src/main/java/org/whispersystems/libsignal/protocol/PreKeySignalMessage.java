@@ -5,130 +5,79 @@
  */
 package org.whispersystems.libsignal.protocol;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-
+import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.libsignal.LegacyMessageException;
-import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.util.ByteUtil;
 import org.whispersystems.libsignal.util.guava.Optional;
-
 
 public class PreKeySignalMessage implements CiphertextMessage {
 
-  private final int               version;
-  private final int               registrationId;
-  private final Optional<Integer> preKeyId;
-  private final int               signedPreKeyId;
-  private final ECPublicKey       baseKey;
-  private final IdentityKey       identityKey;
-  private final SignalMessage     message;
-  private final byte[]            serialized;
+  private long handle;
+
+  @Override
+  protected void finalize() {
+     Native.PreKeySignalMessage_Destroy(this.handle);
+  }
 
   public PreKeySignalMessage(byte[] serialized)
       throws InvalidMessageException, InvalidVersionException
   {
-    try {
-      this.version = ByteUtil.highBitsToInt(serialized[0]);
+    this.handle = Native.PreKeySignalMessage_Deserialize(serialized);
+  }
 
-      if (this.version > CiphertextMessage.CURRENT_VERSION) {
-        throw new InvalidVersionException("Unknown version: " + this.version);
-      }
-
-      if (this.version < CiphertextMessage.CURRENT_VERSION) {
-        throw new LegacyMessageException("Legacy version: " + this.version);
-      }
-
-      SignalProtos.PreKeySignalMessage preKeyWhisperMessage
-          = SignalProtos.PreKeySignalMessage.parseFrom(ByteString.copyFrom(serialized, 1,
-                                                                           serialized.length-1));
-
-      if (!preKeyWhisperMessage.hasSignedPreKeyId()  ||
-          !preKeyWhisperMessage.hasBaseKey()         ||
-          !preKeyWhisperMessage.hasIdentityKey()     ||
-          !preKeyWhisperMessage.hasMessage())
-      {
-        throw new InvalidMessageException("Incomplete message.");
-      }
-
-      this.serialized     = serialized;
-      this.registrationId = preKeyWhisperMessage.getRegistrationId();
-      this.preKeyId       = preKeyWhisperMessage.hasPreKeyId() ? Optional.of(preKeyWhisperMessage.getPreKeyId()) : Optional.<Integer>absent();
-      this.signedPreKeyId = preKeyWhisperMessage.hasSignedPreKeyId() ? preKeyWhisperMessage.getSignedPreKeyId() : -1;
-      this.baseKey        = Curve.decodePoint(preKeyWhisperMessage.getBaseKey().toByteArray(), 0);
-      this.identityKey    = new IdentityKey(Curve.decodePoint(preKeyWhisperMessage.getIdentityKey().toByteArray(), 0));
-      this.message        = new SignalMessage(preKeyWhisperMessage.getMessage().toByteArray());
-    } catch (InvalidProtocolBufferException | InvalidKeyException | LegacyMessageException e) {
-      throw new InvalidMessageException(e);
-    }
+  public PreKeySignalMessage(long handle) {
+    this.handle = handle;
   }
 
   public PreKeySignalMessage(int messageVersion, int registrationId, Optional<Integer> preKeyId,
                              int signedPreKeyId, ECPublicKey baseKey, IdentityKey identityKey,
-                             SignalMessage message)
-  {
-    this.version        = messageVersion;
-    this.registrationId = registrationId;
-    this.preKeyId       = preKeyId;
-    this.signedPreKeyId = signedPreKeyId;
-    this.baseKey        = baseKey;
-    this.identityKey    = identityKey;
-    this.message        = message;
-
-    SignalProtos.PreKeySignalMessage.Builder builder =
-        SignalProtos.PreKeySignalMessage.newBuilder()
-                                        .setSignedPreKeyId(signedPreKeyId)
-                                        .setBaseKey(ByteString.copyFrom(baseKey.serialize()))
-                                        .setIdentityKey(ByteString.copyFrom(identityKey.serialize()))
-                                        .setMessage(ByteString.copyFrom(message.serialize()))
-                                        .setRegistrationId(registrationId);
-
-    if (preKeyId.isPresent()) {
-      builder.setPreKeyId(preKeyId.get());
-    }
-
-    byte[] versionBytes = {ByteUtil.intsToByteHighAndLow(this.version, CURRENT_VERSION)};
-    byte[] messageBytes = builder.build().toByteArray();
-
-    this.serialized = ByteUtil.combine(versionBytes, messageBytes);
+                             SignalMessage message) {
+    this.handle = Native.PreKeySignalMessage_New(messageVersion, registrationId, preKeyId.or(-1),
+                                                 signedPreKeyId, baseKey.nativeHandle(),
+                                                 identityKey.getPublicKey().nativeHandle(),
+                                                 message.nativeHandle());
   }
 
   public int getMessageVersion() {
-    return version;
+    return Native.PreKeySignalMessage_GetVersion(this.handle);
   }
 
-  public IdentityKey getIdentityKey() {
-    return identityKey;
+  public IdentityKey getIdentityKey() throws InvalidKeyException {
+    return new IdentityKey(Native.PreKeySignalMessage_GetIdentityKey(this.handle), 0);
   }
 
   public int getRegistrationId() {
-    return registrationId;
+    return Native.PreKeySignalMessage_GetRegistrationId(this.handle);
   }
 
   public Optional<Integer> getPreKeyId() {
-    return preKeyId;
+    int pre_key = Native.PreKeySignalMessage_GetPreKeyId(this.handle);
+    if(pre_key < 0) {
+      return Optional.absent();
+    } else {
+      return Optional.of(pre_key);
+    }
   }
 
   public int getSignedPreKeyId() {
-    return signedPreKeyId;
+    return Native.PreKeySignalMessage_GetSignedPreKeyId(this.handle);
   }
 
-  public ECPublicKey getBaseKey() {
-    return baseKey;
+  public ECPublicKey getBaseKey() throws InvalidKeyException {
+    return new ECPublicKey(Native.PreKeySignalMessage_GetBaseKey(this.handle));
   }
 
-  public SignalMessage getWhisperMessage() {
-    return message;
+  public SignalMessage getWhisperMessage() throws InvalidMessageException, LegacyMessageException {
+    return new SignalMessage(Native.PreKeySignalMessage_GetSignalMessage(this.handle));
   }
 
   @Override
   public byte[] serialize() {
-    return serialized;
+    return Native.PreKeySignalMessage_GetSerialized(this.handle);
   }
 
   @Override
@@ -136,4 +85,7 @@ public class PreKeySignalMessage implements CiphertextMessage {
     return CiphertextMessage.PREKEY_TYPE;
   }
 
+  public long nativeHandle() {
+    return this.handle;
+  }
 }

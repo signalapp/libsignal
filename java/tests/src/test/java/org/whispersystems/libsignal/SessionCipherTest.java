@@ -7,13 +7,11 @@ import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
-import org.whispersystems.libsignal.ratchet.AliceSignalProtocolParameters;
-import org.whispersystems.libsignal.ratchet.BobSignalProtocolParameters;
-import org.whispersystems.libsignal.ratchet.RatchetingSession;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SessionState;
 import org.whispersystems.libsignal.util.guava.Optional;
+import org.whispersystems.libsignal.util.Pair;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -33,7 +31,7 @@ public class SessionCipherTest extends TestCase {
     SessionRecord aliceSessionRecord = new SessionRecord();
     SessionRecord bobSessionRecord   = new SessionRecord();
 
-    initializeSessionsV3(aliceSessionRecord.getSessionState(), bobSessionRecord.getSessionState());
+    initializeSessionsV3(aliceSessionRecord, bobSessionRecord);
     runInteraction(aliceSessionRecord, bobSessionRecord);
   }
 
@@ -41,7 +39,7 @@ public class SessionCipherTest extends TestCase {
     SessionRecord aliceSessionRecord = new SessionRecord();
     SessionRecord bobSessionRecord   = new SessionRecord();
 
-    initializeSessionsV3(aliceSessionRecord.getSessionState(), bobSessionRecord.getSessionState());
+    initializeSessionsV3(aliceSessionRecord, bobSessionRecord);
 
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
@@ -139,7 +137,7 @@ public class SessionCipherTest extends TestCase {
     }
   }
 
-  private void initializeSessionsV3(SessionState aliceSessionState, SessionState bobSessionState)
+  private void initializeSessionsV3(SessionRecord aliceSessionRecord, SessionRecord bobSessionRecord)
       throws InvalidKeyException
   {
     ECKeyPair       aliceIdentityKeyPair = Curve.generateKeyPair();
@@ -158,26 +156,20 @@ public class SessionCipherTest extends TestCase {
 
     ECKeyPair       bobPreKey            = Curve.generateKeyPair();
 
-    AliceSignalProtocolParameters aliceParameters = AliceSignalProtocolParameters.newBuilder()
-                                                                                 .setOurBaseKey(aliceBaseKey)
-                                                                                 .setOurIdentityKey(aliceIdentityKey)
-                                                                                 .setTheirOneTimePreKey(Optional.<ECPublicKey>absent())
-                                                                                 .setTheirRatchetKey(bobEphemeralKey.getPublicKey())
-                                                                                 .setTheirSignedPreKey(bobBaseKey.getPublicKey())
-                                                                                 .setTheirIdentityKey(bobIdentityKey.getPublicKey())
-                                                                                 .create();
+    SessionState aliceSessionState = SessionState.initializeAliceSession(aliceIdentityKey,
+                                                                         aliceBaseKey,
+                                                                         bobIdentityKey.getPublicKey(),
+                                                                         bobBaseKey.getPublicKey(),
+                                                                         bobEphemeralKey.getPublicKey());
 
-    BobSignalProtocolParameters bobParameters = BobSignalProtocolParameters.newBuilder()
-                                                                           .setOurRatchetKey(bobEphemeralKey)
-                                                                           .setOurSignedPreKey(bobBaseKey)
-                                                                           .setOurOneTimePreKey(Optional.<ECKeyPair>absent())
-                                                                           .setOurIdentityKey(bobIdentityKey)
-                                                                           .setTheirIdentityKey(aliceIdentityKey.getPublicKey())
-                                                                           .setTheirBaseKey(aliceBaseKey.getPublicKey())
-                                                                           .create();
+    aliceSessionRecord.setState(aliceSessionState);
 
-    RatchetingSession.initializeSession(aliceSessionState, aliceParameters);
-    RatchetingSession.initializeSession(bobSessionState, bobParameters);
+    SessionState bobSessionState = SessionState.initializeBobSession(bobIdentityKey,
+                                                                     bobBaseKey,
+                                                                     bobEphemeralKey,
+                                                                     aliceIdentityKey.getPublicKey(),
+                                                                     aliceBaseKey.getPublicKey());
+    bobSessionRecord.setState(bobSessionState);
   }
 
 }

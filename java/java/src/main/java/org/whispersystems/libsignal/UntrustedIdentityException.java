@@ -15,6 +15,11 @@ public class UntrustedIdentityException extends Exception {
     this.key  = key;
   }
 
+  public UntrustedIdentityException(String name) {
+    this.name = name;
+    this.key  = null;
+  }
+
   public IdentityKey getUntrustedIdentity() {
     return key;
   }

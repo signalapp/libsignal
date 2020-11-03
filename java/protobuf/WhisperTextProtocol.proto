@@ -41,8 +41,3 @@ message SenderKeyDistributionMessage {
   optional bytes  chainKey   = 3;
   optional bytes  signingKey = 4;
 }
-
-message DeviceConsistencyCodeMessage {
-  optional uint32 generation = 1;
-  optional bytes  signature  = 2;
-}

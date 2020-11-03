@@ -5,27 +5,31 @@
  */
 package org.whispersystems.libsignal;
 
-public class SignalProtocolAddress {
+import org.signal.client.internal.Native;
 
-  private final String name;
-  private final int    deviceId;
+public class SignalProtocolAddress {
+  private final long handle;
 
   public SignalProtocolAddress(String name, int deviceId) {
-    this.name     = name;
-    this.deviceId = deviceId;
+    this.handle = Native.ProtocolAddress_New(name, deviceId);
+  }
+
+  @Override
+  protected void finalize() {
+    Native.ProtocolAddress_Destroy(this.handle);
   }
 
   public String getName() {
-    return name;
+    return Native.ProtocolAddress_Name(this.handle);
   }
 
   public int getDeviceId() {
-    return deviceId;
+    return Native.ProtocolAddress_DeviceId(this.handle);
   }
 
   @Override
   public String toString() {
-    return name + ":" + deviceId;
+    return getName() + ":" + getDeviceId();
   }
 
   @Override
@@ -34,11 +38,15 @@ public class SignalProtocolAddress {
     if (!(other instanceof SignalProtocolAddress)) return false;
 
     SignalProtocolAddress that = (SignalProtocolAddress)other;
-    return this.name.equals(that.name) && this.deviceId == that.deviceId;
+    return this.getName().equals(that.getName()) && this.getDeviceId() == that.getDeviceId();
   }
 
   @Override
   public int hashCode() {
-    return this.name.hashCode() ^ this.deviceId;
+    return this.getName().hashCode() ^ this.getDeviceId();
+  }
+
+  public long nativeHandle() {
+    return this.handle;
   }
 }

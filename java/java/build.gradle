@@ -33,7 +33,6 @@ sourceSets {
 }
 
 dependencies {
-    compile "org.whispersystems:curve25519-java:${curve25519_version}"
     compile 'com.google.protobuf:protobuf-javalite:3.10.0'
 
     testCompile ('junit:junit:3.8.2')
@@ -156,3 +155,6 @@ artifacts {
     archives packageSources
 }
 
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn ':makeDesktop'
+}

@@ -1,7 +1,6 @@
 subprojects {
     ext.version_number     = "2.8.1"
     ext.group_info         = "org.whispersystems"
-    ext.curve25519_version = "0.5.0"
 
     if (JavaVersion.current().isJava8Compatible()) {
         allprojects {
@@ -10,4 +9,25 @@ subprojects {
             }
         }
     }
+}
+
+task makeAndroid(type:Exec) {
+  group 'Rust'
+  description 'Build the android libraries'
+
+  commandLine 'make', 'android_libs'
+}
+
+task makeDesktop(type:Exec) {
+  group 'Rust'
+  description 'Build the desktop libraries'
+
+  commandLine 'make', 'desktop_libs'
+}
+
+task makeAll() {
+  group 'Rust'
+  description 'Build the native libraries'
+
+  dependsOn 'makeDesktop', 'makeAndroid'
 }
