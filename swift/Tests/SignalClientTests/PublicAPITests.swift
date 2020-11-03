@@ -60,9 +60,16 @@ class PublicAPITests: XCTestCase {
 
     func testPkOperations() {
         let sk = try! PrivateKey.generate()
-
         let sk_bytes = try! sk.serialize()
+
         let pk = try! sk.publicKey()
+        let pk_bytes = try! pk.serialize()
+        XCTAssertEqual(pk_bytes[0], 0x05); // DJB
+        XCTAssertEqual(pk_bytes.count, 33);
+
+        let pk_raw = try! pk.publicKeyBytes();
+        XCTAssertEqual(pk_raw.count, 32);
+        XCTAssertEqual(pk_raw[0...31], pk_bytes[1...32]);
 
         let sk_reloaded = try! PrivateKey(sk_bytes)
         let pk_reloaded = try! sk_reloaded.publicKey()

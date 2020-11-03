@@ -132,6 +132,8 @@ ffi_fn_deserialize!(signal_publickey_deserialize(PublicKey) is PublicKey::deseri
 
 ffi_fn_get_bytearray!(signal_publickey_serialize(PublicKey) using |k: &PublicKey| Ok(k.serialize()));
 
+ffi_fn_get_bytearray!(signal_publickey_get_public_key_bytes(PublicKey) using |k: &PublicKey| Ok(k.public_key_bytes()?.to_vec()));
+
 #[no_mangle]
 pub unsafe extern "C" fn signal_publickey_compare(
     result: *mut i32,
