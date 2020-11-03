@@ -18,7 +18,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
-archivesBaseName = "signal-protocol-android"
+archivesBaseName = "signal-client-android"
 version          = version_number
 group            = group_info
 
@@ -90,28 +90,28 @@ uploadArchives {
         }
 
         pom.project {
-            name 'signal-protocol-android'
+            name 'signal-client-android'
             packaging 'aar'
             description 'Signal Protocol cryptography library for Android'
-            url 'https://github.com/WhisperSystems/libsignal-android'
+            url 'https://github.com/signalapp/libsignal-client'
 
             scm {
-                url 'scm:git@github.com:WhisperSystems/libsignal-android.git'
-                connection 'scm:git@github.com:WhisperSystems/libsignal-android.git'
-                developerConnection 'scm:git@github.com:WhisperSystems/libsignal-android.git'
+                url 'scm:git@github.com:signalapp/libsignal-client.git'
+                connection 'scm:git@github.com:signalapp/libsignal-client.git'
+                developerConnection 'scm:git@github.com:signalapp/libsignal-client.git'
             }
 
             licenses {
                 license {
-                    name 'GPLv3'
-                    url 'https://www.gnu.org/licenses/gpl-3.0.txt'
+                    name 'AGPLv3'
+                    url 'https://www.gnu.org/licenses/agpl-3.0.txt'
                     distribution 'repo'
                 }
             }
 
             developers {
                 developer {
-                    name 'Moxie Marlinspike'
+                    name 'Signal Messenger LLC'
                 }
             }
         }
