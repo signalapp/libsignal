@@ -498,7 +498,7 @@ macro_rules! jni_fn_get_new_boxed_obj {
         ) -> ObjectHandle {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
-                return box_object::<$rt>($body(obj));
+                box_object::<$rt>($body(obj))
             })
         }
     };
@@ -537,7 +537,7 @@ macro_rules! jni_fn_get_jint {
         ) -> jint {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
-                return jint_from_u32($body(obj));
+                jint_from_u32($body(obj))
             })
         }
     };
@@ -579,7 +579,7 @@ macro_rules! jni_fn_get_jstring {
             }
             run_ffi_safe(&env, || {
                 let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
-                return Ok(env.new_string(inner_get(&obj)?)?.into_inner());
+                Ok(env.new_string(inner_get(&obj)?)?.into_inner())
             })
         }
     };
@@ -592,7 +592,7 @@ macro_rules! jni_fn_get_jstring {
         ) -> jstring {
             run_ffi_safe(&env, || {
                 let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
-                return Ok(env.new_string($func(&obj)?)?.into_inner());
+                Ok(env.new_string($func(&obj)?)?.into_inner())
             })
         }
     };
@@ -609,7 +609,20 @@ macro_rules! jni_fn_get_jbytearray {
         ) -> jbyteArray {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
-                return to_jbytearray(&env, $body(obj));
+                to_jbytearray(&env, $body(obj))
+            })
+        }
+    };
+    ( $nm:ident($typ:ty) using $func:path ) => {
+        #[no_mangle]
+        pub unsafe extern "system" fn $nm(
+            env: JNIEnv,
+            _class: JClass,
+            handle: ObjectHandle,
+        ) -> jbyteArray {
+            run_ffi_safe(&env, || {
+                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
+                to_jbytearray(&env, $func(&obj))
             })
         }
     };

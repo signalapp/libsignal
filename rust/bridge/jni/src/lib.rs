@@ -642,10 +642,10 @@ jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_SignedPreKeyRe
                           |p: &SignedPreKeyRecord| p.private_key());
 
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetSignature(SignedPreKeyRecord) using
-                       |m: &SignedPreKeyRecord| m.signature());
+                       SignedPreKeyRecord::signature);
 
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeGetSerialized(SignedPreKeyRecord) using
-                       |m: &SignedPreKeyRecord| m.serialize());
+                       SignedPreKeyRecord::serialize);
 
 jni_fn_destroy!(Java_org_whispersystems_libsignal_state_SignedPreKeyRecord_nativeDestroy destroys SignedPreKeyRecord);
 
@@ -683,7 +683,7 @@ jni_fn_get_new_boxed_obj!(Java_org_whispersystems_libsignal_state_PreKeyRecord_n
                           |p: &PreKeyRecord| p.private_key());
 
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeGetSerialized(PreKeyRecord) using
-                       |m: &PreKeyRecord| m.serialize());
+                       PreKeyRecord::serialize);
 
 jni_fn_destroy!(Java_org_whispersystems_libsignal_state_PreKeyRecord_nativeDestroy destroys PreKeyRecord);
 
@@ -751,7 +751,7 @@ jni_fn_destroy!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_na
 jni_fn_deserialize!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeDeserialize is SenderKeyState::deserialize);
 
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeGetSerialized(SenderKeyState) using
-                       |sks: &SenderKeyState| sks.serialize());
+                       SenderKeyState::serialize);
 
 jni_fn_get_jint!(Java_org_whispersystems_libsignal_groups_state_SenderKeyState_nativeGetKeyId(SenderKeyState) using
                        |sks: &SenderKeyState| sks.sender_key_id());
