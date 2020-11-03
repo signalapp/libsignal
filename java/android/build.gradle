@@ -1,0 +1,133 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        jcenter {
+            content {
+                includeVersion 'org.jetbrains.trove4j', 'trove4j', '20160824'
+            }
+        }
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.5.1'
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+archivesBaseName = "signal-protocol-android"
+version          = version_number
+group            = group_info
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
+
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 28
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+
+    sourceSets {
+        androidTest {
+            java.srcDirs = ['src/androidTest/java', project(':tests').file('src/test/java')]
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    mavenLocal()
+    jcenter {
+        content {
+            includeVersion 'org.jetbrains.trove4j', 'trove4j', '20160824'
+        }
+    }
+}
+
+dependencies {
+    compile "org.whispersystems:curve25519-android:${curve25519_version}"
+    compile (project(':java')) {
+        exclude group: 'org.whispersystems', module: 'curve25519-java'
+    }
+}
+
+def isReleaseBuild() {
+    return version.contains("SNAPSHOT") == false
+}
+
+def getReleaseRepositoryUrl() {
+    return hasProperty('sonatypeRepo') ? sonatypeRepo
+            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+}
+
+def getRepositoryUsername() {
+    return hasProperty('whisperSonatypeUsername') ? whisperSonatypeUsername : ""
+}
+
+def getRepositoryPassword() {
+    return hasProperty('whisperSonatypePassword') ? whisperSonatypePassword : ""
+}
+
+signing {
+    required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
+}
+
+uploadArchives {
+    configuration = configurations.archives
+    repositories.mavenDeployer {
+        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+        repository(url: getReleaseRepositoryUrl()) {
+            authentication(userName: getRepositoryUsername(), password: getRepositoryPassword())
+        }
+
+        pom.project {
+            name 'signal-protocol-android'
+            packaging 'aar'
+            description 'Signal Protocol cryptography library for Android'
+            url 'https://github.com/WhisperSystems/libsignal-android'
+
+            scm {
+                url 'scm:git@github.com:WhisperSystems/libsignal-android.git'
+                connection 'scm:git@github.com:WhisperSystems/libsignal-android.git'
+                developerConnection 'scm:git@github.com:WhisperSystems/libsignal-android.git'
+            }
+
+            licenses {
+                license {
+                    name 'GPLv3'
+                    url 'https://www.gnu.org/licenses/gpl-3.0.txt'
+                    distribution 'repo'
+                }
+            }
+
+            developers {
+                developer {
+                    name 'Moxie Marlinspike'
+                }
+            }
+        }
+    }
+}
+
+task installArchives(type: Upload) {
+    description "Installs the artifacts to the local Maven repository."
+    configuration = configurations['archives']
+    repositories {
+        mavenDeployer {
+            repository url: "file://${System.properties['user.home']}/.m2/repository"
+        }
+    }
+}
+
