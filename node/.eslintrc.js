@@ -11,11 +11,22 @@ module.exports = {
     'import/core-modules': ['electron'],
   },
 
-  plugins: ['mocha', 'more', '@typescript-eslint'],
+  plugins: ['header', 'mocha', 'more', '@typescript-eslint'],
 
   extends: ['airbnb-typescript/base'],
 
   rules: {
+    'header/header': [
+      2,
+      'line',
+      [
+        '',
+        { pattern: ' Copyright \\d{4}(-\\d{4})? Signal Messenger, LLC.' },
+        ' SPDX-License-Identifier: AGPL-3.0-only',
+        '',
+      ],
+    ],
+
     // prevents us from accidentally checking in exclusive tests (`.only`):
     'mocha/no-exclusive-tests': 'error',
 
