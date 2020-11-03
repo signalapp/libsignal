@@ -950,7 +950,10 @@ impl<'a> JniIdentityKeyStore<'a> {
 
 #[async_trait(?Send)]
 impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
-    async fn get_identity_key_pair(&self, _ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
+    async fn get_identity_key_pair(
+        &self,
+        _ctx: Context,
+    ) -> Result<IdentityKeyPair, SignalProtocolError> {
         Ok(self.do_get_identity_key_pair()?)
     }
 
@@ -1069,7 +1072,11 @@ impl<'a> PreKeyStore for JniPreKeyStore<'a> {
         Ok(self.do_save_pre_key(prekey_id, record)?)
     }
 
-    async fn remove_pre_key(&mut self, prekey_id: u32, _ctx: Context) -> Result<(), SignalProtocolError> {
+    async fn remove_pre_key(
+        &mut self,
+        prekey_id: u32,
+        _ctx: Context,
+    ) -> Result<(), SignalProtocolError> {
         Ok(self.do_remove_pre_key(prekey_id)?)
     }
 }
@@ -1548,7 +1555,12 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
         let message = env.convert_byte_array(message)?;
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
-        let ptext = block_on(group_decrypt(&message, &mut sender_key_store, &sender_key_name, None))?;
+        let ptext = block_on(group_decrypt(
+            &message,
+            &mut sender_key_store,
+            &sender_key_name,
+            None,
+        ))?;
 
         to_jbytearray(&env, Ok(ptext))
     })

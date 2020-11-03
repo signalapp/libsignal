@@ -27,7 +27,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
         let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
         let bob_signed_pre_key_signature = bob_store
-            .get_identity_key_pair(None).await?
+            .get_identity_key_pair(None)
+            .await?
             .private_key()
             .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?;
 
@@ -52,12 +53,17 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
-        assert!(alice_store.load_session(&bob_address, None).await?.is_some());
+        assert!(alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .is_some());
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -73,25 +79,29 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::PreKey
         );
 
-        let incoming_message = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
-            outgoing_message.serialize(),
-        )?);
+        let incoming_message = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+        );
 
-        bob_store.save_pre_key(
-            pre_key_id,
-            &PreKeyRecord::new(pre_key_id, &bob_pre_key_pair),
-            None,
-        ).await?;
-        bob_store.save_signed_pre_key(
-            signed_pre_key_id,
-            &SignedPreKeyRecord::new(
+        bob_store
+            .save_pre_key(
+                pre_key_id,
+                &PreKeyRecord::new(pre_key_id, &bob_pre_key_pair),
+                None,
+            )
+            .await?;
+        bob_store
+            .save_signed_pre_key(
                 signed_pre_key_id,
-                /*timestamp*/ 42,
-                &bob_signed_pre_key_pair,
-                &bob_signed_pre_key_signature,
-            ),
-            None,
-        ).await?;
+                &SignedPreKeyRecord::new(
+                    signed_pre_key_id,
+                    /*timestamp*/ 42,
+                    &bob_signed_pre_key_pair,
+                    &bob_signed_pre_key_signature,
+                ),
+                None,
+            )
+            .await?;
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
@@ -99,7 +109,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
         let bobs_response = "Who watches the watchers?";
 
-        assert!(bob_store.load_session(&alice_address, None).await?.is_some());
+        assert!(bob_store
+            .load_session(&alice_address, None)
+            .await?
+            .is_some());
         let bobs_session_with_alice = bob_store.load_session(&alice_address, None).await?.unwrap();
         assert_eq!(
             bobs_session_with_alice.session_state()?.session_version()?,
@@ -126,7 +139,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             &alice_address,
             &mut bob_store,
             &bob_address,
-        ).await?;
+        )
+        .await?;
 
         let mut alice_store = support::test_in_memory_protocol_store();
 
@@ -135,7 +149,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
         let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
         let bob_signed_pre_key_signature = bob_store
-            .get_identity_key_pair(None).await?
+            .get_identity_key_pair(None)
+            .await?
             .private_key()
             .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?;
 
@@ -153,21 +168,25 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             *bob_store.get_identity_key_pair(None).await?.identity_key(),
         )?;
 
-        bob_store.save_pre_key(
-            pre_key_id + 1,
-            &PreKeyRecord::new(pre_key_id + 1, &bob_pre_key_pair),
-            None,
-        ).await?;
-        bob_store.save_signed_pre_key(
-            signed_pre_key_id + 1,
-            &SignedPreKeyRecord::new(
+        bob_store
+            .save_pre_key(
+                pre_key_id + 1,
+                &PreKeyRecord::new(pre_key_id + 1, &bob_pre_key_pair),
+                None,
+            )
+            .await?;
+        bob_store
+            .save_signed_pre_key(
                 signed_pre_key_id + 1,
-                /*timestamp*/ 42,
-                &bob_signed_pre_key_pair,
-                &bob_signed_pre_key_signature,
-            ),
-            None,
-        ).await?;
+                &SignedPreKeyRecord::new(
+                    signed_pre_key_id + 1,
+                    /*timestamp*/ 42,
+                    &bob_signed_pre_key_pair,
+                    &bob_signed_pre_key_signature,
+                ),
+                None,
+            )
+            .await?;
 
         process_prekey_bundle(
             &bob_address,
@@ -176,21 +195,29 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         let outgoing_message = encrypt(&mut alice_store, &bob_address, original_message).await?;
 
         assert_eq!(
-            decrypt(&mut bob_store, &alice_address, &outgoing_message).await.unwrap_err(),
+            decrypt(&mut bob_store, &alice_address, &outgoing_message)
+                .await
+                .unwrap_err(),
             SignalProtocolError::UntrustedIdentity(alice_address.clone())
         );
 
         assert_eq!(
-            bob_store.save_identity(
-                &alice_address,
-                alice_store.get_identity_key_pair(None).await?.identity_key(),
-                None,
-            ).await?,
+            bob_store
+                .save_identity(
+                    &alice_address,
+                    alice_store
+                        .get_identity_key_pair(None)
+                        .await?
+                        .identity_key(),
+                    None,
+                )
+                .await?,
             true
         );
 
@@ -206,7 +233,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             signed_pre_key_id,
             bob_signed_pre_key_pair.public_key,
             bob_signed_pre_key_signature.to_vec(),
-            *alice_store.get_identity_key_pair(None).await?.identity_key(),
+            *alice_store
+                .get_identity_key_pair(None)
+                .await?
+                .identity_key(),
         )?;
 
         assert!(process_prekey_bundle(
@@ -216,7 +246,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await
+        )
+        .await
         .is_err());
 
         Ok(())
@@ -237,7 +268,8 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
 
         let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
         let bob_signed_pre_key_signature = bob_store
-            .get_identity_key_pair(None).await?
+            .get_identity_key_pair(None)
+            .await?
             .private_key()
             .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?
             .to_vec();
@@ -268,7 +300,8 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
                 &bob_pre_key_bundle,
                 &mut csprng,
                 None,
-            ).await
+            )
+            .await
             .is_err());
         }
 
@@ -292,7 +325,8 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         Ok(())
     })
@@ -315,7 +349,8 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
 
         let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
         let bob_signed_pre_key_signature = bob_store
-            .get_identity_key_pair(None).await?
+            .get_identity_key_pair(None)
+            .await?
             .private_key()
             .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?;
 
@@ -340,12 +375,17 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
-        assert!(alice_store.load_session(&bob_address, None).await?.is_some());
+        assert!(alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .is_some());
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -366,25 +406,29 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::PreKey
         );
 
-        let incoming_message = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
-            outgoing_message1.serialize(),
-        )?);
+        let incoming_message = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(outgoing_message1.serialize())?,
+        );
 
-        bob_store.save_pre_key(
-            pre_key_id,
-            &PreKeyRecord::new(pre_key_id, &bob_pre_key_pair),
-            None,
-        ).await?;
-        bob_store.save_signed_pre_key(
-            signed_pre_key_id,
-            &SignedPreKeyRecord::new(
+        bob_store
+            .save_pre_key(
+                pre_key_id,
+                &PreKeyRecord::new(pre_key_id, &bob_pre_key_pair),
+                None,
+            )
+            .await?;
+        bob_store
+            .save_signed_pre_key(
                 signed_pre_key_id,
-                /*timestamp*/ 42,
-                &bob_signed_pre_key_pair,
-                &bob_signed_pre_key_signature,
-            ),
-            None,
-        ).await?;
+                &SignedPreKeyRecord::new(
+                    signed_pre_key_id,
+                    /*timestamp*/ 42,
+                    &bob_signed_pre_key_pair,
+                    &bob_signed_pre_key_signature,
+                ),
+                None,
+            )
+            .await?;
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
         assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
@@ -396,9 +440,9 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
 
         // The test
 
-        let incoming_message2 = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
-            outgoing_message2.serialize(),
-        )?);
+        let incoming_message2 = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(outgoing_message2.serialize())?,
+        );
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message2).await?;
         assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
@@ -427,7 +471,8 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
 
         let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
         let bob_signed_pre_key_signature = bob_store
-            .get_identity_key_pair(None).await?
+            .get_identity_key_pair(None)
+            .await?
             .private_key()
             .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?;
 
@@ -452,28 +497,37 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
-        bob_store.save_pre_key(
-            pre_key_id,
-            &PreKeyRecord::new(pre_key_id, &bob_pre_key_pair),
-            None,
-        ).await?;
-        bob_store.save_signed_pre_key(
-            signed_pre_key_id,
-            &SignedPreKeyRecord::new(
+        bob_store
+            .save_pre_key(
+                pre_key_id,
+                &PreKeyRecord::new(pre_key_id, &bob_pre_key_pair),
+                None,
+            )
+            .await?;
+        bob_store
+            .save_signed_pre_key(
                 signed_pre_key_id,
-                /*timestamp*/ 42,
-                &bob_signed_pre_key_pair,
-                &bob_signed_pre_key_signature,
-            ),
-            None,
-        ).await?;
+                &SignedPreKeyRecord::new(
+                    signed_pre_key_id,
+                    /*timestamp*/ 42,
+                    &bob_signed_pre_key_pair,
+                    &bob_signed_pre_key_signature,
+                ),
+                None,
+            )
+            .await?;
 
-        assert!(alice_store.load_session(&bob_address, None).await?.is_some());
+        assert!(alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .is_some());
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -495,16 +549,18 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
         let mut corrupted_message: Vec<u8> = outgoing_message.clone();
         corrupted_message[outgoing_message.len() - 10] ^= 1;
 
-        let incoming_message = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
-            corrupted_message.as_slice(),
-        )?);
+        let incoming_message = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(corrupted_message.as_slice())?,
+        );
 
-        assert!(decrypt(&mut bob_store, &alice_address, &incoming_message).await.is_err());
+        assert!(decrypt(&mut bob_store, &alice_address, &incoming_message)
+            .await
+            .is_err());
         assert!(bob_store.get_pre_key(pre_key_id, None).await.is_ok());
 
-        let incoming_message = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
-            outgoing_message.as_slice(),
-        )?);
+        let incoming_message = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(outgoing_message.as_slice())?,
+        );
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
@@ -532,7 +588,8 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
 
         let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
         let bob_signed_pre_key_signature = bob_store
-            .get_identity_key_pair(None).await?
+            .get_identity_key_pair(None)
+            .await?
             .private_key()
             .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?;
 
@@ -556,11 +613,13 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -576,20 +635,22 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::PreKey
         );
 
-        let incoming_message = CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
-            outgoing_message.serialize(),
-        )?);
+        let incoming_message = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+        );
 
-        bob_store.save_signed_pre_key(
-            signed_pre_key_id,
-            &SignedPreKeyRecord::new(
+        bob_store
+            .save_signed_pre_key(
                 signed_pre_key_id,
-                /*timestamp*/ 42,
-                &bob_signed_pre_key_pair,
-                &bob_signed_pre_key_signature,
-            ),
-            None,
-        ).await?;
+                &SignedPreKeyRecord::new(
+                    signed_pre_key_id,
+                    /*timestamp*/ 42,
+                    &bob_signed_pre_key_pair,
+                    &bob_signed_pre_key_signature,
+                ),
+                None,
+            )
+            .await?;
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
@@ -621,8 +682,12 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
         let mut alice_store = support::test_in_memory_protocol_store();
         let mut bob_store = support::test_in_memory_protocol_store();
 
-        alice_store.store_session(&bob_address, &alice_session_record, None).await?;
-        bob_store.store_session(&alice_address, &bob_session_record, None).await?;
+        alice_store
+            .store_session(&bob_address, &alice_session_record, None)
+            .await?;
+        bob_store
+            .store_session(&alice_address, &bob_session_record, None)
+            .await?;
 
         const MAX_MESSAGE_KEYS: usize = 2000; // same value as in library
         const TOO_MANY_MESSAGES: usize = MAX_MESSAGE_KEYS + 300;
@@ -630,28 +695,31 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
         let mut inflight = Vec::with_capacity(TOO_MANY_MESSAGES);
 
         for i in 0..TOO_MANY_MESSAGES {
-            inflight.push(encrypt(
-                &mut alice_store,
-                &bob_address,
-                &format!("It's over {}", i),
-            ).await?);
+            inflight
+                .push(encrypt(&mut alice_store, &bob_address, &format!("It's over {}", i)).await?);
         }
 
         assert_eq!(
-            String::from_utf8(decrypt(&mut bob_store, &alice_address, &inflight[1000]).await?).unwrap(),
+            String::from_utf8(decrypt(&mut bob_store, &alice_address, &inflight[1000]).await?)
+                .unwrap(),
             "It's over 1000"
         );
         assert_eq!(
-            String::from_utf8(decrypt(
-                &mut bob_store,
-                &alice_address,
-                &inflight[TOO_MANY_MESSAGES - 1]
-            ).await?)
+            String::from_utf8(
+                decrypt(
+                    &mut bob_store,
+                    &alice_address,
+                    &inflight[TOO_MANY_MESSAGES - 1]
+                )
+                .await?
+            )
             .unwrap(),
             format!("It's over {}", TOO_MANY_MESSAGES - 1)
         );
 
-        let err = decrypt(&mut bob_store, &alice_address, &inflight[5]).await.unwrap_err();
+        let err = decrypt(&mut bob_store, &alice_address, &inflight[5])
+            .await
+            .unwrap_err();
         assert_eq!(err, SignalProtocolError::DuplicatedMessage(2300, 5));
         Ok(())
     })
@@ -670,8 +738,12 @@ fn run_session_interaction(
         let mut alice_store = support::test_in_memory_protocol_store();
         let mut bob_store = support::test_in_memory_protocol_store();
 
-        alice_store.store_session(&bob_address, &alice_session, None).await?;
-        bob_store.store_session(&alice_address, &bob_session, None).await?;
+        alice_store
+            .store_session(&bob_address, &alice_session, None)
+            .await?;
+        bob_store
+            .store_session(&alice_address, &bob_session, None)
+            .await?;
 
         let alice_plaintext = "This is Alice's message";
         let alice_ciphertext = encrypt(&mut alice_store, &bob_address, alice_plaintext).await?;
@@ -822,13 +894,15 @@ async fn is_session_id_equal(
     bob_address: &ProtocolAddress,
 ) -> Result<bool, SignalProtocolError> {
     Ok(alice_store
-        .load_session(bob_address, None).await?
+        .load_session(bob_address, None)
+        .await?
         .unwrap()
         .session_state()?
         .alice_base_key()
         .clone()
         == bob_store
-            .load_session(alice_address, None).await?
+            .load_session(alice_address, None)
+            .await?
             .unwrap()
             .session_state()?
             .alice_base_key()
@@ -856,7 +930,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         process_prekey_bundle(
             &alice_address,
@@ -865,7 +940,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             &alice_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob").await?;
         let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice").await?;
@@ -890,7 +966,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 message_for_alice.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
 
         let bob_plaintext = decrypt(
@@ -899,12 +976,14 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 message_for_bob.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -912,7 +991,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
         );
         assert_eq!(
             bob_store
-                .load_session(&alice_address, None).await?
+                .load_session(&alice_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -935,7 +1015,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             &mut bob_store,
             &alice_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(alice_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "nice to see you"
@@ -954,7 +1035,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             &mut alice_store,
             &bob_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "you as well"
@@ -990,7 +1072,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         process_prekey_bundle(
             &alice_address,
@@ -999,7 +1082,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             &alice_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob").await?;
         let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice").await?;
@@ -1024,12 +1108,14 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 message_for_bob.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -1037,7 +1123,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
         );
         assert_eq!(
             bob_store
-                .load_session(&alice_address, None).await?
+                .load_session(&alice_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -1054,7 +1141,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 alice_response.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "nice to see you"
@@ -1073,7 +1161,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             &mut alice_store,
             &bob_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "you as well"
@@ -1109,7 +1198,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         process_prekey_bundle(
             &alice_address,
@@ -1118,7 +1208,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             &alice_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
+        )
+        .await?;
 
         let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob").await?;
         let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice").await?;
@@ -1143,7 +1234,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 message_for_alice.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
 
         let bob_plaintext = decrypt(
@@ -1152,12 +1244,14 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 message_for_bob.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
         assert_eq!(
             alice_store
-                .load_session(&bob_address, None).await?
+                .load_session(&bob_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -1165,7 +1259,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
         );
         assert_eq!(
             bob_store
-                .load_session(&alice_address, None).await?
+                .load_session(&alice_address, None)
+                .await?
                 .unwrap()
                 .session_state()?
                 .session_version()?,
@@ -1197,7 +1292,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             &mut alice_store,
             &bob_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "you as well"
@@ -1234,7 +1330,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 &bob_pre_key_bundle,
                 &mut csprng,
                 None,
-            ).await?;
+            )
+            .await?;
 
             process_prekey_bundle(
                 &alice_address,
@@ -1243,7 +1340,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 &alice_pre_key_bundle,
                 &mut csprng,
                 None,
-            ).await?;
+            )
+            .await?;
 
             let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob").await?;
             let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice").await?;
@@ -1268,7 +1366,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                     message_for_alice.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
 
             let bob_plaintext = decrypt(
@@ -1277,12 +1376,14 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                     message_for_bob.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
             assert_eq!(
                 alice_store
-                    .load_session(&bob_address, None).await?
+                    .load_session(&bob_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1290,7 +1391,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
             );
             assert_eq!(
                 bob_store
-                    .load_session(&alice_address, None).await?
+                    .load_session(&alice_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1327,7 +1429,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 &CiphertextMessage::SignalMessage(SignalMessage::try_from(
                     message_for_alice.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
 
             let bob_plaintext = decrypt(
@@ -1336,12 +1439,14 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 &CiphertextMessage::SignalMessage(SignalMessage::try_from(
                     message_for_bob.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
             assert_eq!(
                 alice_store
-                    .load_session(&bob_address, None).await?
+                    .load_session(&bob_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1349,7 +1454,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
             );
             assert_eq!(
                 bob_store
-                    .load_session(&alice_address, None).await?
+                    .load_session(&alice_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1382,7 +1488,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
             &mut alice_store,
             &bob_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "you as well"
@@ -1417,8 +1524,10 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             &bob_pre_key_bundle,
             &mut csprng,
             None,
-        ).await?;
-        let lost_message_for_bob = encrypt(&mut alice_store, &bob_address, "it was so long ago").await?;
+        )
+        .await?;
+        let lost_message_for_bob =
+            encrypt(&mut alice_store, &bob_address, "it was so long ago").await?;
 
         for _ in 0..15 {
             let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng).await?;
@@ -1431,7 +1540,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 &bob_pre_key_bundle,
                 &mut csprng,
                 None,
-            ).await?;
+            )
+            .await?;
 
             process_prekey_bundle(
                 &alice_address,
@@ -1440,7 +1550,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 &alice_pre_key_bundle,
                 &mut csprng,
                 None,
-            ).await?;
+            )
+            .await?;
 
             let message_for_bob = encrypt(&mut alice_store, &bob_address, "hi bob").await?;
             let message_for_alice = encrypt(&mut bob_store, &alice_address, "hi alice").await?;
@@ -1465,7 +1576,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                     message_for_alice.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
 
             let bob_plaintext = decrypt(
@@ -1474,12 +1586,14 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                     message_for_bob.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
             assert_eq!(
                 alice_store
-                    .load_session(&bob_address, None).await?
+                    .load_session(&bob_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1487,7 +1601,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             );
             assert_eq!(
                 bob_store
-                    .load_session(&alice_address, None).await?
+                    .load_session(&alice_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1524,7 +1639,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 &CiphertextMessage::SignalMessage(SignalMessage::try_from(
                     message_for_alice.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
 
             let bob_plaintext = decrypt(
@@ -1533,12 +1649,14 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 &CiphertextMessage::SignalMessage(SignalMessage::try_from(
                     message_for_bob.serialize(),
                 )?),
-            ).await?;
+            )
+            .await?;
             assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
 
             assert_eq!(
                 alice_store
-                    .load_session(&bob_address, None).await?
+                    .load_session(&bob_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1546,7 +1664,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             );
             assert_eq!(
                 bob_store
-                    .load_session(&alice_address, None).await?
+                    .load_session(&alice_address, None)
+                    .await?
                     .unwrap()
                     .session_state()?
                     .session_version()?,
@@ -1579,7 +1698,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             &mut alice_store,
             &bob_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(response_plaintext).unwrap(),
             "you as well"
@@ -1596,7 +1716,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             &CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::try_from(
                 lost_message_for_bob.serialize(),
             )?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(blast_from_the_past).unwrap(),
             "it was so long ago"
@@ -1615,7 +1736,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             &mut alice_store,
             &bob_address,
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
-        ).await?;
+        )
+        .await?;
         assert_eq!(String::from_utf8(response_plaintext).unwrap(), "so it was");
 
         assert_eq!(

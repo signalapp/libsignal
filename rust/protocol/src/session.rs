@@ -37,12 +37,15 @@ pub async fn process_prekey(
 ) -> Result<Option<PreKeyId>> {
     let their_identity_key = message.identity_key();
 
-    if !identity_store.is_trusted_identity(
-        &remote_address,
-        their_identity_key,
-        Direction::Receiving,
-        ctx,
-    ).await? {
+    if !identity_store
+        .is_trusted_identity(
+            &remote_address,
+            their_identity_key,
+            Direction::Receiving,
+            ctx,
+        )
+        .await?
+    {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
         ));
@@ -55,9 +58,12 @@ pub async fn process_prekey(
         pre_key_store,
         identity_store,
         ctx,
-    ).await?;
+    )
+    .await?;
 
-    identity_store.save_identity(&remote_address, their_identity_key, ctx).await?;
+    identity_store
+        .save_identity(&remote_address, their_identity_key, ctx)
+        .await?;
 
     Ok(unsigned_pre_key_id)
 }
@@ -79,11 +85,17 @@ async fn process_prekey_v3(
     }
 
     let our_signed_pre_key_pair = signed_prekey_store
-        .get_signed_pre_key(message.signed_pre_key_id(), ctx).await?
+        .get_signed_pre_key(message.signed_pre_key_id(), ctx)
+        .await?
         .key_pair()?;
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
-        Some(pre_key_store.get_pre_key(pre_key_id, ctx).await?.key_pair()?)
+        Some(
+            pre_key_store
+                .get_pre_key(pre_key_id, ctx)
+                .await?
+                .key_pair()?,
+        )
     } else {
         None
     };
@@ -120,12 +132,10 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?;
 
-    if !identity_store.is_trusted_identity(
-        &remote_address,
-        their_identity_key,
-        Direction::Sending,
-        ctx,
-    ).await? {
+    if !identity_store
+        .is_trusted_identity(&remote_address, their_identity_key, Direction::Sending, ctx)
+        .await?
+    {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
         ));
@@ -140,7 +150,8 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     }
 
     let mut session_record = session_store
-        .load_session(&remote_address, ctx).await?
+        .load_session(&remote_address, ctx)
+        .await?
         .unwrap_or_else(SessionRecord::new_fresh);
 
     let our_base_key_pair = curve::KeyPair::generate(&mut csprng);
@@ -172,11 +183,15 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     session.set_remote_registration_id(bundle.registration_id()?)?;
     session.set_alice_base_key(&our_base_key_pair.public_key.serialize())?;
 
-    identity_store.save_identity(&remote_address, their_identity_key, ctx).await?;
+    identity_store
+        .save_identity(&remote_address, their_identity_key, ctx)
+        .await?;
 
     session_record.promote_state(session)?;
 
-    session_store.store_session(&remote_address, &session_record, ctx).await?;
+    session_store
+        .store_session(&remote_address, &session_record, ctx)
+        .await?;
 
     Ok(())
 }

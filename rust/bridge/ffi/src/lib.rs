@@ -838,7 +838,10 @@ impl FfiIdentityKeyStore {
 
 #[async_trait(?Send)]
 impl IdentityKeyStore for FfiIdentityKeyStore {
-    async fn get_identity_key_pair(&self, ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
+    async fn get_identity_key_pair(
+        &self,
+        ctx: Context,
+    ) -> Result<IdentityKeyPair, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut key = std::ptr::null_mut();
         let result = (self.store.get_identity_key_pair)(self.store.ctx, &mut key, ctx);
@@ -1042,7 +1045,11 @@ impl PreKeyStore for FfiPreKeyStore {
         Ok(())
     }
 
-    async fn remove_pre_key(&mut self, prekey_id: u32, ctx: Context) -> Result<(), SignalProtocolError> {
+    async fn remove_pre_key(
+        &mut self,
+        prekey_id: u32,
+        ctx: Context,
+    ) -> Result<(), SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let result = (self.store.remove_pre_key)(self.store.ctx, prekey_id, ctx);
 
@@ -1582,7 +1589,12 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
 
-        let ptext = block_on(group_decrypt(&message, &mut sender_key_store, &sender_key_name, Some(ctx)));
+        let ptext = block_on(group_decrypt(
+            &message,
+            &mut sender_key_store,
+            &sender_key_name,
+            Some(ctx),
+        ));
         write_bytearray_to(out, out_len, ptext)
     })
 }

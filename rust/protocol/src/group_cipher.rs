@@ -22,7 +22,8 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut record = sender_key_store
-        .load_sender_key(&sender_key_id, ctx).await?
+        .load_sender_key(&sender_key_id, ctx)
+        .await?
         .ok_or(SignalProtocolError::InvalidSenderKeyId)?;
 
     let sender_key_state = record.sender_key_state()?;
@@ -46,7 +47,9 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
 
     sender_key_state.set_sender_chain_key(sender_key_state.sender_chain_key()?.next()?)?;
 
-    sender_key_store.store_sender_key(sender_key_id, &record, ctx).await?;
+    sender_key_store
+        .store_sender_key(sender_key_id, &record, ctx)
+        .await?;
 
     Ok(skm.serialized().to_vec())
 }
@@ -90,7 +93,8 @@ pub async fn group_decrypt(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut record = sender_key_store
-        .load_sender_key(&sender_key_id, ctx).await?
+        .load_sender_key(&sender_key_id, ctx)
+        .await?
         .ok_or(SignalProtocolError::InvalidSenderKeyId)?;
 
     let skm = SenderKeyMessage::try_from(skm_bytes)?;
@@ -110,7 +114,9 @@ pub async fn group_decrypt(
         &sender_key.iv()?,
     )?;
 
-    sender_key_store.store_sender_key(sender_key_id, &record, ctx).await?;
+    sender_key_store
+        .store_sender_key(sender_key_id, &record, ctx)
+        .await?;
 
     Ok(plaintext)
 }
@@ -122,7 +128,8 @@ pub async fn process_sender_key_distribution_message(
     ctx: Context,
 ) -> Result<()> {
     let mut sender_key_record = sender_key_store
-        .load_sender_key(sender_key_name, ctx).await?
+        .load_sender_key(sender_key_name, ctx)
+        .await?
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     sender_key_record.add_sender_key_state(
@@ -132,7 +139,9 @@ pub async fn process_sender_key_distribution_message(
         *skdm.signing_key()?,
         None,
     )?;
-    sender_key_store.store_sender_key(sender_key_name, &sender_key_record, ctx).await?;
+    sender_key_store
+        .store_sender_key(sender_key_name, &sender_key_record, ctx)
+        .await?;
     Ok(())
 }
 
@@ -143,7 +152,8 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<SenderKeyDistributionMessage> {
     let mut sender_key_record = sender_key_store
-        .load_sender_key(sender_key_name, ctx).await?
+        .load_sender_key(sender_key_name, ctx)
+        .await?
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     if sender_key_record.is_empty()? {
@@ -159,7 +169,9 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
             signing_key.public_key,
             Some(signing_key.private_key),
         )?;
-        sender_key_store.store_sender_key(sender_key_name, &sender_key_record, ctx).await?;
+        sender_key_store
+            .store_sender_key(sender_key_name, &sender_key_record, ctx)
+            .await?;
     }
 
     let state = sender_key_record.sender_key_state()?;

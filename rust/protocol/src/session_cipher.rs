@@ -27,7 +27,8 @@ pub async fn message_encrypt(
     ctx: Context,
 ) -> Result<CiphertextMessage> {
     let mut session_record = session_store
-        .load_session(&remote_address, ctx).await?
+        .load_session(&remote_address, ctx)
+        .await?
         .ok_or(SignalProtocolError::SessionNotFound)?;
     let session_state = session_record.session_state_mut()?;
 
@@ -85,21 +86,28 @@ pub async fn message_encrypt(
     session_state.set_sender_chain_key(&chain_key.next_chain_key()?)?;
 
     // XXX why is this check after everything else?!!
-    if !identity_store.is_trusted_identity(
-        &remote_address,
-        &their_identity_key,
-        Direction::Sending,
-        ctx,
-    ).await? {
+    if !identity_store
+        .is_trusted_identity(
+            &remote_address,
+            &their_identity_key,
+            Direction::Sending,
+            ctx,
+        )
+        .await?
+    {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
         ));
     }
 
     // XXX this could be combined with the above call to the identity store (in a new API)
-    identity_store.save_identity(&remote_address, &their_identity_key, ctx).await?;
+    identity_store
+        .save_identity(&remote_address, &their_identity_key, ctx)
+        .await?;
 
-    session_store.store_session(&remote_address, &session_record, ctx).await?;
+    session_store
+        .store_session(&remote_address, &session_record, ctx)
+        .await?;
     Ok(message)
 }
 
@@ -114,24 +122,30 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     match ciphertext {
-        CiphertextMessage::SignalMessage(m) => message_decrypt_signal(
-            m,
-            remote_address,
-            session_store,
-            identity_store,
-            csprng,
-            ctx,
-        ).await,
-        CiphertextMessage::PreKeySignalMessage(m) => message_decrypt_prekey(
-            m,
-            remote_address,
-            session_store,
-            identity_store,
-            pre_key_store,
-            signed_pre_key_store,
-            csprng,
-            ctx,
-        ).await,
+        CiphertextMessage::SignalMessage(m) => {
+            message_decrypt_signal(
+                m,
+                remote_address,
+                session_store,
+                identity_store,
+                csprng,
+                ctx,
+            )
+            .await
+        }
+        CiphertextMessage::PreKeySignalMessage(m) => {
+            message_decrypt_prekey(
+                m,
+                remote_address,
+                session_store,
+                identity_store,
+                pre_key_store,
+                signed_pre_key_store,
+                csprng,
+                ctx,
+            )
+            .await
+        }
         _ => Err(SignalProtocolError::InvalidArgument(
             "SessionCipher::decrypt cannot decrypt this message type".to_owned(),
         )),
@@ -149,7 +163,8 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
-        .load_session(&remote_address, ctx).await?
+        .load_session(&remote_address, ctx)
+        .await?
         .unwrap_or_else(SessionRecord::new_fresh);
 
     let pre_key_id = session::process_prekey(
@@ -160,11 +175,14 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         pre_key_store,
         signed_pre_key_store,
         ctx,
-    ).await?;
+    )
+    .await?;
 
     let ptext = decrypt_message_with_record(&mut session_record, ciphertext.message(), csprng)?;
 
-    session_store.store_session(&remote_address, &session_record, ctx).await?;
+    session_store
+        .store_session(&remote_address, &session_record, ctx)
+        .await?;
 
     if let Some(pre_key_id) = pre_key_id {
         pre_key_store.remove_pre_key(pre_key_id, ctx).await?;
@@ -182,7 +200,8 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
-        .load_session(&remote_address, ctx).await?
+        .load_session(&remote_address, ctx)
+        .await?
         .ok_or(SignalProtocolError::SessionNotFound)?;
 
     let ptext = decrypt_message_with_record(&mut session_record, ciphertext, csprng)?;
@@ -193,20 +212,27 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
         .remote_identity_key()?
         .ok_or(SignalProtocolError::InvalidSessionStructure)?;
 
-    if !identity_store.is_trusted_identity(
-        &remote_address,
-        &their_identity_key,
-        Direction::Receiving,
-        ctx,
-    ).await? {
+    if !identity_store
+        .is_trusted_identity(
+            &remote_address,
+            &their_identity_key,
+            Direction::Receiving,
+            ctx,
+        )
+        .await?
+    {
         return Err(SignalProtocolError::UntrustedIdentity(
             remote_address.clone(),
         ));
     }
 
-    identity_store.save_identity(&remote_address, &their_identity_key, ctx).await?;
+    identity_store
+        .save_identity(&remote_address, &their_identity_key, ctx)
+        .await?;
 
-    session_store.store_session(&remote_address, &session_record, ctx).await?;
+    session_store
+        .store_session(&remote_address, &session_record, ctx)
+        .await?;
 
     Ok(ptext)
 }
@@ -312,7 +338,8 @@ pub async fn remote_registration_id(
     ctx: Context,
 ) -> Result<u32> {
     let session_record = session_store
-        .load_session(&remote_address, ctx).await?
+        .load_session(&remote_address, ctx)
+        .await?
         .ok_or(SignalProtocolError::SessionNotFound)?;
     session_record.session_state()?.remote_registration_id()
 }
@@ -323,7 +350,8 @@ pub async fn session_version(
     ctx: Context,
 ) -> Result<u32> {
     let session_record = session_store
-        .load_session(&remote_address, ctx).await?
+        .load_session(&remote_address, ctx)
+        .await?
         .ok_or(SignalProtocolError::SessionNotFound)?;
     session_record.session_state()?.session_version()
 }

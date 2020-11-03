@@ -116,7 +116,12 @@ impl traits::PreKeyStore for InMemPreKeyStore {
             .clone())
     }
 
-    async fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord, _ctx: Context) -> Result<()> {
+    async fn save_pre_key(
+        &mut self,
+        id: PreKeyId,
+        record: &PreKeyRecord,
+        _ctx: Context,
+    ) -> Result<()> {
         // This overwrites old values, which matches Java behavior, but is it correct?
         self.pre_keys.insert(id, record.to_owned());
         Ok(())
@@ -150,7 +155,11 @@ impl Default for InMemSignedPreKeyStore {
 
 #[async_trait(?Send)]
 impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
-    async fn get_signed_pre_key(&self, id: SignedPreKeyId, _ctx: Context) -> Result<SignedPreKeyRecord> {
+    async fn get_signed_pre_key(
+        &self,
+        id: SignedPreKeyId,
+        _ctx: Context,
+    ) -> Result<SignedPreKeyRecord> {
         Ok(self
             .signed_pre_keys
             .get(&id)
@@ -290,7 +299,9 @@ impl traits::IdentityKeyStore for InMemSignalProtocolStore {
         identity: &IdentityKey,
         ctx: Context,
     ) -> Result<bool> {
-        self.identity_store.save_identity(address, identity, ctx).await
+        self.identity_store
+            .save_identity(address, identity, ctx)
+            .await
     }
 
     async fn is_trusted_identity(
@@ -301,10 +312,15 @@ impl traits::IdentityKeyStore for InMemSignalProtocolStore {
         ctx: Context,
     ) -> Result<bool> {
         self.identity_store
-            .is_trusted_identity(address, identity, direction, ctx).await
+            .is_trusted_identity(address, identity, direction, ctx)
+            .await
     }
 
-    async fn get_identity(&self, address: &ProtocolAddress, ctx: Context) -> Result<Option<IdentityKey>> {
+    async fn get_identity(
+        &self,
+        address: &ProtocolAddress,
+        ctx: Context,
+    ) -> Result<Option<IdentityKey>> {
         self.identity_store.get_identity(address, ctx).await
     }
 }
@@ -315,7 +331,12 @@ impl traits::PreKeyStore for InMemSignalProtocolStore {
         self.pre_key_store.get_pre_key(id, ctx).await
     }
 
-    async fn save_pre_key(&mut self, id: PreKeyId, record: &PreKeyRecord, ctx: Context) -> Result<()> {
+    async fn save_pre_key(
+        &mut self,
+        id: PreKeyId,
+        record: &PreKeyRecord,
+        ctx: Context,
+    ) -> Result<()> {
         self.pre_key_store.save_pre_key(id, record, ctx).await
     }
 
@@ -326,7 +347,11 @@ impl traits::PreKeyStore for InMemSignalProtocolStore {
 
 #[async_trait(?Send)]
 impl traits::SignedPreKeyStore for InMemSignalProtocolStore {
-    async fn get_signed_pre_key(&self, id: SignedPreKeyId, ctx: Context) -> Result<SignedPreKeyRecord> {
+    async fn get_signed_pre_key(
+        &self,
+        id: SignedPreKeyId,
+        ctx: Context,
+    ) -> Result<SignedPreKeyRecord> {
         self.signed_pre_key_store.get_signed_pre_key(id, ctx).await
     }
 
@@ -337,7 +362,8 @@ impl traits::SignedPreKeyStore for InMemSignalProtocolStore {
         ctx: Context,
     ) -> Result<()> {
         self.signed_pre_key_store
-            .save_signed_pre_key(id, record, ctx).await
+            .save_signed_pre_key(id, record, ctx)
+            .await
     }
 }
 
@@ -370,7 +396,8 @@ impl traits::SenderKeyStore for InMemSignalProtocolStore {
         ctx: Context,
     ) -> Result<()> {
         self.sender_key_store
-            .store_sender_key(sender_key_name, record, ctx).await
+            .store_sender_key(sender_key_name, record, ctx)
+            .await
     }
 
     async fn load_sender_key(
@@ -378,7 +405,9 @@ impl traits::SenderKeyStore for InMemSignalProtocolStore {
         sender_key_name: &SenderKeyName,
         ctx: Context,
     ) -> Result<Option<SenderKeyRecord>> {
-        self.sender_key_store.load_sender_key(sender_key_name, ctx).await
+        self.sender_key_store
+            .load_sender_key(sender_key_name, ctx)
+            .await
     }
 }
 

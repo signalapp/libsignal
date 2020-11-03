@@ -38,7 +38,11 @@ pub trait IdentityKeyStore {
         ctx: Context,
     ) -> Result<bool>;
 
-    async fn get_identity(&self, address: &ProtocolAddress, ctx: Context) -> Result<Option<IdentityKey>>;
+    async fn get_identity(
+        &self,
+        address: &ProtocolAddress,
+        ctx: Context,
+    ) -> Result<Option<IdentityKey>>;
 }
 
 #[async_trait(?Send)]
