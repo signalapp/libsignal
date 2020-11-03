@@ -583,19 +583,6 @@ macro_rules! jni_fn_get_jstring {
             })
         }
     };
-    ( $nm:ident($typ:ty) using $func:path ) => {
-        #[no_mangle]
-        pub unsafe extern "system" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> jstring {
-            run_ffi_safe(&env, || {
-                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
-                Ok(env.new_string($func(&obj)?)?.into_inner())
-            })
-        }
-    };
 }
 
 #[macro_export]
@@ -610,19 +597,6 @@ macro_rules! jni_fn_get_jbytearray {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
                 to_jbytearray(&env, $body(obj))
-            })
-        }
-    };
-    ( $nm:ident($typ:ty) using $func:path ) => {
-        #[no_mangle]
-        pub unsafe extern "system" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> jbyteArray {
-            run_ffi_safe(&env, || {
-                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
-                to_jbytearray(&env, $func(&obj))
             })
         }
     };
