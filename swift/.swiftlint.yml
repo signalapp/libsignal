@@ -7,3 +7,12 @@ disabled_rules:
 - line_length
 - trailing_comma
 - type_body_length
+opt_in_rules:
+- attributes
+- file_header
+file_header:
+  required_pattern: |
+    //
+    // Copyright \d{4}(-\d{4})? Signal Messenger, LLC
+    // SPDX-License-Identifier: AGPL-3.0-only
+    //
