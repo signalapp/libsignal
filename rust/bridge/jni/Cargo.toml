@@ -18,5 +18,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 libsignal-protocol-rust = { path = "../../protocol" }
+async-trait = "0.1.41"
+futures = "0.3.7"
 jni = "0.17"
 rand = "0.7.3"

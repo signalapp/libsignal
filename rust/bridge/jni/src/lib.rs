@@ -6,6 +6,8 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(warnings)]
 
+use async_trait::async_trait;
+use futures::executor::block_on;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
@@ -946,16 +948,17 @@ impl<'a> JniIdentityKeyStore<'a> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
-    fn get_identity_key_pair(&self, _ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
+    async fn get_identity_key_pair(&self, _ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
         Ok(self.do_get_identity_key_pair()?)
     }
 
-    fn get_local_registration_id(&self, _ctx: Context) -> Result<u32, SignalProtocolError> {
+    async fn get_local_registration_id(&self, _ctx: Context) -> Result<u32, SignalProtocolError> {
         Ok(self.do_get_local_registration_id()?)
     }
 
-    fn save_identity(
+    async fn save_identity(
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
@@ -964,7 +967,7 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
         Ok(self.do_save_identity(address, identity)?)
     }
 
-    fn is_trusted_identity(
+    async fn is_trusted_identity(
         &self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
@@ -974,7 +977,7 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
         Ok(self.do_is_trusted_identity(address, identity, direction)?)
     }
 
-    fn get_identity(
+    async fn get_identity(
         &self,
         address: &ProtocolAddress,
         _ctx: Context,
@@ -1047,8 +1050,9 @@ impl<'a> JniPreKeyStore<'a> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a> PreKeyStore for JniPreKeyStore<'a> {
-    fn get_pre_key(
+    async fn get_pre_key(
         &self,
         prekey_id: u32,
         _ctx: Context,
@@ -1056,7 +1060,7 @@ impl<'a> PreKeyStore for JniPreKeyStore<'a> {
         Ok(self.do_get_pre_key(prekey_id)?)
     }
 
-    fn save_pre_key(
+    async fn save_pre_key(
         &mut self,
         prekey_id: u32,
         record: &PreKeyRecord,
@@ -1065,7 +1069,7 @@ impl<'a> PreKeyStore for JniPreKeyStore<'a> {
         Ok(self.do_save_pre_key(prekey_id, record)?)
     }
 
-    fn remove_pre_key(&mut self, prekey_id: u32, _ctx: Context) -> Result<(), SignalProtocolError> {
+    async fn remove_pre_key(&mut self, prekey_id: u32, _ctx: Context) -> Result<(), SignalProtocolError> {
         Ok(self.do_remove_pre_key(prekey_id)?)
     }
 }
@@ -1131,8 +1135,9 @@ impl<'a> JniSignedPreKeyStore<'a> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
-    fn get_signed_pre_key(
+    async fn get_signed_pre_key(
         &self,
         prekey_id: u32,
         _ctx: Context,
@@ -1140,7 +1145,7 @@ impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
         Ok(self.do_get_signed_pre_key(prekey_id)?)
     }
 
-    fn save_signed_pre_key(
+    async fn save_signed_pre_key(
         &mut self,
         prekey_id: u32,
         record: &SignedPreKeyRecord,
@@ -1210,8 +1215,9 @@ impl<'a> JniSessionStore<'a> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a> SessionStore for JniSessionStore<'a> {
-    fn load_session(
+    async fn load_session(
         &self,
         address: &ProtocolAddress,
         _ctx: Context,
@@ -1219,7 +1225,7 @@ impl<'a> SessionStore for JniSessionStore<'a> {
         Ok(self.do_load_session(address)?)
     }
 
-    fn store_session(
+    async fn store_session(
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
@@ -1246,14 +1252,14 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionBuilder_n
         let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        process_prekey_bundle(
+        block_on(process_prekey_bundle(
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
             bundle,
             &mut csprng,
             None,
-        )?;
+        ))?;
 
         Ok(())
     })
@@ -1275,13 +1281,13 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
         let mut identity_key_store = JniIdentityKeyStore::new(&env, identity_key_store)?;
         let mut session_store = JniSessionStore::new(&env, session_store)?;
 
-        let ctext = message_encrypt(
+        let ctext = block_on(message_encrypt(
             &message,
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
             None,
-        )?;
+        ))?;
 
         let obj = match ctext {
             CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
@@ -1320,14 +1326,14 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
         let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = message_decrypt_signal(
+        let ptext = block_on(message_decrypt_signal(
             &message,
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
             &mut csprng,
             None,
-        )?;
+        ))?;
 
         to_jbytearray(&env, Ok(ptext))
     })
@@ -1353,7 +1359,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
         let mut signed_prekey_store = JniSignedPreKeyStore::new(&env, signed_prekey_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = message_decrypt_prekey(
+        let ptext = block_on(message_decrypt_prekey(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1362,7 +1368,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_SessionCipher_na
             &mut signed_prekey_store,
             &mut csprng,
             None,
-        )?;
+        ))?;
 
         to_jbytearray(&env, Ok(ptext))
     })
@@ -1436,8 +1442,9 @@ impl<'a> JniSenderKeyStore<'a> {
     }
 }
 
+#[async_trait(?Send)]
 impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
-    fn store_sender_key(
+    async fn store_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
@@ -1446,7 +1453,7 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
         Ok(self.do_store_sender_key(sender_key_name, record)?)
     }
 
-    fn load_sender_key(
+    async fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
         _ctx: Context,
@@ -1467,12 +1474,12 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
         let mut csprng = rand::rngs::OsRng;
 
-        let skdm = create_sender_key_distribution_message(
+        let skdm = block_on(create_sender_key_distribution_message(
             &sender_key_name,
             &mut sender_key_store,
             &mut csprng,
             None,
-        )?;
+        ))?;
         box_object::<SenderKeyDistributionMessage>(Ok(skdm))
     })
 }
@@ -1491,12 +1498,12 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupSess
             native_handle_cast::<SenderKeyDistributionMessage>(sender_key_distribution_message)?;
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
-        process_sender_key_distribution_message(
+        block_on(process_sender_key_distribution_message(
             sender_key_name,
             sender_key_distribution_message,
             &mut sender_key_store,
             None,
-        )?;
+        ))?;
         Ok(())
     })
 }
@@ -1516,13 +1523,13 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
 
         let mut rng = rand::rngs::OsRng;
 
-        let ctext = group_encrypt(
+        let ctext = block_on(group_encrypt(
             &mut sender_key_store,
             &sender_key_name,
             &message,
             &mut rng,
             None,
-        )?;
+        ))?;
 
         to_jbytearray(&env, Ok(ctext))
     })
@@ -1541,7 +1548,7 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_groups_GroupCiph
         let message = env.convert_byte_array(message)?;
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
-        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name, None)?;
+        let ptext = block_on(group_decrypt(&message, &mut sender_key_store, &sender_key_name, None))?;
 
         to_jbytearray(&env, Ok(ptext))
     })
