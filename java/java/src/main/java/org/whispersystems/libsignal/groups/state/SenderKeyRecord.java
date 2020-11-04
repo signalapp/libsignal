@@ -6,12 +6,12 @@
 package org.whispersystems.libsignal.groups.state;
 
 import org.whispersystems.libsignal.InvalidKeyIdException;
-import org.whispersystems.libsignal.state.StorageProtos;
 
 import java.io.IOException;
 import java.util.LinkedList;
 
 import static org.whispersystems.libsignal.state.StorageProtos.SenderKeyRecordStructure;
+import static org.whispersystems.libsignal.state.StorageProtos.SenderKeyStateStructure;
 
 /**
  * A durable representation of a set of SenderKeyStates for a specific
@@ -28,7 +28,7 @@ public class SenderKeyRecord {
   public SenderKeyRecord(byte[] serialized) throws IOException {
     SenderKeyRecordStructure senderKeyRecordStructure = SenderKeyRecordStructure.parseFrom(serialized);
 
-    for (StorageProtos.SenderKeyStateStructure structure : senderKeyRecordStructure.getSenderKeyStatesList()) {
+    for (SenderKeyStateStructure structure : senderKeyRecordStructure.getSenderKeyStatesList()) {
       this.senderKeyStates.add(new SenderKeyState(structure));
     }
   }
