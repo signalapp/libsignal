@@ -11,18 +11,11 @@ subprojects {
     }
 }
 
-task makeAndroid(type:Exec) {
+task makeJniLibraries(type:Exec) {
   group 'Rust'
-  description 'Build the android libraries'
+  description 'Build the JNI libraries'
 
-  commandLine 'make', 'android_libs'
-}
-
-task makeDesktop(type:Exec) {
-  group 'Rust'
-  description 'Build the desktop libraries'
-
-  commandLine 'make', 'desktop_libs'
+  commandLine './build_jni.sh'
 }
 
 task makeAll() {

@@ -156,5 +156,5 @@ artifacts {
 }
 
 tasks.withType(JavaCompile) {
-    compileTask -> compileTask.dependsOn ':makeDesktop'
+    compileTask -> compileTask.dependsOn ':makeJniLibraries'
 }
