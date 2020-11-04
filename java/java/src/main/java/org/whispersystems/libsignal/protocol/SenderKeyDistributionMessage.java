@@ -6,15 +6,11 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
-import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.util.ByteUtil;
 
 public class SenderKeyDistributionMessage implements CiphertextMessage {
 

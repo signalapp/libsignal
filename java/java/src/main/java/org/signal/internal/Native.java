@@ -33,8 +33,8 @@ public final class Native {
       while ((read = in.read(buffer)) != -1) {
         out.write(buffer, 0, read);
       }
-    System.load(tempFile.getAbsolutePath());
     }
+    System.load(tempFile.getAbsolutePath());
   }
 
   /*

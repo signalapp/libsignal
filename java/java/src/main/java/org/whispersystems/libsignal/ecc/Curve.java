@@ -5,7 +5,6 @@
  */
 package org.whispersystems.libsignal.ecc;
 import org.whispersystems.libsignal.InvalidKeyException;
-import org.whispersystems.libsignal.util.ByteUtil;
 
 public class Curve {
   public  static final int DJB_TYPE   = 0x05;

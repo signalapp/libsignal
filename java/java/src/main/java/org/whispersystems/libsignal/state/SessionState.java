@@ -7,7 +7,6 @@
 package org.whispersystems.libsignal.state;
 
 import org.signal.client.internal.Native;
-import com.google.protobuf.ByteString;
 
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.IdentityKeyPair;

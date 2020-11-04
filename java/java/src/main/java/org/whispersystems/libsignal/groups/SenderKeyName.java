@@ -12,11 +12,6 @@ import org.whispersystems.libsignal.SignalProtocolAddress;
  * A representation of a (groupId + senderId + deviceId) tuple.
  */
 public class SenderKeyName {
-
-
-  static {
-  }
-
   private long handle;
 
   public SenderKeyName(String groupId, SignalProtocolAddress sender) {
@@ -40,11 +35,6 @@ public class SenderKeyName {
     return new SignalProtocolAddress(Native.SenderKeyName_GetSenderName(this.handle), Native.SenderKeyName_GetSenderDeviceId(this.handle));
   }
 
-  public String serialize() {
-    SignalProtocolAddress sender = this.getSender();
-    return this.getGroupId() + "::" + sender.getName() + "::" + String.valueOf(sender.getDeviceId());
-  }
-
   @Override
   public boolean equals(Object other) {
     if (other == null)                     return false;
@@ -59,7 +49,7 @@ public class SenderKeyName {
 
   @Override
   public int hashCode() {
-    return this.serialize().hashCode();
+    return this.getGroupId().hashCode() ^ this.getSender().hashCode();
   }
 
   public long nativeHandle() {

@@ -6,13 +6,8 @@
 package org.whispersystems.libsignal.fingerprint;
 
 import org.signal.client.internal.Native;
-import org.whispersystems.libsignal.util.ByteUtil;
 
 public class DisplayableFingerprint {
-  static {
-  }
-
-
   private String displayString;
 
   DisplayableFingerprint(byte[] localFingerprint, byte[] remoteFingerprint) {

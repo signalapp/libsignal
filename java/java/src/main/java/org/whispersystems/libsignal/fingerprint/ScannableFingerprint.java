@@ -6,11 +6,8 @@
 package org.whispersystems.libsignal.fingerprint;
 
 import org.signal.client.internal.Native;
+
 public class ScannableFingerprint {
-  static {
-  }
-
-
   private final byte[] encodedFingerprint;
 
   ScannableFingerprint(byte[] encodedFingerprint) {
