@@ -68,11 +68,6 @@ message RecordStructure {
     repeated SessionStructure previousSessions = 2;
 }
 
-message IdentityKeyPairStructure {
-    optional bytes publicKey  = 1;
-    optional bytes privateKey = 2;
-}
-
 message SenderKeyStateStructure {
     message SenderChainKey {
         optional uint32 iteration = 1;

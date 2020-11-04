@@ -56,4 +56,8 @@ public class IdentityKey {
   public int hashCode() {
     return publicKey.hashCode();
   }
+
+  public long nativeHandle() {
+    return publicKey.nativeHandle();
+  }
 }

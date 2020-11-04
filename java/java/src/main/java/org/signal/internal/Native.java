@@ -84,6 +84,8 @@ public final class Native {
   public static native long ECPrivateKey_GetPublicKey(long handle);
   public static native void ECPrivateKey_Destroy(long handle);
 
+  public static native byte[] IdentityKeyPair_Serialize(long pubHandle, long privHandle);
+
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey);
   public static native String NumericFingerprintGenerator_GetDisplayString(long handle);
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long handle);

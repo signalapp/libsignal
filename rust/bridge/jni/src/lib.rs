@@ -153,6 +153,22 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKe
 jni_fn_destroy!(Java_org_signal_client_internal_Native_ECPrivateKey_1Destroy destroys PrivateKey);
 
 #[no_mangle]
+pub unsafe extern "system" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Serialize(
+    env: JNIEnv,
+    _class: JClass,
+    public_key_handle: ObjectHandle,
+    private_key_handle: ObjectHandle,
+) -> jbyteArray {
+    run_ffi_safe(&env, || {
+        let public_key = native_handle_cast::<PublicKey>(public_key_handle)?;
+        let private_key = native_handle_cast::<PrivateKey>(private_key_handle)?;
+        let identity_key = IdentityKey::new(*public_key);
+        let identity_key_pair = IdentityKeyPair::new(identity_key, *private_key);
+        to_jbytearray(&env, Ok(identity_key_pair.serialize()))
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "system" fn Java_org_signal_client_internal_Native_DisplayableFingerprint_1Format(
     env: JNIEnv,
     _class: JClass,
