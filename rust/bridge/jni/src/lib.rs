@@ -78,6 +78,9 @@ pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_
 jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeSerialize(PublicKey) using
                        |k: &PublicKey| Ok(k.serialize()));
 
+jni_fn_get_jbytearray!(Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeGetPublicKeyBytes(PublicKey) using
+                       |k: &PublicKey| Ok(k.public_key_bytes()?.to_vec()));
+
 #[no_mangle]
 pub unsafe extern "system" fn Java_org_whispersystems_libsignal_ecc_ECPublicKey_nativeVerify(
     env: JNIEnv,

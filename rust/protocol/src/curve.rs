@@ -80,6 +80,12 @@ impl PublicKey {
         }
     }
 
+    pub fn public_key_bytes(&self) -> Result<&[u8]> {
+        match self.key {
+            PublicKeyData::DjbPublicKey(ref v) => Ok(v),
+        }
+    }
+
     pub fn serialize(&self) -> Box<[u8]> {
         let value_len = match self.key {
             PublicKeyData::DjbPublicKey(v) => v.len(),
