@@ -10,7 +10,7 @@ public class Curve {
   public  static final int DJB_TYPE   = 0x05;
 
   public static ECKeyPair generateKeyPair() {
-    ECPrivateKey privateKey = new ECPrivateKey();
+    ECPrivateKey privateKey = ECPrivateKey.generate();
     ECPublicKey publicKey = privateKey.publicKey();
     return new ECKeyPair(publicKey, privateKey);
   }

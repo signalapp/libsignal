@@ -10,8 +10,8 @@ import org.signal.client.internal.Native;
 public class ECPrivateKey {
   private long handle;
 
-  ECPrivateKey() {
-    this.handle = Native.ECPrivateKey_Generate();
+  static ECPrivateKey generate() {
+    return new ECPrivateKey(Native.ECPrivateKey_Generate());
   }
 
   ECPrivateKey(byte[] privateKey) {
