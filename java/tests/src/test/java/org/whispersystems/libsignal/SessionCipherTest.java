@@ -94,8 +94,8 @@ public class SessionCipherTest extends TestCase {
     List<byte[]>            alicePlaintextMessages  = new ArrayList<>();
 
     for (int i=0;i<50;i++) {
-      alicePlaintextMessages.add(("смерть за смерть " + i).getBytes());
-      aliceCiphertextMessages.add(aliceCipher.encrypt(("смерть за смерть " + i).getBytes()));
+      alicePlaintextMessages.add(("alice message " + i).getBytes());
+      aliceCiphertextMessages.add(aliceCipher.encrypt(("alice message " + i).getBytes()));
     }
 
     long seed = System.currentTimeMillis();
@@ -112,8 +112,8 @@ public class SessionCipherTest extends TestCase {
     List<byte[]>            bobPlaintextMessages  = new ArrayList<>();
 
     for (int i=0;i<20;i++) {
-      bobPlaintextMessages.add(("смерть за смерть " + i).getBytes());
-      bobCiphertextMessages.add(bobCipher.encrypt(("смерть за смерть " + i).getBytes()));
+      bobPlaintextMessages.add(("bob message " + i).getBytes());
+      bobCiphertextMessages.add(bobCipher.encrypt(("bob message " + i).getBytes()));
     }
 
     seed = System.currentTimeMillis();

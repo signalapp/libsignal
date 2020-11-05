@@ -44,7 +44,7 @@ public class SessionBuilderTest extends TestCase {
     assertTrue(aliceStore.containsSession(BOB_ADDRESS));
     assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
 
-    final String            originalMessage    = "L'homme est condamné à être libre";
+          String            originalMessage    = "Good, fast, cheap: pick two";
           SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
           CiphertextMessage outgoingMessage    = aliceSessionCipher.encrypt(originalMessage.getBytes());
 
@@ -171,7 +171,7 @@ public class SessionBuilderTest extends TestCase {
 
     aliceSessionBuilder.process(bobPreKey);
 
-    String            originalMessage    = "L'homme est condamné à être libre";
+    String            originalMessage    = "Good, fast, cheap: pick two";
     SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     CiphertextMessage outgoingMessageOne = aliceSessionCipher.encrypt(originalMessage.getBytes());
     CiphertextMessage outgoingMessageTwo = aliceSessionCipher.encrypt(originalMessage.getBytes());
@@ -225,7 +225,7 @@ public class SessionBuilderTest extends TestCase {
 
     aliceSessionBuilder.process(bobPreKey);
 
-    String            originalMessage    = "L'homme est condamné à être libre";
+    String            originalMessage    = "Good, fast, cheap: pick two";
     SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     CiphertextMessage outgoingMessageOne = aliceSessionCipher.encrypt(originalMessage.getBytes());
 
@@ -279,7 +279,7 @@ public class SessionBuilderTest extends TestCase {
     assertTrue(aliceStore.containsSession(BOB_ADDRESS));
     assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
 
-    String            originalMessage    = "L'homme est condamné à être libre";
+    String            originalMessage    = "Good, fast, cheap: pick two";
     SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
     CiphertextMessage outgoingMessage    = aliceSessionCipher.encrypt(originalMessage.getBytes());
 
@@ -288,8 +288,6 @@ public class SessionBuilderTest extends TestCase {
     PreKeySignalMessage incomingMessage = new PreKeySignalMessage(outgoingMessage.serialize());
     assertTrue(!incomingMessage.getPreKeyId().isPresent());
 
-    // copypasta:
-    //bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
 
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
