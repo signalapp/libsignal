@@ -7,10 +7,6 @@ import org.whispersystems.libsignal.ecc.ECKeyPair;
 
 public class CurveTest extends TestCase {
 
-  public void testPureJava() {
-    assertTrue(Curve.isNative());
-  }
-
   public void testLargeSignatures() throws InvalidKeyException {
     ECKeyPair keys      = Curve.generateKeyPair();
     byte[]    message   = new byte[1024 * 1024];

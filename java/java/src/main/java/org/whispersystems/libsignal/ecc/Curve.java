@@ -9,10 +9,6 @@ import org.whispersystems.libsignal.InvalidKeyException;
 public class Curve {
   public  static final int DJB_TYPE   = 0x05;
 
-  public static boolean isNative() {
-    return false;
-  }
-
   public static ECKeyPair generateKeyPair() {
     ECPrivateKey privateKey = new ECPrivateKey();
     ECPublicKey publicKey = privateKey.publicKey();
