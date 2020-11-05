@@ -30,8 +30,6 @@ public class PreKeyBundle {
     long preKeyPublicHandle = 0;
     if(preKeyPublic != null) {
       preKeyPublicHandle = preKeyPublic.nativeHandle();
-    } else {
-      preKeyId = -1;
     }
 
     this.handle = Native.PreKeyBundle_New(registrationId, deviceId, preKeyId,
