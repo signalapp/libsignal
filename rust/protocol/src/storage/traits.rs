@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use async_trait::async_trait;
+
 use crate::error::Result;
 use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
 use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SenderKeyName, SenderKeyRecord};
@@ -15,19 +17,20 @@ pub enum Direction {
     Receiving,
 }
 
+#[async_trait(?Send)]
 pub trait IdentityKeyStore {
-    fn get_identity_key_pair(&self, ctx: Context) -> Result<IdentityKeyPair>;
+    async fn get_identity_key_pair(&self, ctx: Context) -> Result<IdentityKeyPair>;
 
-    fn get_local_registration_id(&self, ctx: Context) -> Result<u32>;
+    async fn get_local_registration_id(&self, ctx: Context) -> Result<u32>;
 
-    fn save_identity(
+    async fn save_identity(
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
         ctx: Context,
     ) -> Result<bool>;
 
-    fn is_trusted_identity(
+    async fn is_trusted_identity(
         &self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
@@ -35,30 +38,36 @@ pub trait IdentityKeyStore {
         ctx: Context,
     ) -> Result<bool>;
 
-    fn get_identity(&self, address: &ProtocolAddress, ctx: Context) -> Result<Option<IdentityKey>>;
+    async fn get_identity(
+        &self,
+        address: &ProtocolAddress,
+        ctx: Context,
+    ) -> Result<Option<IdentityKey>>;
 }
 
+#[async_trait(?Send)]
 pub trait PreKeyStore {
-    fn get_pre_key(&self, prekey_id: PreKeyId, ctx: Context) -> Result<PreKeyRecord>;
+    async fn get_pre_key(&self, prekey_id: PreKeyId, ctx: Context) -> Result<PreKeyRecord>;
 
-    fn save_pre_key(
+    async fn save_pre_key(
         &mut self,
         prekey_id: PreKeyId,
         record: &PreKeyRecord,
         ctx: Context,
     ) -> Result<()>;
 
-    fn remove_pre_key(&mut self, prekey_id: PreKeyId, ctx: Context) -> Result<()>;
+    async fn remove_pre_key(&mut self, prekey_id: PreKeyId, ctx: Context) -> Result<()>;
 }
 
+#[async_trait(?Send)]
 pub trait SignedPreKeyStore {
-    fn get_signed_pre_key(
+    async fn get_signed_pre_key(
         &self,
         signed_prekey_id: SignedPreKeyId,
         ctx: Context,
     ) -> Result<SignedPreKeyRecord>;
 
-    fn save_signed_pre_key(
+    async fn save_signed_pre_key(
         &mut self,
         signed_prekey_id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
@@ -66,14 +75,15 @@ pub trait SignedPreKeyStore {
     ) -> Result<()>;
 }
 
+#[async_trait(?Send)]
 pub trait SessionStore {
-    fn load_session(
+    async fn load_session(
         &self,
         address: &ProtocolAddress,
         ctx: Context,
     ) -> Result<Option<SessionRecord>>;
 
-    fn store_session(
+    async fn store_session(
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
@@ -81,15 +91,16 @@ pub trait SessionStore {
     ) -> Result<()>;
 }
 
+#[async_trait(?Send)]
 pub trait SenderKeyStore {
-    fn store_sender_key(
+    async fn store_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
         ctx: Context,
     ) -> Result<()>;
 
-    fn load_sender_key(
+    async fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
         ctx: Context,

@@ -15,7 +15,7 @@ pub fn test_in_memory_protocol_store() -> InMemSignalProtocolStore {
 }
 
 #[allow(dead_code)]
-pub fn encrypt(
+pub async fn encrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
     msg: &str,
@@ -27,10 +27,11 @@ pub fn encrypt(
         &mut store.identity_store,
         None,
     )
+    .await
 }
 
 #[allow(dead_code)]
-pub fn decrypt(
+pub async fn decrypt(
     store: &mut InMemSignalProtocolStore,
     remote_address: &ProtocolAddress,
     msg: &CiphertextMessage,
@@ -46,10 +47,11 @@ pub fn decrypt(
         &mut csprng,
         None,
     )
+    .await
 }
 
 #[allow(dead_code)]
-pub fn create_pre_key_bundle<R: Rng + CryptoRng>(
+pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
     store: &mut dyn ProtocolStore,
     mut csprng: &mut R,
 ) -> Result<PreKeyBundle, SignalProtocolError> {
@@ -58,7 +60,8 @@ pub fn create_pre_key_bundle<R: Rng + CryptoRng>(
 
     let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
     let signed_pre_key_signature = store
-        .get_identity_key_pair(None)?
+        .get_identity_key_pair(None)
+        .await?
         .private_key()
         .calculate_signature(&signed_pre_key_public, &mut csprng)?;
 
@@ -67,34 +70,38 @@ pub fn create_pre_key_bundle<R: Rng + CryptoRng>(
     let signed_pre_key_id: u32 = csprng.gen();
 
     let pre_key_bundle = PreKeyBundle::new(
-        store.get_local_registration_id(None)?,
+        store.get_local_registration_id(None).await?,
         device_id,
         Some(pre_key_id),
         Some(pre_key_pair.public_key),
         signed_pre_key_id,
         signed_pre_key_pair.public_key,
         signed_pre_key_signature.to_vec(),
-        *store.get_identity_key_pair(None)?.identity_key(),
+        *store.get_identity_key_pair(None).await?.identity_key(),
     )?;
 
-    store.save_pre_key(
-        pre_key_id,
-        &PreKeyRecord::new(pre_key_id, &pre_key_pair),
-        None,
-    )?;
+    store
+        .save_pre_key(
+            pre_key_id,
+            &PreKeyRecord::new(pre_key_id, &pre_key_pair),
+            None,
+        )
+        .await?;
 
     let timestamp = csprng.gen();
 
-    store.save_signed_pre_key(
-        signed_pre_key_id,
-        &SignedPreKeyRecord::new(
+    store
+        .save_signed_pre_key(
             signed_pre_key_id,
-            timestamp,
-            &signed_pre_key_pair,
-            &signed_pre_key_signature,
-        ),
-        None,
-    )?;
+            &SignedPreKeyRecord::new(
+                signed_pre_key_id,
+                timestamp,
+                &signed_pre_key_pair,
+                &signed_pre_key_signature,
+            ),
+            None,
+        )
+        .await?;
 
     Ok(pre_key_bundle)
 }

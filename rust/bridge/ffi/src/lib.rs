@@ -6,6 +6,8 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(warnings)]
 
+use async_trait::async_trait;
+use futures::executor::block_on;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
@@ -834,8 +836,12 @@ impl FfiIdentityKeyStore {
     }
 }
 
+#[async_trait(?Send)]
 impl IdentityKeyStore for FfiIdentityKeyStore {
-    fn get_identity_key_pair(&self, ctx: Context) -> Result<IdentityKeyPair, SignalProtocolError> {
+    async fn get_identity_key_pair(
+        &self,
+        ctx: Context,
+    ) -> Result<IdentityKeyPair, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut key = std::ptr::null_mut();
         let result = (self.store.get_identity_key_pair)(self.store.ctx, &mut key, ctx);
@@ -859,7 +865,7 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), *priv_key))
     }
 
-    fn get_local_registration_id(&self, ctx: Context) -> Result<u32, SignalProtocolError> {
+    async fn get_local_registration_id(&self, ctx: Context) -> Result<u32, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut id = 0;
         let result = (self.store.get_local_registration_id)(self.store.ctx, &mut id, ctx);
@@ -876,7 +882,7 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         Ok(id)
     }
 
-    fn save_identity(
+    async fn save_identity(
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
@@ -895,7 +901,7 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         }
     }
 
-    fn is_trusted_identity(
+    async fn is_trusted_identity(
         &self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
@@ -927,7 +933,7 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         }
     }
 
-    fn get_identity(
+    async fn get_identity(
         &self,
         address: &ProtocolAddress,
         ctx: Context,
@@ -990,8 +996,9 @@ impl FfiPreKeyStore {
     }
 }
 
+#[async_trait(?Send)]
 impl PreKeyStore for FfiPreKeyStore {
-    fn get_pre_key(
+    async fn get_pre_key(
         &self,
         prekey_id: u32,
         ctx: Context,
@@ -1017,7 +1024,7 @@ impl PreKeyStore for FfiPreKeyStore {
         Ok(*record)
     }
 
-    fn save_pre_key(
+    async fn save_pre_key(
         &mut self,
         prekey_id: u32,
         record: &PreKeyRecord,
@@ -1038,7 +1045,11 @@ impl PreKeyStore for FfiPreKeyStore {
         Ok(())
     }
 
-    fn remove_pre_key(&mut self, prekey_id: u32, ctx: Context) -> Result<(), SignalProtocolError> {
+    async fn remove_pre_key(
+        &mut self,
+        prekey_id: u32,
+        ctx: Context,
+    ) -> Result<(), SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let result = (self.store.remove_pre_key)(self.store.ctx, prekey_id, ctx);
 
@@ -1088,8 +1099,9 @@ impl FfiSignedPreKeyStore {
     }
 }
 
+#[async_trait(?Send)]
 impl SignedPreKeyStore for FfiSignedPreKeyStore {
-    fn get_signed_pre_key(
+    async fn get_signed_pre_key(
         &self,
         prekey_id: u32,
         ctx: Context,
@@ -1116,7 +1128,7 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
         Ok(*record)
     }
 
-    fn save_signed_pre_key(
+    async fn save_signed_pre_key(
         &mut self,
         prekey_id: u32,
         record: &SignedPreKeyRecord,
@@ -1171,8 +1183,9 @@ impl FfiSessionStore {
     }
 }
 
+#[async_trait(?Send)]
 impl SessionStore for FfiSessionStore {
-    fn load_session(
+    async fn load_session(
         &self,
         address: &ProtocolAddress,
         ctx: Context,
@@ -1199,7 +1212,7 @@ impl SessionStore for FfiSessionStore {
         Ok(Some(*record))
     }
 
-    fn store_session(
+    async fn store_session(
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
@@ -1237,14 +1250,14 @@ pub unsafe extern "C" fn signal_process_prekey_bundle(
         let mut session_store = FfiSessionStore::new(session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        process_prekey_bundle(
+        block_on(process_prekey_bundle(
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
             bundle,
             &mut csprng,
             Some(ctx),
-        )?;
+        ))?;
 
         Ok(())
     })
@@ -1267,13 +1280,13 @@ pub unsafe extern "C" fn signal_encrypt_message(
         let mut identity_key_store = FfiIdentityKeyStore::new(identity_key_store)?;
         let mut session_store = FfiSessionStore::new(session_store)?;
 
-        let ctext = message_encrypt(
+        let ctext = block_on(message_encrypt(
             &ptext,
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
             Some(ctx),
-        );
+        ));
 
         box_object(msg, ctext)
     })
@@ -1350,14 +1363,14 @@ pub unsafe extern "C" fn signal_decrypt_message(
         let mut session_store = FfiSessionStore::new(session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = message_decrypt_signal(
+        let ptext = block_on(message_decrypt_signal(
             &message,
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
             &mut csprng,
             Some(ctx),
-        );
+        ));
         write_bytearray_to(result, result_len, ptext)
     })
 }
@@ -1383,7 +1396,7 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
         let mut signed_prekey_store = FfiSignedPreKeyStore::new(signed_prekey_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = message_decrypt_prekey(
+        let ptext = block_on(message_decrypt_prekey(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1392,7 +1405,7 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
             &mut signed_prekey_store,
             &mut csprng,
             Some(ctx),
-        );
+        ));
 
         write_bytearray_to(result, result_len, ptext)
     })
@@ -1431,8 +1444,9 @@ impl FfiSenderKeyStore {
     }
 }
 
+#[async_trait(?Send)]
 impl SenderKeyStore for FfiSenderKeyStore {
-    fn store_sender_key(
+    async fn store_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
         record: &SenderKeyRecord,
@@ -1454,7 +1468,7 @@ impl SenderKeyStore for FfiSenderKeyStore {
         Ok(())
     }
 
-    fn load_sender_key(
+    async fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
         ctx: Context,
@@ -1499,12 +1513,12 @@ pub unsafe extern "C" fn signal_create_sender_key_distribution_message(
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
         let mut csprng = rand::rngs::OsRng;
 
-        let skdm = create_sender_key_distribution_message(
+        let skdm = block_on(create_sender_key_distribution_message(
             &sender_key_name,
             &mut sender_key_store,
             &mut csprng,
             Some(ctx),
-        );
+        ));
 
         box_object::<SenderKeyDistributionMessage>(obj, skdm)
     })
@@ -1523,12 +1537,12 @@ pub unsafe extern "C" fn signal_process_sender_key_distribution_message(
             native_handle_cast::<SenderKeyDistributionMessage>(sender_key_distribution_message)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
 
-        process_sender_key_distribution_message(
+        block_on(process_sender_key_distribution_message(
             sender_key_name,
             sender_key_distribution_message,
             &mut sender_key_store,
             Some(ctx),
-        )?;
+        ))?;
 
         Ok(())
     })
@@ -1549,13 +1563,13 @@ pub unsafe extern "C" fn signal_group_encrypt_message(
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
         let mut rng = rand::rngs::OsRng;
-        let ctext = group_encrypt(
+        let ctext = block_on(group_encrypt(
             &mut sender_key_store,
             &sender_key_name,
             &message,
             &mut rng,
             Some(ctx),
-        );
+        ));
         write_bytearray_to(out, out_len, ctext)
     })
 }
@@ -1575,7 +1589,12 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
 
-        let ptext = group_decrypt(&message, &mut sender_key_store, &sender_key_name, Some(ctx));
+        let ptext = block_on(group_decrypt(
+            &message,
+            &mut sender_key_store,
+            &sender_key_name,
+            Some(ctx),
+        ));
         write_bytearray_to(out, out_len, ptext)
     })
 }

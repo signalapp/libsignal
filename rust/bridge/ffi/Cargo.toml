@@ -16,8 +16,10 @@ crate-type = ["staticlib"]
 
 [dependencies]
 libsignal-protocol-rust = { path = "../../protocol" }
-rand = "0.7.3"
+async-trait = "0.1.41"
 libc = "0.2"
+futures = "0.3.7"
+rand = "0.7.3"
 static_assertions = "1.1"
 
 [build-dependencies]
