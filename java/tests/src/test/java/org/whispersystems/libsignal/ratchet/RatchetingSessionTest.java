@@ -133,18 +133,7 @@ public class RatchetingSessionTest extends TestCase {
     assertTrue(Arrays.equals(session.getSenderChainKeyValue(), senderChain));
   }
 
-private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-public static String bytesToHex(byte[] bytes) {
-    char[] hexChars = new char[bytes.length * 2];
-    for (int j = 0; j < bytes.length; j++) {
-        int v = bytes[j] & 0xFF;
-        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-    }
-    return new String(hexChars);
-}
-
-   public void testRatchetingSessionAsAlice() throws InvalidKeyException {
+public void testRatchetingSessionAsAlice() throws InvalidKeyException {
     byte[] bobPublic             = {(byte) 0x05, (byte) 0x2c, (byte) 0xb4, (byte) 0x97, (byte) 0x76,
                                     (byte) 0xb8, (byte) 0x77, (byte) 0x02, (byte) 0x05, (byte) 0x74,
                                     (byte) 0x5a, (byte) 0x3a, (byte) 0x6e, (byte) 0x24, (byte) 0xf5,
