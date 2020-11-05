@@ -32,7 +32,7 @@ public class PublicKey: ClonableHandleOwner {
         return signal_publickey_clone(&newHandle, currentHandle)
     }
 
-    public func publicKeyBytes() throws -> [UInt8] {
+    public func keyBytes() throws -> [UInt8] {
         return try invokeFnReturningArray {
             signal_publickey_get_public_key_bytes(nativeHandle, $0, $1)
         }

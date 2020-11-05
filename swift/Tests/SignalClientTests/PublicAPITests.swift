@@ -67,7 +67,7 @@ class PublicAPITests: XCTestCase {
         XCTAssertEqual(pk_bytes[0], 0x05); // DJB
         XCTAssertEqual(pk_bytes.count, 33);
 
-        let pk_raw = try! pk.publicKeyBytes();
+        let pk_raw = try! pk.keyBytes();
         XCTAssertEqual(pk_raw.count, 32);
         XCTAssertEqual(pk_raw[0...31], pk_bytes[1...32]);
 
