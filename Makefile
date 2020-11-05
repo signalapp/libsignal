@@ -34,7 +34,7 @@ SIGNING_KEY_PASSSWORD ?=
 publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 publish_java: KEYRING_VOLUME := $(dir $(KEYRING_FILE))
 publish_java: KEYRING_FILE_ROOT := $(notdir $(KEYRING_FILE))
-publish_java:
+publish_java: docker_image
 	@[ -n "$(SONATYPE_USERNAME)" ]    || ( echo "SONATYPE_USERNAME is not set" && false )
 	@[ -n "$(SONATYPE_PASSWORD)" ]    || ( echo "SONATYPE_PASSWORD is not set" && false )
 	@[ -n "$(KEYRING_FILE)" ]         || ( echo "KEYRING_FILE is not set" && false )
