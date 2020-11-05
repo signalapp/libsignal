@@ -3,6 +3,9 @@
 Cargo.lock
 /swift/.build
 
+*.orig
+*.rej
+
 *~
 \#*\#
 .\#*
