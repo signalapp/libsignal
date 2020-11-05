@@ -24,6 +24,11 @@ jobs:
         profile: minimal
         components: rustfmt, clippy
     - uses: actions/checkout@v2
+    - name: Check for duplicate dependencies
+      run: |
+        DUPS=$(cargo tree -d -e normal)
+        echo $DUPS
+        test -z "$DUPS"
     - name: Rustfmt check
       run: cargo fmt -- --check
     - name: Build
