@@ -1,0 +1,39 @@
+name: Java
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build and Test
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install nightly rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+        profile: minimal
+
+    - name: Install Android toolchains
+      run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+
+    - name: Install NDK tool
+      run: cargo install cargo-ndk
+
+    - uses: actions/checkout@v2
+
+    - name: Build libsignal-client-java
+      run: ./gradlew build
+      working-directory: java
+      env:
+        ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk-bundle
+

@@ -1,0 +1,33 @@
+subprojects {
+    ext.version_number     = "0.1.2"
+    ext.group_info         = "org.whispersystems"
+
+    if (JavaVersion.current().isJava8Compatible()) {
+        allprojects {
+            tasks.withType(Javadoc) {
+                options.addStringOption('Xdoclint:none', '-quiet')
+            }
+        }
+    }
+}
+
+task makeJniLibrariesAndroid(type:Exec) {
+  group 'Rust'
+  description 'Build the JNI libraries'
+
+  commandLine './build_jni.sh', 'android'
+}
+
+task makeJniLibrariesDesktop(type:Exec) {
+  group 'Rust'
+  description 'Build the JNI libraries'
+
+  commandLine './build_jni.sh', 'desktop'
+}
+
+task makeAll() {
+  group 'Rust'
+  description 'Build the native libraries'
+
+  dependsOn 'makeDesktop', 'makeAndroid'
+}
