@@ -204,10 +204,10 @@ public final class Native {
   public static native int SenderKeyName_GetSenderDeviceId(long handle);
   public static native String SenderKeyName_GetGroupId(long handle);
 
-  public static native long SenderKeyState_New(int id, int iteration, byte[] chainKey, long signaturePublicHandle, long signaturePrivateHandle);
-  public static native void SenderKeyState_Destroy(long handle);
-  public static native long SenderKeyState_Deserialize(byte[] serialized);
-  public static native byte[] SenderKeyState_GetSerialized(long handle);
+  public static native long SenderKeyRecord_New();
+  public static native long SenderKeyRecord_Deserialize(byte[] serialized);
+  public static native void SenderKeyRecord_Destroy(long handle);
+  public static native byte[] SenderKeyRecord_GetSerialized(long handle);
 
   public static native long SenderKeyMessage_Deserialize(byte[] serialized);
   public static native long SenderKeyMessage_New(int keyId, int iteration, byte[] ciphertext, long pkHandle);
