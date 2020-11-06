@@ -122,6 +122,9 @@ public class Curve25519Test extends TestCase {
       throw new AssertionError("Sig verification failed!");
     }
 
+    byte[] aliceKey = aliceEphemeral.getPublicKeyBytes();
+    assertTrue(aliceKey.length == 32);
+
     for (int i=0;i<aliceSignature.length;i++) {
       byte[] modifiedSignature = new byte[aliceSignature.length];
       System.arraycopy(aliceSignature, 0, modifiedSignature, 0, modifiedSignature.length);
