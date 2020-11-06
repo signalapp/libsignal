@@ -128,3 +128,6 @@ task installArchives(type: Upload) {
     }
 }
 
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn ':makeJniLibrariesAndroid'
+}

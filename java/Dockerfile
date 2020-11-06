@@ -69,7 +69,7 @@ RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linu
 
 # Pre-download Gradle.
 COPY   java/gradle gradle
-COPY   java/gradlew .
+COPY   java/gradlew gradlew
 RUN    ./gradlew --version
 
 RUN    echo "${RUST_TOOLCHAIN}" > rust-toolchain

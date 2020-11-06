@@ -13,8 +13,16 @@ export RUSTFLAGS="-C link-args=-s"
 
 cd .. || exit
 
-cargo build -Z unstable-options -p libsignal-jni --release --target x86_64-unknown-linux-gnu --out-dir=$DESKTOP_LIB_DIR
-cargo ndk --target armv7-linux-androideabi --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/armeabi-v7a
-cargo ndk --target aarch64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/arm64-v8a
-cargo ndk --target i686-linux-android --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86
-cargo ndk --target x86_64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86_64
+if [ "$1" = 'desktop' ];
+then
+   cargo build -Z unstable-options -p libsignal-jni --release --target x86_64-unknown-linux-gnu --out-dir=$DESKTOP_LIB_DIR
+elif [ "$1" = 'android' ];
+then
+    cargo ndk --target armv7-linux-androideabi --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/armeabi-v7a
+    cargo ndk --target aarch64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/arm64-v8a
+    cargo ndk --target i686-linux-android --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86
+    cargo ndk --target x86_64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86_64
+else
+    echo "Unknown target (use 'desktop' or 'android')"
+fi
+

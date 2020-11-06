@@ -12,17 +12,17 @@ default: java_build
 DOCKER_IMAGE := libsignal-builder
 
 docker_image:
-	$(DOCKER) build --build-arg UID=$$(id -u) --build-arg GID=$$(id -g) -t $(DOCKER_IMAGE) .
+	cd .. && $(DOCKER) build --build-arg UID=$$(id -u) --build-arg GID=$$(id -g) -t $(DOCKER_IMAGE) -f java/Dockerfile .
 
 java_build: DOCKER_EXTRA=$(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 java_build: docker_image
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
-	  -v `pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
+	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
 		sh -c "cp rust-toolchain src/; cd src/java; ./gradlew build"
 
 java_test: java_build
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
-	  -v `pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
+	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
 		sh -c "cp rust-toolchain src/; cd src/java; ./gradlew test"
 
 SONATYPE_USERNAME     ?=
@@ -41,7 +41,7 @@ publish_java: docker_image
 	@[ -n "$(SIGNING_KEY)" ]          || ( echo "SIGNING_KEY is not set" && false )
 	@[ -n "$(SIGNING_KEY_PASSWORD)" ] || ( echo "SIGNING_KEY_PASSWORD is not set" && false )
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
-		-v `pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
+		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
 		-v $(KEYRING_VOLUME):/home/libsignal/keyring \
 		$(DOCKER_IMAGE) \
 		sh -c "cp rust-toolchain src; cd src/java; ./gradlew uploadArchives \
