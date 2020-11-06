@@ -739,49 +739,22 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSender
                  |m: &SenderKeyName| Ok(m.sender()?.device_id()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyState_1New(
+pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyRecord_1New(
     env: JNIEnv,
     _class: JClass,
-    id: jint,
-    iteration: jint,
-    chain_key: jbyteArray,
-    signature_public: ObjectHandle,
-    signature_private: ObjectHandle,
 ) -> ObjectHandle {
     run_ffi_safe(&env, || {
-        let id = jint_to_u32(id)?;
-        let iteration = jint_to_u32(iteration)?;
-        let chain_key = env.convert_byte_array(chain_key)?;
-        let signature_public = native_handle_cast::<PublicKey>(signature_public)?;
-        let signature_private =
-            native_handle_cast_optional::<PrivateKey>(signature_private)?.map(|k| *k);
-
-        let sks = SenderKeyState::new(
-            id,
-            iteration,
-            &chain_key,
-            *signature_public,
-            signature_private,
-        );
-        box_object::<SenderKeyState>(sks)
+        let skr = SenderKeyRecord::new_empty();
+        box_object::<SenderKeyRecord>(Ok(skr))
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyState_1Destroy destroys SenderKeyState);
+jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyRecord_1Destroy destroys SenderKeyRecord);
 
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderKeyState_1Deserialize is SenderKeyState::deserialize);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderKeyRecord_1Deserialize is SenderKeyRecord::deserialize);
 
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyState_1GetSerialized(SenderKeyState) using
-                       SenderKeyState::serialize);
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyState_1GetKeyId(SenderKeyState) using
-                       |sks: &SenderKeyState| sks.sender_key_id());
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderKeyState_1GetSigningKeyPublic(PublicKey) from SenderKeyState,
-                          |sks: &SenderKeyState| sks.signing_key_public());
-
-jni_fn_get_new_boxed_optional_obj!(Java_org_signal_client_internal_Native_SenderKeyState_1GetSigningKeyPrivate(PrivateKey) from SenderKeyState,
-                                   |sks: &SenderKeyState| sks.signing_key_private());
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyRecord_1GetSerialized(SenderKeyRecord) using
+                       SenderKeyRecord::serialize);
 
 fn sender_key_name_to_jobject<'a>(
     env: &'a JNIEnv,
@@ -1423,10 +1396,10 @@ impl<'a> JniSenderKeyStore<'a> {
         record: &SenderKeyRecord,
     ) -> Result<(), SignalJniError> {
         let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
-        let sender_key_record_jobject = jobject_from_serialized(
+        let sender_key_record_jobject = jobject_from_native_handle(
             self.env,
             "org/whispersystems/libsignal/groups/state/SenderKeyRecord",
-            &record.serialize()?,
+            box_object::<SenderKeyRecord>(Ok(record.clone()))?,
         )?;
 
         let callback_args = [
@@ -1453,7 +1426,7 @@ impl<'a> JniSenderKeyStore<'a> {
         let callback_args = [sender_key_name_jobject.into()];
         let callback_sig = "(Lorg/whispersystems/libsignal/groups/SenderKeyName;)Lorg/whispersystems/libsignal/groups/state/SenderKeyRecord;";
 
-        let skr = get_object_with_serialization(
+        let skr = get_object_with_native_handle::<SenderKeyRecord>(
             self.env,
             self.store,
             &callback_args,
@@ -1461,10 +1434,7 @@ impl<'a> JniSenderKeyStore<'a> {
             "loadSenderKey",
         )?;
 
-        match skr {
-            None => Ok(None),
-            Some(k) => Ok(Some(SenderKeyRecord::deserialize(&k)?)),
-        }
+        Ok(skr)
     }
 }
 

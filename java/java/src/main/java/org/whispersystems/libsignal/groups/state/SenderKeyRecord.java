@@ -5,13 +5,8 @@
  */
 package org.whispersystems.libsignal.groups.state;
 
-import org.whispersystems.libsignal.InvalidKeyIdException;
-
+import org.signal.client.internal.Native;
 import java.io.IOException;
-import java.util.LinkedList;
-
-import static org.whispersystems.libsignal.state.StorageProtos.SenderKeyRecordStructure;
-import static org.whispersystems.libsignal.state.StorageProtos.SenderKeyStateStructure;
 
 /**
  * A durable representation of a set of SenderKeyStates for a specific
@@ -20,26 +15,30 @@ import static org.whispersystems.libsignal.state.StorageProtos.SenderKeyStateStr
  * @author Moxie Marlinspike
  */
 public class SenderKeyRecord {
+  private long handle;
 
-  private LinkedList<SenderKeyState> senderKeyStates = new LinkedList<>();
+  @Override
+  protected void finalize() {
+    Native.SenderKeyRecord_Destroy(this.handle);
+  }
 
-  public SenderKeyRecord() {}
+  public SenderKeyRecord() {
+    handle = Native.SenderKeyRecord_New();
+  }
+
+  public SenderKeyRecord(long handle) {
+    this.handle = handle;
+  }
 
   public SenderKeyRecord(byte[] serialized) throws IOException {
-    SenderKeyRecordStructure senderKeyRecordStructure = SenderKeyRecordStructure.parseFrom(serialized);
-
-    for (SenderKeyStateStructure structure : senderKeyRecordStructure.getSenderKeyStatesList()) {
-      this.senderKeyStates.add(new SenderKeyState(structure));
-    }
+    handle = Native.SenderKeyRecord_Deserialize(serialized);
   }
 
   public byte[] serialize() {
-    SenderKeyRecordStructure.Builder recordStructure = SenderKeyRecordStructure.newBuilder();
+    return Native.SenderKeyRecord_GetSerialized(this.handle);
+  }
 
-    for (SenderKeyState senderKeyState : senderKeyStates) {
-      recordStructure.addSenderKeyStates(senderKeyState.getStructure());
-    }
-
-    return recordStructure.build().toByteArray();
+  public long nativeHandle() {
+    return this.handle;
   }
 }

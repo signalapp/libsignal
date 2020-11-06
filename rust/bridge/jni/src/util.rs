@@ -402,6 +402,9 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     exception_check(env, "nativeHandle")?;
     match handle {
         JValue::Long(handle) => {
+            if handle == 0 {
+                return Ok(None);
+            }
             let object = unsafe { native_handle_cast::<T>(handle)? };
             Ok(Some(object.clone()))
         }
