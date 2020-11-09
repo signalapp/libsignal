@@ -20,7 +20,6 @@ jobs:
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
-        override: true
         profile: minimal
         components: rustfmt, clippy
     - name: Check for duplicate dependencies
