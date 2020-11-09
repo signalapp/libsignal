@@ -3,8 +3,10 @@ name: Swift
 on:
   push:
     branches: [ master ]
+    paths-ignore: ['java/**']
   pull_request:
     branches: [ master ]
+    paths-ignore: ['java/**']
 
 env:
   CARGO_TERM_COLOR: always
