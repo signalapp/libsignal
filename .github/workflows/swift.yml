@@ -18,14 +18,12 @@ jobs:
     runs-on: macOS-latest
 
     steps:
-    - name: Install nightly rust
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
-        override: true
         profile: minimal
-
-    - uses: actions/checkout@v2
 
     - name: Build libsignal-ffi
       run: cargo build --verbose -p libsignal-ffi

@@ -18,11 +18,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install nightly rust
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
-        override: true
         profile: minimal
 
     - name: Install Android toolchains
@@ -30,8 +30,6 @@ jobs:
 
     - name: Install NDK tool
       run: cargo install cargo-ndk
-
-    - uses: actions/checkout@v2
 
     - name: Build libsignal-client-java
       run: ./gradlew build
