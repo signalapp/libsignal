@@ -19,7 +19,6 @@ jobs:
     - name: Install nightly rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         override: true
         profile: minimal
         components: rustfmt, clippy
