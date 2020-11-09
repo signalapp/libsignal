@@ -15,7 +15,6 @@ use crate::proto::storage::{RecordStructure, SessionStructure};
 use prost::Message;
 
 use std::collections::VecDeque;
-use std::iter::FromIterator;
 
 #[derive(Debug, Clone)]
 pub struct UnacknowledgedPreKeyMessageItems {
@@ -622,7 +621,7 @@ impl SessionRecord {
 
         let record = RecordStructure {
             current_session: self.current_session.as_ref().map(|s| s.into()),
-            previous_sessions: Vec::from_iter(self.previous_sessions.iter().map(|s| s.into())),
+            previous_sessions: self.previous_sessions.iter().map(|s| s.into()).collect(),
         };
         record.encode(&mut buf)?;
         Ok(buf)

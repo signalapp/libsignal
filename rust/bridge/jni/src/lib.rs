@@ -420,7 +420,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeySigna
         let pksm = native_handle_cast::<PreKeySignalMessage>(handle)?;
         match pksm.pre_key_id() {
             Some(id) => jint_from_u32(Ok(id)),
-            None => Ok(-1 as jint),
+            None => Ok(-1),
         }
     })
 }

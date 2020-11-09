@@ -7,6 +7,7 @@ use jni::objects::{JObject, JString, JThrowable, JValue};
 use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
 use libsignal_protocol_rust::SignalProtocolError;
+use std::convert::TryFrom;
 use std::fmt;
 
 #[derive(Debug)]
@@ -196,7 +197,7 @@ impl JniDummyValue for ObjectHandle {
 
 impl JniDummyValue for jint {
     fn dummy_value() -> Self {
-        0 as jint
+        0
     }
 }
 
@@ -208,7 +209,7 @@ impl JniDummyValue for *mut _jobject {
 
 impl JniDummyValue for jboolean {
     fn dummy_value() -> Self {
-        0 as jboolean
+        0
     }
 }
 
@@ -263,10 +264,10 @@ pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
 }
 
 pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
-    if v < 0 || v > 255 {
-        return Err(SignalJniError::IntegerOverflow(format!("{} to u8", v)));
+    match u8::try_from(v) {
+        Err(_) => Err(SignalJniError::IntegerOverflow(format!("{} to u8", v))),
+        Ok(v) => Ok(v),
     }
-    Ok(v as u8)
 }
 
 pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {
