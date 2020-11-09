@@ -16,14 +16,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install nightly rust
+    - uses: actions/checkout@v2
+    - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         override: true
         profile: minimal
         components: rustfmt, clippy
-    - uses: actions/checkout@v2
     - name: Check for duplicate dependencies
       run: |
         DUPS=$(cargo tree -d -e normal)

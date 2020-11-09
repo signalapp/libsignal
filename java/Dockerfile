@@ -53,7 +53,9 @@ RUN    echo y | ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "p
     && ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "ndk;${NDK_VERSION}"
 
 # Rust setup...
-ARG RUST_TOOLCHAIN=nightly-2020-11-01
+
+# This should always match the version set in rust-toolchain
+ARG RUST_TOOLCHAIN=nightly-2020-11-09
 ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
 ARG CARGO_NDK_VERSION=1.0.0
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
@@ -71,8 +73,6 @@ RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linu
 COPY   java/gradle gradle
 COPY   java/gradlew gradlew
 RUN    ./gradlew --version
-
-RUN    echo "${RUST_TOOLCHAIN}" > rust-toolchain
 
 # Convert ssh to https for git dependency access without a key.
 RUN    git config --global url."https://github".insteadOf ssh://git@github
