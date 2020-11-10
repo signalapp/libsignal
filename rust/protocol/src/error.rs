@@ -63,6 +63,11 @@ pub enum SignalProtocolError {
     FfiBindingError(String),
     ApplicationCallbackThrewException(&'static str, Option<String>, String),
     ApplicationCallbackReturnedIntegerError(&'static str, i32),
+    /*
+        InvalidSealedSenderMessage(String),
+        InvalidSealedSenderVersion(i32),
+        SealedSenderMessageFromSelf,
+    */
 }
 
 impl Error for SignalProtocolError {

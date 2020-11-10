@@ -136,6 +136,19 @@ public final class Native {
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 
+  public static native long SenderCertificate_Deserialize(byte[] data);
+  public static native void SenderCertificate_Destroy(long handle);
+  public static native byte[] SenderCertificate_GetCertificate(long handle);
+  public static native int SenderCertificate_GetDeviceId(long handle);
+  public static native long SenderCertificate_GetExpiration(long handle);
+  public static native long SenderCertificate_GetKey(long handle);
+  public static native String SenderCertificate_GetSenderE164(long handle);
+  public static native String SenderCertificate_GetSenderUuid(long handle);
+  public static native byte[] SenderCertificate_GetSerialized(long handle);
+  public static native long SenderCertificate_GetServerCertificate(long handle);
+  public static native byte[] SenderCertificate_GetSignature(long handle);
+  public static native boolean SenderCertificate_Validate(long cert, long key, long time);
+
   public static native long SenderKeyDistributionMessage_Deserialize(byte[] data);
   public static native void SenderKeyDistributionMessage_Destroy(long handle);
   public static native byte[] SenderKeyDistributionMessage_GetChainKey(long handle);
@@ -164,6 +177,14 @@ public final class Native {
   public static native void SenderKeyRecord_Destroy(long handle);
   public static native byte[] SenderKeyRecord_GetSerialized(long handle);
   public static native long SenderKeyRecord_New();
+
+  public static native long ServerCertificate_Deserialize(byte[] data);
+  public static native void ServerCertificate_Destroy(long handle);
+  public static native byte[] ServerCertificate_GetCertificate(long handle);
+  public static native long ServerCertificate_GetKey(long handle);
+  public static native int ServerCertificate_GetKeyId(long handle);
+  public static native byte[] ServerCertificate_GetSerialized(long handle);
+  public static native byte[] ServerCertificate_GetSignature(long handle);
 
   public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
 

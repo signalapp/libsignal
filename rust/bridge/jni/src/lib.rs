@@ -654,17 +654,8 @@ jni_fn_deserialize!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1D
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetId(SignedPreKeyRecord) using
                  SignedPreKeyRecord::id);
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-) -> jlong {
-    run_ffi_safe(&env, || {
-        let spkr = native_handle_cast::<SignedPreKeyRecord>(handle)?;
-        jlong_from_u64(spkr.timestamp())
-    })
-}
+jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(SignedPreKeyRecord) using
+                  SignedPreKeyRecord::timestamp);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPublicKey(PublicKey) from SignedPreKeyRecord,
                           SignedPreKeyRecord::public_key);
@@ -1660,5 +1651,54 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1In
         let session = initialize_bob_session(&parameters)?;
 
         to_jbytearray(&env, session.serialize())
+    })
+}
+
+// Server Certificate
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_ServerCertificate_1Deserialize is ServerCertificate::deserialize);
+
+jni_fn_destroy!(Java_org_signal_client_internal_Native_ServerCertificate_1Destroy destroys ServerCertificate);
+
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKeyId(ServerCertificate) using ServerCertificate::key_id);
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetSerialized(ServerCertificate) using ServerCertificate::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetCertificate(ServerCertificate) using ServerCertificate::certificate);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetSignature(ServerCertificate) using ServerCertificate::signature);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKey(PublicKey) from ServerCertificate,
+                          ServerCertificate::public_key);
+
+// Sender Certificate
+jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderCertificate_1Destroy destroys SenderCertificate);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderCertificate_1Deserialize is SenderCertificate::deserialize);
+
+jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SenderCertificate_1GetExpiration(SenderCertificate) using SenderCertificate::expiration);
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderCertificate_1GetDeviceId(SenderCertificate) using SenderCertificate::sender_device_id);
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSerialized(SenderCertificate) using SenderCertificate::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetCertificate(SenderCertificate) using SenderCertificate::certificate);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSignature(SenderCertificate) using SenderCertificate::signature);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetKey(PublicKey) from SenderCertificate,
+                          SenderCertificate::key);
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,
+                          |s: &SenderCertificate| Ok(s.signer()?.clone()));
+
+jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderUuid(SenderCertificate) using SenderCertificate::sender_uuid);
+jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderE164(SenderCertificate) using SenderCertificate::sender_e164);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1Validate(
+    env: JNIEnv,
+    _class: JClass,
+    cert: ObjectHandle,
+    key: ObjectHandle,
+    time: jlong,
+) -> jboolean {
+    run_ffi_safe(&env, || {
+        let cert = native_handle_cast::<SenderCertificate>(cert)?;
+        let key = native_handle_cast::<PublicKey>(key)?;
+        let time = jlong_to_u64(time)?;
+        Ok(cert.validate(key, time)? as jboolean)
     })
 }

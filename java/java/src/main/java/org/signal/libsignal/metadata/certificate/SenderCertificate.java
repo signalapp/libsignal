@@ -1,100 +1,73 @@
 package org.signal.libsignal.metadata.certificate;
 
+import org.signal.client.internal.Native;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-
-import org.signal.libsignal.metadata.SignalProtos;
-import org.whispersystems.libsignal.InvalidKeyException;
-import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
+import org.whispersystems.libsignal.InvalidKeyException;
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.util.guava.Optional;
 
-
 public class SenderCertificate {
+  private long handle;
 
-  private final ServerCertificate signer;
-  private final ECPublicKey       key;
-  private final int               senderDeviceId;
-  private final Optional<String>  senderUuid;
-  private final Optional<String>  senderE164;
-  private final long              expiration;
+  @Override
+  protected void finalize() {
+     Native.SenderCertificate_Destroy(this.handle);
+  }
 
-  private final byte[] serialized;
-  private final byte[] certificate;
-  private final byte[] signature;
+  public long nativeHandle() {
+    return this.handle;
+  }
 
   public SenderCertificate(byte[] serialized) throws InvalidCertificateException {
     try {
-      SignalProtos.SenderCertificate wrapper = SignalProtos.SenderCertificate.parseFrom(serialized);
-
-      if (!wrapper.hasSignature() || !wrapper.hasCertificate()) {
-        throw new InvalidCertificateException("Missing fields");
-      }
-
-      SignalProtos.SenderCertificate.Certificate certificate = SignalProtos.SenderCertificate.Certificate.parseFrom(wrapper.getCertificate());
-
-      if (!certificate.hasSigner()       ||
-          !certificate.hasIdentityKey()  ||
-          !certificate.hasSenderDevice() ||
-          !certificate.hasExpires()      ||
-          (!certificate.hasSenderUuid() && !certificate.hasSenderE164()))
-      {
-        throw new InvalidCertificateException("Missing fields");
-      }
-
-      this.signer         = new ServerCertificate(certificate.getSigner().toByteArray());
-      this.key            = Curve.decodePoint(certificate.getIdentityKey().toByteArray(), 0);
-      this.senderUuid     = certificate.hasSenderUuid() ? Optional.of(certificate.getSenderUuid()) : Optional.<String>absent();
-      this.senderE164     = certificate.hasSenderE164() ? Optional.of(certificate.getSenderE164()) : Optional.<String>absent();
-      this.senderDeviceId = certificate.getSenderDevice();
-      this.expiration     = certificate.getExpires();
-
-      this.serialized  = serialized;
-      this.certificate = wrapper.getCertificate().toByteArray();
-      this.signature   = wrapper.getSignature().toByteArray();
-
-    } catch (InvalidProtocolBufferException | InvalidKeyException e) {
+      handle = Native.SenderCertificate_Deserialize(serialized);
+    } catch (Exception e) {
       throw new InvalidCertificateException(e);
     }
   }
 
+  public SenderCertificate(long handle) {
+    this.handle = handle;
+  }
+
   public ServerCertificate getSigner() {
-    return signer;
+    return new ServerCertificate(Native.SenderCertificate_GetServerCertificate(this.handle));
   }
 
   public ECPublicKey getKey() {
-    return key;
+    return new ECPublicKey(Native.SenderCertificate_GetKey(this.handle));
   }
 
   public int getSenderDeviceId() {
-    return senderDeviceId;
+    return Native.SenderCertificate_GetDeviceId(this.handle);
   }
 
   public Optional<String> getSenderUuid() {
-    return senderUuid;
+    return Optional.fromNullable(Native.SenderCertificate_GetSenderUuid(this.handle));
   }
 
   public Optional<String> getSenderE164() {
-    return senderE164;
+    return Optional.fromNullable(Native.SenderCertificate_GetSenderE164(this.handle));
   }
 
   public String getSender() {
-    return senderE164.or(senderUuid).orNull();
+    return getSenderE164().or(getSenderUuid()).orNull();
   }
 
   public long getExpiration() {
-    return expiration;
+    return Native.SenderCertificate_GetExpiration(this.handle);
   }
 
   public byte[] getSerialized() {
-    return serialized;
+    return Native.SenderCertificate_GetSerialized(this.handle);
   }
 
   public byte[] getCertificate() {
-    return certificate;
+    return Native.SenderCertificate_GetCertificate(this.handle);
   }
 
   public byte[] getSignature() {
-    return signature;
+    return Native.SenderCertificate_GetSignature(this.handle);
   }
 }
