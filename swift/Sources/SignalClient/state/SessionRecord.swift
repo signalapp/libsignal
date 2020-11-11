@@ -33,4 +33,10 @@ public class SessionRecord: ClonableHandleOwner {
             signal_session_record_serialize(nativeHandle, $0, $1)
         }
     }
+
+    public func remoteRegistrationId() throws -> UInt32 {
+        return try invokeFnReturningInteger {
+            signal_session_record_get_remote_registration_id(nativeHandle, $0)
+        }
+    }
 }

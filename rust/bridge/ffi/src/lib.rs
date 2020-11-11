@@ -269,6 +269,9 @@ ffi_fn_deserialize!(signal_session_record_deserialize(SessionRecord) is SessionR
 ffi_fn_get_bytearray!(signal_session_record_serialize(SessionRecord) using
                       |s: &SessionRecord| s.serialize());
 
+ffi_fn_get_uint32!(signal_session_record_get_remote_registration_id(SessionRecord) using
+                   |s: &SessionRecord| s.session_state()?.remote_registration_id());
+
 ffi_fn_destroy!(signal_session_record_destroy destroys SessionRecord);
 
 ffi_fn_clone!(signal_session_record_clone clones SessionRecord);
