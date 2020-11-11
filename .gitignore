@@ -1,6 +1,9 @@
 /.idea
 /target
 /swift/.build
+/node/dist
+/node_modules
+/build
 
 *.orig
 *.rej

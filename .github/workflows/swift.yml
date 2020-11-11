@@ -3,10 +3,10 @@ name: Swift
 on:
   push:
     branches: [ master ]
-    paths-ignore: ['java/**']
+    paths-ignore: ['java/**', 'node/**', 'package.json', 'yarn.lock']
   pull_request:
     branches: [ master ]
-    paths-ignore: ['java/**']
+    paths-ignore: ['java/**', 'node/**', 'package.json', 'yarn.lock']
 
 env:
   CARGO_TERM_COLOR: always

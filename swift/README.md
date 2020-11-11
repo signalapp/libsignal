@@ -20,7 +20,7 @@ Instead of a git-based dependency, use a path-based dependency to treat SignalCl
 
 # Development as a Swift Package
 
-1. Build the Rust library using `bin/build-ffi -d`. (The Package.swift is configured to use the debug build of the Rust libraries, since they are likely being developed in tandom.)
+1. Build the Rust library using `swift/build_ffi.sh -d`. (The Package.swift is configured to use the debug build of the Rust libraries, since they are likely being developed in tandom.)
 
 2. Use `swift build` and `swift test` as usual from within the `swift/` directory.
 

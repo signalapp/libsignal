@@ -43,7 +43,7 @@ Pod::Spec.new do |s|
   s.script_phases = [
     { :name => 'Build libsignal-ffi',
       :execution_position => :before_compile,
-      :script => '${PODS_TARGET_SRCROOT}/bin/build-ffi',
+      :script => '${PODS_TARGET_SRCROOT}/swift/build_ffi.sh',
     }
   ]
 

@@ -1,0 +1,23 @@
+#
+# Copyright (C) 2020 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-node"
+version = "0.1.0"
+authors = ["Jordan Rose <jrose@signal.org>", "Jack Lloyd <jack@signal.org>"]
+license = "AGPL-3.0-only"
+edition = "2018"
+
+[lib]
+name = "signal_node"
+crate-type = ["cdylib"]
+
+[build-dependencies]
+neon-build = "0.5.0"
+
+[dependencies]
+libsignal-protocol-rust = { path = "../../protocol" }
+neon = "0.5.0"
+rand = "0.7.3"
