@@ -24,6 +24,13 @@ public class ECPublicKey implements Comparable<ECPublicKey> {
     this.handle = Native.ECPublicKey_Deserialize(serialized, 0);
   }
 
+  static public ECPublicKey fromPublicKey(byte[] key) {
+    byte[] with_type = new byte[33];
+    with_type[0] = 0x05;
+    System.arraycopy(key, 0, with_type, 1, 32);
+    return new ECPublicKey(Native.ECPublicKey_Deserialize(with_type, 0));
+  }
+
   public ECPublicKey(long nativeHandle) {
     if (nativeHandle == 0) {
       throw new NullPointerException();

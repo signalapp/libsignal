@@ -266,7 +266,11 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_HKDF_1Deriv
             Some(env.convert_byte_array(salt)?)
         };
 
-        let info = env.convert_byte_array(info)?;
+        let info = if info.is_null() {
+            vec![]
+        } else {
+            env.convert_byte_array(info)?
+        };
 
         let hkdf = HKDF::new(version)?;
         let derived = if let Some(salt) = salt {
