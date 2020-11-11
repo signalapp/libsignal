@@ -5,15 +5,23 @@ module.exports = {
 
   parserOptions: {
     project: './tsconfig.json',
+    ecmaVersion: 2018,
+    sourceType: 'module',
   },
 
   settings: {
     'import/core-modules': ['electron'],
   },
 
-  plugins: ['header', 'mocha', 'more', '@typescript-eslint'],
+  plugins: ['header', 'import', 'mocha', 'more', '@typescript-eslint'],
 
-  extends: ['airbnb-typescript/base'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:import/errors',
+    'plugin:import/warnings',
+    'plugin:import/typescript',
+  ],
 
   rules: {
     'header/header': [
@@ -25,6 +33,17 @@ module.exports = {
         ' SPDX-License-Identifier: AGPL-3.0-only',
         '',
       ],
+    ],
+
+    'comma-dangle': [
+      'error',
+      {
+        arrays: 'always-multiline',
+        objects: 'always-multiline',
+        imports: 'always-multiline',
+        exports: 'always-multiline',
+        functions: 'never',
+      },
     ],
 
     // prevents us from accidentally checking in exclusive tests (`.only`):
@@ -39,6 +58,9 @@ module.exports = {
     // useful for unused or internal fields
     'no-underscore-dangle': 'off',
 
+    // useful for unused parameters
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+
     // though we have a logger, we still remap console to log to disk
     'no-console': 'error',
 
@@ -51,23 +73,11 @@ module.exports = {
       { avoidEscape: true, allowTemplateLiterals: false },
     ],
 
+    // We prefer named exports
+    'import/prefer-default-export': 'off',
+
     '@typescript-eslint/no-require-imports': 'error',
     '@typescript-eslint/consistent-type-assertions': 'error',
-
-    // Prettier overrides:
-    'arrow-parens': 'off',
-    'function-paren-newline': 'off',
-    'max-len': [
-      'error',
-      {
-        // Prettier generally limits line length to 80 but sometimes goes over.
-        // The `max-len` plugin doesn’t let us omit `code` so we set it to a
-        // high value as a buffer to let Prettier control the line length:
-        code: 999,
-        // We still want to limit comments as before:
-        comments: 90,
-        ignoreUrls: true,
-      },
-    ],
+    '@typescript-eslint/explicit-module-boundary-types': 'error',
   },
 };
