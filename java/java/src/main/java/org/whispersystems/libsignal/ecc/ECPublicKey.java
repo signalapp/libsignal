@@ -7,7 +7,6 @@
 package org.whispersystems.libsignal.ecc;
 
 import org.signal.client.internal.Native;
-import java.math.BigInteger;
 import java.util.Arrays;
 
 public class ECPublicKey implements Comparable<ECPublicKey> {
@@ -22,6 +21,13 @@ public class ECPublicKey implements Comparable<ECPublicKey> {
 
   public ECPublicKey(byte[] serialized) {
     this.handle = Native.ECPublicKey_Deserialize(serialized, 0);
+  }
+
+  static public ECPublicKey fromPublicKeyBytes(byte[] key) {
+    byte[] with_type = new byte[33];
+    with_type[0] = 0x05;
+    System.arraycopy(key, 0, with_type, 1, 32);
+    return new ECPublicKey(Native.ECPublicKey_Deserialize(with_type, 0));
   }
 
   public ECPublicKey(long nativeHandle) {
