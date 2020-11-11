@@ -54,21 +54,13 @@ jobs:
     name: Build as CocoaPod
     runs-on: macOS-latest
     steps:
-      - name: Install nightly rust (needed for libsignal-ffi)
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-          profile: minimal
-          target: x86_64-apple-ios
-
       - uses: actions/checkout@v2
 
-      - name: Check out libsignal-ffi
-        uses: actions/checkout@v2
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          repository: signalapp/libsignal-ffi
-          path: libsignal-ffi
+          profile: minimal
+          target: x86_64-apple-ios
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).

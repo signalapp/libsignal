@@ -21,7 +21,6 @@ Pod::Spec.new do |s|
   s.preserve_paths = ['rust/*', 'Cargo.toml', 'Cargo.lock', 'swift/Sources/SignalFfi', 'bin/*']
 
   s.pod_target_xcconfig = {
-      'RUSTUP_TOOLCHAIN' => 'nightly',
       'CARGO_BUILD_TARGET_DIR' => '$(DERIVED_FILE_DIR)/libsignal-ffi',
       'LIBSIGNAL_FFI_DIR' => '$(CARGO_BUILD_TARGET_DIR)/$(CARGO_BUILD_TARGET)/release',
 
