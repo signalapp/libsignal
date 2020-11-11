@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # Copyright 2020 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-set -e
+set -euo pipefail
 
 cd $(dirname "$0")/..
-. bin/build-helpers.sh
+. bin/build_helpers.sh
 
 usage() {
   cat >&2 <<END
@@ -22,7 +22,7 @@ END
 
 CONFIGURATION_NAME=${CONFIGURATION_NAME:-Release}
 
-while [ "$1" != "" ]; do
+while [[ "${1:-}" != "" ]]; do
   case $1 in
     -d | --debug )
       CONFIGURATION_NAME=Debug
@@ -63,7 +63,7 @@ check_rust
 echo_then_run cargo build -p libsignal-node ${CARGO_PROFILE_ARG}
 
 for possible_library_name in libsignal_node.dylib libsignal_node.so signal_node.dll; do
-  possible_library_path="${CARGO_BUILD_TARGET_DIR:-target}/${CARGO_BUILD_TARGET}/${CARGO_PROFILE_DIR}/${possible_library_name}"
+  possible_library_path="${CARGO_BUILD_TARGET_DIR:-target}/${CARGO_BUILD_TARGET:-}/${CARGO_PROFILE_DIR}/${possible_library_name}"
   if [ -e "${possible_library_path}" ]; then
     echo_then_run mkdir -p "${OUT_DIR}"
     echo_then_run cp "${possible_library_path}" "${OUT_DIR}"/libsignal_client.node

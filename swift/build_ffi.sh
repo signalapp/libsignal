@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # Copyright 2020 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-set -e
+set -euo pipefail
 
 cd $(dirname "$0")/..
-. bin/build-helpers.sh
+. bin/build_helpers.sh
 
 usage() {
   cat >&2 <<END
@@ -23,7 +23,7 @@ END
 
 CARGO_PROFILE_ARG=--release
 
-while [ "$1" != "" ]; do
+while [ "${1:-}" != "" ]; do
   case $1 in
     -d | --debug )
       CARGO_PROFILE_ARG=

@@ -16,7 +16,7 @@ check_rust() {
     exit 1
   fi
 
-  if [ ! -z "${CARGO_BUILD_TARGET}" ] && ! (rustup target list --installed | grep -q ${CARGO_BUILD_TARGET}); then
+  if [[ ! -z "${CARGO_BUILD_TARGET:-}" ]] && ! (rustup target list --installed | grep -q "${CARGO_BUILD_TARGET:-}"); then
     echo "error: Rust ${RUSTUP_TOOLCHAIN:-nightly} toolchain target ${CARGO_BUILD_TARGET} not installed" >&2
     echo 'note: get it by running' >&2
     printf "\n\t%s\n\n" "rustup +${RUSTUP_TOOLCHAIN:-nightly} target add ${CARGO_BUILD_TARGET}" >&2

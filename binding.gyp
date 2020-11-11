@@ -10,12 +10,12 @@
             'type': 'none',
             'actions': [
                 {
-                    'action_name': 'bin/build-node-bridge',
+                    'action_name': 'node/build_node_bridge.sh',
                     'action': [
                         'env',
                         'CONFIGURATION_NAME=<(CONFIGURATION_NAME)',
                         'CARGO_BUILD_TARGET_DIR=<(INTERMEDIATE_DIR)/rust',
-                        'bin/build-node-bridge',
+                        'node/build_node_bridge.sh',
                         '-o', '<(PRODUCT_DIR)/'],
                     'inputs': [],
                     'outputs': [
