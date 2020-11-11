@@ -268,6 +268,9 @@ class PublicAPITests: XCTestCase {
                                  identityStore: alice_store,
                                  context: nil)
 
+        XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: nil)?.remoteRegistrationId(),
+                       try! bob_store.localRegistrationId(context: nil))
+
         // Bob does the same:
         try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, privateKey: bob_pre_key),
                                    id: prekey_id,
