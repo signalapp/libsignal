@@ -1,6 +1,8 @@
 {
   "name": "signal-client",
   "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "private": true,
   "main": "node/dist/index.js",
   "types": "node/dist/index.d.ts",
   "scripts": {
@@ -12,7 +14,6 @@
     "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p",
     "prepare": "yarn tsc"
   },
-  "license": "AGPL-3.0-only",
   "dependencies": {
     "bindings": "^1.5.0"
   },
