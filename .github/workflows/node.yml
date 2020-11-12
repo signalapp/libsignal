@@ -20,8 +20,6 @@ jobs:
     - name: Install nightly rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
-        override: true
         profile: minimal
     - run: nvm install && nvm use
       shell: bash -l {0}
