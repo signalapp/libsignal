@@ -33,7 +33,7 @@ jobs:
       working-directory: swift
 
     - name: Run lint
-      run: swiftlint lint --reporter github-actions-logging
+      run: swiftlint lint --strict --reporter github-actions-logging
       working-directory: swift
 
     - name: Generate coverage report
