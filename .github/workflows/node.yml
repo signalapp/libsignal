@@ -3,10 +3,10 @@ name: Node
 on:
   push:
     branches: [ master ]
-    paths-ignore: ['swift/**', '*.podspec', 'java/**']
+    paths-ignore: ['swift/**', '*.podspec', 'java/**', 'rust/bridge/jni/**', 'rust/bridge/ffi/**']
   pull_request:
     branches: [ master ]
-    paths-ignore: ['swift/**', '*.podspec', 'java/**']
+    paths-ignore: ['swift/**', '*.podspec', 'java/**', 'rust/bridge/jni/**', 'rust/bridge/ffi/**']
 
 env:
   CARGO_TERM_COLOR: always
