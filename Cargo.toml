@@ -4,5 +4,9 @@ members = [
     "rust/protocol",
     "rust/bridge/ffi",
     "rust/bridge/jni",
-    "rust/bridge/node"
+    "rust/bridge/node",
+]
+default-members = [
+    "rust/aes-gcm-siv",
+    "rust/protocol",
 ]
