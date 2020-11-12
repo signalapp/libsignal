@@ -7,12 +7,8 @@ Work in progress.  Subject to change without notice, use outside Signal not yet 
 # Building
 
 To build anything in this repository you must have Rust installed. The build currently
-uses a specific version of the Rust nightly compiler (though probably most recent Rust
-nightlies are fine).
-
-```$ rustup toolchain add nightly-2020-11-09```
-
-To build and test the basic protocol libraries just use ``cargo``:
+uses a specific version of the Rust nightly compiler, which will be downloaded
+automatically by cargo. To build and test the basic protocol libraries:
 
 ```shell
 $ cargo build
@@ -35,7 +31,7 @@ $ cd java
 $ ./gradlew test
 ```
 
-Alternately, a setup using Docker is available:
+Alternately, a build system using Docker is available:
 
 ```shell
 $ cd java
@@ -44,12 +40,7 @@ $ make java_test
 
 ## Swift
 
-To run the tests use
-
-```shell
-$ cd swift
-$ swift test
-```
+To learn about the Swift build process see ``swift/README.md``
 
 # Legal things
 ## Cryptography Notice
