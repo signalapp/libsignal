@@ -3,10 +3,10 @@ name: Swift
 on:
   push:
     branches: [ master ]
-    paths-ignore: ['java/**', 'node/**', 'rust/bridge/jni/**', 'rust/bridge/node/**', 'package.json', 'yarn.lock']
+    paths-ignore: ['java/**', 'node/**', 'rust/bridge/jni/**', 'rust/bridge/node/**', 'package.json', 'yarn.lock', '.github/workflows/java.yml', '.github/workflows/node.yml']
   pull_request:
     branches: [ master ]
-    paths-ignore: ['java/**', 'node/**', 'rust/bridge/jni/**', 'rust/bridge/node/**', 'package.json', 'yarn.lock']
+    paths-ignore: ['java/**', 'node/**', 'rust/bridge/jni/**', 'rust/bridge/node/**', 'package.json', 'yarn.lock', '.github/workflows/java.yml', '.github/workflows/node.yml']
 
 env:
   CARGO_TERM_COLOR: always
