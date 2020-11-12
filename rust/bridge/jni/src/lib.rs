@@ -18,8 +18,15 @@ mod util;
 
 use crate::util::*;
 
+type JavaSessionStore = jobject;
+type JavaIdentityKeyStore = jobject;
+type JavaPreKeyStore = jobject;
+type JavaSignedPreKeyStore = jobject;
+type JavaCiphertextMessage = jobject;
+type JavaSenderKeyStore = jobject;
+
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ProtocolAddress_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ProtocolAddress_1New(
     env: JNIEnv,
     _class: JClass,
     name: JString,
@@ -42,7 +49,7 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_ProtocolAddress_1DeviceI
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPublicKey_1Deserialize(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Deserialize(
     env: JNIEnv,
     _class: JClass,
     data: jbyteArray,
@@ -57,7 +64,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPublicKey
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPublicKey_1Compare(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Compare(
     env: JNIEnv,
     _class: JClass,
     key1: ObjectHandle,
@@ -82,7 +89,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ECPublicKey_1GetPu
                        PublicKey::public_key_bytes);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPublicKey_1Verify(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Verify(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -105,7 +112,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ECPrivateKey_1Seri
                        |k: &PrivateKey| Ok(k.serialize()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Generate(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Generate(
     env: JNIEnv,
     _class: JClass,
 ) -> ObjectHandle {
@@ -120,7 +127,7 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ECPrivateKey_1G
                           |k: &PrivateKey| k.public_key());
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Sign(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Sign(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -136,7 +143,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKe
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Agree(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Agree(
     env: JNIEnv,
     _class: JClass,
     private_key_handle: ObjectHandle,
@@ -153,7 +160,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKe
 jni_fn_destroy!(Java_org_signal_client_internal_Native_ECPrivateKey_1Destroy destroys PrivateKey);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Serialize(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Serialize(
     env: JNIEnv,
     _class: JClass,
     public_key_handle: ObjectHandle,
@@ -169,7 +176,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_IdentityKey
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_DisplayableFingerprint_1Format(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_DisplayableFingerprint_1Format(
     env: JNIEnv,
     _class: JClass,
     local: jbyteArray,
@@ -185,7 +192,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_Displayable
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1New(
     env: JNIEnv,
     _class: JClass,
     iterations: jint,
@@ -229,7 +236,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_NumericFingerprint
                        |f: &Fingerprint| f.scannable.serialize());
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ScannableFingerprint_1Compare(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ScannableFingerprint_1Compare(
     env: JNIEnv,
     _class: JClass,
     fprint1: jbyteArray,
@@ -245,7 +252,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ScannableFi
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecrets(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecrets(
     env: JNIEnv,
     _class: JClass,
     version: jint,
@@ -286,7 +293,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_HKDF_1Deriv
 jni_fn_deserialize!(Java_org_signal_client_internal_Native_SignalMessage_1Deserialize is SignalMessage::try_from);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignalMessage_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1New(
     env: JNIEnv,
     _class: JClass,
     message_version: jint,
@@ -341,7 +348,7 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetCounte
                  |msg: &SignalMessage| { Ok(msg.counter()) });
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignalMessage_1VerifyMac(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1VerifyMac(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -368,7 +375,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignalMessa
 jni_fn_deserialize!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1Deserialize is PreKeySignalMessage::try_from);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1New(
     env: JNIEnv,
     _class: JClass,
     message_version: jint,
@@ -415,7 +422,7 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1Get
 
 // Special logic to handle optionality:
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetPreKeyId(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetPreKeyId(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -447,7 +454,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeySignalMessag
 jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderKeyMessage_1Deserialize is SenderKeyMessage::try_from);
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyMessage_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyMessage_1New(
     env: JNIEnv,
     _class: JClass,
     key_id: jint,
@@ -483,7 +490,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyMessage_1
                        |m: &SenderKeyMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyMessage_1VerifySignature(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyMessage_1VerifySignature(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -498,7 +505,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyMe
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1New(
     env: JNIEnv,
     _class: JClass,
     key_id: jint,
@@ -534,7 +541,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyDistribut
                        |m: &SenderKeyDistributionMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeyBundle_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1New(
     env: JNIEnv,
     _class: JClass,
     registration_id: jint,
@@ -591,7 +598,7 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetSignedP
 
 // Special logic for optional here:
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeyBundle_1GetPreKeyId(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1GetPreKeyId(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -620,7 +627,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetS
 /* SignedPreKeyRecord */
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1New(
     env: JNIEnv,
     _class: JClass,
     id: jint,
@@ -649,7 +656,7 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetI
                  |m: &SignedPreKeyRecord| m.id());
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(
     env: JNIEnv,
     _class: JClass,
     handle: ObjectHandle,
@@ -677,7 +684,7 @@ jni_fn_destroy!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1Destr
 /* PreKeyRecord */
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeyRecord_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyRecord_1New(
     env: JNIEnv,
     _class: JClass,
     id: jint,
@@ -715,7 +722,7 @@ jni_fn_destroy!(Java_org_signal_client_internal_Native_PreKeyRecord_1Destroy des
 /* SenderKeyName */
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyName_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyName_1New(
     env: JNIEnv,
     _class: JClass,
     group_id: JString,
@@ -743,7 +750,7 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSender
                  |m: &SenderKeyName| Ok(m.sender()?.device_id()));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyRecord_1New(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyRecord_1New(
     env: JNIEnv,
     _class: JClass,
 ) -> ObjectHandle {
@@ -1239,13 +1246,13 @@ impl<'a> SessionStore for JniSessionStore<'a> {
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionBuilder_1ProcessPreKeyBundle(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionBuilder_1ProcessPreKeyBundle(
     env: JNIEnv,
     _class: JClass,
     bundle: ObjectHandle,
     protocol_address: ObjectHandle,
-    session_store: jobject,
-    identity_key_store: jobject,
+    session_store: JavaSessionStore,
+    identity_key_store: JavaIdentityKeyStore,
 ) {
     run_ffi_safe(&env, || {
         let bundle = native_handle_cast::<PreKeyBundle>(bundle)?;
@@ -1269,14 +1276,14 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionBuil
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionCipher_1EncryptMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1EncryptMessage(
     env: JNIEnv,
     _class: JClass,
     message: jbyteArray,
     protocol_address: ObjectHandle,
-    session_store: jobject,
-    identity_key_store: jobject,
-) -> jobject {
+    session_store: JavaSessionStore,
+    identity_key_store: JavaIdentityKeyStore,
+) -> JavaCiphertextMessage {
     run_ffi_safe(&env, || {
         let message = env.convert_byte_array(message)?;
         let protocol_address = native_handle_cast::<ProtocolAddress>(protocol_address)?;
@@ -1313,13 +1320,13 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionCiph
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionCipher_1DecryptSignalMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1DecryptSignalMessage(
     env: JNIEnv,
     _class: JClass,
     message: ObjectHandle,
     protocol_address: ObjectHandle,
-    session_store: jobject,
-    identity_key_store: jobject,
+    session_store: JavaSessionStore,
+    identity_key_store: JavaIdentityKeyStore,
 ) -> jbyteArray {
     run_ffi_safe(&env, || {
         let message = native_handle_cast::<SignalMessage>(message)?;
@@ -1343,15 +1350,15 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionCiph
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionCipher_1DecryptPreKeySignalMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1DecryptPreKeySignalMessage(
     env: JNIEnv,
     _class: JClass,
     message: ObjectHandle,
     protocol_address: ObjectHandle,
-    session_store: jobject,
-    identity_key_store: jobject,
-    prekey_store: jobject,
-    signed_prekey_store: jobject,
+    session_store: JavaSessionStore,
+    identity_key_store: JavaIdentityKeyStore,
+    prekey_store: JavaPreKeyStore,
+    signed_prekey_store: JavaSignedPreKeyStore,
 ) -> jbyteArray {
     run_ffi_safe(&env, || {
         let message = native_handle_cast::<PreKeySignalMessage>(message)?;
@@ -1463,11 +1470,11 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupSessionBuilder_1CreateSenderKeyDistributionMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupSessionBuilder_1CreateSenderKeyDistributionMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
-    store: jobject,
+    store: JavaSenderKeyStore,
 ) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
@@ -1485,12 +1492,12 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupSessio
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupSessionBuilder_1ProcessSenderKeyDistributionMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupSessionBuilder_1ProcessSenderKeyDistributionMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
     sender_key_distribution_message: ObjectHandle,
-    store: jobject,
+    store: JavaSenderKeyStore,
 ) {
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
@@ -1509,12 +1516,12 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupSessio
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupCipher_1EncryptMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1EncryptMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
     message: jbyteArray,
-    store: jobject,
+    store: JavaSenderKeyStore,
 ) -> jbyteArray {
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
@@ -1536,12 +1543,12 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupCipher
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupCipher_1DecryptMessage(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1DecryptMessage(
     env: JNIEnv,
     _class: JClass,
     sender_key_name: ObjectHandle,
     message: jbyteArray,
-    store: jobject,
+    store: JavaSenderKeyStore,
 ) -> jbyteArray {
     run_ffi_safe(&env, || {
         let sender_key_name = native_handle_cast::<SenderKeyName>(sender_key_name)?;
@@ -1562,7 +1569,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_GroupCipher
 // The following are just exposed to make it possible to retain some of the Java tests:
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionState_1InitializeAliceSession(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1InitializeAliceSession(
     env: JNIEnv,
     _class: JClass,
     identity_key_private: ObjectHandle,
@@ -1609,7 +1616,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionStat
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SessionState_1InitializeBobSession(
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1InitializeBobSession(
     env: JNIEnv,
     _class: JClass,
     identity_key_private: ObjectHandle,
