@@ -1,0 +1,18 @@
+#
+# Copyright (C) 2020 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+language = "C"
+no_includes = true
+
+[export]
+item_types = ["functions"]
+
+[fn]
+args = "horizontal"
+sort_by = "Name"
+rename_args = "camelCase"
+
+[parse.expand]
+crates = ["libsignal-jni"]

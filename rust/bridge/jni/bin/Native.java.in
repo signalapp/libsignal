@@ -1,0 +1,70 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+// WARNING: this file was automatically generated
+
+package org.signal.client.internal;
+
+import org.whispersystems.libsignal.protocol.CiphertextMessage;
+import org.whispersystems.libsignal.state.IdentityKeyStore;
+import org.whispersystems.libsignal.state.SessionStore;
+import org.whispersystems.libsignal.state.PreKeyStore;
+import org.whispersystems.libsignal.state.SignedPreKeyStore;
+import org.whispersystems.libsignal.groups.state.SenderKeyStore;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+
+public final class Native {
+  private static void copyToTempFileAndLoad(InputStream in, String extension) throws IOException {
+    File tempFile = Files.createTempFile("resource", extension).toFile();
+    tempFile.deleteOnExit();
+
+    try (OutputStream out = new FileOutputStream(tempFile)) {
+      byte[] buffer = new byte[4096];
+      int read;
+
+      while ((read = in.read(buffer)) != -1) {
+        out.write(buffer, 0, read);
+      }
+    }
+    System.load(tempFile.getAbsolutePath());
+  }
+
+  /*
+  If a .so and/or .dylib is embedded within this jar as a resource file, attempt
+  to copy it to a temporary file and then load it. This allows the jar to be
+  used even without a libsignal_jni shared library existing on the filesystem.
+  */
+  private static void loadLibrary() {
+    try {
+      String  osName    = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT);
+      boolean isMacOs   = osName.startsWith("mac os");
+      String  extension = isMacOs ? ".dylib" : ".so";
+
+      try (InputStream in = Native.class.getResourceAsStream("/libsignal_jni" + extension)) {
+        if (in != null) {
+          copyToTempFileAndLoad(in, extension);
+        } else {
+          System.loadLibrary("signal_jni");
+        }
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  static {
+    loadLibrary();
+  }
+
+  private Native() {}
+
+  // INSERT DECLS HERE
+}
