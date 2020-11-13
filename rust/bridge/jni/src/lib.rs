@@ -1699,6 +1699,46 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
         let cert = native_handle_cast::<SenderCertificate>(cert)?;
         let key = native_handle_cast::<PublicKey>(key)?;
         let time = jlong_to_u64(time)?;
-        Ok(cert.validate(key, time)? as jboolean)
+        let valid = cert.validate(key, time)?;
+        Ok(valid as jboolean)
+    })
+}
+
+// UnidentifiedSenderMessageContent
+jni_fn_destroy!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1Destroy destroys UnidentifiedSenderMessageContent);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1Deserialize is UnidentifiedSenderMessageContent::deserialize);
+
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetMsgType(UnidentifiedSenderMessageContent) using
+                 |m: &UnidentifiedSenderMessageContent| Ok(m.msg_type()? as u32));
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSerialized(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetContents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSenderCert(SenderCertificate) from UnidentifiedSenderMessageContent,
+                          |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1New(
+    env: JNIEnv,
+    _class: JClass,
+    msg_type: jint,
+    sender: ObjectHandle,
+    contents: jbyteArray,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let sender = native_handle_cast::<SenderCertificate>(sender)?;
+        let contents = env.convert_byte_array(contents)?;
+        let msg_type = match msg_type {
+            1 => Ok(1u8),
+            2 => Ok(2u8),
+            3 => Ok(1u8),
+            x => Err(SignalJniError::IntegerOverflow(format!(
+                "invalid msg_type argument {}",
+                x
+            ))),
+        }?;
+
+        let usmc = UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents)?;
+        box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
     })
 }

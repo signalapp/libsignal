@@ -214,4 +214,12 @@ public final class Native {
   public static native byte[] SignedPreKeyRecord_GetSignature(long handle);
   public static native long SignedPreKeyRecord_GetTimestamp(long handle);
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKeyHandle, long privKeyHandle, byte[] signature);
+
+  public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
+  public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
+  public static native byte[] UnidentifiedSenderMessageContent_GetContents(long handle);
+  public static native int UnidentifiedSenderMessageContent_GetMsgType(long handle);
+  public static native long UnidentifiedSenderMessageContent_GetSenderCert(long handle);
+  public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long handle);
+  public static native long UnidentifiedSenderMessageContent_New(int msgType, long sender, byte[] contents);
 }

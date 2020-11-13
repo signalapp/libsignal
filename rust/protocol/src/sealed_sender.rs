@@ -287,3 +287,79 @@ impl SenderCertificate {
         Ok(&self.signature)
     }
 }
+
+pub struct UnidentifiedSenderMessageContent {
+    serialized: Vec<u8>,
+    contents: Vec<u8>,
+    sender: SenderCertificate,
+    msg_type: u8,
+}
+
+impl UnidentifiedSenderMessageContent {
+    pub fn deserialize(data: &[u8]) -> Result<Self> {
+        let pb = proto::sealed_sender::unidentified_sender_message::Message::decode(data)?;
+
+        let msg_type = pb
+            .r#type
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let sender = pb
+            .sender_certificate
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let contents = pb
+            .content
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+
+        let msg_type = match msg_type {
+            1 => Ok(3),
+            2 => Ok(2),
+            3 => Ok(3),
+            _ => Err(SignalProtocolError::InvalidProtobufEncoding),
+        }?;
+
+        let sender = SenderCertificate::from_protobuf(&sender)?;
+
+        let serialized = data.to_vec();
+
+        Ok(Self {
+            serialized,
+            contents,
+            sender,
+            msg_type,
+        })
+    }
+
+    pub fn new(msg_type: u8, sender: SenderCertificate, contents: Vec<u8>) -> Result<Self> {
+        let msg = proto::sealed_sender::unidentified_sender_message::Message {
+            content: Some(contents.clone()),
+            r#type: Some(msg_type as _),
+            sender_certificate: Some(sender.to_protobuf()?),
+        };
+
+        let mut serialized = vec![];
+        msg.encode(&mut serialized)?;
+
+        // serialize it
+        Ok(Self {
+            msg_type,
+            sender,
+            contents,
+            serialized,
+        })
+    }
+
+    pub fn msg_type(&self) -> Result<u8> {
+        Ok(self.msg_type)
+    }
+
+    pub fn sender(&self) -> Result<&SenderCertificate> {
+        Ok(&self.sender)
+    }
+
+    pub fn contents(&self) -> Result<&[u8]> {
+        Ok(&self.contents)
+    }
+
+    pub fn serialized(&self) -> Result<&[u8]> {
+        Ok(&self.serialized)
+    }
+}
