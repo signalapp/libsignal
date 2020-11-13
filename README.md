@@ -4,6 +4,44 @@ libsignal-client is an implementation of the Signal client in Rust.
 
 Work in progress.  Subject to change without notice, use outside Signal not yet recommended.
 
+# Building
+
+To build anything in this repository you must have Rust installed. The build currently
+uses a specific version of the Rust nightly compiler, which will be downloaded
+automatically by cargo. To build and test the basic protocol libraries:
+
+```shell
+$ cargo build
+...
+$ cargo test
+...
+```
+
+## Java/Android
+
+To build for Android you must install several additional packages including a JDK,
+the Android NDK/SDK, and add the Android targets to the Rust compiler, using
+
+```rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android```
+
+To build the Java/Android ``jar`` and ``aar``, and run the tests:
+
+```shell
+$ cd java
+$ ./gradlew test
+```
+
+Alternately, a build system using Docker is available:
+
+```shell
+$ cd java
+$ make java_test
+```
+
+## Swift
+
+To learn about the Swift build process see ``swift/README.md``
+
 # Legal things
 ## Cryptography Notice
 
