@@ -18,7 +18,15 @@ Pod::Spec.new do |s|
   s.osx.deployment_target  = '10.9'
 
   s.source_files = 'swift/Sources/**/*.swift'
-  s.preserve_paths = ['rust/*', 'Cargo.toml', 'Cargo.lock', 'swift/Sources/SignalFfi', 'bin/*']
+  s.preserve_paths = [
+    'bin/*',
+    'Cargo.toml',
+    'Cargo.lock',
+    'rust-toolchain',
+    'rust/*',
+    'swift/*.sh',
+    'swift/Sources/SignalFfi',
+  ]
 
   s.pod_target_xcconfig = {
       'CARGO_BUILD_TARGET_DIR' => '$(DERIVED_FILE_DIR)/libsignal-ffi',
