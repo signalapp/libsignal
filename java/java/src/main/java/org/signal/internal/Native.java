@@ -222,4 +222,12 @@ public final class Native {
   public static native long UnidentifiedSenderMessageContent_GetSenderCert(long handle);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long handle);
   public static native long UnidentifiedSenderMessageContent_New(int msgType, long sender, byte[] contents);
+
+  public static native long UnidentifiedSenderMessage_Deserialize(byte[] data);
+  public static native void UnidentifiedSenderMessage_Destroy(long handle);
+  public static native byte[] UnidentifiedSenderMessage_GetEncryptedMessage(long handle);
+  public static native byte[] UnidentifiedSenderMessage_GetEncryptedStatic(long handle);
+  public static native long UnidentifiedSenderMessage_GetEphemeralPublic(long handle);
+  public static native byte[] UnidentifiedSenderMessage_GetSerialized(long handle);
+  public static native long UnidentifiedSenderMessage_New(long publicKey, byte[] encryptedStatic, byte[] encryptedMessage);
 }

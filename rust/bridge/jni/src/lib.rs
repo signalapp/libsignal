@@ -1742,3 +1742,32 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSend
         box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
     })
 }
+
+// UnidentifiedSenderMessage
+jni_fn_destroy!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1Destroy destroys UnidentifiedSenderMessage);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1Deserialize is UnidentifiedSenderMessage::deserialize);
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetSerialized(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEncryptedMessage(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_message);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEncryptedStatic(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_static);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEphemeralPublic(PublicKey) from UnidentifiedSenderMessage,
+                          UnidentifiedSenderMessage::ephemeral_public);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1New(
+    env: JNIEnv,
+    _class: JClass,
+    public_key: ObjectHandle,
+    encrypted_static: jbyteArray,
+    encrypted_message: jbyteArray,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let encrypted_static = env.convert_byte_array(encrypted_static)?;
+        let encrypted_message = env.convert_byte_array(encrypted_message)?;
+        let public_key = native_handle_cast::<PublicKey>(public_key)?;
+
+        let usm = UnidentifiedSenderMessage::new(*public_key, encrypted_static, encrypted_message)?;
+        box_object::<UnidentifiedSenderMessage>(Ok(usm))
+    })
+}

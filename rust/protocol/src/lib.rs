@@ -45,7 +45,7 @@ pub use {
         are_we_alice, initialize_alice_session, initialize_bob_session,
         AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
     },
-    sealed_sender::{SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent},
+    sealed_sender::{SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent, UnidentifiedSenderMessage},
     sender_keys::{
         SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
     },

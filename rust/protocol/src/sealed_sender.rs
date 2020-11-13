@@ -363,3 +363,98 @@ impl UnidentifiedSenderMessageContent {
         Ok(&self.serialized)
     }
 }
+
+pub struct UnidentifiedSenderMessage {
+    version: u8,
+    ephemeral_public: PublicKey,
+    encrypted_static: Vec<u8>,
+    encrypted_message: Vec<u8>,
+    serialized: Vec<u8>,
+}
+
+const SEALED_SENDER_VERSION: u8 = 1;
+
+impl UnidentifiedSenderMessage {
+    pub fn deserialize(data: &[u8]) -> Result<Self> {
+        if data.len() == 0 {
+            return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                "Message was empty".to_owned(),
+            ));
+        }
+        let version = data[0] >> 4;
+
+        if version > SEALED_SENDER_VERSION {
+            // XXX should we really be accepted version == 0 here?
+            return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
+        }
+
+        let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])?;
+
+        let ephemeral_public = pb
+            .ephemeral_public
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let encrypted_static = pb
+            .encrypted_static
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let encrypted_message = pb
+            .encrypted_message
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+
+        let ephemeral_public = PublicKey::deserialize(&ephemeral_public)?;
+
+        let serialized = data.to_vec();
+
+        Ok(Self {
+            version,
+            ephemeral_public,
+            encrypted_static,
+            encrypted_message,
+            serialized,
+        })
+    }
+
+    pub fn new(
+        ephemeral_public: PublicKey,
+        encrypted_static: Vec<u8>,
+        encrypted_message: Vec<u8>,
+    ) -> Result<Self> {
+        let version = SEALED_SENDER_VERSION;
+        let mut serialized = vec![];
+        serialized.push(version | (version << 4));
+        let pb = proto::sealed_sender::UnidentifiedSenderMessage {
+            ephemeral_public: Some(ephemeral_public.serialize().to_vec()),
+            encrypted_static: Some(encrypted_static.clone()),
+            encrypted_message: Some(encrypted_message.clone()),
+        };
+        pb.encode(&mut serialized)?; // appends to buffer
+
+        Ok(Self {
+            version,
+            ephemeral_public,
+            encrypted_static,
+            encrypted_message,
+            serialized,
+        })
+    }
+
+    pub fn version(&self) -> Result<u8> {
+        Ok(self.version)
+    }
+
+    pub fn ephemeral_public(&self) -> Result<PublicKey> {
+        Ok(self.ephemeral_public)
+    }
+
+    pub fn encrypted_static(&self) -> Result<&[u8]> {
+        Ok(&self.encrypted_static)
+    }
+
+    pub fn encrypted_message(&self) -> Result<&[u8]> {
+        Ok(&self.encrypted_message)
+    }
+
+    pub fn serialized(&self) -> Result<&[u8]> {
+        Ok(&self.serialized)
+    }
+}
+

@@ -7,7 +7,6 @@ import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
 import org.signal.libsignal.metadata.certificate.SenderCertificate;
 
 public class UnidentifiedSenderMessageContent {
-
   private final long handle;
 
   @Override
