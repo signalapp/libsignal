@@ -117,7 +117,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKe
 }
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ECPrivateKey_1GetPublicKey(PublicKey) from PrivateKey,
-                          |k: &PrivateKey| k.public_key());
+                          PrivateKey::public_key);
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Sign(
@@ -519,10 +519,10 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SenderKeyDi
 jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1Destroy destroys SenderKeyDistributionMessage);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetId(SenderKeyDistributionMessage) using
-                 |m: &SenderKeyDistributionMessage| m.id());
+                 SenderKeyDistributionMessage::id);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetIteration(SenderKeyDistributionMessage) using
-                 |m: &SenderKeyDistributionMessage| m.iteration());
+                 SenderKeyDistributionMessage::iteration);
 
 jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetChainKey(SenderKeyDistributionMessage) using
                        |m: &SenderKeyDistributionMessage| Ok(m.chain_key()?.to_vec()));
@@ -581,13 +581,13 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeyBundl
 jni_fn_destroy!(Java_org_signal_client_internal_Native_PreKeyBundle_1Destroy destroys PreKeyBundle);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetRegistrationId(PreKeyBundle) using
-                 |m: &PreKeyBundle| m.registration_id());
+                 PreKeyBundle::registration_id);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetDeviceId(PreKeyBundle) using
-                 |m: &PreKeyBundle| m.device_id());
+                 PreKeyBundle::device_id);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetSignedPreKeyId(PreKeyBundle) using
-                 |m: &PreKeyBundle| m.signed_pre_key_id());
+                 PreKeyBundle::signed_pre_key_id);
 
 // Special logic for optional here:
 #[no_mangle]
@@ -606,7 +606,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeyBundl
 }
 
 jni_fn_get_new_boxed_optional_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetPreKeyPublic(PublicKey) from PreKeyBundle,
-                                   |p: &PreKeyBundle| p.pre_key_public());
+                                   PreKeyBundle::pre_key_public);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetSignedPreKeyPublic(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(p.signed_pre_key_public()?));
@@ -646,7 +646,7 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignedPreKe
 jni_fn_deserialize!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1Deserialize is SignedPreKeyRecord::deserialize);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetId(SignedPreKeyRecord) using
-                 |m: &SignedPreKeyRecord| m.id());
+                 SignedPreKeyRecord::id);
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(
@@ -661,10 +661,10 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_SignedPreKe
 }
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPublicKey(PublicKey) from SignedPreKeyRecord,
-                          |p: &SignedPreKeyRecord| p.public_key());
+                          SignedPreKeyRecord::public_key);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPrivateKey(PrivateKey) from SignedPreKeyRecord,
-                          |p: &SignedPreKeyRecord| p.private_key());
+                          SignedPreKeyRecord::private_key);
 
 jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetSignature(SignedPreKeyRecord) using
                        SignedPreKeyRecord::signature);
@@ -699,13 +699,13 @@ pub unsafe extern "system" fn Java_org_signal_client_internal_Native_PreKeyRecor
 jni_fn_deserialize!(Java_org_signal_client_internal_Native_PreKeyRecord_1Deserialize is PreKeyRecord::deserialize);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetId(PreKeyRecord) using
-                 |m: &PreKeyRecord| m.id());
+                 PreKeyRecord::id);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetPublicKey(PublicKey) from PreKeyRecord,
-                          |p: &PreKeyRecord| p.public_key());
+                          PreKeyRecord::public_key);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetPrivateKey(PrivateKey) from PreKeyRecord,
-                          |p: &PreKeyRecord| p.private_key());
+                          PreKeyRecord::private_key);
 
 jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetSerialized(PreKeyRecord) using
                        PreKeyRecord::serialize);
