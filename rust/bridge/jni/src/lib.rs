@@ -1771,3 +1771,36 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSend
         box_object::<UnidentifiedSenderMessage>(Ok(usm))
     })
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCipher_1Encrypt(
+    env: JNIEnv,
+    _class: JClass,
+    destination: ObjectHandle,
+    sender_cert: ObjectHandle,
+    ptext: jbyteArray,
+    session_store: JavaSessionStore,
+    identity_store: JavaIdentityKeyStore,
+) -> jbyteArray {
+    run_ffi_safe(&env, || {
+        let destination = native_handle_cast::<ProtocolAddress>(destination)?;
+        let sender_cert = native_handle_cast::<SenderCertificate>(sender_cert)?;
+        let ptext = env.convert_byte_array(ptext)?;
+
+        let mut identity_store = JniIdentityKeyStore::new(&env, identity_store)?;
+        let mut session_store = JniSessionStore::new(&env, session_store)?;
+
+        let mut rng = rand::rngs::OsRng;
+
+        let ctext = block_on(sealed_sender_encrypt(
+            destination,
+            sender_cert,
+            &ptext,
+            &mut session_store,
+            &mut identity_store,
+            None,
+            &mut rng,
+        ))?;
+        to_jbytearray(&env, Ok(ctext))
+    })
+}

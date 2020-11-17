@@ -30,6 +30,8 @@ import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.util.ByteUtil;
 import org.whispersystems.libsignal.util.guava.Optional;
 
+import org.signal.client.internal.Native;
+
 import java.security.InvalidAlgorithmParameterException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -67,21 +69,12 @@ public class SealedSessionCipher {
   public byte[] encrypt(SignalProtocolAddress destinationAddress, SenderCertificate senderCertificate, byte[] paddedPlaintext)
       throws InvalidKeyException, UntrustedIdentityException
   {
-    CiphertextMessage message       = new SessionCipher(signalProtocolStore, destinationAddress).encrypt(paddedPlaintext);
-    IdentityKeyPair   ourIdentity   = signalProtocolStore.getIdentityKeyPair();
-    ECPublicKey       theirIdentity = signalProtocolStore.getIdentity(destinationAddress).getPublicKey();
-
-    ECKeyPair     ephemeral           = Curve.generateKeyPair();
-    byte[]        ephemeralSalt       = ByteUtil.combine("UnidentifiedDelivery".getBytes(), theirIdentity.serialize(), ephemeral.getPublicKey().serialize());
-    EphemeralKeys ephemeralKeys       = calculateEphemeralKeys(theirIdentity, ephemeral.getPrivateKey(), ephemeralSalt);
-    byte[]        staticKeyCiphertext = encrypt(ephemeralKeys.cipherKey, ephemeralKeys.macKey, ourIdentity.getPublicKey().getPublicKey().serialize());
-
-    byte[]                           staticSalt   = ByteUtil.combine(ephemeralKeys.chainKey, staticKeyCiphertext);
-    StaticKeys                       staticKeys   = calculateStaticKeys(theirIdentity, ourIdentity.getPrivateKey(), staticSalt);
-    UnidentifiedSenderMessageContent content      = new UnidentifiedSenderMessageContent(message.getType(), senderCertificate, message.serialize());
-    byte[]                           messageBytes = encrypt(staticKeys.cipherKey, staticKeys.macKey, content.getSerialized());
-
-    return new UnidentifiedSenderMessage(ephemeral.getPublicKey(), staticKeyCiphertext, messageBytes).getSerialized();
+    return Native.SealedSessionCipher_Encrypt(
+       destinationAddress.nativeHandle(),
+       senderCertificate.nativeHandle(),
+       paddedPlaintext,
+       this.signalProtocolStore,
+       this.signalProtocolStore);
   }
 
   public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)
@@ -159,7 +152,7 @@ public class SealedSessionCipher {
   private EphemeralKeys calculateEphemeralKeys(ECPublicKey ephemeralPublic, ECPrivateKey ephemeralPrivate, byte[] salt) throws InvalidKeyException {
     try {
       byte[]   ephemeralSecret       = Curve.calculateAgreement(ephemeralPublic, ephemeralPrivate);
-      byte[]   ephemeralDerived      = new HKDFv3().deriveSecrets(ephemeralSecret, salt, new byte[0], 96);
+      byte[]   ephemeralDerived      = new HKDFv3().deriveSecrets(ephemeralSecret, salt, null, 96);
       byte[][] ephemeralDerivedParts = ByteUtil.split(ephemeralDerived, 32, 32, 32);
 
       return new EphemeralKeys(ephemeralDerivedParts[0], ephemeralDerivedParts[1], ephemeralDerivedParts[2]);
@@ -171,7 +164,7 @@ public class SealedSessionCipher {
   private StaticKeys calculateStaticKeys(ECPublicKey staticPublic, ECPrivateKey staticPrivate, byte[] salt) throws InvalidKeyException {
     try {
       byte[]      staticSecret       = Curve.calculateAgreement(staticPublic, staticPrivate);
-      byte[]      staticDerived      = new HKDFv3().deriveSecrets(staticSecret, salt, new byte[0], 96);
+      byte[]      staticDerived      = new HKDFv3().deriveSecrets(staticSecret, salt, null, 96);
       byte[][]    staticDerivedParts = ByteUtil.split(staticDerived, 32, 32, 32);
 
       return new StaticKeys(staticDerivedParts[1], staticDerivedParts[2]);
@@ -189,24 +182,6 @@ public class SealedSessionCipher {
       case CiphertextMessage.WHISPER_TYPE: return new SessionCipher(signalProtocolStore, sender).decrypt(new SignalMessage(message.getContent()));
       case CiphertextMessage.PREKEY_TYPE:  return new SessionCipher(signalProtocolStore, sender).decrypt(new PreKeySignalMessage(message.getContent()));
       default:                             throw new InvalidMessageException("Unknown type: " + message.getType());
-    }
-  }
-
-  private byte[] encrypt(SecretKeySpec cipherKey, SecretKeySpec macKey, byte[] plaintext) {
-    try {
-      Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding");
-      cipher.init(Cipher.ENCRYPT_MODE, cipherKey, new IvParameterSpec(new byte[16]));
-
-      Mac mac = Mac.getInstance("HmacSHA256");
-      mac.init(macKey);
-
-      byte[] ciphertext = cipher.doFinal(plaintext);
-      byte[] ourFullMac = mac.doFinal(ciphertext);
-      byte[] ourMac     = ByteUtil.trim(ourFullMac, 10);
-
-      return ByteUtil.combine(ciphertext, ourMac);
-    } catch (NoSuchAlgorithmException | NoSuchPaddingException | java.security.InvalidKeyException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException e) {
-      throw new AssertionError(e);
     }
   }
 

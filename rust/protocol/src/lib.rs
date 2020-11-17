@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![deny(warnings)]
+//#![deny(warnings)]
 #![deny(unsafe_code)]
 
 mod address;
@@ -45,7 +45,10 @@ pub use {
         are_we_alice, initialize_alice_session, initialize_bob_session,
         AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
     },
-    sealed_sender::{SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent, UnidentifiedSenderMessage},
+    sealed_sender::{
+        sealed_sender_encrypt, SenderCertificate, ServerCertificate, UnidentifiedSenderMessage,
+        UnidentifiedSenderMessageContent,
+    },
     sender_keys::{
         SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
     },

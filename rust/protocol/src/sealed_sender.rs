@@ -3,10 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use crate::crypto;
 use crate::error::{Result, SignalProtocolError};
+use crate::kdf::HKDF;
 use crate::proto;
-use crate::PublicKey;
+use crate::{
+    message_encrypt, Context, IdentityKeyStore, KeyPair, PrivateKey, ProtocolAddress, PublicKey,
+    SessionStore,
+};
 use prost::Message;
+use rand::{CryptoRng, Rng};
 
 #[derive(Debug, Clone)]
 pub struct ServerCertificate {
@@ -458,3 +464,140 @@ impl UnidentifiedSenderMessage {
     }
 }
 
+fn aes256_ctr_hmacsha256_encrypt(msg: &[u8], cipher_key: &[u8], mac_key: &[u8]) -> Result<Vec<u8>> {
+    let ctext = crypto::aes_256_ctr_encrypt(msg, cipher_key)?;
+    let mac = crypto::hmac_sha256(mac_key, &ctext)?;
+    let mut result = Vec::with_capacity(ctext.len() + 10);
+    result.extend_from_slice(&ctext);
+    result.extend_from_slice(&mac[..10]);
+    Ok(result)
+}
+
+struct EphemeralKeys {
+    derived_values: Box<[u8]>,
+}
+
+impl EphemeralKeys {
+    pub fn calculate(
+        their_public: &PublicKey,
+        our_public: &PublicKey,
+        our_private: &PrivateKey,
+        sending: bool,
+    ) -> Result<Self> {
+        let mut ephemeral_salt = Vec::with_capacity(2 * 32 + 20);
+        ephemeral_salt.extend_from_slice("UnidentifiedDelivery".as_bytes());
+
+        if sending {
+            ephemeral_salt.extend_from_slice(&their_public.serialize());
+        }
+        ephemeral_salt.extend_from_slice(&our_public.serialize());
+        if !sending {
+            ephemeral_salt.extend_from_slice(&their_public.serialize());
+        }
+
+        let shared_secret = our_private.calculate_agreement(their_public)?;
+        let kdf = HKDF::new(3)?;
+        let derived_values = kdf.derive_salted_secrets(&shared_secret, &ephemeral_salt, &[], 96)?;
+
+        Ok(Self { derived_values })
+    }
+
+    fn chain_key(&self) -> Result<&[u8]> {
+        Ok(&self.derived_values[0..32])
+    }
+
+    fn cipher_key(&self) -> Result<&[u8]> {
+        Ok(&self.derived_values[32..64])
+    }
+
+    fn mac_key(&self) -> Result<&[u8]> {
+        Ok(&self.derived_values[64..96])
+    }
+}
+
+struct StaticKeys {
+    derived_values: Box<[u8]>,
+}
+impl StaticKeys {
+    pub fn calculate(
+        their_public: &PublicKey,
+        our_private: &PrivateKey,
+        chain_key: &[u8],
+        ctext: &[u8],
+    ) -> Result<Self> {
+        let mut salt = Vec::with_capacity(chain_key.len() + ctext.len());
+        salt.extend_from_slice(chain_key);
+        salt.extend_from_slice(ctext);
+
+        let shared_secret = our_private.calculate_agreement(their_public)?;
+        let kdf = HKDF::new(3)?;
+        let derived_values = kdf.derive_salted_secrets(&shared_secret, &salt, &[], 96)?;
+
+        Ok(Self { derived_values })
+    }
+
+    fn cipher_key(&self) -> Result<&[u8]> {
+        Ok(&self.derived_values[32..64])
+    }
+
+    fn mac_key(&self) -> Result<&[u8]> {
+        Ok(&self.derived_values[64..96])
+    }
+}
+
+pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
+    destination: &ProtocolAddress,
+    sender_cert: &SenderCertificate,
+    ptext: &[u8],
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+    rng: &mut R,
+) -> Result<Vec<u8>> {
+    let message = message_encrypt(ptext, destination, session_store, identity_store, ctx).await?;
+
+    let our_identity = identity_store.get_identity_key_pair(ctx).await?;
+    let their_identity = identity_store
+        .get_identity(destination, ctx)
+        .await?
+        .ok_or(SignalProtocolError::SessionNotFound)?;
+
+    let ephemeral = KeyPair::generate(rng);
+
+    let eph_keys = EphemeralKeys::calculate(
+        their_identity.public_key(),
+        &ephemeral.public_key,
+        &ephemeral.private_key,
+        true,
+    )?;
+
+    let static_key_ctext = aes256_ctr_hmacsha256_encrypt(
+        &our_identity.public_key().serialize(),
+        &eph_keys.cipher_key()?,
+        &eph_keys.mac_key()?,
+    )?;
+
+    let static_keys = StaticKeys::calculate(
+        their_identity.public_key(),
+        our_identity.private_key(),
+        eph_keys.chain_key()?,
+        &static_key_ctext,
+    )?;
+
+    let usmc = UnidentifiedSenderMessageContent::new(
+        message.message_type() as u8,
+        sender_cert.clone(),
+        message.serialize().to_vec(),
+    )?;
+    let message_data = aes256_ctr_hmacsha256_encrypt(
+        usmc.serialized()?,
+        &static_keys.cipher_key()?,
+        &static_keys.mac_key()?,
+    )?;
+
+    Ok(
+        UnidentifiedSenderMessage::new(ephemeral.public_key, static_key_ctext, message_data)?
+            .serialized()?
+            .to_vec(),
+    )
+}
