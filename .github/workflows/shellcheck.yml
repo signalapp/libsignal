@@ -1,0 +1,19 @@
+name: Shellcheck
+# This is in a separate job because we have shell scripts scattered across all our targets,
+# *and* some of them have common dependencies.
+
+on:
+  push:
+    branches: [ master ]
+    paths: ['**/*.sh']
+  pull_request:
+    branches: [ master ]
+    paths: ['**/*.sh']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - run: shellcheck **/*.sh
