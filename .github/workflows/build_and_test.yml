@@ -21,6 +21,8 @@ jobs:
       swift: ${{ steps.filter.outputs.swift }}
 
     steps:
+    - uses: actions/checkout@v2
+
     - uses: dorny/paths-filter@v2
       id: filter
       with:
