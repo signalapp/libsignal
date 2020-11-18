@@ -23,14 +23,6 @@ message PreKeySignalMessage {
   optional bytes  message           = 4; // SignalMessage
 }
 
-message KeyExchangeMessage {
-  optional uint32 id                 = 1;
-  optional bytes  base_key           = 2;
-  optional bytes  ratchet_key        = 3;
-  optional bytes  identity_key       = 4;
-  optional bytes  base_key_signature = 5;
-}
-
 message SenderKeyMessage {
   optional uint32 id         = 1;
   optional uint32 iteration  = 2;
@@ -42,9 +34,4 @@ message SenderKeyDistributionMessage {
   optional uint32 iteration   = 2;
   optional bytes  chain_key   = 3;
   optional bytes  signing_key = 4;
-}
-
-message DeviceConsistencyCodeMessage {
-  optional uint32 generation = 1;
-  optional bytes  signature  = 2;
 }
