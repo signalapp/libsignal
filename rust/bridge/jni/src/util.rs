@@ -3,12 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use futures::pin_mut;
+use futures::task::noop_waker_ref;
 use jni::objects::{JObject, JString, JThrowable, JValue};
 use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
 use libsignal_protocol_rust::SignalProtocolError;
 use std::convert::TryFrom;
 use std::fmt;
+use std::future::Future;
+use std::task::{self, Poll};
 
 #[derive(Debug)]
 pub enum SignalJniError {
@@ -234,6 +238,15 @@ where
             throw_error(env, SignalJniError::UnexpectedPanic(r));
             R::dummy_value()
         }
+    }
+}
+
+#[track_caller]
+pub fn expect_ready<F: Future>(future: F) -> F::Output {
+    pin_mut!(future);
+    match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
+        Poll::Ready(result) => result,
+        Poll::Pending => panic!("future was not ready"),
     }
 }
 

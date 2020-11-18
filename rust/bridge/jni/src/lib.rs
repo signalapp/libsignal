@@ -7,7 +7,6 @@
 #![deny(warnings)]
 
 use async_trait::async_trait;
-use futures::executor::block_on;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
@@ -1262,7 +1261,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionBuilder_1
         let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        block_on(process_prekey_bundle(
+        expect_ready(process_prekey_bundle(
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
@@ -1291,7 +1290,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1E
         let mut identity_key_store = JniIdentityKeyStore::new(&env, identity_key_store)?;
         let mut session_store = JniSessionStore::new(&env, session_store)?;
 
-        let ctext = block_on(message_encrypt(
+        let ctext = expect_ready(message_encrypt(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1336,7 +1335,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1D
         let mut session_store = JniSessionStore::new(&env, session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = block_on(message_decrypt_signal(
+        let ptext = expect_ready(message_decrypt_signal(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1369,7 +1368,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1D
         let mut signed_prekey_store = JniSignedPreKeyStore::new(&env, signed_prekey_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = block_on(message_decrypt_prekey(
+        let ptext = expect_ready(message_decrypt_prekey(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1481,7 +1480,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupSessionBuil
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
         let mut csprng = rand::rngs::OsRng;
 
-        let skdm = block_on(create_sender_key_distribution_message(
+        let skdm = expect_ready(create_sender_key_distribution_message(
             &sender_key_name,
             &mut sender_key_store,
             &mut csprng,
@@ -1505,7 +1504,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupSessionBuil
             native_handle_cast::<SenderKeyDistributionMessage>(sender_key_distribution_message)?;
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
-        block_on(process_sender_key_distribution_message(
+        expect_ready(process_sender_key_distribution_message(
             sender_key_name,
             sender_key_distribution_message,
             &mut sender_key_store,
@@ -1530,7 +1529,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Enc
 
         let mut rng = rand::rngs::OsRng;
 
-        let ctext = block_on(group_encrypt(
+        let ctext = expect_ready(group_encrypt(
             &mut sender_key_store,
             &sender_key_name,
             &message,
@@ -1555,7 +1554,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Dec
         let message = env.convert_byte_array(message)?;
         let mut sender_key_store = JniSenderKeyStore::new(&env, store)?;
 
-        let ptext = block_on(group_decrypt(
+        let ptext = expect_ready(group_decrypt(
             &message,
             &mut sender_key_store,
             &sender_key_name,
