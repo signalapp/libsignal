@@ -3,10 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use futures::pin_mut;
+use futures::task::noop_waker_ref;
 use libc::{c_char, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
 use std::ffi::{CStr, CString};
 use std::fmt;
+use std::future::Future;
+use std::task::{self, Poll};
 
 #[derive(Debug)]
 pub enum SignalFfiError {
@@ -185,6 +189,15 @@ pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::Unwi
     match result {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => Box::into_raw(Box::new(e)),
+    }
+}
+
+#[track_caller]
+pub fn expect_ready<F: Future>(future: F) -> F::Output {
+    pin_mut!(future);
+    match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
+        Poll::Ready(result) => result,
+        Poll::Pending => panic!("future was not ready"),
     }
 }
 

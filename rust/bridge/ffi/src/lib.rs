@@ -7,7 +7,6 @@
 #![deny(warnings)]
 
 use async_trait::async_trait;
-use futures::executor::block_on;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
@@ -1255,7 +1254,7 @@ pub unsafe extern "C" fn signal_process_prekey_bundle(
         let mut session_store = FfiSessionStore::new(session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        block_on(process_prekey_bundle(
+        expect_ready(process_prekey_bundle(
             &protocol_address,
             &mut session_store,
             &mut identity_key_store,
@@ -1285,7 +1284,7 @@ pub unsafe extern "C" fn signal_encrypt_message(
         let mut identity_key_store = FfiIdentityKeyStore::new(identity_key_store)?;
         let mut session_store = FfiSessionStore::new(session_store)?;
 
-        let ctext = block_on(message_encrypt(
+        let ctext = expect_ready(message_encrypt(
             &ptext,
             &protocol_address,
             &mut session_store,
@@ -1368,7 +1367,7 @@ pub unsafe extern "C" fn signal_decrypt_message(
         let mut session_store = FfiSessionStore::new(session_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = block_on(message_decrypt_signal(
+        let ptext = expect_ready(message_decrypt_signal(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1401,7 +1400,7 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
         let mut signed_prekey_store = FfiSignedPreKeyStore::new(signed_prekey_store)?;
 
         let mut csprng = rand::rngs::OsRng;
-        let ptext = block_on(message_decrypt_prekey(
+        let ptext = expect_ready(message_decrypt_prekey(
             &message,
             &protocol_address,
             &mut session_store,
@@ -1518,7 +1517,7 @@ pub unsafe extern "C" fn signal_create_sender_key_distribution_message(
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
         let mut csprng = rand::rngs::OsRng;
 
-        let skdm = block_on(create_sender_key_distribution_message(
+        let skdm = expect_ready(create_sender_key_distribution_message(
             &sender_key_name,
             &mut sender_key_store,
             &mut csprng,
@@ -1542,7 +1541,7 @@ pub unsafe extern "C" fn signal_process_sender_key_distribution_message(
             native_handle_cast::<SenderKeyDistributionMessage>(sender_key_distribution_message)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
 
-        block_on(process_sender_key_distribution_message(
+        expect_ready(process_sender_key_distribution_message(
             sender_key_name,
             sender_key_distribution_message,
             &mut sender_key_store,
@@ -1568,7 +1567,7 @@ pub unsafe extern "C" fn signal_group_encrypt_message(
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
         let mut rng = rand::rngs::OsRng;
-        let ctext = block_on(group_encrypt(
+        let ctext = expect_ready(group_encrypt(
             &mut sender_key_store,
             &sender_key_name,
             &message,
@@ -1594,7 +1593,7 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
         let message = as_slice(message, message_len)?;
         let mut sender_key_store = FfiSenderKeyStore::new(store)?;
 
-        let ptext = block_on(group_decrypt(
+        let ptext = expect_ready(group_decrypt(
             &message,
             &mut sender_key_store,
             &sender_key_name,
