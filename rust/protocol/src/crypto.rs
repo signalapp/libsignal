@@ -11,6 +11,7 @@ use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
 use ctr::Ctr128;
 use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;
+use subtle::ConstantTimeEq;
 
 pub fn aes_256_ctr_encrypt(ptext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     if key.len() != 32 {
@@ -64,6 +65,28 @@ pub fn hmac_sha256(key: &[u8], input: &[u8]) -> Result<[u8; 32]> {
     let mut hmac = Hmac::<Sha256>::new_varkey(key).expect("HMAC-SHA256 should accept any size key");
     hmac.update(input);
     Ok(hmac.finalize().into_bytes().into())
+}
+
+pub fn aes256_ctr_hmacsha256_encrypt(msg: &[u8], cipher_key: &[u8], mac_key: &[u8]) -> Result<Vec<u8>> {
+    let ctext = aes_256_ctr_encrypt(msg, cipher_key)?;
+    let mac = hmac_sha256(mac_key, &ctext)?;
+    let mut result = Vec::with_capacity(ctext.len() + 10);
+    result.extend_from_slice(&ctext);
+    result.extend_from_slice(&mac[..10]);
+    Ok(result)
+}
+
+pub fn aes256_ctr_hmacsha256_decrypt(ctext: &[u8], cipher_key: &[u8], mac_key: &[u8]) -> Result<Vec<u8>> {
+    if ctext.len() < 10 {
+        return Err(SignalProtocolError::InvalidCiphertext);
+    }
+    let ptext_len = ctext.len() - 10;
+    let our_mac = hmac_sha256(mac_key, &ctext[..ptext_len])?;
+    let same : bool = our_mac[..10].ct_eq(&ctext[ptext_len..]).into();
+    if !same {
+        return Err(SignalProtocolError::InvalidCiphertext);
+    }
+    aes_256_ctr_decrypt(&ctext[..ptext_len], cipher_key)
 }
 
 #[cfg(test)]

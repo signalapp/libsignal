@@ -1688,6 +1688,23 @@ jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertif
 jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderE164(SenderCertificate) using SenderCertificate::sender_e164);
 
 #[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
+    env: JNIEnv,
+    _class: JClass,
+    cert: ObjectHandle,
+    session_store: JavaSessionStore,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let cert = native_handle_cast::<SenderCertificate>(cert)?;
+        let session_store = JniSessionStore::new(&env, session_store)?;
+
+        let address = expect_ready(cert.preferred_address(&session_store, None))?;
+        box_object::<ProtocolAddress>(Ok(address))
+    })
+}
+
+
+#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1Validate(
     env: JNIEnv,
     _class: JClass,
@@ -1792,7 +1809,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCip
 
         let mut rng = rand::rngs::OsRng;
 
-        let ctext = block_on(sealed_sender_encrypt(
+        let ctext = expect_ready(sealed_sender_encrypt(
             destination,
             sender_cert,
             &ptext,
@@ -1802,5 +1819,32 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCip
             &mut rng,
         ))?;
         to_jbytearray(&env, Ok(ctext))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCipher_1DecryptToUsmc(
+    env: JNIEnv,
+    _class: JClass,
+    ctext: jbyteArray,
+    trust_root: ObjectHandle,
+    timestamp: jlong,
+    identity_store: JavaIdentityKeyStore,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let ctext = env.convert_byte_array(ctext)?;
+        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
+        let timestamp = jlong_to_u64(timestamp)?;
+        let mut identity_store = JniIdentityKeyStore::new(&env, identity_store)?;
+
+        let usmc = expect_ready(sealed_sender_decrypt_to_usmc(
+            &ctext,
+            trust_root,
+            timestamp,
+            &mut identity_store,
+            None,
+        ))?;
+
+        box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
     })
 }

@@ -14,6 +14,10 @@ public class UnidentifiedSenderMessageContent {
      Native.UnidentifiedSenderMessageContent_Destroy(this.handle);
   }
 
+  public UnidentifiedSenderMessageContent(long nativeHandle) {
+    this.handle = nativeHandle;
+  }
+
   public UnidentifiedSenderMessageContent(byte[] serialized) throws InvalidMetadataMessageException, InvalidCertificateException {
     try {
       this.handle = Native.UnidentifiedSenderMessageContent_Deserialize(serialized);

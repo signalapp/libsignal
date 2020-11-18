@@ -14,6 +14,10 @@ public class SignalProtocolAddress {
     this.handle = Native.ProtocolAddress_New(name, deviceId);
   }
 
+  public SignalProtocolAddress(long handle) {
+    this.handle = handle;
+  }
+
   @Override
   protected void finalize() {
     Native.ProtocolAddress_Destroy(this.handle);

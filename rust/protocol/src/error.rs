@@ -66,6 +66,7 @@ pub enum SignalProtocolError {
 
     InvalidSealedSenderMessage(String),
     UnknownSealedSenderVersion(u8),
+    SealedSenderSelfSend,
 }
 
 impl Error for SignalProtocolError {
@@ -201,6 +202,9 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::UnknownSealedSenderVersion(v) => {
                 write!(f, "unknown sealed sender message version {}", v)
+            }
+            SignalProtocolError::SealedSenderSelfSend => {
+                write!(f, "self send of a sealed sender message")
             }
         }
     }

@@ -13,6 +13,10 @@ public class CertificateValidator {
     this.trustRoot = trustRoot;
   }
 
+  public ECPublicKey getTrustRoot() {
+    return this.trustRoot;
+  }
+
   public void validate(SenderCertificate certificate, long validationTime) throws InvalidCertificateException {
     try {
        if (!Native.SenderCertificate_Validate(certificate.nativeHandle(), trustRoot.nativeHandle(), validationTime)) {

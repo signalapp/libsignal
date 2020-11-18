@@ -46,8 +46,9 @@ pub use {
         AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
     },
     sealed_sender::{
-        sealed_sender_encrypt, SenderCertificate, ServerCertificate, UnidentifiedSenderMessage,
-        UnidentifiedSenderMessageContent,
+        sealed_sender_encrypt, sealed_sender_decrypt, sealed_sender_decrypt_to_usmc,
+        SenderCertificate, ServerCertificate, UnidentifiedSenderMessage,
+        UnidentifiedSenderMessageContent, SealedSenderDecryptionResult,
     },
     sender_keys::{
         SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
