@@ -271,6 +271,17 @@ ffi_fn_get_bytearray!(signal_session_record_serialize(SessionRecord) using
 ffi_fn_get_uint32!(signal_session_record_get_remote_registration_id(SessionRecord) using
                    |s: &SessionRecord| s.session_state()?.remote_registration_id());
 
+#[no_mangle]
+pub unsafe extern "C" fn signal_session_record_archive_current_state(
+    session_record: *mut SessionRecord,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let session_record = native_handle_cast_mut::<SessionRecord>(session_record)?;
+        session_record.archive_current_state()?;
+        Ok(())
+    })
+}
+
 ffi_fn_destroy!(signal_session_record_destroy destroys SessionRecord);
 
 ffi_fn_clone!(signal_session_record_clone clones SessionRecord);
