@@ -5,7 +5,7 @@
 
 use crate::error::{Result, SignalProtocolError};
 use crate::ratchet::{ChainKey, MessageKeys, RootKey};
-use crate::{IdentityKey, IdentityKeyPair};
+use crate::IdentityKey;
 
 use crate::consts;
 use crate::curve;
@@ -340,81 +340,6 @@ impl SessionState {
             "set_receiver_chain_key",
             "No receiver".to_string(),
         ))
-    }
-
-    pub fn set_pending_key_exchange(
-        &mut self,
-        sequence: u32,
-        base_key: &curve::KeyPair,
-        ephemeral_key: &curve::KeyPair,
-        identity_key: &IdentityKeyPair,
-    ) -> Result<()> {
-        self.session.pending_key_exchange = Some(session_structure::PendingKeyExchange {
-            sequence,
-            local_base_key: base_key.public_key.serialize().to_vec(),
-            local_base_key_private: base_key.private_key.serialize().to_vec(),
-            local_ratchet_key: ephemeral_key.public_key.serialize().to_vec(),
-            local_ratchet_key_private: ephemeral_key.private_key.serialize().to_vec(),
-            local_identity_key: identity_key.identity_key().serialize().to_vec(),
-            local_identity_key_private: identity_key.private_key().serialize().to_vec(),
-        });
-
-        Ok(())
-    }
-
-    pub fn pending_key_exchange_sequence(&self) -> Result<u32> {
-        match &self.session.pending_key_exchange {
-            Some(pke) => Ok(pke.sequence),
-            None => Err(SignalProtocolError::InvalidState(
-                "pending_key_exchange_sequence",
-                "No pending key exchange".to_owned(),
-            )),
-        }
-    }
-
-    pub fn pending_key_exchange_base_key(&self) -> Result<curve::KeyPair> {
-        match &self.session.pending_key_exchange {
-            Some(pke) => curve::KeyPair::from_public_and_private(
-                &pke.local_base_key,
-                &pke.local_base_key_private,
-            ),
-            None => Err(SignalProtocolError::InvalidState(
-                "pending_key_exchange_sequence",
-                "No pending key exchange".to_owned(),
-            )),
-        }
-    }
-
-    pub fn pending_key_exchange_ratchet_key(&self) -> Result<curve::KeyPair> {
-        match &self.session.pending_key_exchange {
-            Some(pke) => curve::KeyPair::from_public_and_private(
-                &pke.local_ratchet_key,
-                &pke.local_ratchet_key_private,
-            ),
-            None => Err(SignalProtocolError::InvalidState(
-                "pending_key_exchange_sequence",
-                "No pending key exchange".to_owned(),
-            )),
-        }
-    }
-
-    pub fn pending_key_exchange_identity_key(&self) -> Result<IdentityKeyPair> {
-        let kp = match &self.session.pending_key_exchange {
-            Some(pke) => curve::KeyPair::from_public_and_private(
-                &pke.local_identity_key,
-                &pke.local_identity_key_private,
-            ),
-            None => Err(SignalProtocolError::InvalidState(
-                "pending_key_exchange_sequence",
-                "No pending key exchange".to_owned(),
-            )),
-        }?;
-
-        Ok(kp.into())
-    }
-
-    pub fn has_pending_key_exchange(&self) -> Result<bool> {
-        Ok(self.session.pending_key_exchange.is_some())
     }
 
     pub fn set_unacknowledged_pre_key_message(
