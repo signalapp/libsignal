@@ -22,12 +22,12 @@ Use CARGO_BUILD_TARGET for cross-compilation (such as for iOS).
 END
 }
 
-CARGO_PROFILE_ARG=(--release)
+RELEASE_BUILD=1
 
 while [ "${1:-}" != "" ]; do
   case $1 in
     -d | --debug )
-      CARGO_PROFILE_ARG=()
+      RELEASE_BUILD=
       ;;
     -h | --help )
       usage
@@ -43,4 +43,4 @@ done
 check_rust
 
 set -x
-cargo build -p libsignal-ffi "${CARGO_PROFILE_ARG[@]}"
+cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release}
