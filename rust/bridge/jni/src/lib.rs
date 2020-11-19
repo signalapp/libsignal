@@ -13,7 +13,7 @@ use jni::JNIEnv;
 use std::convert::TryFrom;
 
 use aes_gcm_siv::Aes256GcmSiv;
-use libsignal_bridge::*;
+use libsignal_bridge::support_jni::*;
 use libsignal_protocol_rust::*;
 
 mod util;

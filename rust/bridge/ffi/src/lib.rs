@@ -8,7 +8,7 @@
 
 use async_trait::async_trait;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
-use libsignal_bridge::*;
+use libsignal_bridge::support_ffi::*;
 use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;

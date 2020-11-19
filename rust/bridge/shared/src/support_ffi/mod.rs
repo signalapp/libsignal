@@ -5,10 +5,6 @@
 
 use libsignal_protocol_rust::*;
 
-pub(crate) use libc::{c_uchar, size_t};
-pub(crate) use paste::paste;
-pub(crate) use std::convert::TryFrom;
-
 mod error;
 pub use error::*;
 
@@ -46,12 +42,13 @@ pub unsafe fn box_object<T>(
     }
 }
 
-macro_rules! bridge_destroy {
-    ( $typ:ty, ffi = $ffi_name:ident $(, jni = $jni_name:ident)? ) => {
+macro_rules! ffi_bridge_destroy {
+    ( $typ:ty as $ffi_name:ident ) => {
         paste! {
+            #[cfg(feature = "ffi")]
             #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](p: *mut $typ) -> *mut SignalFfiError {
-                run_ffi_safe(|| {
+            pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](p: *mut $typ) -> *mut $crate::support_ffi::SignalFfiError {
+                $crate::support_ffi::run_ffi_safe(|| {
                     if !p.is_null() {
                         Box::from_raw(p);
                     }
@@ -60,35 +57,36 @@ macro_rules! bridge_destroy {
             }
         }
     };
-    ( $typ:ty $(, jni = $jni_name:ident)?) => {
+    ( $typ:ty ) => {
         paste! {
-            bridge_destroy!($typ, ffi = [<$typ:snake>]);
+            ffi_bridge_destroy!($typ as [<$typ:snake>]);
         }
-    }
+    };
 }
 
-macro_rules! bridge_deserialize {
-    ( $typ:ident::$fn:path, ffi = $ffi_name:ident $(, jni = $jni_name:ident)? ) => {
+macro_rules! ffi_bridge_deserialize {
+    ( $typ:ident::$fn:path as $ffi_name:ident ) => {
         paste! {
+            #[cfg(feature = "ffi")]
             #[no_mangle]
             pub unsafe extern "C" fn [<signal_ $ffi_name _deserialize>](
                 p: *mut *mut $typ,
-                data: *const c_uchar,
-                data_len: size_t,
-            ) -> *mut SignalFfiError {
-                run_ffi_safe(|| {
+                data: *const libc::c_uchar,
+                data_len: libc::size_t,
+            ) -> *mut $crate::support_ffi::SignalFfiError {
+                $crate::support_ffi::run_ffi_safe(|| {
                     if data.is_null() {
-                        return Err(SignalFfiError::NullPointer);
+                        return Err($crate::support_ffi::SignalFfiError::NullPointer);
                     }
                     let data = std::slice::from_raw_parts(data, data_len);
-                    box_object(p, $typ::$fn(data))
+                    $crate::support_ffi::box_object(p, $typ::$fn(data))
                 })
             }
         }
     };
-    ( $typ:ident::$fn:path $(, jni = $jni_name:ident)? ) => {
+    ( $typ:ident::$fn:path ) => {
         paste! {
-            bridge_deserialize!($typ::$fn, ffi = [<$typ:snake>]);
+            ffi_bridge_deserialize!($typ::$fn as [<$typ:snake>]);
         }
     };
 }

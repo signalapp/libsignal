@@ -11,8 +11,6 @@ use libsignal_protocol_rust::*;
 pub(crate) use jni::objects::JClass;
 pub(crate) use jni::sys::jbyteArray;
 pub(crate) use jni::JNIEnv;
-pub(crate) use paste::paste;
-pub(crate) use std::convert::TryFrom;
 
 mod error;
 pub use error::*;
@@ -157,14 +155,14 @@ pub fn box_object<T>(t: Result<T, SignalProtocolError>) -> Result<ObjectHandle, 
     }
 }
 
-macro_rules! bridge_destroy {
-    ( $typ:ty $(, ffi = $ffi_name:ident)?, jni = $jni_name:ident ) => {
+macro_rules! jni_bridge_destroy {
+    ( $typ:ty as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name _1Destroy>](
-                _env: JNIEnv,
-                _class: JClass,
-                handle: ObjectHandle,
+                _env: $crate::support_jni::JNIEnv,
+                _class: $crate::support_jni::JClass,
+                handle: $crate::support_jni::ObjectHandle,
             ) {
                 if handle != 0 {
                     let _boxed_value = Box::from_raw(handle as *mut $typ);
@@ -172,32 +170,30 @@ macro_rules! bridge_destroy {
             }
         }
     };
-    ( $typ:ty $(, ffi = $ffi_name:ident)? ) => {
+    ( $typ:ty ) => {
         paste! {
-            bridge_destroy!($typ, jni = $typ);
+            jni_bridge_destroy!($typ as $typ);
         }
     };
 }
 
-macro_rules! bridge_deserialize {
-    ( $typ:ident::$fn:path $(, ffi = $ffi_name:ident)?, jni = $jni_name:ident ) => {
+macro_rules! jni_bridge_deserialize {
+    ( $typ:ident::$fn:path as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name _1Deserialize>](
-                env: JNIEnv,
-                _class: JClass,
-                data: jbyteArray,
-            ) -> ObjectHandle {
-                run_ffi_safe(&env, || {
+                env: $crate::support_jni::JNIEnv,
+                _class: $crate::support_jni::JClass,
+                data: $crate::support_jni::jbyteArray,
+            ) -> $crate::support_jni::ObjectHandle {
+                $crate::support_jni::run_ffi_safe(&env, || {
                     let data = env.convert_byte_array(data)?;
-                    box_object($typ::$fn(data.as_ref()))
+                    $crate::support_jni::box_object($typ::$fn(data.as_ref()))
                 })
             }
         }
     };
-    ( $typ:ident::$fn:path $(, ffi = $ffi_name:ident)? ) => {
-        paste! {
-            bridge_deserialize!($typ::$fn, jni = $typ);
-        }
+    ( $typ:ident::$fn:path ) => {
+        jni_bridge_deserialize!($typ::$fn as $typ);
     };
 }

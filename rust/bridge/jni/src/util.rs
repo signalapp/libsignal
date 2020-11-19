@@ -12,8 +12,8 @@ use std::convert::TryFrom;
 use std::future::Future;
 use std::task::{self, Poll};
 
-use libsignal_bridge::*;
-use libsignal_protocol_rust::*;
+use libsignal_bridge::support_jni::*;
+use libsignal_protocol_rust::SignalProtocolError;
 
 pub unsafe fn native_handle_cast<T>(
     handle: ObjectHandle,
