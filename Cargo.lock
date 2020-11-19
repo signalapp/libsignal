@@ -865,6 +865,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
  "jni",
+ "libc",
  "libsignal-protocol-rust",
  "paste",
 ]

@@ -152,25 +152,6 @@ pub fn expect_ready<F: Future>(future: F) -> F::Output {
     }
 }
 
-pub unsafe fn box_object<T>(
-    p: *mut *mut T,
-    obj: Result<T, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if p.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-    match obj {
-        Ok(o) => {
-            *p = Box::into_raw(Box::new(o));
-            Ok(())
-        }
-        Err(e) => {
-            *p = std::ptr::null_mut();
-            Err(SignalFfiError::Signal(e))
-        }
-    }
-}
-
 pub unsafe fn box_optional_object<T>(
     p: *mut *mut T,
     obj: Result<Option<T>, SignalProtocolError>,
@@ -416,26 +397,6 @@ pub fn write_bytearray_to<T: Into<Box<[u8]>>>(
         }
         Err(e) => Err(SignalFfiError::Signal(e)),
     }
-}
-
-#[macro_export]
-macro_rules! ffi_fn_deserialize {
-    ( $nm:ident($typ:ty) is $func:path  ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            p: *mut *mut $typ,
-            data: *const c_uchar,
-            data_len: size_t,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                if data.is_null() {
-                    return Err(SignalFfiError::NullPointer);
-                }
-                let data = std::slice::from_raw_parts(data, data_len);
-                box_object(p, $func(data))
-            })
-        }
-    };
 }
 
 #[macro_export]

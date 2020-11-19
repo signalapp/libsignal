@@ -6,176 +6,14 @@
 use futures::pin_mut;
 use futures::task::noop_waker_ref;
 use jni::objects::{JObject, JString, JThrowable, JValue};
-use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
+use jni::sys::{jbyteArray, jint, jlong, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
-use std::fmt;
 use std::future::Future;
 use std::task::{self, Poll};
 
-use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_bridge::*;
-use libsignal_protocol_rust::SignalProtocolError;
-
-#[derive(Debug)]
-pub enum SignalJniError {
-    Signal(SignalProtocolError),
-    AesGcmSiv(AesGcmSivError),
-    Jni(jni::errors::Error),
-    BadJniParameter(&'static str),
-    UnexpectedJniResultType(&'static str, &'static str),
-    NullHandle,
-    IntegerOverflow(String),
-    UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
-    ExceptionDuringCallback(String),
-}
-
-impl SignalJniError {
-    pub fn to_signal_protocol_error(&self) -> SignalProtocolError {
-        match self {
-            SignalJniError::Signal(e) => e.clone(),
-            SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
-            SignalJniError::BadJniParameter(m) => {
-                SignalProtocolError::InvalidArgument(m.to_string())
-            }
-            _ => SignalProtocolError::FfiBindingError(format!("{}", self)),
-        }
-    }
-}
-
-impl fmt::Display for SignalJniError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SignalJniError::Signal(s) => write!(f, "{}", s),
-            SignalJniError::AesGcmSiv(s) => write!(f, "{}", s),
-            SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
-            SignalJniError::ExceptionDuringCallback(s) => {
-                write!(f, "exception recieved during callback {}", s)
-            }
-            SignalJniError::NullHandle => write!(f, "null handle"),
-            SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
-            SignalJniError::UnexpectedJniResultType(m, t) => {
-                write!(f, "calling {} returned unexpected type {}", m, t)
-            }
-            SignalJniError::IntegerOverflow(m) => {
-                write!(f, "integer overflow during conversion of {}", m)
-            }
-            SignalJniError::UnexpectedPanic(e) => match e.downcast_ref::<&'static str>() {
-                Some(s) => write!(f, "unexpected panic: {}", s),
-                None => write!(f, "unknown unexpected panic"),
-            },
-        }
-    }
-}
-
-impl From<SignalProtocolError> for SignalJniError {
-    fn from(e: SignalProtocolError) -> SignalJniError {
-        SignalJniError::Signal(e)
-    }
-}
-
-impl From<AesGcmSivError> for SignalJniError {
-    fn from(e: AesGcmSivError) -> SignalJniError {
-        SignalJniError::AesGcmSiv(e)
-    }
-}
-
-impl From<jni::errors::Error> for SignalJniError {
-    fn from(e: jni::errors::Error) -> SignalJniError {
-        SignalJniError::Jni(e)
-    }
-}
-
-impl From<SignalJniError> for SignalProtocolError {
-    fn from(err: SignalJniError) -> SignalProtocolError {
-        match err {
-            SignalJniError::Signal(e) => e,
-            SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
-            SignalJniError::BadJniParameter(m) => {
-                SignalProtocolError::InvalidArgument(m.to_string())
-            }
-            _ => SignalProtocolError::FfiBindingError(format!("{}", err)),
-        }
-    }
-}
-
-pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
-    let exception_type = match error {
-        SignalJniError::NullHandle => "java/lang/NullPointerException",
-        SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
-        SignalJniError::BadJniParameter(_) => "java/lang/AssertionError",
-        SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
-        SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
-
-        SignalJniError::ExceptionDuringCallback(_) => "java/lang/RuntimeException",
-
-        SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
-            "org/whispersystems/libsignal/DuplicateMessageException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeyId) => {
-            "org/whispersystems/libsignal/InvalidKeyIdException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
-        | SignalJniError::Signal(SignalProtocolError::SignatureValidationFailed)
-        | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
-        | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
-        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidKeySize) => {
-            "org/whispersystems/libsignal/InvalidKeyException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::SessionNotFound) => {
-            "org/whispersystems/libsignal/NoSessionException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
-        | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-        | SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
-        | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
-        | SignalJniError::Signal(SignalProtocolError::InvalidCiphertext)
-        | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
-        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidTag) => {
-            "org/whispersystems/libsignal/InvalidMessageException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::LegacyCiphertextVersion(_)) => {
-            "org/whispersystems/libsignal/LegacyMessageException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_)) => {
-            "org/whispersystems/libsignal/UntrustedIdentityException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
-        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
-            "java/lang/IllegalStateException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
-            "org/signal/libsignal/metadata/SelfSendException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
-        | SignalJniError::AesGcmSiv(_) => "java/lang/IllegalArgumentException",
-
-        SignalJniError::Signal(_) => "java/lang/RuntimeException",
-
-        SignalJniError::Jni(_) => "java/lang/RuntimeException",
-    };
-
-    let error_string = match error {
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(addr)) => {
-            addr.name().to_string()
-        }
-        e => format!("{}", e),
-    };
-
-    let _ = env.throw_new(exception_type, error_string);
-}
+use libsignal_protocol_rust::*;
 
 pub unsafe fn native_handle_cast<T>(
     handle: ObjectHandle,
@@ -202,72 +40,12 @@ pub unsafe fn native_handle_cast_optional<T>(
     Ok(Some(&mut *(handle as *mut T)))
 }
 
-// A dummy value to return when we are throwing an exception
-pub trait JniDummyValue {
-    fn dummy_value() -> Self;
-}
-
-impl JniDummyValue for ObjectHandle {
-    fn dummy_value() -> Self {
-        0
-    }
-}
-
-impl JniDummyValue for jint {
-    fn dummy_value() -> Self {
-        0
-    }
-}
-
-impl JniDummyValue for *mut _jobject {
-    fn dummy_value() -> Self {
-        0 as jstring
-    }
-}
-
-impl JniDummyValue for jboolean {
-    fn dummy_value() -> Self {
-        0
-    }
-}
-
-impl JniDummyValue for () {
-    fn dummy_value() -> Self {}
-}
-
-pub fn run_ffi_safe<F: FnOnce() -> Result<R, SignalJniError> + std::panic::UnwindSafe, R>(
-    env: &JNIEnv,
-    f: F,
-) -> R
-where
-    R: JniDummyValue,
-{
-    match std::panic::catch_unwind(f) {
-        Ok(Ok(r)) => r,
-        Ok(Err(e)) => {
-            throw_error(env, e);
-            R::dummy_value()
-        }
-        Err(r) => {
-            throw_error(env, SignalJniError::UnexpectedPanic(r));
-            R::dummy_value()
-        }
-    }
-}
-
 #[track_caller]
 pub fn expect_ready<F: Future>(future: F) -> F::Output {
     pin_mut!(future);
     match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
         Poll::Ready(result) => result,
         Poll::Pending => panic!("future was not ready"),
-    }
-}
-
-pub fn box_object<T>(t: Result<T, SignalProtocolError>) -> Result<ObjectHandle, SignalJniError> {
-    match t {
-        Ok(t) => Ok(Box::into_raw(Box::new(t)) as ObjectHandle),
-        Err(e) => Err(SignalJniError::Signal(e)),
     }
 }
 
@@ -541,23 +319,6 @@ pub fn jobject_from_native_handle<'a>(
     let ctor_sig = "(J)V";
     let ctor_args = [JValue::from(boxed_handle)];
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
-}
-
-#[macro_export]
-macro_rules! jni_fn_deserialize {
-    ( $nm:ident is $func:path ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            data: jbyteArray,
-        ) -> ObjectHandle {
-            run_ffi_safe(&env, || {
-                let data = env.convert_byte_array(data)?;
-                box_object($func(data.as_ref()))
-            })
-        }
-    };
 }
 
 #[macro_export]
