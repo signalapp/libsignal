@@ -67,7 +67,11 @@ pub fn hmac_sha256(key: &[u8], input: &[u8]) -> Result<[u8; 32]> {
     Ok(hmac.finalize().into_bytes().into())
 }
 
-pub fn aes256_ctr_hmacsha256_encrypt(msg: &[u8], cipher_key: &[u8], mac_key: &[u8]) -> Result<Vec<u8>> {
+pub fn aes256_ctr_hmacsha256_encrypt(
+    msg: &[u8],
+    cipher_key: &[u8],
+    mac_key: &[u8],
+) -> Result<Vec<u8>> {
     let ctext = aes_256_ctr_encrypt(msg, cipher_key)?;
     let mac = hmac_sha256(mac_key, &ctext)?;
     let mut result = Vec::with_capacity(ctext.len() + 10);
@@ -76,13 +80,17 @@ pub fn aes256_ctr_hmacsha256_encrypt(msg: &[u8], cipher_key: &[u8], mac_key: &[u
     Ok(result)
 }
 
-pub fn aes256_ctr_hmacsha256_decrypt(ctext: &[u8], cipher_key: &[u8], mac_key: &[u8]) -> Result<Vec<u8>> {
+pub fn aes256_ctr_hmacsha256_decrypt(
+    ctext: &[u8],
+    cipher_key: &[u8],
+    mac_key: &[u8],
+) -> Result<Vec<u8>> {
     if ctext.len() < 10 {
         return Err(SignalProtocolError::InvalidCiphertext);
     }
     let ptext_len = ctext.len() - 10;
     let our_mac = hmac_sha256(mac_key, &ctext[..ptext_len])?;
-    let same : bool = our_mac[..10].ct_eq(&ctext[ptext_len..]).into();
+    let same: bool = our_mac[..10].ct_eq(&ctext[ptext_len..]).into();
     if !same {
         return Err(SignalProtocolError::InvalidCiphertext);
     }

@@ -1703,7 +1703,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
     })
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1Validate(
     env: JNIEnv,

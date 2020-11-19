@@ -9,13 +9,13 @@ use crate::kdf::HKDF;
 use crate::proto;
 use crate::session_cipher;
 use crate::{
-    message_encrypt, Context, IdentityKeyStore, KeyPair, PrivateKey, ProtocolAddress, PublicKey,
-    SessionStore, PreKeyStore, SignedPreKeyStore, SignalMessage, PreKeySignalMessage,
+    message_encrypt, Context, IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore,
+    PrivateKey, ProtocolAddress, PublicKey, SessionStore, SignalMessage, SignedPreKeyStore,
 };
 use prost::Message;
 use rand::{CryptoRng, Rng};
-use subtle::ConstantTimeEq;
 use std::convert::TryFrom;
+use subtle::ConstantTimeEq;
 
 #[derive(Debug, Clone)]
 pub struct ServerCertificate {
@@ -60,10 +60,15 @@ impl ServerCertificate {
         })
     }
 
-    pub fn new<R: Rng + CryptoRng>(key_id: u32, key: PublicKey, trust_root: &PrivateKey, rng: &mut R) -> Result<Self> {
+    pub fn new<R: Rng + CryptoRng>(
+        key_id: u32,
+        key: PublicKey,
+        trust_root: &PrivateKey,
+        rng: &mut R,
+    ) -> Result<Self> {
         let certificate_pb = proto::sealed_sender::server_certificate::Certificate {
             id: Some(key_id),
-            key: Some(key.serialize().to_vec())
+            key: Some(key.serialize().to_vec()),
         };
 
         let mut certificate = vec![];
@@ -133,7 +138,6 @@ pub struct SenderCertificate {
 }
 
 impl SenderCertificate {
-
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         let pb = proto::sealed_sender::SenderCertificate::decode(data)?;
         let certificate = pb
@@ -184,15 +188,16 @@ impl SenderCertificate {
         })
     }
 
-    pub fn new<R: Rng + CryptoRng>(sender_uuid: Option<String>,
-                                   sender_e164: Option<String>,
-                                   key: PublicKey,
-                                   sender_device_id: u32,
-                                   expiration: u64,
-                                   signer: ServerCertificate,
-                                   signer_key: &PrivateKey,
-                                   rng: &mut R) -> Result<Self> {
-
+    pub fn new<R: Rng + CryptoRng>(
+        sender_uuid: Option<String>,
+        sender_e164: Option<String>,
+        key: PublicKey,
+        sender_device_id: u32,
+        expiration: u64,
+        signer: ServerCertificate,
+        signer_key: &PrivateKey,
+        rng: &mut R,
+    ) -> Result<Self> {
         let certificate_pb = proto::sealed_sender::sender_certificate::Certificate {
             sender_uuid: sender_uuid.clone(),
             sender_e164: sender_e164.clone(),
@@ -296,28 +301,44 @@ impl SenderCertificate {
         Ok(&self.signature)
     }
 
-    pub async fn preferred_address(&self, session_store: &dyn SessionStore, ctx: Context) -> Result<ProtocolAddress> {
+    pub async fn preferred_address(
+        &self,
+        session_store: &dyn SessionStore,
+        ctx: Context,
+    ) -> Result<ProtocolAddress> {
         if let Some(uuid) = self.sender_uuid()? {
             let uuid_address = ProtocolAddress::new(uuid.to_owned(), self.sender_device_id()?);
-            if session_store.load_session(&uuid_address, ctx).await?.is_some() {
+            if session_store
+                .load_session(&uuid_address, ctx)
+                .await?
+                .is_some()
+            {
                 return Ok(uuid_address);
             }
         }
 
         if let Some(e164) = self.sender_e164()? {
             let e164_address = ProtocolAddress::new(e164.to_owned(), self.sender_device_id()?);
-            if session_store.load_session(&e164_address, ctx).await?.is_some() {
+            if session_store
+                .load_session(&e164_address, ctx)
+                .await?
+                .is_some()
+            {
                 return Ok(e164_address);
             }
         }
 
         /*
-        * This logic of preferring e164 over uuid comes from Java, but seems incorrect.
-        */
+         * This logic of preferring e164 over uuid comes from Java, but seems incorrect.
+         */
         let best_address = match (self.sender_e164()?, self.sender_uuid()?) {
-            (Some(e164),_) => e164.to_owned(),
-            (None,Some(uuid)) => uuid.to_owned(),
-            (None,None) => return Err(SignalProtocolError::InvalidSealedSenderMessage("No sender in sender cert".to_owned())),
+            (Some(e164), _) => e164.to_owned(),
+            (None, Some(uuid)) => uuid.to_owned(),
+            (None, None) => {
+                return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                    "No sender in sender cert".to_owned(),
+                ))
+            }
         };
 
         Ok(ProtocolAddress::new(best_address, self.sender_device_id()?))
@@ -623,12 +644,13 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     )
 }
 
-pub async fn sealed_sender_decrypt_to_usmc(ciphertext: &[u8],
-                                           trust_root: &PublicKey,
-                                           timestamp: u64,
-                                           identity_store: &mut dyn IdentityKeyStore,
-                                           ctx: Context) -> Result<UnidentifiedSenderMessageContent> {
-
+pub async fn sealed_sender_decrypt_to_usmc(
+    ciphertext: &[u8],
+    trust_root: &PublicKey,
+    timestamp: u64,
+    identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<UnidentifiedSenderMessageContent> {
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     let usm = UnidentifiedSenderMessage::deserialize(ciphertext)?;
 
@@ -639,7 +661,11 @@ pub async fn sealed_sender_decrypt_to_usmc(ciphertext: &[u8],
         false,
     )?;
 
-    let static_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(usm.encrypted_static()?, &eph_keys.cipher_key()?, &eph_keys.mac_key()?)?;
+    let static_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+        usm.encrypted_static()?,
+        &eph_keys.cipher_key()?,
+        &eph_keys.mac_key()?,
+    )?;
 
     let static_key = PublicKey::deserialize(&static_key_bytes)?;
 
@@ -650,15 +676,23 @@ pub async fn sealed_sender_decrypt_to_usmc(ciphertext: &[u8],
         usm.encrypted_static()?,
     )?;
 
-    let message_bytes = crypto::aes256_ctr_hmacsha256_decrypt(usm.encrypted_message()?, &static_keys.cipher_key()?, &static_keys.mac_key()?)?;
+    let message_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+        usm.encrypted_message()?,
+        &static_keys.cipher_key()?,
+        &static_keys.mac_key()?,
+    )?;
 
     let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
     if !usmc.sender()?.validate(trust_root, timestamp)? {
-        return Err(SignalProtocolError::InvalidSealedSenderMessage("trust root validation failed".to_string()));
+        return Err(SignalProtocolError::InvalidSealedSenderMessage(
+            "trust root validation failed".to_string(),
+        ));
     }
 
-    if ! bool::from(static_key_bytes.ct_eq(&usmc.sender()?.key()?.serialize())) {
-       return Err(SignalProtocolError::InvalidSealedSenderMessage("sender certificate key does not match message key".to_string()));
+    if !bool::from(static_key_bytes.ct_eq(&usmc.sender()?.key()?.serialize())) {
+        return Err(SignalProtocolError::InvalidSealedSenderMessage(
+            "sender certificate key does not match message key".to_string(),
+        ));
     }
 
     Ok(usmc)
@@ -669,32 +703,34 @@ pub struct SealedSenderDecryptionResult {
     pub sender_uuid: Option<String>,
     pub sender_e164: Option<String>,
     pub device_id: u32,
-    pub message: Vec<u8>
+    pub message: Vec<u8>,
 }
 
-pub async fn sealed_sender_decrypt(ciphertext: &[u8],
-                                   trust_root: &PublicKey,
-                                   timestamp: u64,
-                                   local_e164: Option<String>,
-                                   local_uuid: Option<String>,
-                                   local_device_id: u32,
-                                   identity_store: &mut dyn IdentityKeyStore,
-                                   session_store: &mut dyn SessionStore,
-                                   pre_key_store: &mut dyn PreKeyStore,
-                                   signed_pre_key_store: &mut dyn SignedPreKeyStore,
-                                   ctx: Context) -> Result<SealedSenderDecryptionResult> {
-
-    let usmc = sealed_sender_decrypt_to_usmc(
-        ciphertext, trust_root, timestamp, identity_store, ctx).await?;
+pub async fn sealed_sender_decrypt(
+    ciphertext: &[u8],
+    trust_root: &PublicKey,
+    timestamp: u64,
+    local_e164: Option<String>,
+    local_uuid: Option<String>,
+    local_device_id: u32,
+    identity_store: &mut dyn IdentityKeyStore,
+    session_store: &mut dyn SessionStore,
+    pre_key_store: &mut dyn PreKeyStore,
+    signed_pre_key_store: &mut dyn SignedPreKeyStore,
+    ctx: Context,
+) -> Result<SealedSenderDecryptionResult> {
+    let usmc =
+        sealed_sender_decrypt_to_usmc(ciphertext, trust_root, timestamp, identity_store, ctx)
+            .await?;
 
     let is_local_e164 = match (local_e164, usmc.sender()?.sender_e164()?) {
-        (Some(l),Some(s)) => l == s,
-        (_,_) => false
+        (Some(l), Some(s)) => l == s,
+        (_, _) => false,
     };
 
     let is_local_uuid = match (local_uuid, usmc.sender()?.sender_uuid()?) {
-        (Some(l),Some(s)) => l == s,
-        (_,_) => false
+        (Some(l), Some(s)) => l == s,
+        (_, _) => false,
     };
 
     if (is_local_e164 || is_local_uuid) && usmc.sender()?.sender_device_id()? == local_device_id {
@@ -708,25 +744,35 @@ pub async fn sealed_sender_decrypt(ciphertext: &[u8],
     let message = match usmc.msg_type()? {
         2 => {
             let ctext = SignalMessage::try_from(usmc.contents()?)?;
-            session_cipher::message_decrypt_signal(&ctext,
-                                                   &remote_address,
-                                                   session_store,
-                                                   identity_store,
-                                                   &mut rng,
-                                                   ctx).await?
+            session_cipher::message_decrypt_signal(
+                &ctext,
+                &remote_address,
+                session_store,
+                identity_store,
+                &mut rng,
+                ctx,
+            )
+            .await?
         }
         3 => {
             let ctext = PreKeySignalMessage::try_from(usmc.contents()?)?;
-            session_cipher::message_decrypt_prekey(&ctext,
-                                                   &remote_address,
-                                                   session_store,
-                                                   identity_store,
-                                                   pre_key_store,
-                                                   signed_pre_key_store,
-                                                   &mut rng,
-                                                   ctx).await?
+            session_cipher::message_decrypt_prekey(
+                &ctext,
+                &remote_address,
+                session_store,
+                identity_store,
+                pre_key_store,
+                signed_pre_key_store,
+                &mut rng,
+                ctx,
+            )
+            .await?
         }
-        _ => return Err(SignalProtocolError::InvalidSealedSenderMessage("Unknown message type".to_owned()))
+        _ => {
+            return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                "Unknown message type".to_owned(),
+            ))
+        }
     };
 
     Ok(SealedSenderDecryptionResult {
