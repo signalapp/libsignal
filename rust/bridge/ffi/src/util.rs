@@ -291,6 +291,14 @@ pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, Sign
     Ok(&*(handle))
 }
 
+pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
+    if handle.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    Ok(&mut *handle)
+}
+
 pub unsafe fn get_optional_uint32(p: *const c_uint) -> Option<u32> {
     if p.is_null() {
         return None;
