@@ -14,6 +14,7 @@ use std::future::Future;
 use std::task::{self, Poll};
 
 use aes_gcm_siv::Error as AesGcmSivError;
+use libsignal_bridge::*;
 use libsignal_protocol_rust::SignalProtocolError;
 
 #[derive(Debug)]
@@ -175,8 +176,6 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
     let _ = env.throw_new(exception_type, error_string);
 }
-
-pub type ObjectHandle = jlong;
 
 pub unsafe fn native_handle_cast<T>(
     handle: ObjectHandle,

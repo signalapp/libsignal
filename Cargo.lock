@@ -237,12 +237,13 @@ dependencies = [
 
 [[package]]
 name = "cbindgen"
-version = "0.14.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e03a705df2e735cc5486f104a48e25a8f72ae06eaea5b7753a81270ed00859"
+checksum = "1df6a11bba1d7cab86c166cecf4cf8acd7d02b7b65924d81b33d27197f22ee35"
 dependencies = [
  "clap",
  "heck",
+ "indexmap",
  "log",
  "proc-macro2",
  "quote",
@@ -859,6 +860,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsignal-bridge"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm-siv",
+ "jni",
+ "libsignal-protocol-rust",
+ "paste",
+]
+
+[[package]]
 name = "libsignal-ffi"
 version = "0.1.0"
 dependencies = [
@@ -867,6 +878,7 @@ dependencies = [
  "cbindgen",
  "futures",
  "libc",
+ "libsignal-bridge",
  "libsignal-protocol-rust",
  "log",
  "rand",
@@ -881,6 +893,7 @@ dependencies = [
  "async-trait",
  "futures",
  "jni",
+ "libsignal-bridge",
  "libsignal-protocol-rust",
  "rand",
 ]
@@ -1137,6 +1150,12 @@ checksum = "a85ea9fc0d4ac0deb6fe7911d38786b32fc11119afd9e9d38b84ff691ce64220"
 dependencies = [
  "cfg-if 0.1.10",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5d65c4d95931acda4498f675e332fcbdc9a06705cd07086c510e9b6009cd1c1"
 
 [[package]]
 name = "peeking_take_while"

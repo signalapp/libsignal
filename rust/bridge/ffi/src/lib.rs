@@ -8,6 +8,7 @@
 
 use async_trait::async_trait;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
+use libsignal_bridge::*;
 use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
@@ -128,7 +129,7 @@ ffi_fn_get_cstring!(signal_address_get_name(ProtocolAddress) using
 ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
                    |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
-ffi_fn_destroy!(signal_address_destroy destroys ProtocolAddress);
+// ffi_fn_destroy!(signal_address_destroy destroys ProtocolAddress);
 
 ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 

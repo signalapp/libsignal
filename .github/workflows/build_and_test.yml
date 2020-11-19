@@ -32,6 +32,7 @@ jobs:
           - 'bin/**'
           - 'rust/*'
           - 'rust/!(bridge)/**'
+          - 'rust/bridge/shared/**'
           - 'rust-toolchain'
           - 'Cargo.toml'
           - 'Cargo.lock'
@@ -40,7 +41,7 @@ jobs:
           - '.clippy.toml'
           - '.rustfmt.license-template'
           - '.rustfmt.toml'
-          - 'rust/**' # deliberately re-include the rust/bridge/ directory
+          - 'rust/**' # deliberately re-include the rust/bridge/ directories
           java:
           - *all
           - '.dockerignore'
