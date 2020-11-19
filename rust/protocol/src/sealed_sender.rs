@@ -664,6 +664,7 @@ pub async fn sealed_sender_decrypt_to_usmc(ciphertext: &[u8],
     Ok(usmc)
 }
 
+#[derive(Debug)]
 pub struct SealedSenderDecryptionResult {
     pub sender_uuid: Option<String>,
     pub sender_e164: Option<String>,
