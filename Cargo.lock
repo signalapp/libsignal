@@ -883,6 +883,7 @@ dependencies = [
  "log",
  "rand",
  "static_assertions",
+ "walkdir",
 ]
 
 [[package]]

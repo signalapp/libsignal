@@ -27,3 +27,4 @@ log = "0.4.11"
 
 [build-dependencies]
 cbindgen = "0.15"
+walkdir = "2.3"
