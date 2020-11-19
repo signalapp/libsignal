@@ -8,17 +8,18 @@
 
 use aes_gcm_siv::Aes256GcmSiv;
 use libsignal_protocol_rust::*;
+use std::convert::TryFrom;
 
 #[cfg(not(any(feature = "ffi", feature = "jni")))]
 compile_error!("Either feature \"ffi\" or \"jni\" must be enabled for this crate.");
 
 #[cfg(feature = "ffi")]
 #[macro_use]
-pub mod support_ffi;
+pub mod ffi;
 
 #[cfg(feature = "jni")]
 #[macro_use]
-pub mod support_jni;
+pub mod jni;
 
 #[macro_use]
 mod support;

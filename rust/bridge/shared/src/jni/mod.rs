@@ -160,9 +160,9 @@ macro_rules! jni_bridge_destroy {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name _1Destroy>](
-                _env: $crate::support_jni::JNIEnv,
-                _class: $crate::support_jni::JClass,
-                handle: $crate::support_jni::ObjectHandle,
+                _env: jni::JNIEnv,
+                _class: jni::JClass,
+                handle: jni::ObjectHandle,
             ) {
                 if handle != 0 {
                     let _boxed_value = Box::from_raw(handle as *mut $typ);
@@ -182,13 +182,13 @@ macro_rules! jni_bridge_deserialize {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name _1Deserialize>](
-                env: $crate::support_jni::JNIEnv,
-                _class: $crate::support_jni::JClass,
-                data: $crate::support_jni::jbyteArray,
-            ) -> $crate::support_jni::ObjectHandle {
-                $crate::support_jni::run_ffi_safe(&env, || {
+                env: jni::JNIEnv,
+                _class: jni::JClass,
+                data: jni::jbyteArray,
+            ) -> jni::ObjectHandle {
+                jni::run_ffi_safe(&env, || {
                     let data = env.convert_byte_array(data)?;
-                    $crate::support_jni::box_object($typ::$fn(data.as_ref()))
+                    jni::box_object($typ::$fn(data.as_ref()))
                 })
             }
         }

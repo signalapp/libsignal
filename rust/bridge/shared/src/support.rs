@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-pub(crate) use paste::paste;
-pub(crate) use std::convert::TryFrom;
+pub use paste::paste;
 
 macro_rules! bridge_destroy {
     ($typ:ty $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? ) => {

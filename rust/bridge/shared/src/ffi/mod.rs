@@ -47,8 +47,10 @@ macro_rules! ffi_bridge_destroy {
         paste! {
             #[cfg(feature = "ffi")]
             #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](p: *mut $typ) -> *mut $crate::support_ffi::SignalFfiError {
-                $crate::support_ffi::run_ffi_safe(|| {
+            pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](
+                p: *mut $typ
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
                     if !p.is_null() {
                         Box::from_raw(p);
                     }
@@ -73,13 +75,13 @@ macro_rules! ffi_bridge_deserialize {
                 p: *mut *mut $typ,
                 data: *const libc::c_uchar,
                 data_len: libc::size_t,
-            ) -> *mut $crate::support_ffi::SignalFfiError {
-                $crate::support_ffi::run_ffi_safe(|| {
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
                     if data.is_null() {
-                        return Err($crate::support_ffi::SignalFfiError::NullPointer);
+                        return Err(ffi::SignalFfiError::NullPointer);
                     }
                     let data = std::slice::from_raw_parts(data, data_len);
-                    $crate::support_ffi::box_object(p, $typ::$fn(data))
+                    ffi::box_object(p, $typ::$fn(data))
                 })
             }
         }
