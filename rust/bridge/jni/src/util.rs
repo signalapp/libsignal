@@ -715,15 +715,3 @@ macro_rules! jni_fn_get_optional_jbytearray {
         }
     };
 }
-
-#[macro_export]
-macro_rules! jni_fn_destroy {
-    ( $nm:ident destroys $typ:ty ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(_env: JNIEnv, _class: JClass, handle: ObjectHandle) {
-            if handle != 0 {
-                let _boxed_value = Box::from_raw(handle as *mut $typ);
-            }
-        }
-    };
-}

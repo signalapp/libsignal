@@ -12,10 +12,10 @@ pub(crate) use paste::paste;
 pub type ObjectHandle = jlong;
 
 macro_rules! bridge_destroy {
-    ( $typ:ty, ffi = $ffi_name:ident, jni = $jni_name:ident ) => {
+    ( $typ:ty $(, ffi = $ffi_name:ident)?, jni = $jni_name:ident ) => {
         paste! {
             #[no_mangle]
-            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
+            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name _1Destroy>](
                 _env: JNIEnv,
                 _class: JClass,
                 handle: ObjectHandle,
@@ -26,4 +26,9 @@ macro_rules! bridge_destroy {
             }
         }
     };
+    ( $typ:ty $(, ffi = $ffi_name:ident)? ) => {
+        paste! {
+            bridge_destroy!($typ, jni = $typ);
+        }
+    }
 }

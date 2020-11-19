@@ -584,18 +584,3 @@ macro_rules! ffi_fn_get_optional_cstring {
         }
     };
 }
-
-#[macro_export]
-macro_rules! ffi_fn_destroy {
-    ( $nm:ident destroys $typ:ty ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(p: *mut $typ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                if !p.is_null() {
-                    Box::from_raw(p);
-                }
-                Ok(())
-            })
-        }
-    };
-}
