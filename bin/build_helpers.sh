@@ -6,18 +6,16 @@
 # shellcheck shell=bash
 
 check_rust() {
-  if ! which rustup > /dev/null && [[ -n "$SHELL" ]]; then
-    # Try to find rustup using the user's default shell.
+  if ! which rustup > /dev/null && [[ -d ~/.cargo/bin ]]; then
+    # Try to find rustup in its default per-user install location.
     # This will be important when running from inside Xcode,
     # which does not run in a login shell context.
-    RUSTUP_PATH=$("$SHELL" -c 'which rustup' || true)
-    if [[ "$RUSTUP_PATH" == /* || "$RUSTUP_PATH" == '~'/* ]]; then
-      PATH=$(dirname "$RUSTUP_PATH"):$PATH
-    fi
+    PATH=~/.cargo/bin:$PATH
   fi
 
   if ! which rustup > /dev/null; then
-    echo 'error: rustup not found; install Rust from https://rustup.rs/' >&2
+    echo 'error: rustup not found in PATH' >&2
+    echo 'note: Rust can be installed from https://rustup.rs/' >&2
     exit 1
   fi
 
