@@ -326,16 +326,6 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
     }
 }
 
-/*
-pub fn convert_optional_jstring(env: &JNIEnv, value: JString) -> Result<Option<String>, SignalJniError> {
-    if value.is_null() {
-        return Ok(None)
-    }
-
-    let rstr = env.get_string(value)?.into();
-    Ok(Some(rstr))
-}
-*/
 pub fn exception_check(env: &JNIEnv, fn_name: &'static str) -> Result<(), SignalJniError> {
     fn exception_class_name(env: &JNIEnv, exn: JThrowable) -> Result<String, SignalJniError> {
         let class_type = env.call_method(exn, "getClass", "()Ljava/lang/Class;", &[])?;
