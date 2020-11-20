@@ -13,6 +13,17 @@ internal func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CC
     return result
 }
 
+internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String? {
+    var output: UnsafePointer<Int8>?
+    try checkError(fn(&output))
+    if output == nil {
+        return nil
+    }
+    let result = String(cString: output!)
+    signal_free_string(output)
+    return result
+}
+
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output: UnsafePointer<UInt8>?
     var output_len = 0
