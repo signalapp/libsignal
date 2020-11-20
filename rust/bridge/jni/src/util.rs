@@ -3,14 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures::pin_mut;
-use futures::task::noop_waker_ref;
 use jni::objects::{JObject, JValue};
 use jni::sys::{jint, jlong, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
-use std::future::Future;
-use std::task::{self, Poll};
 
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::SignalProtocolError;
@@ -23,15 +19,6 @@ pub unsafe fn native_handle_cast_optional<T>(
     }
 
     Ok(Some(&mut *(handle as *mut T)))
-}
-
-#[track_caller]
-pub fn expect_ready<F: Future>(future: F) -> F::Output {
-    pin_mut!(future);
-    match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
-        Poll::Ready(result) => result,
-        Poll::Pending => panic!("future was not ready"),
-    }
 }
 
 pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {

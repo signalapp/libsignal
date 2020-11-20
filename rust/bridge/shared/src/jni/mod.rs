@@ -17,6 +17,8 @@ pub(crate) use jni::JNIEnv;
 mod error;
 pub use error::*;
 
+pub use crate::support::expect_ready;
+
 pub type ObjectHandle = jlong;
 
 fn throw_error(env: &JNIEnv, error: SignalJniError) {

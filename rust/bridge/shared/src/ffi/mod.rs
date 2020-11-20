@@ -10,6 +10,8 @@ use std::ffi::CString;
 mod error;
 pub use error::*;
 
+pub use crate::support::expect_ready;
+
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,
 ) -> *mut SignalFfiError {

@@ -20,7 +20,6 @@ aes-gcm-siv = { path = "../../aes-gcm-siv" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 libc = "0.2"
-futures = "0.3.7"
 rand = "0.7.3"
 static_assertions = "1.1"
 log = "0.4.11"
