@@ -26,6 +26,9 @@ mod support;
 use support::*;
 
 bridge_destroy!(ProtocolAddress, ffi = address);
+bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
+    |p: &ProtocolAddress| Ok(p.name().to_string())
+);
 
 bridge_destroy!(PublicKey, ffi = publickey, jni = ECPublicKey);
 bridge_deserialize!(PublicKey::deserialize, ffi = publickey, jni = None);
@@ -57,6 +60,9 @@ bridge_get_bytearray!(
     scannable_encoding(Fingerprint),
     jni = NumericFingerprintGenerator_1GetScannableEncoding =>
     |f: &Fingerprint| f.scannable.serialize()
+);
+bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerator_1GetDisplayString =>
+    Fingerprint::display_string
 );
 
 bridge_destroy!(SignalMessage, ffi = message);
@@ -126,6 +132,8 @@ bridge_get_bytearray!(serialize(PreKeyRecord), jni = PreKeyRecord_1GetSerialized
 );
 
 bridge_destroy!(SenderKeyName);
+bridge_get_string!(get_group_id(SenderKeyName) => SenderKeyName::group_id);
+bridge_get_string!(get_sender_name(SenderKeyName) => |skn: &SenderKeyName| Ok(skn.sender()?.name().to_string()));
 
 bridge_destroy!(SenderKeyRecord);
 bridge_deserialize!(SenderKeyRecord::deserialize);
@@ -146,6 +154,12 @@ bridge_deserialize!(SenderCertificate::deserialize);
 bridge_get_bytearray!(get_serialized(SenderCertificate) => SenderCertificate::serialized);
 bridge_get_bytearray!(get_certificate(SenderCertificate) => SenderCertificate::certificate);
 bridge_get_bytearray!(get_signature(SenderCertificate) => SenderCertificate::signature);
+bridge_get_optional_string!(get_sender_uuid(SenderCertificate) =>
+    |cert: &SenderCertificate| Ok(cert.sender_uuid()?.map(|s| s.to_string()))
+);
+bridge_get_optional_string!(get_sender_e164(SenderCertificate) =>
+    |cert: &SenderCertificate| Ok(cert.sender_e164()?.map(|s| s.to_string()))
+);
 
 bridge_destroy!(UnidentifiedSenderMessageContent);
 bridge_deserialize!(UnidentifiedSenderMessageContent::deserialize);

@@ -40,3 +40,21 @@ macro_rules! bridge_get_optional_bytearray {
         jni_bridge_get_optional_bytearray!($name($typ) $(as $jni_name)? => $body);
     }
 }
+
+macro_rules! bridge_get_string {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+        #[cfg(feature = "ffi")]
+        ffi_bridge_get_string!($name($typ) $(as $ffi_name)? => $body);
+        #[cfg(feature = "jni")]
+        jni_bridge_get_string!($name($typ) $(as $jni_name)? => $body);
+    }
+}
+
+macro_rules! bridge_get_optional_string {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+        #[cfg(feature = "ffi")]
+        ffi_bridge_get_optional_string!($name($typ) $(as $ffi_name)? => $body);
+        #[cfg(feature = "jni")]
+        jni_bridge_get_optional_string!($name($typ) $(as $jni_name)? => $body);
+    }
+}

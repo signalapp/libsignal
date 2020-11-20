@@ -376,39 +376,3 @@ macro_rules! jni_fn_get_jboolean {
         }
     };
 }
-
-/*
-Without the indirection of inner_get, rust can't deduce the Error type
-if the provided lambda just returns Ok(something)
-*/
-#[macro_export]
-macro_rules! jni_fn_get_jstring {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jstring {
-            fn inner_get(t: &$typ) -> Result<String, SignalProtocolError> {
-                $body(&t)
-            }
-            run_ffi_safe(&env, || {
-                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
-                Ok(env.new_string(inner_get(&obj)?)?.into_inner())
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_optional_jstring {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jstring {
-            run_ffi_safe(&env, || {
-                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
-                match $body(&obj)? {
-                    Some(s) => Ok(env.new_string(s)?.into_inner()),
-                    None => Ok(std::ptr::null_mut()),
-                }
-            })
-        }
-    };
-}

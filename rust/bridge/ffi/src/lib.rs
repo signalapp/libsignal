@@ -123,9 +123,6 @@ pub unsafe extern "C" fn signal_address_new(
     })
 }
 
-ffi_fn_get_cstring!(signal_address_get_name(ProtocolAddress) using
-                    |p: &ProtocolAddress| Ok(p.name().to_string()));
-
 ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
                    |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
@@ -315,8 +312,6 @@ pub unsafe extern "C" fn signal_fingerprint_new(
 }
 
 ffi_fn_clone!(signal_fingerprint_clone clones Fingerprint);
-
-ffi_fn_get_cstring!(signal_fingerprint_display_string(Fingerprint) using Fingerprint::display_string);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_compare(
@@ -686,12 +681,6 @@ pub unsafe extern "C" fn signal_sender_key_name_new(
 }
 
 ffi_fn_clone!(signal_sender_key_name_clone clones SenderKeyName);
-
-ffi_fn_get_cstring!(signal_sender_key_name_get_group_id(SenderKeyName) using
-                    SenderKeyName::group_id);
-
-ffi_fn_get_cstring!(signal_sender_key_name_get_sender_name(SenderKeyName) using
-                    |skn: &SenderKeyName| { Ok(skn.sender()?.name().to_string()) });
 
 ffi_fn_get_uint32!(signal_sender_key_name_get_sender_device_id(SenderKeyName) using
                    |m: &SenderKeyName| Ok(m.sender()?.device_id()));
@@ -1551,11 +1540,6 @@ ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from Send
                           SenderCertificate::key);
 ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,
                           |s: &SenderCertificate| Ok(s.signer()?.clone()));
-
-ffi_fn_get_optional_cstring!(signal_sender_certificate_get_sender_uuid(SenderCertificate) using
-                             |s: &SenderCertificate| Ok(s.sender_uuid()?.map(|s| s.to_string())));
-ffi_fn_get_optional_cstring!(signal_sender_certificate_get_sender_e164(SenderCertificate) using
-                             |s: &SenderCertificate| Ok(s.sender_e164()?.map(|s| s.to_string())));
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sender_certificate_validate(

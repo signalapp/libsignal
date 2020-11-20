@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::sys::{_jobject, jboolean, jint, jlong, jstring};
+use jni::sys::{_jobject, jboolean, jint, jlong};
 
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
 
 pub(crate) use jni::objects::JClass;
-pub(crate) use jni::sys::jbyteArray;
+pub(crate) use jni::sys::{jbyteArray, jstring};
 pub(crate) use jni::JNIEnv;
 
 mod error;
@@ -274,6 +274,60 @@ macro_rules! jni_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             jni_bridge_get_optional_bytearray!($name($typ) as [<$typ _1 $name:camel>] => $body);
+        }
+    };
+}
+
+macro_rules! jni_bridge_get_string {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
+                env: jni::JNIEnv,
+                _class: jni::JClass,
+                handle: jni::ObjectHandle,
+            ) -> jni::jstring {
+                jni::run_ffi_safe(&env, || {
+                    let obj = jni::native_handle_cast::<$typ>(handle)?;
+                    let body: fn(&$typ) -> Result<String, SignalProtocolError> = $body;
+                    Ok(env.new_string(body(obj)?)?.into_inner())
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            jni_bridge_get_string!($name($typ) as [<$typ _1 $name:camel>] => $body);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! jni_bridge_get_optional_string {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
+                env: jni::JNIEnv,
+                _class: jni::JClass,
+                handle: jni::ObjectHandle,
+            ) -> jni::jstring {
+                jni::run_ffi_safe(&env, || {
+                    let obj = jni::native_handle_cast::<$typ>(handle)?;
+                    let body: fn(&$typ) -> Result<Option<String>, SignalProtocolError> = $body;
+                    match body(obj)? {
+                        Some(s) => Ok(env.new_string(s)?.into_inner()),
+                        None => Ok(std::ptr::null_mut())
+                    }
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            jni_bridge_get_optional_string!($name($typ) as [<$typ _1 $name:camel>] => $body);
         }
     };
 }

@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_uchar, size_t};
+use libc::{c_char, c_uchar, size_t};
 use libsignal_protocol_rust::*;
+use std::ffi::CString;
 
 mod error;
 pub use error::*;
@@ -68,6 +69,36 @@ pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
             let mem = Box::into_raw(value);
             *out = (*mem).as_ptr();
 
+            Ok(())
+        }
+        Err(e) => Err(SignalFfiError::Signal(e)),
+    }
+}
+
+pub unsafe fn write_cstr_to(
+    out: *mut *const c_char,
+    value: Result<String, SignalProtocolError>,
+) -> Result<(), SignalFfiError> {
+    write_optional_cstr_to(out, value.map(Some))
+}
+
+pub unsafe fn write_optional_cstr_to(
+    out: *mut *const c_char,
+    value: Result<Option<String>, SignalProtocolError>,
+) -> Result<(), SignalFfiError> {
+    if out.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    match value {
+        Ok(Some(value)) => {
+            let cstr =
+                CString::new(value).expect("No NULL characters in string being returned to C");
+            *out = cstr.into_raw();
+            Ok(())
+        }
+        Ok(None) => {
+            *out = std::ptr::null();
             Ok(())
         }
         Err(e) => Err(SignalFfiError::Signal(e)),
@@ -154,4 +185,50 @@ macro_rules! ffi_bridge_get_bytearray {
 // Currently unneeded.
 macro_rules! ffi_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as None => $body:expr ) => {};
+}
+
+macro_rules! ffi_bridge_get_string {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<signal_ $ffi_name>](
+                obj: *const $typ,
+                out: *mut *const libc::c_char,
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
+                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
+                    ffi::write_cstr_to(out, $body(obj))
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            ffi_bridge_get_string!($name($typ) as [<$typ:snake _ $name>] => $body);
+        }
+    };
+}
+
+macro_rules! ffi_bridge_get_optional_string {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<signal_ $ffi_name>](
+                obj: *const $typ,
+                out: *mut *const libc::c_char,
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
+                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
+                    ffi::write_optional_cstr_to(out, $body(obj))
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            ffi_bridge_get_optional_string!($name($typ) as [<$typ:snake _ $name>] => $body);
+        }
+    };
 }

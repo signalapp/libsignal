@@ -8,7 +8,7 @@ use futures::task::noop_waker_ref;
 use libc::{c_char, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::future::Future;
 use std::task::{self, Poll};
 
@@ -259,56 +259,6 @@ pub unsafe fn read_optional_c_string(
     }
 }
 
-pub fn write_cstr_to(
-    out: *mut *const c_char,
-    value: Result<String, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    //let value = value.map_err(|e| SignalFfiError::Signal(e))?;
-
-    match value {
-        Ok(value) => {
-            let cstr =
-                CString::new(value).expect("No NULL characters in string being returned to C");
-            unsafe {
-                *out = cstr.into_raw();
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
-pub fn write_optional_cstr_to(
-    out: *mut *const c_char,
-    value: Result<Option<String>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(Some(value)) => {
-            let cstr =
-                CString::new(value).expect("No NULL characters in string being returned to C");
-            unsafe {
-                *out = cstr.into_raw();
-            }
-            Ok(())
-        }
-        Ok(None) => {
-            unsafe {
-                *out = std::ptr::null_mut();
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
 pub fn write_uint32_to(
     out: *mut c_uint,
     value: Result<u32, SignalProtocolError>,
@@ -452,46 +402,6 @@ macro_rules! ffi_fn_get_uint64 {
             run_ffi_safe(|| {
                 let obj = native_handle_cast::<$typ>(obj)?;
                 write_uint64_to(out, $body(&obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_cstring {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            obj: *const $typ,
-            out: *mut *const c_char,
-        ) -> *mut SignalFfiError {
-            fn inner_get(t: &$typ) -> Result<String, SignalProtocolError> {
-                $body(&t)
-            }
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_cstr_to(out, inner_get(&obj))?;
-                Ok(())
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_optional_cstring {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            obj: *const $typ,
-            out: *mut *const c_char,
-        ) -> *mut SignalFfiError {
-            fn inner_get(t: &$typ) -> Result<Option<String>, SignalProtocolError> {
-                $body(&t)
-            }
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_optional_cstr_to(out, inner_get(&obj))?;
-                Ok(())
             })
         }
     };

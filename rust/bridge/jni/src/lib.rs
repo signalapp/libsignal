@@ -42,9 +42,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ProtocolAddress_
     })
 }
 
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_ProtocolAddress_1Name(ProtocolAddress) using
-                    |p: &ProtocolAddress| Ok(p.name().to_string()));
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_ProtocolAddress_1DeviceId(ProtocolAddress) using
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
@@ -211,9 +208,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerpri
         box_object::<Fingerprint>(Ok(fprint))
     })
 }
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1GetDisplayString(Fingerprint) using
-    Fingerprint::display_string);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ScannableFingerprint_1Compare(
@@ -635,12 +629,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyName_1N
         box_object::<SenderKeyName>(name)
     })
 }
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_SenderKeyName_1GetGroupId(SenderKeyName) using
-                    SenderKeyName::group_id);
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSenderName(SenderKeyName) using
-                    |skn: &SenderKeyName| { Ok(skn.sender()?.name().to_string()) });
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSenderDeviceId(SenderKeyName) using
                  |m: &SenderKeyName| Ok(m.sender()?.device_id()));
@@ -1678,9 +1666,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertifica
                           SenderCertificate::key);
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,
                           |s: &SenderCertificate| Ok(s.signer()?.clone()));
-
-jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderUuid(SenderCertificate) using SenderCertificate::sender_uuid);
-jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderE164(SenderCertificate) using SenderCertificate::sender_e164);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
