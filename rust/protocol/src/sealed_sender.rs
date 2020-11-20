@@ -11,6 +11,7 @@ use crate::session_cipher;
 use crate::{
     message_encrypt, Context, IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore,
     PrivateKey, ProtocolAddress, PublicKey, SessionStore, SignalMessage, SignedPreKeyStore,
+    CiphertextMessageType,
 };
 use prost::Message;
 use rand::{CryptoRng, Rng};
@@ -349,7 +350,7 @@ pub struct UnidentifiedSenderMessageContent {
     serialized: Vec<u8>,
     contents: Vec<u8>,
     sender: SenderCertificate,
-    msg_type: u8,
+    msg_type: CiphertextMessageType,
 }
 
 impl UnidentifiedSenderMessageContent {
@@ -367,9 +368,8 @@ impl UnidentifiedSenderMessageContent {
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
 
         let msg_type = match msg_type {
-            1 => Ok(3),
-            2 => Ok(2),
-            3 => Ok(3),
+            2 => Ok(CiphertextMessageType::Whisper),
+            3 => Ok(CiphertextMessageType::PreKey),
             _ => Err(SignalProtocolError::InvalidProtobufEncoding),
         }?;
 
@@ -385,7 +385,7 @@ impl UnidentifiedSenderMessageContent {
         })
     }
 
-    pub fn new(msg_type: u8, sender: SenderCertificate, contents: Vec<u8>) -> Result<Self> {
+    pub fn new(msg_type: CiphertextMessageType, sender: SenderCertificate, contents: Vec<u8>) -> Result<Self> {
         let msg = proto::sealed_sender::unidentified_sender_message::Message {
             content: Some(contents.clone()),
             r#type: Some(msg_type as _),
@@ -404,7 +404,7 @@ impl UnidentifiedSenderMessageContent {
         })
     }
 
-    pub fn msg_type(&self) -> Result<u8> {
+    pub fn msg_type(&self) -> Result<CiphertextMessageType> {
         Ok(self.msg_type)
     }
 
@@ -573,6 +573,7 @@ impl StaticKeys {
 
         let shared_secret = our_private.calculate_agreement(their_public)?;
         let kdf = HKDF::new(3)?;
+        // 96 bytes are derived but the first 32 are discarded/unused
         let derived_values = kdf.derive_salted_secrets(&shared_secret, &salt, &[], 96)?;
 
         Ok(Self { derived_values })
@@ -627,7 +628,7 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     )?;
 
     let usmc = UnidentifiedSenderMessageContent::new(
-        message.message_type() as u8,
+        message.message_type(),
         sender_cert.clone(),
         message.serialize().to_vec(),
     )?;
@@ -742,7 +743,7 @@ pub async fn sealed_sender_decrypt(
     let remote_address = usmc.sender()?.preferred_address(session_store, ctx).await?;
 
     let message = match usmc.msg_type()? {
-        2 => {
+        CiphertextMessageType::Whisper => {
             let ctext = SignalMessage::try_from(usmc.contents()?)?;
             session_cipher::message_decrypt_signal(
                 &ctext,
@@ -754,7 +755,7 @@ pub async fn sealed_sender_decrypt(
             )
             .await?
         }
-        3 => {
+        CiphertextMessageType::PreKey => {
             let ctext = PreKeySignalMessage::try_from(usmc.contents()?)?;
             session_cipher::message_decrypt_prekey(
                 &ctext,

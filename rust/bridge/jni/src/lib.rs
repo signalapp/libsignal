@@ -1744,14 +1744,15 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSend
     run_ffi_safe(&env, || {
         let sender = native_handle_cast::<SenderCertificate>(sender)?;
         let contents = env.convert_byte_array(contents)?;
+
+        // This encoding is from the protobufs
         let msg_type = match msg_type {
-            1 => Ok(1u8),
-            2 => Ok(2u8),
-            3 => Ok(1u8),
-            x => Err(SignalJniError::IntegerOverflow(format!(
+            1 => Ok(CiphertextMessageType::PreKey),
+            2 => Ok(CiphertextMessageType::Whisper),
+            x => Err(SignalJniError::Signal(SignalProtocolError::InvalidArgument(format!(
                 "invalid msg_type argument {}",
                 x
-            ))),
+            )))),
         }?;
 
         let usmc = UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents)?;
