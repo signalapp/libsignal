@@ -18,12 +18,12 @@ java_build: DOCKER_EXTRA=$(shell [ -L build ] && P=$$(readlink build) && echo -v
 java_build: docker_image
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-		sh -c "cp rust-toolchain src/; cd src/java; ./gradlew build"
+		sh -c "cd src/java; ./gradlew build"
 
 java_test: java_build
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-		sh -c "cp rust-toolchain src/; cd src/java; ./gradlew test"
+		sh -c "cd src/java; ./gradlew test"
 
 SONATYPE_USERNAME     ?=
 SONATYPE_PASSWORD     ?=
@@ -44,7 +44,7 @@ publish_java: docker_image
 		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
 		-v $(KEYRING_VOLUME):/home/libsignal/keyring \
 		$(DOCKER_IMAGE) \
-		sh -c "cp rust-toolchain src; cd src/java; ./gradlew uploadArchives \
+		sh -c "cd src/java; ./gradlew uploadArchives \
 			-PwhisperSonatypeUsername='$(SONATYPE_USERNAME)' \
 			-PwhisperSonatypePassword='$(SONATYPE_PASSWORD)' \
 			-Psigning.secretKeyRingFile='/home/libsignal/keyring/$(KEYRING_FILE_ROOT)' \
