@@ -1749,10 +1749,9 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSend
         let msg_type = match msg_type {
             1 => Ok(CiphertextMessageType::PreKey),
             2 => Ok(CiphertextMessageType::Whisper),
-            x => Err(SignalJniError::Signal(SignalProtocolError::InvalidArgument(format!(
-                "invalid msg_type argument {}",
-                x
-            )))),
+            x => Err(SignalJniError::Signal(
+                SignalProtocolError::InvalidArgument(format!("invalid msg_type argument {}", x)),
+            )),
         }?;
 
         let usmc = UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents)?;

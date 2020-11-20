@@ -9,9 +9,9 @@ use crate::kdf::HKDF;
 use crate::proto;
 use crate::session_cipher;
 use crate::{
-    message_encrypt, Context, IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore,
-    PrivateKey, ProtocolAddress, PublicKey, SessionStore, SignalMessage, SignedPreKeyStore,
-    CiphertextMessageType,
+    message_encrypt, CiphertextMessageType, Context, IdentityKeyStore, KeyPair,
+    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, SessionStore,
+    SignalMessage, SignedPreKeyStore,
 };
 use prost::Message;
 use rand::{CryptoRng, Rng};
@@ -385,7 +385,11 @@ impl UnidentifiedSenderMessageContent {
         })
     }
 
-    pub fn new(msg_type: CiphertextMessageType, sender: SenderCertificate, contents: Vec<u8>) -> Result<Self> {
+    pub fn new(
+        msg_type: CiphertextMessageType,
+        sender: SenderCertificate,
+        contents: Vec<u8>,
+    ) -> Result<Self> {
         let msg = proto::sealed_sender::unidentified_sender_message::Message {
             content: Some(contents.clone()),
             r#type: Some(msg_type as _),
