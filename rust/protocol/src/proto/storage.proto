@@ -29,16 +29,6 @@ message SessionStructure {
     repeated MessageKey message_keys = 4;
   }
 
-  message PendingKeyExchange {
-    uint32 sequence                   = 1;
-    bytes  local_base_key             = 2;
-    bytes  local_base_key_private     = 3;
-    bytes  local_ratchet_key          = 4;
-    bytes  local_ratchet_key_private  = 5;
-    bytes  local_identity_key         = 7;
-    bytes  local_identity_key_private = 8;
-  }
-
   message PendingPreKey {
     uint32 pre_key_id        = 1;
     int32  signed_pre_key_id = 3;
@@ -55,7 +45,6 @@ message SessionStructure {
   Chain          sender_chain               = 6;
   repeated Chain receiver_chains            = 7;
 
-  PendingKeyExchange pending_key_exchange   = 8;
   PendingPreKey      pending_pre_key        = 9;
 
   uint32             remote_registration_id = 10;
