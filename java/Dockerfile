@@ -70,6 +70,8 @@ RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linu
     && cargo install --version ${CARGO_NDK_VERSION} cargo-ndk
 
 # Pre-download Gradle.
+ENV GRADLE_OPTS=-Dorg.gradle.daemon=false
+
 COPY   java/gradle gradle
 COPY   java/gradlew gradlew
 RUN    ./gradlew --version
