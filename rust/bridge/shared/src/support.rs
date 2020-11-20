@@ -22,3 +22,21 @@ macro_rules! bridge_deserialize {
         jni_bridge_deserialize!($typ::$fn $(as $jni_name)?);
     }
 }
+
+macro_rules! bridge_get_bytearray {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+        #[cfg(feature = "ffi")]
+        ffi_bridge_get_bytearray!($name($typ) $(as $ffi_name)? => $body);
+        #[cfg(feature = "jni")]
+        jni_bridge_get_bytearray!($name($typ) $(as $jni_name)? => $body);
+    }
+}
+
+macro_rules! bridge_get_optional_bytearray {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+        #[cfg(feature = "ffi")]
+        ffi_bridge_get_optional_bytearray!($name($typ) $(as $ffi_name)? => $body);
+        #[cfg(feature = "jni")]
+        jni_bridge_get_optional_bytearray!($name($typ) $(as $jni_name)? => $body);
+    }
+}

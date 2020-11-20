@@ -131,10 +131,6 @@ ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
 
 ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 
-ffi_fn_get_bytearray!(signal_publickey_serialize(PublicKey) using |k: &PublicKey| Ok(k.serialize()));
-
-ffi_fn_get_bytearray!(signal_publickey_get_public_key_bytes(PublicKey) using |k: &PublicKey| Ok(k.public_key_bytes()?.to_vec()));
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_publickey_compare(
     result: *mut i32,
@@ -175,9 +171,6 @@ pub unsafe extern "C" fn signal_publickey_verify(
 }
 
 ffi_fn_clone!(signal_publickey_clone clones PublicKey);
-
-ffi_fn_get_bytearray!(signal_privatekey_serialize(PrivateKey) using
-                      |k: &PrivateKey| Ok(k.serialize()));
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_privatekey_generate(
@@ -257,9 +250,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
     })
 }
 
-ffi_fn_get_bytearray!(signal_session_record_serialize(SessionRecord) using
-                      |s: &SessionRecord| s.serialize());
-
 ffi_fn_get_uint32!(signal_session_record_get_remote_registration_id(SessionRecord) using
                    SessionRecord::remote_registration_id);
 
@@ -328,9 +318,6 @@ ffi_fn_clone!(signal_fingerprint_clone clones Fingerprint);
 
 ffi_fn_get_cstring!(signal_fingerprint_display_string(Fingerprint) using Fingerprint::display_string);
 
-ffi_fn_get_bytearray!(signal_fingerprint_scannable_encoding(Fingerprint) using
-                      |f: &Fingerprint| f.scannable.serialize());
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_compare(
     result: *mut bool,
@@ -393,11 +380,6 @@ ffi_fn_clone!(signal_message_clone clones SignalMessage);
 
 ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
                           |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
-
-ffi_fn_get_bytearray!(signal_message_get_body(SignalMessage) using
-                      |m: &SignalMessage| Ok(m.body().to_vec()));
-ffi_fn_get_bytearray!(signal_message_get_serialized(SignalMessage) using
-                      |m: &SignalMessage| Ok(m.serialized().to_vec()));
 
 ffi_fn_get_uint32!(signal_message_get_message_version(SignalMessage) using
                    |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
@@ -482,9 +464,6 @@ ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_identity_key(PublicK
 ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_signal_message(SignalMessage) from PreKeySignalMessage,
                           |p: &PreKeySignalMessage| Ok(p.message().clone()));
 
-ffi_fn_get_bytearray!(signal_pre_key_signal_message_serialize(PreKeySignalMessage) using
-                      |m: &PreKeySignalMessage| Ok(m.serialized().to_vec()));
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_sender_key_message_new(
     obj: *mut *mut SenderKeyMessage,
@@ -510,12 +489,6 @@ ffi_fn_get_uint32!(signal_sender_key_message_get_key_id(SenderKeyMessage) using
 
 ffi_fn_get_uint32!(signal_sender_key_message_get_iteration(SenderKeyMessage) using
                    |m: &SenderKeyMessage| Ok(m.iteration()));
-
-ffi_fn_get_bytearray!(signal_sender_key_message_get_cipher_text(SenderKeyMessage) using
-                      |m: &SenderKeyMessage| Ok(m.ciphertext().to_vec()));
-
-ffi_fn_get_bytearray!(signal_sender_key_message_serialize(SenderKeyMessage) using
-                      |m: &SenderKeyMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sender_key_message_verify_signature(
@@ -557,14 +530,8 @@ ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_id(SenderKeyDistri
 ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_iteration(SenderKeyDistributionMessage) using
                    |m: &SenderKeyDistributionMessage| m.iteration());
 
-ffi_fn_get_bytearray!(signal_sender_key_distribution_message_get_chain_key(SenderKeyDistributionMessage) using
-                      |m: &SenderKeyDistributionMessage| Ok(m.chain_key()?.to_vec()));
-
 ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
                           |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
-
-ffi_fn_get_bytearray!(signal_sender_key_distribution_message_serialize(SenderKeyDistributionMessage) using
-                      |m: &SenderKeyDistributionMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_pre_key_bundle_new(
@@ -627,9 +594,6 @@ ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_signed_pre_key_public(Public
 ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
 
-ffi_fn_get_bytearray!(signal_pre_key_bundle_get_signed_pre_key_signature(PreKeyBundle) using
-                      |m: &PreKeyBundle| Ok(m.signed_pre_key_signature()?.to_vec()));
-
 /* SignedPreKeyRecord */
 
 #[no_mangle]
@@ -668,12 +632,6 @@ ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_public_key(PublicKey)
 ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_private_key(PrivateKey) from SignedPreKeyRecord,
                           |p: &SignedPreKeyRecord| p.private_key());
 
-ffi_fn_get_bytearray!(signal_signed_pre_key_record_get_signature(SignedPreKeyRecord) using
-                      |m: &SignedPreKeyRecord| m.signature());
-
-ffi_fn_get_bytearray!(signal_signed_pre_key_record_serialize(SignedPreKeyRecord) using
-                      |m: &SignedPreKeyRecord| m.serialize());
-
 ffi_fn_clone!(signal_signed_pre_key_record_clone clones SignedPreKeyRecord);
 
 /* PreKeyRecord */
@@ -705,9 +663,6 @@ ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_public_key(PublicKey) from P
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_private_key(PrivateKey) from PreKeyRecord,
                           |p: &PreKeyRecord| p.private_key());
-
-ffi_fn_get_bytearray!(signal_pre_key_record_serialize(PreKeyRecord) using
-                      |m: &PreKeyRecord| m.serialize());
 
 ffi_fn_clone!(signal_pre_key_record_clone clones PreKeyRecord);
 
@@ -749,9 +704,6 @@ pub unsafe extern "C" fn signal_sender_key_record_new_fresh(
 }
 
 ffi_fn_clone!(signal_sender_key_record_clone clones SenderKeyRecord);
-
-ffi_fn_get_bytearray!(signal_sender_key_record_serialize(SenderKeyRecord) using
-                      |sks: &SenderKeyRecord| sks.serialize());
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
@@ -1571,10 +1523,6 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
 // Server Certificate
 ffi_fn_get_uint32!(signal_server_certificate_get_key_id(ServerCertificate) using ServerCertificate::key_id);
 
-ffi_fn_get_bytearray!(signal_server_certificate_get_serialized(ServerCertificate) using ServerCertificate::serialized);
-ffi_fn_get_bytearray!(signal_server_certificate_get_certificate(ServerCertificate) using ServerCertificate::certificate);
-ffi_fn_get_bytearray!(signal_server_certificate_get_signature(ServerCertificate) using ServerCertificate::signature);
-
 ffi_fn_get_new_boxed_obj!(signal_server_certificate_get_key(PublicKey) from ServerCertificate,
                           ServerCertificate::public_key);
 
@@ -1598,10 +1546,6 @@ pub unsafe extern "C" fn signal_server_certificate_new(
 // Sender Certificate
 ffi_fn_get_uint64!(signal_sender_certificate_get_expiration(SenderCertificate) using SenderCertificate::expiration);
 ffi_fn_get_uint32!(signal_sender_certificate_get_device_id(SenderCertificate) using SenderCertificate::sender_device_id);
-
-ffi_fn_get_bytearray!(signal_sender_certificate_get_serialized(SenderCertificate) using SenderCertificate::serialized);
-ffi_fn_get_bytearray!(signal_sender_certificate_get_certificate(SenderCertificate) using SenderCertificate::certificate);
-ffi_fn_get_bytearray!(signal_sender_certificate_get_signature(SenderCertificate) using SenderCertificate::signature);
 
 ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from SenderCertificate,
                           SenderCertificate::key);
@@ -1674,9 +1618,6 @@ pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type
         Ok(())
     })
 }
-
-ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_serialize(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
-ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_contents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
 
 ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_content_get_sender_cert(SenderCertificate) from UnidentifiedSenderMessageContent,
                           |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));

@@ -215,14 +215,6 @@ pub unsafe fn native_handle_cast_optional<T>(
     Ok(Some(&*(handle)))
 }
 
-pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, SignalFfiError> {
-    if handle.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    Ok(&*(handle))
-}
-
 pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
     if handle.is_null() {
         return Err(SignalFfiError::NullPointer);
@@ -375,30 +367,6 @@ pub fn write_uint64_to(
     }
 }
 
-pub fn write_bytearray_to<T: Into<Box<[u8]>>>(
-    out: *mut *const c_uchar,
-    out_len: *mut size_t,
-    value: Result<T, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() || out_len.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(value) => {
-            let value: Box<[u8]> = value.into();
-
-            unsafe {
-                *out_len = value.len();
-                let mem = Box::into_raw(value);
-                *out = (*mem).as_ptr();
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
 #[macro_export]
 macro_rules! ffi_fn_get_new_boxed_obj {
     ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
@@ -484,23 +452,6 @@ macro_rules! ffi_fn_get_uint64 {
             run_ffi_safe(|| {
                 let obj = native_handle_cast::<$typ>(obj)?;
                 write_uint64_to(out, $body(&obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_bytearray {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            obj: *const $typ,
-            out: *mut *const c_uchar,
-            out_len: *mut size_t,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_bytearray_to(out, out_len, $body(&obj))
             })
         }
     };

@@ -6,7 +6,7 @@
 use futures::pin_mut;
 use futures::task::noop_waker_ref;
 use jni::objects::{JObject, JString, JThrowable, JValue};
-use jni::sys::{jbyteArray, jint, jlong, jobject};
+use jni::sys::{jint, jlong, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 use std::future::Future;
@@ -14,21 +14,6 @@ use std::task::{self, Poll};
 
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::SignalProtocolError;
-
-pub unsafe fn native_handle_cast<T>(
-    handle: ObjectHandle,
-) -> Result<&'static mut T, SignalJniError> {
-    /*
-    Should we try testing the encoded pointer for sanity here, beyond
-    being null? For example verifying that lowest bits are zero,
-    highest bits are zero, greater than 64K, etc?
-    */
-    if handle == 0 {
-        return Err(SignalJniError::NullHandle);
-    }
-
-    Ok(&mut *(handle as *mut T))
-}
 
 pub unsafe fn native_handle_cast_optional<T>(
     handle: ObjectHandle,
@@ -47,18 +32,6 @@ pub fn expect_ready<F: Future>(future: F) -> F::Output {
         Poll::Ready(result) => result,
         Poll::Pending => panic!("future was not ready"),
     }
-}
-
-pub fn to_jbytearray<T: AsRef<[u8]>>(
-    env: &JNIEnv,
-    data: Result<T, SignalProtocolError>,
-) -> Result<jbyteArray, SignalJniError> {
-    let data = data?;
-    let data: &[u8] = data.as_ref();
-    let out = env.new_byte_array(data.len() as i32)?;
-    let buf: Vec<i8> = data.iter().map(|i| *i as i8).collect();
-    env.set_byte_array_region(out, 0, buf.as_slice())?;
-    Ok(out)
 }
 
 pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
@@ -433,43 +406,6 @@ macro_rules! jni_fn_get_optional_jstring {
                 let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
                 match $body(&obj)? {
                     Some(s) => Ok(env.new_string(s)?.into_inner()),
-                    None => Ok(std::ptr::null_mut()),
-                }
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_jbytearray {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> jbyteArray {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                to_jbytearray(&env, $body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_optional_jbytearray {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> jbyteArray {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                match $body(obj)? {
-                    Some(v) => to_jbytearray(&env, Ok(v)),
                     None => Ok(std::ptr::null_mut()),
                 }
             })

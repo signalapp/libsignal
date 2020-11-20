@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libc::{c_uchar, size_t};
 use libsignal_protocol_rust::*;
 
 mod error;
@@ -39,6 +40,37 @@ pub unsafe fn box_object<T>(
             *p = std::ptr::null_mut();
             Err(SignalFfiError::Signal(e))
         }
+    }
+}
+
+pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, SignalFfiError> {
+    if handle.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    Ok(&*(handle))
+}
+
+pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
+    out: *mut *const c_uchar,
+    out_len: *mut size_t,
+    value: Result<T, SignalProtocolError>,
+) -> Result<(), SignalFfiError> {
+    if out.is_null() || out_len.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    match value {
+        Ok(value) => {
+            let value: Box<[u8]> = value.into();
+
+            *out_len = value.len();
+            let mem = Box::into_raw(value);
+            *out = (*mem).as_ptr();
+
+            Ok(())
+        }
+        Err(e) => Err(SignalFfiError::Signal(e)),
     }
 }
 
@@ -93,4 +125,33 @@ macro_rules! ffi_bridge_deserialize {
             ffi_bridge_deserialize!($typ::$fn as [<$typ:snake>]);
         }
     };
+}
+
+macro_rules! ffi_bridge_get_bytearray {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<signal_ $ffi_name>](
+                obj: *const $typ,
+                out: *mut *const libc::c_uchar,
+                out_len: *mut libc::size_t,
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
+                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
+                    ffi::write_bytearray_to(out, out_len, $body(obj))
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name>] => $body);
+        }
+    };
+}
+
+// Currently unneeded.
+macro_rules! ffi_bridge_get_optional_bytearray {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
 }

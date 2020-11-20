@@ -155,6 +155,33 @@ pub fn box_object<T>(t: Result<T, SignalProtocolError>) -> Result<ObjectHandle, 
     }
 }
 
+pub unsafe fn native_handle_cast<T>(
+    handle: ObjectHandle,
+) -> Result<&'static mut T, SignalJniError> {
+    /*
+    Should we try testing the encoded pointer for sanity here, beyond
+    being null? For example verifying that lowest bits are zero,
+    highest bits are zero, greater than 64K, etc?
+    */
+    if handle == 0 {
+        return Err(SignalJniError::NullHandle);
+    }
+
+    Ok(&mut *(handle as *mut T))
+}
+
+pub fn to_jbytearray<T: AsRef<[u8]>>(
+    env: &JNIEnv,
+    data: Result<T, SignalProtocolError>,
+) -> Result<jbyteArray, SignalJniError> {
+    let data = data?;
+    let data: &[u8] = data.as_ref();
+    let out = env.new_byte_array(data.len() as i32)?;
+    let buf: Vec<i8> = data.iter().map(|i| *i as i8).collect();
+    env.set_byte_array_region(out, 0, buf.as_slice())?;
+    Ok(out)
+}
+
 macro_rules! jni_bridge_destroy {
     ( $typ:ty as None ) => {};
     ( $typ:ty as $jni_name:ident ) => {
@@ -197,5 +224,56 @@ macro_rules! jni_bridge_deserialize {
     };
     ( $typ:ident::$fn:path ) => {
         jni_bridge_deserialize!($typ::$fn as $typ);
+    };
+}
+
+macro_rules! jni_bridge_get_bytearray {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
+                env: jni::JNIEnv,
+                _class: jni::JClass,
+                handle: jni::ObjectHandle,
+            ) -> jni::jbyteArray {
+                jni::run_ffi_safe(&env, || {
+                    let obj = jni::native_handle_cast::<$typ>(handle)?;
+                    jni::to_jbytearray(&env, $body(obj))
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            jni_bridge_get_bytearray!($name($typ) as [<$typ _1 $name:camel>] => $body);
+        }
+    };
+}
+
+macro_rules! jni_bridge_get_optional_bytearray {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
+                env: jni::JNIEnv,
+                _class: jni::JClass,
+                handle: jni::ObjectHandle,
+            ) -> jni::jbyteArray {
+                jni::run_ffi_safe(&env, || {
+                    let obj = jni::native_handle_cast::<$typ>(handle)?;
+                    match $body(obj)? {
+                        Some(v) => jni::to_jbytearray(&env, Ok(v)),
+                        None => Ok(std::ptr::null_mut()),
+                    }
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            jni_bridge_get_optional_bytearray!($name($typ) as [<$typ _1 $name:camel>] => $body);
+        }
     };
 }
