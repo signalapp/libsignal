@@ -15,7 +15,7 @@ pub fn has_armv8_crypto() -> bool {
 }
 
 #[cfg(all(target_arch = "aarch64", target_os = "ios"))]
-pub fn has_armv8_crypto() -> Result<bool> {
+pub fn has_armv8_crypto() -> bool {
     // All 64-bit iOS devices have AES/PMUL support
     true
 }
