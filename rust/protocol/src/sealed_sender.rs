@@ -711,6 +711,7 @@ pub struct SealedSenderDecryptionResult {
     pub message: Vec<u8>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],
     trust_root: &PublicKey,
