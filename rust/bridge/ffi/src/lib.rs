@@ -1613,3 +1613,230 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
         write_bytearray_to(out, out_len, ptext)
     })
 }
+
+// Server Certificate
+ffi_fn_deserialize!(signal_server_certificate_deserialize(ServerCertificate) is ServerCertificate::deserialize);
+
+ffi_fn_destroy!(signal_server_certificate_destroy destroys ServerCertificate);
+
+ffi_fn_get_uint32!(signal_server_certificate_get_key_id(ServerCertificate) using ServerCertificate::key_id);
+
+ffi_fn_get_bytearray!(signal_server_certificate_get_serialized(ServerCertificate) using ServerCertificate::serialized);
+ffi_fn_get_bytearray!(signal_server_certificate_get_certificate(ServerCertificate) using ServerCertificate::certificate);
+ffi_fn_get_bytearray!(signal_server_certificate_get_signature(ServerCertificate) using ServerCertificate::signature);
+
+ffi_fn_get_new_boxed_obj!(signal_server_certificate_get_key(PublicKey) from ServerCertificate,
+                          ServerCertificate::public_key);
+
+// Sender Certificate
+ffi_fn_destroy!(signal_sender_certificate_destroy destroys SenderCertificate);
+ffi_fn_deserialize!(signal_sender_certificate_deserialize(SenderCertificate) is SenderCertificate::deserialize);
+
+ffi_fn_get_uint64!(signal_sender_certificate_get_expiration(SenderCertificate) using SenderCertificate::expiration);
+ffi_fn_get_uint32!(signal_sender_certificate_get_device_id(SenderCertificate) using SenderCertificate::sender_device_id);
+
+ffi_fn_get_bytearray!(signal_sender_certificate_get_serialized(SenderCertificate) using SenderCertificate::serialized);
+ffi_fn_get_bytearray!(signal_sender_certificate_get_certificate(SenderCertificate) using SenderCertificate::certificate);
+ffi_fn_get_bytearray!(signal_sender_certificate_get_signature(SenderCertificate) using SenderCertificate::signature);
+
+ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from SenderCertificate,
+                          SenderCertificate::key);
+ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,
+                          |s: &SenderCertificate| Ok(s.signer()?.clone()));
+
+ffi_fn_get_optional_cstring!(signal_sender_certificate_get_sender_uuid(SenderCertificate) using
+                             |s: &SenderCertificate| Ok(s.sender_uuid()?.map(|s| s.to_string())));
+ffi_fn_get_optional_cstring!(signal_sender_certificate_get_sender_e164(SenderCertificate) using
+                             |s: &SenderCertificate| Ok(s.sender_e164()?.map(|s| s.to_string())));
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_sender_certificate_preferred_address(
+    obj: *mut *mut ProtocolAddress,
+    cert: *const SenderCertificate,
+    session_store: *const FfiSessionStoreStruct,
+    ctx: *mut c_void,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let cert = native_handle_cast::<SenderCertificate>(cert)?;
+        let session_store = FfiSessionStore::new(session_store)?;
+        let address = expect_ready(cert.preferred_address(&session_store, Some(ctx)))?;
+        box_object::<ProtocolAddress>(obj, Ok(address))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_sender_certificate_validate(
+    valid: *mut c_uint,
+    cert: *const SenderCertificate,
+    key: *const PublicKey,
+    time: u64,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let cert = native_handle_cast::<SenderCertificate>(cert)?;
+        let key = native_handle_cast::<PublicKey>(key)?;
+        let is_valid = cert.validate(key, time)?;
+        *valid = if is_valid { 1 } else { 0 };
+        Ok(())
+    })
+}
+
+// UnidentifiedSenderMessageContent
+ffi_fn_destroy!(signal_unidentified_sender_message_content_destroy destroys UnidentifiedSenderMessageContent);
+ffi_fn_deserialize!(signal_unidentified_sender_message_content_deserialize(UnidentifiedSenderMessageContent) is UnidentifiedSenderMessageContent::deserialize);
+
+ffi_fn_get_uint32!(signal_unidentified_sender_message_content_get_msg_type(UnidentifiedSenderMessageContent) using
+                   |m: &UnidentifiedSenderMessageContent| Ok(m.msg_type()? as u32));
+
+ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_serialized(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
+ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_contents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
+
+ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_content_get_sender_cert(SenderCertificate) from UnidentifiedSenderMessageContent,
+                          |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_unidentified_sender_message_content_new(
+    obj: *mut *mut UnidentifiedSenderMessageContent,
+    msg_type: c_uint,
+    sender: *const SenderCertificate,
+    contents: *const c_uchar,
+    contents_len: size_t,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let sender = native_handle_cast::<SenderCertificate>(sender)?;
+        let contents = as_slice(contents, contents_len)?;
+
+        // This encoding is from the protobufs
+        let msg_type = match msg_type {
+            1 => Ok(CiphertextMessageType::PreKey),
+            2 => Ok(CiphertextMessageType::Whisper),
+            x => Err(SignalFfiError::Signal(
+                SignalProtocolError::InvalidArgument(format!("invalid msg_type argument {}", x)),
+            )),
+        }?;
+
+        let usmc =
+            UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents.to_vec())?;
+        box_object::<UnidentifiedSenderMessageContent>(obj, Ok(usmc))
+    })
+}
+
+// UnidentifiedSenderMessage
+ffi_fn_destroy!(signal_unidentified_sender_message_destroy destroys UnidentifiedSenderMessage);
+ffi_fn_deserialize!(signal_unidentified_sender_message_deserialize(UnidentifiedSenderMessage) is UnidentifiedSenderMessage::deserialize);
+
+ffi_fn_get_bytearray!(signal_unidentified_sender_message_get_serialized(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::serialized);
+ffi_fn_get_bytearray!(signal_unidentified_sender_message_get_encrypted_message(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_message);
+ffi_fn_get_bytearray!(signal_unidentified_sender_message_get_encrypted_static(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_static);
+
+ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_get_ephemeral_public(PublicKey) from UnidentifiedSenderMessage,
+                          UnidentifiedSenderMessage::ephemeral_public);
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_unidentified_sender_message_new(
+    obj: *mut *mut UnidentifiedSenderMessage,
+    public_key: *const PublicKey,
+    encrypted_static: *const c_uchar,
+    encrypted_static_len: size_t,
+    encrypted_message: *const c_uchar,
+    encrypted_message_len: size_t,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let encrypted_static = as_slice(encrypted_static, encrypted_static_len)?;
+        let encrypted_message = as_slice(encrypted_message, encrypted_message_len)?;
+        let public_key = native_handle_cast::<PublicKey>(public_key)?;
+
+        let usm = UnidentifiedSenderMessage::new(
+            *public_key,
+            encrypted_static.to_vec(),
+            encrypted_message.to_vec(),
+        )?;
+        box_object::<UnidentifiedSenderMessage>(obj, Ok(usm))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_sealed_session_cipher_encrypt(
+    out: *mut *const c_uchar,
+    out_len: *mut size_t,
+    destination: *const ProtocolAddress,
+    sender_cert: *const SenderCertificate,
+    ptext: *const c_uchar,
+    ptext_len: size_t,
+    session_store: *const FfiSessionStoreStruct,
+    identity_key_store: *const FfiIdentityKeyStoreStruct,
+    ctx: *mut c_void,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let destination = native_handle_cast::<ProtocolAddress>(destination)?;
+        let sender_cert = native_handle_cast::<SenderCertificate>(sender_cert)?;
+        let ptext = as_slice(ptext, ptext_len)?;
+
+        let mut identity_store = FfiIdentityKeyStore::new(identity_key_store)?;
+        let mut session_store = FfiSessionStore::new(session_store)?;
+
+        let mut rng = rand::rngs::OsRng;
+
+        let ctext = expect_ready(sealed_sender_encrypt(
+            destination,
+            sender_cert,
+            &ptext,
+            &mut session_store,
+            &mut identity_store,
+            Some(ctx),
+            &mut rng,
+        ))?;
+        write_bytearray_to(out, out_len, Ok(ctext))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
+    out: *mut *const c_uchar,
+    out_len: *mut size_t,
+    sender_e164: *mut *const c_char,
+    sender_uuid: *mut *const c_char,
+    sender_device_id: *mut u32,
+    ctext: *const c_uchar,
+    ctext_len: size_t,
+    trust_root: *const PublicKey,
+    timestamp: u64,
+    local_e164: *const c_char,
+    local_uuid: *const c_char,
+    local_device_id: c_uint,
+    identity_store: *const FfiIdentityKeyStoreStruct,
+    session_store: *const FfiSessionStoreStruct,
+    prekey_store: *const FfiPreKeyStoreStruct,
+    signed_prekey_store: *const FfiSignedPreKeyStoreStruct,
+    ctx: *mut c_void,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let ctext = as_slice(ctext, ctext_len)?;
+        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
+        let mut identity_store = FfiIdentityKeyStore::new(identity_store)?;
+        let mut session_store = FfiSessionStore::new(session_store)?;
+        let mut prekey_store = FfiPreKeyStore::new(prekey_store)?;
+        let mut signed_prekey_store = FfiSignedPreKeyStore::new(signed_prekey_store)?;
+
+        let local_e164 = read_optional_c_string(local_e164)?;
+        let local_uuid = read_optional_c_string(local_uuid)?;
+
+        let decrypted = expect_ready(sealed_sender_decrypt(
+            &ctext,
+            trust_root,
+            timestamp,
+            local_e164,
+            local_uuid,
+            local_device_id,
+            &mut identity_store,
+            &mut session_store,
+            &mut prekey_store,
+            &mut signed_prekey_store,
+            Some(ctx),
+        ))?;
+
+        write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
+        write_optional_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
+        write_uint32_to(sender_device_id, Ok(decrypted.device_id))?;
+        write_bytearray_to(out, out_len, Ok(decrypted.message))
+    })
+}
