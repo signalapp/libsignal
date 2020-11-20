@@ -9,6 +9,7 @@ use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
 
 pub(crate) use jni::objects::JClass;
+pub(crate) use jni::strings::JNIString;
 pub(crate) use jni::sys::{jbyteArray, jstring};
 pub(crate) use jni::JNIEnv;
 
@@ -176,10 +177,7 @@ pub fn to_jbytearray<T: AsRef<[u8]>>(
 ) -> Result<jbyteArray, SignalJniError> {
     let data = data?;
     let data: &[u8] = data.as_ref();
-    let out = env.new_byte_array(data.len() as i32)?;
-    let buf: Vec<i8> = data.iter().map(|i| *i as i8).collect();
-    env.set_byte_array_region(out, 0, buf.as_slice())?;
-    Ok(out)
+    Ok(env.byte_array_from_slice(data)?)
 }
 
 macro_rules! jni_bridge_destroy {
@@ -237,9 +235,12 @@ macro_rules! jni_bridge_get_bytearray {
                 _class: jni::JClass,
                 handle: jni::ObjectHandle,
             ) -> jni::jbyteArray {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<impl AsRef<[u8]> + 'a, SignalProtocolError> => $body);
                 jni::run_ffi_safe(&env, || {
                     let obj = jni::native_handle_cast::<$typ>(handle)?;
-                    jni::to_jbytearray(&env, $body(obj))
+                    jni::to_jbytearray(&env, inner_get(obj))
                 })
             }
         }
@@ -261,9 +262,12 @@ macro_rules! jni_bridge_get_optional_bytearray {
                 _class: jni::JClass,
                 handle: jni::ObjectHandle,
             ) -> jni::jbyteArray {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<Option<impl AsRef<[u8]> + 'a>, SignalProtocolError> => $body);
                 jni::run_ffi_safe(&env, || {
                     let obj = jni::native_handle_cast::<$typ>(handle)?;
-                    match $body(obj)? {
+                    match inner_get(obj)? {
                         Some(v) => jni::to_jbytearray(&env, Ok(v)),
                         None => Ok(std::ptr::null_mut()),
                     }
@@ -288,10 +292,12 @@ macro_rules! jni_bridge_get_string {
                 _class: jni::JClass,
                 handle: jni::ObjectHandle,
             ) -> jni::jstring {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<impl Into<jni::JNIString> + 'a, SignalProtocolError> => $body);
                 jni::run_ffi_safe(&env, || {
                     let obj = jni::native_handle_cast::<$typ>(handle)?;
-                    let body: fn(&$typ) -> Result<String, SignalProtocolError> = $body;
-                    Ok(env.new_string(body(obj)?)?.into_inner())
+                    Ok(env.new_string(inner_get(obj)?)?.into_inner())
                 })
             }
         }
@@ -314,10 +320,12 @@ macro_rules! jni_bridge_get_optional_string {
                 _class: jni::JClass,
                 handle: jni::ObjectHandle,
             ) -> jni::jstring {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<Option<impl Into<jni::JNIString> + 'a>, SignalProtocolError> => $body);
                 jni::run_ffi_safe(&env, || {
                     let obj = jni::native_handle_cast::<$typ>(handle)?;
-                    let body: fn(&$typ) -> Result<Option<String>, SignalProtocolError> = $body;
-                    match body(obj)? {
+                    match inner_get(obj)? {
                         Some(s) => Ok(env.new_string(s)?.into_inner()),
                         None => Ok(std::ptr::null_mut())
                     }

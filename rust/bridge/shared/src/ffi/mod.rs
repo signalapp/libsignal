@@ -77,14 +77,14 @@ pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
 
 pub unsafe fn write_cstr_to(
     out: *mut *const c_char,
-    value: Result<String, SignalProtocolError>,
+    value: Result<impl Into<Vec<u8>>, SignalProtocolError>,
 ) -> Result<(), SignalFfiError> {
     write_optional_cstr_to(out, value.map(Some))
 }
 
 pub unsafe fn write_optional_cstr_to(
     out: *mut *const c_char,
-    value: Result<Option<String>, SignalProtocolError>,
+    value: Result<Option<impl Into<Vec<u8>>>, SignalProtocolError>,
 ) -> Result<(), SignalFfiError> {
     if out.is_null() {
         return Err(SignalFfiError::NullPointer);
@@ -168,9 +168,12 @@ macro_rules! ffi_bridge_get_bytearray {
                 out: *mut *const libc::c_uchar,
                 out_len: *mut libc::size_t,
             ) -> *mut ffi::SignalFfiError {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<impl Into<Box<[u8]>> + 'a, SignalProtocolError> => $body);
                 ffi::run_ffi_safe(|| {
                     let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_bytearray_to(out, out_len, $body(obj))
+                    ffi::write_bytearray_to(out, out_len, inner_get(obj))
                 })
             }
         }
@@ -196,9 +199,12 @@ macro_rules! ffi_bridge_get_string {
                 obj: *const $typ,
                 out: *mut *const libc::c_char,
             ) -> *mut ffi::SignalFfiError {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<impl Into<Vec<u8>> + 'a, SignalProtocolError> => $body);
                 ffi::run_ffi_safe(|| {
                     let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_cstr_to(out, $body(obj))
+                    ffi::write_cstr_to(out, inner_get(obj))
                 })
             }
         }
@@ -219,9 +225,12 @@ macro_rules! ffi_bridge_get_optional_string {
                 obj: *const $typ,
                 out: *mut *const libc::c_char,
             ) -> *mut ffi::SignalFfiError {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<Option<impl Into<Vec<u8>> + 'a>, SignalProtocolError> => $body);
                 ffi::run_ffi_safe(|| {
                     let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_optional_cstr_to(out, $body(obj))
+                    ffi::write_optional_cstr_to(out, inner_get(obj))
                 })
             }
         }

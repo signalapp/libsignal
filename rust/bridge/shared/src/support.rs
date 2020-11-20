@@ -5,6 +5,20 @@
 
 pub use paste::paste;
 
+/// Wraps an expression in a function with a given name and type...
+/// except that if the expression is a closure with a single typeless argument,
+/// it's flattened into the function.
+///
+/// This allows the expression to return a value with a lifetime depending on the input.
+macro_rules! expr_as_fn {
+    ($name:ident $(<$l:lifetime>)? ($_:ident: $arg_ty:ty) -> $result:ty => |$arg:ident| $e:expr) => {
+        fn $name $(<$l>)? ($arg: $arg_ty) -> $result { $e }
+    };
+    ($name:ident $(<$l:lifetime>)? ($arg:ident: $arg_ty:ty) -> $result:ty => $e:expr) => {
+        fn $name $(<$l>)? ($arg: $arg_ty) -> $result { $e($arg) }
+    };
+}
+
 macro_rules! bridge_destroy {
     ($typ:ty $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? ) => {
         #[cfg(feature = "ffi")]

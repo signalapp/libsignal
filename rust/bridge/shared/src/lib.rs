@@ -27,13 +27,13 @@ use support::*;
 
 bridge_destroy!(ProtocolAddress, ffi = address);
 bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
-    |p: &ProtocolAddress| Ok(p.name().to_string())
+    |p| Ok(p.name())
 );
 
 bridge_destroy!(PublicKey, ffi = publickey, jni = ECPublicKey);
 bridge_deserialize!(PublicKey::deserialize, ffi = publickey, jni = None);
 bridge_get_bytearray!(serialize(PublicKey), ffi = publickey_serialize, jni = ECPublicKey_1Serialize =>
-    |k: &PublicKey| Ok(k.serialize()));
+    |k| Ok(k.serialize()));
 bridge_get_bytearray!(
     get_public_key_bytes(PublicKey),
     ffi = publickey_get_public_key_bytes,
@@ -51,15 +51,14 @@ bridge_get_bytearray!(
     serialize(PrivateKey),
     ffi = privatekey_serialize,
     jni = ECPrivateKey_1Serialize =>
-    |k: &PrivateKey| Ok(k.serialize())
+    |k| Ok(k.serialize())
 );
-
 
 bridge_destroy!(Fingerprint, jni = NumericFingerprintGenerator);
 bridge_get_bytearray!(
     scannable_encoding(Fingerprint),
     jni = NumericFingerprintGenerator_1GetScannableEncoding =>
-    |f: &Fingerprint| f.scannable.serialize()
+    |f| f.scannable.serialize()
 );
 bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerator_1GetDisplayString =>
     Fingerprint::display_string
@@ -68,55 +67,47 @@ bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerato
 bridge_destroy!(SignalMessage, ffi = message);
 bridge_deserialize!(SignalMessage::try_from, ffi = message);
 bridge_get_bytearray!(get_sender_ratchet_key(SignalMessage), ffi = None =>
-    |m: &SignalMessage| Ok(m.sender_ratchet_key().serialize())
+    |m| Ok(m.sender_ratchet_key().serialize())
 );
 bridge_get_bytearray!(get_body(SignalMessage), ffi = message_get_body =>
-    |m: &SignalMessage| Ok(m.body().to_vec())
+    |m| Ok(m.body())
 );
 bridge_get_bytearray!(get_serialized(SignalMessage), ffi = message_get_serialized =>
-    |m: &SignalMessage| Ok(m.serialized().to_vec())
+    |m| Ok(m.serialized())
 );
 
 bridge_destroy!(PreKeySignalMessage);
 bridge_deserialize!(PreKeySignalMessage::try_from);
 bridge_get_bytearray!(serialize(PreKeySignalMessage), jni = PreKeySignalMessage_1GetSerialized =>
-    |m: &PreKeySignalMessage| Ok(m.serialized().to_vec())
+    |m| Ok(m.serialized())
 );
 bridge_get_bytearray!(get_base_key(PreKeySignalMessage), ffi = None =>
-    |m: &PreKeySignalMessage| Ok(m.base_key().serialize())
+    |m| Ok(m.base_key().serialize())
 );
 bridge_get_bytearray!(get_identity_key(PreKeySignalMessage), ffi = None =>
-    |m: &PreKeySignalMessage| Ok(m.identity_key().serialize())
+    |m| Ok(m.identity_key().serialize())
 );
 bridge_get_bytearray!(get_signal_message(PreKeySignalMessage), ffi = None =>
-    |m: &PreKeySignalMessage| Ok(m.message().serialized().to_vec())
+    |m| Ok(m.message().serialized())
 );
 
 bridge_destroy!(SenderKeyMessage);
 bridge_deserialize!(SenderKeyMessage::try_from);
-bridge_get_bytearray!(get_cipher_text(SenderKeyMessage) =>
-    |m: &SenderKeyMessage| Ok(m.ciphertext().to_vec())
-);
-bridge_get_bytearray!(serialize(SenderKeyMessage), jni = SenderKeyMessage_1GetSerialized =>
-    |m: &SenderKeyMessage| Ok(m.serialized().to_vec())
-);
+bridge_get_bytearray!(get_cipher_text(SenderKeyMessage) => |m| Ok(m.ciphertext()));
+bridge_get_bytearray!(serialize(SenderKeyMessage), jni = SenderKeyMessage_1GetSerialized => |m| Ok(m.serialized()));
 
 bridge_destroy!(SenderKeyDistributionMessage);
 bridge_deserialize!(SenderKeyDistributionMessage::try_from);
-bridge_get_bytearray!(get_chain_key(SenderKeyDistributionMessage) =>
-    |m: &SenderKeyDistributionMessage| Ok(m.chain_key()?.to_vec())
-);
+bridge_get_bytearray!(get_chain_key(SenderKeyDistributionMessage) => SenderKeyDistributionMessage::chain_key);
 bridge_get_bytearray!(get_signature_key(SenderKeyDistributionMessage), ffi = None =>
-    |m: &SenderKeyDistributionMessage| Ok(m.signing_key()?.serialize())
+    |m| Ok(m.signing_key()?.serialize())
 );
 bridge_get_bytearray!(serialize(SenderKeyDistributionMessage), jni = SenderKeyDistributionMessage_1GetSerialized =>
-    |m: &SenderKeyDistributionMessage| Ok(m.serialized().to_vec())
+    |m| Ok(m.serialized())
 );
 
 bridge_destroy!(PreKeyBundle);
-bridge_get_bytearray!(get_signed_pre_key_signature(PreKeyBundle) =>
-    |m: &PreKeyBundle| Ok(m.signed_pre_key_signature()?.to_vec())
-);
+bridge_get_bytearray!(get_signed_pre_key_signature(PreKeyBundle) => PreKeyBundle::signed_pre_key_signature);
 
 bridge_destroy!(SignedPreKeyRecord);
 bridge_deserialize!(SignedPreKeyRecord::deserialize);
@@ -133,7 +124,7 @@ bridge_get_bytearray!(serialize(PreKeyRecord), jni = PreKeyRecord_1GetSerialized
 
 bridge_destroy!(SenderKeyName);
 bridge_get_string!(get_group_id(SenderKeyName) => SenderKeyName::group_id);
-bridge_get_string!(get_sender_name(SenderKeyName) => |skn: &SenderKeyName| Ok(skn.sender()?.name().to_string()));
+bridge_get_string!(get_sender_name(SenderKeyName) => |skn| Ok(skn.sender()?.name().to_string()));
 
 bridge_destroy!(SenderKeyRecord);
 bridge_deserialize!(SenderKeyRecord::deserialize);
@@ -154,12 +145,8 @@ bridge_deserialize!(SenderCertificate::deserialize);
 bridge_get_bytearray!(get_serialized(SenderCertificate) => SenderCertificate::serialized);
 bridge_get_bytearray!(get_certificate(SenderCertificate) => SenderCertificate::certificate);
 bridge_get_bytearray!(get_signature(SenderCertificate) => SenderCertificate::signature);
-bridge_get_optional_string!(get_sender_uuid(SenderCertificate) =>
-    |cert: &SenderCertificate| Ok(cert.sender_uuid()?.map(|s| s.to_string()))
-);
-bridge_get_optional_string!(get_sender_e164(SenderCertificate) =>
-    |cert: &SenderCertificate| Ok(cert.sender_e164()?.map(|s| s.to_string()))
-);
+bridge_get_optional_string!(get_sender_uuid(SenderCertificate) => SenderCertificate::sender_uuid);
+bridge_get_optional_string!(get_sender_e164(SenderCertificate) => SenderCertificate::sender_e164);
 
 bridge_destroy!(UnidentifiedSenderMessageContent);
 bridge_deserialize!(UnidentifiedSenderMessageContent::deserialize);
@@ -188,7 +175,7 @@ bridge_destroy!(SessionRecord);
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(serialize(SessionRecord) => SessionRecord::serialize);
 bridge_get_bytearray!(get_alice_base_key(SessionRecord), ffi = None =>
-    |s: &SessionRecord| Ok(s.alice_base_key()?.to_vec())
+    |s| Ok(s.alice_base_key()?.to_vec())
 );
 bridge_get_bytearray!(get_local_identity_key_public(SessionRecord), ffi = None =>
     SessionRecord::local_identity_key_bytes
