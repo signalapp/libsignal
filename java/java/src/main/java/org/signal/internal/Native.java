@@ -150,6 +150,7 @@ public final class Native {
   public static native byte[] SenderCertificate_GetSerialized(long handle);
   public static native long SenderCertificate_GetServerCertificate(long handle);
   public static native byte[] SenderCertificate_GetSignature(long handle);
+  public static native long SenderCertificate_New(String senderUuid, String senderE164, int senderDeviceId, long senderKey, long expiration, long signerCert, long signerKey);
   public static native long SenderCertificate_PreferredAddress(long cert, SessionStore sessionStore);
   public static native boolean SenderCertificate_Validate(long cert, long key, long time);
 
@@ -189,6 +190,7 @@ public final class Native {
   public static native int ServerCertificate_GetKeyId(long handle);
   public static native byte[] ServerCertificate_GetSerialized(long handle);
   public static native byte[] ServerCertificate_GetSignature(long handle);
+  public static native long ServerCertificate_New(int keyId, long serverKey, long trustRoot);
 
   public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
 

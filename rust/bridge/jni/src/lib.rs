@@ -1668,6 +1668,26 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKey(PublicKey) from ServerCertificate,
                           ServerCertificate::public_key);
 
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ServerCertificate_1New(
+    env: JNIEnv,
+    _class: JClass,
+    key_id: jint,
+    server_key: ObjectHandle,
+    trust_root: ObjectHandle,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let key_id = jint_to_u32(key_id)?;
+        let server_key = native_handle_cast::<PublicKey>(server_key)?;
+        let trust_root = native_handle_cast::<PrivateKey>(trust_root)?;
+        let mut rng = rand::rngs::OsRng;
+
+        let sc = ServerCertificate::new(key_id, *server_key, trust_root, &mut rng)?;
+
+        box_object::<ServerCertificate>(Ok(sc))
+    })
+}
+
 // Sender Certificate
 jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderCertificate_1Destroy destroys SenderCertificate);
 jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderCertificate_1Deserialize is SenderCertificate::deserialize);
@@ -1717,6 +1737,55 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
         let time = jlong_to_u64(time)?;
         let valid = cert.validate(key, time)?;
         Ok(valid as jboolean)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1New(
+    env: JNIEnv,
+    _class: JClass,
+    sender_uuid: JString,
+    sender_e164: JString,
+    sender_device_id: jint,
+    sender_key: ObjectHandle,
+    expiration: jlong,
+    signer_cert: ObjectHandle,
+    signer_key: ObjectHandle,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let sender_uuid: Option<String> = if sender_uuid.is_null() {
+            None
+        } else {
+            Some(env.get_string(sender_uuid)?.into())
+        };
+
+        let sender_e164: Option<String> = if sender_e164.is_null() {
+            None
+        } else {
+            Some(env.get_string(sender_e164)?.into())
+        };
+
+        let sender_device_id = jint_to_u32(sender_device_id)?;
+        let sender_key = native_handle_cast::<PublicKey>(sender_key)?;
+
+        let expiration = jlong_to_u64(expiration)?;
+        let signer_cert = native_handle_cast::<ServerCertificate>(signer_cert)?;
+        let signer_key = native_handle_cast::<PrivateKey>(signer_key)?;
+
+        let mut rng = rand::rngs::OsRng;
+
+        let sc = SenderCertificate::new(
+            sender_uuid,
+            sender_e164,
+            *sender_key,
+            sender_device_id,
+            expiration,
+            signer_cert.clone(),
+            signer_key,
+            &mut rng,
+        )?;
+
+        box_object::<SenderCertificate>(Ok(sc))
     })
 }
 

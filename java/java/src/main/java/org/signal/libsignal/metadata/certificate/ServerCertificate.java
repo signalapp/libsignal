@@ -46,4 +46,8 @@ public class ServerCertificate {
   public byte[] getSignature() {
     return Native.ServerCertificate_GetSignature(this.handle);
   }
+
+  public long nativeHandle() {
+    return this.handle;
+  }
 }
