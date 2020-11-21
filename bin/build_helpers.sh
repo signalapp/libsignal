@@ -15,7 +15,7 @@ check_rust() {
 
   if ! which rustup > /dev/null; then
     echo 'error: rustup not found in PATH' >&2
-    echo 'note: Rust can be installed from https://rustup.rs/' >&2
+    echo 'note: Rustup can be installed from https://rustup.rs/' >&2
     exit 1
   fi
 
