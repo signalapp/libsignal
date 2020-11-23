@@ -315,7 +315,17 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
     }
 }
 
-pub fn exception_check(env: &JNIEnv, fn_name: &'static str) -> Result<(), SignalJniError> {
+pub fn call_method_checked<'a>(
+    env: &JNIEnv<'a>,
+    obj: impl Into<JObject<'a>>,
+    fn_name: &'static str,
+    sig: &'static str,
+    args: &[JValue<'_>],
+) -> Result<JValue<'a>, SignalJniError> {
+    // Note that we are *not* unwrapping the result yet!
+    // We need to check for exceptions *first*.
+    let result = env.call_method(obj, fn_name, sig, args);
+
     fn exception_class_name(env: &JNIEnv, exn: JThrowable) -> Result<String, SignalJniError> {
         let class_type = env.call_method(exn, "getClass", "()Ljava/lang/Class;", &[])?;
         if let JValue::Object(class_type) = class_type {
@@ -367,7 +377,7 @@ pub fn exception_check(env: &JNIEnv, fn_name: &'static str) -> Result<(), Signal
         ));
     }
 
-    Ok(())
+    Ok(result?)
 }
 
 pub fn check_jobject_type(
@@ -395,8 +405,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
-    let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
-    exception_check(env, callback_fn)?;
+    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,
@@ -412,8 +421,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
         return Ok(None);
     }
 
-    let handle = env.call_method(obj, "nativeHandle", "()J", &[])?;
-    exception_check(env, "nativeHandle")?;
+    let handle = call_method_checked(env, obj, "nativeHandle", "()J", &[])?;
     match handle {
         JValue::Long(handle) => {
             if handle == 0 {
@@ -436,8 +444,7 @@ pub fn get_object_with_serialization(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
-    let rvalue = env.call_method(store_obj, callback_fn, callback_sig, &callback_args)?;
-    exception_check(env, callback_fn)?;
+    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,
@@ -453,8 +460,7 @@ pub fn get_object_with_serialization(
         return Ok(None);
     }
 
-    let bytes = env.call_method(obj, "serialize", "()[B", &[])?;
-    exception_check(env, "serialize")?;
+    let bytes = call_method_checked(env, obj, "serialize", "()[B", &[])?;
 
     match bytes {
         JValue::Object(o) => Ok(Some(env.convert_byte_array(*o)?)),
