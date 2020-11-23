@@ -315,12 +315,13 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
     }
 }
 
-pub fn call_method_checked<'a>(
+pub fn call_method_with_exception_as_null<'a>(
     env: &JNIEnv<'a>,
     obj: impl Into<JObject<'a>>,
     fn_name: &'static str,
     sig: &'static str,
     args: &[JValue<'_>],
+    exception_to_treat_as_null: Option<&'static str>,
 ) -> Result<JValue<'a>, SignalJniError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
@@ -353,6 +354,12 @@ pub fn call_method_checked<'a>(
         let throwable = env.exception_occurred()?;
         env.exception_clear()?;
 
+        if let Some(exception_to_treat_as_null) = exception_to_treat_as_null {
+            if env.is_instance_of(throwable, exception_to_treat_as_null)? {
+                return Ok(JValue::Object(JObject::null()));
+            }
+        }
+
         let getmessage_sig = "()Ljava/lang/String;";
 
         let exn_type = exception_class_name(env, throwable).ok();
@@ -380,6 +387,16 @@ pub fn call_method_checked<'a>(
     Ok(result?)
 }
 
+pub fn call_method_checked<'a>(
+    env: &JNIEnv<'a>,
+    obj: impl Into<JObject<'a>>,
+    fn_name: &'static str,
+    sig: &'static str,
+    args: &[JValue<'_>],
+) -> Result<JValue<'a>, SignalJniError> {
+    call_method_with_exception_as_null(env, obj, fn_name, sig, args, None)
+}
+
 pub fn check_jobject_type(
     env: &JNIEnv,
     obj: jobject,
@@ -404,8 +421,16 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_args: &[JValue],
     callback_sig: &'static str,
     callback_fn: &'static str,
+    exception_to_treat_as_none: Option<&'static str>,
 ) -> Result<Option<T>, SignalJniError> {
-    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
+    let rvalue = call_method_with_exception_as_null(
+        env,
+        store_obj,
+        callback_fn,
+        callback_sig,
+        &callback_args,
+        exception_to_treat_as_none,
+    )?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,

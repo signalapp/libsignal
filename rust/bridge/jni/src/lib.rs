@@ -1022,6 +1022,7 @@ impl<'a> JniPreKeyStore<'a> {
             &callback_args,
             callback_sig,
             "loadPreKey",
+            Some("org/whispersystems/libsignal/InvalidKeyIdException"),
         )?;
         match pk {
             Some(pk) => Ok(pk),
@@ -1122,6 +1123,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
             &callback_args,
             callback_sig,
             "loadSignedPreKey",
+            Some("org/whispersystems/libsignal/InvalidKeyIdException"),
         )?;
         match spk {
             Some(spk) => Ok(spk),
@@ -1459,6 +1461,7 @@ impl<'a> JniSenderKeyStore<'a> {
             &callback_args,
             callback_sig,
             "loadSenderKey",
+            None,
         )?;
 
         Ok(skr)
