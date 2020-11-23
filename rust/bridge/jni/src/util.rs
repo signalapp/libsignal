@@ -363,6 +363,8 @@ pub fn call_method_with_exception_as_null<'a>(
         let getmessage_sig = "()Ljava/lang/String;";
 
         let exn_type = exception_class_name(env, throwable).ok();
+        // Clear again in case we got an exception looking up the class name.
+        env.exception_clear()?;
 
         if let Ok(jmessage) = env.call_method(throwable, "getMessage", getmessage_sig, &[]) {
             if let JValue::Object(o) = jmessage {
@@ -374,6 +376,8 @@ pub fn call_method_with_exception_as_null<'a>(
                 ));
             }
         }
+        // Clear *again* in case we got an exception reading the message.
+        env.exception_clear()?;
 
         return Err(SignalJniError::Signal(
             SignalProtocolError::ApplicationCallbackThrewException(
