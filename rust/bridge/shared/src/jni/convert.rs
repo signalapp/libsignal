@@ -35,6 +35,24 @@ impl<'a> ArgTypeInfo<'a> for u32 {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for Option<u32> {
+    type ArgType = jint;
+    fn convert_from(env: &JNIEnv<'a>, foreign: jint) -> Result<Self, SignalJniError> {
+        if foreign < 0 {
+            Ok(None)
+        } else {
+            u32::convert_from(env, foreign).map(Some)
+        }
+    }
+}
+
+impl<'a> ArgTypeInfo<'a> for u8 {
+    type ArgType = jint;
+    fn convert_from(_env: &JNIEnv<'a>, foreign: jint) -> Result<Self, SignalJniError> {
+        jint_to_u8(foreign)
+    }
+}
+
 impl<'a> ArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &JNIEnv<'a>, foreign: JString<'a>) -> Result<Self, SignalJniError> {
@@ -91,6 +109,8 @@ macro_rules! native_handle {
 
 native_handle!(PublicKey);
 native_handle!(ProtocolAddress);
+native_handle!(SignalMessage);
+native_handle!(PreKeySignalMessage);
 
 macro_rules! trivial {
     ($typ:ty) => {
@@ -108,7 +128,9 @@ macro_rules! trivial {
 trivial!(i32);
 
 macro_rules! jni_arg_type {
+    (u8) => (jni::jint);
     (u32) => (jni::jint);
+    (Option<u32>) => (jni::jint);
     (String) => (jni::JString);
     (&[u8]) => (jni::jbyteArray);
     (& $typ:ty) => (jni::ObjectHandle);

@@ -6,7 +6,6 @@
 use jni::objects::{JObject, JValue};
 use jni::sys::{jint, jlong, jobject};
 use jni::JNIEnv;
-use std::convert::TryFrom;
 
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::SignalProtocolError;
@@ -26,13 +25,6 @@ pub fn jlong_to_u64(v: jlong) -> Result<u64, SignalJniError> {
         return Err(SignalJniError::IntegerOverflow(format!("{} to u64", v)));
     }
     Ok(v as u64)
-}
-
-pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
-    match u8::try_from(v) {
-        Err(_) => Err(SignalJniError::IntegerOverflow(format!("{} to u8", v))),
-        Ok(v) => Ok(v),
-    }
 }
 
 pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {

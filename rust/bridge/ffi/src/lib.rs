@@ -246,43 +246,6 @@ pub unsafe extern "C" fn signal_fingerprint_new(
 
 ffi_fn_clone!(signal_fingerprint_clone clones Fingerprint);
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_message_new(
-    obj: *mut *mut SignalMessage,
-    message_version: c_uchar,
-    mac_key: *const c_uchar,
-    mac_key_len: size_t,
-    sender_ratchet_key: *const PublicKey,
-    counter: c_uint,
-    previous_counter: c_uint,
-    ciphertext: *const c_uchar,
-    ciphertext_len: size_t,
-    sender_identity_key: *const PublicKey,
-    receiver_identity_key: *const PublicKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let mac_key = as_slice(mac_key, mac_key_len)?;
-        let sender_ratchet_key = native_handle_cast::<PublicKey>(sender_ratchet_key)?;
-        let ciphertext = as_slice(ciphertext, ciphertext_len)?;
-
-        let sender_identity_key = native_handle_cast::<PublicKey>(sender_identity_key)?;
-        let receiver_identity_key = native_handle_cast::<PublicKey>(receiver_identity_key)?;
-
-        let msg = SignalMessage::new(
-            message_version,
-            &mac_key,
-            *sender_ratchet_key,
-            counter,
-            previous_counter,
-            &ciphertext,
-            &IdentityKey::new(*sender_identity_key),
-            &IdentityKey::new(*receiver_identity_key),
-        );
-
-        box_object::<SignalMessage>(obj, msg)
-    })
-}
-
 ffi_fn_clone!(signal_message_clone clones SignalMessage);
 
 ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
@@ -293,60 +256,6 @@ ffi_fn_get_uint32!(signal_message_get_message_version(SignalMessage) using
 
 ffi_fn_get_uint32!(signal_message_get_counter(SignalMessage) using
                    |msg: &SignalMessage| { Ok(msg.counter()) });
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_message_verify_mac(
-    result: *mut bool,
-    handle: *const SignalMessage,
-    sender_identity_key: *const PublicKey,
-    receiver_identity_key: *const PublicKey,
-    mac_key: *const c_uchar,
-    mac_key_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let msg = native_handle_cast::<SignalMessage>(handle)?;
-        let sender_identity_key = native_handle_cast::<PublicKey>(sender_identity_key)?;
-        let receiver_identity_key = native_handle_cast::<PublicKey>(receiver_identity_key)?;
-        let mac_key = as_slice(mac_key, mac_key_len)?;
-
-        *result = msg.verify_mac(
-            &IdentityKey::new(*sender_identity_key),
-            &IdentityKey::new(*receiver_identity_key),
-            &mac_key,
-        )?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_pre_key_signal_message_new(
-    obj: *mut *mut PreKeySignalMessage,
-    message_version: c_uchar,
-    registration_id: c_uint,
-    pre_key_id: *const c_uint,
-    signed_pre_key_id: c_uint,
-    base_key: *const PublicKey,
-    identity_key: *const PublicKey,
-    signal_message: *const SignalMessage,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let pre_key_id = get_optional_uint32(pre_key_id);
-        let base_key = native_handle_cast::<PublicKey>(base_key)?;
-        let identity_key = native_handle_cast::<PublicKey>(identity_key)?;
-        let signal_message = native_handle_cast::<SignalMessage>(signal_message)?;
-
-        let msg = PreKeySignalMessage::new(
-            message_version,
-            registration_id,
-            pre_key_id,
-            signed_pre_key_id,
-            *base_key,
-            IdentityKey::new(*identity_key),
-            signal_message.clone(),
-        );
-        box_object::<PreKeySignalMessage>(obj, msg)
-    })
-}
 
 ffi_fn_clone!(signal_pre_key_signal_message_clone clones PreKeySignalMessage);
 
