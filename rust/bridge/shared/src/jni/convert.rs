@@ -4,7 +4,7 @@
 //
 
 use jni::JNIEnv;
-use jni::objects::JString;
+use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use libsignal_protocol_rust::*;
 use std::borrow::Borrow;
@@ -20,7 +20,7 @@ pub(crate) trait ArgTypeInfo<'a>: Sized {
 pub(crate) trait RefArgTypeInfo<'a>: Deref {
     type ArgType;
     type StoredType: Borrow<Self::Target> + 'a;
-    fn convert_from(env: &JNIEnv<'a>, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError>;
+    fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError>;
 }
 
 pub(crate) trait ResultTypeInfo<'a>: Sized {
@@ -60,11 +60,27 @@ impl<'a> ArgTypeInfo<'a> for String {
     }
 }
 
-impl<'a> RefArgTypeInfo<'a> for &'_ [u8] {
+pub(crate) struct AutoByteSlice<'a> {
+    jni_array: AutoByteArray<'a, 'a>,
+    len: usize,
+}
+
+impl<'a> Borrow<[u8]> for AutoByteSlice<'a> {
+    fn borrow(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.jni_array.as_ptr() as *const u8, self.len) }
+    }
+}
+
+impl<'a> RefArgTypeInfo<'a> for &[u8] {
     type ArgType = jbyteArray;
-    type StoredType = Vec<u8>;
-    fn convert_from(env: &JNIEnv<'a>, foreign: Self::ArgType) -> Result<Vec<u8>, SignalJniError> {
-        Ok(env.convert_byte_array(foreign)?)
+    type StoredType = AutoByteSlice<'a>;
+    fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+        let len = env.get_array_length(foreign)?;
+        assert!(len >= 0);
+        Ok(AutoByteSlice {
+            jni_array: env.get_auto_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?,
+            len: len as usize,
+        })
     }
 }
 
