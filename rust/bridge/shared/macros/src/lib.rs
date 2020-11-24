@@ -14,6 +14,16 @@ use syn::spanned::Spanned;
 use syn::*;
 use unzip3::Unzip3;
 
+fn value_for_meta_key<'a>(
+    meta_values: &'a Punctuated<MetaNameValue, Token![,]>,
+    key: &str,
+) -> Option<&'a Lit> {
+    meta_values
+        .iter()
+        .find(|meta| meta.path.get_ident().map_or(false, |ident| ident == key))
+        .map(|meta| &meta.lit)
+}
+
 fn ffi_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
     let name = format_ident!("signal_{}", name);
 
@@ -185,31 +195,19 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let item_names =
         parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
-    let ffi_name = match item_names
-        .iter()
-        .find(|meta| meta.path.get_ident().map_or(false, |ident| ident == "ffi"))
-    {
-        Some(MetaNameValue {
-            lit: Lit::Str(name_str),
-            ..
-        }) => name_str.value(),
-        Some(meta) => {
-            return Error::new(meta.lit.span(), "ffi name must be a string literal")
+    let ffi_name = match value_for_meta_key(&item_names, "ffi") {
+        Some(Lit::Str(name_str)) => name_str.value(),
+        Some(value) => {
+            return Error::new(value.span(), "ffi name must be a string literal")
                 .to_compile_error()
                 .into()
         }
         None => ffi_name_from_ident(&function.sig.ident),
     };
-    let jni_name = match item_names
-        .iter()
-        .find(|meta| meta.path.get_ident().map_or(false, |ident| ident == "jni"))
-    {
-        Some(MetaNameValue {
-            lit: Lit::Str(name_str),
-            ..
-        }) => name_str.value(),
-        Some(meta) => {
-            return Error::new(meta.lit.span(), "jni name must be a string literal")
+    let jni_name = match value_for_meta_key(&item_names, "jni") {
+        Some(Lit::Str(name_str)) => name_str.value(),
+        Some(value) => {
+            return Error::new(value.span(), "jni name must be a string literal")
                 .to_compile_error()
                 .into()
         }
