@@ -5,6 +5,7 @@
 
 #![feature(box_patterns)]
 
+use heck::SnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::*;
@@ -69,6 +70,10 @@ fn ffi_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
     }
 }
 
+fn ffi_name_from_ident(ident: &Ident) -> String {
+    ident.to_string().to_snake_case()
+}
+
 fn jni_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
     let name = format_ident!("Java_org_signal_client_internal_Native_{}", name);
 
@@ -118,6 +123,10 @@ fn jni_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
     }
 }
 
+fn jni_name_from_ident(ident: &Ident) -> String {
+    ident.to_string().replace("_", "_1")
+}
+
 #[proc_macro_attribute]
 pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
@@ -126,19 +135,23 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     let ffi_name = match item_names.iter().find(|meta| meta.path.get_ident().map_or(false, |ident| ident == "ffi")) {
         Some(MetaNameValue { lit: Lit::Str(name_str), .. }) => name_str.value(),
         Some(meta) => return Error::new(meta.lit.span(), "ffi name must be a string literal").to_compile_error().into(),
-        None => function.sig.ident.to_string(),
+        None => ffi_name_from_ident(&function.sig.ident)
     };
     let jni_name = match item_names.iter().find(|meta| meta.path.get_ident().map_or(false, |ident| ident == "jni")) {
         Some(MetaNameValue { lit: Lit::Str(name_str), .. }) => name_str.value(),
         Some(meta) => return Error::new(meta.lit.span(), "jni name must be a string literal").to_compile_error().into(),
-        None => function.sig.ident.to_string(),
+        None => jni_name_from_ident(&function.sig.ident),
     };
 
     let ffi_fn = ffi_bridge_fn(ffi_name, &function.sig);
     let jni_fn = jni_bridge_fn(jni_name, &function.sig);
 
-    let mut result = function.into_token_stream();
-    result.extend(ffi_fn);
-    result.extend(jni_fn);
-    result.into()
+    quote!(
+        #[allow(non_snake_case)]
+        #function
+
+        #ffi_fn
+
+        #jni_fn
+    ).into()
 }

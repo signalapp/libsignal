@@ -30,8 +30,8 @@ bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
     |p| Ok(p.name())
 );
 
-#[bridge_fn(jni = "ProtocolAddress_1New")]
-fn address_new(name: String, device_id: u32) -> ProtocolAddress {
+#[bridge_fn(ffi = "address_new")]
+fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id)
 }
 
@@ -46,8 +46,8 @@ bridge_get_bytearray!(
     PublicKey::public_key_bytes
 );
 
-#[bridge_fn(jni = "ECPublicKey_1Compare")]
-fn publickey_compare(
+#[bridge_fn(ffi = "publickey_compare")]
+fn ECPublicKey_Compare(
     key1: &PublicKey,
     key2: &PublicKey,
 ) -> i32 {
@@ -58,8 +58,8 @@ fn publickey_compare(
     }
 }
 
-#[bridge_fn(jni = "ECPublicKey_1Verify")]
-fn publickey_verify(
+#[bridge_fn(ffi = "publickey_verify")]
+fn ECPublicKey_Verify(
     key: &PublicKey,
     message: &[u8],
     signature: &[u8],
@@ -90,12 +90,12 @@ bridge_get_bytearray!(
 bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerator_1GetDisplayString =>
     Fingerprint::display_string
 );
-#[bridge_fn(jni = "DisplayableFingerprint_1Format")]
-fn fingerprint_format(local: &[u8], remote: &[u8]) -> Result<String, SignalProtocolError> {
-    DisplayableFingerprint::new(&local, &remote).map(|f| format!("{}", f))
+#[bridge_fn(ffi = "fingerprint_format")]
+fn DisplayableFingerprint_Format(local: &[u8], remote: &[u8]) -> Result<String, SignalProtocolError> {
+    DisplayableFingerprint::new(&local, &remote).map(|f| f.to_string())
 }
-#[bridge_fn(jni = "ScannableFingerprint_1Compare")]
-fn fingerprint_compare(fprint1: &[u8], fprint2: &[u8]) -> Result<bool, SignalProtocolError> {
+#[bridge_fn(ffi = "fingerprint_compare")]
+fn ScannableFingerprint_Compare(fprint1: &[u8], fprint2: &[u8]) -> Result<bool, SignalProtocolError> {
     ScannableFingerprint::deserialize(&fprint1)?.compare(fprint2)
 }
 
@@ -112,8 +112,8 @@ bridge_get_bytearray!(get_serialized(SignalMessage), ffi = message_get_serialize
     |m| Ok(m.serialized())
 );
 
-#[bridge_fn(jni = "SignalMessage_1New")]
-fn message_new(
+#[bridge_fn(ffi = "message_new")]
+fn SignalMessage_New(
     message_version: u8,
     mac_key: &[u8],
     sender_ratchet_key: &PublicKey,
@@ -135,8 +135,8 @@ fn message_new(
     )
 }
 
-#[bridge_fn(jni = "SignalMessage_1VerifyMac")]
-fn message_verify_mac(
+#[bridge_fn(ffi = "message_verify_mac")]
+fn SignalMessage_VerifyMac(
     msg: &SignalMessage,
     sender_identity_key: &PublicKey,
     receiver_identity_key: &PublicKey,
@@ -149,8 +149,8 @@ fn message_verify_mac(
     )
 }
 
-#[bridge_fn(jni = "PreKeySignalMessage_1New")]
-fn pre_key_signal_message_new(
+#[bridge_fn]
+fn PreKeySignalMessage_New(
     message_version: u8,
     registration_id: u32,
     pre_key_id: Option<u32>,
