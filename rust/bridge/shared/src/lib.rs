@@ -47,10 +47,7 @@ bridge_get_bytearray!(
 );
 
 #[bridge_fn(ffi = "publickey_compare")]
-fn ECPublicKey_Compare(
-    key1: &PublicKey,
-    key2: &PublicKey,
-) -> i32 {
+fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
     match key1.cmp(&key2) {
         std::cmp::Ordering::Less => -1,
         std::cmp::Ordering::Equal => 0,
@@ -66,7 +63,6 @@ fn ECPublicKey_Verify(
 ) -> Result<bool, SignalProtocolError> {
     key.verify_signature(&message, &signature)
 }
-
 
 bridge_destroy!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
 bridge_deserialize!(
@@ -91,14 +87,19 @@ bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerato
     Fingerprint::display_string
 );
 #[bridge_fn(ffi = "fingerprint_format")]
-fn DisplayableFingerprint_Format(local: &[u8], remote: &[u8]) -> Result<String, SignalProtocolError> {
+fn DisplayableFingerprint_Format(
+    local: &[u8],
+    remote: &[u8],
+) -> Result<String, SignalProtocolError> {
     DisplayableFingerprint::new(&local, &remote).map(|f| f.to_string())
 }
 #[bridge_fn(ffi = "fingerprint_compare")]
-fn ScannableFingerprint_Compare(fprint1: &[u8], fprint2: &[u8]) -> Result<bool, SignalProtocolError> {
+fn ScannableFingerprint_Compare(
+    fprint1: &[u8],
+    fprint2: &[u8],
+) -> Result<bool, SignalProtocolError> {
     ScannableFingerprint::deserialize(&fprint1)?.compare(fprint2)
 }
-
 
 bridge_destroy!(SignalMessage, ffi = message);
 bridge_deserialize!(SignalMessage::try_from, ffi = message);
@@ -169,7 +170,6 @@ fn PreKeySignalMessage_New(
         signal_message.clone(),
     )
 }
-
 
 bridge_destroy!(PreKeySignalMessage);
 bridge_deserialize!(PreKeySignalMessage::try_from);

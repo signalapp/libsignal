@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::JNIEnv;
 use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
+use jni::JNIEnv;
 use libsignal_protocol_rust::*;
 use std::borrow::Borrow;
 use std::ops::Deref;
@@ -20,7 +20,10 @@ pub(crate) trait ArgTypeInfo<'a>: Sized {
 pub(crate) trait RefArgTypeInfo<'a>: Deref {
     type ArgType;
     type StoredType: Borrow<Self::Target> + 'a;
-    fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError>;
+    fn convert_from(
+        env: &'a JNIEnv,
+        foreign: Self::ArgType,
+    ) -> Result<Self::StoredType, SignalJniError>;
 }
 
 pub(crate) trait ResultTypeInfo: Sized {
@@ -74,7 +77,10 @@ impl<'a> Borrow<[u8]> for AutoByteSlice<'a> {
 impl<'a> RefArgTypeInfo<'a> for &[u8] {
     type ArgType = jbyteArray;
     type StoredType = AutoByteSlice<'a>;
-    fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+    fn convert_from(
+        env: &'a JNIEnv,
+        foreign: Self::ArgType,
+    ) -> Result<Self::StoredType, SignalJniError> {
         let len = env.get_array_length(foreign)?;
         assert!(len >= 0);
         Ok(AutoByteSlice {
@@ -110,7 +116,10 @@ macro_rules! native_handle {
         impl<'a> RefArgTypeInfo<'a> for &$typ {
             type ArgType = ObjectHandle;
             type StoredType = &'static $typ;
-            fn convert_from(_env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+            fn convert_from(
+                _env: &'a JNIEnv,
+                foreign: Self::ArgType,
+            ) -> Result<Self::StoredType, SignalJniError> {
                 Ok(unsafe { native_handle_cast(foreign) }?)
             }
         }
@@ -120,7 +129,7 @@ macro_rules! native_handle {
                 box_object(Ok(self))
             }
         }
-    }
+    };
 }
 
 native_handle!(PublicKey);
@@ -132,30 +141,56 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl<'a> ArgTypeInfo<'a> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &'a JNIEnv, foreign: Self) -> Result<Self, SignalJniError> { Ok(foreign) }
+            fn convert_from(_env: &'a JNIEnv, foreign: Self) -> Result<Self, SignalJniError> {
+                Ok(foreign)
+            }
         }
         impl ResultTypeInfo for $typ {
             type ResultType = Self;
-            fn convert_into(self, _env: &JNIEnv) -> Result<Self, SignalJniError> { Ok(self) }
+            fn convert_into(self, _env: &JNIEnv) -> Result<Self, SignalJniError> {
+                Ok(self)
+            }
         }
-    }
+    };
 }
 
 trivial!(i32);
 
 macro_rules! jni_arg_type {
-    (u8) => (jni::jint);
-    (u32) => (jni::jint);
-    (Option<u32>) => (jni::jint);
-    (String) => (jni::JString);
-    (&[u8]) => (jni::jbyteArray);
-    (& $typ:ty) => (jni::ObjectHandle);
+    (u8) => {
+        jni::jint
+    };
+    (u32) => {
+        jni::jint
+    };
+    (Option<u32>) => {
+        jni::jint
+    };
+    (String) => {
+        jni::JString
+    };
+    (&[u8]) => {
+        jni::jbyteArray
+    };
+    (& $typ:ty) => {
+        jni::ObjectHandle
+    };
 }
 
 macro_rules! jni_result_type {
-    (Result<$typ:tt, $_:tt>) => (jni_result_type!($typ));
-    (bool) => (jni::jboolean);
-    (i32) => (jni::jint);
-    (String) => (jni::jstring);
-    ( $typ:ty ) => (jni::ObjectHandle);
+    (Result<$typ:tt, $_:tt>) => {
+        jni_result_type!($typ)
+    };
+    (bool) => {
+        jni::jboolean
+    };
+    (i32) => {
+        jni::jint
+    };
+    (String) => {
+        jni::jstring
+    };
+    ( $typ:ty ) => {
+        jni::ObjectHandle
+    };
 }
