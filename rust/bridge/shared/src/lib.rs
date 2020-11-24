@@ -46,6 +46,19 @@ bridge_get_bytearray!(
     PublicKey::public_key_bytes
 );
 
+#[bridge_fn(jni = "ECPublicKey_1Compare")]
+fn publickey_compare(
+    key1: &PublicKey,
+    key2: &PublicKey,
+) -> i32 {
+    match key1.cmp(&key2) {
+        std::cmp::Ordering::Less => -1,
+        std::cmp::Ordering::Equal => 0,
+        std::cmp::Ordering::Greater => 1,
+    }
+}
+
+
 bridge_destroy!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
 bridge_deserialize!(
     PrivateKey::deserialize,

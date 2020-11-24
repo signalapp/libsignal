@@ -7,7 +7,7 @@ use libc::{c_char, c_uchar};
 use libsignal_protocol_rust::*;
 use std::ffi::CStr;
 
-use crate::ffi::error::*;
+use crate::ffi::*;
 
 pub(crate) trait ArgTypeInfo: Sized {
     type ArgType;
@@ -29,18 +29,6 @@ pub(crate) trait ResultTypeInfo: Sized {
         unsafe { *ptr = value.convert_into()? };
         Ok(())
     }
-}
-
-pub(crate) trait TrivialTypeInfo {}
-
-impl<T: TrivialTypeInfo> ArgTypeInfo for T {
-    type ArgType = Self;
-    fn convert_from(foreign: Self) -> Result<Self, SignalFfiError> { Ok(foreign) }
-}
-
-impl<T: TrivialTypeInfo> ResultTypeInfo for T {
-    type ResultType = Self;
-    fn convert_into(self) -> Result<Self, SignalFfiError> { Ok(self) }
 }
 
 impl SizedArgTypeInfo for &[u8] {
@@ -73,8 +61,13 @@ impl ArgTypeInfo for String {
     }
 }
 
-impl TrivialTypeInfo for u32 {}
-impl TrivialTypeInfo for usize {}
+impl<T> ArgTypeInfo for &'static T {
+    type ArgType = *const T;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(foreign: *const T) -> Result<Self, SignalFfiError> {
+        unsafe { native_handle_cast(foreign) }
+    }
+}
 
 impl ResultTypeInfo for ProtocolAddress {
     type ResultType = *mut ProtocolAddress;
@@ -83,13 +76,32 @@ impl ResultTypeInfo for ProtocolAddress {
     }
 }
 
+macro_rules! trivial {
+    ($typ:ty) => {
+        impl ArgTypeInfo for $typ {
+            type ArgType = Self;
+            fn convert_from(foreign: Self) -> Result<Self, SignalFfiError> { Ok(foreign) }
+        }
+        impl ResultTypeInfo for $typ {
+            type ResultType = Self;
+            fn convert_into(self) -> Result<Self, SignalFfiError> { Ok(self) }
+        }
+    }
+}
+
+trivial!(i32);
+trivial!(u32);
+trivial!(usize);
+
 macro_rules! ffi_arg_type {
     (u32) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
     (String) => (*const libc::c_char);
+    (& $typ:ty) => (*const $typ);
 }
 
 macro_rules! ffi_result_type {
+    (i32) => (i32);
     ( $typ:ty ) => (*mut $typ);
 }

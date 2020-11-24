@@ -45,25 +45,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Des
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Compare(
-    env: JNIEnv,
-    _class: JClass,
-    key1: ObjectHandle,
-    key2: ObjectHandle,
-) -> jint {
-    run_ffi_safe(&env, || {
-        let key1 = native_handle_cast::<PublicKey>(key1)?;
-        let key2 = native_handle_cast::<PublicKey>(key2)?;
-
-        match key1.cmp(&key2) {
-            std::cmp::Ordering::Less => Ok(-1),
-            std::cmp::Ordering::Equal => Ok(0),
-            std::cmp::Ordering::Greater => Ok(1),
-        }
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Verify(
     env: JNIEnv,
     _class: JClass,
