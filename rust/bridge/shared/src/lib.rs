@@ -112,6 +112,65 @@ bridge_get_bytearray!(get_serialized(SignalMessage), ffi = message_get_serialize
     |m| Ok(m.serialized())
 );
 
+#[bridge_fn(jni = "SignalMessage_1New")]
+fn message_new(
+    message_version: u8,
+    mac_key: &[u8],
+    sender_ratchet_key: &PublicKey,
+    counter: u32,
+    previous_counter: u32,
+    ciphertext: &[u8],
+    sender_identity_key: &PublicKey,
+    receiver_identity_key: &PublicKey,
+) -> Result<SignalMessage, SignalProtocolError> {
+    SignalMessage::new(
+        message_version,
+        mac_key,
+        *sender_ratchet_key,
+        counter,
+        previous_counter,
+        ciphertext,
+        &IdentityKey::new(*sender_identity_key),
+        &IdentityKey::new(*receiver_identity_key),
+    )
+}
+
+#[bridge_fn(jni = "SignalMessage_1VerifyMac")]
+fn message_verify_mac(
+    msg: &SignalMessage,
+    sender_identity_key: &PublicKey,
+    receiver_identity_key: &PublicKey,
+    mac_key: &[u8],
+) -> Result<bool, SignalProtocolError> {
+    msg.verify_mac(
+        &IdentityKey::new(*sender_identity_key),
+        &IdentityKey::new(*receiver_identity_key),
+        &mac_key,
+    )
+}
+
+#[bridge_fn(jni = "PreKeySignalMessage_1New")]
+fn pre_key_signal_message_new(
+    message_version: u8,
+    registration_id: u32,
+    pre_key_id: Option<u32>,
+    signed_pre_key_id: u32,
+    base_key: &PublicKey,
+    identity_key: &PublicKey,
+    signal_message: &SignalMessage,
+) -> Result<PreKeySignalMessage, SignalProtocolError> {
+    PreKeySignalMessage::new(
+        message_version,
+        registration_id,
+        pre_key_id,
+        signed_pre_key_id,
+        *base_key,
+        IdentityKey::new(*identity_key),
+        signal_message.clone(),
+    )
+}
+
+
 bridge_destroy!(PreKeySignalMessage);
 bridge_deserialize!(PreKeySignalMessage::try_from);
 bridge_get_bytearray!(serialize(PreKeySignalMessage), jni = PreKeySignalMessage_1GetSerialized =>

@@ -46,6 +46,17 @@ impl SizedArgTypeInfo for &[u8] {
     }
 }
 
+impl ArgTypeInfo for Option<u32> {
+    type ArgType = u32;
+    fn convert_from(foreign: u32) -> Result<Self, SignalFfiError> {
+        if foreign == u32::MAX {
+            Ok(None)
+        } else {
+            Ok(Some(foreign))
+        }
+    }
+}
+
 impl ArgTypeInfo for String {
     type ArgType = *const c_char;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -58,14 +69,6 @@ impl ArgTypeInfo for String {
             Ok(s) => Ok(s.to_owned()),
             Err(_) => Err(SignalFfiError::InvalidUtf8String),
         }
-    }
-}
-
-impl<T> ArgTypeInfo for &'static T {
-    type ArgType = *const T;
-    #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn convert_from(foreign: *const T) -> Result<Self, SignalFfiError> {
-        unsafe { native_handle_cast(foreign) }
     }
 }
 
@@ -85,12 +88,28 @@ impl ResultTypeInfo for String {
     }
 }
 
-impl ResultTypeInfo for ProtocolAddress {
-    type ResultType = *mut ProtocolAddress;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
-        Ok(Box::into_raw(Box::new(self)))
+macro_rules! native_handle {
+    ($typ:ty) => {
+        impl ArgTypeInfo for &'static $typ {
+            type ArgType = *const $typ;
+            #[allow(clippy::not_unsafe_ptr_arg_deref)]
+            fn convert_from(foreign: *const $typ) -> Result<Self, SignalFfiError> {
+                unsafe { native_handle_cast(foreign) }
+            }
+        }
+        impl ResultTypeInfo for $typ {
+            type ResultType = *mut $typ;
+            fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+                Ok(Box::into_raw(Box::new(self)))
+            }
+        }
     }
 }
+
+native_handle!(ProtocolAddress);
+native_handle!(PublicKey);
+native_handle!(SignalMessage);
+native_handle!(PreKeySignalMessage);
 
 macro_rules! trivial {
     ($typ:ty) => {
@@ -106,12 +125,15 @@ macro_rules! trivial {
 }
 
 trivial!(i32);
+trivial!(u8);
 trivial!(u32);
 trivial!(usize);
 trivial!(bool);
 
 macro_rules! ffi_arg_type {
+    (u8) => (u8);
     (u32) => (u32);
+    (Option<u32>) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
     (String) => (*const libc::c_char);

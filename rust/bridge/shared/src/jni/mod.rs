@@ -8,6 +8,7 @@ use jni::sys::{_jobject, jlong};
 
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
+use std::convert::TryFrom;
 
 pub(crate) use jni::objects::{JClass, JString};
 pub(crate) use jni::strings::JNIString;
@@ -209,6 +210,13 @@ pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
         return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
     }
     Ok(v as u32)
+}
+
+pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
+    match u8::try_from(v) {
+        Err(_) => Err(SignalJniError::IntegerOverflow(format!("{} to u8", v))),
+        Ok(v) => Ok(v),
+    }
 }
 
 pub fn to_jbytearray<T: AsRef<[u8]>>(
