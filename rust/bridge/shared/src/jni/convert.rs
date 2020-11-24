@@ -57,6 +57,13 @@ impl<'a> ResultTypeInfo<'a> for bool {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for String {
+    type ResultType = jstring;
+    fn convert_into(self, env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
+        Ok(env.new_string(self)?.into_inner())
+    }
+}
+
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
@@ -111,5 +118,6 @@ macro_rules! jni_result_type {
     (Result<$typ:tt, $_:tt>) => (jni_result_type!($typ));
     (bool) => (jni::jboolean);
     (i32) => (jni::jint);
+    (String) => (jni::jstring);
     ( $typ:ty ) => (jni::ObjectHandle);
 }
