@@ -90,6 +90,15 @@ bridge_get_bytearray!(
 bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerator_1GetDisplayString =>
     Fingerprint::display_string
 );
+#[bridge_fn(jni = "DisplayableFingerprint_1Format")]
+fn fingerprint_format(local: &[u8], remote: &[u8]) -> Result<String, SignalProtocolError> {
+    DisplayableFingerprint::new(&local, &remote).map(|f| format!("{}", f))
+}
+#[bridge_fn(jni = "ScannableFingerprint_1Compare")]
+fn fingerprint_compare(fprint1: &[u8], fprint2: &[u8]) -> Result<bool, SignalProtocolError> {
+    ScannableFingerprint::deserialize(&fprint1)?.compare(fprint2)
+}
+
 
 bridge_destroy!(SignalMessage, ffi = message);
 bridge_deserialize!(SignalMessage::try_from, ffi = message);

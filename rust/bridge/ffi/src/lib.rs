@@ -213,22 +213,6 @@ pub unsafe extern "C" fn signal_session_record_archive_current_state(
 ffi_fn_clone!(signal_session_record_clone clones SessionRecord);
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_fingerprint_format(
-    fprint: *mut *const c_char,
-    local: *const c_uchar,
-    local_len: size_t,
-    remote: *const c_uchar,
-    remote_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let local = as_slice(local, local_len)?;
-        let remote = as_slice(remote, remote_len)?;
-        let fingerprint = DisplayableFingerprint::new(&local, &remote).map(|f| format!("{}", f));
-        write_cstr_to(fprint, fingerprint)
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_new(
     obj: *mut *mut Fingerprint,
     iterations: c_uint,
@@ -261,27 +245,6 @@ pub unsafe extern "C" fn signal_fingerprint_new(
 }
 
 ffi_fn_clone!(signal_fingerprint_clone clones Fingerprint);
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_fingerprint_compare(
-    result: *mut bool,
-    fprint1: *const c_uchar,
-    fprint1_len: size_t,
-    fprint2: *const c_uchar,
-    fprint2_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        if fprint1.is_null() || fprint2.is_null() || result.is_null() {
-            return Err(SignalFfiError::NullPointer);
-        }
-        let fprint1 = as_slice(fprint1, fprint1_len)?;
-        let fprint2 = as_slice(fprint2, fprint2_len)?;
-
-        let fprint1 = ScannableFingerprint::deserialize(&fprint1)?;
-        *result = fprint1.compare(&fprint2)?;
-        Ok(())
-    })
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_message_new(
