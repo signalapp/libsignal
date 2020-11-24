@@ -82,8 +82,7 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
 impl ResultTypeInfo for String {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
-        let cstr =
-            CString::new(self).expect("No NULL characters in string being returned to C");
+        let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
         Ok(cstr.into_raw())
     }
 }
@@ -103,7 +102,7 @@ macro_rules! native_handle {
                 Ok(Box::into_raw(Box::new(self)))
             }
         }
-    }
+    };
 }
 
 native_handle!(ProtocolAddress);
@@ -115,13 +114,17 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl ArgTypeInfo for $typ {
             type ArgType = Self;
-            fn convert_from(foreign: Self) -> Result<Self, SignalFfiError> { Ok(foreign) }
+            fn convert_from(foreign: Self) -> Result<Self, SignalFfiError> {
+                Ok(foreign)
+            }
         }
         impl ResultTypeInfo for $typ {
             type ResultType = Self;
-            fn convert_into(self) -> Result<Self, SignalFfiError> { Ok(self) }
+            fn convert_into(self) -> Result<Self, SignalFfiError> {
+                Ok(self)
+            }
         }
-    }
+    };
 }
 
 trivial!(i32);
