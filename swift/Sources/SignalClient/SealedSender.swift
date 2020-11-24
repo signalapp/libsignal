@@ -128,17 +128,10 @@ public class SenderCertificate: ClonableHandleOwner {
     }
 
     public func validate(trust_root: PublicKey, time: UInt64) throws -> Bool {
-        var result: UInt32 = 0
+        var result: Bool = false
         try checkError(signal_sender_certificate_validate(&result, nativeHandle, trust_root.nativeHandle, time))
-
-        if result == 1 {
-            return true
-        } else {
-            return false
-        }
+        return result
     }
-
-    // Is signal_sender_certificate_preferred_address logic needed on iOS?
 }
 
 public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,

@@ -1666,7 +1666,7 @@ pub unsafe extern "C" fn signal_sender_certificate_preferred_address(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sender_certificate_validate(
-    valid: *mut c_uint,
+    valid: *mut bool,
     cert: *const SenderCertificate,
     key: *const PublicKey,
     time: u64,
@@ -1674,8 +1674,7 @@ pub unsafe extern "C" fn signal_sender_certificate_validate(
     run_ffi_safe(|| {
         let cert = native_handle_cast::<SenderCertificate>(cert)?;
         let key = native_handle_cast::<PublicKey>(key)?;
-        let is_valid = cert.validate(key, time)?;
-        *valid = if is_valid { 1 } else { 0 };
+        *valid = cert.validate(key, time)?;
         Ok(())
     })
 }
