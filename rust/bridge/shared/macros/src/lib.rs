@@ -30,11 +30,11 @@ fn ffi_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
             Error::new(tokens.self_token.span, "cannot have 'self' parameter").to_compile_error(),
             quote!()
         ),
-        FnArg::Typed(PatType { attrs, pat: box Pat::Ident(name), colon_token, ty: ty @ box Type::Reference(TypeReference { elem: box Type::Array(_), .. }) }) => {
-            let size_arg = format_ident!("{}_size", name.ident);
+        FnArg::Typed(PatType { attrs, pat: box Pat::Ident(name), colon_token, ty: ty @ box Type::Reference(TypeReference { elem: box Type::Slice(_), .. }) }) => {
+            let size_arg = format_ident!("{}_len", name.ident);
             (
                 name.ident.clone(),
-                quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty), #size_arg: usize),
+                quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty), #size_arg: libc::size_t),
                 quote!(let #name = <#ty as ffi::SizedArgTypeInfo>::convert_from(#name, #size_arg)?),
             )
         }
@@ -82,6 +82,11 @@ fn jni_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
             Ident::new("self", tokens.self_token.span),
             Error::new(tokens.self_token.span, "cannot have 'self' parameter").to_compile_error(),
             quote!()
+        ),
+        FnArg::Typed(PatType { attrs, pat: box Pat::Ident(name), colon_token, ty: ty @ box Type::Reference(_) }) => (
+            name.ident.clone(),
+            quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
+            quote!(let #name = <#ty as jni::RefArgTypeInfo>::convert_from(&env, #name)?; let #name = std::borrow::Borrow::borrow(&#name)),
         ),
         FnArg::Typed(PatType { attrs, pat: box Pat::Ident(name), colon_token, ty }) => (
             name.ident.clone(),

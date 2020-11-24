@@ -45,22 +45,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Des
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Verify(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    message: jbyteArray,
-    signature: jbyteArray,
-) -> jboolean {
-    run_ffi_safe(&env, || {
-        let key = native_handle_cast::<PublicKey>(handle)?;
-        let message = env.convert_byte_array(message)?;
-        let signature = env.convert_byte_array(signature)?;
-        Ok(key.verify_signature(&message, &signature)? as jboolean)
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Generate(
     env: JNIEnv,
     _class: JClass,
