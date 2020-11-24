@@ -7,6 +7,10 @@ use libc::{c_char, c_uchar, size_t};
 use libsignal_protocol_rust::*;
 use std::ffi::CString;
 
+#[macro_use]
+mod convert;
+pub(crate) use convert::*;
+
 mod error;
 pub use error::*;
 

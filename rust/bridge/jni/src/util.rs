@@ -21,13 +21,6 @@ pub unsafe fn native_handle_cast_optional<T>(
     Ok(Some(&mut *(handle as *mut T)))
 }
 
-pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
-    if v < 0 {
-        return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
-    }
-    Ok(v as u32)
-}
-
 pub fn jlong_to_u64(v: jlong) -> Result<u64, SignalJniError> {
     if v < 0 {
         return Err(SignalJniError::IntegerOverflow(format!("{} to u64", v)));

@@ -849,10 +849,21 @@ dependencies = [
  "futures",
  "jni",
  "libc",
+ "libsignal-bridge-macros",
  "libsignal-protocol-rust",
  "log",
  "paste",
  "thiserror",
+]
+
+[[package]]
+name = "libsignal-bridge-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "unzip3",
 ]
 
 [[package]]
@@ -1773,6 +1784,12 @@ dependencies = [
  "generic-array",
  "subtle",
 ]
+
+[[package]]
+name = "unzip3"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99c0ec316ab08201476c032feb2f94a5c8ece5b209765c1fbc4430dd6e931ad6"
 
 [[package]]
 name = "ureq"

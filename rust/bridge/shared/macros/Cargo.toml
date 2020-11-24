@@ -1,0 +1,20 @@
+#
+# Copyright (C) 2020 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-bridge-macros"
+version = "0.1.0"
+authors = ["Jack Lloyd <jack@signal.org>", "Jordan Rose <jrose@signal.org>"]
+edition = "2018"
+license = "AGPL-3.0-only"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0", features = ["full"] }
+proc-macro2 = "1.0"
+quote = "1.0"
+unzip3 = "1.0.0"
