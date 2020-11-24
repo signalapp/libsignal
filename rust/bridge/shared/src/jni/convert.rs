@@ -14,7 +14,7 @@ use crate::jni::*;
 
 pub(crate) trait ArgTypeInfo<'a>: Sized {
     type ArgType;
-    fn convert_from(env: &JNIEnv<'a>, foreign: Self::ArgType) -> Result<Self, SignalJniError>;
+    fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self, SignalJniError>;
 }
 
 pub(crate) trait RefArgTypeInfo<'a>: Deref {
@@ -23,21 +23,21 @@ pub(crate) trait RefArgTypeInfo<'a>: Deref {
     fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError>;
 }
 
-pub(crate) trait ResultTypeInfo<'a>: Sized {
+pub(crate) trait ResultTypeInfo: Sized {
     type ResultType;
-    fn convert_into(self, env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError>;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError>;
 }
 
 impl<'a> ArgTypeInfo<'a> for u32 {
     type ArgType = jint;
-    fn convert_from(_env: &JNIEnv<'a>, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
         jint_to_u32(foreign)
     }
 }
 
 impl<'a> ArgTypeInfo<'a> for Option<u32> {
     type ArgType = jint;
-    fn convert_from(env: &JNIEnv<'a>, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
         if foreign < 0 {
             Ok(None)
         } else {
@@ -48,14 +48,14 @@ impl<'a> ArgTypeInfo<'a> for Option<u32> {
 
 impl<'a> ArgTypeInfo<'a> for u8 {
     type ArgType = jint;
-    fn convert_from(_env: &JNIEnv<'a>, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
         jint_to_u8(foreign)
     }
 }
 
 impl<'a> ArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
-    fn convert_from(env: &JNIEnv<'a>, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &'a JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
         Ok(env.get_string(foreign)?.into())
     }
 }
@@ -84,23 +84,23 @@ impl<'a> RefArgTypeInfo<'a> for &[u8] {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for bool {
+impl ResultTypeInfo for bool {
     type ResultType = jboolean;
-    fn convert_into(self, _env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for String {
+impl ResultTypeInfo for String {
     type ResultType = jstring;
-    fn convert_into(self, env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
         Ok(env.new_string(self)?.into_inner())
     }
 }
 
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, SignalProtocolError> {
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
-    fn convert_into(self, env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
         T::convert_into(self?, env)
     }
 }
@@ -110,13 +110,13 @@ macro_rules! native_handle {
         impl<'a> RefArgTypeInfo<'a> for &$typ {
             type ArgType = ObjectHandle;
             type StoredType = &'static $typ;
-            fn convert_from(_env: &JNIEnv<'a>, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+            fn convert_from(_env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
                 Ok(unsafe { native_handle_cast(foreign) }?)
             }
         }
-        impl<'a> ResultTypeInfo<'a> for $typ {
+        impl ResultTypeInfo for $typ {
             type ResultType = ObjectHandle;
-            fn convert_into(self, _env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
+            fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
                 box_object(Ok(self))
             }
         }
@@ -132,11 +132,11 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl<'a> ArgTypeInfo<'a> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &JNIEnv<'a>, foreign: Self) -> Result<Self, SignalJniError> { Ok(foreign) }
+            fn convert_from(_env: &'a JNIEnv, foreign: Self) -> Result<Self, SignalJniError> { Ok(foreign) }
         }
-        impl<'a> ResultTypeInfo<'a> for $typ {
+        impl ResultTypeInfo for $typ {
             type ResultType = Self;
-            fn convert_into(self, _env: &JNIEnv<'a>) -> Result<Self, SignalJniError> { Ok(self) }
+            fn convert_into(self, _env: &JNIEnv) -> Result<Self, SignalJniError> { Ok(self) }
         }
     }
 }
