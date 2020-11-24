@@ -69,6 +69,13 @@ impl<T> ArgTypeInfo for &'static T {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
+    type ResultType = T::ResultType;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        T::convert_into(self?)
+    }
+}
+
 impl ResultTypeInfo for ProtocolAddress {
     type ResultType = *mut ProtocolAddress;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
@@ -92,6 +99,7 @@ macro_rules! trivial {
 trivial!(i32);
 trivial!(u32);
 trivial!(usize);
+trivial!(bool);
 
 macro_rules! ffi_arg_type {
     (u32) => (u32);
@@ -102,6 +110,8 @@ macro_rules! ffi_arg_type {
 }
 
 macro_rules! ffi_result_type {
+    (Result<$typ:tt, $_:tt>) => (ffi_result_type!($typ));
     (i32) => (i32);
+    (bool) => (bool);
     ( $typ:ty ) => (*mut $typ);
 }

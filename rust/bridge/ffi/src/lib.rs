@@ -116,26 +116,6 @@ ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
 
 ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_publickey_verify(
-    key: *const PublicKey,
-    result: *mut bool,
-    message: *const c_uchar,
-    message_len: size_t,
-    signature: *const c_uchar,
-    signature_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        *result = false; // pre-set to invalid state
-        let key = native_handle_cast::<PublicKey>(key)?;
-        let message = as_slice(message, message_len)?;
-        let signature = as_slice(signature, signature_len)?;
-
-        *result = key.verify_signature(&message, &signature)?;
-        Ok(())
-    })
-}
-
 ffi_fn_clone!(signal_publickey_clone clones PublicKey);
 
 #[no_mangle]

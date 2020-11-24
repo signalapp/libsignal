@@ -58,6 +58,15 @@ fn publickey_compare(
     }
 }
 
+#[bridge_fn(jni = "ECPublicKey_1Verify")]
+fn publickey_verify(
+    key: &PublicKey,
+    message: &[u8],
+    signature: &[u8],
+) -> Result<bool, SignalProtocolError> {
+    key.verify_signature(&message, &signature)
+}
+
 
 bridge_destroy!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
 bridge_deserialize!(

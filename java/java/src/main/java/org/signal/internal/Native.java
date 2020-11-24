@@ -86,7 +86,7 @@ public final class Native {
   public static native void ECPublicKey_Destroy(long handle);
   public static native byte[] ECPublicKey_GetPublicKeyBytes(long handle);
   public static native byte[] ECPublicKey_Serialize(long handle);
-  public static native boolean ECPublicKey_Verify(long handle, byte[] message, byte[] signature);
+  public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
   public static native byte[] GroupCipher_DecryptMessage(long senderKeyName, byte[] message, SenderKeyStore store);
   public static native byte[] GroupCipher_EncryptMessage(long senderKeyName, byte[] message, SenderKeyStore store);
