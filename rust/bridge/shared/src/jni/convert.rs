@@ -19,18 +19,6 @@ pub(crate) trait ResultTypeInfo<'a>: Sized {
     fn convert_into(self, env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError>;
 }
 
-pub(crate) trait TrivialTypeInfo {}
-
-impl<'a, T: TrivialTypeInfo> ArgTypeInfo<'a> for T {
-    type ArgType = Self;
-    fn convert_from(_env: &JNIEnv<'a>, foreign: Self) -> Result<Self, SignalJniError> { Ok(foreign) }
-}
-
-impl<'a, T: TrivialTypeInfo> ResultTypeInfo<'a> for T {
-    type ResultType = Self;
-    fn convert_into(self, _env: &JNIEnv<'a>) -> Result<Self, SignalJniError> { Ok(self) }
-}
-
 impl<'a> ArgTypeInfo<'a> for u32 {
     type ArgType = jint;
     fn convert_from(_env: &JNIEnv<'a>, foreign: jint) -> Result<Self, SignalJniError> {
@@ -45,6 +33,13 @@ impl<'a> ArgTypeInfo<'a> for String {
     }
 }
 
+impl<'a, T> ArgTypeInfo<'a> for &'static T {
+    type ArgType = ObjectHandle;
+    fn convert_from(_env: &JNIEnv<'a>, foreign: Self::ArgType) -> Result<Self, SignalJniError> {
+        Ok(unsafe { native_handle_cast(foreign) }?)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for ProtocolAddress {
     type ResultType = ObjectHandle;
     fn convert_into(self, _env: &JNIEnv<'a>) -> Result<Self::ResultType, SignalJniError> {
@@ -52,11 +47,28 @@ impl<'a> ResultTypeInfo<'a> for ProtocolAddress {
     }
 }
 
+macro_rules! trivial {
+    ($typ:ty) => {
+        impl<'a> ArgTypeInfo<'a> for $typ {
+            type ArgType = Self;
+            fn convert_from(_env: &JNIEnv<'a>, foreign: Self) -> Result<Self, SignalJniError> { Ok(foreign) }
+        }
+        impl<'a> ResultTypeInfo<'a> for $typ {
+            type ResultType = Self;
+            fn convert_into(self, _env: &JNIEnv<'a>) -> Result<Self, SignalJniError> { Ok(self) }
+        }
+    }
+}
+
+trivial!(i32);
+
 macro_rules! jni_arg_type {
     (u32) => (jni::jint);
     (String) => (jni::JString);
+    (& $typ:ty) => (jni::ObjectHandle);
 }
 
 macro_rules! jni_result_type {
+    (i32) => (jni::jint);
     ( $typ:ty ) => (jni::ObjectHandle);
 }

@@ -117,25 +117,6 @@ ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
 ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_publickey_compare(
-    result: *mut i32,
-    key1: *const PublicKey,
-    key2: *const PublicKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let key1 = native_handle_cast::<PublicKey>(key1)?;
-        let key2 = native_handle_cast::<PublicKey>(key2)?;
-
-        *result = match key1.cmp(&key2) {
-            std::cmp::Ordering::Less => -1,
-            std::cmp::Ordering::Equal => 0,
-            std::cmp::Ordering::Greater => 1,
-        };
-        Ok(())
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn signal_publickey_verify(
     key: *const PublicKey,
     result: *mut bool,
