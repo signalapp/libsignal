@@ -14,7 +14,8 @@ license = "AGPL-3.0-only"
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0", features = ["full"] }
+heck = "0.3.1"
 proc-macro2 = "1.0"
 quote = "1.0"
+syn = { version = "1.0", features = ["full"] }
 unzip3 = "1.0.0"
