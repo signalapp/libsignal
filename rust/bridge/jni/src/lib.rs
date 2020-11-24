@@ -26,21 +26,6 @@ type JavaSignedPreKeyStore = jobject;
 type JavaCiphertextMessage = jobject;
 type JavaSenderKeyStore = jobject;
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ProtocolAddress_1New(
-    env: JNIEnv,
-    _class: JClass,
-    name: JString,
-    device_id: jint,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let name: String = env.get_string(name)?.into();
-        let device_id = jint_to_u32(device_id)?;
-        let address = ProtocolAddress::new(name, device_id);
-        box_object::<ProtocolAddress>(Ok(address))
-    })
-}
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_ProtocolAddress_1DeviceId(ProtocolAddress) using
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 

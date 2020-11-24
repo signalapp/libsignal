@@ -4,15 +4,19 @@
 //
 
 use jni::objects::{JObject, JValue};
-use jni::sys::{_jobject, jboolean, jint, jlong};
+use jni::sys::{_jobject, jboolean, jlong};
 
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
 
-pub(crate) use jni::objects::JClass;
+pub(crate) use jni::objects::{JClass, JString};
 pub(crate) use jni::strings::JNIString;
-pub(crate) use jni::sys::{jbyteArray, jstring};
+pub(crate) use jni::sys::{jbyteArray, jint, jstring};
 pub(crate) use jni::JNIEnv;
+
+#[macro_use]
+mod convert;
+pub(crate) use convert::*;
 
 mod error;
 pub use error::*;
@@ -198,6 +202,13 @@ pub unsafe fn native_handle_cast<T>(
     }
 
     Ok(&mut *(handle as *mut T))
+}
+
+pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
+    if v < 0 {
+        return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
+    }
+    Ok(v as u32)
 }
 
 pub fn to_jbytearray<T: AsRef<[u8]>>(

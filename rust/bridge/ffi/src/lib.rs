@@ -111,18 +111,6 @@ pub unsafe extern "C" fn signal_hkdf_derive(
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_address_new(
-    address: *mut *mut ProtocolAddress,
-    name: *const c_char,
-    device_id: c_uint,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let name = read_c_string(name)?;
-        box_object(address, Ok(ProtocolAddress::new(name, device_id)))
-    })
-}
-
 ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
                    |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 

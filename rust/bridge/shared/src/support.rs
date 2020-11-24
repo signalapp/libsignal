@@ -33,6 +33,15 @@ macro_rules! expr_as_fn {
     };
 }
 
+// macro_rules! bridge_fn {
+//     (ffi = $ffi_name:ident, jni = $jni_name:ident, $($body:tt)+) => {
+//         #[cfg(feature = "ffi")]
+//         ffi_bridge_fn!($ffi_name $($body)+);
+//         // #[cfg(feature = "jni")]
+//         // jni_bridge_get_string!($name($typ) $(as $jni_name)? => $body);
+//     }
+// }
+
 macro_rules! bridge_destroy {
     ($typ:ty $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? ) => {
         #[cfg(feature = "ffi")]
