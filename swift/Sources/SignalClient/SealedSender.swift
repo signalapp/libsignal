@@ -16,6 +16,13 @@ public class ServerCertificate: ClonableHandleOwner {
         super.init(owned: handle!)
     }
 
+    // For testing
+    public init(keyId: UInt32, publicKey: PublicKey, trustRoot: PrivateKey) throws {
+        var result: OpaquePointer?
+        try checkError(signal_server_certificate_new(&result, keyId, publicKey.nativeHandle, trustRoot.nativeHandle))
+        super.init(owned: result!)
+    }
+
     internal override init(owned handle: OpaquePointer) {
         super.init(owned: handle)
     }
@@ -67,6 +74,20 @@ public class SenderCertificate: ClonableHandleOwner {
             return result
         }
         super.init(owned: handle!)
+    }
+
+    // For testing
+    public init(sender: SealedSenderAddress, publicKey: PublicKey, expiration: UInt64, signerCertificate: ServerCertificate, signerKey: PrivateKey) throws {
+        var result: OpaquePointer?
+        try checkError(signal_sender_certificate_new(&result,
+                                                     sender.uuidString,
+                                                     sender.e164,
+                                                     sender.deviceId,
+                                                     publicKey.nativeHandle,
+                                                     expiration,
+                                                     signerCertificate.nativeHandle,
+                                                     signerKey.nativeHandle))
+        super.init(owned: result!)
     }
 
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
@@ -121,6 +142,12 @@ public class SenderCertificate: ClonableHandleOwner {
         }
     }
 
+    public func sender() throws -> SealedSenderAddress {
+        return try SealedSenderAddress(e164: self.senderE164(),
+                                       uuidString: self.senderUuid(),
+                                       deviceId: self.deviceId())
+    }
+
     public func serverCertificate() throws -> ServerCertificate {
         var handle: OpaquePointer?
         try checkError(signal_sender_certificate_get_server_certificate(&handle, nativeHandle))
@@ -155,15 +182,24 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
     }
 }
 
-public struct SealedSenderAddress {
-    var e164: String?
-    var uuidString: String?
-    var deviceId: UInt32
+public struct SealedSenderAddress: Hashable {
+    public var e164: String?
+    public var uuidString: String?
+    public var deviceId: UInt32
+
+    public init(e164: String?, uuidString: String?, deviceId: UInt32) throws {
+        guard e164 != nil || uuidString != nil else {
+            throw SignalError.invalidArgument("SealedSenderAddress must have an e164 phone number or a UUID (or both)")
+        }
+        self.e164 = e164
+        self.uuidString = uuidString
+        self.deviceId = deviceId
+    }
 }
 
 public struct SealedSenderResult {
-    var message: [UInt8]
-    var sender: SealedSenderAddress
+    public var message: [UInt8]
+    public var sender: SealedSenderAddress
 }
 
 public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
@@ -216,7 +252,7 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
     }
 
     return SealedSenderResult(message: plaintext,
-                              sender: SealedSenderAddress(e164: senderE164.map(String.init(cString:)),
-                                                          uuidString: senderUUID.map(String.init(cString:)),
-                                                          deviceId: senderDeviceId))
+                              sender: try SealedSenderAddress(e164: senderE164.map(String.init(cString:)),
+                                                              uuidString: senderUUID.map(String.init(cString:)),
+                                                              deviceId: senderDeviceId))
 }

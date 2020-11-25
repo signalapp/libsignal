@@ -234,13 +234,9 @@ class PublicAPITests: XCTestCase {
         XCTAssertEqual(b_ptext, [1, 2, 3])
     }
 
-    func testSessionCipher() {
-        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
-        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
-
-        let alice_store = try! InMemorySignalProtocolStore()
-        let bob_store = try! InMemorySignalProtocolStore()
-
+    fileprivate func initializeSessions(alice_store: InMemorySignalProtocolStore,
+                                        bob_store: InMemorySignalProtocolStore,
+                                        bob_address: ProtocolAddress) {
         let bob_pre_key = try! PrivateKey.generate()
         let bob_signed_pre_key = try! PrivateKey.generate()
 
@@ -276,14 +272,25 @@ class PublicAPITests: XCTestCase {
                                    id: prekey_id,
                                    context: nil)
 
-        try! bob_store.storeSignedPreKey(SignedPreKeyRecord(
-                                           id: signed_prekey_id,
-                                           timestamp: 42000,
-            privateKey: bob_signed_pre_key,
-                                           signature: bob_signed_pre_key_signature
-                                         ),
-                                         id: signed_prekey_id,
-                                         context: nil)
+        try! bob_store.storeSignedPreKey(
+            SignedPreKeyRecord(
+                id: signed_prekey_id,
+                timestamp: 42000,
+                privateKey: bob_signed_pre_key,
+                signature: bob_signed_pre_key_signature
+            ),
+            id: signed_prekey_id,
+            context: nil)
+    }
+
+    func testSessionCipher() {
+        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+
+        let alice_store = try! InMemorySignalProtocolStore()
+        let bob_store = try! InMemorySignalProtocolStore()
+
+        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
         // Alice sends a message:
         let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
@@ -364,6 +371,50 @@ class PublicAPITests: XCTestCase {
         XCTAssertEqual(try! serverCert.keyId(), 1)
         XCTAssertEqual(try! serverCert.publicKey().serialize().count, 33)
         XCTAssertEqual(try! serverCert.signatureBytes().count, 64)
+    }
+
+    func testSealedSenderSession() throws {
+        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+
+        let alice_store = try! InMemorySignalProtocolStore()
+        let bob_store = try! InMemorySignalProtocolStore()
+
+        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+
+        let trust_root = try! IdentityKeyPair.generate()
+        let server_keys = try! IdentityKeyPair.generate()
+        let server_cert = try! ServerCertificate(keyId: 1, publicKey: server_keys.publicKey, trustRoot: trust_root.privateKey)
+        let sender_addr = try! SealedSenderAddress(e164: alice_address.name,
+                                                   uuidString: "9d0652a3-dcc3-4d11-975f-74d61598733f",
+                                                   deviceId: 1)
+        let sender_cert = try! SenderCertificate(sender: sender_addr,
+                                                 publicKey: alice_store.identityKeyPair(context: nil).publicKey,
+                                                 expiration: 31337,
+                                                 signerCertificate: server_cert,
+                                                 signerKey: server_keys.privateKey)
+
+        let message = Array("2020 vision".utf8)
+        let ciphertext = try sealedSenderEncrypt(message: message,
+                                                 for: bob_address,
+                                                 from: sender_cert,
+                                                 sessionStore: alice_store,
+                                                 identityStore: alice_store,
+                                                 context: nil)
+
+        let recipient_addr = try! SealedSenderAddress(e164: bob_address.name, uuidString: nil, deviceId: 1)
+        let plaintext = try sealedSenderDecrypt(message: ciphertext,
+                                                from: recipient_addr,
+                                                trustRoot: trust_root.publicKey,
+                                                timestamp: 31335,
+                                                sessionStore: bob_store,
+                                                identityStore: bob_store,
+                                                preKeyStore: bob_store,
+                                                signedPreKeyStore: bob_store,
+                                                context: nil)
+
+        XCTAssertEqual(plaintext.message, message)
+        XCTAssertEqual(plaintext.sender, sender_addr)
     }
 
     static var allTests: [(String, (PublicAPITests) -> () throws -> Void)] {
