@@ -154,3 +154,69 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
         }
     }
 }
+
+public struct SealedSenderAddress {
+    var e164: String?
+    var uuidString: String?
+    var deviceId: UInt32
+}
+
+public struct SealedSenderResult {
+    var message: [UInt8]
+    var sender: SealedSenderAddress
+}
+
+public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
+                                                        from localAddress: SealedSenderAddress,
+                                                        trustRoot: PublicKey,
+                                                        timestamp: UInt64,
+                                                        sessionStore: SessionStore,
+                                                        identityStore: IdentityKeyStore,
+                                                        preKeyStore: PreKeyStore,
+                                                        signedPreKeyStore: SignedPreKeyStore,
+                                                        context: UnsafeMutableRawPointer?) throws -> SealedSenderResult {
+    var senderE164: UnsafePointer<CChar>?
+    var senderUUID: UnsafePointer<CChar>?
+    var senderDeviceId: UInt32 = 0
+
+    let plaintext = try message.withUnsafeBytes { messageBytes in
+        try withSessionStore(sessionStore) { ffiSessionStore in
+            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
+                    try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
+                        try invokeFnReturningArray {
+                            signal_sealed_session_cipher_decrypt(
+                                $0,
+                                $1,
+                                &senderE164,
+                                &senderUUID,
+                                &senderDeviceId,
+                                messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                messageBytes.count,
+                                trustRoot.nativeHandle,
+                                timestamp,
+                                localAddress.e164,
+                                localAddress.uuidString,
+                                localAddress.deviceId,
+                                ffiSessionStore,
+                                ffiIdentityStore,
+                                ffiPreKeyStore,
+                                ffiSignedPreKeyStore,
+                                context)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    defer {
+        signal_free_string(senderE164)
+        signal_free_string(senderUUID)
+    }
+
+    return SealedSenderResult(message: plaintext,
+                              sender: SealedSenderAddress(e164: senderE164.map(String.init(cString:)),
+                                                          uuidString: senderUUID.map(String.init(cString:)),
+                                                          deviceId: senderDeviceId))
+}
