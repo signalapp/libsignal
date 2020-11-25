@@ -127,9 +127,9 @@ public class SenderCertificate: ClonableHandleOwner {
         return ServerCertificate(owned: handle!)
     }
 
-    public func validate(trust_root: PublicKey, time: UInt64) throws -> Bool {
+    public func validate(trustRoot: PublicKey, time: UInt64) throws -> Bool {
         var result: Bool = false
-        try checkError(signal_sender_certificate_validate(&result, nativeHandle, trust_root.nativeHandle, time))
+        try checkError(signal_sender_certificate_validate(&result, nativeHandle, trustRoot.nativeHandle, time))
         return result
     }
 }
