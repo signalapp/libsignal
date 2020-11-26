@@ -1667,21 +1667,6 @@ ffi_fn_get_optional_cstring!(signal_sender_certificate_get_sender_e164(SenderCer
                              |s: &SenderCertificate| Ok(s.sender_e164()?.map(|s| s.to_string())));
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_sender_certificate_preferred_address(
-    obj: *mut *mut ProtocolAddress,
-    cert: *const SenderCertificate,
-    session_store: *const FfiSessionStoreStruct,
-    ctx: *mut c_void,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let cert = native_handle_cast::<SenderCertificate>(cert)?;
-        let session_store = FfiSessionStore::new(session_store)?;
-        let address = expect_ready(cert.preferred_address(&session_store, Some(ctx)))?;
-        box_object::<ProtocolAddress>(obj, Ok(address))
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn signal_sender_certificate_validate(
     valid: *mut bool,
     cert: *const SenderCertificate,
@@ -1746,72 +1731,11 @@ pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type
     })
 }
 
-ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_serialized(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
+ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_serialize(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
 ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_contents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
 
 ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_content_get_sender_cert(SenderCertificate) from UnidentifiedSenderMessageContent,
                           |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_unidentified_sender_message_content_new(
-    obj: *mut *mut UnidentifiedSenderMessageContent,
-    msg_type: c_uint,
-    sender: *const SenderCertificate,
-    contents: *const c_uchar,
-    contents_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let sender = native_handle_cast::<SenderCertificate>(sender)?;
-        let contents = as_slice(contents, contents_len)?;
-
-        // This encoding is from the protobufs
-        let msg_type = match msg_type {
-            1 => Ok(CiphertextMessageType::PreKey),
-            2 => Ok(CiphertextMessageType::Whisper),
-            x => Err(SignalFfiError::Signal(
-                SignalProtocolError::InvalidArgument(format!("invalid msg_type argument {}", x)),
-            )),
-        }?;
-
-        let usmc =
-            UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents.to_vec())?;
-        box_object::<UnidentifiedSenderMessageContent>(obj, Ok(usmc))
-    })
-}
-
-// UnidentifiedSenderMessage
-ffi_fn_destroy!(signal_unidentified_sender_message_destroy destroys UnidentifiedSenderMessage);
-ffi_fn_deserialize!(signal_unidentified_sender_message_deserialize(UnidentifiedSenderMessage) is UnidentifiedSenderMessage::deserialize);
-
-ffi_fn_get_bytearray!(signal_unidentified_sender_message_get_serialized(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::serialized);
-ffi_fn_get_bytearray!(signal_unidentified_sender_message_get_encrypted_message(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_message);
-ffi_fn_get_bytearray!(signal_unidentified_sender_message_get_encrypted_static(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_static);
-
-ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_get_ephemeral_public(PublicKey) from UnidentifiedSenderMessage,
-                          UnidentifiedSenderMessage::ephemeral_public);
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_unidentified_sender_message_new(
-    obj: *mut *mut UnidentifiedSenderMessage,
-    public_key: *const PublicKey,
-    encrypted_static: *const c_uchar,
-    encrypted_static_len: size_t,
-    encrypted_message: *const c_uchar,
-    encrypted_message_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let encrypted_static = as_slice(encrypted_static, encrypted_static_len)?;
-        let encrypted_message = as_slice(encrypted_message, encrypted_message_len)?;
-        let public_key = native_handle_cast::<PublicKey>(public_key)?;
-
-        let usm = UnidentifiedSenderMessage::new(
-            *public_key,
-            encrypted_static.to_vec(),
-            encrypted_message.to_vec(),
-        )?;
-        box_object::<UnidentifiedSenderMessage>(obj, Ok(usm))
-    })
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sealed_session_cipher_encrypt(
