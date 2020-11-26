@@ -368,8 +368,8 @@ impl UnidentifiedSenderMessageContent {
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
 
         let msg_type = match msg_type {
+            1 => Ok(CiphertextMessageType::PreKey),
             2 => Ok(CiphertextMessageType::Whisper),
-            3 => Ok(CiphertextMessageType::PreKey),
             _ => Err(SignalProtocolError::InvalidProtobufEncoding),
         }?;
 
@@ -390,9 +390,14 @@ impl UnidentifiedSenderMessageContent {
         sender: SenderCertificate,
         contents: Vec<u8>,
     ) -> Result<Self> {
+        let proto_msg_type = match msg_type {
+            CiphertextMessageType::PreKey => Ok(1),
+            CiphertextMessageType::Whisper => Ok(2),
+            _ => Err(SignalProtocolError::InvalidProtobufEncoding),
+        }?;
         let msg = proto::sealed_sender::unidentified_sender_message::Message {
             content: Some(contents.clone()),
-            r#type: Some(msg_type as _),
+            r#type: Some(proto_msg_type),
             sender_certificate: Some(sender.to_protobuf()?),
         };
 
