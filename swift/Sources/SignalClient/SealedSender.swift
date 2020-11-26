@@ -90,6 +90,10 @@ public class SenderCertificate: ClonableHandleOwner {
         super.init(owned: result!)
     }
 
+    internal override init(owned handle: OpaquePointer) {
+        super.init(owned: handle)
+    }
+
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
         signal_sender_certificate_destroy(handle)
     }
@@ -178,6 +182,53 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                          ffiSessionStore, ffiIdentityStore, context)
                 }
             }
+        }
+    }
+}
+
+public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
+    public init<Bytes: ContiguousBytes>(message: Bytes,
+                                        trustRoot: PublicKey,
+                                        timestamp: UInt64,
+                                        identityStore: IdentityKeyStore,
+                                        context: UnsafeMutableRawPointer?) throws {
+        var result: OpaquePointer?
+        try message.withUnsafeBytes { messageBytes in
+            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                try checkError(
+                    signal_sealed_session_cipher_decrypt_to_usmc(
+                        &result,
+                        messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                        messageBytes.count,
+                        trustRoot.nativeHandle,
+                        timestamp,
+                        ffiIdentityStore,
+                        context))
+            }
+        }
+        super.init(owned: result!)
+    }
+
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
+        signal_unidentified_sender_message_content_destroy(handle)
+    }
+
+    public func senderCertificate() throws -> SenderCertificate {
+        var result: OpaquePointer?
+        try checkError(signal_unidentified_sender_message_content_get_sender_cert(&result, self.nativeHandle))
+        return SenderCertificate(owned: result!)
+    }
+
+    public func messageType() throws -> CiphertextMessage.MessageType {
+        let rawType = try invokeFnReturningInteger {
+            signal_unidentified_sender_message_content_get_msg_type($0, self.nativeHandle)
+        }
+        return .init(rawValue: rawType)
+    }
+
+    public func contents() throws -> [UInt8] {
+        return try invokeFnReturningArray {
+            signal_unidentified_sender_message_content_get_contents(self.nativeHandle, $0, $1)
         }
     }
 }

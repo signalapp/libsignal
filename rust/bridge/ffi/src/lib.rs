@@ -1734,8 +1734,17 @@ pub unsafe extern "C" fn signal_sender_certificate_new(
 ffi_fn_destroy!(signal_unidentified_sender_message_content_destroy destroys UnidentifiedSenderMessageContent);
 ffi_fn_deserialize!(signal_unidentified_sender_message_content_deserialize(UnidentifiedSenderMessageContent) is UnidentifiedSenderMessageContent::deserialize);
 
-ffi_fn_get_uint32!(signal_unidentified_sender_message_content_get_msg_type(UnidentifiedSenderMessageContent) using
-                   |m: &UnidentifiedSenderMessageContent| Ok(m.msg_type()? as u32));
+#[no_mangle]
+pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type(
+    out: *mut u8,
+    obj: *const UnidentifiedSenderMessageContent,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let msg = native_handle_cast::<UnidentifiedSenderMessageContent>(obj)?;
+        *out = msg.msg_type()? as u8;
+        Ok(())
+    })
+}
 
 ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_serialized(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
 ffi_fn_get_bytearray!(signal_unidentified_sender_message_content_get_contents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
@@ -1836,6 +1845,33 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_encrypt(
             &mut rng,
         ))?;
         write_bytearray_to(out, out_len, Ok(ctext))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt_to_usmc(
+    out: *mut *mut UnidentifiedSenderMessageContent,
+    ctext: *const c_uchar,
+    ctext_len: size_t,
+    trust_root: *const PublicKey,
+    timestamp: u64,
+    identity_store: *const FfiIdentityKeyStoreStruct,
+    ctx: *mut c_void,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        let ctext = as_slice(ctext, ctext_len)?;
+        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
+        let mut identity_store = FfiIdentityKeyStore::new(identity_store)?;
+
+        let usmc = expect_ready(sealed_sender_decrypt_to_usmc(
+            ctext,
+            trust_root,
+            timestamp,
+            &mut identity_store,
+            Some(ctx),
+        ));
+
+        box_object(out, usmc)
     })
 }
 
