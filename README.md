@@ -1,6 +1,6 @@
 # Overview
 
-libsignal-client is an implementation of the Signal client in Rust.
+libsignal-client is an implementation of the Signal client protocol in Rust.
 
 Work in progress.  Subject to change without notice, use outside Signal not yet recommended.
 
@@ -41,6 +41,15 @@ $ make java_test
 ## Swift
 
 To learn about the Swift build process see ``swift/README.md``
+
+# Contributions
+
+Signal does accept external contributions to this project. However unless the change is
+simple and easily understood, for example fixing a bug or portability issue, adding a new
+test, or improving performance, first open an issue to discuss your intended change as not
+all changes can be accepted.
+
+A CLA (Contributor License Agreement) is required for all contributions.
 
 # Legal things
 ## Cryptography Notice
