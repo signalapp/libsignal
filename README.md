@@ -1,14 +1,15 @@
 # Overview
 
-libsignal-client is an implementation of the Signal client in Rust.
+libsignal-client is an implementation of the Signal client protocol in Rust.
 
 Work in progress.  Subject to change without notice, use outside Signal not yet recommended.
 
 # Building
 
-To build anything in this repository you must have Rust installed. The build currently
-uses a specific version of the Rust nightly compiler, which will be downloaded
-automatically by cargo. To build and test the basic protocol libraries:
+To build anything in this repository you must have [Rust](https://rust-lang.org) installed.
+The build currently uses a specific version of the Rust nightly compiler, which
+will be downloaded automatically by cargo. To build and test the basic protocol
+libraries:
 
 ```shell
 $ cargo build
@@ -41,6 +42,15 @@ $ make java_test
 ## Swift
 
 To learn about the Swift build process see ``swift/README.md``
+
+# Contributions
+
+Signal does accept external contributions to this project. However unless the change is
+simple and easily understood, for example fixing a bug or portability issue, adding a new
+test, or improving performance, first open an issue to discuss your intended change as not
+all changes can be accepted.
+
+Signing a [CLA (Contributor License Agreement)](https://signal.org/cla/) is required for all contributions.
 
 # Legal things
 ## Cryptography Notice
