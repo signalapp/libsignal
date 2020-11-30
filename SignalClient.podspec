@@ -30,6 +30,7 @@ Pod::Spec.new do |s|
 
   s.pod_target_xcconfig = {
       'CARGO_BUILD_TARGET_DIR' => '$(DERIVED_FILE_DIR)/libsignal-ffi',
+      'CARGO_PROFILE_RELEASE_DEBUG' => '1', # enable line tables
       'LIBSIGNAL_FFI_DIR' => '$(CARGO_BUILD_TARGET_DIR)/$(CARGO_BUILD_TARGET)/release',
 
       'SWIFT_INCLUDE_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi $(LIBSIGNAL_FFI_DIR)',
