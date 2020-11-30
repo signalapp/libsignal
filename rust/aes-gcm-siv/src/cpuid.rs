@@ -5,13 +5,25 @@
 
 #[cfg(all(
     target_arch = "aarch64",
-    any(target_os = "linux", target_os = "android")
+    target_os = "linux"
 ))]
 pub fn has_armv8_crypto() -> bool {
     // Require NEON, AES and PMULL
     let hwcap_crypto = (1 << 1) | (1 << 3) | (1 << 4);
     let hwcap = unsafe { libc::getauxval(libc::AT_HWCAP) };
     hwcap & hwcap_crypto == hwcap_crypto
+}
+
+#[cfg(all(target_arch = "aarch64", target_os = "ios"))]
+pub fn has_armv8_crypto() -> bool {
+    // All 64-bit iOS devices have AES/PMUL support
+    true
+}
+
+#[cfg(all(target_arch = "aarch64", not(any(target_os = "linux", target_os = "ios"))))]
+pub fn has_armv8_crypto() -> bool {
+    // Detection not available for this platform
+    false
 }
 
 #[cfg(all(target_arch = "aarch64", target_os = "ios"))]

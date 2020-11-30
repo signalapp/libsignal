@@ -36,7 +36,7 @@ for l in stderr.split('\n'):
 if unknown_warning:
     sys.exit(1)
 
-java_decl = re.compile(r'([a-zA-Z]+) Java_org_signal_client_internal_Native_([A-Z][a-zA-Z]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+java_decl = re.compile(r'([a-zA-Z]+) Java_org_signal_client_internal_Native_([A-Z][a-zA-Z0-9]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
 
 
 def translate_to_java(typ):

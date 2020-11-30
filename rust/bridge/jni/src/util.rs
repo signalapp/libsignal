@@ -8,15 +8,18 @@ use futures::task::noop_waker_ref;
 use jni::objects::{JObject, JString, JThrowable, JValue};
 use jni::sys::{_jobject, jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
-use libsignal_protocol_rust::SignalProtocolError;
 use std::convert::TryFrom;
 use std::fmt;
 use std::future::Future;
 use std::task::{self, Poll};
 
+use libsignal_protocol_rust::SignalProtocolError;
+use aes_gcm_siv::Error as AesGcmSivError;
+
 #[derive(Debug)]
 pub enum SignalJniError {
     Signal(SignalProtocolError),
+    AesGcmSiv(AesGcmSivError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -43,6 +46,7 @@ impl fmt::Display for SignalJniError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SignalJniError::Signal(s) => write!(f, "{}", s),
+            SignalJniError::AesGcmSiv(s) => write!(f, "{}", s),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::ExceptionDuringCallback(s) => {
                 write!(f, "exception recieved during callback {}", s)
@@ -66,6 +70,12 @@ impl fmt::Display for SignalJniError {
 impl From<SignalProtocolError> for SignalJniError {
     fn from(e: SignalProtocolError) -> SignalJniError {
         SignalJniError::Signal(e)
+    }
+}
+
+impl From<AesGcmSivError> for SignalJniError {
+    fn from(e: AesGcmSivError) -> SignalJniError {
+        SignalJniError::AesGcmSiv(e)
     }
 }
 
@@ -111,7 +121,8 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
         | SignalJniError::Signal(SignalProtocolError::SignatureValidationFailed)
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
-        | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _)) => {
+        | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidKeySize) => {
             "org/whispersystems/libsignal/InvalidKeyException"
         }
 
@@ -124,7 +135,8 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
         | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidCiphertext)
-        | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding) => {
+        | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidTag) => {
             "org/whispersystems/libsignal/InvalidMessageException"
         }
 
@@ -146,7 +158,8 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/signal/libsignal/metadata/SelfSendException"
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidArgument(_)) => {
+        SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
+        | SignalJniError::AesGcmSiv(_) => {
             "java/lang/IllegalArgumentException"
         }
 

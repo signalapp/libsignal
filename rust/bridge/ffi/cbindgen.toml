@@ -38,7 +38,7 @@ sort_by = "None"
 
 [parse]
 parse_deps = true
-include = ["libsignal-protocol-rust"]
+include = ["libsignal-protocol-rust", "aes-gcm-siv"]
 
 [parse.expand]
 crates = ["libsignal-ffi"]

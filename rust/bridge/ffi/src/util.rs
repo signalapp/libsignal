@@ -12,9 +12,12 @@ use std::fmt;
 use std::future::Future;
 use std::task::{self, Poll};
 
+use aes_gcm_siv::Error as AesGcmSivError;
+
 #[derive(Debug)]
 pub enum SignalFfiError {
     Signal(SignalProtocolError),
+    AesGcmSiv(AesGcmSivError),
     InsufficientOutputSize(usize, usize),
     NullPointer,
     InvalidUtf8String,
@@ -92,7 +95,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
-            | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _)) => {
+            | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
+            | SignalFfiError::AesGcmSiv(AesGcmSivError::InvalidKeySize) => {
                 SignalErrorCode::InvalidKey
             }
 
@@ -109,7 +113,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidCiphertext) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidCiphertext)
+            | SignalFfiError::AesGcmSiv(AesGcmSivError::InvalidTag) => {
                 SignalErrorCode::InvalidCiphertext
             }
 
@@ -142,7 +147,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidState
             }
 
-            SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_)) => {
+            SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
+            | SignalFfiError::AesGcmSiv(_) => {
                 SignalErrorCode::InvalidArgument
             }
 
@@ -157,6 +163,9 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::Signal(s) => write!(f, "{}", s),
             SignalFfiError::CallbackError(c) => {
                 write!(f, "callback invocation returned error code {}", c)
+            }
+            SignalFfiError::AesGcmSiv(c) => {
+                write!(f, "AES-GCM-SIV operation failed {}", c)
             }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidType => write!(f, "invalid type"),
@@ -176,6 +185,12 @@ impl fmt::Display for SignalFfiError {
 impl From<SignalProtocolError> for SignalFfiError {
     fn from(e: SignalProtocolError) -> SignalFfiError {
         SignalFfiError::Signal(e)
+    }
+}
+
+impl From<AesGcmSivError> for SignalFfiError {
+    fn from(e: AesGcmSivError) -> SignalFfiError {
+        SignalFfiError::AesGcmSiv(e)
     }
 }
 

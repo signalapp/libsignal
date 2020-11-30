@@ -19,7 +19,7 @@ subtle = "2.3"
 cipher = "0.2"
 generic-array = "0.14"
 
-[target.'cfg(all(target_arch = "aarch64", any(target_os = "linux", target_os = "android")))'.dependencies]
+[target.'cfg(all(target_arch = "aarch64", any(target_os = "linux")))'.dependencies]
 libc = "0.2" # for getauxval
 
 [target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]

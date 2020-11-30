@@ -23,13 +23,21 @@ public class Hex {
   public static String toString(byte[] bytes, int offset, int length) {
     StringBuffer buf = new StringBuffer();
     for (int i = 0; i < length; i++) {
-      appendHexChar(buf, bytes[offset + i]);
+      appendHexCharWithPrefix(buf, bytes[offset + i]);
       buf.append(", ");
     }
     return buf.toString();
   }
 
   public static String toStringCondensed(byte[] bytes) {
+    StringBuffer buf = new StringBuffer();
+    for (int i=0;i<bytes.length;i++) {
+      appendHexCharWithPrefix(buf, bytes[i]);
+    }
+    return buf.toString();
+  }
+
+  public static String toHexString(byte[] bytes) {
     StringBuffer buf = new StringBuffer();
     for (int i=0;i<bytes.length;i++) {
       appendHexChar(buf, bytes[i]);
@@ -58,8 +66,12 @@ public class Hex {
     return out;
   }
 
-  private static void appendHexChar(StringBuffer buf, int b) {
+  private static void appendHexCharWithPrefix(StringBuffer buf, int b) {
     buf.append("(byte)0x");
+    appendHexChar(buf, b);
+  }
+
+  private static void appendHexChar(StringBuffer buf, int b) {
     buf.append(HEX_DIGITS[(b >> 4) & 0xf]);
     buf.append(HEX_DIGITS[b & 0xf]);
   }
