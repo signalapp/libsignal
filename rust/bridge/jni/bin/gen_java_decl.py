@@ -19,7 +19,7 @@ cbindgen = subprocess.Popen(['cbindgen'], cwd=os.path.join(our_abs_dir, '..'), s
 stdout = str(stdout.decode('utf8'))
 stderr = str(stderr.decode('utf8'))
 
-ignore_this_warning = re.compile("WARN: Can't find .*\. This usually means that this type was incompatible or not found\.")
+ignore_this_warning = re.compile(r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.")
 
 unknown_warning = False
 
@@ -36,7 +36,8 @@ for l in stderr.split('\n'):
 if unknown_warning:
     sys.exit(1)
 
-java_decl = re.compile('([a-zA-Z]+) Java_org_signal_client_internal_Native_([A-Z][a-zA-Z]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+java_decl = re.compile(r'([a-zA-Z]+) Java_org_signal_client_internal_Native_([A-Z][a-zA-Z]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+
 
 def translate_to_java(typ):
     # jobject is not given here; instead use a type
@@ -60,6 +61,7 @@ def translate_to_java(typ):
 
     raise Exception("Don't know what to do with a", typ)
 
+
 cur_type = None
 decls = []
 
@@ -82,9 +84,9 @@ for line in stdout.split('\n'):
     java_ret_type = translate_to_java(ret_type)
     java_args = []
 
-    if args != None:
+    if args is not None:
         for arg in args.split(', ')[1:]:
-            (arg_type,arg_name) = arg.split(' ')
+            (arg_type, arg_name) = arg.split(' ')
             java_arg_type = translate_to_java(arg_type)
             java_args.append('%s %s' % (java_arg_type, arg_name))
 
@@ -102,4 +104,3 @@ if not os.access(native_java, os.F_OK):
 fh = open(native_java, 'w')
 fh.write(contents)
 fh.close()
-

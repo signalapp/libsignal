@@ -1,19 +1,22 @@
-name: Shellcheck
+name: Lints
 # This is in a separate job because we have shell scripts scattered across all our targets,
 # *and* some of them have common dependencies.
 
 on:
   push:
     branches: [ master ]
-    paths: ['**/*.sh']
+    paths: ['**/*.sh', '**/*.py']
   pull_request:
-    branches: [ master ]
-    paths: ['**/*.sh']
+    paths: ['**/*.sh', '**/*.py']
 
 jobs:
-  build:
+  lint:
+    name: Check helper scripts
+
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
+    - run: pip3 install flake8
     - run: shellcheck **/*.sh
+    - run: python3 -m flake8 .
