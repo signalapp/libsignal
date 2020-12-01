@@ -16,7 +16,7 @@ RUN    apt-get update \
                openssh-client \
                unzip
 
-RUN    apt-get install -y --no-install-recommends openjdk-8-jdk=8u275-b01-0ubuntu1~18.04
+RUN    apt-get install -y --no-install-recommends openjdk-8-jdk=8u272-b10-0ubuntu1~18.04
 
 ARG UID
 ARG GID
