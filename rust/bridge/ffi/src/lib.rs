@@ -15,6 +15,7 @@ use std::ffi::{c_void, CString};
 
 use aes_gcm_siv::Aes256GcmSiv;
 
+pub mod logging;
 mod util;
 
 use crate::util::*;

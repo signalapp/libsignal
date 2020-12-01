@@ -15,7 +15,17 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
 
 ## Development as a CocoaPod
 
-Instead of a git-based dependency, use a path-based dependency to treat SignalClient as a development pod.
+Instead of a git-based dependency, use a path-based dependency to treat SignalClient as a development pod. If validating SignalClient locally, use the following invocation:
+
+    XCODE_XCCONFIG_FILE=swift/PodLibLint.xcconfig pod lib lint \
+      --platforms=ios \
+      --include-podspecs=../SignalCoreKit/SignalCoreKit.podspec \
+      --skip-import-validation \
+      --verbose
+
+You will also need to have [SignalCoreKit][] checked out; the above command assumes you have checked it out as a sibling directory to libsignal-client.
+
+[SignalCoreKit]: https://github.com/signalapp/SignalCoreKit
 
 
 # Development as a Swift Package

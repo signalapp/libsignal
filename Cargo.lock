@@ -710,6 +710,7 @@ dependencies = [
  "futures",
  "libc",
  "libsignal-protocol-rust",
+ "log",
  "rand",
  "static_assertions",
 ]

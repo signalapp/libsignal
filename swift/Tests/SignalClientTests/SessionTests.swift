@@ -6,7 +6,7 @@
 import XCTest
 import SignalClient
 
-class SessionTests: XCTestCase {
+class SessionTests: TestCaseBase {
     fileprivate func initializeSessions(alice_store: InMemorySignalProtocolStore,
                                         bob_store: InMemorySignalProtocolStore,
                                         bob_address: ProtocolAddress) {

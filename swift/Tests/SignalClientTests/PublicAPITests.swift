@@ -6,7 +6,7 @@
 import XCTest
 import SignalClient
 
-class PublicAPITests: XCTestCase {
+class PublicAPITests: TestCaseBase {
     func testHkdfSimple() {
         let ikm: [UInt8] = [
             0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,

@@ -23,6 +23,7 @@ let package = Package(
         .target(
             name: "SignalClient",
             dependencies: ["SignalFfi"],
+            exclude: ["Logging.m"],
             swiftSettings: [.unsafeFlags(["-I", rustBuildDir])]
         ),
         .testTarget(
