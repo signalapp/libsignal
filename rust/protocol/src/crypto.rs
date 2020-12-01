@@ -5,10 +5,32 @@
 
 use crate::{error::Result, SignalProtocolError};
 
+use aes::cipher::stream::{NewStreamCipher, SyncStreamCipher};
 use aes::Aes256;
 use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
+use ctr::Ctr128;
 use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;
+use subtle::ConstantTimeEq;
+
+pub fn aes_256_ctr_encrypt(ptext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+    if key.len() != 32 {
+        return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
+            32, 0,
+        ));
+    }
+
+    let zero_nonce = [0u8; 16];
+    let mut cipher = Ctr128::<Aes256>::new(key.into(), (&zero_nonce).into());
+
+    let mut ctext = ptext.to_vec();
+    cipher.apply_keystream(&mut ctext);
+    Ok(ctext)
+}
+
+pub fn aes_256_ctr_decrypt(ctext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
+    aes_256_ctr_encrypt(ctext, key)
+}
 
 pub fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
     match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
@@ -45,6 +67,36 @@ pub fn hmac_sha256(key: &[u8], input: &[u8]) -> Result<[u8; 32]> {
     Ok(hmac.finalize().into_bytes().into())
 }
 
+pub fn aes256_ctr_hmacsha256_encrypt(
+    msg: &[u8],
+    cipher_key: &[u8],
+    mac_key: &[u8],
+) -> Result<Vec<u8>> {
+    let ctext = aes_256_ctr_encrypt(msg, cipher_key)?;
+    let mac = hmac_sha256(mac_key, &ctext)?;
+    let mut result = Vec::with_capacity(ctext.len() + 10);
+    result.extend_from_slice(&ctext);
+    result.extend_from_slice(&mac[..10]);
+    Ok(result)
+}
+
+pub fn aes256_ctr_hmacsha256_decrypt(
+    ctext: &[u8],
+    cipher_key: &[u8],
+    mac_key: &[u8],
+) -> Result<Vec<u8>> {
+    if ctext.len() < 10 {
+        return Err(SignalProtocolError::InvalidCiphertext);
+    }
+    let ptext_len = ctext.len() - 10;
+    let our_mac = hmac_sha256(mac_key, &ctext[..ptext_len])?;
+    let same: bool = our_mac[..10].ct_eq(&ctext[ptext_len..]).into();
+    if !same {
+        return Err(SignalProtocolError::InvalidCiphertext);
+    }
+    aes_256_ctr_decrypt(&ctext[..ptext_len], cipher_key)
+}
+
 #[cfg(test)]
 mod test {
 
@@ -73,5 +125,18 @@ mod test {
         let bad_iv = hex::decode("ef8a557ddc0a140c878063a6d5f31d3d").unwrap();
         let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &bad_iv).unwrap();
         assert_eq!(hex::encode(recovered), "b0736294a124482a4159");
+    }
+
+    #[test]
+    fn aes_ctr_test() {
+        let key = hex::decode("603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4")
+            .unwrap();
+        let ptext = [0u8; 35];
+
+        let ctext = super::aes_256_ctr_encrypt(&ptext, &key).unwrap();
+        assert_eq!(
+            hex::encode(ctext.clone()),
+            "e568f68194cf76d6174d4cc04310a85491151e5d0b7a1f1bc0d7acd0ae3e51e4170e23"
+        );
     }
 }

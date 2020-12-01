@@ -113,7 +113,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidCiphertext
             }
 
-            SignalFfiError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_)) => {
+            SignalFfiError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
+            | SignalFfiError::Signal(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
                 SignalErrorCode::UnrecognizedMessageVersion
             }
 
@@ -122,7 +123,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding)
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_)) => {
                 SignalErrorCode::InvalidMessage
             }
 
@@ -322,6 +324,19 @@ pub unsafe fn read_c_string(cstr: *const c_char) -> Result<String, SignalFfiErro
     }
 }
 
+pub unsafe fn read_optional_c_string(
+    cstr: *const c_char,
+) -> Result<Option<String>, SignalFfiError> {
+    if cstr.is_null() {
+        return Ok(None);
+    }
+
+    match CStr::from_ptr(cstr).to_str() {
+        Ok(s) => Ok(Some(s.to_owned())),
+        Err(_) => Err(SignalFfiError::InvalidUtf8String),
+    }
+}
+
 pub fn write_cstr_to(
     out: *mut *const c_char,
     value: Result<String, SignalProtocolError>,
@@ -338,6 +353,33 @@ pub fn write_cstr_to(
                 CString::new(value).expect("No NULL characters in string being returned to C");
             unsafe {
                 *out = cstr.into_raw();
+            }
+            Ok(())
+        }
+        Err(e) => Err(SignalFfiError::Signal(e)),
+    }
+}
+
+pub fn write_optional_cstr_to(
+    out: *mut *const c_char,
+    value: Result<Option<String>, SignalProtocolError>,
+) -> Result<(), SignalFfiError> {
+    if out.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    match value {
+        Ok(Some(value)) => {
+            let cstr =
+                CString::new(value).expect("No NULL characters in string being returned to C");
+            unsafe {
+                *out = cstr.into_raw();
+            }
+            Ok(())
+        }
+        Ok(None) => {
+            unsafe {
+                *out = std::ptr::null_mut();
             }
             Ok(())
         }
@@ -568,6 +610,26 @@ macro_rules! ffi_fn_get_cstring {
             run_ffi_safe(|| {
                 let obj = native_handle_cast::<$typ>(obj)?;
                 write_cstr_to(out, inner_get(&obj))?;
+                Ok(())
+            })
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! ffi_fn_get_optional_cstring {
+    ( $nm:ident($typ:ty) using $body:expr ) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $nm(
+            obj: *const $typ,
+            out: *mut *const c_char,
+        ) -> *mut SignalFfiError {
+            fn inner_get(t: &$typ) -> Result<Option<String>, SignalProtocolError> {
+                $body(&t)
+            }
+            run_ffi_safe(|| {
+                let obj = native_handle_cast::<$typ>(obj)?;
+                write_optional_cstr_to(out, inner_get(&obj))?;
                 Ok(())
             })
         }

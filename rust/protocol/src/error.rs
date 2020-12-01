@@ -63,6 +63,10 @@ pub enum SignalProtocolError {
     FfiBindingError(String),
     ApplicationCallbackThrewException(&'static str, Option<String>, String),
     ApplicationCallbackReturnedIntegerError(&'static str, i32),
+
+    InvalidSealedSenderMessage(String),
+    UnknownSealedSenderVersion(u8),
+    SealedSenderSelfSend,
 }
 
 impl Error for SignalProtocolError {
@@ -193,6 +197,15 @@ impl fmt::Display for SignalProtocolError {
                     func, m
                 ),
             },
+            SignalProtocolError::InvalidSealedSenderMessage(m) => {
+                write!(f, "invalid sealed sender message {}", m)
+            }
+            SignalProtocolError::UnknownSealedSenderVersion(v) => {
+                write!(f, "unknown sealed sender message version {}", v)
+            }
+            SignalProtocolError::SealedSenderSelfSend => {
+                write!(f, "self send of a sealed sender message")
+            }
         }
     }
 }

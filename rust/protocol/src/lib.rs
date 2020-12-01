@@ -18,6 +18,7 @@ mod kdf;
 mod proto;
 mod protocol;
 mod ratchet;
+mod sealed_sender;
 mod sender_keys;
 mod session;
 mod session_cipher;
@@ -43,6 +44,11 @@ pub use {
     ratchet::{
         are_we_alice, initialize_alice_session, initialize_bob_session,
         AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
+    },
+    sealed_sender::{
+        sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
+        SealedSenderDecryptionResult, SenderCertificate, ServerCertificate,
+        UnidentifiedSenderMessage, UnidentifiedSenderMessageContent,
     },
     sender_keys::{
         SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,

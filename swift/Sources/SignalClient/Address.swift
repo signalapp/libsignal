@@ -18,6 +18,10 @@ public class ProtocolAddress: ClonableHandleOwner {
         super.init(borrowing: handle)
     }
 
+    internal override init(owned handle: OpaquePointer) {
+        super.init(owned: handle)
+    }
+
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_address_clone(&newHandle, currentHandle)
     }

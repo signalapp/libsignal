@@ -654,17 +654,8 @@ jni_fn_deserialize!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1D
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetId(SignedPreKeyRecord) using
                  SignedPreKeyRecord::id);
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-) -> jlong {
-    run_ffi_safe(&env, || {
-        let spkr = native_handle_cast::<SignedPreKeyRecord>(handle)?;
-        jlong_from_u64(spkr.timestamp())
-    })
-}
+jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(SignedPreKeyRecord) using
+                  SignedPreKeyRecord::timestamp);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPublicKey(PublicKey) from SignedPreKeyRecord,
                           SignedPreKeyRecord::public_key);
@@ -1680,5 +1671,268 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1In
         let session = initialize_bob_session(&parameters)?;
 
         to_jbytearray(&env, session.serialize())
+    })
+}
+
+// Server Certificate
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_ServerCertificate_1Deserialize is ServerCertificate::deserialize);
+
+jni_fn_destroy!(Java_org_signal_client_internal_Native_ServerCertificate_1Destroy destroys ServerCertificate);
+
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKeyId(ServerCertificate) using ServerCertificate::key_id);
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetSerialized(ServerCertificate) using ServerCertificate::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetCertificate(ServerCertificate) using ServerCertificate::certificate);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetSignature(ServerCertificate) using ServerCertificate::signature);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKey(PublicKey) from ServerCertificate,
+                          ServerCertificate::public_key);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ServerCertificate_1New(
+    env: JNIEnv,
+    _class: JClass,
+    key_id: jint,
+    server_key: ObjectHandle,
+    trust_root: ObjectHandle,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let key_id = jint_to_u32(key_id)?;
+        let server_key = native_handle_cast::<PublicKey>(server_key)?;
+        let trust_root = native_handle_cast::<PrivateKey>(trust_root)?;
+        let mut rng = rand::rngs::OsRng;
+
+        let sc = ServerCertificate::new(key_id, *server_key, trust_root, &mut rng)?;
+
+        box_object::<ServerCertificate>(Ok(sc))
+    })
+}
+
+// Sender Certificate
+jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderCertificate_1Destroy destroys SenderCertificate);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderCertificate_1Deserialize is SenderCertificate::deserialize);
+
+jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SenderCertificate_1GetExpiration(SenderCertificate) using SenderCertificate::expiration);
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderCertificate_1GetDeviceId(SenderCertificate) using SenderCertificate::sender_device_id);
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSerialized(SenderCertificate) using SenderCertificate::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetCertificate(SenderCertificate) using SenderCertificate::certificate);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSignature(SenderCertificate) using SenderCertificate::signature);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetKey(PublicKey) from SenderCertificate,
+                          SenderCertificate::key);
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,
+                          |s: &SenderCertificate| Ok(s.signer()?.clone()));
+
+jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderUuid(SenderCertificate) using SenderCertificate::sender_uuid);
+jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderE164(SenderCertificate) using SenderCertificate::sender_e164);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
+    env: JNIEnv,
+    _class: JClass,
+    cert: ObjectHandle,
+    session_store: JavaSessionStore,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let cert = native_handle_cast::<SenderCertificate>(cert)?;
+        let session_store = JniSessionStore::new(&env, session_store)?;
+
+        let address = expect_ready(cert.preferred_address(&session_store, None))?;
+        box_object::<ProtocolAddress>(Ok(address))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1Validate(
+    env: JNIEnv,
+    _class: JClass,
+    cert: ObjectHandle,
+    key: ObjectHandle,
+    time: jlong,
+) -> jboolean {
+    run_ffi_safe(&env, || {
+        let cert = native_handle_cast::<SenderCertificate>(cert)?;
+        let key = native_handle_cast::<PublicKey>(key)?;
+        let time = jlong_to_u64(time)?;
+        let valid = cert.validate(key, time)?;
+        Ok(valid as jboolean)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1New(
+    env: JNIEnv,
+    _class: JClass,
+    sender_uuid: JString,
+    sender_e164: JString,
+    sender_device_id: jint,
+    sender_key: ObjectHandle,
+    expiration: jlong,
+    signer_cert: ObjectHandle,
+    signer_key: ObjectHandle,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let sender_uuid: Option<String> = if sender_uuid.is_null() {
+            None
+        } else {
+            Some(env.get_string(sender_uuid)?.into())
+        };
+
+        let sender_e164: Option<String> = if sender_e164.is_null() {
+            None
+        } else {
+            Some(env.get_string(sender_e164)?.into())
+        };
+
+        let sender_device_id = jint_to_u32(sender_device_id)?;
+        let sender_key = native_handle_cast::<PublicKey>(sender_key)?;
+
+        let expiration = jlong_to_u64(expiration)?;
+        let signer_cert = native_handle_cast::<ServerCertificate>(signer_cert)?;
+        let signer_key = native_handle_cast::<PrivateKey>(signer_key)?;
+
+        let mut rng = rand::rngs::OsRng;
+
+        let sc = SenderCertificate::new(
+            sender_uuid,
+            sender_e164,
+            *sender_key,
+            sender_device_id,
+            expiration,
+            signer_cert.clone(),
+            signer_key,
+            &mut rng,
+        )?;
+
+        box_object::<SenderCertificate>(Ok(sc))
+    })
+}
+
+// UnidentifiedSenderMessageContent
+jni_fn_destroy!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1Destroy destroys UnidentifiedSenderMessageContent);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1Deserialize is UnidentifiedSenderMessageContent::deserialize);
+
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetMsgType(UnidentifiedSenderMessageContent) using
+                 |m: &UnidentifiedSenderMessageContent| Ok(m.msg_type()? as u32));
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSerialized(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetContents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSenderCert(SenderCertificate) from UnidentifiedSenderMessageContent,
+                          |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1New(
+    env: JNIEnv,
+    _class: JClass,
+    msg_type: jint,
+    sender: ObjectHandle,
+    contents: jbyteArray,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let sender = native_handle_cast::<SenderCertificate>(sender)?;
+        let contents = env.convert_byte_array(contents)?;
+
+        // This encoding is from the protobufs
+        let msg_type = match msg_type {
+            1 => Ok(CiphertextMessageType::PreKey),
+            2 => Ok(CiphertextMessageType::Whisper),
+            x => Err(SignalJniError::Signal(
+                SignalProtocolError::InvalidArgument(format!("invalid msg_type argument {}", x)),
+            )),
+        }?;
+
+        let usmc = UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents)?;
+        box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
+    })
+}
+
+// UnidentifiedSenderMessage
+jni_fn_destroy!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1Destroy destroys UnidentifiedSenderMessage);
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1Deserialize is UnidentifiedSenderMessage::deserialize);
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetSerialized(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::serialized);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEncryptedMessage(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_message);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEncryptedStatic(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_static);
+
+jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEphemeralPublic(PublicKey) from UnidentifiedSenderMessage,
+                          UnidentifiedSenderMessage::ephemeral_public);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1New(
+    env: JNIEnv,
+    _class: JClass,
+    public_key: ObjectHandle,
+    encrypted_static: jbyteArray,
+    encrypted_message: jbyteArray,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let encrypted_static = env.convert_byte_array(encrypted_static)?;
+        let encrypted_message = env.convert_byte_array(encrypted_message)?;
+        let public_key = native_handle_cast::<PublicKey>(public_key)?;
+
+        let usm = UnidentifiedSenderMessage::new(*public_key, encrypted_static, encrypted_message)?;
+        box_object::<UnidentifiedSenderMessage>(Ok(usm))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCipher_1Encrypt(
+    env: JNIEnv,
+    _class: JClass,
+    destination: ObjectHandle,
+    sender_cert: ObjectHandle,
+    ptext: jbyteArray,
+    session_store: JavaSessionStore,
+    identity_store: JavaIdentityKeyStore,
+) -> jbyteArray {
+    run_ffi_safe(&env, || {
+        let destination = native_handle_cast::<ProtocolAddress>(destination)?;
+        let sender_cert = native_handle_cast::<SenderCertificate>(sender_cert)?;
+        let ptext = env.convert_byte_array(ptext)?;
+
+        let mut identity_store = JniIdentityKeyStore::new(&env, identity_store)?;
+        let mut session_store = JniSessionStore::new(&env, session_store)?;
+
+        let mut rng = rand::rngs::OsRng;
+
+        let ctext = expect_ready(sealed_sender_encrypt(
+            destination,
+            sender_cert,
+            &ptext,
+            &mut session_store,
+            &mut identity_store,
+            None,
+            &mut rng,
+        ))?;
+        to_jbytearray(&env, Ok(ctext))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCipher_1DecryptToUsmc(
+    env: JNIEnv,
+    _class: JClass,
+    ctext: jbyteArray,
+    trust_root: ObjectHandle,
+    timestamp: jlong,
+    identity_store: JavaIdentityKeyStore,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let ctext = env.convert_byte_array(ctext)?;
+        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
+        let timestamp = jlong_to_u64(timestamp)?;
+        let mut identity_store = JniIdentityKeyStore::new(&env, identity_store)?;
+
+        let usmc = expect_ready(sealed_sender_decrypt_to_usmc(
+            &ctext,
+            trust_root,
+            timestamp,
+            &mut identity_store,
+            None,
+        ))?;
+
+        box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
     })
 }

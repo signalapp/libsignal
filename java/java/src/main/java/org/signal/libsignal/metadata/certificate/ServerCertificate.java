@@ -1,64 +1,53 @@
 package org.signal.libsignal.metadata.certificate;
 
+import org.signal.client.internal.Native;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-
-import org.signal.libsignal.metadata.SignalProtos;
+import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.InvalidKeyException;
-import org.whispersystems.libsignal.ecc.Curve;
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 public class ServerCertificate {
+  private final long handle;
 
-  private final int         keyId;
-  private final ECPublicKey key;
+  @Override
+  protected void finalize() {
+     Native.ServerCertificate_Destroy(this.handle);
+  }
 
-  private final byte[] serialized;
-  private final byte[] certificate;
-  private final byte[] signature;
+  public ServerCertificate(long handle) {
+    this.handle = handle;
+  }
 
   public ServerCertificate(byte[] serialized) throws InvalidCertificateException {
     try {
-      SignalProtos.ServerCertificate wrapper = SignalProtos.ServerCertificate.parseFrom(serialized);
-
-      if (!wrapper.hasCertificate() || !wrapper.hasSignature()) {
-        throw new InvalidCertificateException("Missing fields");
-      }
-
-      SignalProtos.ServerCertificate.Certificate certificate = SignalProtos.ServerCertificate.Certificate.parseFrom(wrapper.getCertificate());
-
-      if (!certificate.hasId() || !certificate.hasKey()) {
-        throw new InvalidCertificateException("Missing fields");
-      }
-
-      this.keyId       = certificate.getId();
-      this.key         = Curve.decodePoint(certificate.getKey().toByteArray(), 0);
-      this.serialized  = serialized;
-      this.certificate = wrapper.getCertificate().toByteArray();
-      this.signature   = wrapper.getSignature().toByteArray();
-
-    } catch (InvalidProtocolBufferException | InvalidKeyException e) {
+      this.handle = Native.ServerCertificate_Deserialize(serialized);
+    } catch (Exception e) {
       throw new InvalidCertificateException(e);
     }
   }
 
   public int getKeyId() {
-    return keyId;
+    return Native.ServerCertificate_GetKeyId(this.handle);
   }
 
   public ECPublicKey getKey() {
-    return key;
+    return new ECPublicKey(Native.ServerCertificate_GetKey(this.handle));
   }
 
   public byte[] getSerialized() {
-    return serialized;
+    return Native.ServerCertificate_GetSerialized(this.handle);
   }
 
   public byte[] getCertificate() {
-    return certificate;
+    return Native.ServerCertificate_GetCertificate(this.handle);
   }
 
   public byte[] getSignature() {
-    return signature;
+    return Native.ServerCertificate_GetSignature(this.handle);
+  }
+
+  public long nativeHandle() {
+    return this.handle;
   }
 }

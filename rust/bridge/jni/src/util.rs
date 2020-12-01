@@ -142,6 +142,10 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "java/lang/IllegalStateException"
         }
 
+        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
+            "org/signal/libsignal/metadata/SelfSendException"
+        }
+
         SignalJniError::Signal(SignalProtocolError::InvalidArgument(_)) => {
             "java/lang/IllegalArgumentException"
         }
@@ -274,6 +278,13 @@ pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
         return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
     }
     Ok(v as u32)
+}
+
+pub fn jlong_to_u64(v: jlong) -> Result<u64, SignalJniError> {
+    if v < 0 {
+        return Err(SignalJniError::IntegerOverflow(format!("{} to u64", v)));
+    }
+    Ok(v as u64)
 }
 
 pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
@@ -592,6 +603,19 @@ macro_rules! jni_fn_get_jint {
 }
 
 #[macro_export]
+macro_rules! jni_fn_get_jlong {
+    ( $nm:ident($typ:ty) using $body:expr ) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jlong {
+            run_ffi_safe(&env, || {
+                let obj = native_handle_cast::<$typ>(handle)?;
+                jlong_from_u64($body(obj))
+            })
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! jni_fn_get_jboolean {
     ( $nm:ident($typ:ty) using $body:expr ) => {
         #[no_mangle]
@@ -624,6 +648,22 @@ macro_rules! jni_fn_get_jstring {
             run_ffi_safe(&env, || {
                 let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
                 Ok(env.new_string(inner_get(&obj)?)?.into_inner())
+            })
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! jni_fn_get_optional_jstring {
+    ( $nm:ident($typ:ty) using $body:expr ) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jstring {
+            run_ffi_safe(&env, || {
+                let obj: &mut $typ = native_handle_cast::<$typ>(handle)?;
+                match $body(&obj)? {
+                    Some(s) => Ok(env.new_string(s)?.into_inner()),
+                    None => Ok(std::ptr::null_mut()),
+                }
             })
         }
     };

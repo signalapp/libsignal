@@ -1,9 +1,11 @@
 syntax = "proto2";
 
-package signal;
+//
+// Copyright 2020 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
-option java_package         = "org.signal.libsignal.metadata";
-option java_outer_classname = "SignalProtos";
+package signal.proto.sealed_sender;
 
 message ServerCertificate {
     message Certificate {

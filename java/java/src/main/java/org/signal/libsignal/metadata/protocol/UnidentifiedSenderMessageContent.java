@@ -1,84 +1,49 @@
 package org.signal.libsignal.metadata.protocol;
 
-
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
+import org.signal.client.internal.Native;
 
 import org.signal.libsignal.metadata.InvalidMetadataMessageException;
-import org.signal.libsignal.metadata.SignalProtos;
 import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
 import org.signal.libsignal.metadata.certificate.SenderCertificate;
-import org.whispersystems.libsignal.InvalidMessageException;
-import org.whispersystems.libsignal.protocol.CiphertextMessage;
 
 public class UnidentifiedSenderMessageContent {
+  private final long handle;
 
-  private final int               type;
-  private final SenderCertificate senderCertificate;
-  private final byte[]            content;
-  private final byte[]            serialized;
+  @Override
+  protected void finalize() {
+     Native.UnidentifiedSenderMessageContent_Destroy(this.handle);
+  }
+
+  public UnidentifiedSenderMessageContent(long nativeHandle) {
+    this.handle = nativeHandle;
+  }
 
   public UnidentifiedSenderMessageContent(byte[] serialized) throws InvalidMetadataMessageException, InvalidCertificateException {
     try {
-      SignalProtos.UnidentifiedSenderMessage.Message message = SignalProtos.UnidentifiedSenderMessage.Message.parseFrom(serialized);
-
-      if (!message.hasType() || !message.hasSenderCertificate() || !message.hasContent()) {
-        throw new InvalidMetadataMessageException("Missing fields");
-      }
-
-      switch (message.getType()) {
-        case MESSAGE:        this.type = CiphertextMessage.WHISPER_TYPE;        break;
-        case PREKEY_MESSAGE: this.type = CiphertextMessage.PREKEY_TYPE;         break;
-        default:             throw new InvalidMetadataMessageException("Unknown type: " + message.getType().getNumber());
-      }
-
-      this.senderCertificate = new SenderCertificate(message.getSenderCertificate().toByteArray());
-      this.content           = message.getContent().toByteArray();
-      this.serialized        = serialized;
-    } catch (InvalidProtocolBufferException e) {
+      this.handle = Native.UnidentifiedSenderMessageContent_Deserialize(serialized);
+    } catch (Exception e) {
       throw new InvalidMetadataMessageException(e);
     }
   }
 
   public UnidentifiedSenderMessageContent(int type, SenderCertificate senderCertificate, byte[] content) {
-    try {
-      this.serialized = SignalProtos.UnidentifiedSenderMessage.Message.newBuilder()
-                                                                      .setType(SignalProtos.UnidentifiedSenderMessage.Message.Type.valueOf(getProtoType(type)))
-                                                                      .setSenderCertificate(SignalProtos.SenderCertificate.parseFrom(senderCertificate.getSerialized()))
-                                                                      .setContent(ByteString.copyFrom(content))
-                                                                      .build()
-                                                                      .toByteArray();
-
-      this.type = type;
-      this.senderCertificate = senderCertificate;
-      this.content = content;
-    } catch (InvalidProtocolBufferException e) {
-      throw new AssertionError(e);
-    }
+    this.handle = Native.UnidentifiedSenderMessageContent_New(type, senderCertificate.nativeHandle(), content);
   }
 
   public int getType() {
-    return type;
+    return Native.UnidentifiedSenderMessageContent_GetMsgType(this.handle);
   }
 
   public SenderCertificate getSenderCertificate() {
-    return senderCertificate;
+    return new SenderCertificate(Native.UnidentifiedSenderMessageContent_GetSenderCert(this.handle));
   }
 
   public byte[] getContent() {
-    return content;
+    return Native.UnidentifiedSenderMessageContent_GetContents(this.handle);
   }
 
   public byte[] getSerialized() {
-    return serialized;
-  }
-
-  private int getProtoType(int type) {
-    switch (type) {
-      case CiphertextMessage.WHISPER_TYPE: return SignalProtos.UnidentifiedSenderMessage.Message.Type.MESSAGE_VALUE;
-      case CiphertextMessage.PREKEY_TYPE:  return SignalProtos.UnidentifiedSenderMessage.Message.Type.PREKEY_MESSAGE_VALUE;
-      default:                             throw new AssertionError(type);
-    }
+    return Native.UnidentifiedSenderMessageContent_GetSerialized(this.handle);
   }
 
 }
