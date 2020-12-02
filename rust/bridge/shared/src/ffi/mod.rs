@@ -43,6 +43,7 @@ pub unsafe fn box_object<T>(
 }
 
 macro_rules! ffi_bridge_destroy {
+    ( $typ:ty as None ) => {};
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
@@ -67,6 +68,7 @@ macro_rules! ffi_bridge_destroy {
 }
 
 macro_rules! ffi_bridge_deserialize {
+    ( $typ:ident::$fn:path as None ) => {};
     ( $typ:ident::$fn:path as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]

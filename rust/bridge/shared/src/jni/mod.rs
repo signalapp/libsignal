@@ -156,6 +156,7 @@ pub fn box_object<T>(t: Result<T, SignalProtocolError>) -> Result<ObjectHandle, 
 }
 
 macro_rules! jni_bridge_destroy {
+    ( $typ:ty as None ) => {};
     ( $typ:ty as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
@@ -178,6 +179,7 @@ macro_rules! jni_bridge_destroy {
 }
 
 macro_rules! jni_bridge_deserialize {
+    ( $typ:ident::$fn:path as None ) => {};
     ( $typ:ident::$fn:path as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
