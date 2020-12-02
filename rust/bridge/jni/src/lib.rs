@@ -1915,20 +1915,14 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCip
     env: JNIEnv,
     _class: JClass,
     ctext: jbyteArray,
-    trust_root: ObjectHandle,
-    timestamp: jlong,
     identity_store: JavaIdentityKeyStore,
 ) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let ctext = env.convert_byte_array(ctext)?;
-        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
-        let timestamp = jlong_to_u64(timestamp)?;
         let mut identity_store = JniIdentityKeyStore::new(&env, identity_store)?;
 
         let usmc = expect_ready(sealed_sender_decrypt_to_usmc(
             &ctext,
-            trust_root,
-            timestamp,
             &mut identity_store,
             None,
         ))?;

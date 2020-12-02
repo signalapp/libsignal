@@ -70,10 +70,8 @@ public class SealedSessionCipher {
     UnidentifiedSenderMessageContent content;
     try {
       content = new UnidentifiedSenderMessageContent(
-        Native.SealedSessionCipher_DecryptToUsmc(ciphertext,
-                                                 validator.getTrustRoot().nativeHandle(),
-                                                 timestamp,
-                                                 this.signalProtocolStore));
+        Native.SealedSessionCipher_DecryptToUsmc(ciphertext, this.signalProtocolStore));
+      validator.validate(content.getSenderCertificate(), timestamp);
     } catch (Exception e) {
       throw new InvalidMetadataMessageException(e);
     }

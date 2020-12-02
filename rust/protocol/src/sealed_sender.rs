@@ -656,8 +656,6 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
 
 pub async fn sealed_sender_decrypt_to_usmc(
     ciphertext: &[u8],
-    trust_root: &PublicKey,
-    timestamp: u64,
     identity_store: &mut dyn IdentityKeyStore,
     ctx: Context,
 ) -> Result<UnidentifiedSenderMessageContent> {
@@ -693,11 +691,6 @@ pub async fn sealed_sender_decrypt_to_usmc(
     )?;
 
     let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
-    if !usmc.sender()?.validate(trust_root, timestamp)? {
-        return Err(SignalProtocolError::InvalidSealedSenderMessage(
-            "trust root validation failed".to_string(),
-        ));
-    }
 
     if !bool::from(static_key_bytes.ct_eq(&usmc.sender()?.key()?.serialize())) {
         return Err(SignalProtocolError::InvalidSealedSenderMessage(
@@ -730,9 +723,13 @@ pub async fn sealed_sender_decrypt(
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
     ctx: Context,
 ) -> Result<SealedSenderDecryptionResult> {
-    let usmc =
-        sealed_sender_decrypt_to_usmc(ciphertext, trust_root, timestamp, identity_store, ctx)
-            .await?;
+    let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store, ctx).await?;
+
+    if !usmc.sender()?.validate(trust_root, timestamp)? {
+        return Err(SignalProtocolError::InvalidSealedSenderMessage(
+            "trust root validation failed".to_string(),
+        ));
+    }
 
     let is_local_e164 = match (local_e164, usmc.sender()?.sender_e164()?) {
         (Some(l), Some(s)) => l == s,

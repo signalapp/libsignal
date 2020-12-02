@@ -1777,20 +1777,15 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt_to_usmc(
     out: *mut *mut UnidentifiedSenderMessageContent,
     ctext: *const c_uchar,
     ctext_len: size_t,
-    trust_root: *const PublicKey,
-    timestamp: u64,
     identity_store: *const FfiIdentityKeyStoreStruct,
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let ctext = as_slice(ctext, ctext_len)?;
-        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
         let mut identity_store = FfiIdentityKeyStore::new(identity_store)?;
 
         let usmc = expect_ready(sealed_sender_decrypt_to_usmc(
             ctext,
-            trust_root,
-            timestamp,
             &mut identity_store,
             Some(ctx),
         ));

@@ -188,8 +188,6 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
 
 public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
     public init<Bytes: ContiguousBytes>(message: Bytes,
-                                        trustRoot: PublicKey,
-                                        timestamp: UInt64,
                                         identityStore: IdentityKeyStore,
                                         context: UnsafeMutableRawPointer?) throws {
         var result: OpaquePointer?
@@ -200,8 +198,6 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
                         &result,
                         messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                         messageBytes.count,
-                        trustRoot.nativeHandle,
-                        timestamp,
                         ffiIdentityStore,
                         context))
             }
