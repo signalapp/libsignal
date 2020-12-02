@@ -75,7 +75,7 @@ public class SealedSessionCipherTest extends TestCase {
     SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
 
     byte[] ciphertext = aliceCipher.encrypt(new SignalProtocolAddress("+14152222222", 1),
-                                            senderCertificate, "и вот я".getBytes());
+                                            senderCertificate, "\u0438 \u0432\u043E\u0442 \u044F".getBytes());
 
     SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
@@ -98,7 +98,7 @@ public class SealedSessionCipherTest extends TestCase {
     SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
 
     byte[] ciphertext = aliceCipher.encrypt(new SignalProtocolAddress("+14152222222", 1),
-                                            senderCertificate, "и вот я".getBytes());
+                                            senderCertificate, "\u0438 \u0432\u043E\u0442 \u044F".getBytes());
 
     SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
