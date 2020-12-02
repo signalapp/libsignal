@@ -136,7 +136,7 @@ public final class Native {
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 
-  public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, long trustRoot, long timestamp, IdentityKeyStore identityStore);
+  public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore);
   public static native byte[] SealedSessionCipher_Encrypt(long destination, long senderCert, byte[] ptext, SessionStore sessionStore, IdentityKeyStore identityStore);
 
   public static native long SenderCertificate_Deserialize(byte[] data);
