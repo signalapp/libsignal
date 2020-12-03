@@ -6,8 +6,8 @@
 import SignalFfi
 
 public class SenderKeyName: ClonableHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
-        signal_sender_key_name_destroy(handle)
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_sender_key_name_destroy(handle)
     }
 
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
@@ -20,10 +20,8 @@ public class SenderKeyName: ClonableHandleOwner {
         super.init(owned: handle!)
     }
 
-    public init(groupName: String, sender: ProtocolAddress) throws {
-        var handle: OpaquePointer?
-        try checkError(signal_sender_key_name_new(&handle, groupName, sender.name, sender.deviceId))
-        super.init(owned: handle!)
+    public convenience init(groupName: String, sender: ProtocolAddress) throws {
+        try self.init(groupName: groupName, senderName: sender.name, deviceId: sender.deviceId)
     }
 
     internal override init(owned handle: OpaquePointer) {
@@ -35,20 +33,26 @@ public class SenderKeyName: ClonableHandleOwner {
     }
 
     public var groupId: String {
-        return try! invokeFnReturningString {
-            signal_sender_key_name_get_group_id(nativeHandle, $0)
+        return failOnError {
+            try invokeFnReturningString {
+                signal_sender_key_name_get_group_id(nativeHandle, $0)
+            }
         }
     }
 
     public var senderName: String {
-        return try! invokeFnReturningString {
-            signal_sender_key_name_get_sender_name(nativeHandle, $0)
+        return failOnError {
+            try invokeFnReturningString {
+                signal_sender_key_name_get_sender_name(nativeHandle, $0)
+            }
         }
     }
 
     public var senderDeviceId: UInt32 {
-        return try! invokeFnReturningInteger {
-            signal_sender_key_name_get_sender_device_id(nativeHandle, $0)
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_sender_key_name_get_sender_device_id(nativeHandle, $0)
+            }
         }
     }
 }

@@ -5,6 +5,10 @@
 
 import SignalFfi
 
+#if canImport(SignalCoreKit)
+import SignalCoreKit
+#endif
+
 public enum SignalError: Error {
     case invalidState(String)
     case internalError(String)
@@ -91,4 +95,20 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     default:
         throw SignalError.unknown(errType, errStr)
     }
+}
+
+internal func failOnError(_ error: SignalFfiErrorRef?) {
+    failOnError { try checkError(error) }
+}
+
+internal func failOnError<Result>(_ fn: () throws -> Result) -> Result {
+#if canImport(SignalCoreKit)
+    do {
+        return try fn()
+    } catch {
+        owsFail("unexpected error: \(error)")
+    }
+#else
+    return try! fn()
+#endif
 }

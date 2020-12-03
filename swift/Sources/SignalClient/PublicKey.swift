@@ -24,23 +24,27 @@ public class PublicKey: ClonableHandleOwner {
         super.init(borrowing: handle)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
-        signal_publickey_destroy(handle)
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_publickey_destroy(handle)
     }
 
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_publickey_clone(&newHandle, currentHandle)
     }
 
-    public func keyBytes() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_publickey_get_public_key_bytes(nativeHandle, $0, $1)
+    public var keyBytes: [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_publickey_get_public_key_bytes(nativeHandle, $0, $1)
+            }
         }
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_publickey_serialize(nativeHandle, $0, $1)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_publickey_serialize(nativeHandle, $0, $1)
+            }
         }
     }
 
@@ -57,7 +61,7 @@ public class PublicKey: ClonableHandleOwner {
 
     public func compare(_ other: PublicKey) -> Int32 {
         var result: Int32 = 0
-        try! checkError(signal_publickey_compare(&result, nativeHandle, other.nativeHandle))
+        failOnError(signal_publickey_compare(&result, nativeHandle, other.nativeHandle))
         return result
     }
 }

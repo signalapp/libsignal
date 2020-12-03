@@ -17,8 +17,8 @@ public struct IdentityKey: Equatable {
         publicKey = try PublicKey(bytes)
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try publicKey.serialize()
+    public func serialize() -> [UInt8] {
+        return publicKey.serialize()
     }
 }
 
@@ -26,9 +26,9 @@ public struct IdentityKeyPair {
     public let publicKey: PublicKey
     public let privateKey: PrivateKey
 
-    public static func generate() throws -> IdentityKeyPair {
-        let privateKey = try PrivateKey.generate()
-        let publicKey = try privateKey.publicKey()
+    public static func generate() -> IdentityKeyPair {
+        let privateKey = PrivateKey.generate()
+        let publicKey = privateKey.publicKey
         return IdentityKeyPair(publicKey: publicKey, privateKey: privateKey)
     }
 
@@ -48,9 +48,11 @@ public struct IdentityKeyPair {
         self.privateKey = privateKey
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle, privateKey.nativeHandle)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle, privateKey.nativeHandle)
+            }
         }
     }
 

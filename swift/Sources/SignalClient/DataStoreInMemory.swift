@@ -12,8 +12,8 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
     private var sessionMap: [ProtocolAddress: SessionRecord] = [:]
     private var senderKeyMap: [SenderKeyName: SenderKeyRecord] = [:]
 
-    public init() throws {
-        privateKey = try IdentityKeyPair.generate()
+    public init() {
+        privateKey = IdentityKeyPair.generate()
         deviceId = UInt32.random(in: 0...65535)
     }
 
