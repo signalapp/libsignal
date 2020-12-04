@@ -6,7 +6,6 @@
   "main": "node/dist/index.js",
   "types": "node/dist/index.d.ts",
   "scripts": {
-    "build": "b() { yarn electron-build-env node-gyp configure && yarn electron-build-env node-gyp build ${@:- -d} && yarn tsc; }; b",
     "tsc": "tsc -p node && cp node/*.d.ts node/dist",
     "clean": "rimraf node/dist build",
     "test": "electron-mocha --recursive node/dist/test",
@@ -26,7 +25,6 @@
     "@typescript-eslint/parser": "^4.6.0",
     "chai": "4.2.0",
     "electron": "8.2.5",
-    "electron-build-env": "^0.2.0",
     "electron-mocha": "8.1.1",
     "eslint": "^7.12.1",
     "eslint-config-prettier": "6.15.0",

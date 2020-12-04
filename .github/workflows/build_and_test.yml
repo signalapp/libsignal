@@ -161,8 +161,6 @@ jobs:
 
     - run: yarn format -c
 
-    - run: yarn build
-
     - name: Run yarn test
       uses: GabrielBB/xvfb-action@v1.4
       with:
