@@ -14,12 +14,10 @@ edition = "2018"
 name = "signal_node"
 crate-type = ["cdylib"]
 
-[build-dependencies]
-neon-build = "0.5.0"
-
 [dependencies]
 libsignal-protocol-rust = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node"] }
+signal-neon-futures = { path = "futures" }
 neon = { version = "0.7", default-features = false, features = ["napi-4", "event-queue-api"] }
 rand = "0.7.3"
 log = "0.4.11"
