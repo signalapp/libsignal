@@ -13,8 +13,8 @@ use std::fmt;
 use std::future::Future;
 use std::task::{self, Poll};
 
-use libsignal_protocol_rust::SignalProtocolError;
 use aes_gcm_siv::Error as AesGcmSivError;
+use libsignal_protocol_rust::SignalProtocolError;
 
 #[derive(Debug)]
 pub enum SignalJniError {
@@ -159,9 +159,7 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
-        | SignalJniError::AesGcmSiv(_) => {
-            "java/lang/IllegalArgumentException"
-        }
+        | SignalJniError::AesGcmSiv(_) => "java/lang/IllegalArgumentException",
 
         SignalJniError::Signal(_) => "java/lang/RuntimeException",
 

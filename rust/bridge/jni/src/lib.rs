@@ -12,8 +12,8 @@ use jni::sys::{jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
-use libsignal_protocol_rust::*;
 use aes_gcm_siv::Aes256GcmSiv;
+use libsignal_protocol_rust::*;
 
 mod util;
 
@@ -1937,8 +1937,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCip
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1New(
     env: JNIEnv,
     _class: JClass,
-    key: jbyteArray) -> ObjectHandle {
-
+    key: jbyteArray,
+) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let key = env.convert_byte_array(key)?;
         let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
@@ -1955,8 +1955,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1En
     aes_gcm_siv: ObjectHandle,
     msg: jbyteArray,
     nonce: jbyteArray,
-    associated_data: jbyteArray) -> jbyteArray {
-
+    associated_data: jbyteArray,
+) -> jbyteArray {
     run_ffi_safe(&env, || {
         let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
         let mut msg = env.convert_byte_array(msg)?;
@@ -1975,8 +1975,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1De
     aes_gcm_siv: ObjectHandle,
     msg: jbyteArray,
     nonce: jbyteArray,
-    associated_data: jbyteArray) -> jbyteArray {
-
+    associated_data: jbyteArray,
+) -> jbyteArray {
     run_ffi_safe(&env, || {
         let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
         let mut msg = env.convert_byte_array(msg)?;

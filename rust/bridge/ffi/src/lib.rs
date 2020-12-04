@@ -1852,8 +1852,8 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
 pub unsafe extern "C" fn signal_aes256_gcm_siv_new(
     obj: *mut *mut Aes256GcmSiv,
     key: *const c_uchar,
-    key_len: size_t) -> *mut SignalFfiError {
-
+    key_len: size_t,
+) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let key = as_slice(key, key_len)?;
         let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
@@ -1873,7 +1873,8 @@ pub unsafe extern "C" fn signal_aes256_gcm_siv_encrypt(
     nonce: *const c_uchar,
     nonce_len: size_t,
     associated_data: *const c_uchar,
-    associated_data_len: size_t) -> *mut SignalFfiError {
+    associated_data_len: size_t,
+) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
         let ptext = as_slice(ptext, ptext_len)?;
@@ -1900,8 +1901,8 @@ pub unsafe extern "C" fn signal_aes256_gcm_siv_decrypt(
     nonce: *const c_uchar,
     nonce_len: size_t,
     associated_data: *const c_uchar,
-    associated_data_len: size_t) -> *mut SignalFfiError {
-
+    associated_data_len: size_t,
+) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
         let mut buf = as_slice(ctext, ctext_len)?.to_vec();

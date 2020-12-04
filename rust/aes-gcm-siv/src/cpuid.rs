@@ -3,10 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[cfg(all(
-    target_arch = "aarch64",
-    target_os = "linux"
-))]
+#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub fn has_armv8_crypto() -> bool {
     // Require NEON, AES and PMULL
     let hwcap_crypto = (1 << 1) | (1 << 3) | (1 << 4);
@@ -20,7 +17,10 @@ pub fn has_armv8_crypto() -> bool {
     true
 }
 
-#[cfg(all(target_arch = "aarch64", not(any(target_os = "linux", target_os = "ios"))))]
+#[cfg(all(
+    target_arch = "aarch64",
+    not(any(target_os = "linux", target_os = "ios"))
+))]
 pub fn has_armv8_crypto() -> bool {
     // Detection not available for this platform
     false

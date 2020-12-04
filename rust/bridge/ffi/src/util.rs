@@ -148,9 +148,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
-            | SignalFfiError::AesGcmSiv(_) => {
-                SignalErrorCode::InvalidArgument
-            }
+            | SignalFfiError::AesGcmSiv(_) => SignalErrorCode::InvalidArgument,
 
             _ => SignalErrorCode::UnknownError,
         }

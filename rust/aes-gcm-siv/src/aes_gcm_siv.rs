@@ -190,8 +190,8 @@ impl Aes256GcmSiv {
         &self,
         buffer: &mut Vec<u8>,
         nonce: &[u8],
-        associated_data: &[u8]) -> Result<()> {
-
+        associated_data: &[u8],
+    ) -> Result<()> {
         if buffer.len() < TAG_SIZE {
             return Err(Error::InvalidInputSize);
         }
