@@ -41,7 +41,7 @@ $ make java_test
 
 ## Swift
 
-To learn about the Swift build process see ``swift/README.md``
+To learn about the Swift build process see [``swift/README.md``](swift/)
 
 # Contributions
 
