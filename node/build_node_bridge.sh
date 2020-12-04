@@ -50,7 +50,7 @@ case ${CONFIGURATION_NAME} in
     ;;
   Release )
     CARGO_PROFILE_ARG=--release
-    CARGO_PROFILE_DIR=Release
+    CARGO_PROFILE_DIR=release
     ;;
   * )
     echo 'error: unexpected CONFIGURATION_NAME:' ${CONFIGURATION_NAME} >&2
