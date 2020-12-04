@@ -10,6 +10,7 @@ ANDROID_LIB_DIR=java/android/src/main/jniLibs
 DESKTOP_LIB_DIR=java/java/src/main/resources
 
 export RUSTFLAGS="-C link-args=-s"
+export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 
 cd .. || exit
 
