@@ -163,7 +163,7 @@ impl fmt::Display for SignalFfiError {
                 write!(f, "callback invocation returned error code {}", c)
             }
             SignalFfiError::AesGcmSiv(c) => {
-                write!(f, "AES-GCM-SIV operation failed {}", c)
+                write!(f, "AES-GCM-SIV operation failed: {}", c)
             }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidType => write!(f, "invalid type"),
