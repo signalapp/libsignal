@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::error::Error;
+
 use crate::curve::KeyType;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 
-#[derive(thiserror::Error, Debug, Clone, Eq, PartialEq)]
+#[derive(thiserror::Error, Debug)]
 pub enum SignalProtocolError {
     #[error("invalid argument: {0}")]
     InvalidArgument(String),
@@ -94,10 +96,8 @@ pub enum SignalProtocolError {
     InternalError(&'static str),
     #[error("error while invoking an ffi callback: {0}")]
     FfiBindingError(String),
-    #[error("application callback {0} threw exception {}with message {2}", .1.clone().map(|s| s + " ").unwrap_or_default())]
-    ApplicationCallbackThrewException(&'static str, Option<String>, String),
-    #[error("application callback {0} returned error code {1}")]
-    ApplicationCallbackReturnedIntegerError(&'static str, i32),
+    #[error("application callback {0} failed with {1}")]
+    ApplicationCallbackError(&'static str, Box<dyn Error + 'static>),
 
     #[error("invalid sealed sender message {0}")]
     InvalidSealedSenderMessage(String),
@@ -107,28 +107,3 @@ pub enum SignalProtocolError {
     SealedSenderSelfSend,
 }
 
-#[cfg(test)]
-mod formatting_tests {
-    use super::SignalProtocolError::ApplicationCallbackThrewException;
-    #[test]
-    fn test_application_callback_threw_named_exception() {
-        let err = ApplicationCallbackThrewException(
-            "callback_name",
-            Some("exception_name".to_owned()),
-            "an error message".to_owned(),
-        );
-
-        assert_eq!(err.to_string(), "application callback callback_name threw exception exception_name with message an error message")
-    }
-
-    #[test]
-    fn test_application_callback_threw_unknown_exception() {
-        let err =
-            ApplicationCallbackThrewException("callback_name", None, "an error message".to_owned());
-
-        assert_eq!(
-            err.to_string(),
-            "application callback callback_name threw exception with message an error message"
-        )
-    }
-}
