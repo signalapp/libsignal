@@ -10,7 +10,7 @@ use std::fmt;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum SignalProtocolError {
     InvalidArgument(String),
     InvalidState(&'static str, String),
@@ -61,8 +61,7 @@ pub enum SignalProtocolError {
     InvalidMessage(&'static str),
     InternalError(&'static str),
     FfiBindingError(String),
-    ApplicationCallbackThrewException(&'static str, Option<String>, String),
-    ApplicationCallbackReturnedIntegerError(&'static str, i32),
+    ApplicationCallbackError(&'static str, Box<dyn Error + 'static>),
 
     InvalidSealedSenderMessage(String),
     UnknownSealedSenderVersion(u8),
@@ -74,6 +73,7 @@ impl Error for SignalProtocolError {
         match self {
             SignalProtocolError::ProtobufEncodingError(e) => Some(e),
             SignalProtocolError::ProtobufDecodingError(e) => Some(e),
+            SignalProtocolError::ApplicationCallbackError(_, e) => Some(e.as_ref()),
             _ => None,
         }
     }
@@ -182,21 +182,9 @@ impl fmt::Display for SignalProtocolError {
             SignalProtocolError::FfiBindingError(m) => {
                 write!(f, "error while invoking an ffi callback: {}", m)
             }
-            SignalProtocolError::ApplicationCallbackReturnedIntegerError(func, c) => {
-                write!(f, "application callback {} returned error code {}", func, c)
+            SignalProtocolError::ApplicationCallbackError(func, c) => {
+                write!(f, "application callback {} failed with {}", func, c)
             }
-            SignalProtocolError::ApplicationCallbackThrewException(func, t, m) => match t {
-                Some(t) => write!(
-                    f,
-                    "application callback {} threw exception {} with message {}",
-                    func, t, m
-                ),
-                None => write!(
-                    f,
-                    "application callback {} threw exception with message {}",
-                    func, m
-                ),
-            },
             SignalProtocolError::InvalidSealedSenderMessage(m) => {
                 write!(f, "invalid sealed sender message {}", m)
             }

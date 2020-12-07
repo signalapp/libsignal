@@ -12,6 +12,7 @@ use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
+use std::fmt;
 
 use aes_gcm_siv::Aes256GcmSiv;
 
@@ -854,6 +855,26 @@ impl FfiIdentityKeyStore {
     }
 }
 
+#[derive(Debug)]
+struct CallbackError {
+    value: std::num::NonZeroI32,
+}
+
+impl CallbackError {
+    fn check(value: i32) -> Option<Self> {
+        let value = std::num::NonZeroI32::try_from(value).ok()?;
+        Some(Self { value })
+    }
+}
+
+impl fmt::Display for CallbackError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "error code {}", self.value)
+    }
+}
+
+impl std::error::Error for CallbackError {}
+
 #[async_trait(?Send)]
 impl IdentityKeyStore for FfiIdentityKeyStore {
     async fn get_identity_key_pair(
@@ -864,13 +885,11 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         let mut key = std::ptr::null_mut();
         let result = (self.store.get_identity_key_pair)(self.store.ctx, &mut key, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "get_identity_key_pair",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "get_identity_key_pair",
+                Box::new(error),
+            ));
         }
 
         if key.is_null() {
@@ -888,13 +907,11 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         let mut id = 0;
         let result = (self.store.get_local_registration_id)(self.store.ctx, &mut id, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "get_local_registration_id",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "get_local_registration_id",
+                Box::new(error),
+            ));
         }
 
         Ok(id)
@@ -913,9 +930,10 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         match result {
             0 => Ok(false),
             1 => Ok(true),
-            r => Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError("save_identity", r),
-            ),
+            r => Err(SignalProtocolError::ApplicationCallbackError(
+                "save_identity",
+                Box::new(CallbackError::check(r).unwrap()),
+            )),
         }
     }
 
@@ -942,12 +960,10 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         match result {
             0 => Ok(false),
             1 => Ok(true),
-            r => Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "is_trusted_identity",
-                    r,
-                ),
-            ),
+            r => Err(SignalProtocolError::ApplicationCallbackError(
+                "is_trusted_identity",
+                Box::new(CallbackError::check(r).unwrap()),
+            )),
         }
     }
 
@@ -960,13 +976,11 @@ impl IdentityKeyStore for FfiIdentityKeyStore {
         let mut key = std::ptr::null_mut();
         let result = (self.store.get_identity)(self.store.ctx, &mut key, &*address, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "get_identity",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "get_identity",
+                Box::new(error),
+            ));
         }
 
         if key.is_null() {
@@ -1025,13 +1039,11 @@ impl PreKeyStore for FfiPreKeyStore {
         let mut record = std::ptr::null_mut();
         let result = (self.store.load_pre_key)(self.store.ctx, &mut record, prekey_id, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "load_pre_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "load_pre_key",
+                Box::new(error),
+            ));
         }
 
         if record.is_null() {
@@ -1051,13 +1063,11 @@ impl PreKeyStore for FfiPreKeyStore {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let result = (self.store.store_pre_key)(self.store.ctx, prekey_id, &*record, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "store_pre_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "store_pre_key",
+                Box::new(error),
+            ));
         }
 
         Ok(())
@@ -1071,13 +1081,11 @@ impl PreKeyStore for FfiPreKeyStore {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let result = (self.store.remove_pre_key)(self.store.ctx, prekey_id, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "remove_pre_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "remove_pre_key",
+                Box::new(error),
+            ));
         }
 
         Ok(())
@@ -1128,13 +1136,11 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
         let mut record = std::ptr::null_mut();
         let result = (self.store.load_signed_pre_key)(self.store.ctx, &mut record, prekey_id, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "load_signed_pre_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "load_signed_pre_key",
+                Box::new(error),
+            ));
         }
 
         if record.is_null() {
@@ -1155,13 +1161,11 @@ impl SignedPreKeyStore for FfiSignedPreKeyStore {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let result = (self.store.store_signed_pre_key)(self.store.ctx, prekey_id, &*record, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "store_signed_pre_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "store_signed_pre_key",
+                Box::new(error),
+            ));
         }
 
         Ok(())
@@ -1212,13 +1216,11 @@ impl SessionStore for FfiSessionStore {
         let mut record = std::ptr::null_mut();
         let result = (self.store.load_session)(self.store.ctx, &mut record, &*address, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "load_session",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "load_session",
+                Box::new(error),
+            ));
         }
 
         if record.is_null() {
@@ -1239,13 +1241,11 @@ impl SessionStore for FfiSessionStore {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let result = (self.store.store_session)(self.store.ctx, &*address, &*record, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "store_session",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "store_session",
+                Box::new(error),
+            ));
         }
 
         Ok(())
@@ -1474,13 +1474,11 @@ impl SenderKeyStore for FfiSenderKeyStore {
         let result =
             (self.store.store_sender_key)(self.store.ctx, &*sender_key_name, &*record, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "store_sender_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "store_sender_key",
+                Box::new(error),
+            ));
         }
 
         Ok(())
@@ -1496,13 +1494,11 @@ impl SenderKeyStore for FfiSenderKeyStore {
         let result =
             (self.store.load_sender_key)(self.store.ctx, &mut record, &*sender_key_name, ctx);
 
-        if result != 0 {
-            return Err(
-                SignalProtocolError::ApplicationCallbackReturnedIntegerError(
-                    "load_sender_key",
-                    result,
-                ),
-            );
+        if let Some(error) = CallbackError::check(result) {
+            return Err(SignalProtocolError::ApplicationCallbackError(
+                "load_sender_key",
+                Box::new(error),
+            ));
         }
 
         if record.is_null() {
