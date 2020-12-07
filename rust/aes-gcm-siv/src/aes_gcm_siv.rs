@@ -185,4 +185,18 @@ impl Aes256GcmSiv {
         }
         Ok(())
     }
+
+    pub fn decrypt_with_appended_tag(
+        &self,
+        buffer: &mut Vec<u8>,
+        nonce: &[u8],
+        associated_data: &[u8],
+    ) -> Result<()> {
+        if buffer.len() < TAG_SIZE {
+            return Err(Error::InvalidInputSize);
+        }
+
+        let tag = buffer.split_off(buffer.len() - TAG_SIZE);
+        self.decrypt(buffer, nonce, associated_data, &tag)
+    }
 }

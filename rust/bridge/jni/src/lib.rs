@@ -10,8 +10,10 @@ use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jbyteArray, jint, jlong, jobject, jstring};
 use jni::JNIEnv;
-use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
+
+use aes_gcm_siv::Aes256GcmSiv;
+use libsignal_protocol_rust::*;
 
 mod util;
 
@@ -1928,5 +1930,60 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCip
         ))?;
 
         box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1New(
+    env: JNIEnv,
+    _class: JClass,
+    key: jbyteArray,
+) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let key = env.convert_byte_array(key)?;
+        let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
+        box_object::<Aes256GcmSiv>(Ok(aes_gcm_siv))
+    })
+}
+
+jni_fn_destroy!(Java_org_signal_client_internal_Native_Aes256GcmSiv_1Destroy destroys Aes256GcmSiv);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1Encrypt(
+    env: JNIEnv,
+    _class: JClass,
+    aes_gcm_siv: ObjectHandle,
+    msg: jbyteArray,
+    nonce: jbyteArray,
+    associated_data: jbyteArray,
+) -> jbyteArray {
+    run_ffi_safe(&env, || {
+        let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
+        let mut msg = env.convert_byte_array(msg)?;
+        let nonce = env.convert_byte_array(nonce)?;
+        let associated_data = env.convert_byte_array(associated_data)?;
+        let tag = aes_gcm_siv.encrypt(&mut msg, &nonce, &associated_data)?;
+        msg.extend_from_slice(&tag);
+        to_jbytearray(&env, Ok(msg))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1Decrypt(
+    env: JNIEnv,
+    _class: JClass,
+    aes_gcm_siv: ObjectHandle,
+    msg: jbyteArray,
+    nonce: jbyteArray,
+    associated_data: jbyteArray,
+) -> jbyteArray {
+    run_ffi_safe(&env, || {
+        let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
+        let mut msg = env.convert_byte_array(msg)?;
+        let nonce = env.convert_byte_array(nonce)?;
+        let associated_data = env.convert_byte_array(associated_data)?;
+
+        aes_gcm_siv.decrypt_with_appended_tag(&mut msg, &nonce, &associated_data)?;
+        to_jbytearray(&env, Ok(msg))
     })
 }

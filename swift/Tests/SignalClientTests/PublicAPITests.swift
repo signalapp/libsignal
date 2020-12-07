@@ -52,6 +52,26 @@ class PublicAPITests: XCTestCase {
         XCTAssertEqual(derived, okm)
     }
 
+    func testAesGcmSiv() {
+        let ptext: [UInt8] = [0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        let expected_ctext: [UInt8] = [0x1d, 0xe2, 0x29, 0x67, 0x23, 0x7a, 0x81, 0x32, 0x91, 0x21, 0x3f, 0x26, 0x7e, 0x3b, 0x45, 0x2f, 0x02, 0xd0, 0x1a, 0xe3, 0x3e, 0x4e, 0xc8, 0x54]
+        let ad: [UInt8] = [0x01]
+        let key: [UInt8] = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        let nonce: [UInt8] = [0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+        let gcm_siv = try! Aes256GcmSiv(key)
+
+        let ctext = try! gcm_siv.encrypt(ptext, nonce, ad)
+        XCTAssertEqual(ctext, expected_ctext)
+
+        let recovered = try! gcm_siv.decrypt(ctext, nonce, ad)
+        XCTAssertEqual(recovered, ptext)
+
+        XCTAssertThrowsError(try gcm_siv.decrypt(ptext, nonce, ad))
+        XCTAssertThrowsError(try gcm_siv.decrypt(ctext, ad, nonce))
+    }
+
     func testAddress() {
         let addr = try! ProtocolAddress(name: "addr1", deviceId: 5)
         XCTAssertEqual(addr.name, "addr1")
@@ -277,6 +297,7 @@ class PublicAPITests: XCTestCase {
             ("testPkOperations", testPkOperations),
             ("testHkdfSimple", testHkdfSimple),
             ("testHkdfUsingRFCExample", testHkdfUsingRFCExample),
+            ("testAesGcmSiv", testAesGcmSiv),
             ("testGroupCipher", testGroupCipher),
             ("testSenderCertifications", testSenderCertificates),
         ]

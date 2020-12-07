@@ -16,6 +16,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 libsignal-protocol-rust = { path = "../../protocol" }
+aes-gcm-siv = { path = "../../aes-gcm-siv" }
 async-trait = "0.1.41"
 libc = "0.2"
 futures = "0.3.7"

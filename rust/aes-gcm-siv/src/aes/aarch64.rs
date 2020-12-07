@@ -65,7 +65,7 @@ impl Aes256Aarch64 {
     #[target_feature(enable = "crypto")]
     pub unsafe fn encrypt(&self, buf: &mut [u8]) -> Result<()> {
         if buf.len() % 16 != 0 {
-            return Err(Error::InvalidOutputBuffer);
+            return Err(Error::InvalidInputSize);
         }
 
         let kp = self.ek.as_ptr() as *const u8;

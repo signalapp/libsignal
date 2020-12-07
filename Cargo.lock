@@ -704,6 +704,7 @@ checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 name = "libsignal-ffi"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm-siv",
  "async-trait",
  "cbindgen",
  "futures",
@@ -717,6 +718,7 @@ dependencies = [
 name = "libsignal-jni"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm-siv",
  "async-trait",
  "futures",
  "jni",

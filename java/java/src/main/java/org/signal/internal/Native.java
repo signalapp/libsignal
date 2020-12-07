@@ -66,6 +66,11 @@ public final class Native {
 
   private Native() {}
 
+  public static native byte[] Aes256GcmSiv_Decrypt(long aesGcmSiv, byte[] msg, byte[] nonce, byte[] associatedData);
+  public static native void Aes256GcmSiv_Destroy(long handle);
+  public static native byte[] Aes256GcmSiv_Encrypt(long aesGcmSiv, byte[] msg, byte[] nonce, byte[] associatedData);
+  public static native long Aes256GcmSiv_New(byte[] key);
+
   public static native String DisplayableFingerprint_Format(byte[] local, byte[] remote);
 
   public static native byte[] ECPrivateKey_Agree(long privateKeyHandle, long publicKeyHandle);

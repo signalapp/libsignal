@@ -47,7 +47,7 @@ impl Aes256 {
 
     pub fn encrypt(&self, buf: &mut [u8]) -> Result<()> {
         if buf.len() % 16 != 0 {
-            return Err(Error::InvalidOutputBuffer);
+            return Err(Error::InvalidInputSize);
         }
 
         fn trait_encrypt<C: BlockCipher>(aes: &C, buf: &mut [u8]) -> Result<()> {
