@@ -21,19 +21,6 @@ pub enum SignalJniError {
     ExceptionDuringCallback(String),
 }
 
-impl SignalJniError {
-    pub fn to_signal_protocol_error(&self) -> SignalProtocolError {
-        match self {
-            SignalJniError::Signal(e) => e.clone(),
-            SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
-            SignalJniError::BadJniParameter(m) => {
-                SignalProtocolError::InvalidArgument(m.to_string())
-            }
-            _ => SignalProtocolError::FfiBindingError(format!("{}", self)),
-        }
-    }
-}
-
 impl fmt::Display for SignalJniError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
