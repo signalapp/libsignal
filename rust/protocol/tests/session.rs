@@ -190,12 +190,12 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
         let outgoing_message = encrypt(&mut alice_store, &bob_address, original_message).await?;
 
-        assert_eq!(
+        assert!(matches!(
             decrypt(&mut bob_store, &alice_address, &outgoing_message)
                 .await
                 .unwrap_err(),
-            SignalProtocolError::UntrustedIdentity(alice_address.clone())
-        );
+            SignalProtocolError::UntrustedIdentity(a) if a == alice_address
+        ));
 
         assert_eq!(
             bob_store
@@ -553,10 +553,10 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
         assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
-        assert_eq!(
+        assert!(matches!(
             bob_store.get_pre_key(pre_key_id, None).await.unwrap_err(),
             SignalProtocolError::InvalidPreKeyId
-        );
+        ));
 
         Ok(())
     })
@@ -703,7 +703,10 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
         let err = decrypt(&mut bob_store, &alice_address, &inflight[5])
             .await
             .unwrap_err();
-        assert_eq!(err, SignalProtocolError::DuplicatedMessage(2300, 5));
+        assert!(matches!(
+            err,
+            SignalProtocolError::DuplicatedMessage(2300, 5)
+        ));
         Ok(())
     })
 }
@@ -880,14 +883,12 @@ async fn is_session_id_equal(
         .load_session(bob_address, None)
         .await?
         .unwrap()
-        .alice_base_key()
-        .clone()
+        .alice_base_key()?
         == bob_store
             .load_session(alice_address, None)
             .await?
             .unwrap()
-            .alice_base_key()
-            .clone())
+            .alice_base_key()?)
 }
 
 #[test]

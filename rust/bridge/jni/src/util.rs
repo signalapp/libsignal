@@ -9,6 +9,7 @@ use jni::objects::{JObject, JString, JThrowable, JValue};
 use jni::sys::{jint, jlong, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
+use std::fmt;
 use std::future::Future;
 use std::task::{self, Poll};
 
@@ -87,6 +88,25 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
     }
 }
 
+#[derive(Debug)]
+struct ThrownException {
+    exn_type: Option<String>,
+    message: Option<String>,
+}
+
+impl fmt::Display for ThrownException {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let exn_type = self.exn_type.as_deref().unwrap_or("<unknown>");
+        if let Some(message) = &self.message {
+            write!(f, "exception {} \"{}\"", exn_type, message)
+        } else {
+            write!(f, "exception {}", exn_type)
+        }
+    }
+}
+
+impl std::error::Error for ThrownException {}
+
 pub fn call_method_with_exception_as_null<'a>(
     env: &JNIEnv<'a>,
     obj: impl Into<JObject<'a>>,
@@ -142,8 +162,12 @@ pub fn call_method_with_exception_as_null<'a>(
             if let JValue::Object(o) = jmessage {
                 let message: String = env.get_string(JString::from(o))?.into();
                 return Err(SignalJniError::Signal(
-                    SignalProtocolError::ApplicationCallbackThrewException(
-                        fn_name, exn_type, message,
+                    SignalProtocolError::ApplicationCallbackError(
+                        fn_name,
+                        Box::new(ThrownException {
+                            exn_type,
+                            message: Some(message),
+                        }),
                     ),
                 ));
             }
@@ -152,10 +176,12 @@ pub fn call_method_with_exception_as_null<'a>(
         env.exception_clear()?;
 
         return Err(SignalJniError::Signal(
-            SignalProtocolError::ApplicationCallbackThrewException(
+            SignalProtocolError::ApplicationCallbackError(
                 fn_name,
-                exn_type,
-                "<exception did not implement getMessage>".to_string(),
+                Box::new(ThrownException {
+                    exn_type,
+                    message: None,
+                }),
             ),
         ));
     }
