@@ -47,8 +47,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
         SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
 
-        SignalJniError::ExceptionDuringCallback(_) => "java/lang/RuntimeException",
-
         SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
             "org/whispersystems/libsignal/DuplicateMessageException"
         }

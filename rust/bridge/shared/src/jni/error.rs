@@ -22,7 +22,6 @@ pub enum SignalJniError {
     NullHandle,
     IntegerOverflow(String),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
-    ExceptionDuringCallback(String),
 }
 
 impl fmt::Display for SignalJniError {
@@ -31,9 +30,6 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::AesGcmSiv(s) => write!(f, "{}", s),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
-            SignalJniError::ExceptionDuringCallback(s) => {
-                write!(f, "exception recieved during callback {}", s)
-            }
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
             SignalJniError::UnexpectedJniResultType(m, t) => {

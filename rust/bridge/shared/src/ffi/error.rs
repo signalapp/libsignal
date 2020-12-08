@@ -16,7 +16,6 @@ pub enum SignalFfiError {
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
-    CallbackError(i32),
     InvalidType,
 }
 
@@ -24,9 +23,6 @@ impl fmt::Display for SignalFfiError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SignalFfiError::Signal(s) => write!(f, "{}", s),
-            SignalFfiError::CallbackError(c) => {
-                write!(f, "callback invocation returned error code {}", c)
-            }
             SignalFfiError::AesGcmSiv(c) => {
                 write!(f, "AES-GCM-SIV operation failed: {}", c)
             }
