@@ -1583,8 +1583,8 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1Ser
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1ArchiveCurrentState(
     env: JNIEnv,
     _class: JClass,
-    handle: ObjectHandle) {
-
+    handle: ObjectHandle,
+) {
     run_ffi_safe(&env, || {
         let session_record = native_handle_cast::<SessionRecord>(handle)?;
         session_record.archive_current_state()?;
@@ -1595,7 +1595,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1A
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1NewFresh(
     env: JNIEnv,
-    _class: JClass) -> ObjectHandle {
+    _class: JClass,
+) -> ObjectHandle {
     run_ffi_safe(&env, || {
         box_object::<SessionRecord>(Ok(SessionRecord::new_fresh()))
     })
@@ -1605,7 +1606,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1N
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1FromSessionState(
     env: JNIEnv,
     _class: JClass,
-    session_state: ObjectHandle) -> ObjectHandle {
+    session_state: ObjectHandle,
+) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let session_state = native_handle_cast::<SessionState>(session_state)?;
         box_object::<SessionRecord>(Ok(SessionRecord::new(session_state.clone())))
@@ -1616,7 +1618,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetSessionState(
     env: JNIEnv,
     _class: JClass,
-    session_record: ObjectHandle) -> ObjectHandle {
+    session_record: ObjectHandle,
+) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let session_record = native_handle_cast::<SessionRecord>(session_record)?;
         box_object::<SessionState>(session_record.session_state().map(|s| s.clone()))
@@ -1644,7 +1647,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1Ge
     env: JNIEnv,
     _class: JClass,
     session_state: ObjectHandle,
-    key: ObjectHandle) -> jbyteArray {
+    key: ObjectHandle,
+) -> jbyteArray {
     run_ffi_safe(&env, || {
         let session_state = native_handle_cast::<SessionState>(session_state)?;
         let sender = native_handle_cast::<PublicKey>(key)?;
@@ -1653,12 +1657,10 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1Ge
 
         match chain_key {
             None => Ok(std::ptr::null_mut()),
-            Some(ck) => to_jbytearray(&env, Ok(ck.key()))
+            Some(ck) => to_jbytearray(&env, Ok(ck.key())),
         }
     })
 }
-
-
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1InitializeAliceSession(
