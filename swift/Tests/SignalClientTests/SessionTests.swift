@@ -10,10 +10,10 @@ class SessionTests: TestCaseBase {
     fileprivate func initializeSessions(alice_store: InMemorySignalProtocolStore,
                                         bob_store: InMemorySignalProtocolStore,
                                         bob_address: ProtocolAddress) {
-        let bob_pre_key = try! PrivateKey.generate()
-        let bob_signed_pre_key = try! PrivateKey.generate()
+        let bob_pre_key = PrivateKey.generate()
+        let bob_signed_pre_key = PrivateKey.generate()
 
-        let bob_signed_pre_key_public = try! bob_signed_pre_key.publicKey().serialize()
+        let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
 
         let bob_identity_key = try! bob_store.identityKeyPair(context: nil).identityKey
         let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: nil).privateKey.generateSignature(message: bob_signed_pre_key_public)
@@ -21,12 +21,12 @@ class SessionTests: TestCaseBase {
         let prekey_id: UInt32 = 4570
         let signed_prekey_id: UInt32 = 3006
 
-        let bob_bundle = try! PreKeyBundle(registrationId: try! bob_store.localRegistrationId(context: nil),
+        let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: nil),
                                            deviceId: 9,
                                            prekeyId: prekey_id,
-                                           prekey: bob_pre_key.publicKey(),
+                                           prekey: bob_pre_key.publicKey,
                                            signedPrekeyId: signed_prekey_id,
-                                           signedPrekey: try! bob_signed_pre_key.publicKey(),
+                                           signedPrekey: bob_signed_pre_key.publicKey,
                                            signedPrekeySignature: bob_signed_pre_key_signature,
                                            identity: bob_identity_key)
 
@@ -60,8 +60,8 @@ class SessionTests: TestCaseBase {
         let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
         let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
 
-        let alice_store = try! InMemorySignalProtocolStore()
-        let bob_store = try! InMemorySignalProtocolStore()
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore()
 
         initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
@@ -74,9 +74,9 @@ class SessionTests: TestCaseBase {
                                          identityStore: alice_store,
                                          context: nil)
 
-        XCTAssertEqual(try! ctext_a.messageType(), .preKey)
+        XCTAssertEqual(ctext_a.messageType, .preKey)
 
-        let ctext_b = try! PreKeySignalMessage(bytes: try! ctext_a.serialize())
+        let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
 
         let ptext_b = try! signalDecryptPreKey(message: ctext_b,
                                                from: alice_address,
@@ -97,9 +97,9 @@ class SessionTests: TestCaseBase {
                                           identityStore: bob_store,
                                           context: nil)
 
-        XCTAssertEqual(try! ctext2_b.messageType(), .whisper)
+        XCTAssertEqual(ctext2_b.messageType, .whisper)
 
-        let ctext2_a = try! SignalMessage(bytes: try! ctext2_b.serialize())
+        let ctext2_a = try! SignalMessage(bytes: ctext2_b.serialize())
 
         let ptext2_a = try! signalDecrypt(message: ctext2_a,
                                           from: bob_address,
@@ -114,13 +114,13 @@ class SessionTests: TestCaseBase {
         let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
         let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
 
-        let alice_store = try! InMemorySignalProtocolStore()
-        let bob_store = try! InMemorySignalProtocolStore()
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore()
 
         initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
-        let trust_root = try! IdentityKeyPair.generate()
-        let server_keys = try! IdentityKeyPair.generate()
+        let trust_root = IdentityKeyPair.generate()
+        let server_keys = IdentityKeyPair.generate()
         let server_cert = try! ServerCertificate(keyId: 1, publicKey: server_keys.publicKey, trustRoot: trust_root.privateKey)
         let sender_addr = try! SealedSenderAddress(e164: alice_address.name,
                                                    uuidString: "9d0652a3-dcc3-4d11-975f-74d61598733f",

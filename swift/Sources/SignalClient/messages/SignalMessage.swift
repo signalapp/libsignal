@@ -10,7 +10,7 @@ public class SignalMessage {
     private var handle: OpaquePointer?
 
     deinit {
-        signal_message_destroy(handle)
+        failOnError(signal_message_destroy(handle))
     }
 
     internal init(owned rawPtr: OpaquePointer?) {
@@ -53,33 +53,43 @@ public class SignalMessage {
         }
     }
 
-    public func senderRatchetKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey {
-            signal_message_get_sender_ratchet_key($0, handle)
+    public var senderRatchetKey: PublicKey {
+        return failOnError {
+            try invokeFnReturningPublicKey {
+                signal_message_get_sender_ratchet_key($0, handle)
+            }
         }
     }
 
-    public func body() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_message_get_body(handle, $0, $1)
+    public var body: [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_message_get_body(handle, $0, $1)
+            }
         }
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_message_get_serialized(handle, $0, $1)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_message_get_serialized(handle, $0, $1)
+            }
         }
     }
 
-    public func messageVersion() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_message_get_message_version(handle, $0)
+    public var messageVersion: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_message_get_message_version(handle, $0)
+            }
         }
     }
 
-    public func counter() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_message_get_counter(handle, $0)
+    public var counter: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_message_get_counter(handle, $0)
+            }
         }
     }
 

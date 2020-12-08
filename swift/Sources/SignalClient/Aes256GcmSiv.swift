@@ -16,8 +16,8 @@ public class Aes256GcmSiv: ClonableHandleOwner {
         super.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
-        signal_aes256_gcm_siv_destroy(handle)
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_aes256_gcm_siv_destroy(handle)
     }
 
     public func encrypt<MessageBytes, NonceBytes, AssociatedDataBytes>(

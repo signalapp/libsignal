@@ -10,7 +10,7 @@ public class SenderKeyDistributionMessage {
     private var handle: OpaquePointer?
 
     deinit {
-        signal_sender_key_distribution_message_destroy(handle)
+        failOnError(signal_sender_key_distribution_message_destroy(handle))
     }
 
     internal var nativeHandle: OpaquePointer? {
@@ -44,33 +44,43 @@ public class SenderKeyDistributionMessage {
         try checkError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
     }
 
-    public func signatureKey() throws -> PublicKey {
-        return try invokeFnReturningPublicKey {
-            signal_sender_key_distribution_message_get_signature_key($0, handle)
+    public var signatureKey: PublicKey {
+        return failOnError {
+            try invokeFnReturningPublicKey {
+                signal_sender_key_distribution_message_get_signature_key($0, handle)
+            }
         }
     }
 
-    public func id() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_sender_key_distribution_message_get_id(handle, $0)
+    public var id: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_sender_key_distribution_message_get_id(handle, $0)
+            }
         }
     }
 
-    public func iteration() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_sender_key_distribution_message_get_iteration(handle, $0)
+    public var iteration: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_sender_key_distribution_message_get_iteration(handle, $0)
+            }
         }
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_sender_key_distribution_message_serialize(handle, $0, $1)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_sender_key_distribution_message_serialize(handle, $0, $1)
+            }
         }
     }
 
-    public func chainKey() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_sender_key_distribution_message_get_chain_key(handle, $0, $1)
+    public var chainKey: [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_sender_key_distribution_message_get_chain_key(handle, $0, $1)
+            }
         }
     }
 }

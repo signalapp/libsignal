@@ -7,8 +7,8 @@ import SignalFfi
 import Foundation
 
 public class SessionRecord: ClonableHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) {
-        signal_session_record_destroy(handle)
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_session_record_destroy(handle)
     }
 
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
@@ -28,9 +28,11 @@ public class SessionRecord: ClonableHandleOwner {
         super.init(borrowing: handle)
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_session_record_serialize(nativeHandle, $0, $1)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_session_record_serialize(nativeHandle, $0, $1)
+            }
         }
     }
 
@@ -40,7 +42,7 @@ public class SessionRecord: ClonableHandleOwner {
         }
     }
 
-    public func archiveCurrentState() throws {
-        return try checkError(signal_session_record_archive_current_state(nativeHandle))
+    public func archiveCurrentState() {
+        return failOnError(signal_session_record_archive_current_state(nativeHandle))
     }
 }

@@ -36,7 +36,7 @@ public class ClonableHandleOwner {
         }
         var newHandle: OpaquePointer?
         // Automatic cloning must not fail.
-        try! checkError(Self.cloneNativeHandle(&newHandle, currentHandle: currentHandle))
+        failOnError(Self.cloneNativeHandle(&newHandle, currentHandle: currentHandle))
         self.handle = .owned(newHandle!)
     }
 
@@ -59,7 +59,7 @@ public class ClonableHandleOwner {
         fatalError("\(self) does not support cloning")
     }
 
-    internal class func destroyNativeHandle(_ handle: OpaquePointer) {
+    internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         fatalError("must be implemented by subclasses")
     }
 
@@ -70,7 +70,7 @@ public class ClonableHandleOwner {
         case .borrowed?:
             preconditionFailure("borrowed handle may have escaped")
         case .owned(let handle)?:
-            Self.destroyNativeHandle(handle)
+            failOnError(Self.destroyNativeHandle(handle))
         }
     }
 }

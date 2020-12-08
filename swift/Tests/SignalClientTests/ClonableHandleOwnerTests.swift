@@ -20,8 +20,9 @@ private class MockClonableHandleOwner: ClonableHandleOwner {
         return nil
     }
 
-    override class func destroyNativeHandle(_ handle: OpaquePointer) {
+    override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         UnsafeMutablePointer<Bool>(handle).pointee = true
+        return nil
     }
 }
 

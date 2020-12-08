@@ -33,22 +33,27 @@ public class CiphertextMessage {
     }
 
     deinit {
-        signal_ciphertext_message_destroy(handle)
+        failOnError(signal_ciphertext_message_destroy(handle))
     }
 
     internal init(owned rawPtr: OpaquePointer?) {
         handle = rawPtr
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_ciphertext_message_serialize($0, $1, handle)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_ciphertext_message_serialize($0, $1, handle)
+            }
         }
     }
 
-    public func messageType() throws -> MessageType {
-        return MessageType(rawValue: try invokeFnReturningInteger {
-            signal_ciphertext_message_type($0, handle)
-        })
+    public var messageType: MessageType {
+        let rawValue = failOnError {
+            try invokeFnReturningInteger {
+                signal_ciphertext_message_type($0, handle)
+            }
+        }
+        return MessageType(rawValue: rawValue)
     }
 }

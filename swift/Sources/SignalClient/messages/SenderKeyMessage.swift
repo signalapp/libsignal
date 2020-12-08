@@ -10,7 +10,7 @@ public class SenderKeyMessage {
     private var handle: OpaquePointer?
 
     deinit {
-        signal_sender_key_message_destroy(handle)
+        failOnError(signal_sender_key_message_destroy(handle))
     }
 
     public init<Bytes: ContiguousBytes>(keyId: UInt32,
@@ -37,27 +37,35 @@ public class SenderKeyMessage {
         }
     }
 
-    public func keyId() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_sender_key_message_get_key_id(handle, $0)
+    public var keyId: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_sender_key_message_get_key_id(handle, $0)
+            }
         }
     }
 
-    public func iteration() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_sender_key_message_get_iteration(handle, $0)
+    public var iteration: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_sender_key_message_get_iteration(handle, $0)
+            }
         }
     }
 
-    public func serialize() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_sender_key_message_serialize(handle, $0, $1)
+    public func serialize() -> [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_sender_key_message_serialize(handle, $0, $1)
+            }
         }
     }
 
-    public func ciphertext() throws -> [UInt8] {
-        return try invokeFnReturningArray {
-            signal_sender_key_message_get_cipher_text(handle, $0, $1)
+    public var ciphertext: [UInt8] {
+        return failOnError {
+            try invokeFnReturningArray {
+                signal_sender_key_message_get_cipher_text(handle, $0, $1)
+            }
         }
     }
 
