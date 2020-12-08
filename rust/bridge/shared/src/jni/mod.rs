@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{JObject, JThrowable, JValue};
+use jni::objects::{JObject, JValue};
 use jni::sys::{_jobject, jboolean, jint, jlong};
 
 use aes_gcm_siv::Error as AesGcmSivError;
@@ -20,25 +20,42 @@ pub use error::*;
 pub type ObjectHandle = jlong;
 
 fn throw_error(env: &JNIEnv, error: SignalJniError) {
-    if let SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
-        callback,
-        underlying_exception,
-    )) = error
-    {
-        let underlying_exception = underlying_exception.downcast::<ThrownException>().unwrap();
-        let message = env
-            .new_string(format!("exception thrown while calling '{}'", callback))
-            .unwrap();
-        let throwable = env
-            .new_object(
-                "java/lang/RuntimeException",
-                "(Ljava/lang/String;Ljava/lang/Throwable;)V",
-                &[message.into(), underlying_exception.as_obj().into()],
-            )
-            .unwrap();
-        env.throw(JThrowable::from(throwable)).unwrap();
-        return;
-    }
+    // Handle special cases first.
+    let error = match error {
+        SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
+            callback,
+            exception,
+        )) => {
+            match exception.downcast::<ThrownException>() {
+                Ok(exception) => {
+                    if let Err(e) = env.throw(exception.as_obj()) {
+                        log::error!("failed to rethrow exception from {}: {}", callback, e);
+                    }
+                    return;
+                }
+                Err(other_underlying_error) => {
+                    // Fall through to generic handling below.
+                    SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
+                        callback,
+                        other_underlying_error,
+                    ))
+                }
+            }
+        }
+
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(ref addr)) => {
+            let result = env.throw_new(
+                "org/whispersystems/libsignal/UntrustedIdentityException",
+                addr.name(),
+            );
+            if let Err(e) = result {
+                log::error!("failed to throw exception for {}: {}", error, e);
+            }
+            return;
+        }
+
+        e => e,
+    };
 
     let exception_type = match error {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
@@ -83,10 +100,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/whispersystems/libsignal/LegacyMessageException"
         }
 
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_)) => {
-            "org/whispersystems/libsignal/UntrustedIdentityException"
-        }
-
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
         | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
@@ -105,14 +118,9 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Jni(_) => "java/lang/RuntimeException",
     };
 
-    let error_string = match error {
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(addr)) => {
-            addr.name().to_string()
-        }
-        e => format!("{}", e),
-    };
-
-    env.throw_new(exception_type, error_string).unwrap();
+    if let Err(e) = env.throw_new(exception_type, error.to_string()) {
+        log::error!("failed to throw exception for {}: {}", error, e);
+    }
 }
 
 // A dummy value to return when we are throwing an exception
