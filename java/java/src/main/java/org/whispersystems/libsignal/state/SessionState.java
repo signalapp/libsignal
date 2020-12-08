@@ -83,11 +83,11 @@ public class SessionState {
     this.sessionStructure = sessionStructure;
   }
 
-  public SessionState(SessionState copy) {
+  SessionState(SessionState copy) {
     this.sessionStructure = copy.sessionStructure.toBuilder().build();
   }
 
-  public SessionStructure getStructure() {
+  SessionStructure getStructure() {
     return sessionStructure;
   }
 
@@ -121,27 +121,6 @@ public class SessionState {
     } catch (InvalidKeyException e) {
       throw new AssertionError(e);
     }
-  }
-
-  public int getPreviousCounter() {
-    return sessionStructure.getPreviousCounter();
-  }
-
-  public ECPublicKey getSenderRatchetKey() {
-    try {
-      return Curve.decodePoint(sessionStructure.getSenderChain().getSenderRatchetKey().toByteArray(), 0);
-    } catch (InvalidKeyException e) {
-      throw new AssertionError(e);
-    }
-  }
-
-  public ECKeyPair getSenderRatchetKeyPair() {
-    ECPublicKey  publicKey  = getSenderRatchetKey();
-    ECPrivateKey privateKey = Curve.decodePrivatePoint(sessionStructure.getSenderChain()
-                                                                       .getSenderRatchetKeyPrivate()
-                                                                       .toByteArray());
-
-    return new ECKeyPair(publicKey, privateKey);
   }
 
   public boolean hasSenderChain() {

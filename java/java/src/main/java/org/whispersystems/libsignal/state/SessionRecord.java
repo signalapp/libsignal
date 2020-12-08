@@ -45,30 +45,8 @@ public class SessionRecord {
     }
   }
 
-  public boolean hasSessionState(int version, byte[] aliceBaseKey) {
-    if (sessionState.getSessionVersion() == version &&
-        Arrays.equals(aliceBaseKey, sessionState.getAliceBaseKey()))
-    {
-      return true;
-    }
-
-    for (SessionState state : previousStates) {
-      if (state.getSessionVersion() == version &&
-          Arrays.equals(aliceBaseKey, state.getAliceBaseKey()))
-      {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   public SessionState getSessionState() {
     return sessionState;
-  }
-
-  public boolean isFresh() {
-    return fresh;
   }
 
   /**
@@ -80,17 +58,13 @@ public class SessionRecord {
     promoteState(new SessionState());
   }
 
-  public void promoteState(SessionState promotedState) {
+  private void promoteState(SessionState promotedState) {
     this.previousStates.addFirst(sessionState);
     this.sessionState = promotedState;
 
     if (previousStates.size() > ARCHIVED_STATES_MAX_LENGTH) {
       previousStates.removeLast();
     }
-  }
-
-  public void setState(SessionState sessionState) {
-    this.sessionState = sessionState;
   }
 
   /**
