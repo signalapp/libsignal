@@ -1197,18 +1197,14 @@ impl<'a> JniSessionStore<'a> {
 
         let callback_sig = "(Lorg/whispersystems/libsignal/SignalProtocolAddress;)Lorg/whispersystems/libsignal/state/SessionRecord;";
         let callback_args = [address_jobject.into()];
-        let session = get_object_with_serialization(
+        get_object_with_native_handle::<SessionRecord>(
             self.env,
             self.store,
             &callback_args,
             callback_sig,
             "loadSession",
-        )?;
-
-        match session {
-            None => Ok(None),
-            Some(s) => Ok(Some(SessionRecord::deserialize(&s)?)),
-        }
+            None,
+        )
     }
 
     fn do_store_session(

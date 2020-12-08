@@ -54,4 +54,7 @@ public class SessionRecord {
     return Native.SessionRecord_Serialize(this.handle);
   }
 
+  long nativeHandle() {
+    return this.handle;
+  }
 }
