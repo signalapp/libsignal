@@ -19,5 +19,5 @@ neon-build = "0.5.0"
 
 [dependencies]
 libsignal-protocol-rust = { path = "../../protocol" }
-neon = "0.5.0"
+neon = { version = "0.5.3", default-features = false, features = ["napi-runtime"] }
 rand = "0.7.3"
