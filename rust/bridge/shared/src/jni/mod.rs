@@ -207,13 +207,12 @@ pub fn to_jbytearray<T: AsRef<[u8]>>(
     Ok(env.byte_array_from_slice(data)?)
 }
 
-pub fn call_method_with_exception_as_null<'a>(
+pub fn call_method_checked<'a>(
     env: &JNIEnv<'a>,
     obj: impl Into<JObject<'a>>,
     fn_name: &'static str,
     sig: &'static str,
     args: &[JValue<'_>],
-    exception_to_treat_as_null: Option<&'static str>,
 ) -> Result<JValue<'a>, SignalJniError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
@@ -225,28 +224,12 @@ pub fn call_method_with_exception_as_null<'a>(
     } else {
         env.exception_clear()?;
 
-        if let Some(exception_to_treat_as_null) = exception_to_treat_as_null {
-            if env.is_instance_of(throwable, exception_to_treat_as_null)? {
-                return Ok(JValue::Object(JObject::null()));
-            }
-        }
-
         Err(SignalProtocolError::ApplicationCallbackError(
             fn_name,
             Box::new(ThrownException::new(env, throwable)?),
         )
         .into())
     }
-}
-
-pub fn call_method_checked<'a>(
-    env: &JNIEnv<'a>,
-    obj: impl Into<JObject<'a>>,
-    fn_name: &'static str,
-    sig: &'static str,
-    args: &[JValue<'_>],
-) -> Result<JValue<'a>, SignalJniError> {
-    call_method_with_exception_as_null(env, obj, fn_name, sig, args, None)
 }
 
 macro_rules! jni_bridge_destroy {

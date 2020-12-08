@@ -111,16 +111,8 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_args: &[JValue],
     callback_sig: &'static str,
     callback_fn: &'static str,
-    exception_to_treat_as_none: Option<&'static str>,
 ) -> Result<Option<T>, SignalJniError> {
-    let rvalue = call_method_with_exception_as_null(
-        env,
-        store_obj,
-        callback_fn,
-        callback_sig,
-        &callback_args,
-        exception_to_treat_as_none,
-    )?;
+    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,

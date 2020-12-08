@@ -919,7 +919,6 @@ impl<'a> JniPreKeyStore<'a> {
             &callback_args,
             callback_sig,
             "loadPreKey",
-            None,
         )?;
         match pk {
             Some(pk) => Ok(pk),
@@ -1020,7 +1019,6 @@ impl<'a> JniSignedPreKeyStore<'a> {
             &callback_args,
             callback_sig,
             "loadSignedPreKey",
-            None,
         )?;
         match spk {
             Some(spk) => Ok(spk),
@@ -1107,7 +1105,6 @@ impl<'a> JniSessionStore<'a> {
             &callback_args,
             callback_sig,
             "loadSession",
-            None,
         )
     }
 
@@ -1354,7 +1351,6 @@ impl<'a> JniSenderKeyStore<'a> {
             &callback_args,
             callback_sig,
             "loadSenderKey",
-            None,
         )?;
 
         Ok(skr)
