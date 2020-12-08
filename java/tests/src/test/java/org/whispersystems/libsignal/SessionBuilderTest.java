@@ -293,8 +293,7 @@ public class SessionBuilderTest extends TestCase {
       plaintext = bobSessionCipher.decrypt(incomingMessage);
       throw new AssertionError("Decrypt should have failed!");
     } catch (InvalidKeyIdException e) {
-      // Note: This is the message coming from libsignal-client, NOT from TestNoSignedPreKeysStore.
-      assertEquals("invalid signed prekey identifier", e.getMessage());
+      assertEquals("TestNoSignedPreKeysStore rejected loading 22", e.getMessage());
     }
   }
 
@@ -335,10 +334,8 @@ public class SessionBuilderTest extends TestCase {
       throw new AssertionError("Decrypt should have failed!");
     } catch (InvalidKeyIdException e) {
       throw new AssertionError("libsignal-client swallowed the exception");
-    } catch (RuntimeException e) {
-      assertEquals("exception thrown while calling 'loadSignedPreKey'", e.getMessage());
-      assertNotNull(e.getCause());
-      assertTrue(e.getCause() instanceof TestBadSignedPreKeysStore.CustomException);
+    } catch (TestBadSignedPreKeysStore.CustomException e) {
+      // success!
     }
   }
 
