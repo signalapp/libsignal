@@ -26,7 +26,6 @@ pub enum SignalJniError {
     NullHandle,
     IntegerOverflow(String),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
-    ExceptionDuringCallback(String),
 }
 
 impl SignalJniError {
@@ -48,9 +47,6 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::AesGcmSiv(s) => write!(f, "{}", s),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
-            SignalJniError::ExceptionDuringCallback(s) => {
-                write!(f, "exception recieved during callback {}", s)
-            }
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
             SignalJniError::UnexpectedJniResultType(m, t) => {
@@ -105,8 +101,6 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::BadJniParameter(_) => "java/lang/AssertionError",
         SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
         SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
-
-        SignalJniError::ExceptionDuringCallback(_) => "java/lang/RuntimeException",
 
         SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
             "org/whispersystems/libsignal/DuplicateMessageException"
