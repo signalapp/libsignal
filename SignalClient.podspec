@@ -14,10 +14,11 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/signalapp/libsignal-client.git', :tag => "v#{s.version}" }
 
   s.swift_version    = '5'
-  s.ios.deployment_target  = '8'
-  s.osx.deployment_target  = '10.9'
+  s.platform = :ios, '10'
 
-  s.source_files = 'swift/Sources/**/*.swift'
+  s.dependency 'SignalCoreKit'
+
+  s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
     'bin/*',
     'Cargo.toml',
@@ -33,6 +34,7 @@ Pod::Spec.new do |s|
       'CARGO_PROFILE_RELEASE_DEBUG' => '1', # enable line tables
       'LIBSIGNAL_FFI_DIR' => '$(CARGO_BUILD_TARGET_DIR)/$(CARGO_BUILD_TARGET)/release',
 
+      'HEADER_SEARCH_PATHS' => '$(LIBSIGNAL_FFI_DIR)',
       'SWIFT_INCLUDE_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi $(LIBSIGNAL_FFI_DIR)',
 
       # Make sure we link the static library, not a dynamic one.

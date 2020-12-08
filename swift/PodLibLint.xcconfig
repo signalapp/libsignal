@@ -1,0 +1,7 @@
+// Disable arm64 simulator builds for `pod lib lint`.
+// Not only does SignalClient not support it yet,
+// but neither do some of its indirect dependencies.
+//
+// This *ought* to be limited to [sdk=iphonesimulator*],
+// but xcodebuild doesn't support that for XCODE_XCCONFIG_FILE.
+EXCLUDED_ARCHS = arm64
