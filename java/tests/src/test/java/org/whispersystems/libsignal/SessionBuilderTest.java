@@ -298,6 +298,50 @@ public class SessionBuilderTest extends TestCase {
     }
   }
 
+  public void testBadSignedPreKeyStoreError() throws InvalidKeyException, UntrustedIdentityException, InvalidVersionException, InvalidMessageException, DuplicateMessageException, LegacyMessageException {
+    SignalProtocolStore aliceStore = new TestBadSignedPreKeysStore();
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+
+    SignalProtocolStore bobStore = new TestBadSignedPreKeysStore();
+
+    ECKeyPair bobPreKeyPair            = Curve.generateKeyPair();
+    ECKeyPair bobSignedPreKeyPair      = Curve.generateKeyPair();
+    byte[]    bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                  bobSignedPreKeyPair.getPublicKey().serialize());
+
+    PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
+                                              31337, bobPreKeyPair.getPublicKey(),
+                                              22, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
+                                              bobStore.getIdentityKeyPair().getPublicKey());
+
+    bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
+    bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+
+    aliceSessionBuilder.process(bobPreKey);
+
+    String            originalMessage    = "Good, fast, cheap: pick two";
+    SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+    CiphertextMessage outgoingMessageOne = aliceSessionCipher.encrypt(originalMessage.getBytes());
+
+    assertTrue(outgoingMessageOne.getType() == CiphertextMessage.PREKEY_TYPE);
+
+    PreKeySignalMessage incomingMessage  = new PreKeySignalMessage(outgoingMessageOne.serialize());
+    SessionCipher        bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
+
+    byte[] plaintext = null;
+
+    try {
+      plaintext = bobSessionCipher.decrypt(incomingMessage);
+      throw new AssertionError("Decrypt should have failed!");
+    } catch (InvalidKeyIdException e) {
+      throw new AssertionError("libsignal-client swallowed the exception");
+    } catch (RuntimeException e) {
+      assertEquals("exception thrown while calling 'loadSignedPreKey'", e.getMessage());
+      assertNotNull(e.getCause());
+      assertTrue(e.getCause() instanceof TestBadSignedPreKeysStore.CustomException);
+    }
+  }
+
   public void testOptionalOneTimePreKey() throws Exception {
     SignalProtocolStore aliceStore          = new TestInMemorySignalProtocolStore();
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use jni::objects::{JObject, JThrowable, JValue};
 use jni::sys::{_jobject, jboolean, jint, jlong};
 
 use aes_gcm_siv::Error as AesGcmSivError;
@@ -18,7 +19,27 @@ pub use error::*;
 
 pub type ObjectHandle = jlong;
 
-pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
+fn throw_error(env: &JNIEnv, error: SignalJniError) {
+    if let SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
+        callback,
+        underlying_exception,
+    )) = error
+    {
+        let underlying_exception = underlying_exception.downcast::<ThrownException>().unwrap();
+        let message = env
+            .new_string(format!("exception thrown while calling '{}'", callback))
+            .unwrap();
+        let throwable = env
+            .new_object(
+                "java/lang/RuntimeException",
+                "(Ljava/lang/String;Ljava/lang/Throwable;)V",
+                &[message.into(), underlying_exception.as_obj().into()],
+            )
+            .unwrap();
+        env.throw(JThrowable::from(throwable)).unwrap();
+        return;
+    }
+
     let exception_type = match error {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
         SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
@@ -93,7 +114,7 @@ pub fn throw_error(env: &JNIEnv, error: SignalJniError) {
         e => format!("{}", e),
     };
 
-    let _ = env.throw_new(exception_type, error_string);
+    env.throw_new(exception_type, error_string).unwrap();
 }
 
 // A dummy value to return when we are throwing an exception
@@ -178,6 +199,48 @@ pub fn to_jbytearray<T: AsRef<[u8]>>(
     let data = data?;
     let data: &[u8] = data.as_ref();
     Ok(env.byte_array_from_slice(data)?)
+}
+
+pub fn call_method_with_exception_as_null<'a>(
+    env: &JNIEnv<'a>,
+    obj: impl Into<JObject<'a>>,
+    fn_name: &'static str,
+    sig: &'static str,
+    args: &[JValue<'_>],
+    exception_to_treat_as_null: Option<&'static str>,
+) -> Result<JValue<'a>, SignalJniError> {
+    // Note that we are *not* unwrapping the result yet!
+    // We need to check for exceptions *first*.
+    let result = env.call_method(obj, fn_name, sig, args);
+
+    let throwable = env.exception_occurred()?;
+    if **throwable == *JObject::null() {
+        Ok(result?)
+    } else {
+        env.exception_clear()?;
+
+        if let Some(exception_to_treat_as_null) = exception_to_treat_as_null {
+            if env.is_instance_of(throwable, exception_to_treat_as_null)? {
+                return Ok(JValue::Object(JObject::null()));
+            }
+        }
+
+        Err(SignalProtocolError::ApplicationCallbackError(
+            fn_name,
+            Box::new(ThrownException::new(env, throwable)?),
+        )
+        .into())
+    }
+}
+
+pub fn call_method_checked<'a>(
+    env: &JNIEnv<'a>,
+    obj: impl Into<JObject<'a>>,
+    fn_name: &'static str,
+    sig: &'static str,
+    args: &[JValue<'_>],
+) -> Result<JValue<'a>, SignalJniError> {
+    call_method_with_exception_as_null(env, obj, fn_name, sig, args, None)
 }
 
 macro_rules! jni_bridge_destroy {
