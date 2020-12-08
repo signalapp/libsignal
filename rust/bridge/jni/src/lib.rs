@@ -1578,7 +1578,91 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Dec
     })
 }
 
+// SessionRecord
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_SessionRecord_1Deserialize is SessionRecord::deserialize);
+jni_fn_destroy!(Java_org_signal_client_internal_Native_SessionRecord_1Destroy destroys SessionRecord);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1Serialize(SessionRecord) using SessionRecord::serialize);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1ArchiveCurrentState(
+    env: JNIEnv,
+    _class: JClass,
+    handle: ObjectHandle) {
+
+    run_ffi_safe(&env, || {
+        let session_record = native_handle_cast::<SessionRecord>(handle)?;
+        session_record.archive_current_state()?;
+        Ok(())
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1NewFresh(
+    env: JNIEnv,
+    _class: JClass) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        box_object::<SessionRecord>(Ok(SessionRecord::new_fresh()))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1FromSessionState(
+    env: JNIEnv,
+    _class: JClass,
+    session_state: ObjectHandle) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let session_state = native_handle_cast::<SessionState>(session_state)?;
+        box_object::<SessionRecord>(Ok(SessionRecord::new(session_state.clone())))
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetSessionState(
+    env: JNIEnv,
+    _class: JClass,
+    session_record: ObjectHandle) -> ObjectHandle {
+    run_ffi_safe(&env, || {
+        let session_record = native_handle_cast::<SessionRecord>(session_record)?;
+        box_object::<SessionState>(session_record.session_state().map(|s| s.clone()))
+    })
+}
+
+// SessionState
+jni_fn_deserialize!(Java_org_signal_client_internal_Native_SessionState_1Deserialize is SessionState::deserialize);
+jni_fn_destroy!(Java_org_signal_client_internal_Native_SessionState_1Destroy destroys SessionState);
+jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionState_1HasSenderChain(SessionState) using SessionState::has_sender_chain);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1GetAliceBaseKey(SessionState) using SessionState::alice_base_key);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1GetLocalIdentityKeyPublic(SessionState) using SessionState::local_identity_key_bytes);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1Serialized(SessionState) using SessionState::serialize);
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionState_1GetLocalRegistrationId(SessionState) using SessionState::local_registration_id);
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionState_1GetRemoteRegistrationId(SessionState) using SessionState::remote_registration_id);
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionState_1GetSessionVersion(SessionState) using SessionState::session_version);
+jni_fn_get_optional_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1GetRemoteIdentityKeyPublic(SessionState) using SessionState::remote_identity_key_bytes);
+
 // The following are just exposed to make it possible to retain some of the Java tests:
+
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1GetSenderChainKeyValue(SessionState) using SessionState::get_sender_chain_key_bytes);
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1GetReceiverChainKeyValue(
+    env: JNIEnv,
+    _class: JClass,
+    session_state: ObjectHandle,
+    key: ObjectHandle) -> jbyteArray {
+    run_ffi_safe(&env, || {
+        let session_state = native_handle_cast::<SessionState>(session_state)?;
+        let sender = native_handle_cast::<PublicKey>(key)?;
+
+        let chain_key = session_state.get_receiver_chain_key(sender)?;
+
+        match chain_key {
+            None => Ok(std::ptr::null_mut()),
+            Some(ck) => to_jbytearray(&env, Ok(ck.key()))
+        }
+    })
+}
+
+
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionState_1InitializeAliceSession(

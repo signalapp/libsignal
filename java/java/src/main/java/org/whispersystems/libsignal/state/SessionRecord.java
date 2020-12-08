@@ -5,13 +5,8 @@
  */
 package org.whispersystems.libsignal.state;
 
+import org.signal.client.internal.Native;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-
-import static org.whispersystems.libsignal.state.StorageProtos.RecordStructure;
-import static org.whispersystems.libsignal.state.StorageProtos.SessionStructure;
 
 /**
  * A SessionRecord encapsulates the state of an ongoing session.
@@ -20,33 +15,27 @@ import static org.whispersystems.libsignal.state.StorageProtos.SessionStructure;
  */
 public class SessionRecord {
 
-  private static final int ARCHIVED_STATES_MAX_LENGTH = 40;
+  long handle;
 
-  private SessionState             sessionState   = new SessionState();
-  private LinkedList<SessionState> previousStates = new LinkedList<>();
-  private boolean                  fresh          = false;
+  @Override
+  protected void finalize() {
+     Native.SessionRecord_Destroy(this.handle);
+  }
 
   public SessionRecord() {
-    this.fresh = true;
+    this.handle = Native.SessionRecord_NewFresh();
   }
 
   public SessionRecord(SessionState sessionState) {
-    this.sessionState = sessionState;
-    this.fresh        = false;
+    this.handle = Native.SessionRecord_FromSessionState(sessionState.nativeHandle());
   }
 
   public SessionRecord(byte[] serialized) throws IOException {
-    RecordStructure record = RecordStructure.parseFrom(serialized);
-    this.sessionState = new SessionState(record.getCurrentSession());
-    this.fresh        = false;
-
-    for (SessionStructure previousStructure : record.getPreviousSessionsList()) {
-      previousStates.add(new SessionState(previousStructure));
-    }
+    this.handle = Native.SessionRecord_Deserialize(serialized);
   }
 
   public SessionState getSessionState() {
-    return sessionState;
+    return new SessionState(Native.SessionRecord_GetSessionState(this.handle));
   }
 
   /**
@@ -55,34 +44,14 @@ public class SessionRecord {
    * with a fresh reset instance.
    */
   public void archiveCurrentState() {
-    promoteState(new SessionState());
-  }
-
-  private void promoteState(SessionState promotedState) {
-    this.previousStates.addFirst(sessionState);
-    this.sessionState = promotedState;
-
-    if (previousStates.size() > ARCHIVED_STATES_MAX_LENGTH) {
-      previousStates.removeLast();
-    }
+    Native.SessionRecord_ArchiveCurrentState(this.handle);
   }
 
   /**
    * @return a serialized version of the current SessionRecord.
    */
   public byte[] serialize() {
-    List<SessionStructure> previousStructures = new LinkedList<>();
-
-    for (SessionState previousState : previousStates) {
-      previousStructures.add(previousState.getStructure());
-    }
-
-    RecordStructure record = RecordStructure.newBuilder()
-                                            .setCurrentSession(sessionState.getStructure())
-                                            .addAllPreviousSessions(previousStructures)
-                                            .build();
-
-    return record.toByteArray();
+    return Native.SessionRecord_Serialize(this.handle);
   }
 
 }
