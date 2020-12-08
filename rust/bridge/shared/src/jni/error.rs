@@ -3,8 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use jni::objects::{GlobalRef, JObject, JString, JThrowable, JValue};
+use jni::{JNIEnv, JavaVM};
+use std::fmt;
+
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
+
+use super::*;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SignalJniError {
@@ -84,21 +90,94 @@ impl From<SignalJniError> for SignalProtocolError {
     }
 }
 
-#[cfg(test)]
-mod formatting_tests {
-    use super::SignalJniError::UnexpectedPanic;
+pub struct ThrownException {
+    jvm: JavaVM,
+    exception_ref: GlobalRef,
+}
 
-    #[test]
-    fn test_unexpected_panic_downcast() {
-        let err = UnexpectedPanic(Box::new("error message"));
-
-        assert_eq!(err.to_string(), "unexpected panic: error message")
+impl ThrownException {
+    pub fn as_obj(&self) -> JThrowable {
+        self.exception_ref.as_obj().into()
     }
 
-    #[test]
-    fn test_unexpected_panic_no_downcast() {
-        let err = UnexpectedPanic(Box::new(0));
+    pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, SignalJniError> {
+        assert!(**throwable != *JObject::null());
+        Ok(Self {
+            jvm: env.get_java_vm()?,
+            exception_ref: env.new_global_ref(throwable)?,
+        })
+    }
 
-        assert_eq!(err.to_string(), "unknown unexpected panic")
+    pub fn class_name(&self, env: &JNIEnv) -> Result<String, SignalJniError> {
+        let class_type = env.get_object_class(self.exception_ref.as_obj())?;
+        let class_name = call_method_checked(
+            env,
+            class_type,
+            "getCanonicalName",
+            "()Ljava/lang/String;",
+            &[],
+        )?;
+
+        if let JValue::Object(class_name) = class_name {
+            let class_name: String = env.get_string(JString::from(class_name))?.into();
+            Ok(class_name)
+        } else {
+            Err(SignalJniError::UnexpectedJniResultType(
+                "getCanonicalName",
+                class_name.type_name(),
+            ))
+        }
+    }
+
+    pub fn message(&self, env: &JNIEnv) -> Result<String, SignalJniError> {
+        let message = call_method_checked(
+            env,
+            self.exception_ref.as_obj(),
+            "getMessage",
+            "()Ljava/lang/String;",
+            &[],
+        )?;
+        if let JValue::Object(message) = message {
+            Ok(env.get_string(JString::from(message))?.into())
+        } else {
+            Err(SignalJniError::UnexpectedJniResultType(
+                "getMessage",
+                message.type_name(),
+            ))
+        }
     }
 }
+
+impl fmt::Display for ThrownException {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let env = &self.jvm.attach_current_thread().map_err(|_| fmt::Error)?;
+
+        let exn_type = self.class_name(env);
+        let exn_type = exn_type.as_deref().unwrap_or("<unknown>");
+
+        if let Ok(message) = self.message(env) {
+            write!(f, "exception {} \"{}\"", exn_type, message)
+        } else {
+            write!(f, "exception {}", exn_type)
+        }
+    }
+}
+
+impl fmt::Debug for ThrownException {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let env = &self.jvm.attach_current_thread().map_err(|_| fmt::Error)?;
+
+        let exn_type = self.class_name(env);
+        let exn_type = exn_type.as_deref().unwrap_or("<unknown>");
+
+        let obj_addr = *self.exception_ref.as_obj();
+
+        if let Ok(message) = self.message(env) {
+            write!(f, "exception {} ({:p}) \"{}\"", exn_type, obj_addr, message)
+        } else {
+            write!(f, "exception {} ({:p})", exn_type, obj_addr)
+        }
+    }
+}
+
+impl std::error::Error for ThrownException {}
