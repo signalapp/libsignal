@@ -77,7 +77,7 @@ public class SessionState {
     this.handle = copy.handle;
   }
 
-  public byte[] getAliceBaseKey() {
+  byte[] getAliceBaseKey() {
     return Native.SessionState_GetAliceBaseKey(this.handle);
   }
 
@@ -85,7 +85,7 @@ public class SessionState {
     return Native.SessionState_GetSessionVersion(this.handle);
   }
 
-  public IdentityKey getRemoteIdentityKey() {
+  IdentityKey getRemoteIdentityKey() {
     byte[] keyBytes = Native.SessionState_GetRemoteIdentityKeyPublic(this.handle);
 
     if (keyBytes == null){
@@ -100,7 +100,7 @@ public class SessionState {
     }
   }
 
-  public IdentityKey getLocalIdentityKey() {
+  IdentityKey getLocalIdentityKey() {
     byte[] keyBytes = Native.SessionState_GetLocalIdentityKeyPublic(this.handle);
     try {
        return new IdentityKey(keyBytes);
@@ -114,19 +114,19 @@ public class SessionState {
     return Native.SessionState_HasSenderChain(this.handle);
   }
 
-  public byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
+  byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
     return Native.SessionState_GetReceiverChainKeyValue(this.handle, senderEphemeral.nativeHandle());
   }
 
-  public byte[] getSenderChainKeyValue() {
+  byte[] getSenderChainKeyValue() {
     return Native.SessionState_GetSenderChainKeyValue(this.handle);
   }
 
-  public int getRemoteRegistrationId() {
+  int getRemoteRegistrationId() {
     return Native.SessionState_GetRemoteRegistrationId(this.handle);
   }
 
-  public int getLocalRegistrationId() {
+  int getLocalRegistrationId() {
     return Native.SessionState_GetLocalRegistrationId(this.handle);
   }
 

@@ -5,11 +5,11 @@ import junit.framework.TestCase;
 import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
+import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.state.SessionRecord;
-import org.whispersystems.libsignal.state.SessionState;
 import org.whispersystems.libsignal.util.guava.Optional;
 import org.whispersystems.libsignal.util.Pair;
 
@@ -158,20 +158,17 @@ public class SessionCipherTest extends TestCase {
 
     ECKeyPair       bobPreKey            = Curve.generateKeyPair();
 
-    SessionState aliceSessionState = SessionState.initializeAliceSession(aliceIdentityKey,
-                                                                         aliceBaseKey,
-                                                                         bobIdentityKey.getPublicKey(),
-                                                                         bobBaseKey.getPublicKey(),
-                                                                         bobEphemeralKey.getPublicKey());
-    SessionRecord aliceSessionRecord = new SessionRecord(aliceSessionState);
+    SessionRecord aliceSessionRecord = SessionRecord.initializeAliceSession(aliceIdentityKey,
+                                                                            aliceBaseKey,
+                                                                            bobIdentityKey.getPublicKey(),
+                                                                            bobBaseKey.getPublicKey(),
+                                                                            bobEphemeralKey.getPublicKey());
 
-    SessionState bobSessionState = SessionState.initializeBobSession(bobIdentityKey,
-                                                                     bobBaseKey,
-                                                                     bobEphemeralKey,
-                                                                     aliceIdentityKey.getPublicKey(),
-                                                                     aliceBaseKey.getPublicKey());
-
-    SessionRecord bobSessionRecord = new SessionRecord(bobSessionState);
+    SessionRecord bobSessionRecord = SessionRecord.initializeBobSession(bobIdentityKey,
+                                                                        bobBaseKey,
+                                                                        bobEphemeralKey,
+                                                                        aliceIdentityKey.getPublicKey(),
+                                                                        aliceBaseKey.getPublicKey());
 
     return new PairOfSessions(aliceSessionRecord, bobSessionRecord);
   }

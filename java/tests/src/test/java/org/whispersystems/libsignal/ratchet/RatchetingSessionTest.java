@@ -9,7 +9,7 @@ import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.state.SessionState;
+import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.util.Arrays;
@@ -122,7 +122,7 @@ public class RatchetingSessionTest extends TestCase {
     ECPublicKey     aliceEphemeralPublicKey  = Curve.decodePoint(aliceEphemeralPublic, 0);
     IdentityKey     aliceIdentityPublicKey   = new IdentityKey(aliceIdentityPublic, 0);
 
-    SessionState session = SessionState.initializeBobSession(bobIdentityKey,
+    SessionRecord session = SessionRecord.initializeBobSession(bobIdentityKey,
                                                              bobSignedPreKey,
                                                              bobEphemeralKey,
                                                              aliceIdentityPublicKey,
@@ -236,7 +236,7 @@ public void testRatchetingSessionAsAlice() throws InvalidKeyException {
     ECPrivateKey    aliceIdentityPrivateKey  = Curve.decodePrivatePoint(aliceIdentityPrivate);
     IdentityKeyPair aliceIdentityKey         = new IdentityKeyPair(aliceIdentityPublicKey, aliceIdentityPrivateKey);
 
-    SessionState session = SessionState.initializeAliceSession(aliceIdentityKey,
+    SessionRecord session = SessionRecord.initializeAliceSession(aliceIdentityKey,
                                                                aliceBaseKey,
                                                                bobIdentityKey,
                                                                bobSignedPreKey,
