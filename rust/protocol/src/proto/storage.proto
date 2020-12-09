@@ -43,6 +43,7 @@ message SessionStructure {
   uint32         previous_counter           = 5;
 
   Chain          sender_chain               = 6;
+  // The order is significant; keys at the end are "older" and will get trimmed.
   repeated Chain receiver_chains            = 7;
 
   PendingPreKey      pending_pre_key        = 9;
@@ -56,6 +57,7 @@ message SessionStructure {
 
 message RecordStructure {
   SessionStructure          current_session   = 1;
+  // The order is significant; sessions at the end are "older" and will get trimmed.
   repeated SessionStructure previous_sessions = 2;
 }
 
