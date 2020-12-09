@@ -55,6 +55,7 @@ repositories {
 }
 
 dependencies {
+    androidTestImplementation 'junit:junit:3.8.2'
     api project(':java')
 }
 
