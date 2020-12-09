@@ -194,16 +194,18 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                         from senderCert: SenderCertificate,
                                                         sessionStore: SessionStore,
                                                         identityStore: IdentityKeyStore,
-                                                        context: UnsafeMutableRawPointer?) throws -> [UInt8] {
+                                                        context: StoreContext) throws -> [UInt8] {
     return try message.withUnsafeBytes { messageBytes in
-        try withSessionStore(sessionStore) { ffiSessionStore in
-            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                try invokeFnReturningArray {
-                    signal_sealed_session_cipher_encrypt($0, $1,
-                                                         address.nativeHandle, senderCert.nativeHandle,
-                                                         messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                         messageBytes.count,
-                                                         ffiSessionStore, ffiIdentityStore, context)
+        try context.withOpaquePointer { context in
+            try withSessionStore(sessionStore) { ffiSessionStore in
+                try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                    try invokeFnReturningArray {
+                        signal_sealed_session_cipher_encrypt($0, $1,
+                                                             address.nativeHandle, senderCert.nativeHandle,
+                                                             messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                             messageBytes.count,
+                                                             ffiSessionStore, ffiIdentityStore, context)
+                    }
                 }
             }
         }
@@ -213,17 +215,19 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
 public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
     public init<Bytes: ContiguousBytes>(message: Bytes,
                                         identityStore: IdentityKeyStore,
-                                        context: UnsafeMutableRawPointer?) throws {
+                                        context: StoreContext) throws {
         var result: OpaquePointer?
         try message.withUnsafeBytes { messageBytes in
-            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                try checkError(
-                    signal_sealed_session_cipher_decrypt_to_usmc(
-                        &result,
-                        messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                        messageBytes.count,
-                        ffiIdentityStore,
-                        context))
+            try context.withOpaquePointer { context in
+                try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                    try checkError(
+                        signal_sealed_session_cipher_decrypt_to_usmc(
+                            &result,
+                            messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                            messageBytes.count,
+                            ffiIdentityStore,
+                            context))
+                }
             }
         }
         super.init(owned: result!)
@@ -285,35 +289,37 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                         identityStore: IdentityKeyStore,
                                                         preKeyStore: PreKeyStore,
                                                         signedPreKeyStore: SignedPreKeyStore,
-                                                        context: UnsafeMutableRawPointer?) throws -> SealedSenderResult {
+                                                        context: StoreContext) throws -> SealedSenderResult {
     var senderE164: UnsafePointer<CChar>?
     var senderUUID: UnsafePointer<CChar>?
     var senderDeviceId: UInt32 = 0
 
     let plaintext = try message.withUnsafeBytes { messageBytes in
-        try withSessionStore(sessionStore) { ffiSessionStore in
-            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
-                    try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
-                        try invokeFnReturningArray {
-                            signal_sealed_session_cipher_decrypt(
-                                $0,
-                                $1,
-                                &senderE164,
-                                &senderUUID,
-                                &senderDeviceId,
-                                messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                messageBytes.count,
-                                trustRoot.nativeHandle,
-                                timestamp,
-                                localAddress.e164,
-                                localAddress.uuidString,
-                                localAddress.deviceId,
-                                ffiSessionStore,
-                                ffiIdentityStore,
-                                ffiPreKeyStore,
-                                ffiSignedPreKeyStore,
-                                context)
+        try context.withOpaquePointer { context in
+            try withSessionStore(sessionStore) { ffiSessionStore in
+                try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                    try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
+                        try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
+                            try invokeFnReturningArray {
+                                signal_sealed_session_cipher_decrypt(
+                                    $0,
+                                    $1,
+                                    &senderE164,
+                                    &senderUUID,
+                                    &senderDeviceId,
+                                    messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                    messageBytes.count,
+                                    trustRoot.nativeHandle,
+                                    timestamp,
+                                    localAddress.e164,
+                                    localAddress.uuidString,
+                                    localAddress.deviceId,
+                                    ffiSessionStore,
+                                    ffiIdentityStore,
+                                    ffiPreKeyStore,
+                                    ffiSignedPreKeyStore,
+                                    context)
+                            }
                         }
                     }
                 }

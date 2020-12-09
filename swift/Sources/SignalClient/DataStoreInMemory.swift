@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+/// A dummy StoreContext usable with InMemorySignalProtocolStore.
+public struct NullContext: StoreContext {
+    public init() {}
+}
+
 public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, SessionStore, SenderKeyStore {
     private var publicKeys: [ProtocolAddress: IdentityKey] = [:]
     private var privateKey: IdentityKeyPair
@@ -22,15 +27,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         self.deviceId = deviceId
     }
 
-    public func identityKeyPair(context: UnsafeMutableRawPointer?) throws -> IdentityKeyPair {
+    public func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair {
         return privateKey
     }
 
-    public func localRegistrationId(context: UnsafeMutableRawPointer?) throws -> UInt32 {
+    public func localRegistrationId(context: StoreContext) throws -> UInt32 {
         return deviceId
     }
 
-    public func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> Bool {
+    public func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {
         if publicKeys.updateValue(identity, forKey: address) == nil {
             return false; // newly created
         } else {
@@ -38,7 +43,7 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: UnsafeMutableRawPointer?) throws -> Bool {
+    public func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: StoreContext) throws -> Bool {
         if let pk = publicKeys[address] {
             return pk == identity
         } else {
@@ -46,11 +51,11 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func identity(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> IdentityKey? {
+    public func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey? {
         return publicKeys[address]
     }
 
-    public func loadPreKey(id: UInt32, context: UnsafeMutableRawPointer?) throws -> PreKeyRecord {
+    public func loadPreKey(id: UInt32, context: StoreContext) throws -> PreKeyRecord {
         if let record = prekeyMap[id] {
             return record
         } else {
@@ -58,15 +63,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func storePreKey(_ record: PreKeyRecord, id: UInt32, context: UnsafeMutableRawPointer?) throws {
+    public func storePreKey(_ record: PreKeyRecord, id: UInt32, context: StoreContext) throws {
         prekeyMap[id] = record
     }
 
-    public func removePreKey(id: UInt32, context: UnsafeMutableRawPointer?) throws {
+    public func removePreKey(id: UInt32, context: StoreContext) throws {
         prekeyMap.removeValue(forKey: id)
     }
 
-    public func loadSignedPreKey(id: UInt32, context: UnsafeMutableRawPointer?) throws -> SignedPreKeyRecord {
+    public func loadSignedPreKey(id: UInt32, context: StoreContext) throws -> SignedPreKeyRecord {
         if let record = signedPrekeyMap[id] {
             return record
         } else {
@@ -74,23 +79,23 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: UnsafeMutableRawPointer?) throws {
+    public func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: StoreContext) throws {
         signedPrekeyMap[id] = record
     }
 
-    public func loadSession(for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws -> SessionRecord? {
+    public func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord? {
         return sessionMap[address]
     }
 
-    public func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: UnsafeMutableRawPointer?) throws {
+    public func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: StoreContext) throws {
         sessionMap[address] = record
     }
 
-    public func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, context: UnsafeMutableRawPointer?) throws {
+    public func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, context: StoreContext) throws {
         senderKeyMap[name] = record
     }
 
-    public func loadSenderKey(name: SenderKeyName, context: UnsafeMutableRawPointer?) throws -> SenderKeyRecord? {
+    public func loadSenderKey(name: SenderKeyName, context: StoreContext) throws -> SenderKeyRecord? {
         return senderKeyMap[name]
     }
 }
