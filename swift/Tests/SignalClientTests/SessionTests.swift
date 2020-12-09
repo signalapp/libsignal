@@ -15,13 +15,13 @@ class SessionTests: TestCaseBase {
 
         let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
 
-        let bob_identity_key = try! bob_store.identityKeyPair(context: nil).identityKey
-        let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: nil).privateKey.generateSignature(message: bob_signed_pre_key_public)
+        let bob_identity_key = try! bob_store.identityKeyPair(context: NullContext()).identityKey
+        let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: NullContext()).privateKey.generateSignature(message: bob_signed_pre_key_public)
 
         let prekey_id: UInt32 = 4570
         let signed_prekey_id: UInt32 = 3006
 
-        let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: nil),
+        let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: NullContext()),
                                            deviceId: 9,
                                            prekeyId: prekey_id,
                                            prekey: bob_pre_key.publicKey,
@@ -35,15 +35,15 @@ class SessionTests: TestCaseBase {
                                  for: bob_address,
                                  sessionStore: alice_store,
                                  identityStore: alice_store,
-                                 context: nil)
+                                 context: NullContext())
 
-        XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: nil)?.remoteRegistrationId(),
-                       try! bob_store.localRegistrationId(context: nil))
+        XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.remoteRegistrationId(),
+                       try! bob_store.localRegistrationId(context: NullContext()))
 
         // Bob does the same:
         try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, privateKey: bob_pre_key),
                                    id: prekey_id,
-                                   context: nil)
+                                   context: NullContext())
 
         try! bob_store.storeSignedPreKey(
             SignedPreKeyRecord(
@@ -53,7 +53,7 @@ class SessionTests: TestCaseBase {
                 signature: bob_signed_pre_key_signature
             ),
             id: signed_prekey_id,
-            context: nil)
+            context: NullContext())
     }
 
     func testSessionCipher() {
@@ -72,7 +72,7 @@ class SessionTests: TestCaseBase {
                                          for: bob_address,
                                          sessionStore: alice_store,
                                          identityStore: alice_store,
-                                         context: nil)
+                                         context: NullContext())
 
         XCTAssertEqual(ctext_a.messageType, .preKey)
 
@@ -84,7 +84,7 @@ class SessionTests: TestCaseBase {
                                                identityStore: bob_store,
                                                preKeyStore: bob_store,
                                                signedPreKeyStore: bob_store,
-                                               context: nil)
+                                               context: NullContext())
 
         XCTAssertEqual(ptext_a, ptext_b)
 
@@ -95,7 +95,7 @@ class SessionTests: TestCaseBase {
                                           for: alice_address,
                                           sessionStore: bob_store,
                                           identityStore: bob_store,
-                                          context: nil)
+                                          context: NullContext())
 
         XCTAssertEqual(ctext2_b.messageType, .whisper)
 
@@ -105,7 +105,7 @@ class SessionTests: TestCaseBase {
                                           from: bob_address,
                                           sessionStore: alice_store,
                                           identityStore: alice_store,
-                                          context: nil)
+                                          context: NullContext())
 
         XCTAssertEqual(ptext2_a, ptext2_b)
     }
@@ -126,7 +126,7 @@ class SessionTests: TestCaseBase {
                                                    uuidString: "9d0652a3-dcc3-4d11-975f-74d61598733f",
                                                    deviceId: 1)
         let sender_cert = try! SenderCertificate(sender: sender_addr,
-                                                 publicKey: alice_store.identityKeyPair(context: nil).publicKey,
+                                                 publicKey: alice_store.identityKeyPair(context: NullContext()).publicKey,
                                                  expiration: 31337,
                                                  signerCertificate: server_cert,
                                                  signerKey: server_keys.privateKey)
@@ -137,7 +137,7 @@ class SessionTests: TestCaseBase {
                                                  from: sender_cert,
                                                  sessionStore: alice_store,
                                                  identityStore: alice_store,
-                                                 context: nil)
+                                                 context: NullContext())
 
         let recipient_addr = try! SealedSenderAddress(e164: bob_address.name, uuidString: nil, deviceId: 1)
         let plaintext = try sealedSenderDecrypt(message: ciphertext,
@@ -148,7 +148,7 @@ class SessionTests: TestCaseBase {
                                                 identityStore: bob_store,
                                                 preKeyStore: bob_store,
                                                 signedPreKeyStore: bob_store,
-                                                context: nil)
+                                                context: NullContext())
 
         XCTAssertEqual(plaintext.message, message)
         XCTAssertEqual(plaintext.sender, sender_addr)

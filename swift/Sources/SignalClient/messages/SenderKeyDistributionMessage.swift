@@ -17,10 +17,12 @@ public class SenderKeyDistributionMessage {
         return handle
     }
 
-    public init(name: SenderKeyName, store: SenderKeyStore, context: UnsafeMutableRawPointer?) throws {
-        try withSenderKeyStore(store) {
-            try checkError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
-                                                                         $0, context))
+    public init(name: SenderKeyName, store: SenderKeyStore, context: StoreContext) throws {
+        try context.withOpaquePointer { context in
+            try withSenderKeyStore(store) {
+                try checkError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
+                                                                             $0, context))
+            }
         }
     }
 

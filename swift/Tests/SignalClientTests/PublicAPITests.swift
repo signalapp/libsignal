@@ -236,20 +236,20 @@ class PublicAPITests: TestCaseBase {
 
         let a_store = InMemorySignalProtocolStore()
 
-        let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, context: nil)
+        let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, context: NullContext())
 
         let skdm_bits = skdm.serialize()
 
         let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
 
-        let a_ctext = try! groupEncrypt(groupId: group_id, message: [1, 2, 3], store: a_store, context: nil)
+        let a_ctext = try! groupEncrypt(groupId: group_id, message: [1, 2, 3], store: a_store, context: NullContext())
 
         let b_store = InMemorySignalProtocolStore()
         try! processSenderKeyDistributionMessage(sender: group_id,
                                                  message: skdm_r,
                                                  store: b_store,
-                                                 context: nil)
-        let b_ptext = try! groupDecrypt(groupId: group_id, message: a_ctext, store: b_store, context: nil)
+                                                 context: NullContext())
+        let b_ptext = try! groupDecrypt(groupId: group_id, message: a_ctext, store: b_store, context: NullContext())
 
         XCTAssertEqual(b_ptext, [1, 2, 3])
     }
