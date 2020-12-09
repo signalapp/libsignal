@@ -133,7 +133,7 @@ public class SessionCipher {
   public int getRemoteRegistrationId() {
     synchronized (SESSION_LOCK) {
       SessionRecord record = sessionStore.loadSession(remoteAddress);
-      return record.getSessionState().getRemoteRegistrationId();
+      return record.getRemoteRegistrationId();
     }
   }
 
@@ -144,7 +144,7 @@ public class SessionCipher {
       }
 
       SessionRecord record = sessionStore.loadSession(remoteAddress);
-      return record.getSessionState().getSessionVersion();
+      return record.getSessionVersion();
     }
   }
 }

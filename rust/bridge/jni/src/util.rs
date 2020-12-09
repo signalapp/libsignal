@@ -698,6 +698,26 @@ macro_rules! jni_fn_get_jbytearray {
 }
 
 #[macro_export]
+macro_rules! jni_fn_get_optional_jbytearray {
+    ( $nm:ident($typ:ty) using $body:expr ) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $nm(
+            env: JNIEnv,
+            _class: JClass,
+            handle: ObjectHandle,
+        ) -> jbyteArray {
+            run_ffi_safe(&env, || {
+                let obj = native_handle_cast::<$typ>(handle)?;
+                match $body(obj)? {
+                    Some(v) => to_jbytearray(&env, Ok(v)),
+                    None => Ok(std::ptr::null_mut()),
+                }
+            })
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! jni_fn_destroy {
     ( $nm:ident destroys $typ:ty ) => {
         #[no_mangle]

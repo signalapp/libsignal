@@ -7,30 +7,21 @@
 package org.whispersystems.libsignal.state;
 
 import org.signal.client.internal.Native;
-
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.IdentityKeyPair;
-import org.whispersystems.libsignal.InvalidKeyException;
-import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
-import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.logging.Log;
-import org.whispersystems.libsignal.state.StorageProtos.SessionStructure.Chain;
-import org.whispersystems.libsignal.state.StorageProtos.SessionStructure.PendingKeyExchange;
-import org.whispersystems.libsignal.state.StorageProtos.SessionStructure.PendingPreKey;
-import org.whispersystems.libsignal.util.Pair;
-import org.whispersystems.libsignal.util.guava.Optional;
-
+import org.whispersystems.libsignal.InvalidKeyException;
 import java.io.IOException;
-
-import java.util.Iterator;
-import java.util.List;
-
 import static org.whispersystems.libsignal.state.StorageProtos.SessionStructure;
 
 public class SessionState {
-  private SessionStructure sessionStructure;
+  private long handle;
+
+  @Override
+  protected void finalize() {
+     Native.SessionState_Destroy(this.handle);
+  }
 
   static public SessionState initializeAliceSession(IdentityKeyPair identityKey,
                                                     ECKeyPair baseKey,
@@ -70,130 +61,75 @@ public class SessionState {
   }
 
   public SessionState(byte[] serialized) throws IOException {
-    this.sessionStructure = SessionStructure.parseFrom(serialized);
-  }
-
-  private static final int MAX_MESSAGE_KEYS = 2000;
-
-  public SessionState() {
-    this.sessionStructure = SessionStructure.newBuilder().build();
+    this.handle = Native.SessionState_Deserialize(serialized);
   }
 
   public SessionState(SessionStructure sessionStructure) {
-    this.sessionStructure = sessionStructure;
+    this.handle = Native.SessionState_Deserialize(sessionStructure.toByteArray());
   }
 
-  public SessionState(SessionState copy) {
-    this.sessionStructure = copy.sessionStructure.toBuilder().build();
+  SessionState(long handle) {
+    this.handle = handle;
   }
 
-  public SessionStructure getStructure() {
-    return sessionStructure;
-  }
-
-  public byte[] getAliceBaseKey() {
-    return this.sessionStructure.getAliceBaseKey().toByteArray();
+  byte[] getAliceBaseKey() {
+    return Native.SessionState_GetAliceBaseKey(this.handle);
   }
 
   public int getSessionVersion() {
-    int sessionVersion = this.sessionStructure.getSessionVersion();
-
-    if (sessionVersion == 0) return 2;
-    else                     return sessionVersion;
+    return Native.SessionState_GetSessionVersion(this.handle);
   }
 
-  public IdentityKey getRemoteIdentityKey() {
-    try {
-      if (!this.sessionStructure.hasRemoteIdentityPublic()) {
-        return null;
-      }
+  IdentityKey getRemoteIdentityKey() {
+    byte[] keyBytes = Native.SessionState_GetRemoteIdentityKeyPublic(this.handle);
 
-      return new IdentityKey(this.sessionStructure.getRemoteIdentityPublic().toByteArray(), 0);
-    } catch (InvalidKeyException e) {
-      Log.w("SessionRecordV2", e);
+    if (keyBytes == null){
       return null;
     }
-  }
 
-  public IdentityKey getLocalIdentityKey() {
     try {
-      return new IdentityKey(this.sessionStructure.getLocalIdentityPublic().toByteArray(), 0);
-    } catch (InvalidKeyException e) {
+       return new IdentityKey(keyBytes);
+    }
+    catch(InvalidKeyException e) {
       throw new AssertionError(e);
     }
   }
 
-  public int getPreviousCounter() {
-    return sessionStructure.getPreviousCounter();
-  }
-
-  public ECPublicKey getSenderRatchetKey() {
+  IdentityKey getLocalIdentityKey() {
+    byte[] keyBytes = Native.SessionState_GetLocalIdentityKeyPublic(this.handle);
     try {
-      return Curve.decodePoint(sessionStructure.getSenderChain().getSenderRatchetKey().toByteArray(), 0);
-    } catch (InvalidKeyException e) {
+       return new IdentityKey(keyBytes);
+    }
+    catch(InvalidKeyException e) {
       throw new AssertionError(e);
     }
-  }
-
-  public ECKeyPair getSenderRatchetKeyPair() {
-    ECPublicKey  publicKey  = getSenderRatchetKey();
-    ECPrivateKey privateKey = Curve.decodePrivatePoint(sessionStructure.getSenderChain()
-                                                                       .getSenderRatchetKeyPrivate()
-                                                                       .toByteArray());
-
-    return new ECKeyPair(publicKey, privateKey);
   }
 
   public boolean hasSenderChain() {
-    return sessionStructure.hasSenderChain();
+    return Native.SessionState_HasSenderChain(this.handle);
   }
 
-  private Pair<Chain,Integer> getReceiverChain(ECPublicKey senderEphemeral) {
-    List<Chain> receiverChains = sessionStructure.getReceiverChainsList();
-    int         index          = 0;
-
-    for (Chain receiverChain : receiverChains) {
-      try {
-        ECPublicKey chainSenderRatchetKey = Curve.decodePoint(receiverChain.getSenderRatchetKey().toByteArray(), 0);
-
-        if (chainSenderRatchetKey.equals(senderEphemeral)) {
-          return new Pair<>(receiverChain,index);
-        }
-      } catch (InvalidKeyException e) {
-        Log.w("SessionRecordV2", e);
-     }
-
-     index++;
-    }
-
-   return null;
-   }
-
-   public byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
-     Pair<Chain,Integer> receiverChainAndIndex = getReceiverChain(senderEphemeral);
-     Chain               receiverChain         = receiverChainAndIndex.first();
-
-     if (receiverChain == null) {
-       return null;
-     } else {
-       return receiverChain.getChainKey().getKey().toByteArray();
-     }
+  byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
+    return Native.SessionState_GetReceiverChainKeyValue(this.handle, senderEphemeral.nativeHandle());
   }
 
-  public byte[] getSenderChainKeyValue() {
-    Chain.ChainKey chainKeyStructure = sessionStructure.getSenderChain().getChainKey();
-    return chainKeyStructure.getKey().toByteArray();
+  byte[] getSenderChainKeyValue() {
+    return Native.SessionState_GetSenderChainKeyValue(this.handle);
   }
 
-  public int getRemoteRegistrationId() {
-    return this.sessionStructure.getRemoteRegistrationId();
+  int getRemoteRegistrationId() {
+    return Native.SessionState_GetRemoteRegistrationId(this.handle);
   }
 
-  public int getLocalRegistrationId() {
-    return this.sessionStructure.getLocalRegistrationId();
+  int getLocalRegistrationId() {
+    return Native.SessionState_GetLocalRegistrationId(this.handle);
   }
 
   public byte[] serialize() {
-    return sessionStructure.toByteArray();
+    return Native.SessionState_Serialized(this.handle);
+  }
+
+  long nativeHandle() {
+    return this.handle;
   }
 }

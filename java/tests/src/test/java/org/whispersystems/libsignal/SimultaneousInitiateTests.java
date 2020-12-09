@@ -61,8 +61,8 @@ public class SimultaneousInitiateTests extends TestCase {
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
 
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
@@ -112,7 +112,7 @@ public class SimultaneousInitiateTests extends TestCase {
     byte[] bobPlaintext   = bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(bobPlaintext).equals("hey there"));
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
 
     CiphertextMessage aliceResponse = aliceSessionCipher.encrypt("second message".getBytes());
 
@@ -167,8 +167,8 @@ public class SimultaneousInitiateTests extends TestCase {
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
 
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
@@ -226,8 +226,8 @@ public class SimultaneousInitiateTests extends TestCase {
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
 
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
@@ -304,8 +304,8 @@ public class SimultaneousInitiateTests extends TestCase {
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
 
-      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
-      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
+      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
 
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
     }
@@ -392,8 +392,8 @@ public class SimultaneousInitiateTests extends TestCase {
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
 
-      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
-      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
+      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
 
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
     }
@@ -447,8 +447,8 @@ public class SimultaneousInitiateTests extends TestCase {
   }
 
   private boolean isSessionIdEqual(SignalProtocolStore aliceStore, SignalProtocolStore bobStore) {
-    return Arrays.equals(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getAliceBaseKey(),
-                         bobStore.loadSession(ALICE_ADDRESS).getSessionState().getAliceBaseKey());
+    return Arrays.equals(aliceStore.loadSession(BOB_ADDRESS).getAliceBaseKey(),
+                         bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey());
   }
 
   private PreKeyBundle createAlicePreKeyBundle(SignalProtocolStore aliceStore) throws InvalidKeyException {

@@ -5,11 +5,11 @@ import junit.framework.TestCase;
 import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
+import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.state.SessionRecord;
-import org.whispersystems.libsignal.state.SessionState;
 import org.whispersystems.libsignal.util.guava.Optional;
 import org.whispersystems.libsignal.util.Pair;
 
@@ -24,28 +24,32 @@ import java.util.Random;
 
 public class SessionCipherTest extends TestCase {
 
+  public class PairOfSessions {
+    public PairOfSessions(SessionRecord a, SessionRecord b) {
+      aliceSession = a;
+      bobSession = b;
+    }
+
+    public SessionRecord aliceSession;
+    public SessionRecord bobSession;
+  }
+
   public void testBasicSessionV3()
       throws InvalidKeyException, DuplicateMessageException,
       LegacyMessageException, InvalidMessageException, NoSuchAlgorithmException, NoSessionException, UntrustedIdentityException
   {
-    SessionRecord aliceSessionRecord = new SessionRecord();
-    SessionRecord bobSessionRecord   = new SessionRecord();
-
-    initializeSessionsV3(aliceSessionRecord, bobSessionRecord);
-    runInteraction(aliceSessionRecord, bobSessionRecord);
+    PairOfSessions sessions = initializeSessionsV3();
+    runInteraction(sessions.aliceSession, sessions.bobSession);
   }
 
   public void testMessageKeyLimits() throws Exception {
-    SessionRecord aliceSessionRecord = new SessionRecord();
-    SessionRecord bobSessionRecord   = new SessionRecord();
-
-    initializeSessionsV3(aliceSessionRecord, bobSessionRecord);
+    PairOfSessions sessions = initializeSessionsV3();
 
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     SignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
 
-    aliceStore.storeSession(new SignalProtocolAddress("+14159999999", 1), aliceSessionRecord);
-    bobStore.storeSession(new SignalProtocolAddress("+14158888888", 1), bobSessionRecord);
+    aliceStore.storeSession(new SignalProtocolAddress("+14159999999", 1), sessions.aliceSession);
+    bobStore.storeSession(new SignalProtocolAddress("+14158888888", 1), sessions.bobSession);
 
     SessionCipher     aliceCipher    = new SessionCipher(aliceStore, new SignalProtocolAddress("+14159999999", 1));
     SessionCipher     bobCipher      = new SessionCipher(bobStore, new SignalProtocolAddress("+14158888888", 1));
@@ -137,9 +141,7 @@ public class SessionCipherTest extends TestCase {
     }
   }
 
-  private void initializeSessionsV3(SessionRecord aliceSessionRecord, SessionRecord bobSessionRecord)
-      throws InvalidKeyException
-  {
+  private PairOfSessions initializeSessionsV3() throws InvalidKeyException {
     ECKeyPair       aliceIdentityKeyPair = Curve.generateKeyPair();
     IdentityKeyPair aliceIdentityKey     = new IdentityKeyPair(new IdentityKey(aliceIdentityKeyPair.getPublicKey()),
                                                                aliceIdentityKeyPair.getPrivateKey());
@@ -156,20 +158,19 @@ public class SessionCipherTest extends TestCase {
 
     ECKeyPair       bobPreKey            = Curve.generateKeyPair();
 
-    SessionState aliceSessionState = SessionState.initializeAliceSession(aliceIdentityKey,
-                                                                         aliceBaseKey,
-                                                                         bobIdentityKey.getPublicKey(),
-                                                                         bobBaseKey.getPublicKey(),
-                                                                         bobEphemeralKey.getPublicKey());
+    SessionRecord aliceSessionRecord = SessionRecord.initializeAliceSession(aliceIdentityKey,
+                                                                            aliceBaseKey,
+                                                                            bobIdentityKey.getPublicKey(),
+                                                                            bobBaseKey.getPublicKey(),
+                                                                            bobEphemeralKey.getPublicKey());
 
-    aliceSessionRecord.setState(aliceSessionState);
+    SessionRecord bobSessionRecord = SessionRecord.initializeBobSession(bobIdentityKey,
+                                                                        bobBaseKey,
+                                                                        bobEphemeralKey,
+                                                                        aliceIdentityKey.getPublicKey(),
+                                                                        aliceBaseKey.getPublicKey());
 
-    SessionState bobSessionState = SessionState.initializeBobSession(bobIdentityKey,
-                                                                     bobBaseKey,
-                                                                     bobEphemeralKey,
-                                                                     aliceIdentityKey.getPublicKey(),
-                                                                     aliceBaseKey.getPublicKey());
-    bobSessionRecord.setState(bobSessionState);
+    return new PairOfSessions(aliceSessionRecord, bobSessionRecord);
   }
 
 }

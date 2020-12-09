@@ -42,7 +42,7 @@ public class SessionBuilderTest extends TestCase {
     aliceSessionBuilder.process(bobPreKey);
 
     assertTrue(aliceStore.containsSession(BOB_ADDRESS));
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
 
           String            originalMessage    = "Good, fast, cheap: pick two";
           SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
@@ -58,8 +58,8 @@ public class SessionBuilderTest extends TestCase {
     byte[] plaintext = bobSessionCipher.decrypt(incomingMessage);
 
     assertTrue(bobStore.containsSession(ALICE_ADDRESS));
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getAliceBaseKey() != null);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey() != null);
     assertTrue(originalMessage.equals(new String(plaintext)));
 
     CiphertextMessage bobOutgoingMessage = bobSessionCipher.encrypt(originalMessage.getBytes());
@@ -318,7 +318,7 @@ public class SessionBuilderTest extends TestCase {
     aliceSessionBuilder.process(bobPreKey);
 
     assertTrue(aliceStore.containsSession(BOB_ADDRESS));
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionState().getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
 
     String            originalMessage    = "Good, fast, cheap: pick two";
     SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
@@ -335,8 +335,8 @@ public class SessionBuilderTest extends TestCase {
     byte[]        plaintext        = bobSessionCipher.decrypt(incomingMessage);
 
     assertTrue(bobStore.containsSession(ALICE_ADDRESS));
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionState().getAliceBaseKey() != null);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey() != null);
     assertTrue(originalMessage.equals(new String(plaintext)));
   }
 

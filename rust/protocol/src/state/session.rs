@@ -87,8 +87,16 @@ impl SessionState {
         }
     }
 
+    pub fn remote_identity_key_bytes(&self) -> Result<Option<Vec<u8>>> {
+        Ok(self.remote_identity_key()?.map(|k| k.serialize().to_vec()))
+    }
+
     pub fn local_identity_key(&self) -> Result<IdentityKey> {
         IdentityKey::decode(&self.session.local_identity_public)
+    }
+
+    pub fn local_identity_key_bytes(&self) -> Result<Vec<u8>> {
+        Ok(self.local_identity_key()?.serialize().to_vec())
     }
 
     pub fn previous_counter(&self) -> Result<u32> {
@@ -232,6 +240,10 @@ impl SessionState {
 
         let hkdf = kdf::HKDF::new(self.session_version()?)?;
         ChainKey::new(hkdf, &chain_key.key, chain_key.index)
+    }
+
+    pub fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {
+        Ok(self.get_sender_chain_key()?.key().to_vec())
     }
 
     pub fn set_sender_chain_key(&mut self, next_chain_key: &ChainKey) -> Result<()> {
