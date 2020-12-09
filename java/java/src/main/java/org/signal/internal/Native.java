@@ -206,24 +206,26 @@ public final class Native {
   public static native void SessionRecord_ArchiveCurrentState(long handle);
   public static native long SessionRecord_Deserialize(byte[] data);
   public static native void SessionRecord_Destroy(long handle);
-  public static native long SessionRecord_FromSessionState(long sessionState);
+  public static native long SessionRecord_FromSingleSessionState(byte[] sessionState);
+  public static native byte[] SessionRecord_GetAliceBaseKey(long handle);
+  public static native byte[] SessionRecord_GetLocalIdentityKeyPublic(long handle);
+  public static native int SessionRecord_GetLocalRegistrationId(long handle);
+  public static native byte[] SessionRecord_GetReceiverChainKeyValue(long sessionState, long key);
+  public static native byte[] SessionRecord_GetRemoteIdentityKeyPublic(long handle);
+  public static native int SessionRecord_GetRemoteRegistrationId(long handle);
+  public static native byte[] SessionRecord_GetSenderChainKeyValue(long handle);
   public static native long SessionRecord_GetSessionState(long sessionRecord);
+  public static native int SessionRecord_GetSessionVersion(long handle);
+  public static native boolean SessionRecord_HasSenderChain(long handle);
+  public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
+  public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
   public static native long SessionRecord_NewFresh();
   public static native byte[] SessionRecord_Serialize(long handle);
 
   public static native long SessionState_Deserialize(byte[] data);
   public static native void SessionState_Destroy(long handle);
-  public static native byte[] SessionState_GetAliceBaseKey(long handle);
-  public static native byte[] SessionState_GetLocalIdentityKeyPublic(long handle);
-  public static native int SessionState_GetLocalRegistrationId(long handle);
-  public static native byte[] SessionState_GetReceiverChainKeyValue(long sessionRecord, long key);
-  public static native byte[] SessionState_GetRemoteIdentityKeyPublic(long handle);
-  public static native int SessionState_GetRemoteRegistrationId(long handle);
-  public static native byte[] SessionState_GetSenderChainKeyValue(long handle);
   public static native int SessionState_GetSessionVersion(long handle);
   public static native boolean SessionState_HasSenderChain(long handle);
-  public static native byte[] SessionState_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
-  public static native byte[] SessionState_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
   public static native byte[] SessionState_Serialized(long handle);
 
   public static native long SignalMessage_Deserialize(byte[] data);
