@@ -72,11 +72,6 @@ public class SessionState {
     this.handle = handle;
   }
 
-  // Remove this:
-  SessionState(SessionState copy) {
-    this.handle = copy.handle;
-  }
-
   byte[] getAliceBaseKey() {
     return Native.SessionState_GetAliceBaseKey(this.handle);
   }
