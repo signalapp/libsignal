@@ -13,7 +13,6 @@ import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import java.io.IOException;
-import static org.whispersystems.libsignal.state.StorageProtos.SessionStructure;
 
 public class SessionState {
   private long handle;
@@ -62,10 +61,6 @@ public class SessionState {
 
   public SessionState(byte[] serialized) throws IOException {
     this.handle = Native.SessionState_Deserialize(serialized);
-  }
-
-  public SessionState(SessionStructure sessionStructure) {
-    this.handle = Native.SessionState_Deserialize(sessionStructure.toByteArray());
   }
 
   SessionState(long handle) {

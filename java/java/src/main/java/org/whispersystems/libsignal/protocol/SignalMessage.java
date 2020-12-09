@@ -6,9 +6,6 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
