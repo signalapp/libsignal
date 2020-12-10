@@ -142,7 +142,10 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
 
     assert_eq!(
         hex::encode(
-            alice_record.get_receiver_chain_key(&bob_ephemeral_public)?.unwrap().key()
+            alice_record
+                .get_receiver_chain_key(&bob_ephemeral_public)?
+                .unwrap()
+                .key()
         ),
         expected_receiver_chain
     );

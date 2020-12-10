@@ -117,12 +117,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             bobs_session_with_alice.session_state()?.session_version()?,
             3
         );
-        assert_eq!(
-            bobs_session_with_alice
-                .alice_base_key()?
-                .len(),
-            32 + 1
-        );
+        assert_eq!(bobs_session_with_alice.alice_base_key()?.len(), 32 + 1);
 
         let bob_outgoing = encrypt(&mut bob_store, &alice_address, bobs_response).await?;
 
