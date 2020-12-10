@@ -161,7 +161,3 @@ pub fn initialize_bob_session_record(
 ) -> Result<SessionRecord> {
     Ok(SessionRecord::new(initialize_bob_session(parameters)?))
 }
-
-pub fn are_we_alice(our_key: &curve::PublicKey, their_key: &curve::PublicKey) -> bool {
-    our_key.serialize() < their_key.serialize()
-}

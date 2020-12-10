@@ -42,21 +42,18 @@ pub use {
         SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
     },
     ratchet::{
-        are_we_alice, initialize_alice_session_record, initialize_bob_session_record,
-        AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
+        initialize_alice_session_record, initialize_bob_session_record,
+        AliceSignalProtocolParameters, BobSignalProtocolParameters,
     },
     sealed_sender::{
         sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
         SealedSenderDecryptionResult, SenderCertificate, ServerCertificate,
         UnidentifiedSenderMessage, UnidentifiedSenderMessageContent,
     },
-    sender_keys::{
-        SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
-    },
-    session::*,
+    sender_keys::{SenderKeyName, SenderKeyRecord},
+    session::{process_prekey, process_prekey_bundle},
     session_cipher::{
         message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
-        remote_registration_id, session_version,
     },
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},
     storage::{
