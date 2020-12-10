@@ -65,7 +65,6 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
                 .load_session(&bob_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -120,7 +119,6 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
         );
         assert_eq!(
             bobs_session_with_alice
-                .session_state()?
                 .alice_base_key()?
                 .len(),
             32 + 1
@@ -897,14 +895,12 @@ async fn is_session_id_equal(
         .load_session(bob_address, None)
         .await?
         .unwrap()
-        .session_state()?
         .alice_base_key()
         .clone()
         == bob_store
             .load_session(alice_address, None)
             .await?
             .unwrap()
-            .session_state()?
             .alice_base_key()
             .clone())
 }
@@ -985,7 +981,6 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
                 .load_session(&bob_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -994,7 +989,6 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
                 .load_session(&alice_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -1117,7 +1111,6 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
                 .load_session(&bob_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -1126,7 +1119,6 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
                 .load_session(&alice_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -1253,7 +1245,6 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
                 .load_session(&bob_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -1262,7 +1253,6 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
                 .load_session(&alice_address, None)
                 .await?
                 .unwrap()
-                .session_state()?
                 .session_version()?,
             3
         );
@@ -1385,7 +1375,6 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .load_session(&bob_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1394,7 +1383,6 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .load_session(&alice_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1448,7 +1436,6 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .load_session(&bob_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1457,7 +1444,6 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .load_session(&alice_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1595,7 +1581,6 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .load_session(&bob_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1604,7 +1589,6 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .load_session(&alice_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1658,7 +1642,6 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .load_session(&bob_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
@@ -1667,7 +1650,6 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .load_session(&alice_address, None)
                     .await?
                     .unwrap()
-                    .session_state()?
                     .session_version()?,
                 3
             );
