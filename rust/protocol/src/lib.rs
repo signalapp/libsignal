@@ -56,7 +56,6 @@ pub use {
     session::*,
     session_cipher::{
         message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
-        remote_registration_id, session_version,
     },
     state::{PreKeyBundle, PreKeyRecord, SessionRecord, SessionState, SignedPreKeyRecord},
     storage::{
