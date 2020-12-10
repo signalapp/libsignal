@@ -5,6 +5,7 @@ disabled_rules:
 - function_parameter_count
 - identifier_name
 - line_length
+- redundant_optional_initialization
 - trailing_comma
 - type_body_length
 opt_in_rules:

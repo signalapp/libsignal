@@ -110,6 +110,43 @@ class SessionTests: TestCaseBase {
         XCTAssertEqual(ptext2_a, ptext2_b)
     }
 
+    func testSessionCipherWithBadStore() {
+        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = BadStore()
+
+        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+
+        // Alice sends a message:
+        let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
+
+        let ctext_a = try! signalEncrypt(message: ptext_a,
+                                         for: bob_address,
+                                         sessionStore: alice_store,
+                                         identityStore: alice_store,
+                                         context: NullContext())
+
+        XCTAssertEqual(ctext_a.messageType, .preKey)
+
+        let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
+
+        XCTAssertThrowsError(try signalDecryptPreKey(message: ctext_b,
+                                                     from: alice_address,
+                                                     sessionStore: bob_store,
+                                                     identityStore: bob_store,
+                                                     preKeyStore: bob_store,
+                                                     signedPreKeyStore: bob_store,
+                                                     context: NullContext()),
+                             "should fail to decrypt") { error in
+            guard case BadStore.Error.badness = error else {
+                XCTFail("wrong error thrown")
+                return
+            }
+        }
+    }
+
     func testSealedSenderSession() throws {
         let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
         let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
@@ -157,6 +194,7 @@ class SessionTests: TestCaseBase {
     static var allTests: [(String, (SessionTests) -> () throws -> Void)] {
         return [
             ("testSessionCipher", testSessionCipher),
+            ("testSessionCipherWithBadStore", testSessionCipherWithBadStore),
             ("testSealedSenderSession", testSealedSenderSession),
         ]
     }
