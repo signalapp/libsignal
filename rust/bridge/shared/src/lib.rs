@@ -4,7 +4,6 @@
 //
 
 #![allow(clippy::missing_safety_doc)]
-// #![deny(warnings)]
 
 use aes_gcm_siv::Aes256GcmSiv;
 use libsignal_protocol_rust::*;

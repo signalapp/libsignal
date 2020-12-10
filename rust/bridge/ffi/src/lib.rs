@@ -4,7 +4,6 @@
 //
 
 #![allow(clippy::missing_safety_doc)]
-#![deny(warnings)]
 
 use async_trait::async_trait;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
