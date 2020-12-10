@@ -50,9 +50,7 @@ pub use {
         SealedSenderDecryptionResult, SenderCertificate, ServerCertificate,
         UnidentifiedSenderMessage, UnidentifiedSenderMessageContent,
     },
-    sender_keys::{
-        SenderChainKey, SenderKeyName, SenderKeyRecord, SenderKeyState, SenderMessageKey,
-    },
+    sender_keys::{SenderKeyName, SenderKeyRecord},
     session::{process_prekey, process_prekey_bundle},
     session_cipher::{
         message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
