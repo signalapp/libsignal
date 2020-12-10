@@ -13,6 +13,7 @@ use jni::JNIEnv;
 use std::convert::TryFrom;
 
 use aes_gcm_siv::Aes256GcmSiv;
+use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::*;
 
 mod util;
@@ -40,11 +41,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ProtocolAddress_
         box_object::<ProtocolAddress>(Ok(address))
     })
 }
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_ProtocolAddress_1Destroy destroys ProtocolAddress);
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_ProtocolAddress_1Name(ProtocolAddress) using
-                    |p: &ProtocolAddress| Ok(p.name().to_string()));
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_ProtocolAddress_1DeviceId(ProtocolAddress) using
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
@@ -83,12 +79,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Com
     })
 }
 
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ECPublicKey_1Serialize(PublicKey) using
-                       |k: &PublicKey| Ok(k.serialize()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ECPublicKey_1GetPublicKeyBytes(PublicKey) using
-                       PublicKey::public_key_bytes);
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Verify(
     env: JNIEnv,
@@ -104,13 +94,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Ver
         Ok(key.verify_signature(&message, &signature)? as jboolean)
     })
 }
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_ECPublicKey_1Destroy destroys PublicKey);
-
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_ECPrivateKey_1Deserialize is PrivateKey::deserialize);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ECPrivateKey_1Serialize(PrivateKey) using
-                       |k: &PrivateKey| Ok(k.serialize()));
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Generate(
@@ -157,8 +140,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Ag
         to_jbytearray(&env, Ok(shared_secret))
     })
 }
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_ECPrivateKey_1Destroy destroys PrivateKey);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Serialize(
@@ -228,14 +209,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerpri
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1Destroy destroys Fingerprint);
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1GetDisplayString(Fingerprint) using
-    Fingerprint::display_string);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1GetScannableEncoding(Fingerprint) using
-                       |f: &Fingerprint| f.scannable.serialize());
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ScannableFingerprint_1Compare(
     env: JNIEnv,
@@ -291,8 +264,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SignalMessage_1Deserialize is SignalMessage::try_from);
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1New(
     env: JNIEnv,
@@ -332,16 +303,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1N
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SignalMessage_1Destroy destroys SignalMessage);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SignalMessage_1GetSenderRatchetKey(SignalMessage) using
-                       |m: &SignalMessage| Ok(m.sender_ratchet_key().serialize()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SignalMessage_1GetBody(SignalMessage) using
-                       |m: &SignalMessage| Ok(m.body().to_vec()));
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SignalMessage_1GetSerialized(SignalMessage) using
-                       |m: &SignalMessage| Ok(m.serialized().to_vec()));
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetMessageVersion(SignalMessage) using
                  |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
 
@@ -372,8 +333,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1V
         Ok(valid as jboolean)
     })
 }
-
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1Deserialize is PreKeySignalMessage::try_from);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1New(
@@ -413,8 +372,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMess
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1Destroy destroys PreKeySignalMessage);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetVersion(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
 
@@ -440,20 +397,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMess
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetSignedPreKeyId(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
 
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetBaseKey(PreKeySignalMessage) using
-                       |m: &PreKeySignalMessage| Ok(m.base_key().serialize()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetIdentityKey(PreKeySignalMessage) using
-                       |m: &PreKeySignalMessage| Ok(m.identity_key().serialize()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetSignalMessage(PreKeySignalMessage) using
-                       |m: &PreKeySignalMessage| Ok(m.message().serialized().to_vec()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetSerialized(PreKeySignalMessage) using
-                       |m: &PreKeySignalMessage| Ok(m.serialized().to_vec()));
-
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderKeyMessage_1Deserialize is SenderKeyMessage::try_from);
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyMessage_1New(
     env: JNIEnv,
@@ -474,21 +417,11 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyMessage
     })
 }
 
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1Deserialize is SenderKeyDistributionMessage::try_from);
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyMessage_1Destroy destroys SenderKeyMessage);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetKeyId(SenderKeyMessage) using
                  |m: &SenderKeyMessage| Ok(m.key_id()));
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetIteration(SenderKeyMessage) using
                  |m: &SenderKeyMessage| Ok(m.iteration()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetCipherText(SenderKeyMessage) using
-                       |m: &SenderKeyMessage| Ok(m.ciphertext().to_vec()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetSerialized(SenderKeyMessage) using
-                       |m: &SenderKeyMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyMessage_1VerifySignature(
@@ -524,22 +457,11 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyDistrib
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1Destroy destroys SenderKeyDistributionMessage);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetId(SenderKeyDistributionMessage) using
                  SenderKeyDistributionMessage::id);
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetIteration(SenderKeyDistributionMessage) using
                  SenderKeyDistributionMessage::iteration);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetChainKey(SenderKeyDistributionMessage) using
-                       |m: &SenderKeyDistributionMessage| Ok(m.chain_key()?.to_vec()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetSignatureKey(SenderKeyDistributionMessage) using
-                       |m: &SenderKeyDistributionMessage| Ok(m.signing_key()?.serialize()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetSerialized(SenderKeyDistributionMessage) using
-                       |m: &SenderKeyDistributionMessage| Ok(m.serialized().to_vec()));
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1New(
@@ -586,8 +508,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1Ne
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_PreKeyBundle_1Destroy destroys PreKeyBundle);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetRegistrationId(PreKeyBundle) using
                  PreKeyBundle::registration_id);
 
@@ -622,9 +542,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1G
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetIdentityKey(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
 
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetSignedPreKeySignature(PreKeyBundle) using
-                       |m: &PreKeyBundle| Ok(m.signed_pre_key_signature()?.to_vec()));
-
 /* SignedPreKeyRecord */
 
 #[no_mangle]
@@ -651,8 +568,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignedPreKeyReco
     })
 }
 
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1Deserialize is SignedPreKeyRecord::deserialize);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetId(SignedPreKeyRecord) using
                  SignedPreKeyRecord::id);
 
@@ -664,14 +579,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRec
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPrivateKey(PrivateKey) from SignedPreKeyRecord,
                           SignedPreKeyRecord::private_key);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetSignature(SignedPreKeyRecord) using
-                       SignedPreKeyRecord::signature);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetSerialized(SignedPreKeyRecord) using
-                       SignedPreKeyRecord::serialize);
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1Destroy destroys SignedPreKeyRecord);
 
 /* PreKeyRecord */
 
@@ -695,8 +602,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyRecord_1Ne
     })
 }
 
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_PreKeyRecord_1Deserialize is PreKeyRecord::deserialize);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetId(PreKeyRecord) using
                  PreKeyRecord::id);
 
@@ -705,11 +610,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1G
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetPrivateKey(PrivateKey) from PreKeyRecord,
                           PreKeyRecord::private_key);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetSerialized(PreKeyRecord) using
-                       PreKeyRecord::serialize);
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_PreKeyRecord_1Destroy destroys PreKeyRecord);
 
 /* SenderKeyName */
 
@@ -730,14 +630,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyName_1N
     })
 }
 
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyName_1Destroy destroys SenderKeyName);
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_SenderKeyName_1GetGroupId(SenderKeyName) using
-                    SenderKeyName::group_id);
-
-jni_fn_get_jstring!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSenderName(SenderKeyName) using
-                    |skn: &SenderKeyName| { Ok(skn.sender()?.name().to_string()) });
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSenderDeviceId(SenderKeyName) using
                  |m: &SenderKeyName| Ok(m.sender()?.device_id()));
 
@@ -751,13 +643,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderKeyRecord_
         box_object::<SenderKeyRecord>(Ok(skr))
     })
 }
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderKeyRecord_1Destroy destroys SenderKeyRecord);
-
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderKeyRecord_1Deserialize is SenderKeyRecord::deserialize);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderKeyRecord_1GetSerialized(SenderKeyRecord) using
-                       SenderKeyRecord::serialize);
 
 fn sender_key_name_to_jobject<'a>(
     env: &'a JNIEnv,
@@ -1575,10 +1460,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Dec
 }
 
 // SessionRecord
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SessionRecord_1Deserialize is SessionRecord::deserialize);
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SessionRecord_1Destroy destroys SessionRecord);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1Serialize(SessionRecord) using SessionRecord::serialize);
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1ArchiveCurrentState(
     env: JNIEnv,
@@ -1627,12 +1508,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1G
     })
 }
 
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetAliceBaseKey(SessionRecord) using
-                       |s: &SessionRecord| Ok(s.alice_base_key()?.to_vec()));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalIdentityKeyPublic(SessionRecord) using SessionRecord::local_identity_key_bytes);
-jni_fn_get_optional_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteIdentityKeyPublic(SessionRecord) using SessionRecord::remote_identity_key_bytes);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalRegistrationId(SessionRecord) using SessionRecord::local_registration_id);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteRegistrationId(SessionRecord) using SessionRecord::remote_registration_id);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using SessionRecord::session_version);
@@ -1640,15 +1515,10 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessio
 jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionRecord_1HasSenderChain(SessionRecord) using SessionRecord::has_sender_chain);
 
 // SessionState
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SessionState_1Deserialize is SessionState::deserialize);
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SessionState_1Destroy destroys SessionState);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionState_1GetSessionVersion(SessionState) using SessionState::session_version);
 jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionState_1HasSenderChain(SessionState) using SessionState::has_sender_chain);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1Serialized(SessionState) using SessionState::serialize);
 
 // The following are just exposed to make it possible to retain some of the Java tests:
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetSenderChainKeyValue(SessionRecord) using SessionRecord::get_sender_chain_key_bytes);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetReceiverChainKeyValue(
@@ -1763,15 +1633,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
 }
 
 // Server Certificate
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_ServerCertificate_1Deserialize is ServerCertificate::deserialize);
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_ServerCertificate_1Destroy destroys ServerCertificate);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKeyId(ServerCertificate) using ServerCertificate::key_id);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetSerialized(ServerCertificate) using ServerCertificate::serialized);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetCertificate(ServerCertificate) using ServerCertificate::certificate);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_ServerCertificate_1GetSignature(ServerCertificate) using ServerCertificate::signature);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKey(PublicKey) from ServerCertificate,
                           ServerCertificate::public_key);
@@ -1797,23 +1659,13 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ServerCertificat
 }
 
 // Sender Certificate
-jni_fn_destroy!(Java_org_signal_client_internal_Native_SenderCertificate_1Destroy destroys SenderCertificate);
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_SenderCertificate_1Deserialize is SenderCertificate::deserialize);
-
 jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SenderCertificate_1GetExpiration(SenderCertificate) using SenderCertificate::expiration);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderCertificate_1GetDeviceId(SenderCertificate) using SenderCertificate::sender_device_id);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSerialized(SenderCertificate) using SenderCertificate::serialized);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetCertificate(SenderCertificate) using SenderCertificate::certificate);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSignature(SenderCertificate) using SenderCertificate::signature);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetKey(PublicKey) from SenderCertificate,
                           SenderCertificate::key);
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,
                           |s: &SenderCertificate| Ok(s.signer()?.clone()));
-
-jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderUuid(SenderCertificate) using SenderCertificate::sender_uuid);
-jni_fn_get_optional_jstring!(Java_org_signal_client_internal_Native_SenderCertificate_1GetSenderE164(SenderCertificate) using SenderCertificate::sender_e164);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
@@ -1898,14 +1750,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
 }
 
 // UnidentifiedSenderMessageContent
-jni_fn_destroy!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1Destroy destroys UnidentifiedSenderMessageContent);
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1Deserialize is UnidentifiedSenderMessageContent::deserialize);
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetMsgType(UnidentifiedSenderMessageContent) using
                  |m: &UnidentifiedSenderMessageContent| Ok(m.msg_type()? as u32));
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSerialized(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::serialized);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetContents(UnidentifiedSenderMessageContent) using UnidentifiedSenderMessageContent::contents);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSenderCert(SenderCertificate) from UnidentifiedSenderMessageContent,
                           |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
@@ -1937,13 +1783,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSend
 }
 
 // UnidentifiedSenderMessage
-jni_fn_destroy!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1Destroy destroys UnidentifiedSenderMessage);
-jni_fn_deserialize!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1Deserialize is UnidentifiedSenderMessage::deserialize);
-
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetSerialized(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::serialized);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEncryptedMessage(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_message);
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEncryptedStatic(UnidentifiedSenderMessage) using UnidentifiedSenderMessage::encrypted_static);
-
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEphemeralPublic(PublicKey) from UnidentifiedSenderMessage,
                           UnidentifiedSenderMessage::ephemeral_public);
 
@@ -2031,8 +1870,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1Ne
         box_object::<Aes256GcmSiv>(Ok(aes_gcm_siv))
     })
 }
-
-jni_fn_destroy!(Java_org_signal_client_internal_Native_Aes256GcmSiv_1Destroy destroys Aes256GcmSiv);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Aes256GcmSiv_1Encrypt(

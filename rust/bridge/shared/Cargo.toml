@@ -1,0 +1,22 @@
+#
+# Copyright (C) 2020 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-bridge"
+version = "0.1.0"
+authors = ["Jack Lloyd <jack@signal.org>", "Jordan Rose <jrose@signal.org>"]
+edition = "2018"
+license = "AGPL-3.0-only"
+
+[dependencies]
+libsignal-protocol-rust = { path = "../../protocol" }
+aes-gcm-siv = { path = "../../aes-gcm-siv" }
+paste = "1.0"
+
+libc = { version = "0.2", optional = true }
+jni = { version = "0.17", optional = true }
+
+[features]
+ffi = ["libc"]

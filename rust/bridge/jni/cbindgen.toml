@@ -14,5 +14,10 @@ args = "horizontal"
 sort_by = "Name"
 rename_args = "camelCase"
 
+[parse]
+parse_deps = true
+include = []
+extra_bindings = ["libsignal-bridge"]
+
 [parse.expand]
-crates = ["libsignal-jni"]
+crates = ["libsignal-jni", "libsignal-bridge"]

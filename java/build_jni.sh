@@ -17,6 +17,11 @@ DESKTOP_LIB_DIR=java/java/src/main/resources
 
 export RUSTFLAGS="-C link-args=-s"
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
+# On Linux, cdylibs don't include public symbols from their dependencies,
+# even if those symbols have been re-exported in the Rust source.
+# Using LTO works around this at the cost of a slightly slower build.
+# https://github.com/rust-lang/rfcs/issues/2771
+export CARGO_PROFILE_RELEASE_LTO=thin 
 
 if [ "$1" = 'desktop' ];
 then
