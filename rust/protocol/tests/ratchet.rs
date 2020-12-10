@@ -57,9 +57,7 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
         alice_base_public_key,
     );
 
-    let bob_session = initialize_bob_session(&bob_parameters)?;
-
-    let bob_record = SessionRecord::new(bob_session);
+    let bob_record = initialize_bob_session_record(&bob_parameters)?;
 
     assert_eq!(
         hex::encode(bob_record.local_identity_key_bytes()?),
@@ -127,9 +125,7 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
     );
 
     let mut csprng = rand::rngs::OsRng;
-    let alice_session = initialize_alice_session(&alice_parameters, &mut csprng)?;
-
-    let alice_record = SessionRecord::new(alice_session);
+    let alice_record = initialize_alice_session_record(&alice_parameters, &mut csprng)?;
 
     assert_eq!(
         hex::encode(alice_record.local_identity_key_bytes()?),

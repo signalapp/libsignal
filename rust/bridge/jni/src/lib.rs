@@ -1711,10 +1711,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
             *their_ratchet_key,
         );
 
-        let session = initialize_alice_session(&parameters, &mut csprng)?;
-
-        let record = SessionRecord::new(session);
-        box_object::<SessionRecord>(Ok(record))
+        box_object::<SessionRecord>(initialize_alice_session_record(&parameters, &mut csprng))
     })
 }
 
@@ -1761,10 +1758,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
             *their_base_key,
         );
 
-        let session = initialize_bob_session(&parameters)?;
-
-        let record = SessionRecord::new(session);
-        box_object::<SessionRecord>(Ok(record))
+        box_object::<SessionRecord>(initialize_bob_session_record(&parameters))
     })
 }
 

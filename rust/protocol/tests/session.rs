@@ -656,18 +656,14 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
 #[test]
 fn basic_session_v3() -> Result<(), SignalProtocolError> {
     let (alice_session, bob_session) = initialize_sessions_v3()?;
-    let alice_session_record = SessionRecord::new(alice_session);
-    let bob_session_record = SessionRecord::new(bob_session);
-    run_session_interaction(alice_session_record, bob_session_record)?;
+    run_session_interaction(alice_session, bob_session)?;
     Ok(())
 }
 
 #[test]
 fn message_key_limits() -> Result<(), SignalProtocolError> {
     block_on(async {
-        let (alice_session, bob_session) = initialize_sessions_v3()?;
-        let alice_session_record = SessionRecord::new(alice_session);
-        let bob_session_record = SessionRecord::new(bob_session);
+        let (alice_session_record, bob_session_record) = initialize_sessions_v3()?;
 
         let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
