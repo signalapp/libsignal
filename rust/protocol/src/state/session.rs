@@ -563,4 +563,28 @@ impl SessionRecord {
         record.encode(&mut buf)?;
         Ok(buf)
     }
+
+    pub fn remote_registration_id(&self) -> Result<u32> {
+        self.session_state()?.remote_registration_id()
+    }
+
+    pub fn local_registration_id(&self) -> Result<u32> {
+        self.session_state()?.local_registration_id()
+    }
+
+    pub fn session_version(&self) -> Result<u32> {
+        self.session_state()?.session_version()
+    }
+
+    pub fn local_identity_key_bytes(&self) -> Result<Vec<u8>> {
+        self.session_state()?.local_identity_key_bytes()
+    }
+
+    pub fn remote_identity_key_bytes(&self) -> Result<Option<Vec<u8>>> {
+        self.session_state()?.remote_identity_key_bytes()
+    }
+
+    pub fn has_sender_chain(&self) -> Result<bool> {
+        self.session_state()?.has_sender_chain()
+    }
 }
