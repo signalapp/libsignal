@@ -37,9 +37,6 @@ bridge_deserialize!(
     jni = ECPrivateKey
 );
 
-bridge_destroy!(SessionRecord, jni = None);
-bridge_deserialize!(SessionRecord::deserialize, jni = None);
-
 bridge_destroy!(Fingerprint, jni = NumericFingerprintGenerator);
 
 bridge_destroy!(SignalMessage, ffi = message);
@@ -81,8 +78,8 @@ bridge_deserialize!(UnidentifiedSenderMessageContent::deserialize);
 bridge_destroy!(UnidentifiedSenderMessage, ffi = None);
 bridge_deserialize!(UnidentifiedSenderMessage::deserialize, ffi = None);
 
-bridge_destroy!(SessionRecord, ffi = None);
-bridge_deserialize!(SessionRecord::deserialize, ffi = None);
+bridge_destroy!(SessionRecord);
+bridge_deserialize!(SessionRecord::deserialize);
 
 bridge_destroy!(SessionState, ffi = None);
 bridge_deserialize!(SessionState::deserialize, ffi = None);
