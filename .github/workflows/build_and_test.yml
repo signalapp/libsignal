@@ -105,7 +105,7 @@ jobs:
       run: cargo test --all --verbose
 
     - name: Clippy
-      run: cargo clippy --all
+      run: cargo clippy --all -- -D warnings
 
   java:
     name: Java

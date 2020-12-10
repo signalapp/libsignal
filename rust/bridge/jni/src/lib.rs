@@ -4,7 +4,6 @@
 //
 
 #![allow(clippy::missing_safety_doc)]
-#![deny(warnings)]
 
 use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JString, JValue};

@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![deny(warnings)]
 #![cfg_attr(target_arch = "aarch64", feature(stdsimd))]
 #![cfg_attr(target_arch = "aarch64", feature(aarch64_target_feature))]
 
