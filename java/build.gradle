@@ -32,6 +32,8 @@ task clean(type: Delete) {
   }
   delete fileTree('./java/src/main/resources') {
     include '**/*.so'
+    include '**/*.dylib'
+    include '**/*.dll'
   }
 }
 
