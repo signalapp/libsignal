@@ -25,6 +25,18 @@ task makeJniLibrariesDesktop(type:Exec) {
   commandLine './build_jni.sh', 'desktop'
 }
 
+task clean(type: Delete) {
+  description 'Clean JNI libs'
+  delete fileTree('./android/src/main/jniLibs') {
+    include '**/*.so'
+  }
+  delete fileTree('./java/src/main/resources') {
+    include '**/*.so'
+    include '**/*.dylib'
+    include '**/*.dll'
+  }
+}
+
 task makeAll() {
   group 'Rust'
   description 'Build the native libraries'
