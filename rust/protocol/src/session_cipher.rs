@@ -4,8 +4,8 @@
 //
 
 use crate::{
-    Context, IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionState,
-    SessionStore, SignalProtocolError, SignedPreKeyStore,
+    Context, IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
+    SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::consts::MAX_FORWARD_JUMPS;
@@ -15,6 +15,7 @@ use crate::error::Result;
 use crate::protocol::{CiphertextMessage, PreKeySignalMessage, SignalMessage};
 use crate::ratchet::{ChainKey, MessageKeys};
 use crate::session;
+use crate::state::SessionState;
 use crate::storage::Direction;
 
 use rand::{CryptoRng, Rng};

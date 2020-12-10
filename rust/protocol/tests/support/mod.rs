@@ -107,7 +107,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 }
 
 #[allow(dead_code)]
-pub fn initialize_sessions_v3() -> Result<(SessionState, SessionState), SignalProtocolError> {
+pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), SignalProtocolError> {
     let mut csprng = OsRng;
     let alice_identity = IdentityKeyPair::generate(&mut csprng);
     let bob_identity = IdentityKeyPair::generate(&mut csprng);
@@ -126,7 +126,7 @@ pub fn initialize_sessions_v3() -> Result<(SessionState, SessionState), SignalPr
         bob_ephemeral_key.public_key,
     );
 
-    let alice_session = initialize_alice_session(&alice_params, &mut csprng)?;
+    let alice_session = initialize_alice_session_record(&alice_params, &mut csprng)?;
 
     let bob_params = BobSignalProtocolParameters::new(
         bob_identity,
@@ -137,7 +137,7 @@ pub fn initialize_sessions_v3() -> Result<(SessionState, SessionState), SignalPr
         alice_base_key.public_key,
     );
 
-    let bob_session = initialize_bob_session(&bob_params)?;
+    let bob_session = initialize_bob_session_record(&bob_params)?;
 
     Ok((alice_session, bob_session))
 }

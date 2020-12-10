@@ -272,7 +272,7 @@ ffi_fn_get_bytearray!(signal_session_record_serialize(SessionRecord) using
                       |s: &SessionRecord| s.serialize());
 
 ffi_fn_get_uint32!(signal_session_record_get_remote_registration_id(SessionRecord) using
-                   |s: &SessionRecord| s.session_state()?.remote_registration_id());
+                   SessionRecord::remote_registration_id);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_session_record_archive_current_state(

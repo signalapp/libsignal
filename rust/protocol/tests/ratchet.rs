@@ -48,29 +48,27 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
 
     let alice_base_public_key = PublicKey::deserialize(&alice_base_public)?;
 
-    let alice_identity_public = IdentityKey::decode(&alice_identity_public)?;
-
     let bob_parameters = BobSignalProtocolParameters::new(
         bob_identity_key_pair,
         bob_signed_prekey_pair,
         None, // one time pre key pair
         bob_ephemeral_pair,
-        alice_identity_public,
+        IdentityKey::decode(&alice_identity_public)?,
         alice_base_public_key,
     );
 
-    let bob_session = initialize_bob_session(&bob_parameters)?;
+    let bob_record = initialize_bob_session_record(&bob_parameters)?;
 
     assert_eq!(
-        bob_session.local_identity_key()?,
-        *bob_identity_key_pair.identity_key()
+        hex::encode(bob_record.local_identity_key_bytes()?),
+        hex::encode(bob_identity_public)
     );
     assert_eq!(
-        bob_session.remote_identity_key()?.unwrap(),
-        alice_identity_public
+        hex::encode(bob_record.remote_identity_key_bytes()?.unwrap()),
+        hex::encode(alice_identity_public)
     );
     assert_eq!(
-        hex::encode(bob_session.get_sender_chain_key()?.key()),
+        hex::encode(bob_record.get_sender_chain_key_bytes()?),
         expected_sender_chain
     );
 
@@ -115,40 +113,35 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
     let alice_identity_key_pair =
         IdentityKeyPair::new(alice_identity_key_public, alice_identity_key_private);
 
-    let bob_identity_public = IdentityKey::decode(&bob_identity_public)?;
-
     let alice_base_key = KeyPair::from_public_and_private(&alice_base_public, &alice_base_private)?;
 
     let alice_parameters = AliceSignalProtocolParameters::new(
         alice_identity_key_pair,
         alice_base_key,
-        bob_identity_public,
+        IdentityKey::decode(&bob_identity_public)?,
         bob_signed_prekey_public,
         None, // one-time prekey
         bob_ephemeral_public,
     );
 
     let mut csprng = rand::rngs::OsRng;
-    let alice_session = initialize_alice_session(&alice_parameters, &mut csprng)?;
+    let alice_record = initialize_alice_session_record(&alice_parameters, &mut csprng)?;
 
     assert_eq!(
-        alice_session.local_identity_key()?,
-        *alice_identity_key_pair.identity_key()
+        hex::encode(alice_record.local_identity_key_bytes()?),
+        hex::encode(alice_identity_public),
     );
     assert_eq!(
-        alice_session.remote_identity_key()?.unwrap(),
-        bob_identity_public
+        hex::encode(alice_record.remote_identity_key_bytes()?.unwrap()),
+        hex::encode(bob_identity_public)
     );
 
     assert_eq!(
         hex::encode(
-            alice_session
-                .get_receiver_chain(&bob_ephemeral_public)?
+            alice_record
+                .get_receiver_chain_key(&bob_ephemeral_public)?
                 .unwrap()
-                .0
-                .chain_key
-                .unwrap()
-                .key
+                .key()
         ),
         expected_receiver_chain
     );

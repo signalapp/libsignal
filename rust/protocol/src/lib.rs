@@ -42,7 +42,7 @@ pub use {
         SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
     },
     ratchet::{
-        are_we_alice, initialize_alice_session, initialize_bob_session,
+        are_we_alice, initialize_alice_session_record, initialize_bob_session_record,
         AliceSignalProtocolParameters, BobSignalProtocolParameters, ChainKey, MessageKeys, RootKey,
     },
     sealed_sender::{

@@ -12,7 +12,7 @@ use crate::curve;
 use crate::error::Result;
 use crate::proto::storage::SessionStructure;
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-use crate::state::SessionState;
+use crate::state::{SessionRecord, SessionState};
 use rand::{CryptoRng, Rng};
 
 fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
@@ -26,7 +26,7 @@ fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
     Ok((root_key, chain_key))
 }
 
-pub fn initialize_alice_session<R: Rng + CryptoRng>(
+pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
     mut csprng: &mut R,
 ) -> Result<SessionState> {
@@ -92,7 +92,9 @@ pub fn initialize_alice_session<R: Rng + CryptoRng>(
     Ok(session)
 }
 
-pub fn initialize_bob_session(parameters: &BobSignalProtocolParameters) -> Result<SessionState> {
+pub(crate) fn initialize_bob_session(
+    parameters: &BobSignalProtocolParameters,
+) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
     let mut secrets = Vec::with_capacity(32 * 5);
@@ -143,6 +145,21 @@ pub fn initialize_bob_session(parameters: &BobSignalProtocolParameters) -> Resul
     session.set_sender_chain(&parameters.our_ratchet_key_pair(), &chain_key)?;
 
     Ok(session)
+}
+
+pub fn initialize_alice_session_record<R: Rng + CryptoRng>(
+    parameters: &AliceSignalProtocolParameters,
+    csprng: &mut R,
+) -> Result<SessionRecord> {
+    Ok(SessionRecord::new(initialize_alice_session(
+        parameters, csprng,
+    )?))
+}
+
+pub fn initialize_bob_session_record(
+    parameters: &BobSignalProtocolParameters,
+) -> Result<SessionRecord> {
+    Ok(SessionRecord::new(initialize_bob_session(parameters)?))
 }
 
 pub fn are_we_alice(our_key: &curve::PublicKey, their_key: &curve::PublicKey) -> bool {

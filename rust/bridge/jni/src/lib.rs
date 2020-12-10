@@ -1628,7 +1628,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1G
 }
 
 jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetAliceBaseKey(SessionRecord) using
-                       |s: &SessionRecord| Ok(s.session_state()?.alice_base_key()?.to_vec()));
+                       |s: &SessionRecord| Ok(s.alice_base_key()?.to_vec()));
 
 jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalIdentityKeyPublic(SessionRecord) using SessionRecord::local_identity_key_bytes);
 jni_fn_get_optional_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteIdentityKeyPublic(SessionRecord) using SessionRecord::remote_identity_key_bytes);
@@ -1648,7 +1648,7 @@ jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionState_1Seri
 
 // The following are just exposed to make it possible to retain some of the Java tests:
 
-jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetSenderChainKeyValue(SessionState) using SessionState::get_sender_chain_key_bytes);
+jni_fn_get_jbytearray!(Java_org_signal_client_internal_Native_SessionRecord_1GetSenderChainKeyValue(SessionRecord) using SessionRecord::get_sender_chain_key_bytes);
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetReceiverChainKeyValue(
@@ -1658,10 +1658,10 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1G
     key: ObjectHandle,
 ) -> jbyteArray {
     run_ffi_safe(&env, || {
-        let session_state = native_handle_cast::<SessionState>(session_state)?;
+        let session = native_handle_cast::<SessionRecord>(session_state)?;
         let sender = native_handle_cast::<PublicKey>(key)?;
 
-        let chain_key = session_state.get_receiver_chain_key(sender)?;
+        let chain_key = session.get_receiver_chain_key(sender)?;
 
         match chain_key {
             None => Ok(std::ptr::null_mut()),
@@ -1711,10 +1711,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
             *their_ratchet_key,
         );
 
-        let session = initialize_alice_session(&parameters, &mut csprng)?;
-
-        let record = SessionRecord::new(session);
-        box_object::<SessionRecord>(Ok(record))
+        box_object::<SessionRecord>(initialize_alice_session_record(&parameters, &mut csprng))
     })
 }
 
@@ -1761,10 +1758,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
             *their_base_key,
         );
 
-        let session = initialize_bob_session(&parameters)?;
-
-        let record = SessionRecord::new(session);
-        box_object::<SessionRecord>(Ok(record))
+        box_object::<SessionRecord>(initialize_bob_session_record(&parameters))
     })
 }
 

@@ -60,12 +60,12 @@ impl SessionState {
         Self { session }
     }
 
-    pub fn alice_base_key(&self) -> Result<&[u8]> {
+    pub(crate) fn alice_base_key(&self) -> Result<&[u8]> {
         // Check the length before returning?
         Ok(&self.session.alice_base_key)
     }
 
-    pub fn set_alice_base_key(&mut self, key: &[u8]) -> Result<()> {
+    pub(crate) fn set_alice_base_key(&mut self, key: &[u8]) -> Result<()> {
         // Should we check the length?
         self.session.alice_base_key = key.to_vec();
         Ok(())
@@ -78,7 +78,7 @@ impl SessionState {
         }
     }
 
-    pub fn remote_identity_key(&self) -> Result<Option<IdentityKey>> {
+    pub(crate) fn remote_identity_key(&self) -> Result<Option<IdentityKey>> {
         match self.session.remote_identity_public.len() {
             0 => Ok(None),
             _ => Ok(Some(IdentityKey::decode(
@@ -87,28 +87,28 @@ impl SessionState {
         }
     }
 
-    pub fn remote_identity_key_bytes(&self) -> Result<Option<Vec<u8>>> {
+    pub(crate) fn remote_identity_key_bytes(&self) -> Result<Option<Vec<u8>>> {
         Ok(self.remote_identity_key()?.map(|k| k.serialize().to_vec()))
     }
 
-    pub fn local_identity_key(&self) -> Result<IdentityKey> {
+    pub(crate) fn local_identity_key(&self) -> Result<IdentityKey> {
         IdentityKey::decode(&self.session.local_identity_public)
     }
 
-    pub fn local_identity_key_bytes(&self) -> Result<Vec<u8>> {
+    pub(crate) fn local_identity_key_bytes(&self) -> Result<Vec<u8>> {
         Ok(self.local_identity_key()?.serialize().to_vec())
     }
 
-    pub fn previous_counter(&self) -> Result<u32> {
+    pub(crate) fn previous_counter(&self) -> Result<u32> {
         Ok(self.session.previous_counter)
     }
 
-    pub fn set_previous_counter(&mut self, ctr: u32) -> Result<()> {
+    pub(crate) fn set_previous_counter(&mut self, ctr: u32) -> Result<()> {
         self.session.previous_counter = ctr;
         Ok(())
     }
 
-    pub fn root_key(&self) -> Result<RootKey> {
+    pub(crate) fn root_key(&self) -> Result<RootKey> {
         if self.session.root_key.len() != 32 {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
@@ -116,34 +116,30 @@ impl SessionState {
         RootKey::new(hkdf, &self.session.root_key)
     }
 
-    pub fn set_root_key(&mut self, root_key: &RootKey) -> Result<()> {
+    pub(crate) fn set_root_key(&mut self, root_key: &RootKey) -> Result<()> {
         self.session.root_key = root_key.key().to_vec();
         Ok(())
     }
 
-    pub fn sender_ratchet_key(&self) -> Result<curve::PublicKey> {
+    pub(crate) fn sender_ratchet_key(&self) -> Result<curve::PublicKey> {
         match self.session.sender_chain {
             None => Err(SignalProtocolError::InvalidProtobufEncoding),
             Some(ref c) => curve::decode_point(&c.sender_ratchet_key),
         }
     }
 
-    pub fn sender_ratchet_private_key(&self) -> Result<curve::PrivateKey> {
+    pub(crate) fn sender_ratchet_private_key(&self) -> Result<curve::PrivateKey> {
         match self.session.sender_chain {
             None => Err(SignalProtocolError::InvalidProtobufEncoding),
             Some(ref c) => Ok(curve::decode_private_point(&c.sender_ratchet_key_private)?),
         }
     }
 
-    pub fn has_receiver_chain(&self, sender: &curve::PublicKey) -> Result<bool> {
-        Ok(self.get_receiver_chain(sender)?.is_some())
-    }
-
     pub fn has_sender_chain(&self) -> Result<bool> {
         Ok(self.session.sender_chain.is_some())
     }
 
-    pub fn get_receiver_chain(
+    pub(crate) fn get_receiver_chain(
         &self,
         sender: &curve::PublicKey,
     ) -> Result<Option<(session_structure::Chain, usize)>> {
@@ -165,7 +161,10 @@ impl SessionState {
         Ok(None)
     }
 
-    pub fn get_receiver_chain_key(&self, sender: &curve::PublicKey) -> Result<Option<ChainKey>> {
+    pub(crate) fn get_receiver_chain_key(
+        &self,
+        sender: &curve::PublicKey,
+    ) -> Result<Option<ChainKey>> {
         match self.get_receiver_chain(sender)? {
             None => Ok(None),
             Some((chain, _)) => match chain.chain_key {
@@ -181,7 +180,7 @@ impl SessionState {
         }
     }
 
-    pub fn add_receiver_chain(
+    pub(crate) fn add_receiver_chain(
         &mut self,
         sender: &curve::PublicKey,
         chain_key: &ChainKey,
@@ -207,7 +206,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn set_sender_chain(
+    pub(crate) fn set_sender_chain(
         &mut self,
         sender: &curve::KeyPair,
         next_chain_key: &ChainKey,
@@ -229,7 +228,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn get_sender_chain_key(&self) -> Result<ChainKey> {
+    pub(crate) fn get_sender_chain_key(&self) -> Result<ChainKey> {
         let sender_chain = self.session.sender_chain.as_ref().ok_or_else(|| {
             SignalProtocolError::InvalidState("get_sender_chain_key", "No chain".to_owned())
         })?;
@@ -242,11 +241,11 @@ impl SessionState {
         ChainKey::new(hkdf, &chain_key.key, chain_key.index)
     }
 
-    pub fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {
+    pub(crate) fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {
         Ok(self.get_sender_chain_key()?.key().to_vec())
     }
 
-    pub fn set_sender_chain_key(&mut self, next_chain_key: &ChainKey) -> Result<()> {
+    pub(crate) fn set_sender_chain_key(&mut self, next_chain_key: &ChainKey) -> Result<()> {
         let chain_key = session_structure::chain::ChainKey {
             index: next_chain_key.index(),
             key: next_chain_key.key().to_vec(),
@@ -272,7 +271,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn get_message_keys(
+    pub(crate) fn get_message_keys(
         &mut self,
         sender: &curve::PublicKey,
         counter: u32,
@@ -302,7 +301,7 @@ impl SessionState {
         Ok(None)
     }
 
-    pub fn set_message_keys(
+    pub(crate) fn set_message_keys(
         &mut self,
         sender: &curve::PublicKey,
         message_keys: &MessageKeys,
@@ -332,7 +331,7 @@ impl SessionState {
         }
     }
 
-    pub fn set_receiver_chain_key(
+    pub(crate) fn set_receiver_chain_key(
         &mut self,
         sender: &curve::PublicKey,
         chain_key: &ChainKey,
@@ -354,7 +353,7 @@ impl SessionState {
         ))
     }
 
-    pub fn set_unacknowledged_pre_key_message(
+    pub(crate) fn set_unacknowledged_pre_key_message(
         &mut self,
         pre_key_id: Option<u32>,
         signed_pre_key_id: u32,
@@ -369,7 +368,7 @@ impl SessionState {
         Ok(())
     }
 
-    pub fn unacknowledged_pre_key_message_items(
+    pub(crate) fn unacknowledged_pre_key_message_items(
         &self,
     ) -> Result<Option<UnacknowledgedPreKeyMessageItems>> {
         if let Some(ref pending_pre_key) = self.session.pending_pre_key {
@@ -386,26 +385,26 @@ impl SessionState {
         }
     }
 
-    pub fn clear_unacknowledged_pre_key_message(&mut self) -> Result<()> {
+    pub(crate) fn clear_unacknowledged_pre_key_message(&mut self) -> Result<()> {
         self.session.pending_pre_key = None;
         Ok(())
     }
 
-    pub fn set_remote_registration_id(&mut self, registration_id: u32) -> Result<()> {
+    pub(crate) fn set_remote_registration_id(&mut self, registration_id: u32) -> Result<()> {
         self.session.remote_registration_id = registration_id;
         Ok(())
     }
 
-    pub fn remote_registration_id(&self) -> Result<u32> {
+    pub(crate) fn remote_registration_id(&self) -> Result<u32> {
         Ok(self.session.remote_registration_id)
     }
 
-    pub fn set_local_registration_id(&mut self, registration_id: u32) -> Result<()> {
+    pub(crate) fn set_local_registration_id(&mut self, registration_id: u32) -> Result<()> {
         self.session.local_registration_id = registration_id;
         Ok(())
     }
 
-    pub fn local_registration_id(&self) -> Result<u32> {
+    pub(crate) fn local_registration_id(&self) -> Result<u32> {
         Ok(self.session.local_registration_id)
     }
 
@@ -469,7 +468,7 @@ impl SessionRecord {
         })
     }
 
-    pub fn has_session_state(&self, version: u32, alice_base_key: &[u8]) -> Result<bool> {
+    pub(crate) fn has_session_state(&self, version: u32, alice_base_key: &[u8]) -> Result<bool> {
         if let Some(current_session) = &self.current_session {
             if current_session.session_version()? == version
                 && alice_base_key == current_session.alice_base_key()?
@@ -500,7 +499,7 @@ impl SessionRecord {
         }
     }
 
-    pub fn session_state_mut(&mut self) -> Result<&mut SessionState> {
+    pub(crate) fn session_state_mut(&mut self) -> Result<&mut SessionState> {
         if let Some(ref mut session) = self.current_session {
             Ok(session)
         } else {
@@ -511,16 +510,16 @@ impl SessionRecord {
         }
     }
 
-    pub fn set_session_state(&mut self, session: SessionState) -> Result<()> {
+    pub(crate) fn set_session_state(&mut self, session: SessionState) -> Result<()> {
         self.current_session = Some(session);
         Ok(())
     }
 
-    pub fn previous_session_states(&self) -> Result<impl Iterator<Item = &SessionState>> {
+    pub(crate) fn previous_session_states(&self) -> Result<impl Iterator<Item = &SessionState>> {
         Ok(self.previous_sessions.iter())
     }
 
-    pub fn promote_old_session(
+    pub(crate) fn promote_old_session(
         &mut self,
         old_session: usize,
         updated_session: SessionState,
@@ -531,11 +530,7 @@ impl SessionRecord {
         self.promote_state(updated_session)
     }
 
-    pub fn is_fresh(&self) -> Result<bool> {
-        Ok(self.current_session.is_none() && self.previous_sessions.is_empty())
-    }
-
-    pub fn promote_state(&mut self, new_state: SessionState) -> Result<()> {
+    pub(crate) fn promote_state(&mut self, new_state: SessionState) -> Result<()> {
         self.archive_current_state()?;
         self.current_session = Some(new_state);
         Ok(())
@@ -586,5 +581,17 @@ impl SessionRecord {
 
     pub fn has_sender_chain(&self) -> Result<bool> {
         self.session_state()?.has_sender_chain()
+    }
+
+    pub fn alice_base_key(&self) -> Result<&[u8]> {
+        self.session_state()?.alice_base_key()
+    }
+
+    pub fn get_receiver_chain_key(&self, sender: &curve::PublicKey) -> Result<Option<ChainKey>> {
+        self.session_state()?.get_receiver_chain_key(sender)
+    }
+
+    pub fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {
+        self.session_state()?.get_sender_chain_key_bytes()
     }
 }
