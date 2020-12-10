@@ -1,8 +1,5 @@
 package org.signal.libsignal.metadata.certificate;
 
-
-import com.google.protobuf.ByteString;
-
 import junit.framework.TestCase;
 
 import org.whispersystems.libsignal.InvalidKeyException;

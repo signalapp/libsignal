@@ -1,8 +1,5 @@
 package org.signal.libsignal.metadata;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-
 import junit.framework.TestCase;
 
 import org.signal.libsignal.metadata.SealedSessionCipher.DecryptionResult;
@@ -39,7 +36,7 @@ public class SealedSessionCipherTest extends TestCase {
     return new SignedPreKeyRecord(signedPreKeyId, System.currentTimeMillis(), keyPair, signature);
   }
 
-  public void testEncryptDecrypt() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidProtocolBufferException, InvalidMetadataMessageException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
+  public void testEncryptDecrypt() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMetadataMessageException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
 
@@ -137,7 +134,7 @@ public class SealedSessionCipherTest extends TestCase {
 
 
   private SenderCertificate createCertificateFor(ECKeyPair trustRoot, UUID uuid, String e164, int deviceId, ECPublicKey identityKey, long expires)
-      throws InvalidKeyException, InvalidCertificateException, InvalidProtocolBufferException {
+      throws InvalidKeyException, InvalidCertificateException {
     ECKeyPair serverKey = Curve.generateKeyPair();
 
     ServerCertificate serverCertificate = new ServerCertificate(Native.ServerCertificate_New(1, serverKey.getPublicKey().nativeHandle(), trustRoot.getPrivateKey().nativeHandle()));

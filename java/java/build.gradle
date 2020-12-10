@@ -3,14 +3,9 @@ buildscript {
         google()
         mavenCentral()
     }
-
-    dependencies {
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.10'
-    }
 }
 
 apply plugin: 'java'
-apply plugin: 'com.google.protobuf'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
@@ -33,30 +28,8 @@ sourceSets {
 }
 
 dependencies {
-    compile 'com.google.protobuf:protobuf-javalite:3.10.0'
-
     testCompile ('junit:junit:3.8.2')
 }
-
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.10.0'
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.builtins {
-                java {
-                    option "lite"
-                }
-            }
-        }
-    }
-}
-
-sourceSets {
-    main.proto.srcDir '../protobuf'
-}
-
 
 test {
     testLogging {
