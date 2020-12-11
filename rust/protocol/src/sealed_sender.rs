@@ -35,9 +35,7 @@ been revoked. If one ever does, add its key ID here.
 If a production server certificate is ever generated which collides
 with this test certificate ID, Bad Things will happen.
 */
-const REVOKED_SERVER_CERTIFICATE_KEY_IDS : &[u32] = &[
-    0xDEADC357,
-];
+const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
 
 impl ServerCertificate {
     pub fn deserialize(data: &[u8]) -> Result<Self> {

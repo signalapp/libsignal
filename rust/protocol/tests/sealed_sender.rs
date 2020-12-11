@@ -60,8 +60,12 @@ fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
 
     let revoked_id = 0xDEADC357;
 
-    let server_cert =
-        ServerCertificate::new(revoked_id, server_key.public_key, &trust_root.private_key, &mut rng)?;
+    let server_cert = ServerCertificate::new(
+        revoked_id,
+        server_key.public_key,
+        &trust_root.private_key,
+        &mut rng,
+    )?;
 
     let serialized = server_cert.serialized()?.to_vec();
 
