@@ -26,12 +26,6 @@ pub fn has_armv8_crypto() -> bool {
     false
 }
 
-#[cfg(all(target_arch = "aarch64", target_os = "ios"))]
-pub fn has_armv8_crypto() -> bool {
-    // All 64-bit iOS devices have AES/PMUL support
-    true
-}
-
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn has_intel_aesni() -> bool {
     is_x86_feature_detected!("aes")
