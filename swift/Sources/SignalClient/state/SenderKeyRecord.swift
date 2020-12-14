@@ -43,7 +43,7 @@ public class SenderKeyRecord: ClonableHandleOwner {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_sender_key_record_serialize(handle, $0, $1)
+                signal_sender_key_record_serialize(nativeHandle, $0, $1)
             }
         }
     }
