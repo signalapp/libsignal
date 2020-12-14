@@ -15,8 +15,6 @@ public class SenderKeyRecord: ClonableHandleOwner {
         return signal_sender_key_record_clone(&newHandle, currentHandle)
     }
 
-    private var handle: OpaquePointer?
-
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
