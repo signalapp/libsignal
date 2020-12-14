@@ -19,6 +19,7 @@ jobs:
       java: ${{ steps.filter.outputs.java }}
       node: ${{ steps.filter.outputs.node }}
       swift: ${{ steps.filter.outputs.swift }}
+      rust_ios: ${{ steps.filter.outputs.rust_ios }}
 
     steps:
     - uses: actions/checkout@v2
@@ -57,9 +58,11 @@ jobs:
           - 'package.json'
           - 'rust/bridge/node/**'
           - 'yarn.lock'
-          swift:
+          rust_ios: &rust_ios
           - *all
           - 'rust/bridge/ffi/**'
+          swift:
+          - *rust_ios
           - 'swift/**'
           - 'SignalClient.podspec'
           ignored:
@@ -106,6 +109,27 @@ jobs:
 
     - name: Clippy
       run: cargo clippy --all -- -D warnings
+
+  rust_ios:
+    name: Build Rust for iOS
+
+    runs-on: macos-latest
+
+    needs: changes
+
+    if: ${{ needs.changes.outputs.rust_ios == 'true' }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        target: aarch64-apple-ios
+
+    - name: Build
+      run: cargo build --verbose --target aarch64-apple-ios -p libsignal-ffi
 
   java:
     name: Java
