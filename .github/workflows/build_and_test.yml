@@ -210,7 +210,7 @@ jobs:
         profile: minimal
 
     - name: Build libsignal-ffi
-      run: cargo build --verbose -p libsignal-ffi
+      run: swift/build_ffi.sh -d -v
 
     - name: Build Swift and run tests
       run: swift test -v --enable-code-coverage
@@ -244,6 +244,11 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
+      - uses: actions/cache@v2
+        with:
+          path: cargo-install-cache
+          key: ${{ runner.os }}-cargo-install
+
       - uses: actions/checkout@v2
 
       - name: Check out SignalCoreKit
@@ -257,6 +262,12 @@ jobs:
         with:
           profile: minimal
           target: x86_64-apple-ios
+
+      - name: Install cbindgen
+        # FIXME: Wait until there's a released version of cbindgen!
+        run: cargo install cbindgen --git https://github.com/eqrion/cbindgen
+        env:
+          CARGO_TARGET_DIR: cargo-install-cache
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
