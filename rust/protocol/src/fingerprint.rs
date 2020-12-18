@@ -223,6 +223,26 @@ mod test {
     const BOB_STABLE_ID: &str = "+14153333333";
 
     #[test]
+    fn fingerprint_encodings() -> Result<()> {
+        let l = vec![0x12; 32];
+        let r = vec![0xBA; 32];
+
+        let fprint0 = ScannableFingerprint::new(0, &l, &r);
+        let proto0 = fprint0.serialize()?;
+
+        let expected0_encoding = "12220a20".to_owned() + &"12".repeat(32) + "1a220a20" + &"ba".repeat(32);
+        assert_eq!(hex::encode(proto0), expected0_encoding);
+
+        let fprint2 = ScannableFingerprint::new(2, &l, &r);
+        let proto2 = fprint2.serialize()?;
+
+        let expected2_encoding = "080212220a20".to_owned() + &"12".repeat(32) + "1a220a20" + &"ba".repeat(32);
+        assert_eq!(hex::encode(proto2), expected2_encoding);
+
+        Ok(())
+    }
+
+    #[test]
     fn fingerprint_test_v1() {
         // testVectorsVersion1 in Java
 
