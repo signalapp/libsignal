@@ -83,7 +83,9 @@ impl ScannableFingerprint {
         let fingerprint = proto::fingerprint::CombinedFingerprints::decode(protobuf)?;
 
         Ok(Self {
-            version: fingerprint.version.ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
+            version: fingerprint
+                .version
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
             local_fingerprint: fingerprint
                 .local_fingerprint
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
@@ -236,7 +238,8 @@ mod test {
         let fprint2 = ScannableFingerprint::new(2, &l, &r);
         let proto2 = fprint2.serialize()?;
 
-        let expected2_encoding = "080212220a20".to_owned() + &"12".repeat(32) + "1a220a20" + &"ba".repeat(32);
+        let expected2_encoding =
+            "080212220a20".to_owned() + &"12".repeat(32) + "1a220a20" + &"ba".repeat(32);
         assert_eq!(hex::encode(proto2), expected2_encoding);
 
         Ok(())
