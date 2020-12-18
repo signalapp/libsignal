@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto2";
 
 //
 // Copyright 2020 Signal Messenger, LLC.
@@ -8,12 +8,12 @@ syntax = "proto3";
 package signal.proto.fingerprint;
 
 message LogicalFingerprint {
-  bytes content = 1;
+  optional bytes content = 1;
   // bytes identifier = 2;
 }
 
 message CombinedFingerprints {
-  uint32             version            = 1;
-  LogicalFingerprint local_fingerprint  = 2;
-  LogicalFingerprint remote_fingerprint = 3;
+  optional uint32             version            = 1;
+  optional LogicalFingerprint local_fingerprint  = 2;
+  optional LogicalFingerprint remote_fingerprint = 3;
 }

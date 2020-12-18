@@ -83,26 +83,30 @@ impl ScannableFingerprint {
         let fingerprint = proto::fingerprint::CombinedFingerprints::decode(protobuf)?;
 
         Ok(Self {
-            version: fingerprint.version,
+            version: fingerprint
+                .version
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
             local_fingerprint: fingerprint
                 .local_fingerprint
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
-                .content,
+                .content
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
             remote_fingerprint: fingerprint
                 .remote_fingerprint
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
-                .content,
+                .content
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
         })
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
         let combined_fingerprints = proto::fingerprint::CombinedFingerprints {
-            version: self.version,
+            version: Some(self.version),
             local_fingerprint: Some(proto::fingerprint::LogicalFingerprint {
-                content: self.local_fingerprint.to_owned(),
+                content: Some(self.local_fingerprint.to_owned()),
             }),
             remote_fingerprint: Some(proto::fingerprint::LogicalFingerprint {
-                content: self.remote_fingerprint.to_owned(),
+                content: Some(self.remote_fingerprint.to_owned()),
             }),
         };
 
@@ -114,7 +118,7 @@ impl ScannableFingerprint {
     pub fn compare(&self, combined: &[u8]) -> Result<bool> {
         let combined = proto::fingerprint::CombinedFingerprints::decode(combined)?;
 
-        if combined.version != self.version {
+        if combined.version.unwrap_or(0) != self.version {
             return Err(SignalProtocolError::FingerprintVersionMismatch);
         }
 
@@ -128,12 +132,16 @@ impl ScannableFingerprint {
             .as_ref()
             .unwrap()
             .content
+            .as_ref()
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
             .ct_eq(&self.remote_fingerprint);
         let same2 = combined
             .remote_fingerprint
             .as_ref()
             .unwrap()
             .content
+            .as_ref()
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
             .ct_eq(&self.local_fingerprint);
 
         Ok(same1.into() && same2.into())
@@ -221,6 +229,21 @@ mod test {
 
     const ALICE_STABLE_ID: &str = "+14152222222";
     const BOB_STABLE_ID: &str = "+14153333333";
+
+    #[test]
+    fn fingerprint_encodings() -> Result<()> {
+        let l = vec![0x12; 32];
+        let r = vec![0xBA; 32];
+
+        let fprint2 = ScannableFingerprint::new(2, &l, &r);
+        let proto2 = fprint2.serialize()?;
+
+        let expected2_encoding =
+            "080212220a20".to_owned() + &"12".repeat(32) + "1a220a20" + &"ba".repeat(32);
+        assert_eq!(hex::encode(proto2), expected2_encoding);
+
+        Ok(())
+    }
 
     #[test]
     fn fingerprint_test_v1() {
