@@ -10,6 +10,7 @@
     "build/Release/*.node"
   ],
   "scripts": {
+    "build": "node-gyp build",
     "tsc": "tsc -p node && cp node/*.d.ts node/dist",
     "clean": "rimraf node/dist build",
     "test": "electron-mocha --recursive node/dist/test",
