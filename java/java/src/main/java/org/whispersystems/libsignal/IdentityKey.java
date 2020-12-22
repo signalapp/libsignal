@@ -32,6 +32,10 @@ public class IdentityKey {
     this.publicKey = Curve.decodePoint(bytes, 0);
   }
 
+  public IdentityKey(long nativeHandle) {
+    this.publicKey = new ECPublicKey(nativeHandle);
+  }
+
   public ECPublicKey getPublicKey() {
     return publicKey;
   }

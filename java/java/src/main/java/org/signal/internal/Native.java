@@ -96,6 +96,7 @@ public final class Native {
 
   public static native byte[] HKDF_DeriveSecrets(int version, byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength);
 
+  public static native long[] IdentityKeyPair_Deserialize(byte[] data);
   public static native byte[] IdentityKeyPair_Serialize(long publicKeyHandle, long privateKeyHandle);
 
   public static native void NumericFingerprintGenerator_Destroy(long handle);
