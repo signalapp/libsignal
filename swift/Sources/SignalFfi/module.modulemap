@@ -1,8 +1,8 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 module SignalFfi {
-	umbrella header "swift_signal.h"
+	header "signal_ffi.h"
 	link "signal_ffi"
 }

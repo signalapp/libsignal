@@ -34,8 +34,9 @@ Pod::Spec.new do |s|
       'CARGO_PROFILE_RELEASE_DEBUG' => '1', # enable line tables
       'LIBSIGNAL_FFI_DIR' => '$(CARGO_BUILD_TARGET_DIR)/$(CARGO_BUILD_TARGET)/release',
 
-      'HEADER_SEARCH_PATHS' => '$(LIBSIGNAL_FFI_DIR)',
-      'SWIFT_INCLUDE_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi $(LIBSIGNAL_FFI_DIR)',
+      'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi',
+      # Duplicate this here to make sure the search path is passed on to Swift dependencies.
+      'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
 
       # Make sure we link the static library, not a dynamic one.
       # Use an extra level of indirection because CocoaPods messes with OTHER_LDFLAGS too.

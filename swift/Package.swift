@@ -1,7 +1,7 @@
 // swift-tools-version:5.0
 
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -23,13 +23,11 @@ let package = Package(
         .target(
             name: "SignalClient",
             dependencies: ["SignalFfi"],
-            exclude: ["Logging.m"],
-            swiftSettings: [.unsafeFlags(["-I", rustBuildDir])]
+            exclude: ["Logging.m"]
         ),
         .testTarget(
             name: "SignalClientTests",
             dependencies: ["SignalClient"],
-            swiftSettings: [.unsafeFlags(["-I", rustBuildDir])],
             linkerSettings: [.unsafeFlags(["\(rustBuildDir)/libsignal_ffi.a"])]
         )
     ]

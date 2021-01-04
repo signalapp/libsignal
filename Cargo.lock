@@ -236,25 +236,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cbindgen"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1df6a11bba1d7cab86c166cecf4cf8acd7d02b7b65924d81b33d27197f22ee35"
-dependencies = [
- "clap",
- "heck",
- "indexmap",
- "log",
- "proc-macro2",
- "quote",
- "serde",
- "serde_json",
- "syn",
- "tempfile",
- "toml",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -876,7 +857,6 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
- "cbindgen",
  "futures",
  "libc",
  "libsignal-bridge",
@@ -884,7 +864,6 @@ dependencies = [
  "log",
  "rand",
  "static_assertions",
- "walkdir",
 ]
 
 [[package]]
@@ -1719,15 +1698,6 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
-
-[[package]]
-name = "toml"
-version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75cf45bb0bef80604d001caaec0d09da99611b3c0fd39d3080468875cdb65645"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "typenum"
