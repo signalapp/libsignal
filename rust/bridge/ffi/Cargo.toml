@@ -24,7 +24,3 @@ futures = "0.3.7"
 rand = "0.7.3"
 static_assertions = "1.1"
 log = "0.4.11"
-
-[build-dependencies]
-cbindgen = "0.15"
-walkdir = "2.3"

@@ -213,7 +213,7 @@ jobs:
         profile: minimal
 
     - name: Build libsignal-ffi
-      run: cargo build --verbose -p libsignal-ffi
+      run: swift/build_ffi.sh -d -v --verify-ffi
 
     - name: Build Swift and run tests
       run: swift test -v --enable-code-coverage
