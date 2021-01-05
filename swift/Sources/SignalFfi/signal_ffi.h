@@ -196,25 +196,10 @@ SignalFfiError *signal_hkdf_derive(unsigned char *output,
                                    const unsigned char *info,
                                    size_t info_len);
 
-SignalFfiError *signal_address_new(SignalProtocolAddress **address,
-                                   const char *name,
-                                   unsigned int device_id);
-
 SignalFfiError *signal_address_get_device_id(const SignalProtocolAddress *obj, unsigned int *out);
 
 SignalFfiError *signal_address_clone(SignalProtocolAddress **new_obj,
                                      const SignalProtocolAddress *obj);
-
-SignalFfiError *signal_publickey_compare(int32_t *result,
-                                         const SignalPublicKey *key1,
-                                         const SignalPublicKey *key2);
-
-SignalFfiError *signal_publickey_verify(const SignalPublicKey *key,
-                                        bool *result,
-                                        const unsigned char *message,
-                                        size_t message_len,
-                                        const unsigned char *signature,
-                                        size_t signature_len);
 
 SignalFfiError *signal_publickey_clone(SignalPublicKey **new_obj, const SignalPublicKey *obj);
 
@@ -254,12 +239,6 @@ SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord 
 SignalFfiError *signal_session_record_clone(SignalSessionRecord **new_obj,
                                             const SignalSessionRecord *obj);
 
-SignalFfiError *signal_fingerprint_format(const char **fprint,
-                                          const unsigned char *local,
-                                          size_t local_len,
-                                          const unsigned char *remote,
-                                          size_t remote_len);
-
 SignalFfiError *signal_fingerprint_new(SignalFingerprint **obj,
                                        unsigned int iterations,
                                        unsigned int version,
@@ -272,24 +251,6 @@ SignalFfiError *signal_fingerprint_new(SignalFingerprint **obj,
 
 SignalFfiError *signal_fingerprint_clone(SignalFingerprint **new_obj, const SignalFingerprint *obj);
 
-SignalFfiError *signal_fingerprint_compare(bool *result,
-                                           const unsigned char *fprint1,
-                                           size_t fprint1_len,
-                                           const unsigned char *fprint2,
-                                           size_t fprint2_len);
-
-SignalFfiError *signal_message_new(SignalMessage **obj,
-                                   unsigned char message_version,
-                                   const unsigned char *mac_key,
-                                   size_t mac_key_len,
-                                   const SignalPublicKey *sender_ratchet_key,
-                                   unsigned int counter,
-                                   unsigned int previous_counter,
-                                   const unsigned char *ciphertext,
-                                   size_t ciphertext_len,
-                                   const SignalPublicKey *sender_identity_key,
-                                   const SignalPublicKey *receiver_identity_key);
-
 SignalFfiError *signal_message_clone(SignalMessage **new_obj, const SignalMessage *obj);
 
 SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **new_obj,
@@ -298,22 +259,6 @@ SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **new_obj,
 SignalFfiError *signal_message_get_message_version(const SignalMessage *obj, unsigned int *out);
 
 SignalFfiError *signal_message_get_counter(const SignalMessage *obj, unsigned int *out);
-
-SignalFfiError *signal_message_verify_mac(bool *result,
-                                          const SignalMessage *handle,
-                                          const SignalPublicKey *sender_identity_key,
-                                          const SignalPublicKey *receiver_identity_key,
-                                          const unsigned char *mac_key,
-                                          size_t mac_key_len);
-
-SignalFfiError *signal_pre_key_signal_message_new(SignalPreKeySignalMessage **obj,
-                                                  unsigned char message_version,
-                                                  unsigned int registration_id,
-                                                  const unsigned int *pre_key_id,
-                                                  unsigned int signed_pre_key_id,
-                                                  const SignalPublicKey *base_key,
-                                                  const SignalPublicKey *identity_key,
-                                                  const SignalMessage *signal_message);
 
 SignalFfiError *signal_pre_key_signal_message_clone(SignalPreKeySignalMessage **new_obj,
                                                     const SignalPreKeySignalMessage *obj);
@@ -639,6 +584,10 @@ SignalFfiError *signal_address_destroy(SignalProtocolAddress *p);
 
 SignalFfiError *signal_address_get_name(const SignalProtocolAddress *obj, const char **out);
 
+SignalFfiError *signal_address_new(SignalProtocolAddress **out,
+                                   const char *name,
+                                   uint32_t device_id);
+
 SignalFfiError *signal_publickey_destroy(SignalPublicKey *p);
 
 SignalFfiError *signal_publickey_deserialize(SignalPublicKey **p,
@@ -652,6 +601,17 @@ SignalFfiError *signal_publickey_serialize(const SignalPublicKey *obj,
 SignalFfiError *signal_publickey_get_public_key_bytes(const SignalPublicKey *obj,
                                                       const unsigned char **out,
                                                       size_t *out_len);
+
+SignalFfiError *signal_publickey_compare(int32_t *out,
+                                         const SignalPublicKey *key1,
+                                         const SignalPublicKey *key2);
+
+SignalFfiError *signal_publickey_verify(bool *out,
+                                        const SignalPublicKey *key,
+                                        const unsigned char *message,
+                                        size_t message_len,
+                                        const unsigned char *signature,
+                                        size_t signature_len);
 
 SignalFfiError *signal_privatekey_destroy(SignalPrivateKey *p);
 
@@ -671,6 +631,18 @@ SignalFfiError *signal_fingerprint_scannable_encoding(const SignalFingerprint *o
 
 SignalFfiError *signal_fingerprint_display_string(const SignalFingerprint *obj, const char **out);
 
+SignalFfiError *signal_fingerprint_format(const char **out,
+                                          const unsigned char *local,
+                                          size_t local_len,
+                                          const unsigned char *remote,
+                                          size_t remote_len);
+
+SignalFfiError *signal_fingerprint_compare(bool *out,
+                                           const unsigned char *fprint1,
+                                           size_t fprint1_len,
+                                           const unsigned char *fprint2,
+                                           size_t fprint2_len);
+
 SignalFfiError *signal_message_destroy(SignalMessage *p);
 
 SignalFfiError *signal_message_deserialize(SignalMessage **p,
@@ -684,6 +656,34 @@ SignalFfiError *signal_message_get_body(const SignalMessage *obj,
 SignalFfiError *signal_message_get_serialized(const SignalMessage *obj,
                                               const unsigned char **out,
                                               size_t *out_len);
+
+SignalFfiError *signal_message_new(SignalMessage **out,
+                                   uint8_t message_version,
+                                   const unsigned char *mac_key,
+                                   size_t mac_key_len,
+                                   const SignalPublicKey *sender_ratchet_key,
+                                   uint32_t counter,
+                                   uint32_t previous_counter,
+                                   const unsigned char *ciphertext,
+                                   size_t ciphertext_len,
+                                   const SignalPublicKey *sender_identity_key,
+                                   const SignalPublicKey *receiver_identity_key);
+
+SignalFfiError *signal_message_verify_mac(bool *out,
+                                          const SignalMessage *msg,
+                                          const SignalPublicKey *sender_identity_key,
+                                          const SignalPublicKey *receiver_identity_key,
+                                          const unsigned char *mac_key,
+                                          size_t mac_key_len);
+
+SignalFfiError *signal_pre_key_signal_message_new(SignalPreKeySignalMessage **out,
+                                                  uint8_t message_version,
+                                                  uint32_t registration_id,
+                                                  uint32_t pre_key_id,
+                                                  uint32_t signed_pre_key_id,
+                                                  const SignalPublicKey *base_key,
+                                                  const SignalPublicKey *identity_key,
+                                                  const SignalMessage *signal_message);
 
 SignalFfiError *signal_pre_key_signal_message_destroy(SignalPreKeySignalMessage *p);
 
