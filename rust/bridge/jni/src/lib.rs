@@ -1510,8 +1510,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
 ) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let session_state = env.convert_byte_array(session_state)?;
-        let session_state = SessionState::deserialize(&session_state)?;
-        box_object::<SessionRecord>(Ok(SessionRecord::new(session_state)))
+        box_object::<SessionRecord>(SessionRecord::from_single_session_state(&session_state))
     })
 }
 
