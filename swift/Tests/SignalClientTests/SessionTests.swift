@@ -37,6 +37,7 @@ class SessionTests: TestCaseBase {
                                  identityStore: alice_store,
                                  context: NullContext())
 
+        XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState, true)
         XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.remoteRegistrationId(),
                        try! bob_store.localRegistrationId(context: NullContext()))
 
@@ -191,11 +192,30 @@ class SessionTests: TestCaseBase {
         XCTAssertEqual(plaintext.sender, sender_addr)
     }
 
+    func testArchiveSession() throws {
+        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore()
+
+        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+
+        let session: SessionRecord! = try! alice_store.loadSession(for: bob_address, context: NullContext())
+        XCTAssertNotNil(session)
+        XCTAssertTrue(session.hasCurrentState)
+        session.archiveCurrentState()
+        XCTAssertFalse(session.hasCurrentState)
+        // A redundant archive shouldn't break anything.
+        session.archiveCurrentState()
+        XCTAssertFalse(session.hasCurrentState)
+    }
+
     static var allTests: [(String, (SessionTests) -> () throws -> Void)] {
         return [
             ("testSessionCipher", testSessionCipher),
             ("testSessionCipherWithBadStore", testSessionCipherWithBadStore),
             ("testSealedSenderSession", testSealedSenderSession),
+            ("testArchiveSession", testArchiveSession),
         ]
     }
 }

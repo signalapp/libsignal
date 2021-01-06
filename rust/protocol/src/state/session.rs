@@ -500,6 +500,10 @@ impl SessionRecord {
         Ok(false)
     }
 
+    pub fn has_current_session_state(&self) -> bool {
+        self.current_session.is_some()
+    }
+
     pub(crate) fn session_state(&self) -> Result<&SessionState> {
         if let Some(ref session) = self.current_session {
             Ok(session)

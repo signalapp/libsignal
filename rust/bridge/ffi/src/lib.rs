@@ -147,6 +147,21 @@ pub unsafe extern "C" fn signal_session_record_archive_current_state(
     })
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn signal_session_record_has_current_state(
+    result: *mut bool,
+    session_record: *const SessionRecord,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        if result.is_null() {
+            return Err(SignalFfiError::NullPointer);
+        }
+        let session_record = native_handle_cast::<SessionRecord>(session_record)?;
+        *result = session_record.has_current_session_state();
+        Ok(())
+    })
+}
+
 ffi_fn_clone!(signal_session_record_clone clones SessionRecord);
 
 #[no_mangle]
