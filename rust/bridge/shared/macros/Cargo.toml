@@ -17,5 +17,6 @@ proc-macro = true
 heck = "0.3.1"
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0", features = ["full"] }
+syn = { version = "1.0" }
+syn-mid = "0.5"
 unzip3 = "1.0.0"

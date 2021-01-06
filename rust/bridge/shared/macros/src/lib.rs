@@ -12,6 +12,7 @@ use quote::*;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::*;
+use syn_mid::{FnArg, ItemFn, Pat, PatType, Signature};
 use unzip3::Unzip3;
 
 fn value_for_meta_key<'a>(
