@@ -187,8 +187,4 @@ bridge_get_bytearray!(get_sender_chain_key_value(SessionRecord), ffi = None =>
     SessionRecord::get_sender_chain_key_bytes
 );
 
-bridge_destroy!(SessionState, ffi = None);
-bridge_deserialize!(SessionState::deserialize, ffi = None);
-bridge_get_bytearray!(serialized(SessionState) => SessionState::serialize);
-
 bridge_destroy!(Aes256GcmSiv);

@@ -92,8 +92,6 @@ typedef struct SignalServerCertificate SignalServerCertificate;
 
 typedef struct SignalSessionRecord SignalSessionRecord;
 
-typedef struct SignalSessionState SignalSessionState;
-
 typedef struct SignalFfiError SignalFfiError;
 
 typedef struct SignalMessage SignalMessage;
@@ -838,10 +836,6 @@ SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **p,
                                                   size_t data_len);
 
 SignalFfiError *signal_session_record_serialize(const SignalSessionRecord *obj,
-                                                const unsigned char **out,
-                                                size_t *out_len);
-
-SignalFfiError *signal_session_state_serialized(const SignalSessionState *obj,
                                                 const unsigned char **out,
                                                 size_t *out_len);
 

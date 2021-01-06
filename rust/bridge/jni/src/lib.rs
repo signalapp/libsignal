@@ -1510,20 +1510,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
 ) -> ObjectHandle {
     run_ffi_safe(&env, || {
         let session_state = env.convert_byte_array(session_state)?;
-        let session_state = SessionState::deserialize(&session_state)?;
-        box_object::<SessionRecord>(Ok(SessionRecord::new(session_state)))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetSessionState(
-    env: JNIEnv,
-    _class: JClass,
-    session_record: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let session_record = native_handle_cast::<SessionRecord>(session_record)?;
-        box_object::<SessionState>(session_record.session_state().map(|s| s.clone()))
+        box_object::<SessionRecord>(SessionRecord::from_single_session_state(&session_state))
     })
 }
 
@@ -1532,10 +1519,6 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemote
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using SessionRecord::session_version);
 
 jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionRecord_1HasSenderChain(SessionRecord) using SessionRecord::has_sender_chain);
-
-// SessionState
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionState_1GetSessionVersion(SessionState) using SessionState::session_version);
-jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionState_1HasSenderChain(SessionState) using SessionState::has_sender_chain);
 
 // The following are just exposed to make it possible to retain some of the Java tests:
 
