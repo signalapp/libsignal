@@ -1515,27 +1515,11 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetSessionState(
-    env: JNIEnv,
-    _class: JClass,
-    session_record: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let session_record = native_handle_cast::<SessionRecord>(session_record)?;
-        box_object::<SessionState>(session_record.session_state().map(|s| s.clone()))
-    })
-}
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalRegistrationId(SessionRecord) using SessionRecord::local_registration_id);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteRegistrationId(SessionRecord) using SessionRecord::remote_registration_id);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using SessionRecord::session_version);
 
 jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionRecord_1HasSenderChain(SessionRecord) using SessionRecord::has_sender_chain);
-
-// SessionState
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionState_1GetSessionVersion(SessionState) using SessionState::session_version);
-jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionState_1HasSenderChain(SessionState) using SessionState::has_sender_chain);
 
 // The following are just exposed to make it possible to retain some of the Java tests:
 

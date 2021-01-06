@@ -44,9 +44,8 @@ public class SessionRecord {
   }
 
   /**
-   * Move the current {@link SessionState} into the list of "previous" session states, and replace
-   * the current {@link org.whispersystems.libsignal.state.SessionState} with a fresh reset
-   * instance.
+   * Move the current SessionState into the list of "previous" session states, and replace
+   * the current SessionState with a fresh reset instance.
    */
   public void archiveCurrentState() {
     Native.SessionRecord_ArchiveCurrentState(this.handle);
@@ -97,10 +96,6 @@ public class SessionRecord {
   }
 
   // Following functions are for internal or testing use and may be removed in the future:
-
-  public SessionState getSessionState() {
-    return new SessionState(Native.SessionRecord_GetSessionState(this.handle));
-  }
 
   public byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
     return Native.SessionRecord_GetReceiverChainKeyValue(

@@ -215,19 +215,12 @@ public final class Native {
   public static native byte[] SessionRecord_GetRemoteIdentityKeyPublic(long handle);
   public static native int SessionRecord_GetRemoteRegistrationId(long handle);
   public static native byte[] SessionRecord_GetSenderChainKeyValue(long handle);
-  public static native long SessionRecord_GetSessionState(long sessionRecord);
   public static native int SessionRecord_GetSessionVersion(long handle);
   public static native boolean SessionRecord_HasSenderChain(long handle);
   public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
   public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
   public static native long SessionRecord_NewFresh();
   public static native byte[] SessionRecord_Serialize(long handle);
-
-  public static native long SessionState_Deserialize(byte[] data);
-  public static native void SessionState_Destroy(long handle);
-  public static native int SessionState_GetSessionVersion(long handle);
-  public static native boolean SessionState_HasSenderChain(long handle);
-  public static native byte[] SessionState_Serialized(long handle);
 
   public static native long SignalMessage_Deserialize(byte[] data);
   public static native void SignalMessage_Destroy(long handle);
