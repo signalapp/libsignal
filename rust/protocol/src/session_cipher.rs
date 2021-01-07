@@ -243,21 +243,23 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     ciphertext: &SignalMessage,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
-    let mut current_state = record.session_state()?.clone();
+    if let Ok(current_state) = record.session_state() {
+        let mut current_state = current_state.clone();
+        let result = decrypt_message_with_state(&mut current_state, ciphertext, csprng);
 
-    let result = decrypt_message_with_state(&mut current_state, ciphertext, csprng);
-
-    match result {
-        Ok(ptext) => {
-            record.set_session_state(current_state)?; // update the state
-            return Ok(ptext);
+        match result {
+            Ok(ptext) => {
+                record.set_session_state(current_state)?; // update the state
+                return Ok(ptext);
+            }
+            Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
+                return result;
+            }
+            Err(_) => {}
         }
-        Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
-            return result;
-        }
-        Err(_) => {}
     }
 
+    // Try some old sessions:
     let mut updated_session = None;
 
     for (idx, previous) in record.previous_session_states()?.enumerate() {
@@ -293,7 +295,9 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
     if !state.has_sender_chain()? {
-        return Err(SignalProtocolError::InvalidSessionStructure);
+        return Err(SignalProtocolError::InvalidMessage(
+            "No session available to decrypt",
+        ));
     }
 
     let ciphertext_version = ciphertext.message_version() as u32;
