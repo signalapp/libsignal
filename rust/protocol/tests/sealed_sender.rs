@@ -100,6 +100,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
             Err(e) => match e {
                 SignalProtocolError::InvalidProtobufEncoding
                 | SignalProtocolError::ProtobufDecodingError(_)
+                | SignalProtocolError::BadKeyLength(_, _)
                 | SignalProtocolError::BadKeyType(_) => {}
 
                 unexpected_err => {
