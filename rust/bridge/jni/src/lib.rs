@@ -1518,8 +1518,11 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalR
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteRegistrationId(SessionRecord) using SessionRecord::remote_registration_id);
 
 // For historical reasons Android assumes this function will return zero if there is no session state
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using
-                 |s: &SessionRecord| Ok(s.session_version().unwrap_or(0)));
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using |s: &SessionRecord| match s.session_version() {
+    Ok(v) => Ok(v),
+    Err(SignalProtocolError::InvalidState(_, _)) => Ok(0),
+    Err(e) => Err(e)
+});
 
 jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionRecord_1HasSenderChain(SessionRecord) using SessionRecord::has_sender_chain);
 
