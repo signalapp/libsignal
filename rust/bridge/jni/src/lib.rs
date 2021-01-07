@@ -1516,7 +1516,10 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalRegistrationId(SessionRecord) using SessionRecord::local_registration_id);
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteRegistrationId(SessionRecord) using SessionRecord::remote_registration_id);
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using SessionRecord::session_version);
+
+// For historical reasons Android assumes this function will return zero if there is no session state
+jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using
+                 |s: &SessionRecord| Ok(s.session_version().unwrap_or(0)));
 
 jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionRecord_1HasSenderChain(SessionRecord) using SessionRecord::has_sender_chain);
 

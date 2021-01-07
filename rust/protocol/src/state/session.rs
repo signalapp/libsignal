@@ -577,7 +577,10 @@ impl SessionRecord {
     }
 
     pub fn has_sender_chain(&self) -> Result<bool> {
-        self.session_state()?.has_sender_chain()
+        match &self.current_session {
+            Some(session) => session.has_sender_chain(),
+            None => Ok(false),
+        }
     }
 
     pub fn alice_base_key(&self) -> Result<&[u8]> {
