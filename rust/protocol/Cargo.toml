@@ -27,6 +27,7 @@ rand = "0.7.3"
 sha2 = "0.9"
 subtle = "2.2.3"
 x25519-dalek = "1.0"
+thiserror = "1.0"
 
 [features]
 default = ["u64_backend"]
