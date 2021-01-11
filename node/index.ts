@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import * as os from 'os';
 import bindings = require('bindings'); // eslint-disable-line @typescript-eslint/no-require-imports
 import * as SignalClient from './libsignal_client';
 
-const SC = bindings('libsignal_client') as typeof SignalClient;
+const SC = bindings('libsignal_client_' + os.platform()) as typeof SignalClient;
 
 export class PublicKey {
   private readonly nativeHandle: SignalClient.PublicKey;
