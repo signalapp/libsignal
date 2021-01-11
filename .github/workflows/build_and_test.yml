@@ -152,7 +152,7 @@ jobs:
       run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
 
     - name: Install NDK tool
-      run: cargo install cargo-ndk
+      run: cargo install --version=1.0.0 cargo-ndk
 
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
