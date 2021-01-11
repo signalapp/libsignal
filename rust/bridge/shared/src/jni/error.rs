@@ -22,7 +22,7 @@ pub enum SignalJniError {
     NullHandle,
     #[error("integer overflow during conversion of {0}")]
     IntegerOverflow(String),
-    #[error("{}", .0.downcast_ref::<&'static str>().map(|s| format!("unexpected panic: {}", s)).unwrap_or("unknown unexpected panic".to_owned()))]
+    #[error("{}", .0.downcast_ref::<&'static str>().map(|s| format!("unexpected panic: {}", s)).unwrap_or_else(|| "unknown unexpected panic".to_owned()))]
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
     #[error("exception recieved during callback {0}")]
     ExceptionDuringCallback(String),
