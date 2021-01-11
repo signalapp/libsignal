@@ -12,7 +12,7 @@ use libsignal_protocol_rust::*;
 
 use super::*;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug)]
 pub enum SignalJniError {
     #[error(transparent)]
     Signal(#[from] SignalProtocolError),
