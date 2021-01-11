@@ -5,7 +5,12 @@
   "private": true,
   "main": "node/dist/index.js",
   "types": "node/dist/index.d.ts",
+  "files": [
+    "node/dist/**",
+    "build/Release/*.node"
+  ],
   "scripts": {
+    "build": "node-gyp build",
     "tsc": "tsc -p node && cp node/*.d.ts node/dist",
     "clean": "rimraf node/dist build",
     "test": "electron-mocha --recursive node/dist/test",
