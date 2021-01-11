@@ -18,6 +18,7 @@ polyval = "0.4"
 subtle = "2.3"
 cipher = "0.2"
 generic-array = "0.14"
+thiserror = "1.0"
 
 [target.'cfg(all(target_arch = "aarch64", any(target_os = "linux")))'.dependencies]
 libc = "0.2" # for getauxval

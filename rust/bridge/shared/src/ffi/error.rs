@@ -3,56 +3,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::fmt;
-
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum SignalFfiError {
-    Signal(SignalProtocolError),
-    AesGcmSiv(AesGcmSivError),
+    #[error(transparent)]
+    Signal(#[from] SignalProtocolError),
+    #[error("AES-GCM-SIV operation failed: {0}")]
+    AesGcmSiv(#[from] AesGcmSivError),
+    #[error("needed {0} elements only {1} provided")]
     InsufficientOutputSize(usize, usize),
+    #[error("null pointer")]
     NullPointer,
+    #[error("invalid UTF8 string")]
     InvalidUtf8String,
+    // try to identify error or return unknown error
+    #[error("{}", .0.downcast_ref::<&'static str>().map(|s| format!("unexpected panic: {}", s)).unwrap_or("unknown unexpected panic".to_owned()))]
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
+    #[error("callback invocation returned error code {0}")]
     CallbackError(i32),
+    #[error("invalid type")]
     InvalidType,
-}
-
-impl fmt::Display for SignalFfiError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SignalFfiError::Signal(s) => write!(f, "{}", s),
-            SignalFfiError::CallbackError(c) => {
-                write!(f, "callback invocation returned error code {}", c)
-            }
-            SignalFfiError::AesGcmSiv(c) => {
-                write!(f, "AES-GCM-SIV operation failed: {}", c)
-            }
-            SignalFfiError::NullPointer => write!(f, "null pointer"),
-            SignalFfiError::InvalidType => write!(f, "invalid type"),
-            SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
-            SignalFfiError::InsufficientOutputSize(n, h) => {
-                write!(f, "needed {} elements only {} provided", n, h)
-            }
-
-            SignalFfiError::UnexpectedPanic(e) => match e.downcast_ref::<&'static str>() {
-                Some(s) => write!(f, "unexpected panic: {}", s),
-                None => write!(f, "unknown unexpected panic"),
-            },
-        }
-    }
-}
-
-impl From<SignalProtocolError> for SignalFfiError {
-    fn from(e: SignalProtocolError) -> SignalFfiError {
-        SignalFfiError::Signal(e)
-    }
-}
-
-impl From<AesGcmSivError> for SignalFfiError {
-    fn from(e: AesGcmSivError) -> SignalFfiError {
-        SignalFfiError::AesGcmSiv(e)
-    }
 }

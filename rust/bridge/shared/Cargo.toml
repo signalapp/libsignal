@@ -14,6 +14,7 @@ license = "AGPL-3.0-only"
 libsignal-protocol-rust = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
 paste = "1.0"
+thiserror = "1.0"
 
 libc = { version = "0.2", optional = true }
 jni = { version = "0.17", optional = true }

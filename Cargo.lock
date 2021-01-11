@@ -41,6 +41,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subtle",
+ "thiserror",
 ]
 
 [[package]]
@@ -849,6 +850,7 @@ dependencies = [
  "libc",
  "libsignal-protocol-rust",
  "paste",
+ "thiserror",
 ]
 
 [[package]]
