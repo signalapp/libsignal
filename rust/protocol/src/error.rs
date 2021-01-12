@@ -106,3 +106,29 @@ pub enum SignalProtocolError {
     #[error("self send of a sealed sender message")]
     SealedSenderSelfSend,
 }
+
+#[cfg(test)]
+mod formatting_tests {
+    use super::SignalProtocolError::ApplicationCallbackThrewException;
+    #[test]
+    fn test_application_callback_threw_named_exception() {
+        let err = ApplicationCallbackThrewException(
+            "callback_name",
+            Some("exception_name".to_owned()),
+            "an error message".to_owned(),
+        );
+
+        assert_eq!(err.to_string(), "application callback callback_name threw exception exception_name with message an error message")
+    }
+
+    #[test]
+    fn test_application_callback_threw_unknown_exception() {
+        let err =
+            ApplicationCallbackThrewException("callback_name", None, "an error message".to_owned());
+
+        assert_eq!(
+            err.to_string(),
+            "application callback callback_name threw exception with message an error message"
+        )
+    }
+}
