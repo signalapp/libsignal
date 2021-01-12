@@ -123,3 +123,22 @@ impl fmt::Debug for ThrownException {
 }
 
 impl std::error::Error for ThrownException {}
+
+#[cfg(test)]
+mod formatting_tests {
+    use super::SignalJniError::UnexpectedPanic;
+
+    #[test]
+    fn test_unexpected_panic_downcast() {
+        let err = UnexpectedPanic(Box::new("error message"));
+        
+        assert_eq!(err.to_string(), "unexpected panic: error message")
+    }
+
+    #[test]
+    fn test_unexpected_panic_no_downcast() {
+        let err = UnexpectedPanic(Box::new(0));
+
+        assert_eq!(err.to_string(), "unknown unexpected panic")
+    }
+}
