@@ -58,7 +58,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::InvalidType => SignalErrorCode::InvalidType,
             SignalFfiError::UnexpectedPanic(_) => SignalErrorCode::InternalError,
 
-            SignalFfiError::CallbackError(_) => SignalErrorCode::CallbackError,
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
             SignalFfiError::InsufficientOutputSize(_, _) => SignalErrorCode::InsufficientOutputSize,
 
@@ -137,6 +136,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
             | SignalFfiError::AesGcmSiv(_) => SignalErrorCode::InvalidArgument,
+
+            SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
+                SignalErrorCode::CallbackError
+            }
 
             _ => SignalErrorCode::UnknownError,
         }

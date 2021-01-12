@@ -5,7 +5,7 @@
 
 use futures::pin_mut;
 use futures::task::noop_waker_ref;
-use jni::objects::{JObject, JString, JThrowable, JValue};
+use jni::objects::{JObject, JValue};
 use jni::sys::{jint, jlong, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
@@ -87,92 +87,6 @@ pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, 
     }
 }
 
-pub fn call_method_with_exception_as_null<'a>(
-    env: &JNIEnv<'a>,
-    obj: impl Into<JObject<'a>>,
-    fn_name: &'static str,
-    sig: &'static str,
-    args: &[JValue<'_>],
-    exception_to_treat_as_null: Option<&'static str>,
-) -> Result<JValue<'a>, SignalJniError> {
-    // Note that we are *not* unwrapping the result yet!
-    // We need to check for exceptions *first*.
-    let result = env.call_method(obj, fn_name, sig, args);
-
-    fn exception_class_name(env: &JNIEnv, exn: JThrowable) -> Result<String, SignalJniError> {
-        let class_type = env.call_method(exn, "getClass", "()Ljava/lang/Class;", &[])?;
-        if let JValue::Object(class_type) = class_type {
-            let class_name =
-                env.call_method(class_type, "getCanonicalName", "()Ljava/lang/String;", &[])?;
-
-            if let JValue::Object(class_name) = class_name {
-                let class_name: String = env.get_string(JString::from(class_name))?.into();
-                Ok(class_name)
-            } else {
-                Err(SignalJniError::UnexpectedJniResultType(
-                    "getCanonicalName",
-                    class_name.type_name(),
-                ))
-            }
-        } else {
-            Err(SignalJniError::UnexpectedJniResultType(
-                "getClass",
-                class_type.type_name(),
-            ))
-        }
-    }
-
-    if env.exception_check()? {
-        let throwable = env.exception_occurred()?;
-        env.exception_clear()?;
-
-        if let Some(exception_to_treat_as_null) = exception_to_treat_as_null {
-            if env.is_instance_of(throwable, exception_to_treat_as_null)? {
-                return Ok(JValue::Object(JObject::null()));
-            }
-        }
-
-        let getmessage_sig = "()Ljava/lang/String;";
-
-        let exn_type = exception_class_name(env, throwable).ok();
-        // Clear again in case we got an exception looking up the class name.
-        env.exception_clear()?;
-
-        if let Ok(jmessage) = env.call_method(throwable, "getMessage", getmessage_sig, &[]) {
-            if let JValue::Object(o) = jmessage {
-                let message: String = env.get_string(JString::from(o))?.into();
-                return Err(SignalJniError::Signal(
-                    SignalProtocolError::ApplicationCallbackThrewException(
-                        fn_name, exn_type, message,
-                    ),
-                ));
-            }
-        }
-        // Clear *again* in case we got an exception reading the message.
-        env.exception_clear()?;
-
-        return Err(SignalJniError::Signal(
-            SignalProtocolError::ApplicationCallbackThrewException(
-                fn_name,
-                exn_type,
-                "<exception did not implement getMessage>".to_string(),
-            ),
-        ));
-    }
-
-    Ok(result?)
-}
-
-pub fn call_method_checked<'a>(
-    env: &JNIEnv<'a>,
-    obj: impl Into<JObject<'a>>,
-    fn_name: &'static str,
-    sig: &'static str,
-    args: &[JValue<'_>],
-) -> Result<JValue<'a>, SignalJniError> {
-    call_method_with_exception_as_null(env, obj, fn_name, sig, args, None)
-}
-
 pub fn check_jobject_type(
     env: &JNIEnv,
     obj: jobject,
@@ -197,16 +111,8 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_args: &[JValue],
     callback_sig: &'static str,
     callback_fn: &'static str,
-    exception_to_treat_as_none: Option<&'static str>,
 ) -> Result<Option<T>, SignalJniError> {
-    let rvalue = call_method_with_exception_as_null(
-        env,
-        store_obj,
-        callback_fn,
-        callback_sig,
-        &callback_args,
-        exception_to_treat_as_none,
-    )?;
+    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
 
     let obj = match rvalue {
         JValue::Object(o) => *o,

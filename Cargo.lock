@@ -848,6 +848,7 @@ dependencies = [
  "jni",
  "libc",
  "libsignal-protocol-rust",
+ "log",
  "paste",
 ]
 
