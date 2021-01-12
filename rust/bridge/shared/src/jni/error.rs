@@ -61,7 +61,7 @@ mod formatting_tests {
     #[test]
     fn test_unexpected_panic_downcast() {
         let err = UnexpectedPanic(Box::new("error message"));
-        
+
         assert_eq!(err.to_string(), "unexpected panic: error message")
     }
 
