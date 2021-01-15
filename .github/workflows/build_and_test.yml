@@ -107,6 +107,9 @@ jobs:
     - name: Run tests
       run: cargo test --all --verbose
 
+    - name: Build benches
+      run: cargo build --benches --verbose
+
     - name: Clippy
       run: cargo clippy --all -- -D warnings
 
