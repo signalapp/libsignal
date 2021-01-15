@@ -119,20 +119,6 @@ ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 ffi_fn_clone!(signal_publickey_clone clones PublicKey);
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_privatekey_generate(
-    key: *mut *mut PrivateKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let mut rng = rand::rngs::OsRng;
-        let keypair = KeyPair::generate(&mut rng);
-        box_object::<PrivateKey>(key, Ok(keypair.private_key))
-    })
-}
-
-ffi_fn_get_new_boxed_obj!(signal_privatekey_get_public_key(PublicKey) from PrivateKey,
-                          |k: &PrivateKey| k.public_key());
-
-#[no_mangle]
 pub unsafe extern "C" fn signal_privatekey_sign(
     signature: *mut *const c_uchar,
     signature_len: *mut size_t,

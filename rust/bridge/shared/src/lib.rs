@@ -25,6 +25,7 @@ pub mod jni;
 mod support;
 use support::*;
 
+bridge_handle!(PrivateKey);
 bridge_handle!(ProtocolAddress);
 bridge_handle!(PublicKey);
 bridge_handle!(SignalMessage);
@@ -81,6 +82,18 @@ bridge_get_bytearray!(
     jni = ECPrivateKey_1Serialize =>
     |k| Ok(k.serialize())
 );
+
+#[bridge_fn(ffi = "privatekey_generate")]
+fn ECPrivateKey_Generate() -> PrivateKey {
+    let mut rng = rand::rngs::OsRng;
+    let keypair = KeyPair::generate(&mut rng);
+    keypair.private_key
+}
+
+#[bridge_fn(ffi = "privatekey_get_public_key")]
+fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey, SignalProtocolError> {
+    k.public_key()
+}
 
 bridge_destroy!(Fingerprint, jni = NumericFingerprintGenerator);
 bridge_get_bytearray!(

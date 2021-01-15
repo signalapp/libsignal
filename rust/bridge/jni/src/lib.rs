@@ -45,21 +45,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Des
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Generate(
-    env: JNIEnv,
-    _class: JClass,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let mut rng = rand::rngs::OsRng;
-        let keypair = KeyPair::generate(&mut rng);
-        box_object::<PrivateKey>(Ok(keypair.private_key))
-    })
-}
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ECPrivateKey_1GetPublicKey(PublicKey) from PrivateKey,
-                          PrivateKey::public_key);
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Sign(
     env: JNIEnv,
     _class: JClass,
