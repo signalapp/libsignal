@@ -25,6 +25,11 @@ pub mod jni;
 mod support;
 use support::*;
 
+bridge_handle!(ProtocolAddress);
+bridge_handle!(PublicKey);
+bridge_handle!(SignalMessage);
+bridge_handle!(PreKeySignalMessage);
+
 bridge_destroy!(ProtocolAddress, ffi = address);
 bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
     |p| Ok(p.name())

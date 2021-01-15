@@ -87,28 +87,23 @@ impl ResultTypeInfo for String {
     }
 }
 
-macro_rules! native_handle {
+macro_rules! ffi_bridge_handle {
     ($typ:ty) => {
-        impl ArgTypeInfo for &'static $typ {
+        impl ffi::ArgTypeInfo for &'static $typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *const $typ) -> Result<Self, SignalFfiError> {
-                unsafe { native_handle_cast(foreign) }
+            fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
+                unsafe { ffi::native_handle_cast(foreign) }
             }
         }
-        impl ResultTypeInfo for $typ {
+        impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
-            fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+            fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
                 Ok(Box::into_raw(Box::new(self)))
             }
         }
     };
 }
-
-native_handle!(ProtocolAddress);
-native_handle!(PublicKey);
-native_handle!(SignalMessage);
-native_handle!(PreKeySignalMessage);
 
 macro_rules! trivial {
     ($typ:ty) => {
