@@ -3,14 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures::pin_mut;
-use futures::task::noop_waker_ref;
 use libc::{c_char, c_uchar, c_uint, c_ulonglong, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
 use std::ffi::CStr;
-use std::future::Future;
-use std::task::{self, Poll};
 
 use aes_gcm_siv::Error as AesGcmSivError;
 
@@ -143,15 +139,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             _ => SignalErrorCode::UnknownError,
         }
-    }
-}
-
-#[track_caller]
-pub fn expect_ready<F: Future>(future: F) -> F::Output {
-    pin_mut!(future);
-    match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
-        Poll::Ready(result) => result,
-        Poll::Pending => panic!("future was not ready"),
     }
 }
 

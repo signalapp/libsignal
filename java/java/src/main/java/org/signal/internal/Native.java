@@ -86,7 +86,7 @@ public final class Native {
   public static native void ECPublicKey_Destroy(long handle);
   public static native byte[] ECPublicKey_GetPublicKeyBytes(long handle);
   public static native byte[] ECPublicKey_Serialize(long handle);
-  public static native boolean ECPublicKey_Verify(long handle, byte[] message, byte[] signature);
+  public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
   public static native byte[] GroupCipher_DecryptMessage(long senderKeyName, byte[] message, SenderKeyStore store);
   public static native byte[] GroupCipher_EncryptMessage(long senderKeyName, byte[] message, SenderKeyStore store);
@@ -133,7 +133,7 @@ public final class Native {
   public static native byte[] PreKeySignalMessage_GetSignalMessage(long handle);
   public static native int PreKeySignalMessage_GetSignedPreKeyId(long handle);
   public static native int PreKeySignalMessage_GetVersion(long handle);
-  public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKeyHandle, long identityKeyHandle, long signalMessageHandle);
+  public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKey, long identityKey, long signalMessage);
 
   public static native void ProtocolAddress_Destroy(long handle);
   public static native int ProtocolAddress_DeviceId(long handle);
@@ -230,7 +230,7 @@ public final class Native {
   public static native byte[] SignalMessage_GetSenderRatchetKey(long handle);
   public static native byte[] SignalMessage_GetSerialized(long handle);
   public static native long SignalMessage_New(int messageVersion, byte[] macKey, long senderRatchetKey, int counter, int previousCounter, byte[] ciphertext, long senderIdentityKey, long receiverIdentityKey);
-  public static native boolean SignalMessage_VerifyMac(long handle, long senderIdentityKey, long receiverIdentityKey, byte[] macKey);
+  public static native boolean SignalMessage_VerifyMac(long msg, long senderIdentityKey, long receiverIdentityKey, byte[] macKey);
 
   public static native long SignedPreKeyRecord_Deserialize(byte[] data);
   public static native void SignedPreKeyRecord_Destroy(long handle);

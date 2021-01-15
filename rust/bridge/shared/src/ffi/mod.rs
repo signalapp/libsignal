@@ -7,8 +7,14 @@ use libc::{c_char, c_uchar, size_t};
 use libsignal_protocol_rust::*;
 use std::ffi::CString;
 
+#[macro_use]
+mod convert;
+pub(crate) use convert::*;
+
 mod error;
 pub use error::*;
+
+pub use crate::support::expect_ready;
 
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,

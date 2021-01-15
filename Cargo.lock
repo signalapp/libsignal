@@ -845,11 +845,25 @@ name = "libsignal-bridge"
 version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
+ "futures",
  "jni",
  "libc",
+ "libsignal-bridge-macros",
  "libsignal-protocol-rust",
  "log",
  "paste",
+]
+
+[[package]]
+name = "libsignal-bridge-macros"
+version = "0.1.0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "syn-mid",
+ "unzip3",
 ]
 
 [[package]]
@@ -858,7 +872,6 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
- "futures",
  "libc",
  "libsignal-bridge",
  "libsignal-protocol-rust",
@@ -873,7 +886,6 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
- "futures",
  "jni",
  "libsignal-bridge",
  "libsignal-protocol-rust",
@@ -1623,6 +1635,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "syn-mid"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baa8e7560a164edb1621a55d18a0c59abf49d360f47aa7b821061dd7eea7fac9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "synstructure"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1751,6 +1774,12 @@ dependencies = [
  "generic-array",
  "subtle",
 ]
+
+[[package]]
+name = "unzip3"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99c0ec316ab08201476c032feb2f94a5c8ece5b209765c1fbc4430dd6e931ad6"
 
 [[package]]
 name = "ureq"

@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JString, JValue};
-use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jobject, jstring};
+use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -26,21 +26,6 @@ type JavaSignedPreKeyStore = jobject;
 type JavaCiphertextMessage = jobject;
 type JavaSenderKeyStore = jobject;
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ProtocolAddress_1New(
-    env: JNIEnv,
-    _class: JClass,
-    name: JString,
-    device_id: jint,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let name: String = env.get_string(name)?.into();
-        let device_id = jint_to_u32(device_id)?;
-        let address = ProtocolAddress::new(name, device_id);
-        box_object::<ProtocolAddress>(Ok(address))
-    })
-}
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_ProtocolAddress_1DeviceId(ProtocolAddress) using
                  |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
@@ -56,41 +41,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Des
         let data = env.convert_byte_array(data)?;
         let key = PublicKey::deserialize(&data[offset..])?;
         box_object::<PublicKey>(Ok(key))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Compare(
-    env: JNIEnv,
-    _class: JClass,
-    key1: ObjectHandle,
-    key2: ObjectHandle,
-) -> jint {
-    run_ffi_safe(&env, || {
-        let key1 = native_handle_cast::<PublicKey>(key1)?;
-        let key2 = native_handle_cast::<PublicKey>(key2)?;
-
-        match key1.cmp(&key2) {
-            std::cmp::Ordering::Less => Ok(-1),
-            std::cmp::Ordering::Equal => Ok(0),
-            std::cmp::Ordering::Greater => Ok(1),
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Verify(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    message: jbyteArray,
-    signature: jbyteArray,
-) -> jboolean {
-    run_ffi_safe(&env, || {
-        let key = native_handle_cast::<PublicKey>(handle)?;
-        let message = env.convert_byte_array(message)?;
-        let signature = env.convert_byte_array(signature)?;
-        Ok(key.verify_signature(&message, &signature)? as jboolean)
     })
 }
 
@@ -177,22 +127,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_DisplayableFingerprint_1Format(
-    env: JNIEnv,
-    _class: JClass,
-    local: jbyteArray,
-    remote: jbyteArray,
-) -> jstring {
-    run_ffi_safe(&env, || {
-        let local = env.convert_byte_array(local)?;
-        let remote = env.convert_byte_array(remote)?;
-        let fingerprint = DisplayableFingerprint::new(&local, &remote)?;
-        let result = env.new_string(format!("{}", fingerprint))?;
-        Ok(result.into_inner())
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1New(
     env: JNIEnv,
     _class: JClass,
@@ -225,22 +159,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerpri
         )?;
 
         box_object::<Fingerprint>(Ok(fprint))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ScannableFingerprint_1Compare(
-    env: JNIEnv,
-    _class: JClass,
-    fprint1: jbyteArray,
-    fprint2: jbyteArray,
-) -> jboolean {
-    run_ffi_safe(&env, || {
-        let fprint1 = env.convert_byte_array(fprint1)?;
-        let fprint2 = env.convert_byte_array(fprint2)?;
-
-        let fprint1 = ScannableFingerprint::deserialize(&fprint1)?;
-        Ok(fprint1.compare(&fprint2)? as jboolean)
     })
 }
 
@@ -283,113 +201,11 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1New(
-    env: JNIEnv,
-    _class: JClass,
-    message_version: jint,
-    mac_key: jbyteArray,
-    sender_ratchet_key: ObjectHandle,
-    counter: jint,
-    previous_counter: jint,
-    ciphertext: jbyteArray,
-    sender_identity_key: ObjectHandle,
-    receiver_identity_key: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let message_version = jint_to_u8(message_version)?;
-        let mac_key = env.convert_byte_array(mac_key)?;
-        let sender_ratchet_key = native_handle_cast::<PublicKey>(sender_ratchet_key)?;
-        let counter = jint_to_u32(counter)?;
-        let previous_counter = jint_to_u32(previous_counter)?;
-        let ciphertext = env.convert_byte_array(ciphertext)?;
-
-        let sender_identity_key = native_handle_cast::<PublicKey>(sender_identity_key)?;
-        let receiver_identity_key = native_handle_cast::<PublicKey>(receiver_identity_key)?;
-
-        let msg = SignalMessage::new(
-            message_version,
-            &mac_key,
-            *sender_ratchet_key,
-            counter,
-            previous_counter,
-            &ciphertext,
-            &IdentityKey::new(*sender_identity_key),
-            &IdentityKey::new(*receiver_identity_key),
-        )?;
-
-        box_object::<SignalMessage>(Ok(msg))
-    })
-}
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetMessageVersion(SignalMessage) using
                  |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetCounter(SignalMessage) using
                  |msg: &SignalMessage| { Ok(msg.counter()) });
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SignalMessage_1VerifyMac(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    sender_identity_key: ObjectHandle,
-    receiver_identity_key: ObjectHandle,
-    mac_key: jbyteArray,
-) -> jboolean {
-    run_ffi_safe(&env, || {
-        let msg = native_handle_cast::<SignalMessage>(handle)?;
-        let sender_identity_key = native_handle_cast::<PublicKey>(sender_identity_key)?;
-        let receiver_identity_key = native_handle_cast::<PublicKey>(receiver_identity_key)?;
-        let mac_key = env.convert_byte_array(mac_key)?;
-
-        let valid = msg.verify_mac(
-            &IdentityKey::new(*sender_identity_key),
-            &IdentityKey::new(*receiver_identity_key),
-            &mac_key,
-        )?;
-
-        Ok(valid as jboolean)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1New(
-    env: JNIEnv,
-    _class: JClass,
-    message_version: jint,
-    registration_id: jint,
-    pre_key_id: jint,
-    signed_pre_key_id: jint,
-    base_key_handle: ObjectHandle,
-    identity_key_handle: ObjectHandle,
-    signal_message_handle: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let message_version = message_version as u8;
-        let registration_id = jint_to_u32(registration_id)?;
-        let pre_key_id = if pre_key_id < 0 {
-            None
-        } else {
-            Some(jint_to_u32(pre_key_id)?)
-        };
-        let signed_pre_key_id = jint_to_u32(signed_pre_key_id)?;
-        let base_key = native_handle_cast::<PublicKey>(base_key_handle)?;
-        let identity_key = native_handle_cast::<PublicKey>(identity_key_handle)?;
-        let signal_message = native_handle_cast::<SignalMessage>(signal_message_handle)?;
-
-        let msg = PreKeySignalMessage::new(
-            message_version,
-            registration_id,
-            pre_key_id,
-            signed_pre_key_id,
-            *base_key,
-            IdentityKey::new(*identity_key),
-            signal_message.clone(),
-        );
-        box_object::<PreKeySignalMessage>(msg)
-    })
-}
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetVersion(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.message_version() as u32));

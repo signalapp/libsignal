@@ -3,14 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures::pin_mut;
-use futures::task::noop_waker_ref;
 use jni::objects::{JObject, JValue};
 use jni::sys::{jint, jlong, jobject};
 use jni::JNIEnv;
-use std::convert::TryFrom;
-use std::future::Future;
-use std::task::{self, Poll};
 
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::SignalProtocolError;
@@ -25,34 +20,11 @@ pub unsafe fn native_handle_cast_optional<T>(
     Ok(Some(&mut *(handle as *mut T)))
 }
 
-#[track_caller]
-pub fn expect_ready<F: Future>(future: F) -> F::Output {
-    pin_mut!(future);
-    match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
-        Poll::Ready(result) => result,
-        Poll::Pending => panic!("future was not ready"),
-    }
-}
-
-pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
-    if v < 0 {
-        return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
-    }
-    Ok(v as u32)
-}
-
 pub fn jlong_to_u64(v: jlong) -> Result<u64, SignalJniError> {
     if v < 0 {
         return Err(SignalJniError::IntegerOverflow(format!("{} to u64", v)));
     }
     Ok(v as u64)
-}
-
-pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
-    match u8::try_from(v) {
-        Err(_) => Err(SignalJniError::IntegerOverflow(format!("{} to u8", v))),
-        Ok(v) => Ok(v),
-    }
 }
 
 pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {

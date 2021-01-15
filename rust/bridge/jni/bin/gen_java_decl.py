@@ -35,7 +35,11 @@ cbindgen = subprocess.Popen(['cbindgen'], cwd=os.path.join(our_abs_dir, '..'), s
 stdout = str(stdout.decode('utf8'))
 stderr = str(stderr.decode('utf8'))
 
-ignore_this_warning = re.compile(r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.")
+ignore_this_warning = re.compile(
+    "("
+    r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
+    r"WARN: Missing `\[defines\]` entry for `feature = \"jni\"` in cbindgen config\."
+    ")")
 
 unknown_warning = False
 

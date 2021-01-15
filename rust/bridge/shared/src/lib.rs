@@ -6,6 +6,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 use aes_gcm_siv::Aes256GcmSiv;
+use libsignal_bridge_macros::*;
 use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
 
@@ -24,10 +25,20 @@ pub mod jni;
 mod support;
 use support::*;
 
+bridge_handle!(ProtocolAddress);
+bridge_handle!(PublicKey);
+bridge_handle!(SignalMessage);
+bridge_handle!(PreKeySignalMessage);
+
 bridge_destroy!(ProtocolAddress, ffi = address);
 bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
     |p| Ok(p.name())
 );
+
+#[bridge_fn(ffi = "address_new")]
+fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
+    ProtocolAddress::new(name, device_id)
+}
 
 bridge_destroy!(PublicKey, ffi = publickey, jni = ECPublicKey);
 bridge_deserialize!(PublicKey::deserialize, ffi = publickey, jni = None);
@@ -39,6 +50,24 @@ bridge_get_bytearray!(
     jni = ECPublicKey_1GetPublicKeyBytes =>
     PublicKey::public_key_bytes
 );
+
+#[bridge_fn(ffi = "publickey_compare")]
+fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
+    match key1.cmp(&key2) {
+        std::cmp::Ordering::Less => -1,
+        std::cmp::Ordering::Equal => 0,
+        std::cmp::Ordering::Greater => 1,
+    }
+}
+
+#[bridge_fn(ffi = "publickey_verify")]
+fn ECPublicKey_Verify(
+    key: &PublicKey,
+    message: &[u8],
+    signature: &[u8],
+) -> Result<bool, SignalProtocolError> {
+    key.verify_signature(&message, &signature)
+}
 
 bridge_destroy!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
 bridge_deserialize!(
@@ -62,6 +91,20 @@ bridge_get_bytearray!(
 bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerator_1GetDisplayString =>
     Fingerprint::display_string
 );
+#[bridge_fn(ffi = "fingerprint_format")]
+fn DisplayableFingerprint_Format(
+    local: &[u8],
+    remote: &[u8],
+) -> Result<String, SignalProtocolError> {
+    DisplayableFingerprint::new(&local, &remote).map(|f| f.to_string())
+}
+#[bridge_fn(ffi = "fingerprint_compare")]
+fn ScannableFingerprint_Compare(
+    fprint1: &[u8],
+    fprint2: &[u8],
+) -> Result<bool, SignalProtocolError> {
+    ScannableFingerprint::deserialize(&fprint1)?.compare(fprint2)
+}
 
 bridge_destroy!(SignalMessage, ffi = message);
 bridge_deserialize!(SignalMessage::try_from, ffi = message);
@@ -74,6 +117,64 @@ bridge_get_bytearray!(get_body(SignalMessage), ffi = message_get_body =>
 bridge_get_bytearray!(get_serialized(SignalMessage), ffi = message_get_serialized =>
     |m| Ok(m.serialized())
 );
+
+#[bridge_fn(ffi = "message_new")]
+fn SignalMessage_New(
+    message_version: u8,
+    mac_key: &[u8],
+    sender_ratchet_key: &PublicKey,
+    counter: u32,
+    previous_counter: u32,
+    ciphertext: &[u8],
+    sender_identity_key: &PublicKey,
+    receiver_identity_key: &PublicKey,
+) -> Result<SignalMessage, SignalProtocolError> {
+    SignalMessage::new(
+        message_version,
+        mac_key,
+        *sender_ratchet_key,
+        counter,
+        previous_counter,
+        ciphertext,
+        &IdentityKey::new(*sender_identity_key),
+        &IdentityKey::new(*receiver_identity_key),
+    )
+}
+
+#[bridge_fn(ffi = "message_verify_mac")]
+fn SignalMessage_VerifyMac(
+    msg: &SignalMessage,
+    sender_identity_key: &PublicKey,
+    receiver_identity_key: &PublicKey,
+    mac_key: &[u8],
+) -> Result<bool, SignalProtocolError> {
+    msg.verify_mac(
+        &IdentityKey::new(*sender_identity_key),
+        &IdentityKey::new(*receiver_identity_key),
+        &mac_key,
+    )
+}
+
+#[bridge_fn]
+fn PreKeySignalMessage_New(
+    message_version: u8,
+    registration_id: u32,
+    pre_key_id: Option<u32>,
+    signed_pre_key_id: u32,
+    base_key: &PublicKey,
+    identity_key: &PublicKey,
+    signal_message: &SignalMessage,
+) -> Result<PreKeySignalMessage, SignalProtocolError> {
+    PreKeySignalMessage::new(
+        message_version,
+        registration_id,
+        pre_key_id,
+        signed_pre_key_id,
+        *base_key,
+        IdentityKey::new(*identity_key),
+        signal_message.clone(),
+    )
+}
 
 bridge_destroy!(PreKeySignalMessage);
 bridge_deserialize!(PreKeySignalMessage::try_from);

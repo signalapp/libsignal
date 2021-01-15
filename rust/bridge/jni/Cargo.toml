@@ -21,6 +21,5 @@ libsignal-protocol-rust = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
 libsignal-bridge = { path = "../shared", features = ["jni"] }
 async-trait = "0.1.41"
-futures = "0.3.7"
 jni = "0.17"
 rand = "0.7.3"

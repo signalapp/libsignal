@@ -29,12 +29,10 @@ public class PreKeySignalMessage {
                 identityKey: PublicKey,
                 message: SignalMessage) throws {
 
-        var preKeyId = preKeyId ?? 0xFFFFFFFF
-
         try checkError(signal_pre_key_signal_message_new(&handle,
                                                          version,
                                                          registrationId,
-                                                         &preKeyId,
+                                                         preKeyId ?? .max,
                                                          signedPreKeyId,
                                                          baseKey.nativeHandle,
                                                          identityKey.nativeHandle,
