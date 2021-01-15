@@ -111,31 +111,29 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     }
 }
 
-macro_rules! native_handle {
+macro_rules! jni_bridge_handle {
     ($typ:ty) => {
-        impl<'a> RefArgTypeInfo<'a> for &$typ {
-            type ArgType = ObjectHandle;
+        impl<'a> jni::RefArgTypeInfo<'a> for &$typ {
+            type ArgType = jni::ObjectHandle;
             type StoredType = &'static $typ;
             fn convert_from(
-                _env: &'a JNIEnv,
+                _env: &'a jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> Result<Self::StoredType, SignalJniError> {
-                Ok(unsafe { native_handle_cast(foreign) }?)
+            ) -> Result<Self::StoredType, jni::SignalJniError> {
+                Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
-        impl ResultTypeInfo for $typ {
-            type ResultType = ObjectHandle;
-            fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
-                box_object(Ok(self))
+        impl jni::ResultTypeInfo for $typ {
+            type ResultType = jni::ObjectHandle;
+            fn convert_into(
+                self,
+                _env: &jni::JNIEnv,
+            ) -> Result<Self::ResultType, jni::SignalJniError> {
+                jni::box_object(Ok(self))
             }
         }
     };
 }
-
-native_handle!(PublicKey);
-native_handle!(ProtocolAddress);
-native_handle!(SignalMessage);
-native_handle!(PreKeySignalMessage);
 
 macro_rules! trivial {
     ($typ:ty) => {
