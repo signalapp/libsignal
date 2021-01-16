@@ -480,7 +480,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        for i in 0..2001 {
+        for i in 0..25001 {
             group_encrypt(
                 &mut alice_store,
                 &group_sender,
