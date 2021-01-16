@@ -129,6 +129,13 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        T::convert_into(self?, env)
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -215,7 +222,7 @@ macro_rules! jni_arg_type {
 }
 
 macro_rules! jni_result_type {
-    (Result<$typ:tt, $_:tt>) => {
+    (Result<$typ:tt, $_:ty>) => {
         jni_result_type!($typ)
     };
     (bool) => {

@@ -91,6 +91,13 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        T::convert_into(self?)
+    }
+}
+
 impl ResultTypeInfo for String {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
@@ -163,7 +170,7 @@ macro_rules! ffi_arg_type {
 }
 
 macro_rules! ffi_result_type {
-    (Result<$typ:tt, $_:tt>) => (ffi_result_type!($typ));
+    (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
     (i32) => (i32);
     (bool) => (bool);
     (String) => (*const libc::c_char);

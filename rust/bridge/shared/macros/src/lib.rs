@@ -56,7 +56,7 @@ fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
                 out_len: *mut libc::size_t, // note the trailing comma
             ),
             quote!(ffi::Env,), // note the trailing comma
-            quote!(ffi::write_bytearray_to(out, out_len, __result)?),
+            quote!(ffi::write_bytearray_to(out, out_len, __result?)?),
         ),
         (ResultKind::Buffer, ReturnType::Default) => {
             return Error::new(

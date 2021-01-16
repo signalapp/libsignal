@@ -14,8 +14,6 @@ use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 use std::fmt;
 
-use aes_gcm_siv::Aes256GcmSiv;
-
 pub mod logging;
 mod util;
 
@@ -892,7 +890,7 @@ pub unsafe extern "C" fn signal_ciphertext_message_serialize(
     run_ffi_safe(|| {
         let msg = native_handle_cast::<CiphertextMessage>(msg)?;
         let bits = msg.serialize();
-        write_bytearray_to(result, result_len, Ok(bits))
+        write_bytearray_to(result, result_len, bits)
     })
 }
 
@@ -921,7 +919,7 @@ pub unsafe extern "C" fn signal_decrypt_message(
             &mut identity_key_store,
             &mut csprng,
             Some(ctx),
-        ));
+        ))?;
         write_bytearray_to(result, result_len, ptext)
     })
 }
@@ -956,7 +954,7 @@ pub unsafe extern "C" fn signal_decrypt_pre_key_message(
             &mut signed_prekey_store,
             &mut csprng,
             Some(ctx),
-        ));
+        ))?;
 
         write_bytearray_to(result, result_len, ptext)
     })
@@ -1116,7 +1114,7 @@ pub unsafe extern "C" fn signal_group_encrypt_message(
             &message,
             &mut rng,
             Some(ctx),
-        ));
+        ))?;
         write_bytearray_to(out, out_len, ctext)
     })
 }
@@ -1141,7 +1139,7 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
             &mut sender_key_store,
             &sender_key_name,
             Some(ctx),
-        ));
+        ))?;
         write_bytearray_to(out, out_len, ptext)
     })
 }
@@ -1208,7 +1206,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_encrypt(
             Some(ctx),
             &mut rng,
         ))?;
-        write_bytearray_to(out, out_len, Ok(ctext))
+        write_bytearray_to(out, out_len, ctext)
     })
 }
 
@@ -1282,69 +1280,6 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
         write_optional_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
         write_uint32_to(sender_device_id, Ok(decrypted.device_id))?;
-        write_bytearray_to(out, out_len, Ok(decrypted.message))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_aes256_gcm_siv_new(
-    obj: *mut *mut Aes256GcmSiv,
-    key: *const c_uchar,
-    key_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let key = as_slice(key, key_len)?;
-        let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
-        box_object::<Aes256GcmSiv>(obj, Ok(aes_gcm_siv))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_aes256_gcm_siv_encrypt(
-    aes_gcm_siv: *const Aes256GcmSiv,
-    ctext: *mut *const c_uchar,
-    ctext_len: *mut size_t,
-    ptext: *const c_uchar,
-    ptext_len: size_t,
-    nonce: *const c_uchar,
-    nonce_len: size_t,
-    associated_data: *const c_uchar,
-    associated_data_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
-        let ptext = as_slice(ptext, ptext_len)?;
-        let nonce = as_slice(nonce, nonce_len)?;
-        let associated_data = as_slice(associated_data, associated_data_len)?;
-
-        let mut buf = Vec::with_capacity(ptext.len() + 16);
-        buf.extend_from_slice(ptext);
-
-        let gcm_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &associated_data)?;
-        buf.extend_from_slice(&gcm_tag);
-
-        write_bytearray_to(ctext, ctext_len, Ok(buf))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_aes256_gcm_siv_decrypt(
-    aes_gcm_siv: *const Aes256GcmSiv,
-    ptext: *mut *const c_uchar,
-    ptext_len: *mut size_t,
-    ctext: *const c_uchar,
-    ctext_len: size_t,
-    nonce: *const c_uchar,
-    nonce_len: size_t,
-    associated_data: *const c_uchar,
-    associated_data_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let aes_gcm_siv = native_handle_cast::<Aes256GcmSiv>(aes_gcm_siv)?;
-        let mut buf = as_slice(ctext, ctext_len)?.to_vec();
-        let nonce = as_slice(nonce, nonce_len)?;
-        let associated_data = as_slice(associated_data, associated_data_len)?;
-        aes_gcm_siv.decrypt_with_appended_tag(&mut buf, &nonce, &associated_data)?;
-        write_bytearray_to(ptext, ptext_len, Ok(buf))
+        write_bytearray_to(out, out_len, decrypted.message)
     })
 }
