@@ -111,6 +111,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(_))
+            | SignalFfiError::Signal(SignalProtocolError::MessageDecryptionFailed(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_)) => {
                 SignalErrorCode::InvalidMessage
