@@ -134,6 +134,21 @@ impl SessionState {
         Ok(self.session.sender_chain.is_some())
     }
 
+    pub(crate) fn all_receiver_chain_logging_info(&self) -> Result<Vec<(Vec<u8>, Option<u32>)>> {
+        let mut results = vec![];
+        for chain in self.session.receiver_chains.iter() {
+            let sender_ratchet_public = chain.sender_ratchet_key.clone();
+
+            let chain_key_idx = match &chain.chain_key {
+                Some(chain_key) => Some(chain_key.index),
+                None => None,
+            };
+
+            results.push((sender_ratchet_public, chain_key_idx))
+        }
+        Ok(results)
+    }
+
     pub(crate) fn get_receiver_chain(
         &self,
         sender: &curve::PublicKey,

@@ -92,6 +92,8 @@ pub enum SignalProtocolError {
     DuplicatedMessage(u32, u32),
     #[error("invalid message {0}")]
     InvalidMessage(&'static str),
+    #[error("{0}")]
+    MessageDecryptionFailed(String),
     #[error("internal error {0}")]
     InternalError(&'static str),
     #[error("error while invoking an ffi callback: {0}")]

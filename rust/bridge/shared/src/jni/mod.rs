@@ -94,6 +94,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
+        | SignalJniError::Signal(SignalProtocolError::MessageDecryptionFailed(_))
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
         | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
