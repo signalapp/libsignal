@@ -25,15 +25,46 @@ fn value_for_meta_key<'a>(
         .map(|meta| &meta.lit)
 }
 
-fn ffi_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
+#[derive(Clone, Copy)]
+enum ResultKind {
+    Regular,
+    Buffer,
+}
+
+impl ResultKind {
+    fn has_env(self) -> bool {
+        match self {
+            Self::Regular => false,
+            Self::Buffer => true,
+        }
+    }
+}
+
+fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
     let name = format_ident!("signal_{}", name);
 
-    let (output_args, output_processing) = match sig.output {
-        ReturnType::Default => (quote!(), quote!()),
-        ReturnType::Type(_, ref ty) => (
+    let (output_args, env_arg, output_processing) = match (result_kind, &sig.output) {
+        (ResultKind::Regular, ReturnType::Default) => (quote!(), quote!(), quote!()),
+        (ResultKind::Regular, ReturnType::Type(_, ref ty)) => (
             quote!(out: *mut ffi_result_type!(#ty),), // note the trailing comma
+            quote!(),
             quote!(<#ty as ffi::ResultTypeInfo>::write_to(out, __result)?),
         ),
+        (ResultKind::Buffer, ReturnType::Type(_, _)) => (
+            quote!(
+                out: *mut *const libc::c_uchar,
+                out_len: *mut libc::size_t, // note the trailing comma
+            ),
+            quote!(ffi::Env,), // note the trailing comma
+            quote!(ffi::write_bytearray_to(out, out_len, __result)?),
+        ),
+        (ResultKind::Buffer, ReturnType::Default) => {
+            return Error::new(
+                sig.paren_token.span,
+                "missing result type for bridge_fn_buffer",
+            )
+            .to_compile_error()
+        }
     };
 
     let (input_names, input_args, input_processing): (
@@ -43,6 +74,7 @@ fn ffi_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
     ) = sig
         .inputs
         .iter()
+        .skip(if result_kind.has_env() { 1 } else { 0 })
         .map(|arg| match arg {
             FnArg::Receiver(tokens) => (
                 Ident::new("self", tokens.self_token.span),
@@ -103,7 +135,7 @@ fn ffi_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
         ) -> *mut ffi::SignalFfiError {
             ffi::run_ffi_safe(|| {
                 #(#input_processing);*;
-                let __result = #orig_name(#(#input_names),*);
+                let __result = #orig_name(#env_arg #(#input_names),*);
                 #output_processing;
                 Ok(())
             })
@@ -115,12 +147,22 @@ fn ffi_name_from_ident(ident: &Ident) -> String {
     ident.to_string().to_snake_case()
 }
 
-fn jni_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
+fn jni_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
     let name = format_ident!("Java_org_signal_client_internal_Native_{}", name);
 
-    let output = match sig.output {
-        ReturnType::Default => quote!(),
-        ReturnType::Type(_, ref ty) => quote!(-> jni_result_type!(#ty)),
+    let (env_arg, output) = match (result_kind, &sig.output) {
+        (ResultKind::Regular, ReturnType::Default) => (quote!(), quote!()),
+        (ResultKind::Regular, ReturnType::Type(_, ref ty)) => {
+            (quote!(), quote!(-> jni_result_type!(#ty)))
+        }
+        (ResultKind::Buffer, ReturnType::Type(_, _)) => (quote!(&env,), quote!(-> jni::jbyteArray)),
+        (ResultKind::Buffer, ReturnType::Default) => {
+            return Error::new(
+                sig.paren_token.span,
+                "missing result type for bridge_fn_buffer",
+            )
+            .to_compile_error()
+        }
     };
 
     let (input_names, input_args, input_processing): (
@@ -130,6 +172,7 @@ fn jni_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
     ) = sig
         .inputs
         .iter()
+        .skip(if result_kind.has_env() { 1 } else { 0 })
         .map(|arg| match arg {
             FnArg::Receiver(tokens) => (
                 Ident::new("self", tokens.self_token.span),
@@ -180,7 +223,7 @@ fn jni_bridge_fn(name: String, sig: &Signature) -> TokenStream2 {
         ) #output {
             jni::run_ffi_safe(&env, || {
                 #(#input_processing);*;
-                jni::ResultTypeInfo::convert_into(#orig_name(#(#input_names),*), &env)
+                jni::ResultTypeInfo::convert_into(#orig_name(#env_arg #(#input_names),*), &env)
             })
         }
     }
@@ -190,8 +233,7 @@ fn jni_name_from_ident(ident: &Ident) -> String {
     ident.to_string().replace("_", "_1")
 }
 
-#[proc_macro_attribute]
-pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
+fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
 
     let item_names =
@@ -215,8 +257,8 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
         None => jni_name_from_ident(&function.sig.ident),
     };
 
-    let ffi_fn = ffi_bridge_fn(ffi_name, &function.sig);
-    let jni_fn = jni_bridge_fn(jni_name, &function.sig);
+    let ffi_fn = ffi_bridge_fn(ffi_name, &function.sig, result_kind);
+    let jni_fn = jni_bridge_fn(jni_name, &function.sig, result_kind);
 
     quote!(
         #[allow(non_snake_case)]
@@ -227,4 +269,14 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
         #jni_fn
     )
     .into()
+}
+
+#[proc_macro_attribute]
+pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
+    bridge_fn_impl(attr, item, ResultKind::Regular)
+}
+
+#[proc_macro_attribute]
+pub fn bridge_fn_buffer(attr: TokenStream, item: TokenStream) -> TokenStream {
+    bridge_fn_impl(attr, item, ResultKind::Buffer)
 }

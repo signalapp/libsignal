@@ -118,38 +118,6 @@ ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 
 ffi_fn_clone!(signal_publickey_clone clones PublicKey);
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_privatekey_sign(
-    signature: *mut *const c_uchar,
-    signature_len: *mut size_t,
-    key: *const PrivateKey,
-    message: *const c_uchar,
-    message_len: size_t,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let message = as_slice(message, message_len)?;
-        let key = native_handle_cast::<PrivateKey>(key)?;
-        let mut rng = rand::rngs::OsRng;
-        let sig = key.calculate_signature(&message, &mut rng);
-        write_bytearray_to(signature, signature_len, sig)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_privatekey_agree(
-    shared_secret: *mut *const c_uchar,
-    shared_secret_len: *mut size_t,
-    private_key: *const PrivateKey,
-    public_key: *const PublicKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let private_key = native_handle_cast::<PrivateKey>(private_key)?;
-        let public_key = native_handle_cast::<PublicKey>(public_key)?;
-        let dh_secret = private_key.calculate_agreement(&public_key);
-        write_bytearray_to(shared_secret, shared_secret_len, dh_secret)
-    })
-}
-
 ffi_fn_clone!(signal_privatekey_clone clones PrivateKey);
 
 #[no_mangle]

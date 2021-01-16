@@ -7,7 +7,7 @@ use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::ops::Deref;
 
 use crate::jni::*;
@@ -111,6 +111,20 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        T::convert_into(self?, env)
+    }
+}
+
+impl crate::Env for &'_ JNIEnv<'_> {
+    type Buffer = Result<jbyteArray, SignalJniError>;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer {
+        to_jbytearray(&self, Ok(input.into()))
+    }
+}
+
 macro_rules! jni_bridge_handle {
     ($typ:ty) => {
         impl<'a> jni::RefArgTypeInfo<'a> for &$typ {
@@ -153,6 +167,7 @@ macro_rules! trivial {
 }
 
 trivial!(i32);
+trivial!(jbyteArray);
 
 macro_rules! jni_arg_type {
     (u8) => {

@@ -5,6 +5,7 @@
 
 use libc::{c_char, c_uchar};
 use libsignal_protocol_rust::*;
+use std::borrow::Cow;
 use std::ffi::CStr;
 
 use crate::ffi::*;
@@ -84,6 +85,15 @@ impl ResultTypeInfo for String {
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
         let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
         Ok(cstr.into_raw())
+    }
+}
+
+pub(crate) struct Env;
+
+impl crate::Env for Env {
+    type Buffer = Box<[u8]>;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer {
+        input.into().into()
     }
 }
 

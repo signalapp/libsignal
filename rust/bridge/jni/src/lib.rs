@@ -45,37 +45,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Des
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Sign(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-    message: jbyteArray,
-) -> jbyteArray {
-    run_ffi_safe(&env, || {
-        let message = env.convert_byte_array(message)?;
-        let key = native_handle_cast::<PrivateKey>(handle)?;
-        let mut rng = rand::rngs::OsRng;
-        let sig = key.calculate_signature(&message, &mut rng)?;
-        to_jbytearray(&env, Ok(sig))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPrivateKey_1Agree(
-    env: JNIEnv,
-    _class: JClass,
-    private_key_handle: ObjectHandle,
-    public_key_handle: ObjectHandle,
-) -> jbyteArray {
-    run_ffi_safe(&env, || {
-        let private_key = native_handle_cast::<PrivateKey>(private_key_handle)?;
-        let public_key = native_handle_cast::<PublicKey>(public_key_handle)?;
-        let shared_secret = private_key.calculate_agreement(&public_key)?;
-        to_jbytearray(&env, Ok(shared_secret))
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Serialize(
     env: JNIEnv,
     _class: JClass,

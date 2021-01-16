@@ -95,6 +95,27 @@ fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey, SignalProtocol
     k.public_key()
 }
 
+#[bridge_fn_buffer(ffi = "privatekey_sign")]
+fn ECPrivateKey_Sign<T: Env>(
+    env: T,
+    key: &PrivateKey,
+    message: &[u8],
+) -> Result<T::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+    let sig = key.calculate_signature(&message, &mut rng)?;
+    Ok(env.buffer(sig.into_vec()))
+}
+
+#[bridge_fn_buffer(ffi = "privatekey_agree")]
+fn ECPrivateKey_Agree<T: Env>(
+    env: T,
+    private_key: &PrivateKey,
+    public_key: &PublicKey,
+) -> Result<T::Buffer, SignalProtocolError> {
+    let dh_secret = private_key.calculate_agreement(&public_key)?;
+    Ok(env.buffer(dh_secret.into_vec()))
+}
+
 bridge_destroy!(Fingerprint, jni = NumericFingerprintGenerator);
 bridge_get_bytearray!(
     scannable_encoding(Fingerprint),
