@@ -4,7 +4,7 @@
 //
 
 use jni::objects::{JObject, JValue};
-use jni::sys::{_jobject, jlong};
+use jni::sys::jobject;
 
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol_rust::*;
@@ -12,7 +12,7 @@ use std::convert::TryFrom;
 
 pub(crate) use jni::objects::{JClass, JString};
 pub(crate) use jni::strings::JNIString;
-pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jstring};
+pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring};
 pub(crate) use jni::JNIEnv;
 
 #[macro_use]
@@ -147,7 +147,7 @@ impl JniDummyValue for jint {
     }
 }
 
-impl JniDummyValue for *mut _jobject {
+impl JniDummyValue for jobject {
     fn dummy_value() -> Self {
         0 as jstring
     }
@@ -217,6 +217,13 @@ pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
         Err(_) => Err(SignalJniError::IntegerOverflow(format!("{} to u8", v))),
         Ok(v) => Ok(v),
     }
+}
+
+pub fn jlong_to_u64(v: jlong) -> Result<u64, SignalJniError> {
+    if v < 0 {
+        return Err(SignalJniError::IntegerOverflow(format!("{} to u64", v)));
+    }
+    Ok(v as u64)
 }
 
 pub fn to_jbytearray<T: AsRef<[u8]>>(

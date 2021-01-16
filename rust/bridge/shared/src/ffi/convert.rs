@@ -135,12 +135,14 @@ macro_rules! trivial {
 trivial!(i32);
 trivial!(u8);
 trivial!(u32);
+trivial!(u64);
 trivial!(usize);
 trivial!(bool);
 
 macro_rules! ffi_arg_type {
     (u8) => (u8);
     (u32) => (u32);
+    (u64) => (u64);
     (Option<u32>) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);

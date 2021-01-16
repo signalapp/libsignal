@@ -49,6 +49,13 @@ impl<'a> ArgTypeInfo<'a> for Option<u32> {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for u64 {
+    type ArgType = jlong;
+    fn convert_from(_env: &'a JNIEnv, foreign: jlong) -> Result<Self, SignalJniError> {
+        jlong_to_u64(foreign)
+    }
+}
+
 impl<'a> ArgTypeInfo<'a> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
@@ -178,6 +185,9 @@ macro_rules! jni_arg_type {
     };
     (Option<u32>) => {
         jni::jint
+    };
+    (u64) => {
+        jni::jlong
     };
     (String) => {
         jni::JString

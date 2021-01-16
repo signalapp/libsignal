@@ -225,17 +225,6 @@ pub unsafe fn get_optional_uint32(p: *const c_uint) -> Option<u32> {
     Some(*p)
 }
 
-pub unsafe fn read_c_string(cstr: *const c_char) -> Result<String, SignalFfiError> {
-    if cstr.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match CStr::from_ptr(cstr).to_str() {
-        Ok(s) => Ok(s.to_owned()),
-        Err(_) => Err(SignalFfiError::InvalidUtf8String),
-    }
-}
-
 pub unsafe fn read_optional_c_string(
     cstr: *const c_char,
 ) -> Result<Option<String>, SignalFfiError> {
