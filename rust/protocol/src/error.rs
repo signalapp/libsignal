@@ -54,7 +54,7 @@ pub enum SignalProtocolError {
     NoSenderKeyState,
     SenderKeySigningKeyMissing,
 
-    SessionNotFound,
+    SessionNotFound(String),
     InvalidSessionStructure,
 
     DuplicatedMessage(u32, u32),
@@ -164,7 +164,9 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::InvalidPreKeyBundle => write!(f, "invalid pre key bundle format"),
             SignalProtocolError::InvalidCiphertext => write!(f, "invalid ciphertext message"),
-            SignalProtocolError::SessionNotFound => write!(f, "session not found"),
+            SignalProtocolError::SessionNotFound(who) => {
+                write!(f, "session with '{}' not found", who)
+            }
             SignalProtocolError::InvalidSessionStructure => write!(f, "invalid session structure"),
             SignalProtocolError::DuplicatedMessage(i, c) => {
                 write!(f, "message with old counter {} / {}", i, c)
