@@ -43,7 +43,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         None,
     ))?;
 
-    for ratchets in [2_000, 10_000, 100_000, 200_000, 500_000, 900_000].iter() {
+    for ratchets in [100, 1000].iter() {
         let ratchets = *ratchets;
 
         for i in 0..ratchets {

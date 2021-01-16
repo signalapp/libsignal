@@ -449,7 +449,6 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
     })
 }
 
-#[cfg(not(debug_assertions))]
 #[test]
 fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
     block_on(async {
@@ -481,7 +480,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        for i in 0..1_000_001 {
+        for i in 0..25001 {
             group_encrypt(
                 &mut alice_store,
                 &group_sender,
