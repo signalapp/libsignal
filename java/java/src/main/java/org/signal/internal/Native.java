@@ -66,20 +66,20 @@ public final class Native {
 
   private Native() {}
 
-  public static native byte[] Aes256GcmSiv_Decrypt(long aesGcmSiv, byte[] msg, byte[] nonce, byte[] associatedData);
+  public static native byte[] Aes256GcmSiv_Decrypt(long aesGcmSiv, byte[] ctext, byte[] nonce, byte[] associatedData);
   public static native void Aes256GcmSiv_Destroy(long handle);
-  public static native byte[] Aes256GcmSiv_Encrypt(long aesGcmSiv, byte[] msg, byte[] nonce, byte[] associatedData);
+  public static native byte[] Aes256GcmSiv_Encrypt(long aesGcmSiv, byte[] ptext, byte[] nonce, byte[] associatedData);
   public static native long Aes256GcmSiv_New(byte[] key);
 
   public static native String DisplayableFingerprint_Format(byte[] local, byte[] remote);
 
-  public static native byte[] ECPrivateKey_Agree(long privateKeyHandle, long publicKeyHandle);
+  public static native byte[] ECPrivateKey_Agree(long privateKey, long publicKey);
   public static native long ECPrivateKey_Deserialize(byte[] data);
   public static native void ECPrivateKey_Destroy(long handle);
   public static native long ECPrivateKey_Generate();
-  public static native long ECPrivateKey_GetPublicKey(long handle);
+  public static native long ECPrivateKey_GetPublicKey(long k);
   public static native byte[] ECPrivateKey_Serialize(long handle);
-  public static native byte[] ECPrivateKey_Sign(long handle, byte[] message);
+  public static native byte[] ECPrivateKey_Sign(long key, byte[] message);
 
   public static native int ECPublicKey_Compare(long key1, long key2);
   public static native long ECPublicKey_Deserialize(byte[] data, int offset);
@@ -97,7 +97,7 @@ public final class Native {
   public static native byte[] HKDF_DeriveSecrets(int version, byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength);
 
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
-  public static native byte[] IdentityKeyPair_Serialize(long publicKeyHandle, long privateKeyHandle);
+  public static native byte[] IdentityKeyPair_Serialize(long publicKey, long privateKey);
 
   public static native void NumericFingerprintGenerator_Destroy(long handle);
   public static native String NumericFingerprintGenerator_GetDisplayString(long handle);
@@ -121,7 +121,7 @@ public final class Native {
   public static native long PreKeyRecord_GetPrivateKey(long handle);
   public static native long PreKeyRecord_GetPublicKey(long handle);
   public static native byte[] PreKeyRecord_GetSerialized(long handle);
-  public static native long PreKeyRecord_New(int id, long pubKeyHandle, long privKeyHandle);
+  public static native long PreKeyRecord_New(int id, long pubKey, long privKey);
 
   public static native long PreKeySignalMessage_Deserialize(byte[] data);
   public static native void PreKeySignalMessage_Destroy(long handle);
@@ -167,7 +167,7 @@ public final class Native {
   public static native int SenderKeyDistributionMessage_GetIteration(long handle);
   public static native byte[] SenderKeyDistributionMessage_GetSerialized(long handle);
   public static native byte[] SenderKeyDistributionMessage_GetSignatureKey(long handle);
-  public static native long SenderKeyDistributionMessage_New(int keyId, int iteration, byte[] chainkey, long pkHandle);
+  public static native long SenderKeyDistributionMessage_New(int keyId, int iteration, byte[] chainkey, long pk);
 
   public static native long SenderKeyMessage_Deserialize(byte[] data);
   public static native void SenderKeyMessage_Destroy(long handle);
@@ -175,8 +175,8 @@ public final class Native {
   public static native int SenderKeyMessage_GetIteration(long handle);
   public static native int SenderKeyMessage_GetKeyId(long handle);
   public static native byte[] SenderKeyMessage_GetSerialized(long handle);
-  public static native long SenderKeyMessage_New(int keyId, int iteration, byte[] ciphertext, long pkHandle);
-  public static native boolean SenderKeyMessage_VerifySignature(long handle, long pubkeyHandle);
+  public static native long SenderKeyMessage_New(int keyId, int iteration, byte[] ciphertext, long pk);
+  public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
 
   public static native void SenderKeyName_Destroy(long handle);
   public static native String SenderKeyName_GetGroupId(long handle);
@@ -240,7 +240,7 @@ public final class Native {
   public static native byte[] SignedPreKeyRecord_GetSerialized(long handle);
   public static native byte[] SignedPreKeyRecord_GetSignature(long handle);
   public static native long SignedPreKeyRecord_GetTimestamp(long handle);
-  public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKeyHandle, long privKeyHandle, byte[] signature);
+  public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
