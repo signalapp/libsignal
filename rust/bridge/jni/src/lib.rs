@@ -6,7 +6,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 use async_trait::async_trait;
-use jni::objects::{JClass, JObject, JString, JValue};
+use jni::objects::{JClass, JObject, JValue};
 use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
@@ -1292,55 +1292,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
 
         let address = expect_ready(cert.preferred_address(&session_store, None))?;
         box_object::<ProtocolAddress>(Ok(address))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1New(
-    env: JNIEnv,
-    _class: JClass,
-    sender_uuid: JString,
-    sender_e164: JString,
-    sender_device_id: jint,
-    sender_key: ObjectHandle,
-    expiration: jlong,
-    signer_cert: ObjectHandle,
-    signer_key: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let sender_uuid: Option<String> = if sender_uuid.is_null() {
-            None
-        } else {
-            Some(env.get_string(sender_uuid)?.into())
-        };
-
-        let sender_e164: Option<String> = if sender_e164.is_null() {
-            None
-        } else {
-            Some(env.get_string(sender_e164)?.into())
-        };
-
-        let sender_device_id = jint_to_u32(sender_device_id)?;
-        let sender_key = native_handle_cast::<PublicKey>(sender_key)?;
-
-        let expiration = jlong_to_u64(expiration)?;
-        let signer_cert = native_handle_cast::<ServerCertificate>(signer_cert)?;
-        let signer_key = native_handle_cast::<PrivateKey>(signer_key)?;
-
-        let mut rng = rand::rngs::OsRng;
-
-        let sc = SenderCertificate::new(
-            sender_uuid,
-            sender_e164,
-            *sender_key,
-            sender_device_id,
-            expiration,
-            signer_cert.clone(),
-            signer_key,
-            &mut rng,
-        )?;
-
-        box_object::<SenderCertificate>(Ok(sc))
     })
 }
 

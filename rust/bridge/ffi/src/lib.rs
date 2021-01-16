@@ -1161,40 +1161,6 @@ ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from Send
 ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,
                           |s: &SenderCertificate| Ok(s.signer()?.clone()));
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_sender_certificate_new(
-    out: *mut *mut SenderCertificate,
-    sender_uuid: *const c_char,
-    sender_e164: *const c_char,
-    sender_device_id: u32,
-    sender_key: *const PublicKey,
-    expiration: u64,
-    signer_cert: *const ServerCertificate,
-    signer_key: *const PrivateKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let sender_uuid = read_optional_c_string(sender_uuid)?;
-        let sender_e164 = read_optional_c_string(sender_e164)?;
-        let sender_key = native_handle_cast::<PublicKey>(sender_key)?;
-        let signer_cert = native_handle_cast::<ServerCertificate>(signer_cert)?;
-        let signer_key = native_handle_cast::<PrivateKey>(signer_key)?;
-
-        let mut rng = rand::rngs::OsRng;
-
-        let sc = SenderCertificate::new(
-            sender_uuid,
-            sender_e164,
-            *sender_key,
-            sender_device_id,
-            expiration,
-            signer_cert.clone(),
-            signer_key,
-            &mut rng,
-        );
-        box_object(out, sc)
-    })
-}
-
 // UnidentifiedSenderMessageContent
 #[no_mangle]
 pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type(

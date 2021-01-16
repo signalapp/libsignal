@@ -73,6 +73,17 @@ impl ArgTypeInfo for String {
     }
 }
 
+impl ArgTypeInfo for Option<String> {
+    type ArgType = *const c_char;
+    fn convert_from(foreign: *const c_char) -> Result<Self, SignalFfiError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            String::convert_from(foreign).map(Some)
+        }
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
@@ -147,6 +158,7 @@ macro_rules! ffi_arg_type {
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
     (String) => (*const libc::c_char);
+    (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
 }
 

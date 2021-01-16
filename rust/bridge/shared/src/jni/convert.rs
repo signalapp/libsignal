@@ -70,6 +70,17 @@ impl<'a> ArgTypeInfo<'a> for String {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for Option<String> {
+    type ArgType = JString<'a>;
+    fn convert_from(env: &'a JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            String::convert_from(env, foreign).map(Some)
+        }
+    }
+}
+
 pub(crate) struct AutoByteSlice<'a> {
     jni_array: AutoByteArray<'a, 'a>,
     len: usize,
@@ -190,6 +201,9 @@ macro_rules! jni_arg_type {
         jni::jlong
     };
     (String) => {
+        jni::JString
+    };
+    (Option<String>) => {
         jni::JString
     };
     (&[u8]) => {

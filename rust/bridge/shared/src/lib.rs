@@ -383,6 +383,30 @@ fn SenderCertificate_Validate(
     cert.validate(key, time)
 }
 
+#[bridge_fn]
+fn SenderCertificate_New(
+    sender_uuid: Option<String>,
+    sender_e164: Option<String>,
+    sender_device_id: u32,
+    sender_key: &PublicKey,
+    expiration: u64,
+    signer_cert: &ServerCertificate,
+    signer_key: &PrivateKey,
+) -> Result<SenderCertificate, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+
+    SenderCertificate::new(
+        sender_uuid,
+        sender_e164,
+        *sender_key,
+        sender_device_id,
+        expiration,
+        signer_cert.clone(),
+        signer_key,
+        &mut rng,
+    )
+}
+
 bridge_destroy!(UnidentifiedSenderMessageContent);
 bridge_deserialize!(UnidentifiedSenderMessageContent::deserialize);
 bridge_get_bytearray!(
