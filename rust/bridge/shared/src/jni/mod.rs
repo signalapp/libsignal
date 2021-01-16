@@ -89,7 +89,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/whispersystems/libsignal/InvalidKeyException"
         }
 
-        SignalJniError::Signal(SignalProtocolError::SessionNotFound) => {
+        SignalJniError::Signal(SignalProtocolError::SessionNotFound(_)) => {
             "org/whispersystems/libsignal/NoSessionException"
         }
 

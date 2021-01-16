@@ -83,7 +83,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidKey
             }
 
-            SignalFfiError::Signal(SignalProtocolError::SessionNotFound) => {
+            SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_)) => {
                 SignalErrorCode::SessionNotFound
             }
 
