@@ -83,8 +83,8 @@ pub enum SignalProtocolError {
     #[error("sender key signature key missing")]
     SenderKeySigningKeyMissing,
 
-    #[error("session not found")]
-    SessionNotFound,
+    #[error("session with '{0}' not found")]
+    SessionNotFound(String),
     #[error("invalid session structure")]
     InvalidSessionStructure,
 

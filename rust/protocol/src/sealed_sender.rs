@@ -612,7 +612,7 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     let their_identity = identity_store
         .get_identity(destination, ctx)
         .await?
-        .ok_or(SignalProtocolError::SessionNotFound)?;
+        .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", destination)))?;
 
     let ephemeral = KeyPair::generate(rng);
 
