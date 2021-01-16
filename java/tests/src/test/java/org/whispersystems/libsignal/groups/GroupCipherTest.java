@@ -229,7 +229,7 @@ public class GroupCipherTest extends TestCase {
 
     bobSessionBuilder.process(aliceName, aliceDistributionMessage);
 
-    for (int i=0;i<1000001;i++) {
+    for (int i=0;i<25001;i++) {
       aliceGroupCipher.encrypt("up the punks".getBytes());
     }
 
