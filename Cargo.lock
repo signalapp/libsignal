@@ -751,6 +751,7 @@ dependencies = [
  "libsignal-bridge-macros",
  "libsignal-protocol-rust",
  "log",
+ "neon",
  "paste",
  "rand",
 ]
@@ -798,6 +799,7 @@ dependencies = [
 name = "libsignal-node"
 version = "0.1.0"
 dependencies = [
+ "libsignal-bridge",
  "libsignal-protocol-rust",
  "neon",
  "neon-build 0.5.3",

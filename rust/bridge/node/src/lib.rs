@@ -3,35 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libsignal_bridge::node::*;
+use libsignal_bridge::*;
 use libsignal_protocol_rust::*;
 use neon::context::Context;
 use neon::prelude::*;
 use std::convert::TryFrom;
-use std::ops::Deref;
-
-struct DefaultFinalize<T>(T);
-
-impl<T> Finalize for DefaultFinalize<T> {}
-
-impl<T> Deref for DefaultFinalize<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-type DefaultJsBox<T> = JsBox<DefaultFinalize<T>>;
-
-fn return_boxed_object<'a, T: 'static + Send>(
-    cx: &mut FunctionContext<'a>,
-    value: Result<T, SignalProtocolError>,
-) -> JsResult<'a, JsValue> {
-    match value {
-        Ok(v) => Ok(cx.boxed(DefaultFinalize(v)).upcast()),
-        Err(e) => cx.throw_error(e.to_string()),
-    }
-}
 
 fn return_boolean<'a>(
     cx: &mut FunctionContext<'a>,
@@ -67,21 +44,6 @@ fn return_binary_data<'a, T: AsRef<[u8]>>(
     }
 }
 
-macro_rules! node_bridge_deserialize {
-    ( $typ:ident::$fn:ident is $node_name:ident ) => {
-        #[allow(non_snake_case)]
-        fn $node_name(mut cx: FunctionContext) -> JsResult<JsValue> {
-            let buffer = cx.argument::<JsBuffer>(0)?;
-            let obj: Result<$typ, SignalProtocolError> = {
-                let guard = cx.lock();
-                let slice = buffer.borrow(&guard).as_slice::<u8>();
-                $typ::$fn(slice)
-            };
-            return_boxed_object(&mut cx, obj)
-        }
-    };
-}
-
 macro_rules! node_bridge_serialize {
     ( $typ:ident::$fn:ident is $node_name:ident ) => {
         #[allow(non_snake_case)]
@@ -99,8 +61,6 @@ fn PrivateKey_generate(mut cx: FunctionContext) -> JsResult<JsValue> {
     let keypair = KeyPair::generate(&mut rng);
     return_boxed_object(&mut cx, Ok(keypair.private_key))
 }
-
-node_bridge_deserialize!(PrivateKey::deserialize is PrivateKey_deserialize);
 
 node_bridge_serialize!(PrivateKey::serialize is PrivateKey_serialize);
 
@@ -135,8 +95,6 @@ fn PrivateKey_agree(mut cx: FunctionContext) -> JsResult<JsValue> {
     return_binary_data(&mut cx, shared_secret)
 }
 
-node_bridge_deserialize!(PublicKey::deserialize is PublicKey_deserialize);
-
 node_bridge_serialize!(PublicKey::serialize is PublicKey_serialize);
 
 #[allow(non_snake_case)]
@@ -158,14 +116,14 @@ fn PublicKey_verify(mut cx: FunctionContext) -> JsResult<JsValue> {
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("PrivateKey_generate", PrivateKey_generate)?;
-    cx.export_function("PrivateKey_deserialize", PrivateKey_deserialize)?;
+    cx.export_function("PrivateKey_deserialize", node_PrivateKey_deserialize)?;
     cx.export_function("PrivateKey_serialize", PrivateKey_serialize)?;
     cx.export_function("PrivateKey_sign", PrivateKey_sign)?;
     cx.export_function("PrivateKey_agree", PrivateKey_agree)?;
     cx.export_function("PrivateKey_getPublicKey", PrivateKey_getPublicKey)?;
 
     cx.export_function("PublicKey_verify", PublicKey_verify)?;
-    cx.export_function("PublicKey_deserialize", PublicKey_deserialize)?;
+    cx.export_function("PublicKey_deserialize", node_PublicKey_deserialize)?;
     cx.export_function("PublicKey_serialize", PublicKey_serialize)?;
     Ok(())
 }

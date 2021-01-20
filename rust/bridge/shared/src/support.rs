@@ -55,15 +55,18 @@ macro_rules! bridge_destroy {
         ffi_bridge_destroy!($typ $(as $ffi_name)?);
         #[cfg(feature = "jni")]
         jni_bridge_destroy!($typ $(as $jni_name)?);
+        // The Node bridge doesn't need manual destruction.
     }
 }
 
 macro_rules! bridge_deserialize {
-    ($typ:ident::$fn:path $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? ) => {
+    ($typ:ident::$fn:path $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_deserialize!($typ::$fn $(as $ffi_name)?);
         #[cfg(feature = "jni")]
         jni_bridge_deserialize!($typ::$fn $(as $jni_name)?);
+        #[cfg(feature = "node")]
+        node_bridge_deserialize!($typ::$fn $(as $node_name)?);
     }
 }
 
