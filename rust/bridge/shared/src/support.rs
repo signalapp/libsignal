@@ -85,11 +85,13 @@ macro_rules! bridge_get_bytearray {
 }
 
 macro_rules! bridge_get_optional_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_optional_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_optional_bytearray!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_optional_bytearray!($name($typ) $(as $node_name)? => $body);
     }
 }
 
