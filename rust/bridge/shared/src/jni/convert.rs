@@ -145,7 +145,7 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
 
 impl crate::Env for &'_ JNIEnv<'_> {
     type Buffer = Result<jbyteArray, SignalJniError>;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer {
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
         to_jbytearray(&self, Ok(input.into()))
     }
 }

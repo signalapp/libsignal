@@ -4,11 +4,15 @@
 //
 
 use libsignal_protocol_rust::*;
-use neon::context::Context;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
+pub use neon::context::{Context, Lock};
 pub use neon::prelude::*;
+
+#[macro_use]
+mod convert;
+pub(crate) use convert::*;
 
 pub struct DefaultFinalize<T>(T);
 

@@ -11,6 +11,7 @@ use std::task::{self, Poll};
 
 pub(crate) use paste::paste;
 
+#[allow(dead_code)] // not used in Node-only builds
 #[track_caller]
 pub fn expect_ready<F: Future>(future: F) -> F::Output {
     pin_mut!(future);
@@ -23,7 +24,7 @@ pub fn expect_ready<F: Future>(future: F) -> F::Output {
 /// Used for returning newly-allocated buffers as efficiently as possible.
 pub(crate) trait Env {
     type Buffer;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer;
 }
 
 /// Wraps an expression in a function with a given name and type...
@@ -46,6 +47,8 @@ macro_rules! bridge_handle {
         ffi_bridge_handle!($typ);
         #[cfg(feature = "jni")]
         jni_bridge_handle!($typ);
+        #[cfg(feature = "node")]
+        node_bridge_handle!($typ);
     };
 }
 

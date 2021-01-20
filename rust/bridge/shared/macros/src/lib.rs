@@ -233,6 +233,82 @@ fn jni_name_from_ident(ident: &Ident) -> String {
     ident.to_string().replace("_", "_1")
 }
 
+fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
+    let name = format_ident!("node_{}", name);
+
+    let env_arg = if result_kind.has_env() {
+        quote!(&mut cx,)
+    } else {
+        quote!()
+    };
+
+    let (input_names, input_processing): (Vec<Ident>, Vec<TokenStream2>) = sig
+        .inputs
+        .iter()
+        .skip(if result_kind.has_env() { 1 } else { 0 })
+        .zip(0..)
+        .map(|(arg, i)| match arg {
+            FnArg::Receiver(tokens) => (
+                Ident::new("self", tokens.self_token.span),
+                Error::new(tokens.self_token.span, "cannot have 'self' parameter")
+                    .to_compile_error(),
+            ),
+            FnArg::Typed(PatType {
+                attrs: _,
+                pat: box Pat::Ident(name),
+                colon_token: _,
+                ty: ty @ box Type::Reference(_),
+            }) => (
+                name.ident.clone(),
+                quote!(
+                    let #name = cx.argument::<<#ty as node::RefArgTypeInfo>::ArgType>(#i)?;
+                    let #name = <#ty as node::RefArgTypeInfo>::convert_from(&mut cx, #name)?;
+                    let #name = &*#name
+                ),
+            ),
+            FnArg::Typed(PatType {
+                attrs: _,
+                pat: box Pat::Ident(name),
+                colon_token: _,
+                ty,
+            }) => (
+                name.ident.clone(),
+                quote!(
+                    let #name = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
+                    let #name = <#ty as node::ArgTypeInfo>::convert_from(&mut cx, #name)?
+                ),
+            ),
+            FnArg::Typed(PatType { pat, .. }) => (
+                Ident::new("unexpected", pat.span()),
+                Error::new(pat.span(), "cannot use patterns in paramater").to_compile_error(),
+            ),
+        })
+        .unzip();
+
+    let orig_name = sig.ident.clone();
+
+    quote! {
+        #[cfg(feature = "node")]
+        #[allow(non_snake_case)]
+        pub fn #name(
+            mut cx: node::FunctionContext,
+        ) -> node::JsResult<node::JsValue> {
+            #(#input_processing);*;
+            let __result = #orig_name(#env_arg #(#input_names),*);
+            Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
+        }
+    }
+}
+
+fn node_name_from_ident(ident: &Ident) -> String {
+    let mut result = ident.to_string();
+    match result.find('_') {
+        Some(idx) if idx + 1 < result.len() => result[(idx + 1)..(idx + 2)].make_ascii_lowercase(),
+        _ => {}
+    }
+    result
+}
+
 fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
 
@@ -256,9 +332,19 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
         }
         None => jni_name_from_ident(&function.sig.ident),
     };
+    let node_name = match value_for_meta_key(&item_names, "node") {
+        Some(Lit::Str(name_str)) => name_str.value(),
+        Some(value) => {
+            return Error::new(value.span(), "node name must be a string literal")
+                .to_compile_error()
+                .into()
+        }
+        None => node_name_from_ident(&function.sig.ident),
+    };
 
     let ffi_fn = ffi_bridge_fn(ffi_name, &function.sig, result_kind);
     let jni_fn = jni_bridge_fn(jni_name, &function.sig, result_kind);
+    let node_fn = node_bridge_fn(node_name, &function.sig, result_kind);
 
     quote!(
         #[allow(non_snake_case)]
@@ -267,6 +353,8 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
         #ffi_fn
 
         #jni_fn
+
+        #node_fn
     )
     .into()
 }
