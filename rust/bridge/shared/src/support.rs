@@ -5,6 +5,7 @@
 
 use futures::pin_mut;
 use futures::task::noop_waker_ref;
+use std::borrow::Cow;
 use std::future::Future;
 use std::task::{self, Poll};
 
@@ -17,6 +18,12 @@ pub fn expect_ready<F: Future>(future: F) -> F::Output {
         Poll::Ready(result) => result,
         Poll::Pending => panic!("future was not ready"),
     }
+}
+
+/// Used for returning newly-allocated buffers as efficiently as possible.
+pub(crate) trait Env {
+    type Buffer;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer;
 }
 
 /// Wraps an expression in a function with a given name and type...

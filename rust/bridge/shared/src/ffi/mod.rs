@@ -61,24 +61,19 @@ pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, Sign
 pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     out: *mut *const c_uchar,
     out_len: *mut size_t,
-    value: Result<T, SignalProtocolError>,
+    value: T,
 ) -> Result<(), SignalFfiError> {
     if out.is_null() || out_len.is_null() {
         return Err(SignalFfiError::NullPointer);
     }
 
-    match value {
-        Ok(value) => {
-            let value: Box<[u8]> = value.into();
+    let value: Box<[u8]> = value.into();
 
-            *out_len = value.len();
-            let mem = Box::into_raw(value);
-            *out = (*mem).as_ptr();
+    *out_len = value.len();
+    let mem = Box::into_raw(value);
+    *out = (*mem).as_ptr();
 
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
+    Ok(())
 }
 
 pub unsafe fn write_cstr_to(
@@ -179,7 +174,7 @@ macro_rules! ffi_bridge_get_bytearray {
                 ) -> Result<impl Into<Box<[u8]>> + 'a, SignalProtocolError> => $body);
                 ffi::run_ffi_safe(|| {
                     let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_bytearray_to(out, out_len, inner_get(obj))
+                    ffi::write_bytearray_to(out, out_len, inner_get(obj)?)
                 })
             }
         }

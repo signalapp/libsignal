@@ -7,7 +7,7 @@ use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::ops::Deref;
 
 use crate::jni::*;
@@ -49,6 +49,13 @@ impl<'a> ArgTypeInfo<'a> for Option<u32> {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for u64 {
+    type ArgType = jlong;
+    fn convert_from(_env: &'a JNIEnv, foreign: jlong) -> Result<Self, SignalJniError> {
+        jlong_to_u64(foreign)
+    }
+}
+
 impl<'a> ArgTypeInfo<'a> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
@@ -60,6 +67,17 @@ impl<'a> ArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &'a JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
         Ok(env.get_string(foreign)?.into())
+    }
+}
+
+impl<'a> ArgTypeInfo<'a> for Option<String> {
+    type ArgType = JString<'a>;
+    fn convert_from(env: &'a JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            String::convert_from(env, foreign).map(Some)
+        }
     }
 }
 
@@ -111,6 +129,27 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        T::convert_into(self?, env)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        T::convert_into(self?, env)
+    }
+}
+
+impl crate::Env for &'_ JNIEnv<'_> {
+    type Buffer = Result<jbyteArray, SignalJniError>;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer {
+        to_jbytearray(&self, Ok(input.into()))
+    }
+}
+
 macro_rules! jni_bridge_handle {
     ($typ:ty) => {
         impl<'a> jni::RefArgTypeInfo<'a> for &$typ {
@@ -153,6 +192,7 @@ macro_rules! trivial {
 }
 
 trivial!(i32);
+trivial!(jbyteArray);
 
 macro_rules! jni_arg_type {
     (u8) => {
@@ -164,7 +204,13 @@ macro_rules! jni_arg_type {
     (Option<u32>) => {
         jni::jint
     };
+    (u64) => {
+        jni::jlong
+    };
     (String) => {
+        jni::JString
+    };
+    (Option<String>) => {
         jni::JString
     };
     (&[u8]) => {
@@ -176,7 +222,7 @@ macro_rules! jni_arg_type {
 }
 
 macro_rules! jni_result_type {
-    (Result<$typ:tt, $_:tt>) => {
+    (Result<$typ:tt, $_:ty>) => {
         jni_result_type!($typ)
     };
     (bool) => {

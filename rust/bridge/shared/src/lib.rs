@@ -25,10 +25,20 @@ pub mod jni;
 mod support;
 use support::*;
 
+bridge_handle!(Aes256GcmSiv);
+bridge_handle!(PreKeyRecord);
+bridge_handle!(PreKeySignalMessage);
+bridge_handle!(PrivateKey);
 bridge_handle!(ProtocolAddress);
 bridge_handle!(PublicKey);
+bridge_handle!(SenderCertificate);
+bridge_handle!(SenderKeyDistributionMessage);
+bridge_handle!(SenderKeyMessage);
+bridge_handle!(SenderKeyName);
+bridge_handle!(SenderKeyRecord);
+bridge_handle!(ServerCertificate);
 bridge_handle!(SignalMessage);
-bridge_handle!(PreKeySignalMessage);
+bridge_handle!(SignedPreKeyRecord);
 
 bridge_destroy!(ProtocolAddress, ffi = address);
 bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
@@ -81,6 +91,49 @@ bridge_get_bytearray!(
     jni = ECPrivateKey_1Serialize =>
     |k| Ok(k.serialize())
 );
+
+#[bridge_fn(ffi = "privatekey_generate")]
+fn ECPrivateKey_Generate() -> PrivateKey {
+    let mut rng = rand::rngs::OsRng;
+    let keypair = KeyPair::generate(&mut rng);
+    keypair.private_key
+}
+
+#[bridge_fn(ffi = "privatekey_get_public_key")]
+fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey, SignalProtocolError> {
+    k.public_key()
+}
+
+#[bridge_fn_buffer(ffi = "privatekey_sign")]
+fn ECPrivateKey_Sign<T: Env>(
+    env: T,
+    key: &PrivateKey,
+    message: &[u8],
+) -> Result<T::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+    let sig = key.calculate_signature(&message, &mut rng)?;
+    Ok(env.buffer(sig.into_vec()))
+}
+
+#[bridge_fn_buffer(ffi = "privatekey_agree")]
+fn ECPrivateKey_Agree<T: Env>(
+    env: T,
+    private_key: &PrivateKey,
+    public_key: &PublicKey,
+) -> Result<T::Buffer, SignalProtocolError> {
+    let dh_secret = private_key.calculate_agreement(&public_key)?;
+    Ok(env.buffer(dh_secret.into_vec()))
+}
+
+#[bridge_fn_buffer(ffi = "identitykeypair_serialize")]
+fn IdentityKeyPair_Serialize<T: Env>(
+    env: T,
+    public_key: &PublicKey,
+    private_key: &PrivateKey,
+) -> Result<T::Buffer, SignalProtocolError> {
+    let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(*public_key), *private_key);
+    Ok(env.buffer(identity_key_pair.serialize().into_vec()))
+}
 
 bridge_destroy!(Fingerprint, jni = NumericFingerprintGenerator);
 bridge_get_bytearray!(
@@ -196,6 +249,25 @@ bridge_deserialize!(SenderKeyMessage::try_from);
 bridge_get_bytearray!(get_cipher_text(SenderKeyMessage) => |m| Ok(m.ciphertext()));
 bridge_get_bytearray!(serialize(SenderKeyMessage), jni = SenderKeyMessage_1GetSerialized => |m| Ok(m.serialized()));
 
+#[bridge_fn]
+fn SenderKeyMessage_New(
+    key_id: u32,
+    iteration: u32,
+    ciphertext: &[u8],
+    pk: &PrivateKey,
+) -> Result<SenderKeyMessage, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    SenderKeyMessage::new(key_id, iteration, &ciphertext, &mut csprng, pk)
+}
+
+#[bridge_fn]
+fn SenderKeyMessage_VerifySignature(
+    skm: &SenderKeyMessage,
+    pubkey: &PublicKey,
+) -> Result<bool, SignalProtocolError> {
+    skm.verify_signature(pubkey)
+}
+
 bridge_destroy!(SenderKeyDistributionMessage);
 bridge_deserialize!(SenderKeyDistributionMessage::try_from);
 bridge_get_bytearray!(get_chain_key(SenderKeyDistributionMessage) => SenderKeyDistributionMessage::chain_key);
@@ -205,6 +277,16 @@ bridge_get_bytearray!(get_signature_key(SenderKeyDistributionMessage), ffi = Non
 bridge_get_bytearray!(serialize(SenderKeyDistributionMessage), jni = SenderKeyDistributionMessage_1GetSerialized =>
     |m| Ok(m.serialized())
 );
+
+#[bridge_fn]
+fn SenderKeyDistributionMessage_New(
+    key_id: u32,
+    iteration: u32,
+    chainkey: &[u8],
+    pk: &PublicKey,
+) -> Result<SenderKeyDistributionMessage, SignalProtocolError> {
+    SenderKeyDistributionMessage::new(key_id, iteration, &chainkey, *pk)
+}
 
 bridge_destroy!(PreKeyBundle);
 bridge_get_bytearray!(get_signed_pre_key_signature(PreKeyBundle) => PreKeyBundle::signed_pre_key_signature);
@@ -216,21 +298,56 @@ bridge_get_bytearray!(serialize(SignedPreKeyRecord), jni = SignedPreKeyRecord_1G
     SignedPreKeyRecord::serialize
 );
 
+#[bridge_fn]
+fn SignedPreKeyRecord_New(
+    id: u32,
+    timestamp: u64,
+    pub_key: &PublicKey,
+    priv_key: &PrivateKey,
+    signature: &[u8],
+) -> SignedPreKeyRecord {
+    let keypair = KeyPair::new(*pub_key, *priv_key);
+    SignedPreKeyRecord::new(id, timestamp, &keypair, &signature)
+}
+
 bridge_destroy!(PreKeyRecord);
 bridge_deserialize!(PreKeyRecord::deserialize);
 bridge_get_bytearray!(serialize(PreKeyRecord), jni = PreKeyRecord_1GetSerialized =>
     PreKeyRecord::serialize
 );
 
+#[bridge_fn]
+fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreKeyRecord {
+    let keypair = KeyPair::new(*pub_key, *priv_key);
+    PreKeyRecord::new(id, &keypair)
+}
+
 bridge_destroy!(SenderKeyName);
 bridge_get_string!(get_group_id(SenderKeyName) => SenderKeyName::group_id);
 bridge_get_string!(get_sender_name(SenderKeyName) => |skn| Ok(skn.sender()?.name().to_string()));
+
+#[bridge_fn]
+fn SenderKeyName_New(
+    group_id: String,
+    sender_name: String,
+    sender_device_id: u32,
+) -> Result<SenderKeyName, SignalProtocolError> {
+    SenderKeyName::new(
+        group_id,
+        ProtocolAddress::new(sender_name, sender_device_id),
+    )
+}
 
 bridge_destroy!(SenderKeyRecord);
 bridge_deserialize!(SenderKeyRecord::deserialize);
 bridge_get_bytearray!(serialize(SenderKeyRecord), jni = SenderKeyRecord_1GetSerialized =>
     SenderKeyRecord::serialize
 );
+
+#[bridge_fn(ffi = "sender_key_record_new_fresh")]
+fn SenderKeyRecord_New() -> SenderKeyRecord {
+    SenderKeyRecord::new_empty()
+}
 
 bridge_destroy!(CiphertextMessage, jni = None);
 
@@ -240,6 +357,16 @@ bridge_get_bytearray!(get_serialized(ServerCertificate) => ServerCertificate::se
 bridge_get_bytearray!(get_certificate(ServerCertificate) => ServerCertificate::certificate);
 bridge_get_bytearray!(get_signature(ServerCertificate) => ServerCertificate::signature);
 
+#[bridge_fn]
+fn ServerCertificate_New(
+    key_id: u32,
+    server_key: &PublicKey,
+    trust_root: &PrivateKey,
+) -> Result<ServerCertificate, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+    ServerCertificate::new(key_id, *server_key, trust_root, &mut rng)
+}
+
 bridge_destroy!(SenderCertificate);
 bridge_deserialize!(SenderCertificate::deserialize);
 bridge_get_bytearray!(get_serialized(SenderCertificate) => SenderCertificate::serialized);
@@ -247,6 +374,39 @@ bridge_get_bytearray!(get_certificate(SenderCertificate) => SenderCertificate::c
 bridge_get_bytearray!(get_signature(SenderCertificate) => SenderCertificate::signature);
 bridge_get_optional_string!(get_sender_uuid(SenderCertificate) => SenderCertificate::sender_uuid);
 bridge_get_optional_string!(get_sender_e164(SenderCertificate) => SenderCertificate::sender_e164);
+
+#[bridge_fn]
+fn SenderCertificate_Validate(
+    cert: &SenderCertificate,
+    key: &PublicKey,
+    time: u64,
+) -> Result<bool, SignalProtocolError> {
+    cert.validate(key, time)
+}
+
+#[bridge_fn]
+fn SenderCertificate_New(
+    sender_uuid: Option<String>,
+    sender_e164: Option<String>,
+    sender_device_id: u32,
+    sender_key: &PublicKey,
+    expiration: u64,
+    signer_cert: &ServerCertificate,
+    signer_key: &PrivateKey,
+) -> Result<SenderCertificate, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+
+    SenderCertificate::new(
+        sender_uuid,
+        sender_e164,
+        *sender_key,
+        sender_device_id,
+        expiration,
+        signer_cert.clone(),
+        signer_key,
+        &mut rng,
+    )
+}
 
 bridge_destroy!(UnidentifiedSenderMessageContent);
 bridge_deserialize!(UnidentifiedSenderMessageContent::deserialize);
@@ -289,3 +449,38 @@ bridge_get_bytearray!(get_sender_chain_key_value(SessionRecord), ffi = None =>
 );
 
 bridge_destroy!(Aes256GcmSiv);
+
+#[bridge_fn]
+fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv, aes_gcm_siv::Error> {
+    aes_gcm_siv::Aes256GcmSiv::new(&key)
+}
+
+#[bridge_fn_buffer]
+fn Aes256GcmSiv_Encrypt<T: Env>(
+    env: T,
+    aes_gcm_siv: &Aes256GcmSiv,
+    ptext: &[u8],
+    nonce: &[u8],
+    associated_data: &[u8],
+) -> Result<T::Buffer, aes_gcm_siv::Error> {
+    let mut buf = Vec::with_capacity(ptext.len() + 16);
+    buf.extend_from_slice(ptext);
+
+    let gcm_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &associated_data)?;
+    buf.extend_from_slice(&gcm_tag);
+
+    Ok(env.buffer(buf))
+}
+
+#[bridge_fn_buffer]
+fn Aes256GcmSiv_Decrypt<T: Env>(
+    env: T,
+    aes_gcm_siv: &Aes256GcmSiv,
+    ctext: &[u8],
+    nonce: &[u8],
+    associated_data: &[u8],
+) -> Result<T::Buffer, aes_gcm_siv::Error> {
+    let mut buf = ctext.to_vec();
+    aes_gcm_siv.decrypt_with_appended_tag(&mut buf, &nonce, &associated_data)?;
+    Ok(env.buffer(buf))
+}

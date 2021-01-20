@@ -32,9 +32,9 @@ public class Aes256GcmSiv: ClonableHandleOwner {
             try nonce.withUnsafeBytes { nonceBytes in
                 try associated_data.withUnsafeBytes { adBytes in
                     try invokeFnReturningArray {
-                        signal_aes256_gcm_siv_encrypt(nativeHandle,
-                                                      $0,
+                        signal_aes256_gcm_siv_encrypt($0,
                                                       $1,
+                                                      nativeHandle,
                                                       messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                                                       messageBytes.count,
                                                       nonceBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
@@ -59,9 +59,9 @@ public class Aes256GcmSiv: ClonableHandleOwner {
             try nonce.withUnsafeBytes { nonceBytes in
                 try associated_data.withUnsafeBytes { adBytes in
                     try invokeFnReturningArray {
-                        signal_aes256_gcm_siv_decrypt(nativeHandle,
-                                                      $0,
+                        signal_aes256_gcm_siv_decrypt($0,
                                                       $1,
+                                                      nativeHandle,
                                                       messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                                                       messageBytes.count,
                                                       nonceBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),

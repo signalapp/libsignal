@@ -852,6 +852,7 @@ dependencies = [
  "libsignal-protocol-rust",
  "log",
  "paste",
+ "rand",
 ]
 
 [[package]]

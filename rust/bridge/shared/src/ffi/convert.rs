@@ -5,6 +5,7 @@
 
 use libc::{c_char, c_uchar};
 use libsignal_protocol_rust::*;
+use std::borrow::Cow;
 use std::ffi::CStr;
 
 use crate::ffi::*;
@@ -72,7 +73,25 @@ impl ArgTypeInfo for String {
     }
 }
 
+impl ArgTypeInfo for Option<String> {
+    type ArgType = *const c_char;
+    fn convert_from(foreign: *const c_char) -> Result<Self, SignalFfiError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            String::convert_from(foreign).map(Some)
+        }
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
+    type ResultType = T::ResultType;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        T::convert_into(self?)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
         T::convert_into(self?)
@@ -84,6 +103,15 @@ impl ResultTypeInfo for String {
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
         let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
         Ok(cstr.into_raw())
+    }
+}
+
+pub(crate) struct Env;
+
+impl crate::Env for Env {
+    type Buffer = Box<[u8]>;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer {
+        input.into().into()
     }
 }
 
@@ -125,21 +153,24 @@ macro_rules! trivial {
 trivial!(i32);
 trivial!(u8);
 trivial!(u32);
+trivial!(u64);
 trivial!(usize);
 trivial!(bool);
 
 macro_rules! ffi_arg_type {
     (u8) => (u8);
     (u32) => (u32);
+    (u64) => (u64);
     (Option<u32>) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
     (String) => (*const libc::c_char);
+    (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
 }
 
 macro_rules! ffi_result_type {
-    (Result<$typ:tt, $_:tt>) => (ffi_result_type!($typ));
+    (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
     (i32) => (i32);
     (bool) => (bool);
     (String) => (*const libc::c_char);
