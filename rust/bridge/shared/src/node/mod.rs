@@ -63,6 +63,17 @@ pub fn return_binary_data<'a, T: AsRef<[u8]>>(
     }
 }
 
+pub fn return_string<'a, T: AsRef<str>>(
+    cx: &mut FunctionContext<'a>,
+    string: Result<Option<T>, SignalProtocolError>,
+) -> JsResult<'a, JsValue> {
+    match string {
+        Ok(Some(string)) => Ok(cx.string(string).upcast()),
+        Ok(None) => Ok(cx.null().upcast()),
+        Err(e) => cx.throw_error(e.to_string()),
+    }
+}
+
 pub(crate) fn with_buffer_contents<R>(
     cx: &mut FunctionContext,
     buffer: Handle<JsBuffer>,
@@ -137,6 +148,54 @@ macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             node_bridge_get_optional_bytearray!($name($typ) as [<$typ _ $name>] => $body);
+        }
+    };
+}
+
+macro_rules! node_bridge_get_string {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
+        paste! {
+            #[allow(non_snake_case)]
+            pub fn [<node_ $node_name>](
+                mut cx: node::FunctionContext
+            ) -> node::JsResult<node::JsValue> {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<impl AsRef<str> + 'a, SignalProtocolError> => $body);
+                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
+                let result = inner_get(&obj);
+                node::return_string(&mut cx, result.map(Some))
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            node_bridge_get_string!($name($typ) as [<$typ _ $name>] => $body);
+        }
+    };
+}
+
+macro_rules! node_bridge_get_optional_string {
+    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
+        paste! {
+            #[allow(non_snake_case)]
+            pub fn [<node_ $node_name>](
+                mut cx: node::FunctionContext
+            ) -> node::JsResult<node::JsValue> {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<Option<impl AsRef<str> + 'a>, SignalProtocolError> => $body);
+                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
+                let result = inner_get(&obj);
+                node::return_string(&mut cx, result)
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            node_bridge_get_optional_string!($name($typ) as [<$typ _ $name>] => $body);
         }
     };
 }

@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -96,19 +96,23 @@ macro_rules! bridge_get_optional_bytearray {
 }
 
 macro_rules! bridge_get_string {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_string!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_string!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_string!($name($typ) $(as $node_name)? => $body);
     }
 }
 
 macro_rules! bridge_get_optional_string {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_optional_string!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_optional_string!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_optional_string!($name($typ) $(as $node_name)? => $body);
     }
 }
