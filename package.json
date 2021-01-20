@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "node-gyp build",
-    "tsc": "tsc -p node && cp node/*.d.ts node/dist",
+    "tsc": "tsc -p node --declarationDir node/dist",
     "clean": "rimraf node/dist build",
     "test": "electron-mocha --recursive node/dist/test",
     "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
