@@ -23,3 +23,4 @@ libsignal-bridge = { path = "../shared", features = ["jni"] }
 async-trait = "0.1.41"
 jni = "0.17"
 rand = "0.7.3"
+log = "0.4.11"

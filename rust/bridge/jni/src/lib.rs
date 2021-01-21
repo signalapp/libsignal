@@ -14,6 +14,7 @@ use std::convert::TryFrom;
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::*;
 
+pub mod logging;
 mod util;
 
 use crate::util::*;
