@@ -71,6 +71,12 @@ fi
 
 OUT_DIR=${OUT_DIR:-build/${CONFIGURATION_NAME}}
 
+# On Linux, cdylibs don't include public symbols from their dependencies,
+# even if those symbols have been re-exported in the Rust source.
+# Using LTO works around this at the cost of a slightly slower build.
+# https://github.com/rust-lang/rfcs/issues/2771
+export CARGO_PROFILE_RELEASE_LTO=thin
+
 check_rust
 
 echo_then_run cargo build -p libsignal-node ${CARGO_PROFILE_ARG}

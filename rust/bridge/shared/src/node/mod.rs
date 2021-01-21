@@ -14,6 +14,18 @@ pub use neon::prelude::*;
 mod convert;
 pub(crate) use convert::*;
 
+pub type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
+
+#[linkme::distributed_slice]
+pub(crate) static LIBSIGNAL_FNS: [(&'static str, JsFn)] = [..];
+
+pub fn register(cx: &mut ModuleContext) -> NeonResult<()> {
+    for (name, f) in LIBSIGNAL_FNS {
+        cx.export_function(name, *f)?;
+    }
+    Ok(())
+}
+
 pub struct DefaultFinalize<T>(T);
 
 impl<T> Finalize for DefaultFinalize<T> {}
@@ -84,6 +96,18 @@ pub(crate) fn with_buffer_contents<R>(
     f(slice)
 }
 
+macro_rules! node_register {
+    ( $name:ident ) => {
+        paste! {
+            #[no_mangle] // necessary because we are linking as a cdylib
+            #[allow(non_upper_case_globals)]
+            #[linkme::distributed_slice(node::LIBSIGNAL_FNS)]
+            static [<signal_register_node_ $name>]: (&str, node::JsFn) =
+                (stringify!($name), [<node_ $name>]);
+        }
+    };
+}
+
 macro_rules! node_bridge_deserialize {
     ( $typ:ident::$fn:path as None ) => {};
     ( $typ:ident::$fn:path as $node_name:ident ) => {
@@ -97,6 +121,8 @@ macro_rules! node_bridge_deserialize {
                     node::with_buffer_contents(&mut cx, buffer, |buf| $typ::$fn(buf));
                 node::return_boxed_object(&mut cx, obj)
             }
+
+            node_register!([<$node_name _deserialize>]);
         }
     };
     ( $typ:ident::$fn:path ) => {
@@ -119,6 +145,8 @@ macro_rules! node_bridge_get_bytearray {
                 let bytes = inner_get(&obj);
                 node::return_binary_data(&mut cx, bytes.map(Some))
             }
+
+            node_register!($node_name);
         }
     };
     ( $name:ident($typ:ty) => $body:expr ) => {
@@ -143,6 +171,8 @@ macro_rules! node_bridge_get_optional_bytearray {
                 let bytes = inner_get(&obj);
                 node::return_binary_data(&mut cx, bytes)
             }
+
+            node_register!($node_name);
         }
     };
     ( $name:ident($typ:ty) => $body:expr ) => {
@@ -167,6 +197,8 @@ macro_rules! node_bridge_get_string {
                 let result = inner_get(&obj);
                 node::return_string(&mut cx, result.map(Some))
             }
+
+            node_register!($node_name);
         }
     };
     ( $name:ident($typ:ty) => $body:expr ) => {
@@ -191,6 +223,8 @@ macro_rules! node_bridge_get_optional_string {
                 let result = inner_get(&obj);
                 node::return_string(&mut cx, result)
             }
+
+            node_register!($node_name);
         }
     };
     ( $name:ident($typ:ty) => $body:expr ) => {

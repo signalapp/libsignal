@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -7,6 +7,7 @@
 
 use heck::SnakeCase;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::*;
 use syn::punctuated::Punctuated;
@@ -234,7 +235,8 @@ fn jni_name_from_ident(ident: &Ident) -> String {
 }
 
 fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
-    let name = format_ident!("node_{}", name);
+    let name_with_prefix = format_ident!("node_{}", name);
+    let name_without_prefix = Ident::new(&name, Span::call_site());
 
     let env_arg = if result_kind.has_env() {
         quote!(&mut cx,)
@@ -290,13 +292,16 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
     quote! {
         #[cfg(feature = "node")]
         #[allow(non_snake_case)]
-        pub fn #name(
+        pub fn #name_with_prefix(
             mut cx: node::FunctionContext,
         ) -> node::JsResult<node::JsValue> {
             #(#input_processing);*;
             let __result = #orig_name(#env_arg #(#input_names),*);
             Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
         }
+
+        #[cfg(feature = "node")]
+        node_register!(#name_without_prefix);
     }
 }
 

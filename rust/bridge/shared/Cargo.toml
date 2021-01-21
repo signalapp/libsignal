@@ -22,7 +22,8 @@ rand = "0.7.3"
 libc = { version = "0.2", optional = true }
 jni = { version = "0.17", optional = true }
 neon = { version = "0.7.0", optional = true, default-features = false, features = ["napi-4"] }
+linkme = { version = "0.2.4", optional = true }
 
 [features]
 ffi = ["libc"]
-node = ["neon"]
+node = ["neon", "linkme"]
