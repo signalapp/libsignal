@@ -65,6 +65,7 @@ def translate_to_java(typ):
         "void": "void",
         "jstring": "String",
         "JString": "String",
+        "JClass": "Class",
         "jbyteArray": "byte[]",
         "jlongArray": "long[]",
         "ObjectHandle": "long",

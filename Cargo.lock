@@ -790,6 +790,7 @@ dependencies = [
  "jni",
  "libsignal-bridge",
  "libsignal-protocol-rust",
+ "log",
  "rand",
 ]
 
