@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 cd "${SCRIPT_DIR}"/..
-. bin/build_helpers.sh
+. ../bin/build_helpers.sh
 
 #
 # copy_repo.sh <source> <destination>
@@ -20,7 +20,7 @@ cd "${SCRIPT_DIR}"/..
 # libsignal-client/node$ scripts/copy_repo.sh . ../../libsignal-client-node
 #
 
-rsync -avrq \
+rsync -avrv \
   --exclude='dist/test' \
   --exclude='node_modules' \
   --exclude='scripts' \
@@ -31,10 +31,13 @@ rsync -avrq \
   --exclude='tsconfig.json' \
   --exclude='BUILDING.md' \
   --exclude='README.md' \
+  --exclude='build_node_bridge.py' \
    $1 $2
 
+cp -vf ../build/Release/libsignal_client_*.node $2
+
 # Ensure that the LICENSE file is up to date.
-cp -f $1/../LICENSE $2
+cp -vf $1/../LICENSE $2
 
 # Ensure that the README.md file is up to date.
-cp -f $1/../README.md $2
+cp -vf $1/../README.md $2
