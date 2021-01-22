@@ -34,7 +34,8 @@ rsync -avrv \
   --exclude='build_node_bridge.py' \
    $1 $2
 
-cp -vf ../build/Release/libsignal_client_*.node $2
+mkdir -p $2/build
+cp -vf ../build/Release/libsignal_client_*.node $2/build
 
 # Ensure that the LICENSE file is up to date.
 cp -vf $1/../LICENSE $2
