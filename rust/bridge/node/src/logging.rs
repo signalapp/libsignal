@@ -6,7 +6,7 @@
 use libsignal_bridge::node::ArgTypeInfo;
 use neon::prelude::*;
 
-// Keep this in sync with libsignal_client.d.ts, as well as the list below.
+/// ts: export const enum LogLevel { Error, Warn, Info, Debug, Trace }
 #[derive(Clone, Copy)]
 enum LogLevel {
     Error = 1,
@@ -110,7 +110,6 @@ impl log::Log for NodeLogger {
 }
 
 fn set_max_level_from_js_level(max_level: u32) {
-    // Keep this in sync with libsignal_client.d.ts.
     let level = match max_level {
         1 => LogLevel::Error,
         2 => LogLevel::Warn,
@@ -124,6 +123,7 @@ fn set_max_level_from_js_level(max_level: u32) {
     log::set_max_level(log::Level::from(level).to_level_filter());
 }
 
+/// ts: export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let max_level_arg = cx.argument::<JsNumber>(0)?;
     let max_level = u32::convert_from(&mut cx, max_level_arg)?;

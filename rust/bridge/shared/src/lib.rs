@@ -30,6 +30,8 @@ mod support;
 use support::*;
 
 bridge_handle!(Aes256GcmSiv);
+bridge_handle!(Fingerprint);
+bridge_handle!(PreKeyBundle);
 bridge_handle!(PreKeyRecord);
 bridge_handle!(PreKeySignalMessage);
 bridge_handle!(PrivateKey);
@@ -41,8 +43,10 @@ bridge_handle!(SenderKeyMessage);
 bridge_handle!(SenderKeyName);
 bridge_handle!(SenderKeyRecord);
 bridge_handle!(ServerCertificate);
+bridge_handle!(SessionRecord);
 bridge_handle!(SignalMessage);
 bridge_handle!(SignedPreKeyRecord);
+bridge_handle!(UnidentifiedSenderMessageContent);
 
 bridge_destroy!(ProtocolAddress, ffi = address);
 bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
@@ -423,15 +427,19 @@ bridge_get_bytearray!(get_contents(UnidentifiedSenderMessageContent) =>
     UnidentifiedSenderMessageContent::contents
 );
 
-bridge_destroy!(UnidentifiedSenderMessage, ffi = None);
-bridge_deserialize!(UnidentifiedSenderMessage::deserialize, ffi = None);
-bridge_get_bytearray!(get_serialized(UnidentifiedSenderMessage), ffi = None =>
+bridge_destroy!(UnidentifiedSenderMessage, ffi = None, node = None);
+bridge_deserialize!(
+    UnidentifiedSenderMessage::deserialize,
+    ffi = None,
+    node = None
+);
+bridge_get_bytearray!(get_serialized(UnidentifiedSenderMessage), ffi = None, node = None =>
     UnidentifiedSenderMessage::serialized
 );
-bridge_get_bytearray!(get_encrypted_message(UnidentifiedSenderMessage), ffi = None =>
+bridge_get_bytearray!(get_encrypted_message(UnidentifiedSenderMessage), ffi = None, node = None =>
     UnidentifiedSenderMessage::encrypted_message
 );
-bridge_get_bytearray!(get_encrypted_static(UnidentifiedSenderMessage), ffi = None =>
+bridge_get_bytearray!(get_encrypted_static(UnidentifiedSenderMessage), ffi = None, node = None =>
     UnidentifiedSenderMessage::encrypted_static
 );
 

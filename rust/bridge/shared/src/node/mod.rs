@@ -114,6 +114,7 @@ macro_rules! node_bridge_deserialize {
     ( $typ:ident::$fn:path as $node_name:ident ) => {
         paste! {
             #[allow(non_snake_case, clippy::redundant_closure)]
+            #[doc = "ts: export function " $node_name "_deserialize(buffer: Buffer): " $typ]
             pub fn [<node_ $node_name _deserialize>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {
@@ -136,6 +137,7 @@ macro_rules! node_bridge_get_bytearray {
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
+            #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer"]
             pub fn [<node_ $node_name>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {
@@ -162,6 +164,7 @@ macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
+            #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer | null"]
             pub fn [<node_ $node_name>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {
@@ -188,6 +191,7 @@ macro_rules! node_bridge_get_string {
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
+            #[doc = "ts: export function " $node_name "(obj: " $typ "): string"]
             pub fn [<node_ $node_name>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {
@@ -214,6 +218,7 @@ macro_rules! node_bridge_get_optional_string {
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
+            #[doc = "ts: export function " $node_name "(obj: " $typ "): string | null"]
             pub fn [<node_ $node_name>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {

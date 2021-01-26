@@ -53,7 +53,7 @@ macro_rules! bridge_handle {
 }
 
 macro_rules! bridge_destroy {
-    ($typ:ty $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? ) => {
+    ($typ:ty $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_destroy!($typ $(as $ffi_name)?);
         #[cfg(feature = "jni")]
