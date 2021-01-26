@@ -23,15 +23,15 @@ export class PublicKey {
   }
 
   static deserialize(buf: Buffer): PublicKey {
-    return new PublicKey(SC.PublicKey_deserialize(buf));
+    return new PublicKey(SC.PublicKey_Deserialize(buf));
   }
 
   serialize(): Buffer {
-    return SC.PublicKey_serialize(this.nativeHandle);
+    return SC.PublicKey_Serialize(this.nativeHandle);
   }
 
   verify(msg: Buffer, sig: Buffer): boolean {
-    return SC.PublicKey_verify(this.nativeHandle, msg, sig);
+    return SC.PublicKey_Verify(this.nativeHandle, msg, sig);
   }
 
   _unsafeGetNativeHandle(): SignalClient.PublicKey {
@@ -47,23 +47,23 @@ export class PrivateKey {
   }
 
   static generate(): PrivateKey {
-    return new PrivateKey(SC.PrivateKey_generate());
+    return new PrivateKey(SC.PrivateKey_Generate());
   }
 
   static deserialize(buf: Buffer): PrivateKey {
-    return new PrivateKey(SC.PrivateKey_deserialize(buf));
+    return new PrivateKey(SC.PrivateKey_Deserialize(buf));
   }
 
   serialize(): Buffer {
-    return SC.PrivateKey_serialize(this.nativeHandle);
+    return SC.PrivateKey_Serialize(this.nativeHandle);
   }
 
   sign(msg: Buffer): Buffer {
-    return SC.PrivateKey_sign(this.nativeHandle, msg);
+    return SC.PrivateKey_Sign(this.nativeHandle, msg);
   }
 
   agree(other_key: PublicKey): Buffer {
-    return SC.PrivateKey_agree(
+    return SC.PrivateKey_Agree(
       this.nativeHandle,
       other_key._unsafeGetNativeHandle()
     );
@@ -71,7 +71,7 @@ export class PrivateKey {
 
   getPublicKey(): PublicKey {
     return PublicKey.fromNativeHandle(
-      SC.PrivateKey_getPublicKey(this.nativeHandle)
+      SC.PrivateKey_GetPublicKey(this.nativeHandle)
     );
   }
 }

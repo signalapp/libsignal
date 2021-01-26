@@ -325,12 +325,7 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
 }
 
 fn node_name_from_ident(ident: &Ident) -> String {
-    let mut result = ident.to_string();
-    match result.find('_') {
-        Some(idx) if idx + 1 < result.len() => result[(idx + 1)..(idx + 2)].make_ascii_lowercase(),
-        _ => {}
-    }
-    result
+    ident.to_string()
 }
 
 fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind) -> TokenStream {

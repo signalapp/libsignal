@@ -69,7 +69,7 @@ bridge_get_bytearray!(
     PublicKey::public_key_bytes
 );
 
-#[bridge_fn(ffi = "publickey_compare", node = "PublicKey_compare")]
+#[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
 fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
     match key1.cmp(&key2) {
         std::cmp::Ordering::Less => -1,
@@ -78,7 +78,7 @@ fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
     }
 }
 
-#[bridge_fn(ffi = "publickey_verify", node = "PublicKey_verify")]
+#[bridge_fn(ffi = "publickey_verify", node = "PublicKey_Verify")]
 fn ECPublicKey_Verify(
     key: &PublicKey,
     message: &[u8],
@@ -100,19 +100,19 @@ bridge_get_bytearray!(
     |k| Ok(k.serialize())
 );
 
-#[bridge_fn(ffi = "privatekey_generate", node = "PrivateKey_generate")]
+#[bridge_fn(ffi = "privatekey_generate", node = "PrivateKey_Generate")]
 fn ECPrivateKey_Generate() -> PrivateKey {
     let mut rng = rand::rngs::OsRng;
     let keypair = KeyPair::generate(&mut rng);
     keypair.private_key
 }
 
-#[bridge_fn(ffi = "privatekey_get_public_key", node = "PrivateKey_getPublicKey")]
+#[bridge_fn(ffi = "privatekey_get_public_key", node = "PrivateKey_GetPublicKey")]
 fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey, SignalProtocolError> {
     k.public_key()
 }
 
-#[bridge_fn_buffer(ffi = "privatekey_sign", node = "PrivateKey_sign")]
+#[bridge_fn_buffer(ffi = "privatekey_sign", node = "PrivateKey_Sign")]
 fn ECPrivateKey_Sign<T: Env>(
     env: T,
     key: &PrivateKey,
@@ -123,7 +123,7 @@ fn ECPrivateKey_Sign<T: Env>(
     Ok(env.buffer(sig.into_vec()))
 }
 
-#[bridge_fn_buffer(ffi = "privatekey_agree", node = "PrivateKey_agree")]
+#[bridge_fn_buffer(ffi = "privatekey_agree", node = "PrivateKey_Agree")]
 fn ECPrivateKey_Agree<T: Env>(
     env: T,
     private_key: &PrivateKey,
