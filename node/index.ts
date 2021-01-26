@@ -9,6 +9,8 @@ import * as SignalClient from './libsignal_client';
 
 const SC = bindings('libsignal_client_' + os.platform()) as typeof SignalClient;
 
+export const { initLogger, LogLevel } = SC;
+
 export class PublicKey {
   private readonly nativeHandle: SignalClient.PublicKey;
 

@@ -30,3 +30,22 @@ export function PrivateKey_serialize(key: PrivateKey): Buffer;
 export function PrivateKey_sign(key: PrivateKey, msg: Buffer): Buffer;
 export function PrivateKey_agree(key: PrivateKey, other_key: PublicKey): Buffer;
 export function PrivateKey_getPublicKey(key: PrivateKey): PublicKey;
+
+export const enum LogLevel {
+  Error = 1,
+  Warn,
+  Info,
+  Debug,
+  Trace,
+}
+
+export function initLogger(
+  maxLevel: LogLevel,
+  callback: (
+    level: LogLevel,
+    target: string,
+    file: string | null,
+    line: number | null,
+    message: string
+  ) => void
+): void;

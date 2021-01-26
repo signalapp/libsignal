@@ -1,10 +1,21 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import { assert } from 'chai';
 import * as SignalClient from '../index';
+
+SignalClient.initLogger(
+  SignalClient.LogLevel.Trace,
+  (level, target, fileOrNull, lineOrNull, message) => {
+    const targetPrefix = target ? '[' + target + '] ' : '';
+    const file = fileOrNull ?? '<unknown>';
+    const line = lineOrNull ?? 0;
+    // eslint-disable-next-line no-console
+    console.log(targetPrefix + file + ':' + line + ': ' + message);
+  }
+);
 
 describe('SignalClient', () => {
   it('ECC signatures work', () => {
