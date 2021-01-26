@@ -125,7 +125,7 @@ decls = itertools.chain(
 output_file_name = 'libsignal_client.d.ts'
 contents = open(os.path.join(our_abs_dir, output_file_name + '.in')).read()
 contents += "\n"
-contents += "\n".join(decls)
+contents += "\n".join(sorted(decls))
 contents += "\n"
 
 output_file = os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', output_file_name)
