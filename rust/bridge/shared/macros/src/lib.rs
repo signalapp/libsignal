@@ -184,24 +184,14 @@ fn jni_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
                 attrs,
                 pat: box Pat::Ident(name),
                 colon_token,
-                ty: ty @ box Type::Reference(_),
-            }) => (
-                name.ident.clone(),
-                quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
-                quote!(
-                    let #name = <#ty as jni::RefArgTypeInfo>::convert_from(&env, #name)?;
-                    let #name = std::borrow::Borrow::borrow(&#name)
-                ),
-            ),
-            FnArg::Typed(PatType {
-                attrs,
-                pat: box Pat::Ident(name),
-                colon_token,
                 ty,
             }) => (
                 name.ident.clone(),
                 quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
-                quote!(let #name = <#ty as jni::ArgTypeInfo>::convert_from(&env, #name)?),
+                quote! {
+                    let mut #name = <#ty as jni::ArgTypeInfo>::borrow(&env, #name)?;
+                    let #name = <#ty as jni::ArgTypeInfo>::load_from(&env, &mut #name)?
+                },
             ),
             FnArg::Typed(PatType { pat, .. }) => (
                 Ident::new("unexpected", pat.span()),
