@@ -102,10 +102,7 @@ impl PublicKey {
         match self.key {
             PublicKeyData::DjbPublicKey(pub_key) => {
                 if signature.len() != 64 {
-                    return Err(SignalProtocolError::MismatchedSignatureLengthForKey(
-                        KeyType::Djb,
-                        signature.len(),
-                    ));
+                    return Ok(false);
                 }
                 Ok(curve25519::KeyPair::verify_signature(
                     &pub_key,

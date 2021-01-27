@@ -202,12 +202,9 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1Ne
         let signed_prekey = native_handle_cast::<PublicKey>(signed_prekey_handle)?;
         let signed_prekey_signature = env.convert_byte_array(signed_prekey_signature)?;
 
-        let prekey = native_handle_cast_optional::<PublicKey>(prekey_handle)?.map(|k| *k);
-
-        let prekey_id = if prekey_id < 0 {
-            None
-        } else {
-            Some(jint_to_u32(prekey_id)?)
+        let prekey = match native_handle_cast_optional::<PublicKey>(prekey_handle)?.map(|k| *k) {
+            None => None,
+            Some(key) => Some((jint_to_u32(prekey_id)?, key)),
         };
 
         let identity_key = IdentityKey::new(*(identity_key_handle as *mut PublicKey));
@@ -215,7 +212,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1Ne
         let bundle = PreKeyBundle::new(
             registration_id,
             device_id,
-            prekey_id,
             prekey,
             signed_prekey_id,
             *signed_prekey,

@@ -218,15 +218,15 @@ impl SenderKeyState {
         if let Some(ref signing_key) = self.state.sender_signing_key {
             Ok(curve::PublicKey::deserialize(&signing_key.public)?)
         } else {
-            Err(SignalProtocolError::SignaturePubkeyMissing)
+            Err(SignalProtocolError::InvalidProtobufEncoding)
         }
     }
 
-    pub fn signing_key_private(&self) -> Result<Option<curve::PrivateKey>> {
+    pub fn signing_key_private(&self) -> Result<curve::PrivateKey> {
         if let Some(ref signing_key) = self.state.sender_signing_key {
-            Ok(Some(curve::PrivateKey::deserialize(&signing_key.private)?))
+            Ok(curve::PrivateKey::deserialize(&signing_key.private)?)
         } else {
-            Ok(None)
+            Err(SignalProtocolError::InvalidProtobufEncoding)
         }
     }
 

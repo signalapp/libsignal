@@ -33,9 +33,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let ciphertext =
         crypto::aes_256_cbc_encrypt(plaintext, &sender_key.cipher_key()?, &sender_key.iv()?)?;
 
-    let signing_key = sender_key_state
-        .signing_key_private()?
-        .ok_or(SignalProtocolError::SenderKeySigningKeyMissing)?;
+    let signing_key = sender_key_state.signing_key_private()?;
 
     let skm = SenderKeyMessage::new(
         sender_key_state.sender_key_id()?,

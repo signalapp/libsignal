@@ -166,4 +166,62 @@ public class NumericFingerprintGeneratorTest extends TestCase {
                               aliceFingerprintV2.getScannableFingerprint().getSerialized()));
   }
 
+  public void testDifferentVersionsThrowExpected() throws Exception {
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
+    IdentityKey bobIdentityKey   = new IdentityKey(BOB_IDENTITY, 0);
+    byte[]      aliceStableId    = "+14152222222".getBytes();
+    byte[]      bobStableId      = "+14153333333".getBytes();
+
+    NumericFingerprintGenerator generator          = new NumericFingerprintGenerator(5200);
+
+    Fingerprint aliceFingerprintV1 = generator.createFor(VERSION_1,
+                                                         aliceStableId, aliceIdentityKey,
+                                                         bobStableId, bobIdentityKey);
+
+    Fingerprint bobFingerprintV2 = generator.createFor(VERSION_2,
+                                                       bobStableId, bobIdentityKey,
+                                                       aliceStableId, aliceIdentityKey);
+
+    try {
+       aliceFingerprintV1.getScannableFingerprint().compareTo(bobFingerprintV2.getScannableFingerprint().getSerialized());
+       throw new AssertionError("Should have thrown");
+    } catch (FingerprintVersionMismatchException e) {
+      assertEquals(e.getOurVersion(), 1);
+      assertEquals(e.getTheirVersion(), 2);
+    }
+
+    try {
+       bobFingerprintV2.getScannableFingerprint().compareTo(aliceFingerprintV1.getScannableFingerprint().getSerialized());
+       throw new AssertionError("Should have thrown");
+    } catch (FingerprintVersionMismatchException e) {
+      assertEquals(e.getOurVersion(), 2);
+      assertEquals(e.getTheirVersion(), 1);
+    }
+  }
+
+  public void testFingerprintParsingFail() throws Exception {
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
+    IdentityKey bobIdentityKey   = new IdentityKey(BOB_IDENTITY, 0);
+    byte[]      aliceStableId    = "+14152222222".getBytes();
+    byte[]      bobStableId      = "+14153333333".getBytes();
+
+    NumericFingerprintGenerator generator          = new NumericFingerprintGenerator(5200);
+
+    Fingerprint aliceFingerprint = generator.createFor(VERSION_1,
+                                                       aliceStableId, aliceIdentityKey,
+                                                       bobStableId, bobIdentityKey);
+
+    Fingerprint bobFingerprint = generator.createFor(VERSION_1,
+                                                     bobStableId, bobIdentityKey,
+                                                     aliceStableId, aliceIdentityKey);
+
+    try {
+       byte[] bobSer = bobFingerprint.getScannableFingerprint().getSerialized();
+       bobSer[5] += 1;
+       aliceFingerprint.getScannableFingerprint().compareTo(bobSer);
+       throw new AssertionError("Should have thrown");
+    } catch (FingerprintParsingException e) {
+    }
+  }
+
 }

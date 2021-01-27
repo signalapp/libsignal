@@ -254,15 +254,26 @@ pub unsafe extern "C" fn signal_pre_key_bundle_new(
         let signed_prekey_signature =
             as_slice(signed_prekey_signature, signed_prekey_signature_len)?;
 
-        let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.copied();
-
-        let prekey_id = get_optional_uint32(prekey_id);
         let identity_key = IdentityKey::new(*(identity_key as *const PublicKey));
+
+        let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.copied();
+        let prekey_id = get_optional_uint32(prekey_id);
+
+        let prekey = match (prekey, prekey_id) {
+            (None, None) => None,
+            (Some(k), Some(id)) => Some((id, k)),
+            _ => {
+                return Err(SignalFfiError::Signal(
+                    SignalProtocolError::InvalidArgument(
+                        "Must supply both or neither of prekey and prekey_id".to_owned(),
+                    ),
+                ))
+            }
+        };
 
         let bundle = PreKeyBundle::new(
             registration_id,
             device_id,
-            prekey_id,
             prekey,
             signed_prekey_id,
             *signed_prekey,
