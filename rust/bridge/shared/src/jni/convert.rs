@@ -7,23 +7,37 @@ use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol_rust::*;
-use std::borrow::{Borrow, Cow};
-use std::ops::Deref;
+use std::borrow::Cow;
 
 use crate::jni::*;
 
 pub(crate) trait ArgTypeInfo<'a>: Sized {
     type ArgType;
-    fn convert_from(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self, SignalJniError>;
+    type StoredType: 'a;
+    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError>;
+    fn load_from(env: &'a JNIEnv, stored: &mut Self::StoredType) -> Result<Self, SignalJniError>;
 }
 
-pub(crate) trait RefArgTypeInfo<'a>: Deref {
-    type ArgType;
-    type StoredType: Borrow<Self::Target> + 'a;
-    fn convert_from(
-        env: &'a JNIEnv,
+pub(crate) trait SimpleArgTypeInfo<'a>: Sized {
+    type ArgType: Copy + 'a;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> Result<Self, SignalJniError>;
+}
+
+impl<'a, T> ArgTypeInfo<'a> for T
+where
+    T: SimpleArgTypeInfo<'a>,
+{
+    type ArgType = <Self as SimpleArgTypeInfo<'a>>::ArgType;
+    type StoredType = Self::ArgType;
+    fn borrow(
+        _env: &'a JNIEnv,
         foreign: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError>;
+    ) -> Result<Self::StoredType, SignalJniError> {
+        Ok(foreign)
+    }
+    fn load_from(env: &'a JNIEnv, stored: &mut Self::StoredType) -> Result<Self, SignalJniError> {
+        Self::convert_from(env, *stored)
+    }
 }
 
 pub(crate) trait ResultTypeInfo: Sized {
@@ -31,16 +45,16 @@ pub(crate) trait ResultTypeInfo: Sized {
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError>;
 }
 
-impl<'a> ArgTypeInfo<'a> for u32 {
+impl<'a> SimpleArgTypeInfo<'a> for u32 {
     type ArgType = jint;
-    fn convert_from(_env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
         jint_to_u32(foreign)
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for Option<u32> {
+impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
     type ArgType = jint;
-    fn convert_from(env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
         if foreign < 0 {
             Ok(None)
         } else {
@@ -49,30 +63,30 @@ impl<'a> ArgTypeInfo<'a> for Option<u32> {
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for u64 {
+impl<'a> SimpleArgTypeInfo<'a> for u64 {
     type ArgType = jlong;
-    fn convert_from(_env: &'a JNIEnv, foreign: jlong) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &JNIEnv, foreign: jlong) -> Result<Self, SignalJniError> {
         jlong_to_u64(foreign)
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for u8 {
+impl<'a> SimpleArgTypeInfo<'a> for u8 {
     type ArgType = jint;
-    fn convert_from(_env: &'a JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
         jint_to_u8(foreign)
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for String {
+impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
-    fn convert_from(env: &'a JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
         Ok(env.get_string(foreign)?.into())
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for Option<String> {
+impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     type ArgType = JString<'a>;
-    fn convert_from(env: &'a JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -86,24 +100,23 @@ pub(crate) struct AutoByteSlice<'a> {
     len: usize,
 }
 
-impl<'a> Borrow<[u8]> for AutoByteSlice<'a> {
-    fn borrow(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.jni_array.as_ptr() as *const u8, self.len) }
-    }
-}
-
-impl<'a> RefArgTypeInfo<'a> for &[u8] {
+impl<'a> ArgTypeInfo<'a> for &'a [u8] {
     type ArgType = jbyteArray;
     type StoredType = AutoByteSlice<'a>;
-    fn convert_from(
-        env: &'a JNIEnv,
-        foreign: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError> {
+    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
         let len = env.get_array_length(foreign)?;
         assert!(len >= 0);
         Ok(AutoByteSlice {
             jni_array: env.get_auto_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?,
             len: len as usize,
+        })
+    }
+    fn load_from(
+        _env: &'a JNIEnv,
+        stored: &mut Self::StoredType,
+    ) -> Result<&'a [u8], SignalJniError> {
+        Ok(unsafe {
+            std::slice::from_raw_parts(stored.jni_array.as_ptr() as *const u8, stored.len)
         })
     }
 }
@@ -152,13 +165,12 @@ impl crate::Env for &'_ JNIEnv<'_> {
 
 macro_rules! jni_bridge_handle {
     ($typ:ty) => {
-        impl<'a> jni::RefArgTypeInfo<'a> for &$typ {
+        impl<'a> jni::SimpleArgTypeInfo<'a> for &$typ {
             type ArgType = jni::ObjectHandle;
-            type StoredType = &'static $typ;
             fn convert_from(
-                _env: &'a jni::JNIEnv,
+                _env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> Result<Self::StoredType, jni::SignalJniError> {
+            ) -> Result<Self, jni::SignalJniError> {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
@@ -176,9 +188,9 @@ macro_rules! jni_bridge_handle {
 
 macro_rules! trivial {
     ($typ:ty) => {
-        impl<'a> ArgTypeInfo<'a> for $typ {
+        impl<'a> SimpleArgTypeInfo<'a> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &'a JNIEnv, foreign: Self) -> Result<Self, SignalJniError> {
+            fn convert_from(_env: &JNIEnv, foreign: Self) -> Result<Self, SignalJniError> {
                 Ok(foreign)
             }
         }
