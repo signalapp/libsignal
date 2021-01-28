@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -10,8 +10,8 @@ use libsignal_bridge_macros::*;
 use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
 
-#[cfg(not(any(feature = "ffi", feature = "jni")))]
-compile_error!("Either feature \"ffi\" or \"jni\" must be enabled for this crate.");
+#[cfg(not(any(feature = "ffi", feature = "jni", feature = "node")))]
+compile_error!("Feature \"ffi\", \"jni\", or \"node\" must be enabled for this crate.");
 
 #[cfg(feature = "ffi")]
 #[macro_use]
@@ -20,6 +20,10 @@ pub mod ffi;
 #[cfg(feature = "jni")]
 #[macro_use]
 pub mod jni;
+
+#[cfg(feature = "node")]
+#[macro_use]
+pub mod node;
 
 #[macro_use]
 mod support;
@@ -61,7 +65,7 @@ bridge_get_bytearray!(
     PublicKey::public_key_bytes
 );
 
-#[bridge_fn(ffi = "publickey_compare")]
+#[bridge_fn(ffi = "publickey_compare", node = "PublicKey_compare")]
 fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
     match key1.cmp(&key2) {
         std::cmp::Ordering::Less => -1,
@@ -70,7 +74,7 @@ fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
     }
 }
 
-#[bridge_fn(ffi = "publickey_verify")]
+#[bridge_fn(ffi = "publickey_verify", node = "PublicKey_verify")]
 fn ECPublicKey_Verify(
     key: &PublicKey,
     message: &[u8],
@@ -92,19 +96,19 @@ bridge_get_bytearray!(
     |k| Ok(k.serialize())
 );
 
-#[bridge_fn(ffi = "privatekey_generate")]
+#[bridge_fn(ffi = "privatekey_generate", node = "PrivateKey_generate")]
 fn ECPrivateKey_Generate() -> PrivateKey {
     let mut rng = rand::rngs::OsRng;
     let keypair = KeyPair::generate(&mut rng);
     keypair.private_key
 }
 
-#[bridge_fn(ffi = "privatekey_get_public_key")]
+#[bridge_fn(ffi = "privatekey_get_public_key", node = "PrivateKey_getPublicKey")]
 fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey, SignalProtocolError> {
     k.public_key()
 }
 
-#[bridge_fn_buffer(ffi = "privatekey_sign")]
+#[bridge_fn_buffer(ffi = "privatekey_sign", node = "PrivateKey_sign")]
 fn ECPrivateKey_Sign<T: Env>(
     env: T,
     key: &PrivateKey,
@@ -115,7 +119,7 @@ fn ECPrivateKey_Sign<T: Env>(
     Ok(env.buffer(sig.into_vec()))
 }
 
-#[bridge_fn_buffer(ffi = "privatekey_agree")]
+#[bridge_fn_buffer(ffi = "privatekey_agree", node = "PrivateKey_agree")]
 fn ECPrivateKey_Agree<T: Env>(
     env: T,
     private_key: &PrivateKey,

@@ -110,7 +110,7 @@ pub(crate) struct Env;
 
 impl crate::Env for Env {
     type Buffer = Box<[u8]>;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer {
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
         input.into().into()
     }
 }

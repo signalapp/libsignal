@@ -750,7 +750,9 @@ dependencies = [
  "libc",
  "libsignal-bridge-macros",
  "libsignal-protocol-rust",
+ "linkme",
  "log",
+ "neon",
  "paste",
  "rand",
 ]
@@ -798,6 +800,7 @@ dependencies = [
 name = "libsignal-node"
 version = "0.1.0"
 dependencies = [
+ "libsignal-bridge",
  "libsignal-protocol-rust",
  "neon",
  "neon-build 0.5.3",
@@ -825,6 +828,26 @@ dependencies = [
  "sha2",
  "subtle",
  "x25519-dalek",
+]
+
+[[package]]
+name = "linkme"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af8d48c3ea47e553ce0cece93639dbca649955e44e07de98be481f5918e0c555"
+dependencies = [
+ "linkme-impl",
+]
+
+[[package]]
+name = "linkme-impl"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84a81a6a2a96ffd36c5fe4904c5173e1d8636ad3156a6dda1c6370387a1f7a4a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

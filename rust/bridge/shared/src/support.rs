@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -11,6 +11,7 @@ use std::task::{self, Poll};
 
 pub(crate) use paste::paste;
 
+#[allow(dead_code)] // not used in Node-only builds
 #[track_caller]
 pub fn expect_ready<F: Future>(future: F) -> F::Output {
     pin_mut!(future);
@@ -23,7 +24,7 @@ pub fn expect_ready<F: Future>(future: F) -> F::Output {
 /// Used for returning newly-allocated buffers as efficiently as possible.
 pub(crate) trait Env {
     type Buffer;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(&self, input: T) -> Self::Buffer;
+    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer;
 }
 
 /// Wraps an expression in a function with a given name and type...
@@ -46,6 +47,8 @@ macro_rules! bridge_handle {
         ffi_bridge_handle!($typ);
         #[cfg(feature = "jni")]
         jni_bridge_handle!($typ);
+        #[cfg(feature = "node")]
+        node_bridge_handle!($typ);
     };
 }
 
@@ -55,50 +58,61 @@ macro_rules! bridge_destroy {
         ffi_bridge_destroy!($typ $(as $ffi_name)?);
         #[cfg(feature = "jni")]
         jni_bridge_destroy!($typ $(as $jni_name)?);
+        // The Node bridge doesn't need manual destruction.
     }
 }
 
 macro_rules! bridge_deserialize {
-    ($typ:ident::$fn:path $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? ) => {
+    ($typ:ident::$fn:path $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_deserialize!($typ::$fn $(as $ffi_name)?);
         #[cfg(feature = "jni")]
         jni_bridge_deserialize!($typ::$fn $(as $jni_name)?);
+        #[cfg(feature = "node")]
+        node_bridge_deserialize!($typ::$fn $(as $node_name)?);
     }
 }
 
 macro_rules! bridge_get_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_bytearray!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_bytearray!($name($typ) $(as $node_name)? => $body);
     }
 }
 
 macro_rules! bridge_get_optional_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_optional_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_optional_bytearray!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_optional_bytearray!($name($typ) $(as $node_name)? => $body);
     }
 }
 
 macro_rules! bridge_get_string {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_string!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_string!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_string!($name($typ) $(as $node_name)? => $body);
     }
 }
 
 macro_rules! bridge_get_optional_string {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_optional_string!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
         jni_bridge_get_optional_string!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_optional_string!($name($typ) $(as $node_name)? => $body);
     }
 }
