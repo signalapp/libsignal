@@ -80,22 +80,23 @@ impl ScannableFingerprint {
     }
 
     pub fn deserialize(protobuf: &[u8]) -> Result<Self> {
-        let fingerprint = proto::fingerprint::CombinedFingerprints::decode(protobuf)?;
+        let fingerprint = proto::fingerprint::CombinedFingerprints::decode(protobuf)
+            .map_err(|_| SignalProtocolError::FingerprintParsingError)?;
 
         Ok(Self {
             version: fingerprint
                 .version
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
+                .ok_or(SignalProtocolError::FingerprintParsingError)?,
             local_fingerprint: fingerprint
                 .local_fingerprint
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+                .ok_or(SignalProtocolError::FingerprintParsingError)?
                 .content
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
+                .ok_or(SignalProtocolError::FingerprintParsingError)?,
             remote_fingerprint: fingerprint
                 .remote_fingerprint
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+                .ok_or(SignalProtocolError::FingerprintParsingError)?
                 .content
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
+                .ok_or(SignalProtocolError::FingerprintParsingError)?,
         })
     }
 
@@ -116,15 +117,20 @@ impl ScannableFingerprint {
     }
 
     pub fn compare(&self, combined: &[u8]) -> Result<bool> {
-        let combined = proto::fingerprint::CombinedFingerprints::decode(combined)?;
+        let combined = proto::fingerprint::CombinedFingerprints::decode(combined)
+            .map_err(|_| SignalProtocolError::FingerprintParsingError)?;
 
-        if combined.version.unwrap_or(0) != self.version {
-            return Err(SignalProtocolError::FingerprintVersionMismatch);
+        let their_version = combined.version.unwrap_or(0);
+
+        if their_version != self.version {
+            return Err(SignalProtocolError::FingerprintVersionMismatch(
+                their_version,
+                self.version,
+            ));
         }
 
-        // This follows the Java logic but seems misleading - use InvalidProtobufEncoding instead?
         if combined.local_fingerprint.is_none() || combined.remote_fingerprint.is_none() {
-            return Err(SignalProtocolError::FingerprintVersionMismatch);
+            return Err(SignalProtocolError::FingerprintParsingError);
         }
 
         let same1 = combined
@@ -133,7 +139,7 @@ impl ScannableFingerprint {
             .unwrap()
             .content
             .as_ref()
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+            .ok_or(SignalProtocolError::FingerprintParsingError)?
             .ct_eq(&self.remote_fingerprint);
         let same2 = combined
             .remote_fingerprint
@@ -141,7 +147,7 @@ impl ScannableFingerprint {
             .unwrap()
             .content
             .as_ref()
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+            .ok_or(SignalProtocolError::FingerprintParsingError)?
             .ct_eq(&self.local_fingerprint);
 
         Ok(same1.into() && same2.into())

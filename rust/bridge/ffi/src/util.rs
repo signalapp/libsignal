@@ -13,6 +13,7 @@ use aes_gcm_siv::Error as AesGcmSivError;
 #[derive(Debug)]
 #[repr(C)]
 pub enum SignalErrorCode {
+    #[allow(dead_code)]
     UnknownError = 1,
     InvalidState = 2,
     InternalError = 3,
@@ -29,12 +30,14 @@ pub enum SignalErrorCode {
     UnknownCiphertextVersion = 22,
     UnrecognizedMessageVersion = 23,
     InvalidMessage = 30,
+    SealedSenderSelfSend = 31,
 
     InvalidKey = 40,
     InvalidSignature = 41,
 
     FingerprintIdentifierMismatch = 50,
     FingerprintVersionMismatch = 51,
+    FingerprintParsingError = 52,
 
     UntrustedIdentity = 60,
 
@@ -52,7 +55,19 @@ impl From<&SignalFfiError> for SignalErrorCode {
         match err {
             SignalFfiError::NullPointer => SignalErrorCode::NullParameter,
             SignalFfiError::InvalidType => SignalErrorCode::InvalidType,
-            SignalFfiError::UnexpectedPanic(_) => SignalErrorCode::InternalError,
+
+            SignalFfiError::UnexpectedPanic(_)
+            | SignalFfiError::Signal(SignalProtocolError::InternalError(_))
+            | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_))
+            | SignalFfiError::Signal(SignalProtocolError::InvalidChainKeyLength(_))
+            | SignalFfiError::Signal(SignalProtocolError::InvalidRootKeyLength(_))
+            | SignalFfiError::Signal(SignalProtocolError::InvalidCipherCryptographicParameters(
+                _,
+                _,
+            ))
+            | SignalFfiError::Signal(SignalProtocolError::InvalidMacKeyLength(_)) => {
+                SignalErrorCode::InternalError
+            }
 
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
             SignalFfiError::InsufficientOutputSize(_, _) => SignalErrorCode::InsufficientOutputSize,
@@ -70,6 +85,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeyId) => {
                 SignalErrorCode::InvalidKeyIdentifier
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
+                SignalErrorCode::SealedSenderSelfSend
             }
 
             SignalFfiError::Signal(SignalProtocolError::SignatureValidationFailed) => {
@@ -91,7 +110,11 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::FingerprintIdentifierMismatch
             }
 
-            SignalFfiError::Signal(SignalProtocolError::FingerprintVersionMismatch) => {
+            SignalFfiError::Signal(SignalProtocolError::FingerprintParsingError) => {
+                SignalErrorCode::FingerprintParsingError
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _)) => {
                 SignalErrorCode::FingerprintVersionMismatch
             }
 
@@ -137,8 +160,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
                 SignalErrorCode::CallbackError
             }
-
-            _ => SignalErrorCode::UnknownError,
         }
     }
 }

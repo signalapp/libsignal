@@ -6,7 +6,7 @@
 use crate::curve;
 use crate::IdentityKey;
 
-use crate::error::{Result, SignalProtocolError};
+use crate::error::Result;
 use crate::state::{PreKeyId, SignedPreKeyId};
 
 #[derive(Debug, Clone)]
@@ -25,16 +25,16 @@ impl PreKeyBundle {
     pub fn new(
         registration_id: u32,
         device_id: u32,
-        pre_key_id: Option<PreKeyId>,
-        pre_key_public: Option<curve::PublicKey>,
+        pre_key: Option<(PreKeyId, curve::PublicKey)>,
         signed_pre_key_id: SignedPreKeyId,
         signed_pre_key_public: curve::PublicKey,
         signed_pre_key_signature: Vec<u8>,
         identity_key: IdentityKey,
     ) -> Result<Self> {
-        if pre_key_public.is_some() != pre_key_id.is_some() {
-            return Err(SignalProtocolError::InvalidPreKeyBundle);
-        }
+        let (pre_key_id, pre_key_public) = match pre_key {
+            None => (None, None),
+            Some((id, key)) => (Some(id), Some(key)),
+        };
 
         Ok(Self {
             registration_id,

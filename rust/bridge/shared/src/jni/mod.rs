@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{JObject, JValue};
+use jni::objects::{JObject, JThrowable, JValue};
 use jni::sys::jobject;
 
 use aes_gcm_siv::Error as AesGcmSivError;
@@ -61,15 +61,59 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             return;
         }
 
+        SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
+            let throwable = env.new_object(
+                "org/whispersystems/libsignal/fingerprint/FingerprintVersionMismatchException",
+                "(II)V",
+                &[JValue::from(theirs as jint), JValue::from(ours as jint)],
+            );
+
+            match throwable {
+                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
+                Ok(throwable) => {
+                    let result = env.throw(JThrowable::from(throwable));
+                    if let Err(e) = result {
+                        log::error!("failed to throw exception for {}: {}", error, e);
+                    }
+                }
+            }
+            return;
+        }
+
         e => e,
     };
 
     let exception_type = match error {
         SignalJniError::NullHandle => "java/lang/NullPointerException",
-        SignalJniError::UnexpectedPanic(_) => "java/lang/AssertionError",
-        SignalJniError::BadJniParameter(_) => "java/lang/AssertionError",
-        SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
-        SignalJniError::IntegerOverflow(_) => "java/lang/RuntimeException",
+
+        SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
+        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
+        | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
+            "java/lang/IllegalStateException"
+        }
+
+        SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidInputSize)
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidNonceSize) => {
+            "java/lang/IllegalArgumentException"
+        }
+
+        SignalJniError::UnexpectedPanic(_)
+        | SignalJniError::BadJniParameter(_)
+        | SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
+
+        SignalJniError::IntegerOverflow(_)
+        | SignalJniError::Jni(_)
+        | SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(_, _))
+        | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
+        | SignalJniError::Signal(SignalProtocolError::InternalError(_))
+        | SignalJniError::Signal(SignalProtocolError::InvalidChainKeyLength(_))
+        | SignalJniError::Signal(SignalProtocolError::InvalidCipherCryptographicParameters(_, _))
+        | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
+        | SignalJniError::Signal(SignalProtocolError::InvalidRootKeyLength(_))
+        | SignalJniError::Signal(SignalProtocolError::ProtobufEncodingError(_)) => {
+            "java/lang/RuntimeException"
+        }
 
         SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
             "org/whispersystems/libsignal/DuplicateMessageException"
@@ -96,34 +140,37 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
         | SignalJniError::Signal(SignalProtocolError::MessageDecryptionFailed(_))
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-        | SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
-        | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidCiphertext)
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
+        | SignalJniError::Signal(SignalProtocolError::ProtobufDecodingError(_))
+        | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
         | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidTag) => {
             "org/whispersystems/libsignal/InvalidMessageException"
+        }
+
+        SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
+        | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
+        | SignalJniError::Signal(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
+            "org/whispersystems/libsignal/InvalidVersionException"
         }
 
         SignalJniError::Signal(SignalProtocolError::LegacyCiphertextVersion(_)) => {
             "org/whispersystems/libsignal/LegacyMessageException"
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
-        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
-            "java/lang/IllegalStateException"
-        }
-
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
             "org/signal/libsignal/metadata/SelfSendException"
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
-        | SignalJniError::AesGcmSiv(_) => "java/lang/IllegalArgumentException",
+        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
+        | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _)) => {
+            unreachable!("already handled in prior match")
+        }
 
-        SignalJniError::Signal(_) => "java/lang/RuntimeException",
-
-        SignalJniError::Jni(_) => "java/lang/RuntimeException",
+        SignalJniError::Signal(SignalProtocolError::FingerprintIdentifierMismatch)
+        | SignalJniError::Signal(SignalProtocolError::FingerprintParsingError) => {
+            "org/whispersystems/libsignal/fingerprint/FingerprintParsingException"
+        }
     };
 
     if let Err(e) = env.throw_new(exception_type, error.to_string()) {
