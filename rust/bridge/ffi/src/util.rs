@@ -159,6 +159,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
                 SignalErrorCode::CallbackError
             }
+
+            _ => SignalErrorCode::UnknownError,
         }
     }
 }
