@@ -43,8 +43,8 @@ public class SenderCertificate {
     return Native.SenderCertificate_GetDeviceId(this.handle);
   }
 
-  public Optional<String> getSenderUuid() {
-    return Optional.fromNullable(Native.SenderCertificate_GetSenderUuid(this.handle));
+  public String getSenderUuid() {
+    return Native.SenderCertificate_GetSenderUuid(this.handle);
   }
 
   public Optional<String> getSenderE164() {
@@ -52,7 +52,7 @@ public class SenderCertificate {
   }
 
   public String getSender() {
-    return getSenderE164().or(getSenderUuid()).orNull();
+    return getSenderE164().or(getSenderUuid());
   }
 
   public long getExpiration() {

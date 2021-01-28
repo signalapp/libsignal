@@ -149,8 +149,8 @@ class SessionTests: TestCaseBase {
     }
 
     func testSealedSenderSession() throws {
-        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
-        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+        let alice_address = try! ProtocolAddress(name: "9d0652a3-dcc3-4d11-975f-74d61598733f", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "6838237D-02F6-4098-B110-698253D15961", deviceId: 1)
 
         let alice_store = InMemorySignalProtocolStore()
         let bob_store = InMemorySignalProtocolStore()
@@ -160,8 +160,8 @@ class SessionTests: TestCaseBase {
         let trust_root = IdentityKeyPair.generate()
         let server_keys = IdentityKeyPair.generate()
         let server_cert = try! ServerCertificate(keyId: 1, publicKey: server_keys.publicKey, trustRoot: trust_root.privateKey)
-        let sender_addr = try! SealedSenderAddress(e164: alice_address.name,
-                                                   uuidString: "9d0652a3-dcc3-4d11-975f-74d61598733f",
+        let sender_addr = try! SealedSenderAddress(e164: "+14151111111",
+                                                   uuidString: alice_address.name,
                                                    deviceId: 1)
         let sender_cert = try! SenderCertificate(sender: sender_addr,
                                                  publicKey: alice_store.identityKeyPair(context: NullContext()).publicKey,
@@ -177,7 +177,7 @@ class SessionTests: TestCaseBase {
                                                  identityStore: alice_store,
                                                  context: NullContext())
 
-        let recipient_addr = try! SealedSenderAddress(e164: bob_address.name, uuidString: nil, deviceId: 1)
+        let recipient_addr = try! SealedSenderAddress(e164: nil, uuidString: bob_address.name, deviceId: 1)
         let plaintext = try sealedSenderDecrypt(message: ciphertext,
                                                 from: recipient_addr,
                                                 trustRoot: trust_root.publicKey,

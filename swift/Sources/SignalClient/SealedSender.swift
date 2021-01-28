@@ -155,9 +155,9 @@ public class SenderCertificate: ClonableHandleOwner {
         }
     }
 
-    public var senderUuid: String? {
+    public var senderUuid: String {
         return failOnError {
-            try invokeFnReturningOptionalString {
+            try invokeFnReturningString {
                 signal_sender_certificate_get_sender_uuid($0, nativeHandle)
             }
         }
@@ -262,13 +262,10 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
 
 public struct SealedSenderAddress: Hashable {
     public var e164: String?
-    public var uuidString: String?
+    public var uuidString: String
     public var deviceId: UInt32
 
-    public init(e164: String?, uuidString: String?, deviceId: UInt32) throws {
-        guard e164 != nil || uuidString != nil else {
-            throw SignalError.invalidArgument("SealedSenderAddress must have an e164 phone number or a UUID (or both)")
-        }
+    public init(e164: String?, uuidString: String, deviceId: UInt32) throws {
         self.e164 = e164
         self.uuidString = uuidString
         self.deviceId = deviceId
@@ -333,6 +330,6 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
 
     return SealedSenderResult(message: plaintext,
                               sender: try SealedSenderAddress(e164: senderE164.map(String.init(cString:)),
-                                                              uuidString: senderUUID.map(String.init(cString:)),
+                                                              uuidString: String(cString: senderUUID!),
                                                               deviceId: senderDeviceId))
 }
