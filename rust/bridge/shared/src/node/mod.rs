@@ -12,7 +12,7 @@ pub use neon::prelude::*;
 
 #[macro_use]
 mod convert;
-pub use convert::ArgTypeInfo;
+pub use convert::SimpleArgTypeInfo;
 pub(crate) use convert::*;
 
 pub type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;

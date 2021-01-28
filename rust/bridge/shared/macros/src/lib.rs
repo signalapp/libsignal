@@ -266,25 +266,13 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
                 attrs: _,
                 pat: box Pat::Ident(name),
                 colon_token: _,
-                ty: ty @ box Type::Reference(_),
-            }) => (
-                name.ident.clone(),
-                quote!(
-                    let #name = cx.argument::<<#ty as node::RefArgTypeInfo>::ArgType>(#i)?;
-                    let #name = <#ty as node::RefArgTypeInfo>::convert_from(&mut cx, #name)?;
-                    let #name = &*#name
-                ),
-            ),
-            FnArg::Typed(PatType {
-                attrs: _,
-                pat: box Pat::Ident(name),
-                colon_token: _,
                 ty,
             }) => (
                 name.ident.clone(),
                 quote!(
                     let #name = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
-                    let #name = <#ty as node::ArgTypeInfo>::convert_from(&mut cx, #name)?
+                    let mut #name = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name)?;
+                    let #name = <#ty as node::ArgTypeInfo>::load_from(&mut cx, &mut #name)?;
                 ),
             ),
             FnArg::Typed(PatType { pat, .. }) => (
