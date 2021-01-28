@@ -36,13 +36,19 @@ public class SessionRecord: ClonableHandleOwner {
         }
     }
 
+    public var hasCurrentState: Bool {
+        var result = false
+        failOnError(signal_session_record_has_current_state(&result, nativeHandle))
+        return result
+    }
+
+    public func archiveCurrentState() {
+        failOnError(signal_session_record_archive_current_state(nativeHandle))
+    }
+
     public func remoteRegistrationId() throws -> UInt32 {
         return try invokeFnReturningInteger {
             signal_session_record_get_remote_registration_id(nativeHandle, $0)
         }
-    }
-
-    public func archiveCurrentState() {
-        return failOnError(signal_session_record_archive_current_state(nativeHandle))
     }
 }

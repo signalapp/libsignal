@@ -215,6 +215,9 @@ SignalFfiError *signal_session_record_get_remote_registration_id(const SignalSes
 
 SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
 
+SignalFfiError *signal_session_record_has_current_state(bool *result,
+                                                        const SignalSessionRecord *session_record);
+
 SignalFfiError *signal_session_record_clone(SignalSessionRecord **new_obj,
                                             const SignalSessionRecord *obj);
 
