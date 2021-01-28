@@ -53,8 +53,15 @@ def main(args=None):
 
     cmdline = ['cargo', 'build', '-p', 'libsignal-node'] + ['--release'] if configuration_name == 'Release' else []
     print("Running '%s'" % (' '.join(cmdline)))
+
     cargo_env = os.environ.copy()
     cargo_env['CARGO_BUILD_TARGET_DIR'] = options.cargo_build_dir
+    # On Linux, cdylibs don't include public symbols from their dependencies,
+    # even if those symbols have been re-exported in the Rust source.
+    # Using LTO works around this at the cost of a slightly slower build.
+    # https://github.com/rust-lang/rfcs/issues/2771
+    cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
+
     cmd = subprocess.Popen(cmdline, env=cargo_env)
     cmd.wait()
 
