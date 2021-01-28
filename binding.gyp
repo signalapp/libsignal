@@ -15,14 +15,15 @@
             'type': 'none',
             'actions': [
                 {
-                    'action_name': 'node/build_node_bridge.sh',
+                    'action_name': 'node/build_node_bridge.py',
                     'action': [
-                        'env',
-                        'CONFIGURATION_NAME=<(CONFIGURATION_NAME)',
-                        'CARGO_BUILD_TARGET_DIR=<(INTERMEDIATE_DIR)/rust',
-                        'NODE_OS_NAME=<(NODE_OS_NAME)',
-                        'node/build_node_bridge.sh',
-                        '-o', '<(PRODUCT_DIR)/'],
+                        'python',
+                        'node/build_node_bridge.py',
+                        '--out-dir', '<(PRODUCT_DIR)/',
+                        '--os-name', '<(NODE_OS_NAME)',
+                        '--configuration', '<(CONFIGURATION_NAME)',
+                        '--cargo-build-dir', '<(INTERMEDIATE_DIR)/rust'
+                        ],
                     'inputs': [],
                     'outputs': [
                         '<(PRODUCT_DIR)/<(_target_name)',
