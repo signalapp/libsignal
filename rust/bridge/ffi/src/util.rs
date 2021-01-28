@@ -13,6 +13,7 @@ use aes_gcm_siv::Error as AesGcmSivError;
 #[derive(Debug)]
 #[repr(C)]
 pub enum SignalErrorCode {
+    #[allow(dead_code)]
     UnknownError = 1,
     InvalidState = 2,
     InternalError = 3,
@@ -159,8 +160,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
                 SignalErrorCode::CallbackError
             }
-
-            _ => SignalErrorCode::UnknownError,
         }
     }
 }
