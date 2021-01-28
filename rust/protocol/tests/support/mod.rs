@@ -72,8 +72,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
     let pre_key_bundle = PreKeyBundle::new(
         store.get_local_registration_id(None).await?,
         device_id,
-        Some(pre_key_id),
-        Some(pre_key_pair.public_key),
+        Some((pre_key_id, pre_key_pair.public_key)),
         signed_pre_key_id,
         signed_pre_key_pair.public_key,
         signed_pre_key_signature.to_vec(),
