@@ -107,7 +107,7 @@ pub unsafe fn write_optional_cstr_to(
 }
 
 macro_rules! ffi_bridge_destroy {
-    ( $typ:ty as None ) => {};
+    ( $typ:ty as false ) => {};
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
@@ -132,7 +132,7 @@ macro_rules! ffi_bridge_destroy {
 }
 
 macro_rules! ffi_bridge_deserialize {
-    ( $typ:ident::$fn:path as None ) => {};
+    ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
@@ -160,7 +160,7 @@ macro_rules! ffi_bridge_deserialize {
 }
 
 macro_rules! ffi_bridge_get_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]
@@ -188,11 +188,11 @@ macro_rules! ffi_bridge_get_bytearray {
 
 // Currently unneeded.
 macro_rules! ffi_bridge_get_optional_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
 }
 
 macro_rules! ffi_bridge_get_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]
@@ -218,7 +218,7 @@ macro_rules! ffi_bridge_get_string {
 }
 
 macro_rules! ffi_bridge_get_optional_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]

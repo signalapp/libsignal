@@ -309,7 +309,7 @@ pub fn call_method_checked<'a>(
 }
 
 macro_rules! jni_bridge_destroy {
-    ( $typ:ty as None ) => {};
+    ( $typ:ty as false ) => {};
     ( $typ:ty as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
@@ -332,7 +332,7 @@ macro_rules! jni_bridge_destroy {
 }
 
 macro_rules! jni_bridge_deserialize {
-    ( $typ:ident::$fn:path as None ) => {};
+    ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
@@ -354,7 +354,7 @@ macro_rules! jni_bridge_deserialize {
 }
 
 macro_rules! jni_bridge_get_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]
@@ -381,7 +381,7 @@ macro_rules! jni_bridge_get_bytearray {
 }
 
 macro_rules! jni_bridge_get_optional_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]
@@ -411,7 +411,7 @@ macro_rules! jni_bridge_get_optional_bytearray {
 }
 
 macro_rules! jni_bridge_get_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]
@@ -439,7 +439,7 @@ macro_rules! jni_bridge_get_string {
 
 #[macro_export]
 macro_rules! jni_bridge_get_optional_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
         paste! {
             #[no_mangle]

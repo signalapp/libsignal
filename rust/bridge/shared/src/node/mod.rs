@@ -110,7 +110,7 @@ macro_rules! node_register {
 }
 
 macro_rules! node_bridge_deserialize {
-    ( $typ:ident::$fn:path as None ) => {};
+    ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $node_name:ident ) => {
         paste! {
             #[allow(non_snake_case, clippy::redundant_closure)]
@@ -133,7 +133,7 @@ macro_rules! node_bridge_deserialize {
 }
 
 macro_rules! node_bridge_get_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
@@ -160,7 +160,7 @@ macro_rules! node_bridge_get_bytearray {
 }
 
 macro_rules! node_bridge_get_optional_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
@@ -187,7 +187,7 @@ macro_rules! node_bridge_get_optional_bytearray {
 }
 
 macro_rules! node_bridge_get_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
@@ -214,7 +214,7 @@ macro_rules! node_bridge_get_string {
 }
 
 macro_rules! node_bridge_get_optional_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
