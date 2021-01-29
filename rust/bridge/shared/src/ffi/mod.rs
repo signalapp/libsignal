@@ -165,9 +165,9 @@ macro_rules! ffi_bridge_get_bytearray {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<signal_ $ffi_name>](
-                obj: *const $typ,
                 out: *mut *const libc::c_uchar,
                 out_len: *mut libc::size_t,
+                obj: *const $typ,
             ) -> *mut ffi::SignalFfiError {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ

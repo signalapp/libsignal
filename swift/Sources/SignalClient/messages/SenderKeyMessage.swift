@@ -56,7 +56,7 @@ public class SenderKeyMessage {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_sender_key_message_serialize(handle, $0, $1)
+                signal_sender_key_message_serialize($0, $1, handle)
             }
         }
     }
@@ -64,7 +64,7 @@ public class SenderKeyMessage {
     public var ciphertext: [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_sender_key_message_get_cipher_text(handle, $0, $1)
+                signal_sender_key_message_get_cipher_text($0, $1, handle)
             }
         }
     }

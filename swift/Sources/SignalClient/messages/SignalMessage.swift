@@ -64,7 +64,7 @@ public class SignalMessage {
     public var body: [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_message_get_body(handle, $0, $1)
+                signal_message_get_body($0, $1, handle)
             }
         }
     }
@@ -72,7 +72,7 @@ public class SignalMessage {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_message_get_serialized(handle, $0, $1)
+                signal_message_get_serialized($0, $1, handle)
             }
         }
     }

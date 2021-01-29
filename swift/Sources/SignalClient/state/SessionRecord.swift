@@ -31,7 +31,7 @@ public class SessionRecord: ClonableHandleOwner {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_session_record_serialize(nativeHandle, $0, $1)
+                signal_session_record_serialize($0, $1, nativeHandle)
             }
         }
     }

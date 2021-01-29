@@ -73,7 +73,7 @@ public class SenderKeyDistributionMessage {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_sender_key_distribution_message_serialize(handle, $0, $1)
+                signal_sender_key_distribution_message_serialize($0, $1, handle)
             }
         }
     }
@@ -81,7 +81,7 @@ public class SenderKeyDistributionMessage {
     public var chainKey: [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_sender_key_distribution_message_get_chain_key(handle, $0, $1)
+                signal_sender_key_distribution_message_get_chain_key($0, $1, handle)
             }
         }
     }

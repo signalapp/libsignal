@@ -41,7 +41,7 @@ public class PreKeySignalMessage {
 
     public func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray {
-            signal_pre_key_signal_message_serialize(handle, $0, $1)
+            signal_pre_key_signal_message_serialize($0, $1, handle)
         }
     }
 

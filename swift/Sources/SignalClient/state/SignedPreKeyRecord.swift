@@ -46,7 +46,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_signed_pre_key_record_serialize(nativeHandle, $0, $1)
+                signal_signed_pre_key_record_serialize($0, $1, nativeHandle)
             }
         }
     }
@@ -86,7 +86,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
     public var signature: [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_signed_pre_key_record_get_signature(nativeHandle, $0, $1)
+                signal_signed_pre_key_record_get_signature($0, $1, nativeHandle)
             }
         }
     }

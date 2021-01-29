@@ -132,7 +132,7 @@ public class PreKeyBundle {
     public var signedPreKeySignature: [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_pre_key_bundle_get_signed_pre_key_signature(handle, $0, $1)
+                signal_pre_key_bundle_get_signed_pre_key_signature($0, $1, handle)
             }
         }
     }
