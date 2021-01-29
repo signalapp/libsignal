@@ -161,7 +161,7 @@ macro_rules! ffi_bridge_deserialize {
 
 macro_rules! ffi_bridge_get_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as $ffi_name:tt => $body:expr ) => {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<signal_ $ffi_name>](
@@ -181,7 +181,7 @@ macro_rules! ffi_bridge_get_bytearray {
     };
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
-            ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name>] => $body);
+            ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name:snake>] => $body);
         }
     };
 }

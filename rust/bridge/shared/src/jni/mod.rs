@@ -354,7 +354,7 @@ macro_rules! jni_bridge_deserialize {
 
 macro_rules! jni_bridge_get_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as $jni_name:tt => $body:expr ) => {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
@@ -381,7 +381,7 @@ macro_rules! jni_bridge_get_bytearray {
 
 macro_rules! jni_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as $jni_name:tt => $body:expr ) => {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](

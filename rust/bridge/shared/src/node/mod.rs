@@ -134,7 +134,7 @@ macro_rules! node_bridge_deserialize {
 
 macro_rules! node_bridge_get_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
             #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer"]
@@ -161,7 +161,7 @@ macro_rules! node_bridge_get_bytearray {
 
 macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
             #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer | null"]

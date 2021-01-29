@@ -74,7 +74,7 @@ macro_rules! bridge_deserialize {
 }
 
 macro_rules! bridge_get_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
@@ -85,7 +85,7 @@ macro_rules! bridge_get_bytearray {
 }
 
 macro_rules! bridge_get_optional_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_optional_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
