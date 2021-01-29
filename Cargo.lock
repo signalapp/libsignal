@@ -802,6 +802,7 @@ version = "0.1.0"
 dependencies = [
  "libsignal-bridge",
  "libsignal-protocol-rust",
+ "log",
  "neon",
  "neon-build 0.5.3",
  "rand",

@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use std::convert::TryInto;
 use std::ops::{Deref, RangeInclusive};
 
-pub(crate) trait ArgTypeInfo<'a>: Sized {
+pub trait ArgTypeInfo<'a>: Sized {
     type ArgType: neon::types::Value;
     fn convert_from(
         cx: &mut FunctionContext<'a>,

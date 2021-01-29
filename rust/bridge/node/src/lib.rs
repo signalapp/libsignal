@@ -5,8 +5,11 @@
 
 use neon::prelude::*;
 
+pub mod logging;
+
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
     libsignal_bridge::node::register(&mut cx)?;
+    cx.export_function("initLogger", logging::init_logger)?;
     Ok(())
 }
