@@ -228,10 +228,17 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
     let name_with_prefix = format_ident!("node_{}", name);
     let name_without_prefix = Ident::new(&name, Span::call_site());
 
-    let env_arg = if result_kind.has_env() {
-        quote!(&mut cx,)
-    } else {
-        quote!()
+    let (env_arg, result_type_str) = match (result_kind, &sig.output) {
+        (ResultKind::Regular, ReturnType::Default) => (quote!(), "()".to_string()),
+        (ResultKind::Regular, ReturnType::Type(_, ty)) => (quote!(), quote!(#ty).to_string()),
+        (ResultKind::Buffer, ReturnType::Type(_, _)) => (quote!(&mut cx,), "Buffer".to_string()),
+        (ResultKind::Buffer, ReturnType::Default) => {
+            return Error::new(
+                sig.paren_token.span,
+                "missing result type for bridge_fn_buffer",
+            )
+            .to_compile_error()
+        }
     };
 
     let (input_names, input_processing): (Vec<Ident>, Vec<TokenStream2>) = sig
@@ -278,10 +285,22 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
         .unzip();
 
     let orig_name = sig.ident.clone();
+    let node_annotation = format!(
+        "ts: export function {}({}): {}",
+        name_without_prefix,
+        sig.inputs
+            .iter()
+            .skip(if result_kind.has_env() { 1 } else { 0 })
+            .map(|arg| quote!(#arg).to_string())
+            .collect::<Vec<_>>()
+            .join(", "),
+        result_type_str
+    );
 
     quote! {
         #[cfg(feature = "node")]
         #[allow(non_snake_case)]
+        #[doc = #node_annotation]
         pub fn #name_with_prefix(
             mut cx: node::FunctionContext,
         ) -> node::JsResult<node::JsValue> {
@@ -296,12 +315,7 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
 }
 
 fn node_name_from_ident(ident: &Ident) -> String {
-    let mut result = ident.to_string();
-    match result.find('_') {
-        Some(idx) if idx + 1 < result.len() => result[(idx + 1)..(idx + 2)].make_ascii_lowercase(),
-        _ => {}
-    }
-    result
+    ident.to_string()
 }
 
 fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind) -> TokenStream {

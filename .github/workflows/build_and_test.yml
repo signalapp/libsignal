@@ -186,6 +186,9 @@ jobs:
     - run: nvm install && nvm use
       shell: bash -l {0}
 
+    - name: Verify that the Node bindings are up to date
+      run: rust/bridge/node/bin/gen_ts_decl.py --verify
+
     - run: yarn install
 
     - run: yarn lint

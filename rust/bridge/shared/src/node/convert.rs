@@ -223,13 +223,16 @@ macro_rules! node_bridge_handle {
                 Ok(node::RefBoxHandle { data: foreign })
             }
         }
-        impl<'a> node::ResultTypeInfo<'a> for $typ {
-            type ResultType = node::JsValue;
-            fn convert_into(
-                self,
-                cx: &mut node::FunctionContext<'a>,
-            ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
-                node::return_boxed_object(cx, Ok(self))
+        paste! {
+            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
+            impl<'a> node::ResultTypeInfo<'a> for $typ {
+                type ResultType = node::JsValue;
+                fn convert_into(
+                    self,
+                    cx: &mut node::FunctionContext<'a>,
+                ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
+                    node::return_boxed_object(cx, Ok(self))
+                }
             }
         }
     };
