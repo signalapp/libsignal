@@ -18,7 +18,13 @@ Pod::Spec.new do |s|
 
   s.dependency 'CocoaLumberjack/Swift'
 
-  s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
+  s.source_files = [
+    'swift/Sources/**/*.swift',
+    'swift/Sources/**/*.m',
+    # FIXME: We'd like to hide this from downstream clients at some point.
+    # (Making this header accessible to both CocoaPods and SwiftPM is hard.)
+    'swift/Sources/SignalFfi/signal_ffi.h'
+  ]
   s.preserve_paths = [
     'bin/*',
     'Cargo.toml',
@@ -26,17 +32,12 @@ Pod::Spec.new do |s|
     'rust-toolchain',
     'rust/*',
     'swift/*.sh',
-    'swift/Sources/SignalFfi',
   ]
 
   s.pod_target_xcconfig = {
       'CARGO_BUILD_TARGET_DIR' => '$(DERIVED_FILE_DIR)/libsignal-ffi',
       'CARGO_PROFILE_RELEASE_DEBUG' => '1', # enable line tables
       'LIBSIGNAL_FFI_DIR' => '$(CARGO_BUILD_TARGET_DIR)/$(CARGO_BUILD_TARGET)/release',
-
-      'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi',
-      # Duplicate this here to make sure the search path is passed on to Swift dependencies.
-      'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
 
       # Make sure we link the static library, not a dynamic one.
       # Use an extra level of indirection because CocoaPods messes with OTHER_LDFLAGS too.

@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
-
 public enum Direction {
     case sending
     case receiving

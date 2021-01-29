@@ -8,6 +8,11 @@
 import PackageDescription
 
 let rustBuildDir = "../target/debug/"
+let autoImportSignalFfi = [
+    // Use an undocumented, unstable flag to avoid mentioning SignalFfi in source files.
+    // (Making this header accessible to both CocoaPods and SwiftPM is hard.)
+    "-Xfrontend", "-import-module", "-Xfrontend", "SignalFfi"
+]
 
 let package = Package(
     name: "SignalClient",
@@ -23,11 +28,13 @@ let package = Package(
         .target(
             name: "SignalClient",
             dependencies: ["SignalFfi"],
-            exclude: ["Logging.m"]
+            exclude: ["Logging.m"],
+            swiftSettings: [.unsafeFlags(autoImportSignalFfi)]
         ),
         .testTarget(
             name: "SignalClientTests",
             dependencies: ["SignalClient"],
+            swiftSettings: [.unsafeFlags(autoImportSignalFfi)],
             linkerSettings: [.unsafeFlags(["\(rustBuildDir)/libsignal_ffi.a"])]
         )
     ]
