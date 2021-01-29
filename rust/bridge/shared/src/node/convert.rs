@@ -163,6 +163,19 @@ impl<'a> ResultTypeInfo<'a> for String {
     }
 }
 
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
+    type ResultType = JsValue;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        match self {
+            Some(value) => Ok(value.convert_into(cx)?.upcast()),
+            None => Ok(cx.null().upcast()),
+        }
+    }
+}
+
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
     for Result<T, libsignal_protocol_rust::SignalProtocolError>
 {

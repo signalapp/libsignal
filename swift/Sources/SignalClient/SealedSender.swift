@@ -159,7 +159,7 @@ public class SenderCertificate: ClonableHandleOwner {
     public var senderUuid: String? {
         return failOnError {
             try invokeFnReturningOptionalString {
-                signal_sender_certificate_get_sender_uuid(nativeHandle, $0)
+                signal_sender_certificate_get_sender_uuid($0, nativeHandle)
             }
         }
     }
@@ -167,7 +167,7 @@ public class SenderCertificate: ClonableHandleOwner {
     public var senderE164: String? {
         return failOnError {
             try invokeFnReturningOptionalString {
-                signal_sender_certificate_get_sender_e164(nativeHandle, $0)
+                signal_sender_certificate_get_sender_e164($0, nativeHandle)
             }
         }
     }

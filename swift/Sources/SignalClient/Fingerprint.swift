@@ -64,7 +64,7 @@ public struct NumericFingerprintGenerator {
         }
 
         let fprintStr = try invokeFnReturningString {
-            signal_fingerprint_display_string(obj, $0)
+            signal_fingerprint_display_string($0, obj)
         }
         let displayable = DisplayableFingerprint(formatted: fprintStr)
 

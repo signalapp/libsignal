@@ -39,8 +39,8 @@ export function PublicKey_Verify(key: PublicKey, message: Buffer, signature: Buf
 export function ScannableFingerprint_Compare(fprint1: Buffer, fprint2: Buffer): boolean;
 export function SenderCertificate_Deserialize(buffer: Buffer): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: SenderCertificate): Buffer;
-export function SenderCertificate_GetSenderE164(obj: SenderCertificate): string|null;
-export function SenderCertificate_GetSenderUuid(obj: SenderCertificate): string|null;
+export function SenderCertificate_GetSenderE164(obj: SenderCertificate): string | null;
+export function SenderCertificate_GetSenderUuid(obj: SenderCertificate): string | null;
 export function SenderCertificate_GetSerialized(obj: SenderCertificate): Buffer;
 export function SenderCertificate_GetSignature(obj: SenderCertificate): Buffer;
 export function SenderCertificate_New(sender_uuid: string | null, sender_e164: string | null, sender_device_id: number, sender_key: PublicKey, expiration: number, signer_cert: ServerCertificate, signer_key: PrivateKey): SenderCertificate;

@@ -11,7 +11,6 @@ use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
 
 pub(crate) use jni::objects::{JClass, JString};
-pub(crate) use jni::strings::JNIString;
 pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring};
 pub(crate) use jni::JNIEnv;
 
@@ -406,64 +405,6 @@ macro_rules! jni_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             jni_bridge_get_optional_bytearray!($name($typ) as [<$typ _1 $name:camel>] => $body);
-        }
-    };
-}
-
-macro_rules! jni_bridge_get_string {
-    ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
-        paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
-                env: jni::JNIEnv,
-                _class: jni::JClass,
-                handle: jni::ObjectHandle,
-            ) -> jni::jstring {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<impl Into<jni::JNIString> + 'a, SignalProtocolError> => $body);
-                jni::run_ffi_safe(&env, || {
-                    let obj = jni::native_handle_cast::<$typ>(handle)?;
-                    Ok(env.new_string(inner_get(obj)?)?.into_inner())
-                })
-            }
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            jni_bridge_get_string!($name($typ) as [<$typ _1 $name:camel>] => $body);
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_bridge_get_optional_string {
-    ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $jni_name:ident => $body:expr ) => {
-        paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
-                env: jni::JNIEnv,
-                _class: jni::JClass,
-                handle: jni::ObjectHandle,
-            ) -> jni::jstring {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<Option<impl Into<jni::JNIString> + 'a>, SignalProtocolError> => $body);
-                jni::run_ffi_safe(&env, || {
-                    let obj = jni::native_handle_cast::<$typ>(handle)?;
-                    match inner_get(obj)? {
-                        Some(s) => Ok(env.new_string(s)?.into_inner()),
-                        None => Ok(std::ptr::null_mut())
-                    }
-                })
-            }
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            jni_bridge_get_optional_string!($name($typ) as [<$typ _1 $name:camel>] => $body);
         }
     };
 }

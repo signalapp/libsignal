@@ -49,7 +49,7 @@ bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessageContent);
 
 bridge_destroy!(ProtocolAddress, ffi = address);
-bridge_get_string!(name(ProtocolAddress), ffi = address_get_name =>
+bridge_get_string!(Name(ProtocolAddress), ffi = "address_get_name" =>
     |p| Ok(p.name())
 );
 
@@ -149,7 +149,7 @@ bridge_get_bytearray!(
     jni = NumericFingerprintGenerator_1GetScannableEncoding =>
     |f| f.scannable.serialize()
 );
-bridge_get_string!(display_string(Fingerprint), jni = NumericFingerprintGenerator_1GetDisplayString =>
+bridge_get_string!(DisplayString(Fingerprint), jni = "NumericFingerprintGenerator_1GetDisplayString" =>
     Fingerprint::display_string
 );
 #[bridge_fn(ffi = "fingerprint_format")]
@@ -331,8 +331,8 @@ fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreK
 }
 
 bridge_destroy!(SenderKeyName);
-bridge_get_string!(get_group_id(SenderKeyName) => SenderKeyName::group_id);
-bridge_get_string!(get_sender_name(SenderKeyName) => |skn| Ok(skn.sender()?.name().to_string()));
+bridge_get_string!(GetGroupId(SenderKeyName) => SenderKeyName::group_id);
+bridge_get_string!(GetSenderName(SenderKeyName) => |skn| Ok(skn.sender()?.name().to_string()));
 
 #[bridge_fn]
 fn SenderKeyName_New(
@@ -380,8 +380,8 @@ bridge_deserialize!(SenderCertificate::deserialize);
 bridge_get_bytearray!(get_serialized(SenderCertificate) => SenderCertificate::serialized);
 bridge_get_bytearray!(get_certificate(SenderCertificate) => SenderCertificate::certificate);
 bridge_get_bytearray!(get_signature(SenderCertificate) => SenderCertificate::signature);
-bridge_get_optional_string!(get_sender_uuid(SenderCertificate) => SenderCertificate::sender_uuid);
-bridge_get_optional_string!(get_sender_e164(SenderCertificate) => SenderCertificate::sender_e164);
+bridge_get_optional_string!(GetSenderUuid(SenderCertificate) => SenderCertificate::sender_uuid);
+bridge_get_optional_string!(GetSenderE164(SenderCertificate) => SenderCertificate::sender_e164);
 
 #[bridge_fn]
 fn SenderCertificate_Validate(

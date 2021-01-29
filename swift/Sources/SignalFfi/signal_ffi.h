@@ -485,7 +485,7 @@ void signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
 
 SignalFfiError *signal_address_destroy(SignalProtocolAddress *p);
 
-SignalFfiError *signal_address_get_name(const SignalProtocolAddress *obj, const char **out);
+SignalFfiError *signal_address_get_name(const char **out, const SignalProtocolAddress *obj);
 
 SignalFfiError *signal_address_new(SignalProtocolAddress **out,
                                    const char *name,
@@ -552,7 +552,7 @@ SignalFfiError *signal_fingerprint_scannable_encoding(const SignalFingerprint *o
                                                       const unsigned char **out,
                                                       size_t *out_len);
 
-SignalFfiError *signal_fingerprint_display_string(const SignalFingerprint *obj, const char **out);
+SignalFfiError *signal_fingerprint_display_string(const char **out, const SignalFingerprint *obj);
 
 SignalFfiError *signal_fingerprint_format(const char **out,
                                           const unsigned char *local,
@@ -709,11 +709,11 @@ SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **out,
 
 SignalFfiError *signal_sender_key_name_destroy(SignalSenderKeyName *p);
 
-SignalFfiError *signal_sender_key_name_get_group_id(const SignalSenderKeyName *obj,
-                                                    const char **out);
+SignalFfiError *signal_sender_key_name_get_group_id(const char **out,
+                                                    const SignalSenderKeyName *obj);
 
-SignalFfiError *signal_sender_key_name_get_sender_name(const SignalSenderKeyName *obj,
-                                                       const char **out);
+SignalFfiError *signal_sender_key_name_get_sender_name(const char **out,
+                                                       const SignalSenderKeyName *obj);
 
 SignalFfiError *signal_sender_key_name_new(SignalSenderKeyName **out,
                                            const char *group_id,
@@ -775,11 +775,11 @@ SignalFfiError *signal_sender_certificate_get_signature(const SignalSenderCertif
                                                         const unsigned char **out,
                                                         size_t *out_len);
 
-SignalFfiError *signal_sender_certificate_get_sender_uuid(const SignalSenderCertificate *obj,
-                                                          const char **out);
+SignalFfiError *signal_sender_certificate_get_sender_uuid(const char **out,
+                                                          const SignalSenderCertificate *obj);
 
-SignalFfiError *signal_sender_certificate_get_sender_e164(const SignalSenderCertificate *obj,
-                                                          const char **out);
+SignalFfiError *signal_sender_certificate_get_sender_e164(const char **out,
+                                                          const SignalSenderCertificate *obj);
 
 SignalFfiError *signal_sender_certificate_validate(bool *out,
                                                    const SignalSenderCertificate *cert,

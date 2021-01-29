@@ -106,7 +106,7 @@ public final class Native {
   public static native void Logger_SetMaxLevel(int maxLevel);
 
   public static native void NumericFingerprintGenerator_Destroy(long handle);
-  public static native String NumericFingerprintGenerator_GetDisplayString(long handle);
+  public static native String NumericFingerprintGenerator_GetDisplayString(long obj);
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long handle);
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey);
 
@@ -143,7 +143,7 @@ public final class Native {
 
   public static native void ProtocolAddress_Destroy(long handle);
   public static native int ProtocolAddress_DeviceId(long handle);
-  public static native String ProtocolAddress_Name(long handle);
+  public static native String ProtocolAddress_Name(long obj);
   public static native long ProtocolAddress_New(String name, int deviceId);
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
@@ -157,8 +157,8 @@ public final class Native {
   public static native int SenderCertificate_GetDeviceId(long handle);
   public static native long SenderCertificate_GetExpiration(long handle);
   public static native long SenderCertificate_GetKey(long handle);
-  public static native String SenderCertificate_GetSenderE164(long handle);
-  public static native String SenderCertificate_GetSenderUuid(long handle);
+  public static native String SenderCertificate_GetSenderE164(long obj);
+  public static native String SenderCertificate_GetSenderUuid(long obj);
   public static native byte[] SenderCertificate_GetSerialized(long handle);
   public static native long SenderCertificate_GetServerCertificate(long handle);
   public static native byte[] SenderCertificate_GetSignature(long handle);
@@ -185,9 +185,9 @@ public final class Native {
   public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
 
   public static native void SenderKeyName_Destroy(long handle);
-  public static native String SenderKeyName_GetGroupId(long handle);
+  public static native String SenderKeyName_GetGroupId(long obj);
   public static native int SenderKeyName_GetSenderDeviceId(long handle);
-  public static native String SenderKeyName_GetSenderName(long handle);
+  public static native String SenderKeyName_GetSenderName(long obj);
   public static native long SenderKeyName_New(String groupId, String senderName, int senderDeviceId);
 
   public static native long SenderKeyRecord_Deserialize(byte[] data);
