@@ -1,12 +1,12 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import SignalFfi
 
-#if canImport(SignalCoreKit)
-import SignalCoreKit
+#if canImport(CocoaLumberjack)
+import CocoaLumberjack
 #endif
 
 public enum SignalError: Error {
@@ -103,16 +103,23 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     }
 }
 
-internal func failOnError(_ error: SignalFfiErrorRef?) {
-    failOnError { try checkError(error) }
+internal func failOnError(_ error: SignalFfiErrorRef?,
+                          file: StaticString = #file,
+                          function: StaticString = #function,
+                          line: UInt = #line) {
+    failOnError(file: file, function: function, line: line) { try checkError(error) }
 }
 
-internal func failOnError<Result>(_ fn: () throws -> Result) -> Result {
-#if canImport(SignalCoreKit)
+internal func failOnError<Result>(file: StaticString = #file,
+                                  function: StaticString = #function,
+                                  line: UInt = #line,
+                                  _ fn: () throws -> Result) -> Result {
+#if canImport(CocoaLumberjack)
     do {
         return try fn()
     } catch {
-        owsFail("unexpected error: \(error)")
+        DDLogError("❤️ \(error)", file: file, function: function, line: line)
+        fatalError("\(error)")
     }
 #else
     return try! fn()

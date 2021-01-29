@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.swift_version    = '5'
   s.platform = :ios, '10'
 
-  s.dependency 'SignalCoreKit'
+  s.dependency 'CocoaLumberjack/Swift'
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
