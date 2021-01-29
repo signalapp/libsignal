@@ -6,23 +6,38 @@
 use neon::prelude::*;
 use std::borrow::Cow;
 use std::convert::TryInto;
-use std::ops::{Deref, RangeInclusive};
+use std::ops::RangeInclusive;
 
-pub trait ArgTypeInfo<'a>: Sized {
+pub(crate) trait ArgTypeInfo<'a>: Sized {
     type ArgType: neon::types::Value;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
-        foreign: Handle<'a, Self::ArgType>,
-    ) -> NeonResult<Self>;
-}
-
-pub(crate) trait RefArgTypeInfo<'a>: Deref {
-    type ArgType: neon::types::Value;
-    type StoredType: Deref<Target = Self::Target> + 'a;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
+    type StoredType: 'a;
+    fn borrow(
+        cx: &mut FunctionContext,
         foreign: Handle<'a, Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
+    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self>;
+}
+
+pub trait SimpleArgTypeInfo: Sized {
+    type ArgType: neon::types::Value;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self>;
+}
+
+impl<'a, T> ArgTypeInfo<'a> for T
+where
+    T: SimpleArgTypeInfo,
+{
+    type ArgType = T::ArgType;
+    type StoredType = Handle<'a, Self::ArgType>;
+    fn borrow(
+        _cx: &mut FunctionContext,
+        foreign: Handle<'a, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(foreign)
+    }
+    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
+        Self::convert_from(cx, *stored)
+    }
 }
 
 pub(crate) trait ResultTypeInfo<'a>: Sized {
@@ -35,12 +50,9 @@ fn can_convert_js_number_to_int(value: f64, valid_range: RangeInclusive<f64>) ->
     value.is_finite() && value.fract() == 0.0 && valid_range.contains(&value)
 }
 
-impl<'a> ArgTypeInfo<'a> for u32 {
+impl SimpleArgTypeInfo for u32 {
     type ArgType = JsNumber;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
-        foreign: Handle<'a, Self::ArgType>,
-    ) -> NeonResult<Self> {
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=u32::MAX.into()) {
             return cx
@@ -50,12 +62,9 @@ impl<'a> ArgTypeInfo<'a> for u32 {
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for u8 {
+impl SimpleArgTypeInfo for u8 {
     type ArgType = JsNumber;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
-        foreign: Handle<'a, Self::ArgType>,
-    ) -> NeonResult<Self> {
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=u8::MAX.into()) {
             return cx
@@ -69,12 +78,9 @@ impl<'a> ArgTypeInfo<'a> for u8 {
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
 
-impl<'a> ArgTypeInfo<'a> for u64 {
+impl SimpleArgTypeInfo for u64 {
     type ArgType = JsNumber;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
-        foreign: Handle<'a, Self::ArgType>,
-    ) -> NeonResult<Self> {
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
             return cx
@@ -84,39 +90,46 @@ impl<'a> ArgTypeInfo<'a> for u64 {
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for String {
+impl SimpleArgTypeInfo for String {
     type ArgType = JsString;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
-        foreign: Handle<'a, Self::ArgType>,
-    ) -> NeonResult<Self> {
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.value(cx))
     }
 }
 
 impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for Option<T> {
     type ArgType = JsValue;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
+    type StoredType = Option<T::StoredType>;
+    fn borrow(
+        cx: &mut FunctionContext,
         foreign: Handle<'a, Self::ArgType>,
-    ) -> NeonResult<Self> {
+    ) -> NeonResult<Self::StoredType> {
         if foreign.downcast::<JsNull, _>(cx).is_ok() {
             return Ok(None);
         }
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
-        T::convert_from(cx, non_optional_value).map(Some)
+        T::borrow(cx, non_optional_value).map(Some)
+    }
+    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
+        match stored {
+            None => Ok(None),
+            Some(non_optional_stored) => T::load_from(cx, non_optional_stored).map(Some),
+        }
     }
 }
 
-impl<'a> RefArgTypeInfo<'a> for &[u8] {
+impl<'a> ArgTypeInfo<'a> for &'a [u8] {
     type ArgType = JsBuffer;
     // FIXME: Avoid copying this data.
     type StoredType = Vec<u8>;
-    fn convert_from(
-        cx: &mut FunctionContext<'a>,
+    fn borrow(
+        cx: &mut FunctionContext,
         foreign: Handle<'a, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         Ok(cx.borrow(&foreign, |buf| buf.as_slice().to_vec()))
+    }
+    fn load_from(_cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
+        Ok(stored)
     }
 }
 
@@ -200,29 +213,25 @@ impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     }
 }
 
-pub(crate) struct RefBoxHandle<'a, T: Send + 'static> {
-    pub(crate) data: Handle<'a, crate::node::DefaultJsBox<T>>,
-}
-
-impl<'a, T: Send + 'static> Deref for RefBoxHandle<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &***self.data
-    }
-}
-
 macro_rules! node_bridge_handle {
     ($typ:ty) => {
-        impl<'a> node::RefArgTypeInfo<'a> for &$typ {
+        impl<'a> node::ArgTypeInfo<'a> for &'a $typ {
             type ArgType = node::DefaultJsBox<$typ>;
-            type StoredType = node::RefBoxHandle<'a, $typ>;
-            fn convert_from(
-                _cx: &mut node::FunctionContext<'a>,
+            type StoredType = node::Handle<'a, Self::ArgType>;
+            fn borrow(
+                _cx: &mut node::FunctionContext,
                 foreign: node::Handle<'a, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                Ok(node::RefBoxHandle { data: foreign })
+                Ok(foreign)
+            }
+            fn load_from(
+                _cx: &mut node::FunctionContext,
+                foreign: &'a mut node::Handle<'a, Self::ArgType>,
+            ) -> node::NeonResult<Self> {
+                Ok(&*foreign)
             }
         }
+
         paste! {
             #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
             impl<'a> node::ResultTypeInfo<'a> for $typ {

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_bridge::node::ArgTypeInfo;
+use libsignal_bridge::node::SimpleArgTypeInfo;
 use neon::prelude::*;
 
 /// ts: export const enum LogLevel { Error, Warn, Info, Debug, Trace }
