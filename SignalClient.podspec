@@ -53,9 +53,9 @@ Pod::Spec.new do |s|
   }
 
   s.script_phases = [
-    { :name => 'Build libsignal-ffi',
+    { :name => 'Build libsignal-ffi (if not prebuilt)',
       :execution_position => :before_compile,
-      :script => '"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh"',
+      :script => 'if [[ -n "${PRODUCT_TYPE}" ]]; then "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh"; fi',
     }
   ]
 
