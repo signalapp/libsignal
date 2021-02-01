@@ -296,6 +296,40 @@ fn SenderKeyDistributionMessage_New(
     SenderKeyDistributionMessage::new(key_id, iteration, &chainkey, *pk)
 }
 
+#[bridge_fn]
+fn PreKeyBundle_New(
+    registration_id: u32,
+    device_id: u32,
+    prekey_id: Option<u32>,
+    prekey: Option<&PublicKey>,
+    signed_prekey_id: u32,
+    signed_prekey: &PublicKey,
+    signed_prekey_signature: &[u8],
+    identity_key: &PublicKey,
+) -> Result<PreKeyBundle, SignalProtocolError> {
+    let identity_key = IdentityKey::new(*identity_key);
+
+    let prekey = match (prekey, prekey_id) {
+        (None, None) => None,
+        (Some(k), Some(id)) => Some((id, *k)),
+        _ => {
+            return Err(SignalProtocolError::InvalidArgument(
+                "Must supply both or neither of prekey and prekey_id".to_owned(),
+            ))
+        }
+    };
+
+    PreKeyBundle::new(
+        registration_id,
+        device_id,
+        prekey,
+        signed_prekey_id,
+        *signed_prekey,
+        signed_prekey_signature.to_vec(),
+        identity_key,
+    )
+}
+
 bridge_destroy!(PreKeyBundle);
 bridge_get_bytearray!(GetSignedPreKeySignature(PreKeyBundle) => PreKeyBundle::signed_pre_key_signature);
 

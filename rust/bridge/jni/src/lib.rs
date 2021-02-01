@@ -182,47 +182,6 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMes
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetIteration(SenderKeyDistributionMessage) using
                  SenderKeyDistributionMessage::iteration);
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1New(
-    env: JNIEnv,
-    _class: JClass,
-    registration_id: jint,
-    device_id: jint,
-    prekey_id: jint,
-    prekey_handle: ObjectHandle,
-    signed_prekey_id: jint,
-    signed_prekey_handle: ObjectHandle,
-    signed_prekey_signature: jbyteArray,
-    identity_key_handle: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let registration_id = jint_to_u32(registration_id)?;
-        let device_id = jint_to_u32(device_id)?;
-        let signed_prekey_id = jint_to_u32(signed_prekey_id)?;
-        let signed_prekey = native_handle_cast::<PublicKey>(signed_prekey_handle)?;
-        let signed_prekey_signature = env.convert_byte_array(signed_prekey_signature)?;
-
-        let prekey = match native_handle_cast_optional::<PublicKey>(prekey_handle)?.map(|k| *k) {
-            None => None,
-            Some(key) => Some((jint_to_u32(prekey_id)?, key)),
-        };
-
-        let identity_key = IdentityKey::new(*(identity_key_handle as *mut PublicKey));
-
-        let bundle = PreKeyBundle::new(
-            registration_id,
-            device_id,
-            prekey,
-            signed_prekey_id,
-            *signed_prekey,
-            signed_prekey_signature,
-            identity_key,
-        );
-
-        box_object::<PreKeyBundle>(bundle)
-    })
-}
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetRegistrationId(PreKeyBundle) using
                  PreKeyBundle::registration_id);
 

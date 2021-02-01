@@ -14,6 +14,7 @@ export function Fingerprint_DisplayString(obj: Fingerprint): string;
 export function Fingerprint_ScannableEncoding(obj: Fingerprint): Buffer;
 export function IdentityKeyPair_Serialize(public_key: PublicKey, private_key: PrivateKey): Buffer;
 export function PreKeyBundle_GetSignedPreKeySignature(obj: PreKeyBundle): Buffer;
+export function PreKeyBundle_New(registration_id: number, device_id: number, prekey_id: number | null, prekey: PublicKey | null, signed_prekey_id: number, signed_prekey: PublicKey, signed_prekey_signature: Buffer, identity_key: PublicKey): PreKeyBundle;
 export function PreKeyRecord_Deserialize(buffer: Buffer): PreKeyRecord;
 export function PreKeyRecord_New(id: number, pub_key: PublicKey, priv_key: PrivateKey): PreKeyRecord;
 export function PreKeyRecord_Serialize(obj: PreKeyRecord): Buffer;

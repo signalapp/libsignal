@@ -217,34 +217,12 @@ pub unsafe fn as_slice_mut<'a>(
     Ok(std::slice::from_raw_parts_mut(input, input_len as usize))
 }
 
-pub unsafe fn native_handle_cast_optional<T>(
-    handle: *const T,
-) -> Result<Option<&'static T>, SignalFfiError> {
-    if handle.is_null() {
-        return Ok(None);
-    }
-
-    Ok(Some(&*(handle)))
-}
-
 pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
     if handle.is_null() {
         return Err(SignalFfiError::NullPointer);
     }
 
     Ok(&mut *handle)
-}
-
-pub unsafe fn get_optional_uint32(p: *const c_uint) -> Option<u32> {
-    if p.is_null() {
-        return None;
-    }
-
-    if *p == 0xFFFFFFFF {
-        return None;
-    }
-
-    Some(*p)
 }
 
 pub unsafe fn read_optional_c_string(

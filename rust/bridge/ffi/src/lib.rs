@@ -251,55 +251,6 @@ ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_iteration(SenderKe
 ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
                           |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_pre_key_bundle_new(
-    obj: *mut *mut PreKeyBundle,
-    registration_id: c_uint,
-    device_id: c_uint,
-    prekey_id: *const c_uint,
-    prekey: *const PublicKey,
-    signed_prekey_id: c_uint,
-    signed_prekey: *const PublicKey,
-    signed_prekey_signature: *const c_uchar,
-    signed_prekey_signature_len: size_t,
-    identity_key: *const PublicKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let signed_prekey = native_handle_cast::<PublicKey>(signed_prekey)?;
-        let signed_prekey_signature =
-            as_slice(signed_prekey_signature, signed_prekey_signature_len)?;
-
-        let identity_key = IdentityKey::new(*(identity_key as *const PublicKey));
-
-        let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.copied();
-        let prekey_id = get_optional_uint32(prekey_id);
-
-        let prekey = match (prekey, prekey_id) {
-            (None, None) => None,
-            (Some(k), Some(id)) => Some((id, k)),
-            _ => {
-                return Err(SignalFfiError::Signal(
-                    SignalProtocolError::InvalidArgument(
-                        "Must supply both or neither of prekey and prekey_id".to_owned(),
-                    ),
-                ))
-            }
-        };
-
-        let bundle = PreKeyBundle::new(
-            registration_id,
-            device_id,
-            prekey,
-            signed_prekey_id,
-            *signed_prekey,
-            signed_prekey_signature.to_vec(),
-            identity_key,
-        );
-
-        box_object::<PreKeyBundle>(obj, bundle)
-    })
-}
-
 ffi_fn_clone!(signal_pre_key_bundle_clone clones PreKeyBundle);
 
 ffi_fn_get_uint32!(signal_pre_key_bundle_get_registration_id(PreKeyBundle) using

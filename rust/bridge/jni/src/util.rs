@@ -10,16 +10,6 @@ use jni::JNIEnv;
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::SignalProtocolError;
 
-pub unsafe fn native_handle_cast_optional<T>(
-    handle: ObjectHandle,
-) -> Result<Option<&'static mut T>, SignalJniError> {
-    if handle == 0 {
-        return Ok(None);
-    }
-
-    Ok(Some(&mut *(handle as *mut T)))
-}
-
 pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {
     match value {
         Ok(value) => {

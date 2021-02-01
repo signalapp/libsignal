@@ -134,6 +134,16 @@ macro_rules! ffi_bridge_handle {
                 unsafe { ffi::native_handle_cast(foreign) }
             }
         }
+        impl ffi::ArgTypeInfo for Option<&'static $typ> {
+            type ArgType = *const $typ;
+            fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
+                if foreign.is_null() {
+                    Ok(None)
+                } else {
+                    <&$typ>::convert_from(foreign).map(Some)
+                }
+            }
+        }
         impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
             fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
@@ -177,6 +187,7 @@ macro_rules! ffi_arg_type {
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
+    (Option<& $typ:ty>) => (*const $typ);
 }
 
 macro_rules! ffi_result_type {

@@ -119,7 +119,7 @@ public final class Native {
   public static native int PreKeyBundle_GetSignedPreKeyId(long handle);
   public static native long PreKeyBundle_GetSignedPreKeyPublic(long handle);
   public static native byte[] PreKeyBundle_GetSignedPreKeySignature(long handle);
-  public static native long PreKeyBundle_New(int registrationId, int deviceId, int prekeyId, long prekeyHandle, int signedPrekeyId, long signedPrekeyHandle, byte[] signedPrekeySignature, long identityKeyHandle);
+  public static native long PreKeyBundle_New(int registrationId, int deviceId, int prekeyId, long prekey, int signedPrekeyId, long signedPrekey, byte[] signedPrekeySignature, long identityKey);
 
   public static native long PreKeyRecord_Deserialize(byte[] data);
   public static native void PreKeyRecord_Destroy(long handle);

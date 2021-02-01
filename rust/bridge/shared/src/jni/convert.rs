@@ -184,6 +184,19 @@ macro_rules! jni_bridge_handle {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
+        impl<'a> jni::SimpleArgTypeInfo<'a> for Option<&$typ> {
+            type ArgType = jni::ObjectHandle;
+            fn convert_from(
+                env: &jni::JNIEnv,
+                foreign: Self::ArgType,
+            ) -> Result<Self, jni::SignalJniError> {
+                if foreign == 0 {
+                    Ok(None)
+                } else {
+                    <&$typ>::convert_from(env, foreign).map(Some)
+                }
+            }
+        }
         impl jni::ResultTypeInfo for $typ {
             type ResultType = jni::ObjectHandle;
             fn convert_into(
@@ -239,6 +252,9 @@ macro_rules! jni_arg_type {
         jni::jbyteArray
     };
     (& $typ:ty) => {
+        jni::ObjectHandle
+    };
+    (Option<& $typ:ty>) => {
         jni::ObjectHandle
     };
 }

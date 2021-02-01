@@ -289,17 +289,6 @@ SignalFfiError *signal_sender_key_distribution_message_get_iteration(const Signa
 SignalFfiError *signal_sender_key_distribution_message_get_signature_key(SignalPublicKey **new_obj,
                                                                          const SignalSenderKeyDistributionMessage *obj);
 
-SignalFfiError *signal_pre_key_bundle_new(SignalPreKeyBundle **obj,
-                                          unsigned int registration_id,
-                                          unsigned int device_id,
-                                          const unsigned int *prekey_id,
-                                          const SignalPublicKey *prekey,
-                                          unsigned int signed_prekey_id,
-                                          const SignalPublicKey *signed_prekey,
-                                          const unsigned char *signed_prekey_signature,
-                                          size_t signed_prekey_signature_len,
-                                          const SignalPublicKey *identity_key);
-
 SignalFfiError *signal_pre_key_bundle_clone(SignalPreKeyBundle **new_obj,
                                             const SignalPreKeyBundle *obj);
 
@@ -663,6 +652,17 @@ SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistri
                                                            const unsigned char *chainkey,
                                                            size_t chainkey_len,
                                                            const SignalPublicKey *pk);
+
+SignalFfiError *signal_pre_key_bundle_new(SignalPreKeyBundle **out,
+                                          uint32_t registration_id,
+                                          uint32_t device_id,
+                                          uint32_t prekey_id,
+                                          const SignalPublicKey *prekey,
+                                          uint32_t signed_prekey_id,
+                                          const SignalPublicKey *signed_prekey,
+                                          const unsigned char *signed_prekey_signature,
+                                          size_t signed_prekey_signature_len,
+                                          const SignalPublicKey *identity_key);
 
 SignalFfiError *signal_pre_key_bundle_destroy(SignalPreKeyBundle *p);
 

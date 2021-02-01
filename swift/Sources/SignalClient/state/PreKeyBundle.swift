@@ -27,12 +27,11 @@ public class PreKeyBundle {
                                         signedPrekeySignature: Bytes,
                                         identity identityKey: IdentityKey) throws {
         handle = try signedPrekeySignature.withUnsafeBytes {
-            var prekeyId = prekeyId
             var result: OpaquePointer?
             try checkError(signal_pre_key_bundle_new(&result,
                                                      registrationId,
                                                      deviceId,
-                                                     &prekeyId,
+                                                     prekeyId,
                                                      prekey.nativeHandle,
                                                      signedPrekeyId,
                                                      signedPrekey.nativeHandle,
@@ -55,7 +54,7 @@ public class PreKeyBundle {
             try checkError(signal_pre_key_bundle_new(&result,
                                                      registrationId,
                                                      deviceId,
-                                                     nil,
+                                                     ~0,
                                                      nil,
                                                      signedPrekeyId,
                                                      signedPrekey.nativeHandle,
@@ -97,7 +96,7 @@ public class PreKeyBundle {
             }
         }
 
-        if prekey_id == 0xFFFFFFFF {
+        if prekey_id == ~0 {
             return nil
         } else {
             return prekey_id
