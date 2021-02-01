@@ -107,7 +107,7 @@ pub unsafe fn write_optional_cstr_to(
 }
 
 macro_rules! ffi_bridge_destroy {
-    ( $typ:ty as None ) => {};
+    ( $typ:ty as false ) => {};
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
@@ -132,7 +132,7 @@ macro_rules! ffi_bridge_destroy {
 }
 
 macro_rules! ffi_bridge_deserialize {
-    ( $typ:ident::$fn:path as None ) => {};
+    ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
@@ -160,14 +160,14 @@ macro_rules! ffi_bridge_deserialize {
 }
 
 macro_rules! ffi_bridge_get_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $ffi_name:tt => $body:expr ) => {
         paste! {
             #[no_mangle]
             pub unsafe extern "C" fn [<signal_ $ffi_name>](
-                obj: *const $typ,
                 out: *mut *const libc::c_uchar,
                 out_len: *mut libc::size_t,
+                obj: *const $typ,
             ) -> *mut ffi::SignalFfiError {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
@@ -181,64 +181,12 @@ macro_rules! ffi_bridge_get_bytearray {
     };
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
-            ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name>] => $body);
+            ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name:snake>] => $body);
         }
     };
 }
 
 // Currently unneeded.
 macro_rules! ffi_bridge_get_optional_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-}
-
-macro_rules! ffi_bridge_get_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
-        paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name>](
-                obj: *const $typ,
-                out: *mut *const libc::c_char,
-            ) -> *mut ffi::SignalFfiError {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<impl Into<Vec<u8>> + 'a, SignalProtocolError> => $body);
-                ffi::run_ffi_safe(|| {
-                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_cstr_to(out, inner_get(obj))
-                })
-            }
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            ffi_bridge_get_string!($name($typ) as [<$typ:snake _ $name>] => $body);
-        }
-    };
-}
-
-macro_rules! ffi_bridge_get_optional_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $ffi_name:ident => $body:expr ) => {
-        paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name>](
-                obj: *const $typ,
-                out: *mut *const libc::c_char,
-            ) -> *mut ffi::SignalFfiError {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<Option<impl Into<Vec<u8>> + 'a>, SignalProtocolError> => $body);
-                ffi::run_ffi_safe(|| {
-                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_optional_cstr_to(out, inner_get(obj))
-                })
-            }
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            ffi_bridge_get_optional_string!($name($typ) as [<$typ:snake _ $name>] => $body);
-        }
-    };
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
 }

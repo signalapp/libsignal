@@ -106,6 +106,16 @@ impl ResultTypeInfo for String {
     }
 }
 
+impl ResultTypeInfo for Option<String> {
+    type ResultType = *const libc::c_char;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        match self {
+            Some(s) => s.convert_into(),
+            None => Ok(std::ptr::null()),
+        }
+    }
+}
+
 pub(crate) struct Env;
 
 impl crate::Env for Env {
@@ -171,8 +181,10 @@ macro_rules! ffi_arg_type {
 
 macro_rules! ffi_result_type {
     (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
+    (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
     (i32) => (i32);
     (bool) => (bool);
     (String) => (*const libc::c_char);
+    (Option<String>) => (*const libc::c_char);
     ( $typ:ty ) => (*mut $typ);
 }

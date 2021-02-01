@@ -35,7 +35,7 @@ public class SenderKeyName: ClonableHandleOwner {
     public var groupId: String {
         return failOnError {
             try invokeFnReturningString {
-                signal_sender_key_name_get_group_id(nativeHandle, $0)
+                signal_sender_key_name_get_group_id($0, nativeHandle)
             }
         }
     }
@@ -43,7 +43,7 @@ public class SenderKeyName: ClonableHandleOwner {
     public var senderName: String {
         return failOnError {
             try invokeFnReturningString {
-                signal_sender_key_name_get_sender_name(nativeHandle, $0)
+                signal_sender_key_name_get_sender_name($0, nativeHandle)
             }
         }
     }

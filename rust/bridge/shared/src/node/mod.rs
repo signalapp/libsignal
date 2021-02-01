@@ -110,7 +110,7 @@ macro_rules! node_register {
 }
 
 macro_rules! node_bridge_deserialize {
-    ( $typ:ident::$fn:path as None ) => {};
+    ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $node_name:ident ) => {
         paste! {
             #[allow(non_snake_case, clippy::redundant_closure)]
@@ -133,8 +133,8 @@ macro_rules! node_bridge_deserialize {
 }
 
 macro_rules! node_bridge_get_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
             #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer"]
@@ -160,8 +160,8 @@ macro_rules! node_bridge_get_bytearray {
 }
 
 macro_rules! node_bridge_get_optional_bytearray {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
             #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer | null"]
@@ -182,60 +182,6 @@ macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             node_bridge_get_optional_bytearray!($name($typ) as [<$typ _ $name:camel>] => $body);
-        }
-    };
-}
-
-macro_rules! node_bridge_get_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
-        paste! {
-            #[allow(non_snake_case)]
-            #[doc = "ts: export function " $node_name "(obj: " $typ "): string"]
-            pub fn [<node_ $node_name>](
-                mut cx: node::FunctionContext
-            ) -> node::JsResult<node::JsValue> {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<impl AsRef<str> + 'a, SignalProtocolError> => $body);
-                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
-                let result = inner_get(&obj);
-                node::return_string(&mut cx, result.map(Some))
-            }
-
-            node_register!($node_name);
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            node_bridge_get_string!($name($typ) as [<$typ _ $name:camel>] => $body);
-        }
-    };
-}
-
-macro_rules! node_bridge_get_optional_string {
-    ( $name:ident($typ:ty) as None => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $node_name:ident => $body:expr ) => {
-        paste! {
-            #[allow(non_snake_case)]
-            #[doc = "ts: export function " $node_name "(obj: " $typ "): string | null"]
-            pub fn [<node_ $node_name>](
-                mut cx: node::FunctionContext
-            ) -> node::JsResult<node::JsValue> {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<Option<impl AsRef<str> + 'a>, SignalProtocolError> => $body);
-                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
-                let result = inner_get(&obj);
-                node::return_string(&mut cx, result)
-            }
-
-            node_register!($node_name);
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            node_bridge_get_optional_string!($name($typ) as [<$typ _ $name:camel>] => $body);
         }
     };
 }

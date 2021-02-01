@@ -312,36 +312,39 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
     let item_names =
         parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
     let ffi_name = match value_for_meta_key(&item_names, "ffi") {
-        Some(Lit::Str(name_str)) => name_str.value(),
+        Some(Lit::Str(name_str)) => Some(name_str.value()),
+        Some(Lit::Bool(LitBool { value: false, .. })) => None,
         Some(value) => {
             return Error::new(value.span(), "ffi name must be a string literal")
                 .to_compile_error()
                 .into()
         }
-        None => ffi_name_from_ident(&function.sig.ident),
+        None => Some(ffi_name_from_ident(&function.sig.ident)),
     };
     let jni_name = match value_for_meta_key(&item_names, "jni") {
-        Some(Lit::Str(name_str)) => name_str.value(),
+        Some(Lit::Str(name_str)) => Some(name_str.value()),
+        Some(Lit::Bool(LitBool { value: false, .. })) => None,
         Some(value) => {
             return Error::new(value.span(), "jni name must be a string literal")
                 .to_compile_error()
                 .into()
         }
-        None => jni_name_from_ident(&function.sig.ident),
+        None => Some(jni_name_from_ident(&function.sig.ident)),
     };
     let node_name = match value_for_meta_key(&item_names, "node") {
-        Some(Lit::Str(name_str)) => name_str.value(),
+        Some(Lit::Str(name_str)) => Some(name_str.value()),
+        Some(Lit::Bool(LitBool { value: false, .. })) => None,
         Some(value) => {
             return Error::new(value.span(), "node name must be a string literal")
                 .to_compile_error()
                 .into()
         }
-        None => node_name_from_ident(&function.sig.ident),
+        None => Some(node_name_from_ident(&function.sig.ident)),
     };
 
-    let ffi_fn = ffi_bridge_fn(ffi_name, &function.sig, result_kind);
-    let jni_fn = jni_bridge_fn(jni_name, &function.sig, result_kind);
-    let node_fn = node_bridge_fn(node_name, &function.sig, result_kind);
+    let ffi_fn = ffi_name.map(|name| ffi_bridge_fn(name, &function.sig, result_kind));
+    let jni_fn = jni_name.map(|name| jni_bridge_fn(name, &function.sig, result_kind));
+    let node_fn = node_name.map(|name| node_bridge_fn(name, &function.sig, result_kind));
 
     quote!(
         #[allow(non_snake_case)]

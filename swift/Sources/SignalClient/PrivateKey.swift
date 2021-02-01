@@ -37,7 +37,7 @@ public class PrivateKey: ClonableHandleOwner {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_privatekey_serialize(nativeHandle, $0, $1)
+                signal_privatekey_serialize($0, $1, nativeHandle)
             }
         }
     }

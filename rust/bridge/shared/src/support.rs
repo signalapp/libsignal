@@ -74,7 +74,7 @@ macro_rules! bridge_deserialize {
 }
 
 macro_rules! bridge_get_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
@@ -85,7 +85,7 @@ macro_rules! bridge_get_bytearray {
 }
 
 macro_rules! bridge_get_optional_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
         #[cfg(feature = "ffi")]
         ffi_bridge_get_optional_bytearray!($name($typ) $(as $ffi_name)? => $body);
         #[cfg(feature = "jni")]
@@ -96,23 +96,29 @@ macro_rules! bridge_get_optional_bytearray {
 }
 
 macro_rules! bridge_get_string {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
-        #[cfg(feature = "ffi")]
-        ffi_bridge_get_string!($name($typ) $(as $ffi_name)? => $body);
-        #[cfg(feature = "jni")]
-        jni_bridge_get_string!($name($typ) $(as $jni_name)? => $body);
-        #[cfg(feature = "node")]
-        node_bridge_get_string!($name($typ) $(as $node_name)? => $body);
+    ($name:ident($typ:ty) $(, $param:ident = $val:tt)* => $body:expr ) => {
+        paste! {
+            #[bridge_fn($($param = $val),*)]
+            fn [<$typ _ $name>](obj: &$typ) -> Result<String, SignalProtocolError> {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<impl Into<String> + 'a, SignalProtocolError> => $body);
+                Ok(inner_get(obj)?.into())
+            }
+        }
     }
 }
 
 macro_rules! bridge_get_optional_string {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? => $body:expr ) => {
-        #[cfg(feature = "ffi")]
-        ffi_bridge_get_optional_string!($name($typ) $(as $ffi_name)? => $body);
-        #[cfg(feature = "jni")]
-        jni_bridge_get_optional_string!($name($typ) $(as $jni_name)? => $body);
-        #[cfg(feature = "node")]
-        node_bridge_get_optional_string!($name($typ) $(as $node_name)? => $body);
+    ($name:ident($typ:ty) $(, $param:ident = $val:tt)* => $body:expr ) => {
+        paste! {
+            #[bridge_fn($($param = $val),*)]
+            fn [<$typ _ $name>](obj: &$typ) -> Result<Option<String>, SignalProtocolError> {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<Option<impl Into<String> + 'a>, SignalProtocolError> => $body);
+                Ok(inner_get(obj)?.map(|s| s.into()))
+            }
+        }
     }
 }

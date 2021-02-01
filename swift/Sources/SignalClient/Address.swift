@@ -33,7 +33,7 @@ public class ProtocolAddress: ClonableHandleOwner {
     public var name: String {
         return failOnError {
             try invokeFnReturningString {
-                signal_address_get_name(nativeHandle, $0)
+                signal_address_get_name($0, nativeHandle)
             }
         }
     }

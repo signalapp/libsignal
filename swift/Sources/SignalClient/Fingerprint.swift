@@ -64,12 +64,12 @@ public struct NumericFingerprintGenerator {
         }
 
         let fprintStr = try invokeFnReturningString {
-            signal_fingerprint_display_string(obj, $0)
+            signal_fingerprint_display_string($0, obj)
         }
         let displayable = DisplayableFingerprint(formatted: fprintStr)
 
         let scannableBits = try invokeFnReturningArray {
-            signal_fingerprint_scannable_encoding(obj, $0, $1)
+            signal_fingerprint_scannable_encoding($0, $1, obj)
         }
         let scannable = ScannableFingerprint(encoding: scannableBits)
         try checkError(signal_fingerprint_destroy(obj))

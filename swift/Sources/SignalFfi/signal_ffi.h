@@ -485,7 +485,7 @@ void signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
 
 SignalFfiError *signal_address_destroy(SignalProtocolAddress *p);
 
-SignalFfiError *signal_address_get_name(const SignalProtocolAddress *obj, const char **out);
+SignalFfiError *signal_address_get_name(const char **out, const SignalProtocolAddress *obj);
 
 SignalFfiError *signal_address_new(SignalProtocolAddress **out,
                                    const char *name,
@@ -497,13 +497,13 @@ SignalFfiError *signal_publickey_deserialize(SignalPublicKey **p,
                                              const unsigned char *data,
                                              size_t data_len);
 
-SignalFfiError *signal_publickey_serialize(const SignalPublicKey *obj,
-                                           const unsigned char **out,
-                                           size_t *out_len);
+SignalFfiError *signal_publickey_serialize(const unsigned char **out,
+                                           size_t *out_len,
+                                           const SignalPublicKey *obj);
 
-SignalFfiError *signal_publickey_get_public_key_bytes(const SignalPublicKey *obj,
-                                                      const unsigned char **out,
-                                                      size_t *out_len);
+SignalFfiError *signal_publickey_get_public_key_bytes(const unsigned char **out,
+                                                      size_t *out_len,
+                                                      const SignalPublicKey *obj);
 
 SignalFfiError *signal_publickey_compare(int32_t *out,
                                          const SignalPublicKey *key1,
@@ -522,9 +522,9 @@ SignalFfiError *signal_privatekey_deserialize(SignalPrivateKey **p,
                                               const unsigned char *data,
                                               size_t data_len);
 
-SignalFfiError *signal_privatekey_serialize(const SignalPrivateKey *obj,
-                                            const unsigned char **out,
-                                            size_t *out_len);
+SignalFfiError *signal_privatekey_serialize(const unsigned char **out,
+                                            size_t *out_len,
+                                            const SignalPrivateKey *obj);
 
 SignalFfiError *signal_privatekey_generate(SignalPrivateKey **out);
 
@@ -548,11 +548,11 @@ SignalFfiError *signal_identitykeypair_serialize(const unsigned char **out,
 
 SignalFfiError *signal_fingerprint_destroy(SignalFingerprint *p);
 
-SignalFfiError *signal_fingerprint_scannable_encoding(const SignalFingerprint *obj,
-                                                      const unsigned char **out,
-                                                      size_t *out_len);
+SignalFfiError *signal_fingerprint_scannable_encoding(const unsigned char **out,
+                                                      size_t *out_len,
+                                                      const SignalFingerprint *obj);
 
-SignalFfiError *signal_fingerprint_display_string(const SignalFingerprint *obj, const char **out);
+SignalFfiError *signal_fingerprint_display_string(const char **out, const SignalFingerprint *obj);
 
 SignalFfiError *signal_fingerprint_format(const char **out,
                                           const unsigned char *local,
@@ -572,13 +572,13 @@ SignalFfiError *signal_message_deserialize(SignalMessage **p,
                                            const unsigned char *data,
                                            size_t data_len);
 
-SignalFfiError *signal_message_get_body(const SignalMessage *obj,
-                                        const unsigned char **out,
-                                        size_t *out_len);
+SignalFfiError *signal_message_get_body(const unsigned char **out,
+                                        size_t *out_len,
+                                        const SignalMessage *obj);
 
-SignalFfiError *signal_message_get_serialized(const SignalMessage *obj,
-                                              const unsigned char **out,
-                                              size_t *out_len);
+SignalFfiError *signal_message_get_serialized(const unsigned char **out,
+                                              size_t *out_len,
+                                              const SignalMessage *obj);
 
 SignalFfiError *signal_message_new(SignalMessage **out,
                                    uint8_t message_version,
@@ -614,9 +614,9 @@ SignalFfiError *signal_pre_key_signal_message_deserialize(SignalPreKeySignalMess
                                                           const unsigned char *data,
                                                           size_t data_len);
 
-SignalFfiError *signal_pre_key_signal_message_serialize(const SignalPreKeySignalMessage *obj,
-                                                        const unsigned char **out,
-                                                        size_t *out_len);
+SignalFfiError *signal_pre_key_signal_message_serialize(const unsigned char **out,
+                                                        size_t *out_len,
+                                                        const SignalPreKeySignalMessage *obj);
 
 SignalFfiError *signal_sender_key_message_destroy(SignalSenderKeyMessage *p);
 
@@ -624,13 +624,13 @@ SignalFfiError *signal_sender_key_message_deserialize(SignalSenderKeyMessage **p
                                                       const unsigned char *data,
                                                       size_t data_len);
 
-SignalFfiError *signal_sender_key_message_get_cipher_text(const SignalSenderKeyMessage *obj,
-                                                          const unsigned char **out,
-                                                          size_t *out_len);
+SignalFfiError *signal_sender_key_message_get_cipher_text(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          const SignalSenderKeyMessage *obj);
 
-SignalFfiError *signal_sender_key_message_serialize(const SignalSenderKeyMessage *obj,
-                                                    const unsigned char **out,
-                                                    size_t *out_len);
+SignalFfiError *signal_sender_key_message_serialize(const unsigned char **out,
+                                                    size_t *out_len,
+                                                    const SignalSenderKeyMessage *obj);
 
 SignalFfiError *signal_sender_key_message_new(SignalSenderKeyMessage **out,
                                               uint32_t key_id,
@@ -649,13 +649,13 @@ SignalFfiError *signal_sender_key_distribution_message_deserialize(SignalSenderK
                                                                    const unsigned char *data,
                                                                    size_t data_len);
 
-SignalFfiError *signal_sender_key_distribution_message_get_chain_key(const SignalSenderKeyDistributionMessage *obj,
-                                                                     const unsigned char **out,
-                                                                     size_t *out_len);
+SignalFfiError *signal_sender_key_distribution_message_get_chain_key(const unsigned char **out,
+                                                                     size_t *out_len,
+                                                                     const SignalSenderKeyDistributionMessage *obj);
 
-SignalFfiError *signal_sender_key_distribution_message_serialize(const SignalSenderKeyDistributionMessage *obj,
-                                                                 const unsigned char **out,
-                                                                 size_t *out_len);
+SignalFfiError *signal_sender_key_distribution_message_serialize(const unsigned char **out,
+                                                                 size_t *out_len,
+                                                                 const SignalSenderKeyDistributionMessage *obj);
 
 SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistributionMessage **out,
                                                            uint32_t key_id,
@@ -666,9 +666,9 @@ SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistri
 
 SignalFfiError *signal_pre_key_bundle_destroy(SignalPreKeyBundle *p);
 
-SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_signature(const SignalPreKeyBundle *obj,
-                                                                   const unsigned char **out,
-                                                                   size_t *out_len);
+SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_signature(const unsigned char **out,
+                                                                   size_t *out_len,
+                                                                   const SignalPreKeyBundle *obj);
 
 SignalFfiError *signal_signed_pre_key_record_destroy(SignalSignedPreKeyRecord *p);
 
@@ -676,13 +676,13 @@ SignalFfiError *signal_signed_pre_key_record_deserialize(SignalSignedPreKeyRecor
                                                          const unsigned char *data,
                                                          size_t data_len);
 
-SignalFfiError *signal_signed_pre_key_record_get_signature(const SignalSignedPreKeyRecord *obj,
-                                                           const unsigned char **out,
-                                                           size_t *out_len);
+SignalFfiError *signal_signed_pre_key_record_get_signature(const unsigned char **out,
+                                                           size_t *out_len,
+                                                           const SignalSignedPreKeyRecord *obj);
 
-SignalFfiError *signal_signed_pre_key_record_serialize(const SignalSignedPreKeyRecord *obj,
-                                                       const unsigned char **out,
-                                                       size_t *out_len);
+SignalFfiError *signal_signed_pre_key_record_serialize(const unsigned char **out,
+                                                       size_t *out_len,
+                                                       const SignalSignedPreKeyRecord *obj);
 
 SignalFfiError *signal_signed_pre_key_record_new(SignalSignedPreKeyRecord **out,
                                                  uint32_t id,
@@ -698,9 +698,9 @@ SignalFfiError *signal_pre_key_record_deserialize(SignalPreKeyRecord **p,
                                                   const unsigned char *data,
                                                   size_t data_len);
 
-SignalFfiError *signal_pre_key_record_serialize(const SignalPreKeyRecord *obj,
-                                                const unsigned char **out,
-                                                size_t *out_len);
+SignalFfiError *signal_pre_key_record_serialize(const unsigned char **out,
+                                                size_t *out_len,
+                                                const SignalPreKeyRecord *obj);
 
 SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **out,
                                           uint32_t id,
@@ -709,11 +709,11 @@ SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **out,
 
 SignalFfiError *signal_sender_key_name_destroy(SignalSenderKeyName *p);
 
-SignalFfiError *signal_sender_key_name_get_group_id(const SignalSenderKeyName *obj,
-                                                    const char **out);
+SignalFfiError *signal_sender_key_name_get_group_id(const char **out,
+                                                    const SignalSenderKeyName *obj);
 
-SignalFfiError *signal_sender_key_name_get_sender_name(const SignalSenderKeyName *obj,
-                                                       const char **out);
+SignalFfiError *signal_sender_key_name_get_sender_name(const char **out,
+                                                       const SignalSenderKeyName *obj);
 
 SignalFfiError *signal_sender_key_name_new(SignalSenderKeyName **out,
                                            const char *group_id,
@@ -726,9 +726,9 @@ SignalFfiError *signal_sender_key_record_deserialize(SignalSenderKeyRecord **p,
                                                      const unsigned char *data,
                                                      size_t data_len);
 
-SignalFfiError *signal_sender_key_record_serialize(const SignalSenderKeyRecord *obj,
-                                                   const unsigned char **out,
-                                                   size_t *out_len);
+SignalFfiError *signal_sender_key_record_serialize(const unsigned char **out,
+                                                   size_t *out_len,
+                                                   const SignalSenderKeyRecord *obj);
 
 SignalFfiError *signal_sender_key_record_new_fresh(SignalSenderKeyRecord **out);
 
@@ -740,17 +740,17 @@ SignalFfiError *signal_server_certificate_deserialize(SignalServerCertificate **
                                                       const unsigned char *data,
                                                       size_t data_len);
 
-SignalFfiError *signal_server_certificate_get_serialized(const SignalServerCertificate *obj,
-                                                         const unsigned char **out,
-                                                         size_t *out_len);
+SignalFfiError *signal_server_certificate_get_serialized(const unsigned char **out,
+                                                         size_t *out_len,
+                                                         const SignalServerCertificate *obj);
 
-SignalFfiError *signal_server_certificate_get_certificate(const SignalServerCertificate *obj,
-                                                          const unsigned char **out,
-                                                          size_t *out_len);
+SignalFfiError *signal_server_certificate_get_certificate(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          const SignalServerCertificate *obj);
 
-SignalFfiError *signal_server_certificate_get_signature(const SignalServerCertificate *obj,
-                                                        const unsigned char **out,
-                                                        size_t *out_len);
+SignalFfiError *signal_server_certificate_get_signature(const unsigned char **out,
+                                                        size_t *out_len,
+                                                        const SignalServerCertificate *obj);
 
 SignalFfiError *signal_server_certificate_new(SignalServerCertificate **out,
                                               uint32_t key_id,
@@ -763,23 +763,23 @@ SignalFfiError *signal_sender_certificate_deserialize(SignalSenderCertificate **
                                                       const unsigned char *data,
                                                       size_t data_len);
 
-SignalFfiError *signal_sender_certificate_get_serialized(const SignalSenderCertificate *obj,
-                                                         const unsigned char **out,
-                                                         size_t *out_len);
+SignalFfiError *signal_sender_certificate_get_serialized(const unsigned char **out,
+                                                         size_t *out_len,
+                                                         const SignalSenderCertificate *obj);
 
-SignalFfiError *signal_sender_certificate_get_certificate(const SignalSenderCertificate *obj,
-                                                          const unsigned char **out,
-                                                          size_t *out_len);
+SignalFfiError *signal_sender_certificate_get_certificate(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          const SignalSenderCertificate *obj);
 
-SignalFfiError *signal_sender_certificate_get_signature(const SignalSenderCertificate *obj,
-                                                        const unsigned char **out,
-                                                        size_t *out_len);
+SignalFfiError *signal_sender_certificate_get_signature(const unsigned char **out,
+                                                        size_t *out_len,
+                                                        const SignalSenderCertificate *obj);
 
-SignalFfiError *signal_sender_certificate_get_sender_uuid(const SignalSenderCertificate *obj,
-                                                          const char **out);
+SignalFfiError *signal_sender_certificate_get_sender_uuid(const char **out,
+                                                          const SignalSenderCertificate *obj);
 
-SignalFfiError *signal_sender_certificate_get_sender_e164(const SignalSenderCertificate *obj,
-                                                          const char **out);
+SignalFfiError *signal_sender_certificate_get_sender_e164(const char **out,
+                                                          const SignalSenderCertificate *obj);
 
 SignalFfiError *signal_sender_certificate_validate(bool *out,
                                                    const SignalSenderCertificate *cert,
@@ -801,13 +801,13 @@ SignalFfiError *signal_unidentified_sender_message_content_deserialize(SignalUni
                                                                        const unsigned char *data,
                                                                        size_t data_len);
 
-SignalFfiError *signal_unidentified_sender_message_content_serialize(const SignalUnidentifiedSenderMessageContent *obj,
-                                                                     const unsigned char **out,
-                                                                     size_t *out_len);
+SignalFfiError *signal_unidentified_sender_message_content_serialize(const unsigned char **out,
+                                                                     size_t *out_len,
+                                                                     const SignalUnidentifiedSenderMessageContent *obj);
 
-SignalFfiError *signal_unidentified_sender_message_content_get_contents(const SignalUnidentifiedSenderMessageContent *obj,
-                                                                        const unsigned char **out,
-                                                                        size_t *out_len);
+SignalFfiError *signal_unidentified_sender_message_content_get_contents(const unsigned char **out,
+                                                                        size_t *out_len,
+                                                                        const SignalUnidentifiedSenderMessageContent *obj);
 
 SignalFfiError *signal_session_record_destroy(SignalSessionRecord *p);
 
@@ -815,9 +815,9 @@ SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **p,
                                                   const unsigned char *data,
                                                   size_t data_len);
 
-SignalFfiError *signal_session_record_serialize(const SignalSessionRecord *obj,
-                                                const unsigned char **out,
-                                                size_t *out_len);
+SignalFfiError *signal_session_record_serialize(const unsigned char **out,
+                                                size_t *out_len,
+                                                const SignalSessionRecord *obj);
 
 SignalFfiError *signal_aes256_gcm_siv_destroy(SignalAes256GcmSiv *p);
 
