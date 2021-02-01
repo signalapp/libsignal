@@ -126,7 +126,8 @@ impl crate::Env for Env {
 }
 
 macro_rules! ffi_bridge_handle {
-    ($typ:ty) => {
+    ( $typ:ty as false ) => {};
+    ( $typ:ty as $ffi_name:ident ) => {
         impl ffi::ArgTypeInfo for &'static $typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -149,6 +150,12 @@ macro_rules! ffi_bridge_handle {
             fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
                 Ok(Box::into_raw(Box::new(self)))
             }
+        }
+        ffi_bridge_destroy!($typ as $ffi_name);
+    };
+    ( $typ:ty ) => {
+        paste! {
+            ffi_bridge_handle!($typ as [<$typ:snake>]);
         }
     };
 }

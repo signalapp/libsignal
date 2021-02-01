@@ -88,6 +88,7 @@ export function UnidentifiedSenderMessageContent_GetContents(obj: UnidentifiedSe
 export function UnidentifiedSenderMessageContent_Serialize(obj: UnidentifiedSenderMessageContent): Buffer;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }
+interface CiphertextMessage { readonly __type: unique symbol; }
 interface Fingerprint { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }
 interface PreKeyRecord { readonly __type: unique symbol; }

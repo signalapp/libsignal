@@ -174,7 +174,8 @@ impl crate::Env for &'_ JNIEnv<'_> {
 }
 
 macro_rules! jni_bridge_handle {
-    ($typ:ty) => {
+    ( $typ:ty as false ) => {};
+    ( $typ:ty as $jni_name:ident ) => {
         impl<'a> jni::SimpleArgTypeInfo<'a> for &$typ {
             type ArgType = jni::ObjectHandle;
             fn convert_from(
@@ -205,6 +206,12 @@ macro_rules! jni_bridge_handle {
             ) -> Result<Self::ResultType, jni::SignalJniError> {
                 jni::box_object(Ok(self))
             }
+        }
+        jni_bridge_destroy!($typ as $jni_name);
+    };
+    ( $typ:ty ) => {
+        paste! {
+            jni_bridge_handle!($typ as $typ);
         }
     };
 }

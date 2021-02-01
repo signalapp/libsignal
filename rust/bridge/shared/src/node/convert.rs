@@ -227,7 +227,8 @@ impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
 }
 
 macro_rules! node_bridge_handle {
-    ($typ:ty) => {
+    ( $typ:ty as false ) => {};
+    ( $typ:ty as $node_name:ident ) => {
         impl<'a> node::ArgTypeInfo<'a> for &'a $typ {
             type ArgType = node::DefaultJsBox<$typ>;
             type StoredType = node::Handle<'a, Self::ArgType>;
@@ -256,6 +257,11 @@ macro_rules! node_bridge_handle {
                     node::return_boxed_object(cx, Ok(self))
                 }
             }
+        }
+    };
+    ( $typ:ty ) => {
+        paste! {
+            node_bridge_handle!($typ as $typ);
         }
     };
 }
