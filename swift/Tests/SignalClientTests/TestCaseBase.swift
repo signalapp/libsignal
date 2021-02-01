@@ -20,7 +20,9 @@ class TestCaseBase: XCTestCase {
             enabled: { _, _ in true },
             log: { _, level, file, line, message in
                 let file = file.map { String(cString: $0) } ?? "<unknown>"
-                NSLog("(%u) [%@:%u] %s", level.rawValue, file as NSString, line, message!)
+                file.withCString {
+                    NSLog("(%u) [%s:%u] %s", level.rawValue, $0, line, message!)
+                }
             },
             flush: {}
         ))
