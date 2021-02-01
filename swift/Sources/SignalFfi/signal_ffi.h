@@ -241,17 +241,8 @@ SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **new_obj,
 SignalFfiError *signal_pre_key_signal_message_clone(SignalPreKeySignalMessage **new_obj,
                                                     const SignalPreKeySignalMessage *obj);
 
-SignalFfiError *signal_pre_key_signal_message_get_version(const SignalPreKeySignalMessage *obj,
-                                                          unsigned int *out);
-
-SignalFfiError *signal_pre_key_signal_message_get_registration_id(const SignalPreKeySignalMessage *obj,
-                                                                  unsigned int *out);
-
 SignalFfiError *signal_pre_key_signal_message_get_pre_key_id(const SignalPreKeySignalMessage *obj,
                                                              unsigned int *out);
-
-SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(const SignalPreKeySignalMessage *obj,
-                                                                    unsigned int *out);
 
 SignalFfiError *signal_pre_key_signal_message_get_base_key(SignalPublicKey **new_obj,
                                                            const SignalPreKeySignalMessage *obj);
@@ -617,6 +608,15 @@ SignalFfiError *signal_pre_key_signal_message_deserialize(SignalPreKeySignalMess
 SignalFfiError *signal_pre_key_signal_message_serialize(const unsigned char **out,
                                                         size_t *out_len,
                                                         const SignalPreKeySignalMessage *obj);
+
+SignalFfiError *signal_pre_key_signal_message_get_version(unsigned int *out,
+                                                          const SignalPreKeySignalMessage *obj);
+
+SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(unsigned int *out,
+                                                                    const SignalPreKeySignalMessage *obj);
+
+SignalFfiError *signal_pre_key_signal_message_get_registration_id(unsigned int *out,
+                                                                  const SignalPreKeySignalMessage *obj);
 
 SignalFfiError *signal_sender_key_message_destroy(SignalSenderKeyMessage *p);
 

@@ -47,13 +47,13 @@ public class PreKeySignalMessage {
 
     public func version() throws -> UInt32 {
         return try invokeFnReturningInteger {
-            signal_pre_key_signal_message_get_version(handle, $0)
+            signal_pre_key_signal_message_get_version($0, handle)
         }
     }
 
     public func registrationId() throws -> UInt32 {
         return try invokeFnReturningInteger {
-            signal_pre_key_signal_message_get_registration_id(handle, $0)
+            signal_pre_key_signal_message_get_registration_id($0, handle)
         }
     }
 
@@ -72,7 +72,7 @@ public class PreKeySignalMessage {
     public var signedPreKeyId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_pre_key_signal_message_get_signed_pre_key_id(handle, $0)
+                signal_pre_key_signal_message_get_signed_pre_key_id($0, handle)
             }
         }
     }

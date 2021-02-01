@@ -263,6 +263,15 @@ bridge_get_bytearray!(GetIdentityKey(PreKeySignalMessage), ffi = false =>
 bridge_get_bytearray!(GetSignalMessage(PreKeySignalMessage), ffi = false =>
     |m| Ok(m.message().serialized())
 );
+bridge_get_int!(GetVersion(PreKeySignalMessage) =>
+   |m| Ok(m.message_version() as u32)
+);
+bridge_get_int!(GetSignedPreKeyId(PreKeySignalMessage) =>
+   |m| Ok(m.signed_pre_key_id())
+);
+bridge_get_int!(GetRegistrationId(PreKeySignalMessage) =>
+   |m| Ok(m.registration_id())
+);
 
 bridge_destroy!(SenderKeyMessage);
 bridge_deserialize!(SenderKeyMessage::try_from);

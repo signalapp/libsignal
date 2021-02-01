@@ -202,17 +202,8 @@ ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from 
 
 ffi_fn_clone!(signal_pre_key_signal_message_clone clones PreKeySignalMessage);
 
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_version(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_registration_id(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.registration_id()));
-
 ffi_fn_get_optional_uint32!(signal_pre_key_signal_message_get_pre_key_id(PreKeySignalMessage) using
                             |m: &PreKeySignalMessage| Ok(m.pre_key_id()));
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_signed_pre_key_id(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_base_key(PublicKey) from PreKeySignalMessage,
                           |p: &PreKeySignalMessage| Ok(*p.base_key()));

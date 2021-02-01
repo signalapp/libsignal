@@ -136,12 +136,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetVersion(PreKeySignalMessage) using
-                 |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetRegistrationId(PreKeySignalMessage) using
-                 |m: &PreKeySignalMessage| Ok(m.registration_id()));
-
 // Special logic to handle optionality:
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetPreKeyId(
@@ -157,9 +151,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMess
         }
     })
 }
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetSignedPreKeyId(PreKeySignalMessage) using
-                 |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
 
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetKeyId(SenderKeyMessage) using
                  |m: &SenderKeyMessage| Ok(m.key_id()));
