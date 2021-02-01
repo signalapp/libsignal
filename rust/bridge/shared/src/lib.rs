@@ -53,6 +53,12 @@ bridge_get_string!(Name(ProtocolAddress), ffi = "address_get_name" =>
     |p| Ok(p.name())
 );
 
+bridge_get_int!(DeviceId(ProtocolAddress),
+                ffi = "address_get_device_id",
+                jni = "ProtocolAddress_1DeviceId" =>
+    |p| Ok(p.device_id())
+);
+
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id)

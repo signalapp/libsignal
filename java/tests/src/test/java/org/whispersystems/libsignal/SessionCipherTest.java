@@ -78,6 +78,8 @@ public class SessionCipherTest extends TestCase {
     SignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
 
     SignalProtocolAddress aliceAddress = new SignalProtocolAddress("+14159999999", 1);
+    assertTrue(aliceAddress.getName() == "+14159999999");
+    assertTrue(aliceAddress.getDeviceId() == 1);
     SignalProtocolAddress bobAddress = new SignalProtocolAddress("+141588888888", 1);
 
     aliceStore.storeSession(bobAddress, sessions.aliceSession);

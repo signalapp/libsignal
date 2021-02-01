@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar, size_t};
+use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_protocol_rust::*;
 use std::ffi::CString;
 
@@ -74,6 +74,23 @@ pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     *out = (*mem).as_ptr();
 
     Ok(())
+}
+
+pub unsafe fn write_uint32_to(
+    out: *mut c_uint,
+    value: Result<u32, SignalProtocolError>,
+) -> Result<(), SignalFfiError> {
+    if out.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    match value {
+        Ok(value) => {
+            *out = value;
+            Ok(())
+        }
+        Err(e) => Err(SignalFfiError::Signal(e)),
+    }
 }
 
 pub unsafe fn write_cstr_to(
@@ -182,6 +199,32 @@ macro_rules! ffi_bridge_get_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name:snake>] => $body);
+        }
+    };
+}
+
+macro_rules! ffi_bridge_get_int {
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $ffi_name:tt => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<signal_ $ffi_name>](
+                out: *mut libc::c_uint,
+                obj: *const $typ,
+            ) -> *mut ffi::SignalFfiError {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<u32, SignalProtocolError> => $body);
+                ffi::run_ffi_safe(|| {
+                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
+                    ffi::write_uint32_to(out, inner_get(obj))
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            ffi_bridge_get_int!($name($typ) as [<$typ:snake _ $name:snake>] => $body);
         }
     };
 }

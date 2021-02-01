@@ -109,9 +109,6 @@ pub unsafe extern "C" fn signal_hkdf_derive(
     })
 }
 
-ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
-                   |obj: &ProtocolAddress| { Ok(obj.device_id()) });
-
 ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 
 ffi_fn_clone!(signal_publickey_clone clones PublicKey);

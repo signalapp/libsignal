@@ -84,6 +84,17 @@ macro_rules! bridge_get_bytearray {
     }
 }
 
+macro_rules! bridge_get_int {
+    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
+        #[cfg(feature = "ffi")]
+        ffi_bridge_get_int!($name($typ) $(as $ffi_name)? => $body);
+        #[cfg(feature = "jni")]
+        jni_bridge_get_int!($name($typ) $(as $jni_name)? => $body);
+        #[cfg(feature = "node")]
+        node_bridge_get_int!($name($typ) $(as $node_name)? => $body);
+    }
+}
+
 macro_rules! bridge_get_optional_bytearray {
     ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
         #[cfg(feature = "ffi")]

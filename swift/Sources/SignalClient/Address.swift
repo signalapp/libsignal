@@ -41,7 +41,7 @@ public class ProtocolAddress: ClonableHandleOwner {
     public var deviceId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_address_get_device_id(nativeHandle, $0)
+                signal_address_get_device_id($0, nativeHandle)
             }
         }
     }

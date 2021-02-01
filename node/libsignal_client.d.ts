@@ -29,6 +29,7 @@ export function PrivateKey_Generate(): PrivateKey;
 export function PrivateKey_GetPublicKey(k: PrivateKey): PublicKey;
 export function PrivateKey_Serialize(obj: PrivateKey): Buffer;
 export function PrivateKey_Sign(key: PrivateKey, message: Buffer): Buffer;
+export function ProtocolAddress_DeviceId(obj: ProtocolAddress): number;
 export function ProtocolAddress_Name(obj: ProtocolAddress): string;
 export function ProtocolAddress_New(name: string, device_id: number): ProtocolAddress;
 export function PublicKey_Compare(key1: PublicKey, key2: PublicKey): number;

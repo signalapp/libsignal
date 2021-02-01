@@ -260,25 +260,6 @@ pub unsafe fn read_optional_c_string(
     }
 }
 
-pub fn write_uint32_to(
-    out: *mut c_uint,
-    value: Result<u32, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(value) => {
-            unsafe {
-                *out = value;
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
 pub fn write_optional_uint32_to(
     out: *mut c_uint,
     value: Result<Option<u32>, SignalProtocolError>,

@@ -4,7 +4,7 @@
 //
 
 use jni::objects::{JObject, JValue};
-use jni::sys::{jint, jlong, jobject};
+use jni::sys::{jlong, jobject};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
@@ -18,22 +18,6 @@ pub unsafe fn native_handle_cast_optional<T>(
     }
 
     Ok(Some(&mut *(handle as *mut T)))
-}
-
-pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {
-    match value {
-        Ok(value) => {
-            let result = value as jint;
-            if result as u32 != value {
-                return Err(SignalJniError::IntegerOverflow(format!(
-                    "{} to jint",
-                    value
-                )));
-            }
-            Ok(result)
-        }
-        Err(e) => Err(SignalJniError::Signal(e)),
-    }
 }
 
 pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, SignalJniError> {

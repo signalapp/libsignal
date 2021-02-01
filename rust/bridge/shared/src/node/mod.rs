@@ -76,6 +76,27 @@ pub fn return_binary_data<'a, T: AsRef<[u8]>>(
     }
 }
 
+pub fn return_number<'a>(
+    cx: &mut FunctionContext<'a>,
+    value: Result<u32, SignalProtocolError>,
+) -> JsResult<'a, JsValue> {
+    match value {
+        Ok(n) => Ok(JsNumber::new(cx, n).upcast()),
+        Err(e) => cx.throw_error(e.to_string()),
+    }
+}
+
+/*
+pub fn return_optional_number<'a>(cx: &mut FunctionContext<'a>,
+                              value: Result<Option<u32>, SignalProtocolError>) -> JsResult<'a, JsValue> {
+    match value {
+        Ok(Some(n)) => Ok(JsValue::from(n)),
+        Ok(None) => Ok(cx.null().upcast()),
+        Err(e) => cx.throw_error(e.to_string()),
+    }
+}
+*/
+
 pub fn return_string<'a, T: AsRef<str>>(
     cx: &mut FunctionContext<'a>,
     string: Result<Option<T>, SignalProtocolError>,
@@ -182,6 +203,33 @@ macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             node_bridge_get_optional_bytearray!($name($typ) as [<$typ _ $name:camel>] => $body);
+        }
+    };
+}
+
+macro_rules! node_bridge_get_int {
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
+        paste! {
+            #[allow(non_snake_case)]
+            #[doc = "ts: export function " $node_name "(obj: " $typ "): number"]
+            pub fn [<node_ $node_name>](
+                mut cx: node::FunctionContext
+            ) -> node::JsResult<node::JsValue> {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<u32, SignalProtocolError> => $body);
+                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
+                let number = inner_get(&obj);
+                node::return_number(&mut cx, number)
+            }
+
+            node_register!($node_name);
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            node_bridge_get_int!($name($typ) as [<$typ _ $name:camel>] => $body);
         }
     };
 }

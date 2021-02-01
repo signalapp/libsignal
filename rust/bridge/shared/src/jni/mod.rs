@@ -252,6 +252,22 @@ pub unsafe fn native_handle_cast<T>(
     Ok(&mut *(handle as *mut T))
 }
 
+pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {
+    match value {
+        Ok(value) => {
+            let result = value as jint;
+            if result as u32 != value {
+                return Err(SignalJniError::IntegerOverflow(format!(
+                    "{} to jint",
+                    value
+                )));
+            }
+            Ok(result)
+        }
+        Err(e) => Err(SignalJniError::Signal(e)),
+    }
+}
+
 pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
     if v < 0 {
         return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
@@ -375,6 +391,33 @@ macro_rules! jni_bridge_get_bytearray {
     ( $name:ident($typ:ty) => $body:expr ) => {
         paste! {
             jni_bridge_get_bytearray!($name($typ) as [<$typ _1 $name:camel>] => $body);
+        }
+    };
+}
+
+macro_rules! jni_bridge_get_int {
+    ( $name:ident($typ:ty) as false => $body:expr ) => {};
+    ( $name:ident($typ:ty) as $jni_name:tt => $body:expr ) => {
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name>](
+                env: jni::JNIEnv,
+                _class: jni::JClass,
+                handle: jni::ObjectHandle,
+            ) -> jni::jint {
+                expr_as_fn!(inner_get<'a>(
+                    obj: &'a $typ
+                ) -> Result<u32, SignalProtocolError> => $body);
+                jni::run_ffi_safe(&env, || {
+                    let obj = jni::native_handle_cast::<$typ>(handle)?;
+                    jni::jint_from_u32(inner_get(obj))
+                })
+            }
+        }
+    };
+    ( $name:ident($typ:ty) => $body:expr ) => {
+        paste! {
+            jni_bridge_get_int!($name($typ) as [<$typ _1 $name:camel>] => $body);
         }
     };
 }

@@ -198,8 +198,6 @@ SignalFfiError *signal_hkdf_derive(unsigned char *output,
                                    const unsigned char *info,
                                    size_t info_len);
 
-SignalFfiError *signal_address_get_device_id(const SignalProtocolAddress *obj, unsigned int *out);
-
 SignalFfiError *signal_address_clone(SignalProtocolAddress **new_obj,
                                      const SignalProtocolAddress *obj);
 
@@ -486,6 +484,8 @@ void signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
 SignalFfiError *signal_address_destroy(SignalProtocolAddress *p);
 
 SignalFfiError *signal_address_get_name(const char **out, const SignalProtocolAddress *obj);
+
+SignalFfiError *signal_address_get_device_id(unsigned int *out, const SignalProtocolAddress *obj);
 
 SignalFfiError *signal_address_new(SignalProtocolAddress **out,
                                    const char *name,

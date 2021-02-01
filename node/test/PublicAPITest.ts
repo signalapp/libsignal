@@ -18,6 +18,11 @@ SignalClient.initLogger(
 );
 
 describe('SignalClient', () => {
+  it('ProtocolAddress', () => {
+    const addr = SignalClient.ProtocolAddress.new('name', 42);
+    assert.deepEqual(addr.name(), 'name');
+    assert.deepEqual(addr.deviceId(), 42);
+  });
   it('ECC signatures work', () => {
     const priv_a = SignalClient.PrivateKey.generate();
     const priv_b = SignalClient.PrivateKey.generate();

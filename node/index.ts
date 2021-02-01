@@ -11,6 +11,32 @@ const SC = bindings('libsignal_client_' + os.platform()) as typeof SignalClient;
 
 export const { initLogger, LogLevel } = SC;
 
+export class ProtocolAddress {
+  private readonly nativeHandle: SignalClient.ProtocolAddress;
+
+  private constructor(handle: SignalClient.ProtocolAddress) {
+    this.nativeHandle = handle;
+  }
+
+  static fromNativeHandle(
+    handle: SignalClient.ProtocolAddress
+  ): ProtocolAddress {
+    return new ProtocolAddress(handle);
+  }
+
+  static new(name: string, deviceId: number): ProtocolAddress {
+    return new ProtocolAddress(SC.ProtocolAddress_New(name, deviceId));
+  }
+
+  name(): string {
+    return SC.ProtocolAddress_Name(this.nativeHandle);
+  }
+
+  deviceId(): number {
+    return SC.ProtocolAddress_DeviceId(this.nativeHandle);
+  }
+}
+
 export class PublicKey {
   private readonly nativeHandle: SignalClient.PublicKey;
 
