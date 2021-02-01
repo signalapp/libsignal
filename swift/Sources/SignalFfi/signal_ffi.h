@@ -238,10 +238,6 @@ SignalFfiError *signal_message_clone(SignalMessage **new_obj, const SignalMessag
 SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **new_obj,
                                                       const SignalMessage *obj);
 
-SignalFfiError *signal_message_get_message_version(const SignalMessage *obj, unsigned int *out);
-
-SignalFfiError *signal_message_get_counter(const SignalMessage *obj, unsigned int *out);
-
 SignalFfiError *signal_pre_key_signal_message_clone(SignalPreKeySignalMessage **new_obj,
                                                     const SignalPreKeySignalMessage *obj);
 
@@ -579,6 +575,10 @@ SignalFfiError *signal_message_get_body(const unsigned char **out,
 SignalFfiError *signal_message_get_serialized(const unsigned char **out,
                                               size_t *out_len,
                                               const SignalMessage *obj);
+
+SignalFfiError *signal_message_get_message_version(unsigned int *out, const SignalMessage *obj);
+
+SignalFfiError *signal_message_get_counter(unsigned int *out, const SignalMessage *obj);
 
 SignalFfiError *signal_message_new(SignalMessage **out,
                                    uint8_t message_version,

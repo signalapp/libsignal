@@ -136,12 +136,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetMessageVersion(SignalMessage) using
-                 |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetCounter(SignalMessage) using
-                 |msg: &SignalMessage| { Ok(msg.counter()) });
-
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetVersion(PreKeySignalMessage) using
                  |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
 

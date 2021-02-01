@@ -75,6 +75,8 @@ export function SessionRecord_GetSenderChainKeyValue(obj: SessionRecord): Buffer
 export function SessionRecord_Serialize(obj: SessionRecord): Buffer;
 export function SignalMessage_Deserialize(buffer: Buffer): SignalMessage;
 export function SignalMessage_GetBody(obj: SignalMessage): Buffer;
+export function SignalMessage_GetCounter(obj: SignalMessage): number;
+export function SignalMessage_GetMessageVersion(obj: SignalMessage): number;
 export function SignalMessage_GetSenderRatchetKey(obj: SignalMessage): Buffer;
 export function SignalMessage_GetSerialized(obj: SignalMessage): Buffer;
 export function SignalMessage_New(message_version: number, mac_key: Buffer, sender_ratchet_key: PublicKey, counter: number, previous_counter: number, ciphertext: Buffer, sender_identity_key: PublicKey, receiver_identity_key: PublicKey): SignalMessage;

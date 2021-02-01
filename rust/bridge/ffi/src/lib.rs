@@ -200,12 +200,6 @@ ffi_fn_clone!(signal_message_clone clones SignalMessage);
 ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
                           |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
 
-ffi_fn_get_uint32!(signal_message_get_message_version(SignalMessage) using
-                   |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
-
-ffi_fn_get_uint32!(signal_message_get_counter(SignalMessage) using
-                   |msg: &SignalMessage| { Ok(msg.counter()) });
-
 ffi_fn_clone!(signal_pre_key_signal_message_clone clones PreKeySignalMessage);
 
 ffi_fn_get_uint32!(signal_pre_key_signal_message_get_version(PreKeySignalMessage) using

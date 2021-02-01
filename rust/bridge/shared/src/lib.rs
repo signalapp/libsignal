@@ -184,6 +184,12 @@ bridge_get_bytearray!(GetBody(SignalMessage), ffi = "message_get_body" =>
 bridge_get_bytearray!(GetSerialized(SignalMessage), ffi = "message_get_serialized" =>
     |m| Ok(m.serialized())
 );
+bridge_get_int!(GetMessageVersion(SignalMessage), ffi = "message_get_message_version" =>
+   |m| Ok(m.message_version() as u32)
+);
+bridge_get_int!(GetCounter(SignalMessage), ffi = "message_get_counter" =>
+   |m| Ok(m.counter())
+);
 
 #[bridge_fn(ffi = "message_new")]
 fn SignalMessage_New(
