@@ -71,7 +71,7 @@ fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
 
     let recovered = ServerCertificate::deserialize(&serialized)?;
 
-    assert_eq!(recovered.validate(&trust_root.public_key), Ok(false));
+    assert_eq!(recovered.validate(&trust_root.public_key).unwrap(), false);
 
     Ok(())
 }
