@@ -27,6 +27,16 @@ pub struct ServerCertificate {
     signature: Vec<u8>,
 }
 
+/*
+0xDEADC357 is a server certificate ID which is used to test the
+revocation logic. As of this writing, no prod server certificates have
+been revoked. If one ever does, add its key ID here.
+
+If a production server certificate is ever generated which collides
+with this test certificate ID, Bad Things will happen.
+*/
+const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
+
 impl ServerCertificate {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         let pb = proto::sealed_sender::ServerCertificate::decode(data)?;
@@ -101,6 +111,9 @@ impl ServerCertificate {
     }
 
     pub fn validate(&self, trust_root: &PublicKey) -> Result<bool> {
+        if REVOKED_SERVER_CERTIFICATE_KEY_IDS.contains(&self.key_id()?) {
+            return Ok(false);
+        }
         trust_root.verify_signature(&self.certificate, &self.signature)
     }
 
