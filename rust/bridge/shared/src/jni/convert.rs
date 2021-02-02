@@ -231,6 +231,18 @@ macro_rules! jni_bridge_handle {
                 jni::box_object(Ok(self))
             }
         }
+        impl jni::ResultTypeInfo for Option<$typ> {
+            type ResultType = jni::ObjectHandle;
+            fn convert_into(
+                self,
+                env: &jni::JNIEnv,
+            ) -> Result<Self::ResultType, jni::SignalJniError> {
+                match self {
+                    Some(obj) => obj.convert_into(env),
+                    None => Ok(0),
+                }
+            }
+        }
         jni_bridge_destroy!($typ as $jni_name);
     };
     ( $typ:ty ) => {

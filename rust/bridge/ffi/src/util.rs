@@ -164,29 +164,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
     }
 }
 
-pub unsafe fn box_optional_object<T>(
-    p: *mut *mut T,
-    obj: Result<Option<T>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if p.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-    match obj {
-        Ok(Some(o)) => {
-            *p = Box::into_raw(Box::new(o));
-            Ok(())
-        }
-        Ok(None) => {
-            *p = std::ptr::null_mut();
-            Ok(())
-        }
-        Err(e) => {
-            *p = std::ptr::null_mut();
-            Err(SignalFfiError::Signal(e))
-        }
-    }
-}
-
 pub unsafe fn as_slice<'a>(
     input: *const c_uchar,
     input_len: size_t,
@@ -284,22 +261,6 @@ macro_rules! ffi_fn_clone {
             run_ffi_safe(|| {
                 let obj = native_handle_cast::<$typ>(obj)?;
                 box_object::<$typ>(new_obj, Ok(obj.clone()))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_new_boxed_optional_obj {
-    ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            new_obj: *mut *mut $rt,
-            obj: *const $typ,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                box_optional_object::<$rt>(new_obj, $body(obj))
             })
         }
     };

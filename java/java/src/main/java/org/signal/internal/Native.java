@@ -114,18 +114,18 @@ public final class Native {
   public static native int PreKeyBundle_GetDeviceId(long obj);
   public static native long PreKeyBundle_GetIdentityKey(long handle);
   public static native int PreKeyBundle_GetPreKeyId(long obj);
-  public static native long PreKeyBundle_GetPreKeyPublic(long handle);
+  public static native long PreKeyBundle_GetPreKeyPublic(long obj);
   public static native int PreKeyBundle_GetRegistrationId(long obj);
   public static native int PreKeyBundle_GetSignedPreKeyId(long obj);
-  public static native long PreKeyBundle_GetSignedPreKeyPublic(long handle);
+  public static native long PreKeyBundle_GetSignedPreKeyPublic(long obj);
   public static native byte[] PreKeyBundle_GetSignedPreKeySignature(long handle);
   public static native long PreKeyBundle_New(int registrationId, int deviceId, int prekeyId, long prekey, int signedPrekeyId, long signedPrekey, byte[] signedPrekeySignature, long identityKey);
 
   public static native long PreKeyRecord_Deserialize(byte[] data);
   public static native void PreKeyRecord_Destroy(long handle);
   public static native int PreKeyRecord_GetId(long obj);
-  public static native long PreKeyRecord_GetPrivateKey(long handle);
-  public static native long PreKeyRecord_GetPublicKey(long handle);
+  public static native long PreKeyRecord_GetPrivateKey(long obj);
+  public static native long PreKeyRecord_GetPublicKey(long obj);
   public static native byte[] PreKeyRecord_GetSerialized(long handle);
   public static native long PreKeyRecord_New(int id, long pubKey, long privKey);
 
@@ -156,7 +156,7 @@ public final class Native {
   public static native byte[] SenderCertificate_GetCertificate(long handle);
   public static native int SenderCertificate_GetDeviceId(long obj);
   public static native long SenderCertificate_GetExpiration(long obj);
-  public static native long SenderCertificate_GetKey(long handle);
+  public static native long SenderCertificate_GetKey(long obj);
   public static native String SenderCertificate_GetSenderE164(long obj);
   public static native String SenderCertificate_GetSenderUuid(long obj);
   public static native byte[] SenderCertificate_GetSerialized(long handle);
@@ -198,7 +198,7 @@ public final class Native {
   public static native long ServerCertificate_Deserialize(byte[] data);
   public static native void ServerCertificate_Destroy(long handle);
   public static native byte[] ServerCertificate_GetCertificate(long handle);
-  public static native long ServerCertificate_GetKey(long handle);
+  public static native long ServerCertificate_GetKey(long obj);
   public static native int ServerCertificate_GetKeyId(long obj);
   public static native byte[] ServerCertificate_GetSerialized(long handle);
   public static native byte[] ServerCertificate_GetSignature(long handle);
@@ -222,7 +222,7 @@ public final class Native {
   public static native int SessionRecord_GetRemoteRegistrationId(long obj);
   public static native byte[] SessionRecord_GetSenderChainKeyValue(long handle);
   public static native int SessionRecord_GetSessionVersion(long handle);
-  public static native boolean SessionRecord_HasSenderChain(long handle);
+  public static native boolean SessionRecord_HasSenderChain(long obj);
   public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
   public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
   public static native long SessionRecord_NewFresh();
@@ -241,8 +241,8 @@ public final class Native {
   public static native long SignedPreKeyRecord_Deserialize(byte[] data);
   public static native void SignedPreKeyRecord_Destroy(long handle);
   public static native int SignedPreKeyRecord_GetId(long obj);
-  public static native long SignedPreKeyRecord_GetPrivateKey(long handle);
-  public static native long SignedPreKeyRecord_GetPublicKey(long handle);
+  public static native long SignedPreKeyRecord_GetPrivateKey(long obj);
+  public static native long SignedPreKeyRecord_GetPublicKey(long obj);
   public static native byte[] SignedPreKeyRecord_GetSerialized(long handle);
   public static native byte[] SignedPreKeyRecord_GetSignature(long handle);
   public static native long SignedPreKeyRecord_GetTimestamp(long obj);
@@ -260,7 +260,7 @@ public final class Native {
   public static native void UnidentifiedSenderMessage_Destroy(long handle);
   public static native byte[] UnidentifiedSenderMessage_GetEncryptedMessage(long handle);
   public static native byte[] UnidentifiedSenderMessage_GetEncryptedStatic(long handle);
-  public static native long UnidentifiedSenderMessage_GetEphemeralPublic(long handle);
+  public static native long UnidentifiedSenderMessage_GetEphemeralPublic(long obj);
   public static native byte[] UnidentifiedSenderMessage_GetSerialized(long handle);
   public static native long UnidentifiedSenderMessage_New(long publicKey, byte[] encryptedStatic, byte[] encryptedMessage);
 }

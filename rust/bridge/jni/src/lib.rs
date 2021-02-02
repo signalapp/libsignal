@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JValue};
-use jni::sys::{jboolean, jbyteArray, jint, jlongArray, jobject};
+use jni::sys::{jbyteArray, jint, jlongArray, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -136,30 +136,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-jni_fn_get_new_boxed_optional_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetPreKeyPublic(PublicKey) from PreKeyBundle,
-                                   PreKeyBundle::pre_key_public);
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetSignedPreKeyPublic(PublicKey) from PreKeyBundle,
-                          |p: &PreKeyBundle| Ok(p.signed_pre_key_public()?));
-
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetIdentityKey(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
-
-/* SignedPreKeyRecord */
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPublicKey(PublicKey) from SignedPreKeyRecord,
-                          SignedPreKeyRecord::public_key);
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPrivateKey(PrivateKey) from SignedPreKeyRecord,
-                          SignedPreKeyRecord::private_key);
-
-/* PreKeyRecord */
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetPublicKey(PublicKey) from PreKeyRecord,
-                          PreKeyRecord::public_key);
-
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetPrivateKey(PrivateKey) from PreKeyRecord,
-                          PreKeyRecord::private_key);
 
 /* SenderKeyName */
 
@@ -1020,8 +998,6 @@ jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessio
     Err(e) => Err(e)
 });
 
-jni_fn_get_jboolean!(Java_org_signal_client_internal_Native_SessionRecord_1HasSenderChain(SessionRecord) using SessionRecord::has_sender_chain);
-
 // The following are just exposed to make it possible to retain some of the Java tests:
 
 #[no_mangle]
@@ -1136,13 +1112,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
     })
 }
 
-// Server Certificate
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKey(PublicKey) from ServerCertificate,
-                          ServerCertificate::public_key);
-
 // Sender Certificate
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetKey(PublicKey) from SenderCertificate,
-                          SenderCertificate::key);
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,
                           |s: &SenderCertificate| Ok(s.signer()?.clone()));
 
@@ -1196,9 +1166,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSend
 }
 
 // UnidentifiedSenderMessage
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1GetEphemeralPublic(PublicKey) from UnidentifiedSenderMessage,
-                          UnidentifiedSenderMessage::ephemeral_public);
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1New(
     env: JNIEnv,

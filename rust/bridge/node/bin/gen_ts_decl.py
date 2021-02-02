@@ -51,6 +51,13 @@ def translate_to_ts(typ):
     return typ
 
 
+ignore_this_warning = re.compile(
+    "("
+    r".+: warning: function is never used: .+|"
+    r"warning: \d+ warnings? emitted"
+    ")")
+
+
 def collect_decls(crate_dir, features=''):
     args = [
         'cargo',
@@ -58,6 +65,7 @@ def collect_decls(crate_dir, features=''):
         '-q',
         '--profile=check',
         '--features', features,
+        '--message-format=short',
         '--',
         '-Zunstable-options',
         '--pretty=expanded']
@@ -68,11 +76,18 @@ def collect_decls(crate_dir, features=''):
     stdout = str(stdout.decode('utf8'))
     stderr = str(stderr.decode('utf8'))
 
+    had_error = False
     for l in stderr.split('\n'):
         if l == "":
             continue
 
+        if ignore_this_warning.match(l):
+            continue
+
         print(l, file=sys.stderr)
+        had_error = True
+
+    if had_error:
         sys.exit(1)
 
     comment_decl = re.compile(r'\s*///\s*ts: (.+)')

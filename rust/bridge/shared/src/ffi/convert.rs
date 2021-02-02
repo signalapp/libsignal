@@ -158,6 +158,15 @@ macro_rules! ffi_bridge_handle {
                 Ok(Box::into_raw(Box::new(self)))
             }
         }
+        impl ffi::ResultTypeInfo for Option<$typ> {
+            type ResultType = *mut $typ;
+            fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
+                match self {
+                    Some(obj) => obj.convert_into(),
+                    None => Ok(std::ptr::null_mut()),
+                }
+            }
+        }
         ffi_bridge_destroy!($typ as $ffi_name);
     };
     ( $typ:ty ) => {
@@ -214,5 +223,6 @@ macro_rules! ffi_result_type {
     (bool) => (bool);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
+    (Option<$typ:ty>) => (*mut $typ);
     ( $typ:ty ) => (*mut $typ);
 }

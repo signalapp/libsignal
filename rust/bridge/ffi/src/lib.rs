@@ -217,32 +217,14 @@ ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_k
 
 ffi_fn_clone!(signal_pre_key_bundle_clone clones PreKeyBundle);
 
-ffi_fn_get_new_boxed_optional_obj!(signal_pre_key_bundle_get_pre_key_public(PublicKey) from PreKeyBundle,
-                                   |p: &PreKeyBundle| p.pre_key_public());
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_signed_pre_key_public(PublicKey) from PreKeyBundle,
-                          |p: &PreKeyBundle| Ok(p.signed_pre_key_public()?));
-
 ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
 
 /* SignedPreKeyRecord */
 
-ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_public_key(PublicKey) from SignedPreKeyRecord,
-                          |p: &SignedPreKeyRecord| p.public_key());
-
-ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_private_key(PrivateKey) from SignedPreKeyRecord,
-                          |p: &SignedPreKeyRecord| p.private_key());
-
 ffi_fn_clone!(signal_signed_pre_key_record_clone clones SignedPreKeyRecord);
 
 /* PreKeyRecord */
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_public_key(PublicKey) from PreKeyRecord,
-                          |p: &PreKeyRecord| p.public_key());
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_private_key(PrivateKey) from PreKeyRecord,
-                          |p: &PreKeyRecord| p.private_key());
 
 ffi_fn_clone!(signal_pre_key_record_clone clones PreKeyRecord);
 
@@ -1064,13 +1046,7 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
     })
 }
 
-// Server Certificate
-ffi_fn_get_new_boxed_obj!(signal_server_certificate_get_key(PublicKey) from ServerCertificate,
-                          ServerCertificate::public_key);
-
 // Sender Certificate
-ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from SenderCertificate,
-                          SenderCertificate::key);
 ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,
                           |s: &SenderCertificate| Ok(s.signer()?.clone()));
 

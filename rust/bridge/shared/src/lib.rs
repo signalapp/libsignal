@@ -339,6 +339,8 @@ bridge_get!(PreKeyBundle::registration_id -> u32);
 bridge_get!(PreKeyBundle::device_id -> u32);
 bridge_get!(PreKeyBundle::signed_pre_key_id -> u32);
 bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
+bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
+bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
 
 bridge_deserialize!(SignedPreKeyRecord::deserialize);
 bridge_get_bytearray!(GetSignature(SignedPreKeyRecord) => SignedPreKeyRecord::signature);
@@ -347,6 +349,8 @@ bridge_get_bytearray!(Serialize(SignedPreKeyRecord), jni = "SignedPreKeyRecord_1
 );
 bridge_get!(SignedPreKeyRecord::id -> u32);
 bridge_get!(SignedPreKeyRecord::timestamp -> u64);
+bridge_get!(SignedPreKeyRecord::public_key -> PublicKey);
+bridge_get!(SignedPreKeyRecord::private_key -> PrivateKey);
 
 #[bridge_fn]
 fn SignedPreKeyRecord_New(
@@ -365,6 +369,8 @@ bridge_get_bytearray!(Serialize(PreKeyRecord), jni = "PreKeyRecord_1GetSerialize
     PreKeyRecord::serialize
 );
 bridge_get!(PreKeyRecord::id -> u32);
+bridge_get!(PreKeyRecord::public_key -> PublicKey);
+bridge_get!(PreKeyRecord::private_key -> PrivateKey);
 
 #[bridge_fn]
 fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreKeyRecord {
@@ -402,6 +408,7 @@ bridge_get_bytearray!(GetSerialized(ServerCertificate) => ServerCertificate::ser
 bridge_get_bytearray!(GetCertificate(ServerCertificate) => ServerCertificate::certificate);
 bridge_get_bytearray!(GetSignature(ServerCertificate) => ServerCertificate::signature);
 bridge_get!(ServerCertificate::key_id -> u32);
+bridge_get!(ServerCertificate::public_key as GetKey -> PublicKey);
 
 #[bridge_fn]
 fn ServerCertificate_New(
@@ -421,6 +428,7 @@ bridge_get!(SenderCertificate::sender_uuid -> Option<String>);
 bridge_get!(SenderCertificate::sender_e164 -> Option<String>);
 bridge_get!(SenderCertificate::expiration -> u64);
 bridge_get!(SenderCertificate::sender_device_id as GetDeviceId -> u32);
+bridge_get!(SenderCertificate::key -> PublicKey);
 
 #[bridge_fn]
 fn SenderCertificate_Validate(
@@ -479,6 +487,7 @@ bridge_get_bytearray!(GetEncryptedMessage(UnidentifiedSenderMessage), ffi = fals
 bridge_get_bytearray!(GetEncryptedStatic(UnidentifiedSenderMessage), ffi = false, node = false =>
     UnidentifiedSenderMessage::encrypted_static
 );
+bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(Serialize(SessionRecord) => SessionRecord::serialize);
@@ -493,6 +502,7 @@ bridge_get_optional_bytearray!(GetRemoteIdentityKeyPublic(SessionRecord), ffi = 
 );
 bridge_get!(SessionRecord::local_registration_id -> u32);
 bridge_get!(SessionRecord::remote_registration_id -> u32);
+bridge_get!(SessionRecord::has_sender_chain as HasSenderChain -> bool, ffi = false, node = false);
 // Only needed for testing
 bridge_get_bytearray!(GetSenderChainKeyValue(SessionRecord), ffi = false, node = false =>
     SessionRecord::get_sender_chain_key_bytes
