@@ -182,24 +182,6 @@ pub unsafe extern "C" fn signal_fingerprint_new(
     })
 }
 
-ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
-                          |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_base_key(PublicKey) from PreKeySignalMessage,
-                          |p: &PreKeySignalMessage| Ok(*p.base_key()));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_identity_key(PublicKey) from PreKeySignalMessage,
-                          |p: &PreKeySignalMessage| Ok(*p.identity_key().public_key()));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_signal_message(SignalMessage) from PreKeySignalMessage,
-                          |p: &PreKeySignalMessage| Ok(p.message().clone()));
-
-ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
-                          |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from PreKeyBundle,
-                          |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
-
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
 type GetLocalRegistrationId =
@@ -1010,10 +992,6 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
     })
 }
 
-// Sender Certificate
-ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,
-                          |s: &SenderCertificate| Ok(s.signer()?.clone()));
-
 // UnidentifiedSenderMessageContent
 #[no_mangle]
 pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type(
@@ -1026,9 +1004,6 @@ pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type
         Ok(())
     })
 }
-
-ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_content_get_sender_cert(SenderCertificate) from UnidentifiedSenderMessageContent,
-                          |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sealed_session_cipher_encrypt(

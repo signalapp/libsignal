@@ -136,9 +136,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetIdentityKey(PublicKey) from PreKeyBundle,
-                          |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
-
 /* SenderKeyName */
 
 fn sender_key_name_to_jobject<'a>(
@@ -1103,9 +1100,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
 }
 
 // Sender Certificate
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,
-                          |s: &SenderCertificate| Ok(s.signer()?.clone()));
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
     env: JNIEnv,
@@ -1123,9 +1117,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
 }
 
 // UnidentifiedSenderMessageContent
-jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSenderCert(SenderCertificate) from UnidentifiedSenderMessageContent,
-                          |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1New(
     env: JNIEnv,

@@ -14,6 +14,7 @@ export function Fingerprint_DisplayString(obj: Fingerprint): string;
 export function Fingerprint_ScannableEncoding(obj: Fingerprint): Buffer;
 export function IdentityKeyPair_Serialize(public_key: PublicKey, private_key: PrivateKey): Buffer;
 export function PreKeyBundle_GetDeviceId(obj: PreKeyBundle): number;
+export function PreKeyBundle_GetIdentityKey(p: PreKeyBundle): PublicKey;
 export function PreKeyBundle_GetPreKeyId(obj: PreKeyBundle): number | null;
 export function PreKeyBundle_GetPreKeyPublic(obj: PreKeyBundle): PublicKey | null;
 export function PreKeyBundle_GetRegistrationId(obj: PreKeyBundle): number;
@@ -57,6 +58,7 @@ export function SenderCertificate_GetKey(obj: SenderCertificate): PublicKey;
 export function SenderCertificate_GetSenderE164(obj: SenderCertificate): string | null;
 export function SenderCertificate_GetSenderUuid(obj: SenderCertificate): string | null;
 export function SenderCertificate_GetSerialized(obj: SenderCertificate): Buffer;
+export function SenderCertificate_GetServerCertificate(cert: SenderCertificate): ServerCertificate;
 export function SenderCertificate_GetSignature(obj: SenderCertificate): Buffer;
 export function SenderCertificate_New(sender_uuid: string | null, sender_e164: string | null, sender_device_id: number, sender_key: PublicKey, expiration: number, signer_cert: ServerCertificate, signer_key: PrivateKey): SenderCertificate;
 export function SenderCertificate_Validate(cert: SenderCertificate, key: PublicKey, time: number): boolean;
@@ -108,6 +110,7 @@ export function SignedPreKeyRecord_New(id: number, timestamp: number, pub_key: P
 export function SignedPreKeyRecord_Serialize(obj: SignedPreKeyRecord): Buffer;
 export function UnidentifiedSenderMessageContent_Deserialize(buffer: Buffer): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_GetContents(obj: UnidentifiedSenderMessageContent): Buffer;
+export function UnidentifiedSenderMessageContent_GetSenderCert(m: UnidentifiedSenderMessageContent): SenderCertificate;
 export function UnidentifiedSenderMessageContent_Serialize(obj: UnidentifiedSenderMessageContent): Buffer;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }

@@ -215,6 +215,11 @@ fn SignalMessage_VerifyMac(
     )
 }
 
+#[bridge_fn(ffi = "message_get_sender_ratchet_key", jni = false, node = false)]
+fn SignalMessage_GetSenderRatchetKey(m: &SignalMessage) -> PublicKey {
+    *m.sender_ratchet_key()
+}
+
 #[bridge_fn]
 fn PreKeySignalMessage_New(
     message_version: u8,
@@ -234,6 +239,21 @@ fn PreKeySignalMessage_New(
         IdentityKey::new(*identity_key),
         signal_message.clone(),
     )
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn PreKeySignalMessage_GetBaseKey(m: &PreKeySignalMessage) -> PublicKey {
+    *m.base_key()
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn PreKeySignalMessage_GetIdentityKey(m: &PreKeySignalMessage) -> PublicKey {
+    *m.identity_key().public_key()
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn PreKeySignalMessage_GetSignalMessage(m: &PreKeySignalMessage) -> SignalMessage {
+    m.message().clone()
 }
 
 bridge_deserialize!(PreKeySignalMessage::try_from);
@@ -300,6 +320,13 @@ fn SenderKeyDistributionMessage_New(
     SenderKeyDistributionMessage::new(key_id, iteration, &chainkey, *pk)
 }
 
+#[bridge_fn(jni = false, node = false)]
+fn SenderKeyDistributionMessage_GetSignatureKey(
+    m: &SenderKeyDistributionMessage,
+) -> Result<PublicKey, SignalProtocolError> {
+    Ok(*m.signing_key()?)
+}
+
 #[bridge_fn]
 fn PreKeyBundle_New(
     registration_id: u32,
@@ -332,6 +359,11 @@ fn PreKeyBundle_New(
         signed_prekey_signature.to_vec(),
         identity_key,
     )
+}
+
+#[bridge_fn]
+fn PreKeyBundle_GetIdentityKey(p: &PreKeyBundle) -> Result<PublicKey, SignalProtocolError> {
+    Ok(*p.identity_key()?.public_key())
 }
 
 bridge_get_bytearray!(GetSignedPreKeySignature(PreKeyBundle) => PreKeyBundle::signed_pre_key_signature);
@@ -445,6 +477,13 @@ fn SenderCertificate_Validate(
 }
 
 #[bridge_fn]
+fn SenderCertificate_GetServerCertificate(
+    cert: &SenderCertificate,
+) -> Result<ServerCertificate, SignalProtocolError> {
+    Ok(cert.signer()?.clone())
+}
+
+#[bridge_fn]
 fn SenderCertificate_New(
     sender_uuid: Option<String>,
     sender_e164: Option<String>,
@@ -477,6 +516,13 @@ bridge_get_bytearray!(
 bridge_get_bytearray!(GetContents(UnidentifiedSenderMessageContent) =>
     UnidentifiedSenderMessageContent::contents
 );
+
+#[bridge_fn]
+fn UnidentifiedSenderMessageContent_GetSenderCert(
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<SenderCertificate, SignalProtocolError> {
+    Ok(m.sender()?.clone())
+}
 
 #[bridge_fn(ffi = false, node = false)]
 fn UnidentifiedSenderMessageContent_GetMsgType(

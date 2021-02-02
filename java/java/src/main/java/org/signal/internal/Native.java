@@ -112,7 +112,7 @@ public final class Native {
 
   public static native void PreKeyBundle_Destroy(long handle);
   public static native int PreKeyBundle_GetDeviceId(long obj);
-  public static native long PreKeyBundle_GetIdentityKey(long handle);
+  public static native long PreKeyBundle_GetIdentityKey(long p);
   public static native int PreKeyBundle_GetPreKeyId(long obj);
   public static native long PreKeyBundle_GetPreKeyPublic(long obj);
   public static native int PreKeyBundle_GetRegistrationId(long obj);
@@ -160,7 +160,7 @@ public final class Native {
   public static native String SenderCertificate_GetSenderE164(long obj);
   public static native String SenderCertificate_GetSenderUuid(long obj);
   public static native byte[] SenderCertificate_GetSerialized(long handle);
-  public static native long SenderCertificate_GetServerCertificate(long handle);
+  public static native long SenderCertificate_GetServerCertificate(long cert);
   public static native byte[] SenderCertificate_GetSignature(long handle);
   public static native long SenderCertificate_New(String senderUuid, String senderE164, int senderDeviceId, long senderKey, long expiration, long signerCert, long signerKey);
   public static native long SenderCertificate_PreferredAddress(long cert, SessionStore sessionStore);
@@ -252,7 +252,7 @@ public final class Native {
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
   public static native byte[] UnidentifiedSenderMessageContent_GetContents(long handle);
   public static native int UnidentifiedSenderMessageContent_GetMsgType(long m);
-  public static native long UnidentifiedSenderMessageContent_GetSenderCert(long handle);
+  public static native long UnidentifiedSenderMessageContent_GetSenderCert(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long handle);
   public static native long UnidentifiedSenderMessageContent_New(int msgType, long sender, byte[] contents);
 

@@ -233,19 +233,3 @@ pub fn write_uint32_to(
         Err(e) => Err(SignalFfiError::Signal(e)),
     }
 }
-
-#[macro_export]
-macro_rules! ffi_fn_get_new_boxed_obj {
-    ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            new_obj: *mut *mut $rt,
-            obj: *const $typ,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                box_object::<$rt>(new_obj, $body(obj))
-            })
-        }
-    };
-}
