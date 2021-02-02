@@ -431,7 +431,11 @@ fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreK
 }
 
 bridge_get!(SenderKeyName::group_id -> String);
-bridge_get_string!(GetSenderName(SenderKeyName) => |skn| Ok(skn.sender()?.name().to_string()));
+
+#[bridge_fn]
+fn SenderKeyName_GetSenderName(obj: &SenderKeyName) -> Result<String, SignalProtocolError> {
+    Ok(obj.sender()?.name().to_string())
+}
 
 #[bridge_fn]
 fn SenderKeyName_New(
