@@ -200,10 +200,6 @@ ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_k
 ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
 
-/* SenderKeyName */
-ffi_fn_get_uint32!(signal_sender_key_name_get_sender_device_id(SenderKeyName) using
-                   |m: &SenderKeyName| Ok(m.sender()?.device_id()));
-
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
 type GetLocalRegistrationId =

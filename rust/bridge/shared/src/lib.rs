@@ -393,6 +393,11 @@ fn SenderKeyName_New(
     )
 }
 
+#[bridge_fn]
+fn SenderKeyName_GetSenderDeviceId(skn: &SenderKeyName) -> Result<u32, SignalProtocolError> {
+    Ok(skn.sender()?.device_id())
+}
+
 bridge_deserialize!(SenderKeyRecord::deserialize);
 bridge_get_bytearray!(Serialize(SenderKeyRecord), jni = "SenderKeyRecord_1GetSerialized" =>
     SenderKeyRecord::serialize
@@ -473,6 +478,13 @@ bridge_get_bytearray!(GetContents(UnidentifiedSenderMessageContent) =>
     UnidentifiedSenderMessageContent::contents
 );
 
+#[bridge_fn(ffi = false, node = false)]
+fn UnidentifiedSenderMessageContent_GetMsgType(
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<u32, SignalProtocolError> {
+    Ok(m.msg_type()? as u32)
+}
+
 bridge_deserialize!(
     UnidentifiedSenderMessage::deserialize,
     ffi = false,
@@ -488,6 +500,16 @@ bridge_get_bytearray!(GetEncryptedStatic(UnidentifiedSenderMessage), ffi = false
     UnidentifiedSenderMessage::encrypted_static
 );
 bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
+
+// For historical reasons Android assumes this function will return zero if there is no session state
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32, SignalProtocolError> {
+    match s.session_version() {
+        Ok(v) => Ok(v),
+        Err(SignalProtocolError::InvalidState(_, _)) => Ok(0),
+        Err(e) => Err(e),
+    }
+}
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(Serialize(SessionRecord) => SessionRecord::serialize);

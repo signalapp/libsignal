@@ -236,9 +236,6 @@ SignalFfiError *signal_sender_key_distribution_message_get_signature_key(SignalP
 SignalFfiError *signal_pre_key_bundle_get_identity_key(SignalPublicKey **new_obj,
                                                        const SignalPreKeyBundle *obj);
 
-SignalFfiError *signal_sender_key_name_get_sender_device_id(unsigned int *out,
-                                                            const SignalSenderKeyName *obj);
-
 SignalFfiError *signal_process_prekey_bundle(SignalPreKeyBundle *bundle,
                                              const SignalProtocolAddress *protocol_address,
                                              const SignalSessionStore *session_store,
@@ -719,6 +716,9 @@ SignalFfiError *signal_sender_key_name_new(SignalSenderKeyName **out,
                                            const char *group_id,
                                            const char *sender_name,
                                            uint32_t sender_device_id);
+
+SignalFfiError *signal_sender_key_name_get_sender_device_id(uint32_t *out,
+                                                            const SignalSenderKeyName *skn);
 
 SignalFfiError *signal_sender_key_record_deserialize(SignalSenderKeyRecord **p,
                                                      const unsigned char *data,

@@ -141,9 +141,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1G
 
 /* SenderKeyName */
 
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyName_1GetSenderDeviceId(SenderKeyName) using
-                 |m: &SenderKeyName| Ok(m.sender()?.device_id()));
-
 fn sender_key_name_to_jobject<'a>(
     env: &'a JNIEnv,
     sender_key_name: &SenderKeyName,
@@ -991,13 +988,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
     })
 }
 
-// For historical reasons Android assumes this function will return zero if there is no session state
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using |s: &SessionRecord| match s.session_version() {
-    Ok(v) => Ok(v),
-    Err(SignalProtocolError::InvalidState(_, _)) => Ok(0),
-    Err(e) => Err(e)
-});
-
 // The following are just exposed to make it possible to retain some of the Java tests:
 
 #[no_mangle]
@@ -1133,9 +1123,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
 }
 
 // UnidentifiedSenderMessageContent
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetMsgType(UnidentifiedSenderMessageContent) using
-                 |m: &UnidentifiedSenderMessageContent| Ok(m.msg_type()? as u32));
-
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1GetSenderCert(SenderCertificate) from UnidentifiedSenderMessageContent,
                           |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
 

@@ -74,6 +74,7 @@ export function SenderKeyMessage_New(key_id: number, iteration: number, cipherte
 export function SenderKeyMessage_Serialize(obj: SenderKeyMessage): Buffer;
 export function SenderKeyMessage_VerifySignature(skm: SenderKeyMessage, pubkey: PublicKey): boolean;
 export function SenderKeyName_GetGroupId(obj: SenderKeyName): string;
+export function SenderKeyName_GetSenderDeviceId(skn: SenderKeyName): number;
 export function SenderKeyName_GetSenderName(obj: SenderKeyName): string;
 export function SenderKeyName_New(group_id: string, sender_name: string, sender_device_id: number): SenderKeyName;
 export function SenderKeyRecord_Deserialize(buffer: Buffer): SenderKeyRecord;

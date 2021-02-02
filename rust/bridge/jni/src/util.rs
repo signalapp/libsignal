@@ -177,34 +177,3 @@ macro_rules! jni_fn_get_new_boxed_optional_obj {
         }
     };
 }
-
-#[macro_export]
-macro_rules! jni_fn_get_jint {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jint {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                jint_from_u32($body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_jboolean {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> jboolean {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                let r: bool = $body(obj)?;
-                Ok(r as jboolean)
-            })
-        }
-    };
-}

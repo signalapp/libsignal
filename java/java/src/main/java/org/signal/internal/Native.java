@@ -186,7 +186,7 @@ public final class Native {
 
   public static native void SenderKeyName_Destroy(long handle);
   public static native String SenderKeyName_GetGroupId(long obj);
-  public static native int SenderKeyName_GetSenderDeviceId(long handle);
+  public static native int SenderKeyName_GetSenderDeviceId(long skn);
   public static native String SenderKeyName_GetSenderName(long obj);
   public static native long SenderKeyName_New(String groupId, String senderName, int senderDeviceId);
 
@@ -221,7 +221,7 @@ public final class Native {
   public static native byte[] SessionRecord_GetRemoteIdentityKeyPublic(long handle);
   public static native int SessionRecord_GetRemoteRegistrationId(long obj);
   public static native byte[] SessionRecord_GetSenderChainKeyValue(long handle);
-  public static native int SessionRecord_GetSessionVersion(long handle);
+  public static native int SessionRecord_GetSessionVersion(long s);
   public static native boolean SessionRecord_HasSenderChain(long obj);
   public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
   public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
@@ -251,7 +251,7 @@ public final class Native {
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
   public static native byte[] UnidentifiedSenderMessageContent_GetContents(long handle);
-  public static native int UnidentifiedSenderMessageContent_GetMsgType(long handle);
+  public static native int UnidentifiedSenderMessageContent_GetMsgType(long m);
   public static native long UnidentifiedSenderMessageContent_GetSenderCert(long handle);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long handle);
   public static native long UnidentifiedSenderMessageContent_New(int msgType, long sender, byte[] contents);

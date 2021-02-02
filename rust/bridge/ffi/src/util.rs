@@ -249,16 +249,3 @@ macro_rules! ffi_fn_get_new_boxed_obj {
         }
     };
 }
-
-#[macro_export]
-macro_rules! ffi_fn_get_uint32 {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(out: *mut c_uint, obj: *const $typ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_uint32_to(out, $body(&obj))
-            })
-        }
-    };
-}
