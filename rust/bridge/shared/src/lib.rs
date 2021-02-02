@@ -85,7 +85,7 @@ bridge_get_bytearray!(
     PublicKey::public_key_bytes
 );
 bridge_get!(ProtocolAddress::device_id as DeviceId -> u32, ffi = "address_get_device_id");
-bridge_get!(ProtocolAddress::name as Name -> String, ffi = "address_get_name");
+bridge_get!(ProtocolAddress::name as Name -> &str, ffi = "address_get_name");
 
 #[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
 fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {

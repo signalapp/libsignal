@@ -187,6 +187,16 @@ impl<'a> ResultTypeInfo<'a> for String {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for &str {
+    type ResultType = JsString;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        Ok(cx.string(self))
+    }
+}
+
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
     type ResultType = JsValue;
     fn convert_into(

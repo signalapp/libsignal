@@ -169,6 +169,13 @@ impl ResultTypeInfo for Option<String> {
     }
 }
 
+impl ResultTypeInfo for &str {
+    type ResultType = jstring;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(env.new_string(self)?.into_inner())
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -319,6 +326,9 @@ macro_rules! jni_result_type {
     (Result<$typ:tt, $_:ty>) => {
         jni_result_type!($typ)
     };
+    (Result<&$typ:tt, $_:ty>) => {
+        jni_result_type!(&$typ)
+    };
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => {
         jni_result_type!($typ<$($args)+>)
     };
@@ -336,6 +346,9 @@ macro_rules! jni_result_type {
     };
     (Option<u32>) => {
         jni::jint
+    };
+    (&str) => {
+        jni::jstring
     };
     (String) => {
         jni::jstring

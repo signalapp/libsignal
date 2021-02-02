@@ -116,6 +116,14 @@ impl ResultTypeInfo for Option<String> {
     }
 }
 
+impl ResultTypeInfo for &str {
+    type ResultType = *const libc::c_char;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
+        Ok(cstr.into_raw())
+    }
+}
+
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
@@ -238,12 +246,14 @@ macro_rules! ffi_arg_type {
 
 macro_rules! ffi_result_type {
     (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
+    (Result<&$typ:tt, $_:ty>) => (ffi_result_type!(&$typ));
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
     (i32) => (i32);
     (u32) => (u32);
     (Option<u32>) => (u32);
     (u64) => (u64);
     (bool) => (bool);
+    (&str) => (*const libc::c_char);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (Option<$typ:ty>) => (*mut $typ);
