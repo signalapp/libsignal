@@ -308,7 +308,6 @@ pub fn call_method_checked<'a>(
 }
 
 macro_rules! jni_bridge_destroy {
-    ( $typ:ty as false ) => {};
     ( $typ:ty as $jni_name:ident ) => {
         paste! {
             #[no_mangle]
@@ -321,11 +320,6 @@ macro_rules! jni_bridge_destroy {
                     let _boxed_value = Box::from_raw(handle as *mut $typ);
                 }
             }
-        }
-    };
-    ( $typ:ty ) => {
-        paste! {
-            jni_bridge_destroy!($typ as $typ);
         }
     };
 }

@@ -1,12 +1,12 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #![allow(clippy::missing_safety_doc)]
 
 use async_trait::async_trait;
-use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
+use libc::{c_char, c_int, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
@@ -109,15 +109,6 @@ pub unsafe extern "C" fn signal_hkdf_derive(
     })
 }
 
-ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
-                   |obj: &ProtocolAddress| { Ok(obj.device_id()) });
-
-ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
-
-ffi_fn_clone!(signal_publickey_clone clones PublicKey);
-
-ffi_fn_clone!(signal_privatekey_clone clones PrivateKey);
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_identitykeypair_deserialize(
     private_key: *mut *mut PrivateKey,
@@ -132,9 +123,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
         box_object::<PrivateKey>(private_key, Ok(*identity_key_pair.private_key()))
     })
 }
-
-ffi_fn_get_uint32!(signal_session_record_get_remote_registration_id(SessionRecord) using
-                   SessionRecord::remote_registration_id);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_session_record_archive_current_state(
@@ -161,8 +149,6 @@ pub unsafe extern "C" fn signal_session_record_has_current_state(
         Ok(())
     })
 }
-
-ffi_fn_clone!(signal_session_record_clone clones SessionRecord);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_new(
@@ -195,170 +181,6 @@ pub unsafe extern "C" fn signal_fingerprint_new(
         box_object::<Fingerprint>(obj, fprint)
     })
 }
-
-ffi_fn_clone!(signal_fingerprint_clone clones Fingerprint);
-
-ffi_fn_clone!(signal_message_clone clones SignalMessage);
-
-ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
-                          |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
-
-ffi_fn_get_uint32!(signal_message_get_message_version(SignalMessage) using
-                   |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
-
-ffi_fn_get_uint32!(signal_message_get_counter(SignalMessage) using
-                   |msg: &SignalMessage| { Ok(msg.counter()) });
-
-ffi_fn_clone!(signal_pre_key_signal_message_clone clones PreKeySignalMessage);
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_version(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_registration_id(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.registration_id()));
-
-ffi_fn_get_optional_uint32!(signal_pre_key_signal_message_get_pre_key_id(PreKeySignalMessage) using
-                            |m: &PreKeySignalMessage| Ok(m.pre_key_id()));
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_signed_pre_key_id(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_base_key(PublicKey) from PreKeySignalMessage,
-                          |p: &PreKeySignalMessage| Ok(*p.base_key()));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_identity_key(PublicKey) from PreKeySignalMessage,
-                          |p: &PreKeySignalMessage| Ok(*p.identity_key().public_key()));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_signal_message(SignalMessage) from PreKeySignalMessage,
-                          |p: &PreKeySignalMessage| Ok(p.message().clone()));
-
-ffi_fn_clone!(signal_sender_key_message_clone clones SenderKeyMessage);
-
-ffi_fn_get_uint32!(signal_sender_key_message_get_key_id(SenderKeyMessage) using
-                   |m: &SenderKeyMessage| Ok(m.key_id()));
-
-ffi_fn_get_uint32!(signal_sender_key_message_get_iteration(SenderKeyMessage) using
-                   |m: &SenderKeyMessage| Ok(m.iteration()));
-
-ffi_fn_clone!(signal_sender_key_distribution_message_clone clones SenderKeyDistributionMessage);
-
-ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_id(SenderKeyDistributionMessage) using
-                   |m: &SenderKeyDistributionMessage| m.id());
-
-ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_iteration(SenderKeyDistributionMessage) using
-                   |m: &SenderKeyDistributionMessage| m.iteration());
-
-ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
-                          |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_pre_key_bundle_new(
-    obj: *mut *mut PreKeyBundle,
-    registration_id: c_uint,
-    device_id: c_uint,
-    prekey_id: *const c_uint,
-    prekey: *const PublicKey,
-    signed_prekey_id: c_uint,
-    signed_prekey: *const PublicKey,
-    signed_prekey_signature: *const c_uchar,
-    signed_prekey_signature_len: size_t,
-    identity_key: *const PublicKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let signed_prekey = native_handle_cast::<PublicKey>(signed_prekey)?;
-        let signed_prekey_signature =
-            as_slice(signed_prekey_signature, signed_prekey_signature_len)?;
-
-        let identity_key = IdentityKey::new(*(identity_key as *const PublicKey));
-
-        let prekey = native_handle_cast_optional::<PublicKey>(prekey)?.copied();
-        let prekey_id = get_optional_uint32(prekey_id);
-
-        let prekey = match (prekey, prekey_id) {
-            (None, None) => None,
-            (Some(k), Some(id)) => Some((id, k)),
-            _ => {
-                return Err(SignalFfiError::Signal(
-                    SignalProtocolError::InvalidArgument(
-                        "Must supply both or neither of prekey and prekey_id".to_owned(),
-                    ),
-                ))
-            }
-        };
-
-        let bundle = PreKeyBundle::new(
-            registration_id,
-            device_id,
-            prekey,
-            signed_prekey_id,
-            *signed_prekey,
-            signed_prekey_signature.to_vec(),
-            identity_key,
-        );
-
-        box_object::<PreKeyBundle>(obj, bundle)
-    })
-}
-
-ffi_fn_clone!(signal_pre_key_bundle_clone clones PreKeyBundle);
-
-ffi_fn_get_uint32!(signal_pre_key_bundle_get_registration_id(PreKeyBundle) using
-                   |m: &PreKeyBundle| m.registration_id());
-
-ffi_fn_get_uint32!(signal_pre_key_bundle_get_device_id(PreKeyBundle) using
-                   |m: &PreKeyBundle| m.device_id());
-
-ffi_fn_get_uint32!(signal_pre_key_bundle_get_signed_pre_key_id(PreKeyBundle) using
-                   |m: &PreKeyBundle| m.signed_pre_key_id());
-
-ffi_fn_get_optional_uint32!(signal_pre_key_bundle_get_pre_key_id(PreKeyBundle) using
-                            |m: &PreKeyBundle| m.pre_key_id());
-
-ffi_fn_get_new_boxed_optional_obj!(signal_pre_key_bundle_get_pre_key_public(PublicKey) from PreKeyBundle,
-                                   |p: &PreKeyBundle| p.pre_key_public());
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_signed_pre_key_public(PublicKey) from PreKeyBundle,
-                          |p: &PreKeyBundle| Ok(p.signed_pre_key_public()?));
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from PreKeyBundle,
-                          |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
-
-/* SignedPreKeyRecord */
-
-ffi_fn_get_uint32!(signal_signed_pre_key_record_get_id(SignedPreKeyRecord) using
-                   |m: &SignedPreKeyRecord| m.id());
-
-ffi_fn_get_uint64!(signal_signed_pre_key_record_get_timestamp(SignedPreKeyRecord) using
-                   |m: &SignedPreKeyRecord| m.timestamp());
-
-ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_public_key(PublicKey) from SignedPreKeyRecord,
-                          |p: &SignedPreKeyRecord| p.public_key());
-
-ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_private_key(PrivateKey) from SignedPreKeyRecord,
-                          |p: &SignedPreKeyRecord| p.private_key());
-
-ffi_fn_clone!(signal_signed_pre_key_record_clone clones SignedPreKeyRecord);
-
-/* PreKeyRecord */
-
-ffi_fn_get_uint32!(signal_pre_key_record_get_id(PreKeyRecord) using
-                   |m: &PreKeyRecord| m.id());
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_public_key(PublicKey) from PreKeyRecord,
-                          |p: &PreKeyRecord| p.public_key());
-
-ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_private_key(PrivateKey) from PreKeyRecord,
-                          |p: &PreKeyRecord| p.private_key());
-
-ffi_fn_clone!(signal_pre_key_record_clone clones PreKeyRecord);
-
-/* SenderKeyName */
-ffi_fn_clone!(signal_sender_key_name_clone clones SenderKeyName);
-
-ffi_fn_get_uint32!(signal_sender_key_name_get_sender_device_id(SenderKeyName) using
-                   |m: &SenderKeyName| Ok(m.sender()?.device_id()));
-
-ffi_fn_clone!(signal_sender_key_record_clone clones SenderKeyRecord);
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
@@ -1170,21 +992,6 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
     })
 }
 
-// Server Certificate
-ffi_fn_get_uint32!(signal_server_certificate_get_key_id(ServerCertificate) using ServerCertificate::key_id);
-
-ffi_fn_get_new_boxed_obj!(signal_server_certificate_get_key(PublicKey) from ServerCertificate,
-                          ServerCertificate::public_key);
-
-// Sender Certificate
-ffi_fn_get_uint64!(signal_sender_certificate_get_expiration(SenderCertificate) using SenderCertificate::expiration);
-ffi_fn_get_uint32!(signal_sender_certificate_get_device_id(SenderCertificate) using SenderCertificate::sender_device_id);
-
-ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from SenderCertificate,
-                          SenderCertificate::key);
-ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,
-                          |s: &SenderCertificate| Ok(s.signer()?.clone()));
-
 // UnidentifiedSenderMessageContent
 #[no_mangle]
 pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type(
@@ -1197,9 +1004,6 @@ pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type
         Ok(())
     })
 }
-
-ffi_fn_get_new_boxed_obj!(signal_unidentified_sender_message_content_get_sender_cert(SenderCertificate) from UnidentifiedSenderMessageContent,
-                          |s: &UnidentifiedSenderMessageContent| Ok(s.sender()?.clone()));
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sealed_session_cipher_encrypt(

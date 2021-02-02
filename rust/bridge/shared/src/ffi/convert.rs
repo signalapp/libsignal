@@ -116,6 +116,13 @@ impl ResultTypeInfo for Option<String> {
     }
 }
 
+impl ResultTypeInfo for Option<u32> {
+    type ResultType = u32;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        Ok(self.unwrap_or(u32::MAX))
+    }
+}
+
 pub(crate) struct Env;
 
 impl crate::Env for Env {
@@ -126,7 +133,8 @@ impl crate::Env for Env {
 }
 
 macro_rules! ffi_bridge_handle {
-    ($typ:ty) => {
+    ( $typ:ty as false ) => {};
+    ( $typ:ty as $ffi_name:ident, clone = false ) => {
         impl ffi::ArgTypeInfo for &'static $typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -134,11 +142,51 @@ macro_rules! ffi_bridge_handle {
                 unsafe { ffi::native_handle_cast(foreign) }
             }
         }
+        impl ffi::ArgTypeInfo for Option<&'static $typ> {
+            type ArgType = *const $typ;
+            fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
+                if foreign.is_null() {
+                    Ok(None)
+                } else {
+                    <&$typ>::convert_from(foreign).map(Some)
+                }
+            }
+        }
         impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
             fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
                 Ok(Box::into_raw(Box::new(self)))
             }
+        }
+        impl ffi::ResultTypeInfo for Option<$typ> {
+            type ResultType = *mut $typ;
+            fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
+                match self {
+                    Some(obj) => obj.convert_into(),
+                    None => Ok(std::ptr::null_mut()),
+                }
+            }
+        }
+        ffi_bridge_destroy!($typ as $ffi_name);
+    };
+    ( $typ:ty as $ffi_name:ident ) => {
+        ffi_bridge_handle!($typ as $ffi_name, clone = false);
+        paste! {
+            #[no_mangle]
+            pub unsafe extern "C" fn [<signal_ $ffi_name _clone>](
+                new_obj: *mut *mut $typ,
+                obj: *const $typ,
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
+                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
+                    ffi::box_object::<$typ>(new_obj, Ok(obj.clone()))
+                })
+            }
+        }
+    };
+    ( $typ:ty $(, clone = $_:tt)? ) => {
+        paste! {
+            ffi_bridge_handle!($typ as [<$typ:snake>] $(, clone = $_)? );
         }
     };
 }
@@ -177,14 +225,19 @@ macro_rules! ffi_arg_type {
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
+    (Option<& $typ:ty>) => (*const $typ);
 }
 
 macro_rules! ffi_result_type {
     (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
     (i32) => (i32);
+    (u32) => (u32);
+    (Option<u32>) => (u32);
+    (u64) => (u64);
     (bool) => (bool);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
+    (Option<$typ:ty>) => (*mut $typ);
     ( $typ:ty ) => (*mut $typ);
 }

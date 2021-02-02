@@ -1,24 +1,14 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use jni::objects::{JObject, JValue};
-use jni::sys::{jint, jlong, jobject};
+use jni::sys::{jint, jobject};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
 use libsignal_protocol_rust::SignalProtocolError;
-
-pub unsafe fn native_handle_cast_optional<T>(
-    handle: ObjectHandle,
-) -> Result<Option<&'static mut T>, SignalJniError> {
-    if handle == 0 {
-        return Ok(None);
-    }
-
-    Ok(Some(&mut *(handle as *mut T)))
-}
 
 pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {
     match value {
@@ -27,22 +17,6 @@ pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, Si
             if result as u32 != value {
                 return Err(SignalJniError::IntegerOverflow(format!(
                     "{} to jint",
-                    value
-                )));
-            }
-            Ok(result)
-        }
-        Err(e) => Err(SignalJniError::Signal(e)),
-    }
-}
-
-pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, SignalJniError> {
-    match value {
-        Ok(value) => {
-            let result = value as jlong;
-            if result as u64 != value {
-                return Err(SignalJniError::IntegerOverflow(format!(
-                    "{} to jlong",
                     value
                 )));
             }
@@ -163,87 +137,4 @@ pub fn jobject_from_native_handle<'a>(
     let ctor_sig = "(J)V";
     let ctor_args = [JValue::from(boxed_handle)];
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_new_boxed_obj {
-    ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> ObjectHandle {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                box_object::<$rt>($body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_new_boxed_optional_obj {
-    ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> ObjectHandle {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                let result: Option<$rt> = $body(obj)?;
-                if let Some(result) = result {
-                    box_object::<$rt>(Ok(result))
-                } else {
-                    Ok(0 as ObjectHandle)
-                }
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_jint {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jint {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                jint_from_u32($body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_jlong {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jlong {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                jlong_from_u64($body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_jboolean {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            env: JNIEnv,
-            _class: JClass,
-            handle: ObjectHandle,
-        ) -> jboolean {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                let r: bool = $body(obj)?;
-                Ok(r as jboolean)
-            })
-        }
-    };
 }

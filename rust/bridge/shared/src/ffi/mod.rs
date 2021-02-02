@@ -107,7 +107,6 @@ pub unsafe fn write_optional_cstr_to(
 }
 
 macro_rules! ffi_bridge_destroy {
-    ( $typ:ty as false ) => {};
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
@@ -122,11 +121,6 @@ macro_rules! ffi_bridge_destroy {
                     Ok(())
                 })
             }
-        }
-    };
-    ( $typ:ty ) => {
-        paste! {
-            ffi_bridge_destroy!($typ as [<$typ:snake>]);
         }
     };
 }

@@ -153,6 +153,30 @@ impl<'a> ResultTypeInfo<'a> for i32 {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for u32 {
+    type ResultType = JsNumber;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        Ok(cx.number(self as f64))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for u64 {
+    type ResultType = JsNumber;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        let result = self as f64;
+        if result > MAX_SAFE_JS_INTEGER {
+            cx.throw_range_error(format!("precision loss during conversion of {}", self))?;
+        }
+        Ok(cx.number(self as f64))
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
     fn convert_into(
@@ -227,7 +251,8 @@ impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
 }
 
 macro_rules! node_bridge_handle {
-    ($typ:ty) => {
+    ( $typ:ty as false ) => {};
+    ( $typ:ty as $node_name:ident ) => {
         impl<'a> node::ArgTypeInfo<'a> for &'a $typ {
             type ArgType = node::DefaultJsBox<$typ>;
             type StoredType = node::Handle<'a, Self::ArgType>;
@@ -256,6 +281,11 @@ macro_rules! node_bridge_handle {
                     node::return_boxed_object(cx, Ok(self))
                 }
             }
+        }
+    };
+    ( $typ:ty ) => {
+        paste! {
+            node_bridge_handle!($typ as $typ);
         }
     };
 }

@@ -57,7 +57,7 @@ public class SenderKeyDistributionMessage {
     public var id: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_distribution_message_get_id(handle, $0)
+                signal_sender_key_distribution_message_get_id($0, handle)
             }
         }
     }
@@ -65,7 +65,7 @@ public class SenderKeyDistributionMessage {
     public var iteration: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_distribution_message_get_iteration(handle, $0)
+                signal_sender_key_distribution_message_get_iteration($0, handle)
             }
         }
     }

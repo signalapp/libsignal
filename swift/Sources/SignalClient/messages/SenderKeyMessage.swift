@@ -40,7 +40,7 @@ public class SenderKeyMessage {
     public var keyId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_message_get_key_id(handle, $0)
+                signal_sender_key_message_get_key_id($0, handle)
             }
         }
     }
@@ -48,7 +48,7 @@ public class SenderKeyMessage {
     public var iteration: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_message_get_iteration(handle, $0)
+                signal_sender_key_message_get_iteration($0, handle)
             }
         }
     }

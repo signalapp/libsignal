@@ -1,9 +1,9 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar, c_uint, c_ulonglong, size_t};
+use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
 use std::ffi::CStr;
@@ -164,29 +164,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
     }
 }
 
-pub unsafe fn box_optional_object<T>(
-    p: *mut *mut T,
-    obj: Result<Option<T>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if p.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-    match obj {
-        Ok(Some(o)) => {
-            *p = Box::into_raw(Box::new(o));
-            Ok(())
-        }
-        Ok(None) => {
-            *p = std::ptr::null_mut();
-            Ok(())
-        }
-        Err(e) => {
-            *p = std::ptr::null_mut();
-            Err(SignalFfiError::Signal(e))
-        }
-    }
-}
-
 pub unsafe fn as_slice<'a>(
     input: *const c_uchar,
     input_len: size_t,
@@ -217,34 +194,12 @@ pub unsafe fn as_slice_mut<'a>(
     Ok(std::slice::from_raw_parts_mut(input, input_len as usize))
 }
 
-pub unsafe fn native_handle_cast_optional<T>(
-    handle: *const T,
-) -> Result<Option<&'static T>, SignalFfiError> {
-    if handle.is_null() {
-        return Ok(None);
-    }
-
-    Ok(Some(&*(handle)))
-}
-
 pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
     if handle.is_null() {
         return Err(SignalFfiError::NullPointer);
     }
 
     Ok(&mut *handle)
-}
-
-pub unsafe fn get_optional_uint32(p: *const c_uint) -> Option<u32> {
-    if p.is_null() {
-        return None;
-    }
-
-    if *p == 0xFFFFFFFF {
-        return None;
-    }
-
-    Some(*p)
 }
 
 pub unsafe fn read_optional_c_string(
@@ -277,133 +232,4 @@ pub fn write_uint32_to(
         }
         Err(e) => Err(SignalFfiError::Signal(e)),
     }
-}
-
-pub fn write_optional_uint32_to(
-    out: *mut c_uint,
-    value: Result<Option<u32>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(value) => {
-            let value = value.unwrap_or(0xFFFFFFFF);
-            unsafe {
-                *out = value;
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
-pub fn write_uint64_to(
-    out: *mut c_ulonglong,
-    value: Result<u64, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(value) => {
-            unsafe {
-                *out = value;
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_new_boxed_obj {
-    ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            new_obj: *mut *mut $rt,
-            obj: *const $typ,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                box_object::<$rt>(new_obj, $body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_clone {
-    ( $nm:ident clones $typ:ty) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            new_obj: *mut *mut $typ,
-            obj: *const $typ,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                box_object::<$typ>(new_obj, Ok(obj.clone()))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_new_boxed_optional_obj {
-    ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            new_obj: *mut *mut $rt,
-            obj: *const $typ,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                box_optional_object::<$rt>(new_obj, $body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_uint32 {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(obj: *const $typ, out: *mut c_uint) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_uint32_to(out, $body(&obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_optional_uint32 {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(obj: *const $typ, out: *mut c_uint) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_optional_uint32_to(out, $body(&obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_uint64 {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            obj: *const $typ,
-            out: *mut c_ulonglong,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_uint64_to(out, $body(&obj))
-            })
-        }
-    };
 }

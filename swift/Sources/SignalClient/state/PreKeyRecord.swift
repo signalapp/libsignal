@@ -51,7 +51,7 @@ public class PreKeyRecord: ClonableHandleOwner {
     public var id: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_pre_key_record_get_id(nativeHandle, $0)
+                signal_pre_key_record_get_id($0, nativeHandle)
             }
         }
     }
