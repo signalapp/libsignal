@@ -109,12 +109,6 @@ pub unsafe extern "C" fn signal_hkdf_derive(
     })
 }
 
-ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
-
-ffi_fn_clone!(signal_publickey_clone clones PublicKey);
-
-ffi_fn_clone!(signal_privatekey_clone clones PrivateKey);
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_identitykeypair_deserialize(
     private_key: *mut *mut PrivateKey,
@@ -156,8 +150,6 @@ pub unsafe extern "C" fn signal_session_record_has_current_state(
     })
 }
 
-ffi_fn_clone!(signal_session_record_clone clones SessionRecord);
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_fingerprint_new(
     obj: *mut *mut Fingerprint,
@@ -190,14 +182,8 @@ pub unsafe extern "C" fn signal_fingerprint_new(
     })
 }
 
-ffi_fn_clone!(signal_fingerprint_clone clones Fingerprint);
-
-ffi_fn_clone!(signal_message_clone clones SignalMessage);
-
 ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
                           |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
-
-ffi_fn_clone!(signal_pre_key_signal_message_clone clones PreKeySignalMessage);
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_base_key(PublicKey) from PreKeySignalMessage,
                           |p: &PreKeySignalMessage| Ok(*p.base_key()));
@@ -208,33 +194,15 @@ ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_identity_key(PublicK
 ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_signal_message(SignalMessage) from PreKeySignalMessage,
                           |p: &PreKeySignalMessage| Ok(p.message().clone()));
 
-ffi_fn_clone!(signal_sender_key_message_clone clones SenderKeyMessage);
-
-ffi_fn_clone!(signal_sender_key_distribution_message_clone clones SenderKeyDistributionMessage);
-
 ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
                           |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
-
-ffi_fn_clone!(signal_pre_key_bundle_clone clones PreKeyBundle);
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from PreKeyBundle,
                           |p: &PreKeyBundle| Ok(*p.identity_key()?.public_key()));
 
-/* SignedPreKeyRecord */
-
-ffi_fn_clone!(signal_signed_pre_key_record_clone clones SignedPreKeyRecord);
-
-/* PreKeyRecord */
-
-ffi_fn_clone!(signal_pre_key_record_clone clones PreKeyRecord);
-
 /* SenderKeyName */
-ffi_fn_clone!(signal_sender_key_name_clone clones SenderKeyName);
-
 ffi_fn_get_uint32!(signal_sender_key_name_get_sender_device_id(SenderKeyName) using
                    |m: &SenderKeyName| Ok(m.sender()?.device_id()));
-
-ffi_fn_clone!(signal_sender_key_record_clone clones SenderKeyRecord);
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;

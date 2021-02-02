@@ -134,7 +134,7 @@ impl crate::Env for Env {
 
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false ) => {};
-    ( $typ:ty as $ffi_name:ident ) => {
+    ( $typ:ty as $ffi_name:ident, clone = false ) => {
         impl ffi::ArgTypeInfo for &'static $typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -169,9 +169,24 @@ macro_rules! ffi_bridge_handle {
         }
         ffi_bridge_destroy!($typ as $ffi_name);
     };
-    ( $typ:ty ) => {
+    ( $typ:ty as $ffi_name:ident ) => {
+        ffi_bridge_handle!($typ as $ffi_name, clone = false);
         paste! {
-            ffi_bridge_handle!($typ as [<$typ:snake>]);
+            #[no_mangle]
+            pub unsafe extern "C" fn [<signal_ $ffi_name _clone>](
+                new_obj: *mut *mut $typ,
+                obj: *const $typ,
+            ) -> *mut ffi::SignalFfiError {
+                ffi::run_ffi_safe(|| {
+                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
+                    ffi::box_object::<$typ>(new_obj, Ok(obj.clone()))
+                })
+            }
+        }
+    };
+    ( $typ:ty $(, clone = $_:tt)? ) => {
+        paste! {
+            ffi_bridge_handle!($typ as [<$typ:snake>] $(, clone = $_)? );
         }
     };
 }

@@ -29,8 +29,8 @@ pub mod node;
 mod support;
 use support::*;
 
-bridge_handle!(Aes256GcmSiv);
-bridge_handle!(CiphertextMessage, jni = false);
+bridge_handle!(Aes256GcmSiv, clone = false);
+bridge_handle!(CiphertextMessage, clone = false, jni = false);
 bridge_handle!(Fingerprint, jni = NumericFingerprintGenerator);
 bridge_handle!(PreKeyBundle);
 bridge_handle!(PreKeyRecord);
@@ -48,7 +48,7 @@ bridge_handle!(SessionRecord);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
-bridge_handle!(UnidentifiedSenderMessageContent);
+bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
