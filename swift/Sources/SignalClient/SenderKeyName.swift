@@ -51,7 +51,7 @@ public class SenderKeyName: ClonableHandleOwner {
     public var senderDeviceId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_name_get_sender_device_id(nativeHandle, $0)
+                signal_sender_key_name_get_sender_device_id($0, nativeHandle)
             }
         }
     }

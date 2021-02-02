@@ -128,6 +128,30 @@ impl ResultTypeInfo for bool {
     }
 }
 
+impl ResultTypeInfo for u32 {
+    type ResultType = jint;
+    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        // Note that we don't check bounds here.
+        Ok(self as jint)
+    }
+}
+
+impl ResultTypeInfo for Option<u32> {
+    type ResultType = jint;
+    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        // Note that we don't check bounds here.
+        Ok(self.unwrap_or(u32::MAX) as jint)
+    }
+}
+
+impl ResultTypeInfo for u64 {
+    type ResultType = jlong;
+    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        // Note that we don't check bounds here.
+        Ok(self as jlong)
+    }
+}
+
 impl ResultTypeInfo for String {
     type ResultType = jstring;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -277,6 +301,15 @@ macro_rules! jni_result_type {
         jni::jboolean
     };
     (i32) => {
+        jni::jint
+    };
+    (u32) => {
+        jni::jint
+    };
+    (u64) => {
+        jni::jlong
+    };
+    (Option<u32>) => {
         jni::jint
     };
     (String) => {

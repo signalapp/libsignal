@@ -111,19 +111,19 @@ public final class Native {
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey);
 
   public static native void PreKeyBundle_Destroy(long handle);
-  public static native int PreKeyBundle_GetDeviceId(long handle);
+  public static native int PreKeyBundle_GetDeviceId(long obj);
   public static native long PreKeyBundle_GetIdentityKey(long handle);
-  public static native int PreKeyBundle_GetPreKeyId(long handle);
+  public static native int PreKeyBundle_GetPreKeyId(long obj);
   public static native long PreKeyBundle_GetPreKeyPublic(long handle);
-  public static native int PreKeyBundle_GetRegistrationId(long handle);
-  public static native int PreKeyBundle_GetSignedPreKeyId(long handle);
+  public static native int PreKeyBundle_GetRegistrationId(long obj);
+  public static native int PreKeyBundle_GetSignedPreKeyId(long obj);
   public static native long PreKeyBundle_GetSignedPreKeyPublic(long handle);
   public static native byte[] PreKeyBundle_GetSignedPreKeySignature(long handle);
   public static native long PreKeyBundle_New(int registrationId, int deviceId, int prekeyId, long prekey, int signedPrekeyId, long signedPrekey, byte[] signedPrekeySignature, long identityKey);
 
   public static native long PreKeyRecord_Deserialize(byte[] data);
   public static native void PreKeyRecord_Destroy(long handle);
-  public static native int PreKeyRecord_GetId(long handle);
+  public static native int PreKeyRecord_GetId(long obj);
   public static native long PreKeyRecord_GetPrivateKey(long handle);
   public static native long PreKeyRecord_GetPublicKey(long handle);
   public static native byte[] PreKeyRecord_GetSerialized(long handle);
@@ -133,16 +133,16 @@ public final class Native {
   public static native void PreKeySignalMessage_Destroy(long handle);
   public static native byte[] PreKeySignalMessage_GetBaseKey(long handle);
   public static native byte[] PreKeySignalMessage_GetIdentityKey(long handle);
-  public static native int PreKeySignalMessage_GetPreKeyId(long handle);
-  public static native int PreKeySignalMessage_GetRegistrationId(long handle);
+  public static native int PreKeySignalMessage_GetPreKeyId(long obj);
+  public static native int PreKeySignalMessage_GetRegistrationId(long obj);
   public static native byte[] PreKeySignalMessage_GetSerialized(long handle);
   public static native byte[] PreKeySignalMessage_GetSignalMessage(long handle);
-  public static native int PreKeySignalMessage_GetSignedPreKeyId(long handle);
-  public static native int PreKeySignalMessage_GetVersion(long handle);
+  public static native int PreKeySignalMessage_GetSignedPreKeyId(long obj);
+  public static native int PreKeySignalMessage_GetVersion(long obj);
   public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKey, long identityKey, long signalMessage);
 
   public static native void ProtocolAddress_Destroy(long handle);
-  public static native int ProtocolAddress_DeviceId(long handle);
+  public static native int ProtocolAddress_DeviceId(long obj);
   public static native String ProtocolAddress_Name(long obj);
   public static native long ProtocolAddress_New(String name, int deviceId);
 
@@ -154,8 +154,8 @@ public final class Native {
   public static native long SenderCertificate_Deserialize(byte[] data);
   public static native void SenderCertificate_Destroy(long handle);
   public static native byte[] SenderCertificate_GetCertificate(long handle);
-  public static native int SenderCertificate_GetDeviceId(long handle);
-  public static native long SenderCertificate_GetExpiration(long handle);
+  public static native int SenderCertificate_GetDeviceId(long obj);
+  public static native long SenderCertificate_GetExpiration(long obj);
   public static native long SenderCertificate_GetKey(long handle);
   public static native String SenderCertificate_GetSenderE164(long obj);
   public static native String SenderCertificate_GetSenderUuid(long obj);
@@ -169,8 +169,8 @@ public final class Native {
   public static native long SenderKeyDistributionMessage_Deserialize(byte[] data);
   public static native void SenderKeyDistributionMessage_Destroy(long handle);
   public static native byte[] SenderKeyDistributionMessage_GetChainKey(long handle);
-  public static native int SenderKeyDistributionMessage_GetId(long handle);
-  public static native int SenderKeyDistributionMessage_GetIteration(long handle);
+  public static native int SenderKeyDistributionMessage_GetId(long obj);
+  public static native int SenderKeyDistributionMessage_GetIteration(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSerialized(long handle);
   public static native byte[] SenderKeyDistributionMessage_GetSignatureKey(long handle);
   public static native long SenderKeyDistributionMessage_New(int keyId, int iteration, byte[] chainkey, long pk);
@@ -178,8 +178,8 @@ public final class Native {
   public static native long SenderKeyMessage_Deserialize(byte[] data);
   public static native void SenderKeyMessage_Destroy(long handle);
   public static native byte[] SenderKeyMessage_GetCipherText(long handle);
-  public static native int SenderKeyMessage_GetIteration(long handle);
-  public static native int SenderKeyMessage_GetKeyId(long handle);
+  public static native int SenderKeyMessage_GetIteration(long obj);
+  public static native int SenderKeyMessage_GetKeyId(long obj);
   public static native byte[] SenderKeyMessage_GetSerialized(long handle);
   public static native long SenderKeyMessage_New(int keyId, int iteration, byte[] ciphertext, long pk);
   public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
@@ -199,7 +199,7 @@ public final class Native {
   public static native void ServerCertificate_Destroy(long handle);
   public static native byte[] ServerCertificate_GetCertificate(long handle);
   public static native long ServerCertificate_GetKey(long handle);
-  public static native int ServerCertificate_GetKeyId(long handle);
+  public static native int ServerCertificate_GetKeyId(long obj);
   public static native byte[] ServerCertificate_GetSerialized(long handle);
   public static native byte[] ServerCertificate_GetSignature(long handle);
   public static native long ServerCertificate_New(int keyId, long serverKey, long trustRoot);
@@ -216,10 +216,10 @@ public final class Native {
   public static native long SessionRecord_FromSingleSessionState(byte[] sessionState);
   public static native byte[] SessionRecord_GetAliceBaseKey(long handle);
   public static native byte[] SessionRecord_GetLocalIdentityKeyPublic(long handle);
-  public static native int SessionRecord_GetLocalRegistrationId(long handle);
+  public static native int SessionRecord_GetLocalRegistrationId(long obj);
   public static native byte[] SessionRecord_GetReceiverChainKeyValue(long sessionState, long key);
   public static native byte[] SessionRecord_GetRemoteIdentityKeyPublic(long handle);
-  public static native int SessionRecord_GetRemoteRegistrationId(long handle);
+  public static native int SessionRecord_GetRemoteRegistrationId(long obj);
   public static native byte[] SessionRecord_GetSenderChainKeyValue(long handle);
   public static native int SessionRecord_GetSessionVersion(long handle);
   public static native boolean SessionRecord_HasSenderChain(long handle);
@@ -231,8 +231,8 @@ public final class Native {
   public static native long SignalMessage_Deserialize(byte[] data);
   public static native void SignalMessage_Destroy(long handle);
   public static native byte[] SignalMessage_GetBody(long handle);
-  public static native int SignalMessage_GetCounter(long handle);
-  public static native int SignalMessage_GetMessageVersion(long handle);
+  public static native int SignalMessage_GetCounter(long obj);
+  public static native int SignalMessage_GetMessageVersion(long obj);
   public static native byte[] SignalMessage_GetSenderRatchetKey(long handle);
   public static native byte[] SignalMessage_GetSerialized(long handle);
   public static native long SignalMessage_New(int messageVersion, byte[] macKey, long senderRatchetKey, int counter, int previousCounter, byte[] ciphertext, long senderIdentityKey, long receiverIdentityKey);
@@ -240,12 +240,12 @@ public final class Native {
 
   public static native long SignedPreKeyRecord_Deserialize(byte[] data);
   public static native void SignedPreKeyRecord_Destroy(long handle);
-  public static native int SignedPreKeyRecord_GetId(long handle);
+  public static native int SignedPreKeyRecord_GetId(long obj);
   public static native long SignedPreKeyRecord_GetPrivateKey(long handle);
   public static native long SignedPreKeyRecord_GetPublicKey(long handle);
   public static native byte[] SignedPreKeyRecord_GetSerialized(long handle);
   public static native byte[] SignedPreKeyRecord_GetSignature(long handle);
-  public static native long SignedPreKeyRecord_GetTimestamp(long handle);
+  public static native long SignedPreKeyRecord_GetTimestamp(long obj);
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);

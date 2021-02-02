@@ -11,6 +11,9 @@ use std::task::{self, Poll};
 
 pub(crate) use paste::paste;
 
+mod transform_helper;
+pub(crate) use transform_helper::*;
+
 #[allow(dead_code)] // not used in Node-only builds
 #[track_caller]
 pub fn expect_ready<F: Future>(future: F) -> F::Output {
@@ -99,16 +102,19 @@ macro_rules! bridge_get_string {
     }
 }
 
-macro_rules! bridge_get_optional_string {
-    ($name:ident($typ:ty) $(, $param:ident = $val:tt)* => $body:expr ) => {
+macro_rules! bridge_get {
+    ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)* ) => {
         paste! {
             #[bridge_fn($($param = $val),*)]
-            fn [<$typ _ $name>](obj: &$typ) -> Result<Option<String>, SignalProtocolError> {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<Option<impl Into<String> + 'a>, SignalProtocolError> => $body);
-                Ok(inner_get(obj)?.map(|s| s.into()))
+            fn [<$typ _ $name>](obj: &$typ) -> Result<$result, SignalProtocolError> {
+                let result = support::TransformHelper($typ::$method(obj));
+                Ok(result.ok_if_needed()?.option_map_into().into())
             }
         }
-    }
+    };
+    ($typ:ident :: $method:ident -> $result:ty $(, $param:ident = $val:tt)* ) => {
+        paste! {
+            bridge_get!($typ::$method as [<Get $method:camel>] -> $result $(, $param = $val)*);
+        }
+    };
 }

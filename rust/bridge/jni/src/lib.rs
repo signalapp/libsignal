@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JValue};
-use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jobject};
+use jni::sys::{jboolean, jbyteArray, jint, jlongArray, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -25,9 +25,6 @@ type JavaPreKeyStore = jobject;
 type JavaSignedPreKeyStore = jobject;
 type JavaCiphertextMessage = jobject;
 type JavaSenderKeyStore = jobject;
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_ProtocolAddress_1DeviceId(ProtocolAddress) using
-                 |obj: &ProtocolAddress| { Ok(obj.device_id()) });
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Deserialize(
@@ -139,74 +136,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecr
     })
 }
 
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetMessageVersion(SignalMessage) using
-                 |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignalMessage_1GetCounter(SignalMessage) using
-                 |msg: &SignalMessage| { Ok(msg.counter()) });
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetVersion(PreKeySignalMessage) using
-                 |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetRegistrationId(PreKeySignalMessage) using
-                 |m: &PreKeySignalMessage| Ok(m.registration_id()));
-
-// Special logic to handle optionality:
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetPreKeyId(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-) -> jint {
-    run_ffi_safe(&env, || {
-        let pksm = native_handle_cast::<PreKeySignalMessage>(handle)?;
-        match pksm.pre_key_id() {
-            Some(id) => jint_from_u32(Ok(id)),
-            None => Ok(-1),
-        }
-    })
-}
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeySignalMessage_1GetSignedPreKeyId(PreKeySignalMessage) using
-                 |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetKeyId(SenderKeyMessage) using
-                 |m: &SenderKeyMessage| Ok(m.key_id()));
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyMessage_1GetIteration(SenderKeyMessage) using
-                 |m: &SenderKeyMessage| Ok(m.iteration()));
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetId(SenderKeyDistributionMessage) using
-                 SenderKeyDistributionMessage::id);
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderKeyDistributionMessage_1GetIteration(SenderKeyDistributionMessage) using
-                 SenderKeyDistributionMessage::iteration);
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetRegistrationId(PreKeyBundle) using
-                 PreKeyBundle::registration_id);
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetDeviceId(PreKeyBundle) using
-                 PreKeyBundle::device_id);
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetSignedPreKeyId(PreKeyBundle) using
-                 PreKeyBundle::signed_pre_key_id);
-
-// Special logic for optional here:
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_PreKeyBundle_1GetPreKeyId(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-) -> jint {
-    run_ffi_safe(&env, || {
-        let bundle = native_handle_cast::<PreKeyBundle>(handle)?;
-        match bundle.pre_key_id()? {
-            Some(prekey_id) => jint_from_u32(Ok(prekey_id)),
-            None => Ok(-1),
-        }
-    })
-}
-
 jni_fn_get_new_boxed_optional_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1GetPreKeyPublic(PublicKey) from PreKeyBundle,
                                    PreKeyBundle::pre_key_public);
 
@@ -218,12 +147,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyBundle_1G
 
 /* SignedPreKeyRecord */
 
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetId(SignedPreKeyRecord) using
-                 SignedPreKeyRecord::id);
-
-jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetTimestamp(SignedPreKeyRecord) using
-                  SignedPreKeyRecord::timestamp);
-
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRecord_1GetPublicKey(PublicKey) from SignedPreKeyRecord,
                           SignedPreKeyRecord::public_key);
 
@@ -231,9 +154,6 @@ jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SignedPreKeyRec
                           SignedPreKeyRecord::private_key);
 
 /* PreKeyRecord */
-
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetId(PreKeyRecord) using
-                 PreKeyRecord::id);
 
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_PreKeyRecord_1GetPublicKey(PublicKey) from PreKeyRecord,
                           PreKeyRecord::public_key);
@@ -1093,9 +1013,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1F
     })
 }
 
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetLocalRegistrationId(SessionRecord) using SessionRecord::local_registration_id);
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetRemoteRegistrationId(SessionRecord) using SessionRecord::remote_registration_id);
-
 // For historical reasons Android assumes this function will return zero if there is no session state
 jni_fn_get_jint!(Java_org_signal_client_internal_Native_SessionRecord_1GetSessionVersion(SessionRecord) using |s: &SessionRecord| match s.session_version() {
     Ok(v) => Ok(v),
@@ -1220,15 +1137,10 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1I
 }
 
 // Server Certificate
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKeyId(ServerCertificate) using ServerCertificate::key_id);
-
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_ServerCertificate_1GetKey(PublicKey) from ServerCertificate,
                           ServerCertificate::public_key);
 
 // Sender Certificate
-jni_fn_get_jlong!(Java_org_signal_client_internal_Native_SenderCertificate_1GetExpiration(SenderCertificate) using SenderCertificate::expiration);
-jni_fn_get_jint!(Java_org_signal_client_internal_Native_SenderCertificate_1GetDeviceId(SenderCertificate) using SenderCertificate::sender_device_id);
-
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetKey(PublicKey) from SenderCertificate,
                           SenderCertificate::key);
 jni_fn_get_new_boxed_obj!(Java_org_signal_client_internal_Native_SenderCertificate_1GetServerCertificate(ServerCertificate) from SenderCertificate,

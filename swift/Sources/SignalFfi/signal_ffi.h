@@ -198,8 +198,6 @@ SignalFfiError *signal_hkdf_derive(unsigned char *output,
                                    const unsigned char *info,
                                    size_t info_len);
 
-SignalFfiError *signal_address_get_device_id(const SignalProtocolAddress *obj, unsigned int *out);
-
 SignalFfiError *signal_address_clone(SignalProtocolAddress **new_obj,
                                      const SignalProtocolAddress *obj);
 
@@ -211,9 +209,6 @@ SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_ke
                                                    SignalPublicKey **public_key,
                                                    const unsigned char *input,
                                                    size_t input_len);
-
-SignalFfiError *signal_session_record_get_remote_registration_id(const SignalSessionRecord *obj,
-                                                                 unsigned int *out);
 
 SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
 
@@ -240,24 +235,8 @@ SignalFfiError *signal_message_clone(SignalMessage **new_obj, const SignalMessag
 SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **new_obj,
                                                       const SignalMessage *obj);
 
-SignalFfiError *signal_message_get_message_version(const SignalMessage *obj, unsigned int *out);
-
-SignalFfiError *signal_message_get_counter(const SignalMessage *obj, unsigned int *out);
-
 SignalFfiError *signal_pre_key_signal_message_clone(SignalPreKeySignalMessage **new_obj,
                                                     const SignalPreKeySignalMessage *obj);
-
-SignalFfiError *signal_pre_key_signal_message_get_version(const SignalPreKeySignalMessage *obj,
-                                                          unsigned int *out);
-
-SignalFfiError *signal_pre_key_signal_message_get_registration_id(const SignalPreKeySignalMessage *obj,
-                                                                  unsigned int *out);
-
-SignalFfiError *signal_pre_key_signal_message_get_pre_key_id(const SignalPreKeySignalMessage *obj,
-                                                             unsigned int *out);
-
-SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(const SignalPreKeySignalMessage *obj,
-                                                                    unsigned int *out);
 
 SignalFfiError *signal_pre_key_signal_message_get_base_key(SignalPublicKey **new_obj,
                                                            const SignalPreKeySignalMessage *obj);
@@ -271,38 +250,14 @@ SignalFfiError *signal_pre_key_signal_message_get_signal_message(SignalMessage *
 SignalFfiError *signal_sender_key_message_clone(SignalSenderKeyMessage **new_obj,
                                                 const SignalSenderKeyMessage *obj);
 
-SignalFfiError *signal_sender_key_message_get_key_id(const SignalSenderKeyMessage *obj,
-                                                     unsigned int *out);
-
-SignalFfiError *signal_sender_key_message_get_iteration(const SignalSenderKeyMessage *obj,
-                                                        unsigned int *out);
-
 SignalFfiError *signal_sender_key_distribution_message_clone(SignalSenderKeyDistributionMessage **new_obj,
                                                              const SignalSenderKeyDistributionMessage *obj);
-
-SignalFfiError *signal_sender_key_distribution_message_get_id(const SignalSenderKeyDistributionMessage *obj,
-                                                              unsigned int *out);
-
-SignalFfiError *signal_sender_key_distribution_message_get_iteration(const SignalSenderKeyDistributionMessage *obj,
-                                                                     unsigned int *out);
 
 SignalFfiError *signal_sender_key_distribution_message_get_signature_key(SignalPublicKey **new_obj,
                                                                          const SignalSenderKeyDistributionMessage *obj);
 
 SignalFfiError *signal_pre_key_bundle_clone(SignalPreKeyBundle **new_obj,
                                             const SignalPreKeyBundle *obj);
-
-SignalFfiError *signal_pre_key_bundle_get_registration_id(const SignalPreKeyBundle *obj,
-                                                          unsigned int *out);
-
-SignalFfiError *signal_pre_key_bundle_get_device_id(const SignalPreKeyBundle *obj,
-                                                    unsigned int *out);
-
-SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_id(const SignalPreKeyBundle *obj,
-                                                            unsigned int *out);
-
-SignalFfiError *signal_pre_key_bundle_get_pre_key_id(const SignalPreKeyBundle *obj,
-                                                     unsigned int *out);
 
 SignalFfiError *signal_pre_key_bundle_get_pre_key_public(SignalPublicKey **new_obj,
                                                          const SignalPreKeyBundle *obj);
@@ -313,12 +268,6 @@ SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_public(SignalPublicKey 
 SignalFfiError *signal_pre_key_bundle_get_identity_key(SignalPublicKey **new_obj,
                                                        const SignalPreKeyBundle *obj);
 
-SignalFfiError *signal_signed_pre_key_record_get_id(const SignalSignedPreKeyRecord *obj,
-                                                    unsigned int *out);
-
-SignalFfiError *signal_signed_pre_key_record_get_timestamp(const SignalSignedPreKeyRecord *obj,
-                                                           unsigned long long *out);
-
 SignalFfiError *signal_signed_pre_key_record_get_public_key(SignalPublicKey **new_obj,
                                                             const SignalSignedPreKeyRecord *obj);
 
@@ -327,8 +276,6 @@ SignalFfiError *signal_signed_pre_key_record_get_private_key(SignalPrivateKey **
 
 SignalFfiError *signal_signed_pre_key_record_clone(SignalSignedPreKeyRecord **new_obj,
                                                    const SignalSignedPreKeyRecord *obj);
-
-SignalFfiError *signal_pre_key_record_get_id(const SignalPreKeyRecord *obj, unsigned int *out);
 
 SignalFfiError *signal_pre_key_record_get_public_key(SignalPublicKey **new_obj,
                                                      const SignalPreKeyRecord *obj);
@@ -342,8 +289,8 @@ SignalFfiError *signal_pre_key_record_clone(SignalPreKeyRecord **new_obj,
 SignalFfiError *signal_sender_key_name_clone(SignalSenderKeyName **new_obj,
                                              const SignalSenderKeyName *obj);
 
-SignalFfiError *signal_sender_key_name_get_sender_device_id(const SignalSenderKeyName *obj,
-                                                            unsigned int *out);
+SignalFfiError *signal_sender_key_name_get_sender_device_id(unsigned int *out,
+                                                            const SignalSenderKeyName *obj);
 
 SignalFfiError *signal_sender_key_record_clone(SignalSenderKeyRecord **new_obj,
                                                const SignalSenderKeyRecord *obj);
@@ -412,17 +359,8 @@ SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
                                              const SignalSenderKeyStore *store,
                                              void *ctx);
 
-SignalFfiError *signal_server_certificate_get_key_id(const SignalServerCertificate *obj,
-                                                     unsigned int *out);
-
 SignalFfiError *signal_server_certificate_get_key(SignalPublicKey **new_obj,
                                                   const SignalServerCertificate *obj);
-
-SignalFfiError *signal_sender_certificate_get_expiration(const SignalSenderCertificate *obj,
-                                                         unsigned long long *out);
-
-SignalFfiError *signal_sender_certificate_get_device_id(const SignalSenderCertificate *obj,
-                                                        unsigned int *out);
 
 SignalFfiError *signal_sender_certificate_get_key(SignalPublicKey **new_obj,
                                                   const SignalSenderCertificate *obj);
@@ -510,8 +448,6 @@ SignalFfiError *signal_signed_pre_key_record_destroy(SignalSignedPreKeyRecord *p
 
 SignalFfiError *signal_unidentified_sender_message_content_destroy(SignalUnidentifiedSenderMessageContent *p);
 
-SignalFfiError *signal_address_get_name(const char **out, const SignalProtocolAddress *obj);
-
 SignalFfiError *signal_address_new(SignalProtocolAddress **out,
                                    const char *name,
                                    uint32_t device_id);
@@ -527,6 +463,10 @@ SignalFfiError *signal_publickey_serialize(const unsigned char **out,
 SignalFfiError *signal_publickey_get_public_key_bytes(const unsigned char **out,
                                                       size_t *out_len,
                                                       const SignalPublicKey *obj);
+
+SignalFfiError *signal_address_get_device_id(uint32_t *out, const SignalProtocolAddress *obj);
+
+SignalFfiError *signal_address_get_name(const char **out, const SignalProtocolAddress *obj);
 
 SignalFfiError *signal_publickey_compare(int32_t *out,
                                          const SignalPublicKey *key1,
@@ -597,6 +537,10 @@ SignalFfiError *signal_message_get_serialized(const unsigned char **out,
                                               size_t *out_len,
                                               const SignalMessage *obj);
 
+SignalFfiError *signal_message_get_counter(uint32_t *out, const SignalMessage *obj);
+
+SignalFfiError *signal_message_get_message_version(uint32_t *out, const SignalMessage *obj);
+
 SignalFfiError *signal_message_new(SignalMessage **out,
                                    uint8_t message_version,
                                    const unsigned char *mac_key,
@@ -633,6 +577,18 @@ SignalFfiError *signal_pre_key_signal_message_serialize(const unsigned char **ou
                                                         size_t *out_len,
                                                         const SignalPreKeySignalMessage *obj);
 
+SignalFfiError *signal_pre_key_signal_message_get_registration_id(uint32_t *out,
+                                                                  const SignalPreKeySignalMessage *obj);
+
+SignalFfiError *signal_pre_key_signal_message_get_signed_pre_key_id(uint32_t *out,
+                                                                    const SignalPreKeySignalMessage *obj);
+
+SignalFfiError *signal_pre_key_signal_message_get_pre_key_id(uint32_t *out,
+                                                             const SignalPreKeySignalMessage *obj);
+
+SignalFfiError *signal_pre_key_signal_message_get_version(uint32_t *out,
+                                                          const SignalPreKeySignalMessage *obj);
+
 SignalFfiError *signal_sender_key_message_deserialize(SignalSenderKeyMessage **p,
                                                       const unsigned char *data,
                                                       size_t data_len);
@@ -644,6 +600,12 @@ SignalFfiError *signal_sender_key_message_get_cipher_text(const unsigned char **
 SignalFfiError *signal_sender_key_message_serialize(const unsigned char **out,
                                                     size_t *out_len,
                                                     const SignalSenderKeyMessage *obj);
+
+SignalFfiError *signal_sender_key_message_get_key_id(uint32_t *out,
+                                                     const SignalSenderKeyMessage *obj);
+
+SignalFfiError *signal_sender_key_message_get_iteration(uint32_t *out,
+                                                        const SignalSenderKeyMessage *obj);
 
 SignalFfiError *signal_sender_key_message_new(SignalSenderKeyMessage **out,
                                               uint32_t key_id,
@@ -668,6 +630,12 @@ SignalFfiError *signal_sender_key_distribution_message_serialize(const unsigned 
                                                                  size_t *out_len,
                                                                  const SignalSenderKeyDistributionMessage *obj);
 
+SignalFfiError *signal_sender_key_distribution_message_get_id(uint32_t *out,
+                                                              const SignalSenderKeyDistributionMessage *obj);
+
+SignalFfiError *signal_sender_key_distribution_message_get_iteration(uint32_t *out,
+                                                                     const SignalSenderKeyDistributionMessage *obj);
+
 SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistributionMessage **out,
                                                            uint32_t key_id,
                                                            uint32_t iteration,
@@ -690,6 +658,16 @@ SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_signature(const unsigne
                                                                    size_t *out_len,
                                                                    const SignalPreKeyBundle *obj);
 
+SignalFfiError *signal_pre_key_bundle_get_registration_id(uint32_t *out,
+                                                          const SignalPreKeyBundle *obj);
+
+SignalFfiError *signal_pre_key_bundle_get_device_id(uint32_t *out, const SignalPreKeyBundle *obj);
+
+SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_id(uint32_t *out,
+                                                            const SignalPreKeyBundle *obj);
+
+SignalFfiError *signal_pre_key_bundle_get_pre_key_id(uint32_t *out, const SignalPreKeyBundle *obj);
+
 SignalFfiError *signal_signed_pre_key_record_deserialize(SignalSignedPreKeyRecord **p,
                                                          const unsigned char *data,
                                                          size_t data_len);
@@ -701,6 +679,12 @@ SignalFfiError *signal_signed_pre_key_record_get_signature(const unsigned char *
 SignalFfiError *signal_signed_pre_key_record_serialize(const unsigned char **out,
                                                        size_t *out_len,
                                                        const SignalSignedPreKeyRecord *obj);
+
+SignalFfiError *signal_signed_pre_key_record_get_id(uint32_t *out,
+                                                    const SignalSignedPreKeyRecord *obj);
+
+SignalFfiError *signal_signed_pre_key_record_get_timestamp(uint64_t *out,
+                                                           const SignalSignedPreKeyRecord *obj);
 
 SignalFfiError *signal_signed_pre_key_record_new(SignalSignedPreKeyRecord **out,
                                                  uint32_t id,
@@ -717,6 +701,8 @@ SignalFfiError *signal_pre_key_record_deserialize(SignalPreKeyRecord **p,
 SignalFfiError *signal_pre_key_record_serialize(const unsigned char **out,
                                                 size_t *out_len,
                                                 const SignalPreKeyRecord *obj);
+
+SignalFfiError *signal_pre_key_record_get_id(uint32_t *out, const SignalPreKeyRecord *obj);
 
 SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **out,
                                           uint32_t id,
@@ -760,6 +746,9 @@ SignalFfiError *signal_server_certificate_get_signature(const unsigned char **ou
                                                         size_t *out_len,
                                                         const SignalServerCertificate *obj);
 
+SignalFfiError *signal_server_certificate_get_key_id(uint32_t *out,
+                                                     const SignalServerCertificate *obj);
+
 SignalFfiError *signal_server_certificate_new(SignalServerCertificate **out,
                                               uint32_t key_id,
                                               const SignalPublicKey *server_key,
@@ -786,6 +775,12 @@ SignalFfiError *signal_sender_certificate_get_sender_uuid(const char **out,
 
 SignalFfiError *signal_sender_certificate_get_sender_e164(const char **out,
                                                           const SignalSenderCertificate *obj);
+
+SignalFfiError *signal_sender_certificate_get_expiration(uint64_t *out,
+                                                         const SignalSenderCertificate *obj);
+
+SignalFfiError *signal_sender_certificate_get_device_id(uint32_t *out,
+                                                        const SignalSenderCertificate *obj);
 
 SignalFfiError *signal_sender_certificate_validate(bool *out,
                                                    const SignalSenderCertificate *cert,
@@ -820,6 +815,12 @@ SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **p,
 SignalFfiError *signal_session_record_serialize(const unsigned char **out,
                                                 size_t *out_len,
                                                 const SignalSessionRecord *obj);
+
+SignalFfiError *signal_session_record_get_local_registration_id(uint32_t *out,
+                                                                const SignalSessionRecord *obj);
+
+SignalFfiError *signal_session_record_get_remote_registration_id(uint32_t *out,
+                                                                 const SignalSessionRecord *obj);
 
 SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
                                           const unsigned char *key,

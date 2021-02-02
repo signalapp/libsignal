@@ -80,7 +80,7 @@ public class SignalMessage {
     public var messageVersion: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_message_get_message_version(handle, $0)
+                signal_message_get_message_version($0, handle)
             }
         }
     }
@@ -88,7 +88,7 @@ public class SignalMessage {
     public var counter: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_message_get_counter(handle, $0)
+                signal_message_get_counter($0, handle)
             }
         }
     }

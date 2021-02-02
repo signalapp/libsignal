@@ -38,7 +38,7 @@ public class ServerCertificate: ClonableHandleOwner {
     public var keyId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_server_certificate_get_key_id(nativeHandle, $0)
+                signal_server_certificate_get_key_id($0, nativeHandle)
             }
         }
     }
@@ -111,7 +111,7 @@ public class SenderCertificate: ClonableHandleOwner {
     public var expiration: UInt64 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_certificate_get_expiration(nativeHandle, $0)
+                signal_sender_certificate_get_expiration($0, nativeHandle)
             }
         }
     }
@@ -119,7 +119,7 @@ public class SenderCertificate: ClonableHandleOwner {
     public var deviceId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_certificate_get_device_id(nativeHandle, $0)
+                signal_sender_certificate_get_device_id($0, nativeHandle)
             }
         }
     }

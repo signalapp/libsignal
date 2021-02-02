@@ -153,6 +153,30 @@ impl<'a> ResultTypeInfo<'a> for i32 {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for u32 {
+    type ResultType = JsNumber;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        Ok(cx.number(self as f64))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for u64 {
+    type ResultType = JsNumber;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        let result = self as f64;
+        if result > MAX_SAFE_JS_INTEGER {
+            cx.throw_range_error(format!("precision loss during conversion of {}", self))?;
+        }
+        Ok(cx.number(self as f64))
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
     fn convert_into(

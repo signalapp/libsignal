@@ -1,12 +1,12 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #![allow(clippy::missing_safety_doc)]
 
 use async_trait::async_trait;
-use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, size_t};
+use libc::{c_char, c_int, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
 use static_assertions::const_assert_eq;
@@ -109,9 +109,6 @@ pub unsafe extern "C" fn signal_hkdf_derive(
     })
 }
 
-ffi_fn_get_uint32!(signal_address_get_device_id(ProtocolAddress) using
-                   |obj: &ProtocolAddress| { Ok(obj.device_id()) });
-
 ffi_fn_clone!(signal_address_clone clones ProtocolAddress);
 
 ffi_fn_clone!(signal_publickey_clone clones PublicKey);
@@ -132,9 +129,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
         box_object::<PrivateKey>(private_key, Ok(*identity_key_pair.private_key()))
     })
 }
-
-ffi_fn_get_uint32!(signal_session_record_get_remote_registration_id(SessionRecord) using
-                   SessionRecord::remote_registration_id);
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_session_record_archive_current_state(
@@ -203,25 +197,7 @@ ffi_fn_clone!(signal_message_clone clones SignalMessage);
 ffi_fn_get_new_boxed_obj!(signal_message_get_sender_ratchet_key(PublicKey) from SignalMessage,
                           |p: &SignalMessage| Ok(*p.sender_ratchet_key()));
 
-ffi_fn_get_uint32!(signal_message_get_message_version(SignalMessage) using
-                   |msg: &SignalMessage| { Ok(msg.message_version() as u32) });
-
-ffi_fn_get_uint32!(signal_message_get_counter(SignalMessage) using
-                   |msg: &SignalMessage| { Ok(msg.counter()) });
-
 ffi_fn_clone!(signal_pre_key_signal_message_clone clones PreKeySignalMessage);
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_version(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.message_version() as u32));
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_registration_id(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.registration_id()));
-
-ffi_fn_get_optional_uint32!(signal_pre_key_signal_message_get_pre_key_id(PreKeySignalMessage) using
-                            |m: &PreKeySignalMessage| Ok(m.pre_key_id()));
-
-ffi_fn_get_uint32!(signal_pre_key_signal_message_get_signed_pre_key_id(PreKeySignalMessage) using
-                   |m: &PreKeySignalMessage| Ok(m.signed_pre_key_id()));
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_base_key(PublicKey) from PreKeySignalMessage,
                           |p: &PreKeySignalMessage| Ok(*p.base_key()));
@@ -234,36 +210,12 @@ ffi_fn_get_new_boxed_obj!(signal_pre_key_signal_message_get_signal_message(Signa
 
 ffi_fn_clone!(signal_sender_key_message_clone clones SenderKeyMessage);
 
-ffi_fn_get_uint32!(signal_sender_key_message_get_key_id(SenderKeyMessage) using
-                   |m: &SenderKeyMessage| Ok(m.key_id()));
-
-ffi_fn_get_uint32!(signal_sender_key_message_get_iteration(SenderKeyMessage) using
-                   |m: &SenderKeyMessage| Ok(m.iteration()));
-
 ffi_fn_clone!(signal_sender_key_distribution_message_clone clones SenderKeyDistributionMessage);
-
-ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_id(SenderKeyDistributionMessage) using
-                   |m: &SenderKeyDistributionMessage| m.id());
-
-ffi_fn_get_uint32!(signal_sender_key_distribution_message_get_iteration(SenderKeyDistributionMessage) using
-                   |m: &SenderKeyDistributionMessage| m.iteration());
 
 ffi_fn_get_new_boxed_obj!(signal_sender_key_distribution_message_get_signature_key(PublicKey) from SenderKeyDistributionMessage,
                           |m: &SenderKeyDistributionMessage| Ok(*m.signing_key()?));
 
 ffi_fn_clone!(signal_pre_key_bundle_clone clones PreKeyBundle);
-
-ffi_fn_get_uint32!(signal_pre_key_bundle_get_registration_id(PreKeyBundle) using
-                   |m: &PreKeyBundle| m.registration_id());
-
-ffi_fn_get_uint32!(signal_pre_key_bundle_get_device_id(PreKeyBundle) using
-                   |m: &PreKeyBundle| m.device_id());
-
-ffi_fn_get_uint32!(signal_pre_key_bundle_get_signed_pre_key_id(PreKeyBundle) using
-                   |m: &PreKeyBundle| m.signed_pre_key_id());
-
-ffi_fn_get_optional_uint32!(signal_pre_key_bundle_get_pre_key_id(PreKeyBundle) using
-                            |m: &PreKeyBundle| m.pre_key_id());
 
 ffi_fn_get_new_boxed_optional_obj!(signal_pre_key_bundle_get_pre_key_public(PublicKey) from PreKeyBundle,
                                    |p: &PreKeyBundle| p.pre_key_public());
@@ -276,12 +228,6 @@ ffi_fn_get_new_boxed_obj!(signal_pre_key_bundle_get_identity_key(PublicKey) from
 
 /* SignedPreKeyRecord */
 
-ffi_fn_get_uint32!(signal_signed_pre_key_record_get_id(SignedPreKeyRecord) using
-                   |m: &SignedPreKeyRecord| m.id());
-
-ffi_fn_get_uint64!(signal_signed_pre_key_record_get_timestamp(SignedPreKeyRecord) using
-                   |m: &SignedPreKeyRecord| m.timestamp());
-
 ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_public_key(PublicKey) from SignedPreKeyRecord,
                           |p: &SignedPreKeyRecord| p.public_key());
 
@@ -291,9 +237,6 @@ ffi_fn_get_new_boxed_obj!(signal_signed_pre_key_record_get_private_key(PrivateKe
 ffi_fn_clone!(signal_signed_pre_key_record_clone clones SignedPreKeyRecord);
 
 /* PreKeyRecord */
-
-ffi_fn_get_uint32!(signal_pre_key_record_get_id(PreKeyRecord) using
-                   |m: &PreKeyRecord| m.id());
 
 ffi_fn_get_new_boxed_obj!(signal_pre_key_record_get_public_key(PublicKey) from PreKeyRecord,
                           |p: &PreKeyRecord| p.public_key());
@@ -1122,15 +1065,10 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
 }
 
 // Server Certificate
-ffi_fn_get_uint32!(signal_server_certificate_get_key_id(ServerCertificate) using ServerCertificate::key_id);
-
 ffi_fn_get_new_boxed_obj!(signal_server_certificate_get_key(PublicKey) from ServerCertificate,
                           ServerCertificate::public_key);
 
 // Sender Certificate
-ffi_fn_get_uint64!(signal_sender_certificate_get_expiration(SenderCertificate) using SenderCertificate::expiration);
-ffi_fn_get_uint32!(signal_sender_certificate_get_device_id(SenderCertificate) using SenderCertificate::sender_device_id);
-
 ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_key(PublicKey) from SenderCertificate,
                           SenderCertificate::key);
 ffi_fn_get_new_boxed_obj!(signal_sender_certificate_get_server_certificate(ServerCertificate) from SenderCertificate,

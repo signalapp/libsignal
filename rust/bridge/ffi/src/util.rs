@@ -1,9 +1,9 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar, c_uint, c_ulonglong, size_t};
+use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
 use std::ffi::CStr;
@@ -257,45 +257,6 @@ pub fn write_uint32_to(
     }
 }
 
-pub fn write_optional_uint32_to(
-    out: *mut c_uint,
-    value: Result<Option<u32>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(value) => {
-            let value = value.unwrap_or(0xFFFFFFFF);
-            unsafe {
-                *out = value;
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
-pub fn write_uint64_to(
-    out: *mut c_ulonglong,
-    value: Result<u64, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(value) => {
-            unsafe {
-                *out = value;
-            }
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
-}
-
 #[macro_export]
 macro_rules! ffi_fn_get_new_boxed_obj {
     ( $nm:ident($rt:ty) from $typ:ty, $body:expr ) => {
@@ -348,39 +309,10 @@ macro_rules! ffi_fn_get_new_boxed_optional_obj {
 macro_rules! ffi_fn_get_uint32 {
     ( $nm:ident($typ:ty) using $body:expr ) => {
         #[no_mangle]
-        pub unsafe extern "C" fn $nm(obj: *const $typ, out: *mut c_uint) -> *mut SignalFfiError {
+        pub unsafe extern "C" fn $nm(out: *mut c_uint, obj: *const $typ) -> *mut SignalFfiError {
             run_ffi_safe(|| {
                 let obj = native_handle_cast::<$typ>(obj)?;
                 write_uint32_to(out, $body(&obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_optional_uint32 {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(obj: *const $typ, out: *mut c_uint) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_optional_uint32_to(out, $body(&obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! ffi_fn_get_uint64 {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(
-            obj: *const $typ,
-            out: *mut c_ulonglong,
-        ) -> *mut SignalFfiError {
-            run_ffi_safe(|| {
-                let obj = native_handle_cast::<$typ>(obj)?;
-                write_uint64_to(out, $body(&obj))
             })
         }
     };

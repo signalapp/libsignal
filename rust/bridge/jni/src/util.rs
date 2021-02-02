@@ -1,10 +1,10 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use jni::objects::{JObject, JValue};
-use jni::sys::{jint, jlong, jobject};
+use jni::sys::{jint, jobject};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
@@ -17,22 +17,6 @@ pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, Si
             if result as u32 != value {
                 return Err(SignalJniError::IntegerOverflow(format!(
                     "{} to jint",
-                    value
-                )));
-            }
-            Ok(result)
-        }
-        Err(e) => Err(SignalJniError::Signal(e)),
-    }
-}
-
-pub fn jlong_from_u64(value: Result<u64, SignalProtocolError>) -> Result<jlong, SignalJniError> {
-    match value {
-        Ok(value) => {
-            let result = value as jlong;
-            if result as u64 != value {
-                return Err(SignalJniError::IntegerOverflow(format!(
-                    "{} to jlong",
                     value
                 )));
             }
@@ -202,19 +186,6 @@ macro_rules! jni_fn_get_jint {
             run_ffi_safe(&env, || {
                 let obj = native_handle_cast::<$typ>(handle)?;
                 jint_from_u32($body(obj))
-            })
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! jni_fn_get_jlong {
-    ( $nm:ident($typ:ty) using $body:expr ) => {
-        #[no_mangle]
-        pub unsafe extern "C" fn $nm(env: JNIEnv, _class: JClass, handle: ObjectHandle) -> jlong {
-            run_ffi_safe(&env, || {
-                let obj = native_handle_cast::<$typ>(handle)?;
-                jlong_from_u64($body(obj))
             })
         }
     };

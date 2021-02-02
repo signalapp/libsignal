@@ -68,7 +68,7 @@ public class PreKeyBundle {
     public var registrationId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_pre_key_bundle_get_registration_id(handle, $0)
+                signal_pre_key_bundle_get_registration_id($0, handle)
             }
         }
     }
@@ -76,7 +76,7 @@ public class PreKeyBundle {
     public var deviceId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_pre_key_bundle_get_device_id(handle, $0)
+                signal_pre_key_bundle_get_device_id($0, handle)
             }
         }
     }
@@ -84,7 +84,7 @@ public class PreKeyBundle {
     public var signedPreKeyId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_pre_key_bundle_get_signed_pre_key_id(handle, $0)
+                signal_pre_key_bundle_get_signed_pre_key_id($0, handle)
             }
         }
     }
@@ -92,7 +92,7 @@ public class PreKeyBundle {
     public var preKeyId: UInt32? {
         let prekey_id = failOnError {
             try invokeFnReturningInteger {
-                signal_pre_key_bundle_get_signed_pre_key_id(handle, $0)
+                signal_pre_key_bundle_get_signed_pre_key_id($0, handle)
             }
         }
 
