@@ -342,12 +342,19 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
         None => Some(node_name_from_ident(&function.sig.ident)),
     };
 
+    let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
+    let jni_feature = jni_name.as_ref().map(|_| quote!(feature = "jni"));
+    let node_feature = node_name.as_ref().map(|_| quote!(feature = "node"));
+    let maybe_features = [ffi_feature, jni_feature, node_feature];
+    let feature_list = maybe_features.iter().flatten();
+
     let ffi_fn = ffi_name.map(|name| ffi_bridge_fn(name, &function.sig, result_kind));
     let jni_fn = jni_name.map(|name| jni_bridge_fn(name, &function.sig, result_kind));
     let node_fn = node_name.map(|name| node_bridge_fn(name, &function.sig, result_kind));
 
     quote!(
         #[allow(non_snake_case)]
+        #[cfg(any(#(#feature_list,)*))]
         #function
 
         #ffi_fn

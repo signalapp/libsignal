@@ -53,7 +53,6 @@ def translate_to_ts(typ):
 
 ignore_this_warning = re.compile(
     "("
-    r".+: warning: function is never used: .+|"
     r"warning: \d+ warnings? emitted"
     ")")
 
