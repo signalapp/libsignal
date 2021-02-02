@@ -56,9 +56,11 @@ ignore_this_warning = re.compile(
     r"warning: \d+ warnings? emitted"
     ")")
 
+
 def camelcase(arg):
-   parts = arg.split('_')
-   return parts[0] + ''.join(x.title() for x in parts[1:])
+    parts = arg.split('_')
+    return parts[0] + ''.join(x.title() for x in parts[1:])
+
 
 def collect_decls(crate_dir, features=''):
     args = [
