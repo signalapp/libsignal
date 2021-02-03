@@ -144,8 +144,10 @@ macro_rules! node_bridge_get_bytearray {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
                 ) -> Result<impl AsRef<[u8]> + 'a, SignalProtocolError> => $body);
-                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
-                let bytes = inner_get(&obj);
+                let obj_arg = cx.argument::<<&$typ as node::ArgTypeInfo>::ArgType>(0)?;
+                let mut obj_borrow = <&$typ as node::ArgTypeInfo>::borrow(&mut cx, obj_arg)?;
+                let obj = <&$typ as node::ArgTypeInfo>::load_from(&mut cx, &mut obj_borrow)?;
+                let bytes = inner_get(obj);
                 node::return_binary_data(&mut cx, bytes.map(Some))
             }
 
@@ -171,8 +173,10 @@ macro_rules! node_bridge_get_optional_bytearray {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
                 ) -> Result<Option<impl AsRef<[u8]> + 'a>, SignalProtocolError> => $body);
-                let obj = cx.argument::<node::DefaultJsBox<$typ>>(0)?;
-                let bytes = inner_get(&obj);
+                let obj_arg = cx.argument::<<&$typ as node::ArgTypeInfo>::ArgType>(0)?;
+                let mut obj_borrow = <&$typ as node::ArgTypeInfo>::borrow(&mut cx, obj_arg)?;
+                let obj = <&$typ as node::ArgTypeInfo>::load_from(&mut cx, &mut obj_borrow)?;
+                let bytes = inner_get(obj);
                 node::return_binary_data(&mut cx, bytes)
             }
 

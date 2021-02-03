@@ -44,7 +44,7 @@ bridge_handle!(SenderKeyMessage);
 bridge_handle!(SenderKeyName);
 bridge_handle!(SenderKeyRecord);
 bridge_handle!(ServerCertificate);
-bridge_handle!(SessionRecord);
+bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
