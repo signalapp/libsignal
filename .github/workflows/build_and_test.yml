@@ -255,12 +255,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Check out SignalCoreKit
-        uses: actions/checkout@v2
-        with:
-          repository: signalapp/SignalCoreKit
-          path: SignalCoreKit
-
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -269,7 +263,7 @@ jobs:
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
-        run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
+        run: pod lib lint --verbose --platforms=ios --skip-import-validation
         env:
           XCODE_XCCONFIG_FILE: swift/PodLibLint.xcconfig
 

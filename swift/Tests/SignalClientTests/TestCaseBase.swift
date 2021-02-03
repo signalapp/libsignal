@@ -3,17 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import SignalClient
 import XCTest
-import SignalFfi
 
-#if canImport(SignalCoreKit)
-import SignalCoreKit
+#if canImport(CocoaLumberjack)
+import CocoaLumberjack
 #endif
 
 class TestCaseBase: XCTestCase {
     // Use a static stored property for one-time initialization.
     static let loggingInitialized: Bool = {
-#if canImport(SignalCoreKit)
+#if canImport(CocoaLumberjack)
         DDLog.add(DDOSLogger.sharedInstance)
 #else
         signal_init_logger(SignalLogLevel_Trace, .init(

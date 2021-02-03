@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
-
 public class ProtocolAddress: ClonableHandleOwner {
     public init(name: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?

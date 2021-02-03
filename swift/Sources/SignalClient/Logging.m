@@ -1,27 +1,55 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 #import "signal_ffi.h"
-#import <SignalCoreKit/OWSLogs.h>
+#import <CocoaLumberjack/CocoaLumberjack.h>
+
+#ifdef DEBUG
+static const NSUInteger ddLogLevel = DDLogLevelAll;
+#else
+static const NSUInteger ddLogLevel = DDLogLevelInfo;
+#endif
+
+// Matches the behavior of SignalCoreKit.
+static const char *getPrefix(SignalLogLevel level)
+{
+    switch (level) {
+        case SignalLogLevel_Trace:
+            return u8"💙";
+        case SignalLogLevel_Debug:
+            return u8"💚";
+        case SignalLogLevel_Info:
+            return u8"💛";
+        case SignalLogLevel_Warn:
+            return u8"🧡";
+        case SignalLogLevel_Error:
+        default:
+            return u8"❤️";
+    }
+}
+
+static DDLogFlag getDDLogFlag(SignalLogLevel level)
+{
+    switch (level) {
+        case SignalLogLevel_Trace:
+            return DDLogFlagVerbose;
+        case SignalLogLevel_Debug:
+            return DDLogFlagDebug;
+        case SignalLogLevel_Info:
+            return DDLogFlagInfo;
+        case SignalLogLevel_Warn:
+            return DDLogFlagWarning;
+        case SignalLogLevel_Error:
+        default:
+            return DDLogFlagError;
+    }
+}
 
 static bool isEnabled(const char *_Nonnull target, SignalLogLevel level)
 {
-    switch (level) {
-        case SignalLogLevel_Error:
-            return ShouldLogError();
-        case SignalLogLevel_Warn:
-            return ShouldLogWarning();
-        case SignalLogLevel_Info:
-            return ShouldLogInfo();
-        case SignalLogLevel_Debug:
-            return ShouldLogDebug();
-        case SignalLogLevel_Trace:
-            return ShouldLogVerbose();
-        default:
-            return ShouldLogError();
-    }
+    return ddLogLevel >= getDDLogFlag(level);
 }
 
 static void logMessage(const char *_Nonnull target,
@@ -34,43 +62,33 @@ static void logMessage(const char *_Nonnull target,
         return;
     }
 
-    // We're not using OWSLog* directly because we don't want log() to be the source of the log.
-    NSString *formattedMessage;
+    const char *prefix = getPrefix(level);
+
+    NSString *format;
     if (file) {
-        formattedMessage = [NSString stringWithFormat:@"[%s:%u] %s", file, line, message];
+        format = @"%1$s [%3$s:%4$u] %2$s";
     } else {
-        formattedMessage = [NSString stringWithUTF8String:message];
+        format = @"%1$s %2$s";
     }
 
-    switch (level) {
-        case SignalLogLevel_Error:
-            [OWSLogger error:formattedMessage];
-            break;
-        case SignalLogLevel_Warn:
-            [OWSLogger warn:formattedMessage];
-            break;
-        case SignalLogLevel_Info:
-            [OWSLogger info:formattedMessage];
-            break;
-        case SignalLogLevel_Debug:
-            [OWSLogger debug:formattedMessage];
-            break;
-        case SignalLogLevel_Trace:
-            [OWSLogger verbose:formattedMessage];
-            break;
-        default:
-            [OWSLogger error:formattedMessage];
-            break;
-    }
+    [DDLog log:(level != SignalLogLevel_Error)
+         level:ddLogLevel
+          flag:getDDLogFlag(level)
+       context:0
+          file:file ? file : "<SignalClient>"
+      function:NULL
+          line:line
+           tag:nil
+        format:format, prefix, message, file, line];
 }
 
 static void flush()
 {
-    OWSLogFlush();
+    [DDLog flushLog];
 }
 
 __attribute__((constructor)) static void initLogging()
 {
-    SignalLogLevel logLevel = ShouldLogDebug() ? SignalLogLevel_Trace : SignalLogLevel_Info;
+    SignalLogLevel logLevel = isEnabled("", SignalLogLevel_Trace) ? SignalLogLevel_Trace : SignalLogLevel_Info;
     signal_init_logger(logLevel, (SignalFfiLogger) { .enabled = isEnabled, .log = logMessage, .flush = flush });
 }
