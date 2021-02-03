@@ -57,6 +57,11 @@ ignore_this_warning = re.compile(
     ")")
 
 
+def camelcase(arg):
+    parts = arg.split('_')
+    return parts[0] + ''.join(x.title() for x in parts[1:])
+
+
 def collect_decls(crate_dir, features=''):
     args = [
         'cargo',
@@ -117,7 +122,7 @@ def collect_decls(crate_dir, features=''):
             for arg in args.split(', '):
                 (arg_name, arg_type) = arg.split(': ')
                 ts_arg_type = translate_to_ts(arg_type)
-                ts_args.append('%s: %s' % (arg_name.strip(), ts_arg_type))
+                ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
 
         yield '%s(%s): %s;' % (prefix, ', '.join(ts_args), ts_ret_type)
 
