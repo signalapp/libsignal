@@ -50,6 +50,26 @@ bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 
+#[bridge_fn(ffi = false, jni = false)]
+fn HKDF_deriveSecrets(
+    output_length: u32,
+    version: u32,
+    ikm: &[u8],
+    label: &[u8],
+    salt: Option<&[u8]>,
+) -> Result<Vec<u8>, SignalProtocolError> {
+    let kdf = HKDF::new(version)?;
+
+    Ok(match salt {
+        Some(salt) => kdf
+            .derive_salted_secrets(ikm, salt, label, output_length as usize)?
+            .to_vec(),
+        None => kdf
+            .derive_secrets(ikm, label, output_length as usize)?
+            .to_vec(),
+    })
+}
+
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id)

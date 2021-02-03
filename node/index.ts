@@ -11,6 +11,33 @@ const SC = bindings('libsignal_client_' + os.platform()) as typeof SignalClient;
 
 export const { initLogger, LogLevel } = SC;
 
+export class HKDF {
+  private readonly version: number;
+
+  private constructor(version: number) {
+    this.version = version;
+  }
+
+  static new(version: number): HKDF {
+    return new HKDF(version);
+  }
+
+  deriveSecrets(
+    outputLength: number,
+    keyMaterial: Buffer,
+    label: Buffer,
+    salt: Buffer | null
+  ): Buffer {
+    return SC.HKDF_deriveSecrets(
+      outputLength,
+      this.version,
+      keyMaterial,
+      label,
+      salt
+    );
+  }
+}
+
 export class Aes256GcmSiv {
   private readonly nativeHandle: SignalClient.Aes256GcmSiv;
 

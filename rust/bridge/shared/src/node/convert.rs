@@ -5,7 +5,7 @@
 
 use neon::prelude::*;
 use std::borrow::Cow;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::ops::RangeInclusive;
 
 pub(crate) trait ArgTypeInfo<'a>: Sized {
@@ -197,6 +197,25 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
             Some(value) => Ok(value.convert_into(cx)?.upcast()),
             None => Ok(cx.null().upcast()),
         }
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Vec<u8> {
+    type ResultType = JsBuffer;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        let bytes_len = match u32::try_from(self.len()) {
+            Ok(l) => l,
+            Err(_) => return cx.throw_error("Cannot return very large object to JS environment"),
+        };
+
+        let mut buffer = cx.buffer(bytes_len)?;
+        cx.borrow_mut(&mut buffer, |raw_buffer| {
+            raw_buffer.as_mut_slice().copy_from_slice(&self);
+        });
+        Ok(buffer)
     }
 }
 
