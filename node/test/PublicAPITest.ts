@@ -18,6 +18,33 @@ SignalClient.initLogger(
 );
 
 describe('SignalClient', () => {
+  it('HKDF test vector', () => {
+    const hkdf = SignalClient.HKDF.new(3);
+
+    const secret = Buffer.from(
+      '0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B',
+      'hex'
+    );
+    const empty = Buffer.from('', 'hex');
+
+    assert.deepEqual(
+      hkdf.deriveSecrets(42, secret, empty, empty).toString('hex'),
+      '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8'
+    );
+
+    assert.deepEqual(
+      hkdf.deriveSecrets(42, secret, empty, null).toString('hex'),
+      '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8'
+    );
+
+    const salt = Buffer.from('000102030405060708090A0B0C', 'hex');
+    const label = Buffer.from('F0F1F2F3F4F5F6F7F8F9', 'hex');
+
+    assert.deepEqual(
+      hkdf.deriveSecrets(42, secret, label, salt).toString('hex'),
+      '3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865'
+    );
+  });
   it('ProtocolAddress', () => {
     const addr = SignalClient.ProtocolAddress.new('name', 42);
     assert.deepEqual(addr.name(), 'name');
