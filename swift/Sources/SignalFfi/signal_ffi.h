@@ -203,8 +203,6 @@ SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_ke
                                                    const unsigned char *input,
                                                    size_t input_len);
 
-SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
-
 SignalFfiError *signal_session_record_has_current_state(bool *result,
                                                         const SignalSessionRecord *session_record);
 
@@ -813,6 +811,8 @@ SignalFfiError *signal_unidentified_sender_message_content_get_contents(const un
 
 SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(SignalSenderCertificate **out,
                                                                            const SignalUnidentifiedSenderMessageContent *m);
+
+SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
 
 SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **p,
                                                   const unsigned char *data,

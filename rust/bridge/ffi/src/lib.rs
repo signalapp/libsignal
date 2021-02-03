@@ -125,17 +125,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_session_record_archive_current_state(
-    session_record: *mut SessionRecord,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let session_record = native_handle_cast_mut::<SessionRecord>(session_record)?;
-        session_record.archive_current_state()?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn signal_session_record_has_current_state(
     result: *mut bool,
     session_record: *const SessionRecord,

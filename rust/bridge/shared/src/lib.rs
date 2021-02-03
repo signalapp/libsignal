@@ -577,6 +577,13 @@ fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32, SignalProto
     }
 }
 
+#[bridge_fn_void]
+fn SessionRecord_ArchiveCurrentState(
+    session_record: &mut SessionRecord,
+) -> Result<(), SignalProtocolError> {
+    session_record.archive_current_state()
+}
+
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(Serialize(SessionRecord) => SessionRecord::serialize);
 bridge_get_bytearray!(GetAliceBaseKey(SessionRecord), ffi = false, node = false =>

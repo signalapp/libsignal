@@ -259,6 +259,16 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for () {
+    type ResultType = JsUndefined;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        Ok(cx.undefined())
+    }
+}
+
 impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     type ResultType = T;
     fn convert_into(
@@ -328,6 +338,26 @@ macro_rules! node_bridge_handle {
                 stored: &'a mut Self::StoredType,
             ) -> node::NeonResult<Self> {
                 Ok(&*stored.1)
+            }
+        }
+
+        impl<'a> node::ArgTypeInfo<'a> for &'a mut $typ {
+            type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
+            // See above.
+            type StoredType = (node::Handle<'a, Self::ArgType>, std::cell::RefMut<'static, $typ>);
+            fn borrow(
+                _cx: &mut node::FunctionContext,
+                foreign: node::Handle<'a, Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                let cell: &std::cell::RefCell<_> = &***foreign;
+                let cell_with_extended_lifetime = unsafe { node::extend_lifetime_to_static(cell) };
+                Ok((foreign, cell_with_extended_lifetime.borrow_mut()))
+            }
+            fn load_from(
+                _cx: &mut node::FunctionContext,
+                stored: &'a mut Self::StoredType,
+            ) -> node::NeonResult<Self> {
+                Ok(&mut *stored.1)
             }
         }
 

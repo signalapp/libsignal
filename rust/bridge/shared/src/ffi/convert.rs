@@ -152,6 +152,13 @@ macro_rules! ffi_bridge_handle {
                 }
             }
         }
+        impl ffi::ArgTypeInfo for &'static mut $typ {
+            type ArgType = *mut $typ;
+            #[allow(clippy::not_unsafe_ptr_arg_deref)]
+            fn convert_from(foreign: *mut $typ) -> Result<Self, ffi::SignalFfiError> {
+                unsafe { ffi::native_handle_cast_mut(foreign) }
+            }
+        }
         impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
             fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
@@ -225,6 +232,7 @@ macro_rules! ffi_arg_type {
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
+    (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
 }
 

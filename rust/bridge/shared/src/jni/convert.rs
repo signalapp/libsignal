@@ -222,6 +222,15 @@ macro_rules! jni_bridge_handle {
                 }
             }
         }
+        impl<'a> jni::SimpleArgTypeInfo<'a> for &mut $typ {
+            type ArgType = jni::ObjectHandle;
+            fn convert_from(
+                _env: &jni::JNIEnv,
+                foreign: Self::ArgType,
+            ) -> Result<Self, jni::SignalJniError> {
+                Ok(unsafe { jni::native_handle_cast(foreign) }?)
+            }
+        }
         impl jni::ResultTypeInfo for $typ {
             type ResultType = jni::ObjectHandle;
             fn convert_into(
@@ -271,6 +280,7 @@ macro_rules! trivial {
 
 trivial!(i32);
 trivial!(jbyteArray);
+trivial!(());
 
 macro_rules! jni_arg_type {
     (u8) => {
@@ -295,6 +305,9 @@ macro_rules! jni_arg_type {
         jni::jbyteArray
     };
     (& $typ:ty) => {
+        jni::ObjectHandle
+    };
+    (&mut $typ:ty) => {
         jni::ObjectHandle
     };
     (Option<& $typ:ty>) => {
