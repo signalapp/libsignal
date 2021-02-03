@@ -14,8 +14,7 @@
     "clean": "rimraf node/dist build",
     "test": "electron-mocha --recursive node/dist/test",
     "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p",
-    "prepare": "yarn tsc"
+    "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
   },
   "dependencies": {
     "bindings": "^1.5.0"
