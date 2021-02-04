@@ -10,10 +10,6 @@ import org.signal.client.internal.Native;
 public class DisplayableFingerprint {
   private String displayString;
 
-  DisplayableFingerprint(byte[] localFingerprint, byte[] remoteFingerprint) {
-    this.displayString = Native.DisplayableFingerprint_Format(localFingerprint, remoteFingerprint);
-  }
-
   DisplayableFingerprint(String displayString) {
     this.displayString = displayString;
   }

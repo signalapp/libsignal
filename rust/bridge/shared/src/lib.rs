@@ -236,13 +236,6 @@ bridge_get!(
     jni = "NumericFingerprintGenerator_1GetDisplayString"
 );
 
-#[bridge_fn(ffi = "fingerprint_format")]
-fn DisplayableFingerprint_Format(
-    local: &[u8],
-    remote: &[u8],
-) -> Result<String, SignalProtocolError> {
-    DisplayableFingerprint::new(&local, &remote).map(|f| f.to_string())
-}
 #[bridge_fn(ffi = "fingerprint_compare")]
 fn ScannableFingerprint_Compare(
     fprint1: &[u8],

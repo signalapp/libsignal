@@ -12,7 +12,6 @@ export function Aes256GcmSiv_Encrypt(aesGcmSiv: Aes256GcmSiv, ptext: Buffer, non
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;
 export function CiphertextMessage_Serialize(obj: CiphertextMessage): Buffer;
 export function CiphertextMessage_Type(msg: CiphertextMessage): number;
-export function DisplayableFingerprint_Format(local: Buffer, remote: Buffer): string;
 export function Fingerprint_DisplayString(obj: Fingerprint): string;
 export function Fingerprint_New(iterations: number, version: number, localIdentifier: Buffer, localKey: PublicKey, remoteIdentifier: Buffer, remoteKey: PublicKey): Fingerprint;
 export function Fingerprint_ScannableEncoding(obj: Fingerprint): Buffer;

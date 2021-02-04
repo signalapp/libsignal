@@ -457,12 +457,6 @@ SignalFfiError *signal_fingerprint_scannable_encoding(const unsigned char **out,
 
 SignalFfiError *signal_fingerprint_display_string(const char **out, const SignalFingerprint *obj);
 
-SignalFfiError *signal_fingerprint_format(const char **out,
-                                          const unsigned char *local,
-                                          size_t local_len,
-                                          const unsigned char *remote,
-                                          size_t remote_len);
-
 SignalFfiError *signal_fingerprint_compare(bool *out,
                                            const unsigned char *fprint1,
                                            size_t fprint1_len,
