@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JValue};
-use jni::sys::{jbyteArray, jint, jlongArray, jobject};
+use jni::sys::{jbyteArray, jlongArray, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -25,21 +25,6 @@ type JavaPreKeyStore = jobject;
 type JavaSignedPreKeyStore = jobject;
 type JavaCiphertextMessage = jobject;
 type JavaSenderKeyStore = jobject;
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Deserialize(
-    env: JNIEnv,
-    _class: JClass,
-    data: jbyteArray,
-    offset: jint,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let offset = jint_to_u32(offset)? as usize;
-        let data = env.convert_byte_array(data)?;
-        let key = PublicKey::deserialize(&data[offset..])?;
-        box_object::<PublicKey>(Ok(key))
-    })
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Deserialize(

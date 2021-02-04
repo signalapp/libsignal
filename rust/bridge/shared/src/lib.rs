@@ -92,6 +92,14 @@ fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
 }
 
 bridge_deserialize!(PublicKey::deserialize, ffi = publickey, jni = false);
+
+// Alternate implementation to deserialize from an offset.
+#[bridge_fn(ffi = false, node = false)]
+fn ECPublicKey_Deserialize(data: &[u8], offset: u32) -> Result<PublicKey, SignalProtocolError> {
+    let offset = offset as usize;
+    PublicKey::deserialize(&data[offset..])
+}
+
 bridge_get_bytearray!(Serialize(PublicKey), ffi = "publickey_serialize", jni = "ECPublicKey_1Serialize" =>
     |k| Ok(k.serialize()));
 bridge_get_bytearray!(
