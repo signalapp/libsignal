@@ -38,6 +38,82 @@ export class HKDF {
   }
 }
 
+export class ScannableFingerprint {
+  private readonly scannable: Buffer;
+
+  private constructor(scannable: Buffer) {
+    this.scannable = scannable;
+  }
+
+  static fromBuffer(scannable: Buffer): ScannableFingerprint {
+    return new ScannableFingerprint(scannable);
+  }
+
+  compare(other: ScannableFingerprint): boolean {
+    return SC.ScannableFingerprint_Compare(this.scannable, other.scannable);
+  }
+
+  toBuffer(): Buffer {
+    return this.scannable;
+  }
+}
+
+export class DisplayableFingerprint {
+  private readonly display: string;
+
+  private constructor(display: string) {
+    this.display = display;
+  }
+
+  static fromString(display: string): DisplayableFingerprint {
+    return new DisplayableFingerprint(display);
+  }
+
+  toString(): string {
+    return this.display;
+  }
+}
+
+export class Fingerprint {
+  private readonly nativeHandle: SignalClient.Fingerprint;
+
+  private constructor(nativeHandle: SignalClient.Fingerprint) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static new(
+    iterations: number,
+    version: number,
+    localIdentifier: Buffer,
+    localKey: PublicKey,
+    remoteIdentifier: Buffer,
+    remoteKey: PublicKey
+  ): Fingerprint {
+    return new Fingerprint(
+      SC.Fingerprint_New(
+        iterations,
+        version,
+        localIdentifier,
+        localKey._unsafeGetNativeHandle(),
+        remoteIdentifier,
+        remoteKey._unsafeGetNativeHandle()
+      )
+    );
+  }
+
+  public displayableFingerprint(): DisplayableFingerprint {
+    return DisplayableFingerprint.fromString(
+      SC.Fingerprint_DisplayString(this.nativeHandle)
+    );
+  }
+
+  public scannableFingerprint(): ScannableFingerprint {
+    return ScannableFingerprint.fromBuffer(
+      SC.Fingerprint_ScannableEncoding(this.nativeHandle)
+    );
+  }
+}
+
 export class Aes256GcmSiv {
   private readonly nativeHandle: SignalClient.Aes256GcmSiv;
 
