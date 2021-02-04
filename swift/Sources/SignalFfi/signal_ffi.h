@@ -14,6 +14,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdint.h>
 #include <stdlib.h>
 
+/**
+ * ts: export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
+ */
 typedef enum {
   SignalCiphertextMessageType_Whisper = 2,
   SignalCiphertextMessageType_PreKey = 3,
@@ -203,9 +206,6 @@ SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_ke
                                                    const unsigned char *input,
                                                    size_t input_len);
 
-SignalFfiError *signal_session_record_has_current_state(bool *result,
-                                                        const SignalSessionRecord *session_record);
-
 SignalFfiError *signal_fingerprint_new(SignalFingerprint **obj,
                                        unsigned int iterations,
                                        unsigned int version,
@@ -229,12 +229,6 @@ SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **msg,
                                        const SignalSessionStore *session_store,
                                        const SignalIdentityKeyStore *identity_key_store,
                                        void *ctx);
-
-SignalFfiError *signal_ciphertext_message_type(uint8_t *typ, const SignalCiphertextMessage *msg);
-
-SignalFfiError *signal_ciphertext_message_serialize(const unsigned char **result,
-                                                    size_t *result_len,
-                                                    const SignalCiphertextMessage *msg);
 
 SignalFfiError *signal_decrypt_message(const unsigned char **result,
                                        size_t *result_len,
@@ -279,9 +273,6 @@ SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
                                              size_t message_len,
                                              const SignalSenderKeyStore *store,
                                              void *ctx);
-
-SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t *out,
-                                                                        const SignalUnidentifiedSenderMessageContent *obj);
 
 SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
                                                      size_t *out_len,
@@ -812,7 +803,18 @@ SignalFfiError *signal_unidentified_sender_message_content_get_contents(const un
 SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(SignalSenderCertificate **out,
                                                                            const SignalUnidentifiedSenderMessageContent *m);
 
+SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t *out,
+                                                                        const SignalUnidentifiedSenderMessageContent *m);
+
+SignalFfiError *signal_ciphertext_message_type(uint8_t *out, const SignalCiphertextMessage *msg);
+
+SignalFfiError *signal_ciphertext_message_serialize(const unsigned char **out,
+                                                    size_t *out_len,
+                                                    const SignalCiphertextMessage *obj);
+
 SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
+
+SignalFfiError *signal_session_record_has_current_state(bool *out, const SignalSessionRecord *obj);
 
 SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **p,
                                                   const unsigned char *data,

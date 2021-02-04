@@ -248,6 +248,7 @@ macro_rules! ffi_result_type {
     (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
     (Result<&$typ:tt, $_:ty>) => (ffi_result_type!(&$typ));
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
+    (u8) => (u8);
     (i32) => (i32);
     (u32) => (u32);
     (Option<u32>) => (u32);

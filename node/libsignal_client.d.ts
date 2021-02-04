@@ -5,10 +5,13 @@
 
 // WARNING: this file was automatically generated
 
+export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
 export const enum LogLevel { Error, Warn, Info, Debug, Trace }
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Aes256GcmSiv, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_Encrypt(aesGcmSiv: Aes256GcmSiv, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;
+export function CiphertextMessage_Serialize(obj: CiphertextMessage): Buffer;
+export function CiphertextMessage_Type(msg: CiphertextMessage): number;
 export function DisplayableFingerprint_Format(local: Buffer, remote: Buffer): string;
 export function Fingerprint_DisplayString(obj: Fingerprint): string;
 export function Fingerprint_ScannableEncoding(obj: Fingerprint): Buffer;
@@ -112,6 +115,7 @@ export function SignedPreKeyRecord_New(id: number, timestamp: number, pubKey: Pu
 export function SignedPreKeyRecord_Serialize(obj: SignedPreKeyRecord): Buffer;
 export function UnidentifiedSenderMessageContent_Deserialize(buffer: Buffer): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_GetContents(obj: UnidentifiedSenderMessageContent): Buffer;
+export function UnidentifiedSenderMessageContent_GetMsgType(m: UnidentifiedSenderMessageContent): number;
 export function UnidentifiedSenderMessageContent_GetSenderCert(m: UnidentifiedSenderMessageContent): SenderCertificate;
 export function UnidentifiedSenderMessageContent_Serialize(obj: UnidentifiedSenderMessageContent): Buffer;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void

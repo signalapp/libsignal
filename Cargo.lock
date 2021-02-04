@@ -755,6 +755,7 @@ dependencies = [
  "neon",
  "paste",
  "rand",
+ "static_assertions",
 ]
 
 [[package]]
@@ -780,7 +781,6 @@ dependencies = [
  "libsignal-protocol-rust",
  "log",
  "rand",
- "static_assertions",
 ]
 
 [[package]]

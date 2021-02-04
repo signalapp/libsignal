@@ -50,30 +50,6 @@ fn can_convert_js_number_to_int(value: f64, valid_range: RangeInclusive<f64>) ->
     value.is_finite() && value.fract() == 0.0 && valid_range.contains(&value)
 }
 
-impl SimpleArgTypeInfo for u32 {
-    type ArgType = JsNumber;
-    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
-        let value = foreign.value(cx);
-        if !can_convert_js_number_to_int(value, 0.0..=u32::MAX.into()) {
-            return cx
-                .throw_range_error(format!("integer overflow during conversion of {}", value));
-        }
-        Ok(value as u32)
-    }
-}
-
-impl SimpleArgTypeInfo for u8 {
-    type ArgType = JsNumber;
-    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
-        let value = foreign.value(cx);
-        if !can_convert_js_number_to_int(value, 0.0..=u8::MAX.into()) {
-            return cx
-                .throw_range_error(format!("integer overflow during conversion of {}", value));
-        }
-        Ok(value as u8)
-    }
-}
-
 // 2**53 - 1, the maximum "safe" integer representable in an f64.
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
@@ -140,26 +116,6 @@ impl<'a> ResultTypeInfo<'a> for bool {
         cx: &mut FunctionContext<'a>,
     ) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.boolean(self))
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for i32 {
-    type ResultType = JsNumber;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
-        Ok(cx.number(self as f64))
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for u32 {
-    type ResultType = JsNumber;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
-        Ok(cx.number(self as f64))
     }
 }
 
@@ -288,6 +244,40 @@ impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
         Ok(self)
     }
 }
+
+macro_rules! full_range_integer {
+    ($typ:ty) => {
+        impl SimpleArgTypeInfo for $typ {
+            type ArgType = JsNumber;
+            fn convert_from(
+                cx: &mut FunctionContext,
+                foreign: Handle<Self::ArgType>,
+            ) -> NeonResult<Self> {
+                let value = foreign.value(cx);
+                if !can_convert_js_number_to_int(value, 0.0..=<$typ>::MAX.into()) {
+                    return cx.throw_range_error(format!(
+                        "integer overflow during conversion of {}",
+                        value
+                    ));
+                }
+                Ok(value as $typ)
+            }
+        }
+        impl<'a> ResultTypeInfo<'a> for $typ {
+            type ResultType = JsNumber;
+            fn convert_into(
+                self,
+                cx: &mut FunctionContext<'a>,
+            ) -> NeonResult<Handle<'a, Self::ResultType>> {
+                Ok(cx.number(self as f64))
+            }
+        }
+    };
+}
+
+full_range_integer!(u8);
+full_range_integer!(u32);
+full_range_integer!(i32);
 
 pub(crate) unsafe fn extend_lifetime_to_static<T>(some_ref: &T) -> &'static T {
     std::mem::transmute::<&'_ T, &'static T>(some_ref)

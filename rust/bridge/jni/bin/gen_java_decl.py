@@ -38,7 +38,8 @@ stderr = str(stderr.decode('utf8'))
 ignore_this_warning = re.compile(
     "("
     r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
-    r"WARN: Missing `\[defines\]` entry for `feature = \"jni\"` in cbindgen config\."
+    r"WARN: Missing `\[defines\]` entry for `feature = \"jni\"` in cbindgen config\.|"
+    r"WARN: Skip libsignal-bridge::_ - \(not `pub`\)\."
     ")")
 
 unknown_warning = False
@@ -50,7 +51,7 @@ for l in stderr.split('\n'):
     if ignore_this_warning.match(l):
         continue
 
-    print(l)
+    print(l, file=sys.stderr)
     unknown_warning = True
 
 if unknown_warning:

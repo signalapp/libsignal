@@ -128,6 +128,13 @@ impl ResultTypeInfo for bool {
     }
 }
 
+impl ResultTypeInfo for u8 {
+    type ResultType = jint;
+    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(self as jint)
+    }
+}
+
 impl ResultTypeInfo for u32 {
     type ResultType = jint;
     fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -291,6 +298,7 @@ trivial!(());
 
 macro_rules! jni_arg_type {
     (u8) => {
+        // Note: not a jbyte. It's better to preserve the signedness here.
         jni::jint
     };
     (u32) => {
@@ -334,6 +342,10 @@ macro_rules! jni_result_type {
     };
     (bool) => {
         jni::jboolean
+    };
+    (u8) => {
+        // Note: not a jbyte. It's better to preserve the signedness here.
+        jni::jint
     };
     (i32) => {
         jni::jint

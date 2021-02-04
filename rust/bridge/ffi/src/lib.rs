@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use libc::{c_char, c_int, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol_rust::*;
-use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 use std::fmt;
@@ -121,21 +120,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
         let identity_key_pair = IdentityKeyPair::try_from(input)?;
         box_object::<PublicKey>(public_key, Ok(*identity_key_pair.public_key()))?;
         box_object::<PrivateKey>(private_key, Ok(*identity_key_pair.private_key()))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_session_record_has_current_state(
-    result: *mut bool,
-    session_record: *const SessionRecord,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        if result.is_null() {
-            return Err(SignalFfiError::NullPointer);
-        }
-        let session_record = native_handle_cast::<SessionRecord>(session_record)?;
-        *result = session_record.has_current_session_state();
-        Ok(())
     })
 }
 
@@ -680,57 +664,6 @@ pub unsafe extern "C" fn signal_encrypt_message(
     })
 }
 
-#[derive(Debug)]
-#[repr(C)]
-pub enum FfiCiphertextMessageType {
-    Whisper = 2,
-    PreKey = 3,
-    SenderKey = 4,
-    SenderKeyDistribution = 5,
-}
-
-const_assert_eq!(
-    FfiCiphertextMessageType::Whisper as u8,
-    CiphertextMessageType::Whisper as u8
-);
-const_assert_eq!(
-    FfiCiphertextMessageType::PreKey as u8,
-    CiphertextMessageType::PreKey as u8
-);
-const_assert_eq!(
-    FfiCiphertextMessageType::SenderKey as u8,
-    CiphertextMessageType::SenderKey as u8
-);
-const_assert_eq!(
-    FfiCiphertextMessageType::SenderKeyDistribution as u8,
-    CiphertextMessageType::SenderKeyDistribution as u8
-);
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_ciphertext_message_type(
-    typ: *mut u8,
-    msg: *const CiphertextMessage,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let msg = native_handle_cast::<CiphertextMessage>(msg)?;
-        *typ = msg.message_type() as u8;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_ciphertext_message_serialize(
-    result: *mut *const c_uchar,
-    result_len: *mut size_t,
-    msg: *const CiphertextMessage,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let msg = native_handle_cast::<CiphertextMessage>(msg)?;
-        let bits = msg.serialize();
-        write_bytearray_to(result, result_len, bits)
-    })
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn signal_decrypt_message(
     result: *mut *const c_uchar,
@@ -978,19 +911,6 @@ pub unsafe extern "C" fn signal_group_decrypt_message(
             Some(ctx),
         ))?;
         write_bytearray_to(out, out_len, ptext)
-    })
-}
-
-// UnidentifiedSenderMessageContent
-#[no_mangle]
-pub unsafe extern "C" fn signal_unidentified_sender_message_content_get_msg_type(
-    out: *mut u8,
-    obj: *const UnidentifiedSenderMessageContent,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let msg = native_handle_cast::<UnidentifiedSenderMessageContent>(obj)?;
-        *out = msg.msg_type()? as u8;
-        Ok(())
     })
 }
 

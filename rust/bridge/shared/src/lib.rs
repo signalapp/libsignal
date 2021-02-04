@@ -8,6 +8,7 @@
 use aes_gcm_siv::Aes256GcmSiv;
 use libsignal_bridge_macros::*;
 use libsignal_protocol_rust::*;
+use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 
 #[cfg(not(any(feature = "ffi", feature = "jni", feature = "node")))]
@@ -548,11 +549,11 @@ fn UnidentifiedSenderMessageContent_GetSenderCert(
     Ok(m.sender()?.clone())
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn]
 fn UnidentifiedSenderMessageContent_GetMsgType(
     m: &UnidentifiedSenderMessageContent,
-) -> Result<u32, SignalProtocolError> {
-    Ok(m.msg_type()? as u32)
+) -> Result<u8, SignalProtocolError> {
+    Ok(m.msg_type()? as u8)
 }
 
 bridge_deserialize!(
@@ -571,6 +572,40 @@ bridge_get_bytearray!(GetEncryptedStatic(UnidentifiedSenderMessage), ffi = false
 );
 bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
 
+/// ts: export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
+#[derive(Debug)]
+#[repr(C)]
+pub enum FfiCiphertextMessageType {
+    Whisper = 2,
+    PreKey = 3,
+    SenderKey = 4,
+    SenderKeyDistribution = 5,
+}
+
+const_assert_eq!(
+    FfiCiphertextMessageType::Whisper as u8,
+    CiphertextMessageType::Whisper as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::PreKey as u8,
+    CiphertextMessageType::PreKey as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::SenderKey as u8,
+    CiphertextMessageType::SenderKey as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::SenderKeyDistribution as u8,
+    CiphertextMessageType::SenderKeyDistribution as u8
+);
+
+#[bridge_fn(jni = false)]
+fn CiphertextMessage_Type(msg: &CiphertextMessage) -> u8 {
+    msg.message_type() as u8
+}
+
+bridge_get_bytearray!(serialize(CiphertextMessage), jni = false => |m| Ok(m.serialize()));
+
 // For historical reasons Android assumes this function will return zero if there is no session state
 #[bridge_fn(ffi = false, node = false)]
 fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32, SignalProtocolError> {
@@ -587,6 +622,8 @@ fn SessionRecord_ArchiveCurrentState(
 ) -> Result<(), SignalProtocolError> {
     session_record.archive_current_state()
 }
+
+bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false, node = false);
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(Serialize(SessionRecord) => SessionRecord::serialize);
