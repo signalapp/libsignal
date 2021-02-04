@@ -188,7 +188,7 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
 }
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
-    for Result<T, libsignal_protocol_rust::SignalProtocolError>
+    for Result<T, libsignal_protocol::SignalProtocolError>
 {
     type ResultType = T::ResultType;
     fn convert_into(

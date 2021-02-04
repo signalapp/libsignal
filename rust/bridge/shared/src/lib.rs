@@ -7,7 +7,7 @@
 
 use aes_gcm_siv::Aes256GcmSiv;
 use libsignal_bridge_macros::*;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 

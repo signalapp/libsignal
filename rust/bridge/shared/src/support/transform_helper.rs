@@ -46,7 +46,7 @@ impl<T> TransformHelper<Option<T>> {
 }
 
 pub(crate) trait TransformHelperImpl: Sized {
-    fn ok_if_needed(self) -> Result<Self, libsignal_protocol_rust::SignalProtocolError> {
+    fn ok_if_needed(self) -> Result<Self, libsignal_protocol::SignalProtocolError> {
         Ok(self)
     }
     fn option_map_into(self) -> Self {

@@ -5,7 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, Criterion, SamplingMode};
 use futures::executor::block_on;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::convert::TryFrom;
 
 #[path = "../tests/support/mod.rs"]

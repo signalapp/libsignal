@@ -7,7 +7,7 @@ mod support;
 
 use async_trait::async_trait;
 use futures::executor::block_on;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
 use rand::Rng;

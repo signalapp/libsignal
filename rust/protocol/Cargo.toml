@@ -4,7 +4,7 @@
 #
 
 [package]
-name = "libsignal-protocol-rust"
+name = "libsignal-protocol"
 version = "0.1.0"
 authors = ["Ehren Kret <ehren@signal.org>", "Jack Lloyd <jack@signal.org>"]
 edition = "2018"

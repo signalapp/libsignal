@@ -7,7 +7,7 @@ use jni::objects::{JObject, JThrowable, JValue};
 use jni::sys::jobject;
 
 use aes_gcm_siv::Error as AesGcmSivError;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::convert::TryFrom;
 
 pub(crate) use jni::objects::{JClass, JString};

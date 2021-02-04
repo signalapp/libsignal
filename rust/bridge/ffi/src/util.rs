@@ -5,7 +5,7 @@
 
 use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::ffi::CStr;
 
 use aes_gcm_siv::Error as AesGcmSivError;

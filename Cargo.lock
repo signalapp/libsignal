@@ -749,7 +749,7 @@ dependencies = [
  "jni",
  "libc",
  "libsignal-bridge-macros",
- "libsignal-protocol-rust",
+ "libsignal-protocol",
  "linkme",
  "log",
  "neon",
@@ -778,7 +778,7 @@ dependencies = [
  "async-trait",
  "libc",
  "libsignal-bridge",
- "libsignal-protocol-rust",
+ "libsignal-protocol",
  "log",
  "rand",
 ]
@@ -791,7 +791,7 @@ dependencies = [
  "async-trait",
  "jni",
  "libsignal-bridge",
- "libsignal-protocol-rust",
+ "libsignal-protocol",
  "log",
  "rand",
 ]
@@ -801,7 +801,7 @@ name = "libsignal-node"
 version = "0.1.0"
 dependencies = [
  "libsignal-bridge",
- "libsignal-protocol-rust",
+ "libsignal-protocol",
  "log",
  "neon",
  "neon-build 0.5.3",
@@ -809,7 +809,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "libsignal-protocol-rust"
+name = "libsignal-protocol"
 version = "0.1.0"
 dependencies = [
  "aes",

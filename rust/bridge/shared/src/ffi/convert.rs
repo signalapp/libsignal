@@ -4,7 +4,7 @@
 //
 
 use libc::{c_char, c_uchar};
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::borrow::Cow;
 use std::ffi::CStr;
 

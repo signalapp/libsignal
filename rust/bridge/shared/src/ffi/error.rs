@@ -6,7 +6,7 @@
 use std::fmt;
 
 use aes_gcm_siv::Error as AesGcmSivError;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 
 #[derive(Debug)]
 pub enum SignalFfiError {

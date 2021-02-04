@@ -8,7 +8,7 @@
 use async_trait::async_trait;
 use libc::{c_char, c_int, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
 use std::fmt;

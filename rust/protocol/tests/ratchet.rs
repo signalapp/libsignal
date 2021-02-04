@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 
 #[test]
 fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {

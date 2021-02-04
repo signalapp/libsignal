@@ -5,7 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 
 #[path = "../tests/support/mod.rs"]
 mod support;

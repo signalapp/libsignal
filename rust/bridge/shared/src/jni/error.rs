@@ -8,7 +8,7 @@ use jni::{JNIEnv, JavaVM};
 use std::fmt;
 
 use aes_gcm_siv::Error as AesGcmSivError;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 
 use super::*;
 
