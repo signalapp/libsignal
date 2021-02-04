@@ -59,8 +59,7 @@ impl SimpleArgTypeInfo for u64 {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
-            return cx
-                .throw_range_error(format!("integer overflow during conversion of {}", value));
+            return cx.throw_range_error(format!("cannot convert {} to u64", value));
         }
         Ok(value as u64)
     }
@@ -127,7 +126,10 @@ impl<'a> ResultTypeInfo<'a> for u64 {
     ) -> NeonResult<Handle<'a, Self::ResultType>> {
         let result = self as f64;
         if result > MAX_SAFE_JS_INTEGER {
-            cx.throw_range_error(format!("precision loss during conversion of {}", self))?;
+            cx.throw_range_error(format!(
+                "precision loss during conversion of {} to f64",
+                self
+            ))?;
         }
         Ok(cx.number(self as f64))
     }
@@ -256,8 +258,9 @@ macro_rules! full_range_integer {
                 let value = foreign.value(cx);
                 if !can_convert_js_number_to_int(value, 0.0..=<$typ>::MAX.into()) {
                     return cx.throw_range_error(format!(
-                        "integer overflow during conversion of {}",
-                        value
+                        "cannot convert {} to {}",
+                        value,
+                        stringify!($typ),
                     ));
                 }
                 Ok(value as $typ)
