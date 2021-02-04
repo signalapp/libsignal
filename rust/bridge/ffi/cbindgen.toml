@@ -40,7 +40,7 @@ sort_by = "None"
 
 [parse]
 parse_deps = true
-include = ["libsignal-protocol-rust", "aes-gcm-siv"]
+include = ["libsignal-protocol", "aes-gcm-siv"]
 extra_bindings = ["libsignal-bridge"]
 
 [parse.expand]

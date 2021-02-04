@@ -6,7 +6,7 @@
 mod support;
 
 use futures::executor::block_on;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use support::*;
 

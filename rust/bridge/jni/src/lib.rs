@@ -12,7 +12,7 @@ use jni::JNIEnv;
 use std::convert::TryFrom;
 
 use libsignal_bridge::jni::*;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 
 pub mod logging;
 mod util;

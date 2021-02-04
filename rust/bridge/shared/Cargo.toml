@@ -11,7 +11,7 @@ edition = "2018"
 license = "AGPL-3.0-only"
 
 [dependencies]
-libsignal-protocol-rust = { path = "../../protocol" }
+libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
 libsignal-bridge-macros = { path = "macros" }
 futures = "0.3.7"

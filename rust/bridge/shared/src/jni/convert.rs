@@ -6,7 +6,7 @@
 use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::borrow::Cow;
 
 use crate::jni::*;

@@ -8,7 +8,7 @@ use jni::sys::{jint, jobject};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
-use libsignal_protocol_rust::SignalProtocolError;
+use libsignal_protocol::SignalProtocolError;
 
 pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, SignalJniError> {
     match value {

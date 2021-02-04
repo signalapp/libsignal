@@ -4,7 +4,7 @@
 //
 
 use libc::{c_char, c_uchar, size_t};
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::ffi::CString;
 
 #[macro_use]

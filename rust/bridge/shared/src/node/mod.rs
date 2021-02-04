@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol_rust::*;
+use libsignal_protocol::*;
 use std::convert::TryFrom;
 use std::ops::Deref;
 

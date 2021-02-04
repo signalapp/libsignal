@@ -15,7 +15,7 @@ name = "signal_ffi"
 crate-type = ["staticlib"]
 
 [dependencies]
-libsignal-protocol-rust = { path = "../../protocol" }
+libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"

@@ -17,7 +17,7 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libsignal-protocol-rust = { path = "../../protocol" }
+libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
 libsignal-bridge = { path = "../shared", features = ["jni"] }
 async-trait = "0.1.41"
