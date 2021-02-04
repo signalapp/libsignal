@@ -8,14 +8,17 @@ use std::borrow::Cow;
 use std::convert::{TryFrom, TryInto};
 use std::ops::RangeInclusive;
 
-pub(crate) trait ArgTypeInfo<'a>: Sized {
+pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType: neon::types::Value;
-    type StoredType: 'a;
+    type StoredType: 'storage;
     fn borrow(
         cx: &mut FunctionContext,
-        foreign: Handle<'a, Self::ArgType>,
+        foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
-    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self>;
+    fn load_from(
+        cx: &mut FunctionContext,
+        stored: &'storage mut Self::StoredType,
+    ) -> NeonResult<Self>;
 }
 
 pub trait SimpleArgTypeInfo: Sized {
@@ -23,7 +26,7 @@ pub trait SimpleArgTypeInfo: Sized {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self>;
 }
 
-impl<'a, T> ArgTypeInfo<'a> for T
+impl<'a, T> ArgTypeInfo<'a, 'a> for T
 where
     T: SimpleArgTypeInfo,
 {
@@ -72,12 +75,15 @@ impl SimpleArgTypeInfo for String {
     }
 }
 
-impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for Option<T> {
+impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
+where
+    T: ArgTypeInfo<'storage, 'context>,
+{
     type ArgType = JsValue;
     type StoredType = Option<T::StoredType>;
     fn borrow(
         cx: &mut FunctionContext,
-        foreign: Handle<'a, Self::ArgType>,
+        foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         if foreign.downcast::<JsNull, _>(cx).is_ok() {
             return Ok(None);
@@ -85,7 +91,10 @@ impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for Option<T> {
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
         T::borrow(cx, non_optional_value).map(Some)
     }
-    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
+    fn load_from(
+        cx: &mut FunctionContext,
+        stored: &'storage mut Self::StoredType,
+    ) -> NeonResult<Self> {
         match stored {
             None => Ok(None),
             Some(non_optional_stored) => T::load_from(cx, non_optional_stored).map(Some),
@@ -93,7 +102,7 @@ impl<'a, T: ArgTypeInfo<'a>> ArgTypeInfo<'a> for Option<T> {
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for &'a [u8] {
+impl<'a> ArgTypeInfo<'a, 'a> for &'a [u8] {
     type ArgType = JsBuffer;
     // FIXME: Avoid copying this data.
     type StoredType = Vec<u8>;
@@ -282,14 +291,14 @@ full_range_integer!(u8);
 full_range_integer!(u32);
 full_range_integer!(i32);
 
-pub(crate) unsafe fn extend_lifetime_to_static<T>(some_ref: &T) -> &'static T {
-    std::mem::transmute::<&'_ T, &'static T>(some_ref)
+pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T>(some_ref: &'a T) -> &'b T {
+    std::mem::transmute::<&'a T, &'b T>(some_ref)
 }
 
 macro_rules! node_bridge_handle {
     ( $typ:ty as false ) => {};
     ( $typ:ty as $node_name:ident ) => {
-        impl<'a> node::ArgTypeInfo<'a> for &'a $typ {
+        impl<'a> node::ArgTypeInfo<'a, 'a> for &'a $typ {
             type ArgType = node::DefaultJsBox<$typ>;
             type StoredType = node::Handle<'a, Self::ArgType>;
             fn borrow(
@@ -320,45 +329,59 @@ macro_rules! node_bridge_handle {
         }
     };
     ( $typ:ty as $node_name:ident, mut = true ) => {
-        impl<'a> node::ArgTypeInfo<'a> for &'a $typ {
+        impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
+            for &'storage $typ
+        {
             type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
-            // The lifetime of the boxed RefCell is necessarily longer than the lifetime of any handles referring to it.
-            // However, Deref'ing a Handle can only give us a Ref whose lifetime matches a *particular* handle.
-            // Since we can't introduce a new lifetime "just longer than 'a", we erase it to 'static instead, and store a Handle alongside it to prove that the value is still alive.
-            // (Handle isn't actually responsible for this, as a Copy type, but even so.)
-            // We know the RefCell can't move because we can't know how many JS references there are referring to the JsBox.
-            type StoredType = (node::Handle<'a, Self::ArgType>, std::cell::Ref<'static, $typ>);
+            type StoredType = (
+                node::Handle<'context, Self::ArgType>,
+                std::cell::Ref<'context, $typ>,
+            );
             fn borrow(
                 _cx: &mut node::FunctionContext,
-                foreign: node::Handle<'a, Self::ArgType>,
+                foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
                 let cell: &std::cell::RefCell<_> = &***foreign;
-                let cell_with_extended_lifetime = unsafe { node::extend_lifetime_to_static(cell) };
+                // FIXME: Workaround for https://github.com/neon-bindings/neon/issues/678
+                // The lifetime of the boxed RefCell is necessarily longer than the lifetime of any handles referring to it, i.e. longer than 'context.
+                // However, Deref'ing a Handle can only give us a Ref whose lifetime matches a *particular* handle.
+                // Therefore, we unsafely (in the compiler sense) extend the lifetime to be the lifetime of the context, as given by the Handle.
+                // (We also know the RefCell can't move because we can't know how many JS references there are referring to the JsBox.)
+                let cell_with_extended_lifetime: &'context std::cell::RefCell<_> = unsafe {
+                    node::extend_lifetime(cell)
+                };
                 Ok((foreign, cell_with_extended_lifetime.borrow()))
             }
             fn load_from(
                 _cx: &mut node::FunctionContext,
-                stored: &'a mut Self::StoredType,
+                stored: &'storage mut Self::StoredType,
             ) -> node::NeonResult<Self> {
                 Ok(&*stored.1)
             }
         }
 
-        impl<'a> node::ArgTypeInfo<'a> for &'a mut $typ {
+        impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
+            for &'storage mut $typ
+        {
             type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
-            // See above.
-            type StoredType = (node::Handle<'a, Self::ArgType>, std::cell::RefMut<'static, $typ>);
+            type StoredType = (
+                node::Handle<'context, Self::ArgType>,
+                std::cell::RefMut<'context, $typ>,
+            );
             fn borrow(
                 _cx: &mut node::FunctionContext,
-                foreign: node::Handle<'a, Self::ArgType>,
+                foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
                 let cell: &std::cell::RefCell<_> = &***foreign;
-                let cell_with_extended_lifetime = unsafe { node::extend_lifetime_to_static(cell) };
+                // See above.
+                let cell_with_extended_lifetime: &'context std::cell::RefCell<_> = unsafe {
+                    node::extend_lifetime(cell)
+                };
                 Ok((foreign, cell_with_extended_lifetime.borrow_mut()))
             }
             fn load_from(
                 _cx: &mut node::FunctionContext,
-                stored: &'a mut Self::StoredType,
+                stored: &'storage mut Self::StoredType,
             ) -> node::NeonResult<Self> {
                 Ok(&mut *stored.1)
             }
