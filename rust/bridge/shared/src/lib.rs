@@ -570,6 +570,26 @@ fn UnidentifiedSenderMessageContent_GetMsgType(
     Ok(m.msg_type()? as u8)
 }
 
+// For testing only
+#[bridge_fn(ffi = false, node = false)]
+fn UnidentifiedSenderMessageContent_New(
+    msg_type: u32,
+    sender: &SenderCertificate,
+    contents: &[u8],
+) -> Result<UnidentifiedSenderMessageContent, SignalProtocolError> {
+    // This encoding is from the protobufs
+    let msg_type = match msg_type {
+        1 => Ok(CiphertextMessageType::PreKey),
+        2 => Ok(CiphertextMessageType::Whisper),
+        x => Err(SignalProtocolError::InvalidArgument(format!(
+            "invalid msg_type argument {}",
+            x
+        ))),
+    }?;
+
+    UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents.to_owned())
+}
+
 bridge_deserialize!(
     UnidentifiedSenderMessage::deserialize,
     ffi = false,
@@ -585,6 +605,20 @@ bridge_get_bytearray!(GetEncryptedStatic(UnidentifiedSenderMessage), ffi = false
     UnidentifiedSenderMessage::encrypted_static
 );
 bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
+
+// For testing only
+#[bridge_fn(ffi = false, node = false)]
+fn UnidentifiedSenderMessage_New(
+    public_key: &PublicKey,
+    encrypted_static: &[u8],
+    encrypted_message: &[u8],
+) -> Result<UnidentifiedSenderMessage, SignalProtocolError> {
+    UnidentifiedSenderMessage::new(
+        *public_key,
+        encrypted_static.to_owned(),
+        encrypted_message.to_owned(),
+    )
+}
 
 /// ts: export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
 #[derive(Debug)]

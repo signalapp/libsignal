@@ -927,52 +927,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
     })
 }
 
-// UnidentifiedSenderMessageContent
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1New(
-    env: JNIEnv,
-    _class: JClass,
-    msg_type: jint,
-    sender: ObjectHandle,
-    contents: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let sender = native_handle_cast::<SenderCertificate>(sender)?;
-        let contents = env.convert_byte_array(contents)?;
-
-        // This encoding is from the protobufs
-        let msg_type = match msg_type {
-            1 => Ok(CiphertextMessageType::PreKey),
-            2 => Ok(CiphertextMessageType::Whisper),
-            x => Err(SignalJniError::Signal(
-                SignalProtocolError::InvalidArgument(format!("invalid msg_type argument {}", x)),
-            )),
-        }?;
-
-        let usmc = UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents)?;
-        box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
-    })
-}
-
-// UnidentifiedSenderMessage
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1New(
-    env: JNIEnv,
-    _class: JClass,
-    public_key: ObjectHandle,
-    encrypted_static: jbyteArray,
-    encrypted_message: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let encrypted_static = env.convert_byte_array(encrypted_static)?;
-        let encrypted_message = env.convert_byte_array(encrypted_message)?;
-        let public_key = native_handle_cast::<PublicKey>(public_key)?;
-
-        let usm = UnidentifiedSenderMessage::new(*public_key, encrypted_static, encrypted_message)?;
-        box_object::<UnidentifiedSenderMessage>(Ok(usm))
-    })
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCipher_1Encrypt(
     env: JNIEnv,
