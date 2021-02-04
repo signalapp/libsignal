@@ -97,7 +97,7 @@ public final class Native {
   public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long senderKeyName, SenderKeyStore store);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long senderKeyName, long senderKeyDistributionMessage, SenderKeyStore store);
 
-  public static native byte[] HKDF_DeriveSecrets(int version, byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength);
+  public static native byte[] HKDF_DeriveSecrets(int outputLength, int version, byte[] ikm, byte[] label, byte[] salt);
 
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
   public static native byte[] IdentityKeyPair_Serialize(long publicKey, long privateKey);

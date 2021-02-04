@@ -121,6 +121,27 @@ impl<'a> ArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for Option<&'a [u8]> {
+    type ArgType = jbyteArray;
+    type StoredType = Option<AutoByteSlice<'a>>;
+    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            <&'a [u8]>::borrow(env, foreign).map(Some)
+        }
+    }
+    fn load_from(
+        env: &'a JNIEnv,
+        stored: &mut Self::StoredType,
+    ) -> Result<Option<&'a [u8]>, SignalJniError> {
+        stored
+            .as_mut()
+            .map(|s| <&'a [u8]>::load_from(env, s))
+            .transpose()
+    }
+}
+
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
     fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -180,6 +201,13 @@ impl ResultTypeInfo for &str {
     type ResultType = jstring;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
         Ok(env.new_string(self)?.into_inner())
+    }
+}
+
+impl ResultTypeInfo for Vec<u8> {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(env.byte_array_from_slice(&self)?)
     }
 }
 
@@ -319,6 +347,9 @@ macro_rules! jni_arg_type {
     (&[u8]) => {
         jni::jbyteArray
     };
+    (Option<&[u8]>) => {
+        jni::jbyteArray
+    };
     (& $typ:ty) => {
         jni::ObjectHandle
     };
@@ -367,6 +398,9 @@ macro_rules! jni_result_type {
     };
     (Option<String>) => {
         jni::jstring
+    };
+    (Vec<u8>) => {
+        jni::jbyteArray
     };
     ( $typ:ty ) => {
         jni::ObjectHandle

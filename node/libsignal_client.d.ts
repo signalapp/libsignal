@@ -15,7 +15,7 @@ export function CiphertextMessage_Type(msg: CiphertextMessage): number;
 export function DisplayableFingerprint_Format(local: Buffer, remote: Buffer): string;
 export function Fingerprint_DisplayString(obj: Fingerprint): string;
 export function Fingerprint_ScannableEncoding(obj: Fingerprint): Buffer;
-export function HKDF_deriveSecrets(outputLength: number, version: number, ikm: Buffer, label: Buffer, salt: Buffer | null): Buffer;
+export function HKDF_DeriveSecrets(outputLength: number, version: number, ikm: Buffer, label: Buffer, salt: Buffer | null): Buffer;
 export function IdentityKeyPair_Serialize(publicKey: PublicKey, privateKey: PrivateKey): Buffer;
 export function PreKeyBundle_GetDeviceId(obj: PreKeyBundle): number;
 export function PreKeyBundle_GetIdentityKey(p: PreKeyBundle): PublicKey;

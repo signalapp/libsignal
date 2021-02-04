@@ -51,8 +51,8 @@ bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 
-#[bridge_fn(ffi = false, jni = false)]
-fn HKDF_deriveSecrets(
+#[bridge_fn(ffi = false)]
+fn HKDF_DeriveSecrets(
     output_length: u32,
     version: u32,
     ikm: &[u8],

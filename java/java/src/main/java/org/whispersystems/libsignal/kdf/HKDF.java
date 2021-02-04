@@ -20,11 +20,11 @@ public abstract class HKDF {
   }
 
   public byte[] deriveSecrets(byte[] inputKeyMaterial, byte[] info, int outputLength) {
-    return Native.HKDF_DeriveSecrets(getVersion(), inputKeyMaterial, null, info, outputLength);
+    return Native.HKDF_DeriveSecrets(outputLength, getVersion(), inputKeyMaterial, info, null);
   }
 
   public byte[] deriveSecrets(byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength) {
-    return Native.HKDF_DeriveSecrets(getVersion(), inputKeyMaterial, salt, info, outputLength);
+    return Native.HKDF_DeriveSecrets(outputLength, getVersion(), inputKeyMaterial, info, salt);
   }
 
   protected abstract int getVersion();

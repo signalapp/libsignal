@@ -97,45 +97,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerpri
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecrets(
-    env: JNIEnv,
-    _class: JClass,
-    version: jint,
-    input_key_material: jbyteArray,
-    salt: jbyteArray,
-    info: jbyteArray,
-    output_length: jint,
-) -> jbyteArray {
-    run_ffi_safe(&env, || {
-        let version = jint_to_u32(version)?;
-        let output_length = output_length as usize;
-
-        let input_key_material = env.convert_byte_array(input_key_material)?;
-
-        let salt = if salt.is_null() {
-            None
-        } else {
-            Some(env.convert_byte_array(salt)?)
-        };
-
-        let info = if info.is_null() {
-            vec![]
-        } else {
-            env.convert_byte_array(info)?
-        };
-
-        let hkdf = HKDF::new(version)?;
-        let derived = if let Some(salt) = salt {
-            hkdf.derive_salted_secrets(&input_key_material, &salt, &info, output_length)
-        } else {
-            hkdf.derive_secrets(&input_key_material, &info, output_length)
-        };
-
-        to_jbytearray(&env, derived)
-    })
-}
-
 /* SenderKeyName */
 
 fn sender_key_name_to_jobject<'a>(

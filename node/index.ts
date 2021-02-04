@@ -28,7 +28,7 @@ export class HKDF {
     label: Buffer,
     salt: Buffer | null
   ): Buffer {
-    return SC.HKDF_deriveSecrets(
+    return SC.HKDF_DeriveSecrets(
       outputLength,
       this.version,
       keyMaterial,
