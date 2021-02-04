@@ -27,7 +27,7 @@
     "@typescript-eslint/eslint-plugin": "^4.6.0",
     "@typescript-eslint/parser": "^4.6.0",
     "chai": "4.2.0",
-    "electron": "8.2.5",
+    "electron": "11.2.0",
     "electron-mocha": "8.1.1",
     "eslint": "^7.12.1",
     "eslint-config-prettier": "6.15.0",
