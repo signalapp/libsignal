@@ -859,23 +859,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Dec
     })
 }
 
-// Sender Certificate
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
-    env: JNIEnv,
-    _class: JClass,
-    cert: ObjectHandle,
-    session_store: JavaSessionStore,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let cert = native_handle_cast::<SenderCertificate>(cert)?;
-        let session_store = JniSessionStore::new(&env, session_store)?;
-
-        let address = expect_ready(cert.preferred_address(&session_store, None))?;
-        box_object::<ProtocolAddress>(Ok(address))
-    })
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SealedSessionCipher_1Encrypt(
     env: JNIEnv,

@@ -163,7 +163,6 @@ public final class Native {
   public static native long SenderCertificate_GetServerCertificate(long cert);
   public static native byte[] SenderCertificate_GetSignature(long handle);
   public static native long SenderCertificate_New(String senderUuid, String senderE164, int senderDeviceId, long senderKey, long expiration, long signerCert, long signerKey);
-  public static native long SenderCertificate_PreferredAddress(long cert, SessionStore sessionStore);
   public static native boolean SenderCertificate_Validate(long cert, long key, long time);
 
   public static native long SenderKeyDistributionMessage_Deserialize(byte[] data);

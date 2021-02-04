@@ -143,7 +143,7 @@ pub struct SenderCertificate {
     signer: ServerCertificate,
     key: PublicKey,
     sender_device_id: u32,
-    sender_uuid: Option<String>,
+    sender_uuid: String,
     sender_e164: Option<String>,
     expiration: u64,
     serialized: Vec<u8>,
@@ -172,7 +172,9 @@ impl SenderCertificate {
         let signer_pb = certificate_data
             .signer
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let sender_uuid = certificate_data.sender_uuid;
+        let sender_uuid = certificate_data
+            .sender_uuid
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender_e164 = certificate_data.sender_e164;
 
         let key = PublicKey::deserialize(
@@ -180,10 +182,6 @@ impl SenderCertificate {
                 .identity_key
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
         )?;
-
-        if sender_uuid.is_none() && sender_e164.is_none() {
-            return Err(SignalProtocolError::InvalidProtobufEncoding);
-        }
 
         let mut signer_bits = vec![];
         signer_pb.encode(&mut signer_bits)?;
@@ -203,7 +201,7 @@ impl SenderCertificate {
     }
 
     pub fn new<R: Rng + CryptoRng>(
-        sender_uuid: Option<String>,
+        sender_uuid: String,
         sender_e164: Option<String>,
         key: PublicKey,
         sender_device_id: u32,
@@ -213,7 +211,7 @@ impl SenderCertificate {
         rng: &mut R,
     ) -> Result<Self> {
         let certificate_pb = proto::sealed_sender::sender_certificate::Certificate {
-            sender_uuid: sender_uuid.clone(),
+            sender_uuid: Some(sender_uuid.clone()),
             sender_e164: sender_e164.clone(),
             sender_device: Some(sender_device_id),
             expires: Some(expiration),
@@ -291,8 +289,8 @@ impl SenderCertificate {
         Ok(self.sender_device_id)
     }
 
-    pub fn sender_uuid(&self) -> Result<Option<&str>> {
-        Ok(self.sender_uuid.as_deref())
+    pub fn sender_uuid(&self) -> Result<&str> {
+        Ok(&self.sender_uuid)
     }
 
     pub fn sender_e164(&self) -> Result<Option<&str>> {
@@ -313,49 +311,6 @@ impl SenderCertificate {
 
     pub fn signature(&self) -> Result<&[u8]> {
         Ok(&self.signature)
-    }
-
-    pub async fn preferred_address(
-        &self,
-        session_store: &dyn SessionStore,
-        ctx: Context,
-    ) -> Result<ProtocolAddress> {
-        if let Some(uuid) = self.sender_uuid()? {
-            let uuid_address = ProtocolAddress::new(uuid.to_owned(), self.sender_device_id()?);
-            if session_store
-                .load_session(&uuid_address, ctx)
-                .await?
-                .is_some()
-            {
-                return Ok(uuid_address);
-            }
-        }
-
-        if let Some(e164) = self.sender_e164()? {
-            let e164_address = ProtocolAddress::new(e164.to_owned(), self.sender_device_id()?);
-            if session_store
-                .load_session(&e164_address, ctx)
-                .await?
-                .is_some()
-            {
-                return Ok(e164_address);
-            }
-        }
-
-        /*
-         * This logic of preferring e164 over uuid comes from Java, but seems incorrect.
-         */
-        let best_address = match (self.sender_e164()?, self.sender_uuid()?) {
-            (Some(e164), _) => e164.to_owned(),
-            (None, Some(uuid)) => uuid.to_owned(),
-            (None, None) => {
-                return Err(SignalProtocolError::InvalidSealedSenderMessage(
-                    "No sender in sender cert".to_owned(),
-                ))
-            }
-        };
-
-        Ok(ProtocolAddress::new(best_address, self.sender_device_id()?))
     }
 }
 
@@ -716,7 +671,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
 
 #[derive(Debug)]
 pub struct SealedSenderDecryptionResult {
-    pub sender_uuid: Option<String>,
+    pub sender_uuid: String,
     pub sender_e164: Option<String>,
     pub device_id: u32,
     pub message: Vec<u8>,
@@ -728,7 +683,7 @@ pub async fn sealed_sender_decrypt(
     trust_root: &PublicKey,
     timestamp: u64,
     local_e164: Option<String>,
-    local_uuid: Option<String>,
+    local_uuid: String,
     local_device_id: u32,
     identity_store: &mut dyn IdentityKeyStore,
     session_store: &mut dyn SessionStore,
@@ -744,12 +699,9 @@ pub async fn sealed_sender_decrypt(
         ));
     }
 
-    let is_local_e164 = match (local_e164, usmc.sender()?.sender_e164()?) {
-        (Some(l), Some(s)) => l == s,
-        (_, _) => false,
-    };
+    let is_local_uuid = local_uuid == usmc.sender()?.sender_uuid()?;
 
-    let is_local_uuid = match (local_uuid, usmc.sender()?.sender_uuid()?) {
+    let is_local_e164 = match (local_e164, usmc.sender()?.sender_e164()?) {
         (Some(l), Some(s)) => l == s,
         (_, _) => false,
     };
@@ -760,7 +712,10 @@ pub async fn sealed_sender_decrypt(
 
     let mut rng = rand::rngs::OsRng;
 
-    let remote_address = usmc.sender()?.preferred_address(session_store, ctx).await?;
+    let remote_address = ProtocolAddress::new(
+        usmc.sender()?.sender_uuid()?.to_string(),
+        usmc.sender()?.sender_device_id()?,
+    );
 
     let message = match usmc.msg_type()? {
         CiphertextMessageType::Whisper => {
@@ -797,7 +752,7 @@ pub async fn sealed_sender_decrypt(
     };
 
     Ok(SealedSenderDecryptionResult {
-        sender_uuid: usmc.sender()?.sender_uuid()?.map(|s| s.to_string()),
+        sender_uuid: usmc.sender()?.sender_uuid()?.to_string(),
         sender_e164: usmc.sender()?.sender_e164()?.map(|s| s.to_string()),
         device_id: usmc.sender()?.sender_device_id()?,
         message,

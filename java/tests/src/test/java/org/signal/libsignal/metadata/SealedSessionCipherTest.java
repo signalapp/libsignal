@@ -55,7 +55,7 @@ public class SealedSessionCipherTest extends TestCase {
     DecryptionResult plaintext = bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
 
     assertEquals(new String(plaintext.getPaddedMessage()), "smert za smert");
-    assertEquals(plaintext.getSenderUuid().get(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
+    assertEquals(plaintext.getSenderUuid(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
     assertEquals(plaintext.getSenderE164().get(), "+14151111111");
     assertEquals(plaintext.getDeviceId(), 1);
   }

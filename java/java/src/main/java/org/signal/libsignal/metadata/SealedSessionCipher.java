@@ -42,7 +42,7 @@ public class SealedSessionCipher {
                              int localDeviceId)
   {
     this.signalProtocolStore = signalProtocolStore;
-    this.localUuidAddress    = localUuid != null ? localUuid.toString() : null;
+    this.localUuidAddress    = localUuid.toString();
     this.localE164Address    = localE164Address;
     this.localDeviceId       = localDeviceId;
   }
@@ -77,7 +77,7 @@ public class SealedSessionCipher {
     }
 
     boolean isLocalE164 = localE164Address != null && localE164Address.equals(content.getSenderCertificate().getSenderE164().orNull());
-    boolean isLocalUuid = localUuidAddress != null && localUuidAddress.equals(content.getSenderCertificate().getSenderUuid().orNull());
+    boolean isLocalUuid = localUuidAddress.equals(content.getSenderCertificate().getSenderUuid());
 
     if ((isLocalE164 || isLocalUuid) && content.getSenderCertificate().getSenderDeviceId() == localDeviceId) {
       throw new SelfSendException();
@@ -118,7 +118,7 @@ public class SealedSessionCipher {
   private byte[] decrypt(UnidentifiedSenderMessageContent message)
       throws InvalidVersionException, InvalidMessageException, InvalidKeyException, DuplicateMessageException, InvalidKeyIdException, UntrustedIdentityException, LegacyMessageException, NoSessionException
   {
-    SignalProtocolAddress sender = new SignalProtocolAddress(Native.SenderCertificate_PreferredAddress(message.getSenderCertificate().nativeHandle(), signalProtocolStore));
+    SignalProtocolAddress sender = new SignalProtocolAddress(message.getSenderCertificate().getSenderUuid(), message.getSenderCertificate().getSenderDeviceId());
 
     switch (message.getType()) {
       case CiphertextMessage.WHISPER_TYPE: return new SessionCipher(signalProtocolStore, sender).decrypt(new SignalMessage(message.getContent()));
@@ -128,19 +128,19 @@ public class SealedSessionCipher {
   }
 
   public static class DecryptionResult {
-    private final Optional<String> senderUuid;
+    private final String           senderUuid;
     private final Optional<String> senderE164;
     private final int              deviceId;
     private final byte[]           paddedMessage;
 
-    private DecryptionResult(Optional<String> senderUuid, Optional<String> senderE164, int deviceId, byte[] paddedMessage) {
+    private DecryptionResult(String senderUuid, Optional<String> senderE164, int deviceId, byte[] paddedMessage) {
       this.senderUuid    = senderUuid;
       this.senderE164    = senderE164;
       this.deviceId      = deviceId;
       this.paddedMessage = paddedMessage;
     }
 
-    public Optional<String> getSenderUuid() {
+    public String getSenderUuid() {
       return senderUuid;
     }
 

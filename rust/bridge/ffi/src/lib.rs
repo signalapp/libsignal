@@ -936,7 +936,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         let mut signed_prekey_store = FfiSignedPreKeyStore::new(signed_prekey_store)?;
 
         let local_e164 = read_optional_c_string(local_e164)?;
-        let local_uuid = read_optional_c_string(local_uuid)?;
+        let local_uuid = read_optional_c_string(local_uuid)?.ok_or(SignalFfiError::NullPointer)?;
 
         let decrypted = expect_ready(sealed_sender_decrypt(
             &ctext,
@@ -953,7 +953,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         ))?;
 
         write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
-        write_optional_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
+        write_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
         write_uint32_to(sender_device_id, Ok(decrypted.device_id))?;
         write_bytearray_to(out, out_len, decrypted.message)
     })
