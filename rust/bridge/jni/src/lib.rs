@@ -61,42 +61,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1New(
-    env: JNIEnv,
-    _class: JClass,
-    iterations: jint,
-    version: jint,
-    local_identifier: jbyteArray,
-    local_key: jbyteArray,
-    remote_identifier: jbyteArray,
-    remote_key: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let version = jint_to_u32(version)?;
-        let iterations = jint_to_u32(iterations)?;
-
-        let local_identifier = env.convert_byte_array(local_identifier)?;
-        let local_key = env.convert_byte_array(local_key)?;
-
-        let remote_identifier = env.convert_byte_array(remote_identifier)?;
-        let remote_key = env.convert_byte_array(remote_key)?;
-
-        let local_key = IdentityKey::decode(&local_key)?;
-        let remote_key = IdentityKey::decode(&remote_key)?;
-        let fprint = Fingerprint::new(
-            version,
-            iterations,
-            &local_identifier,
-            &local_key,
-            &remote_identifier,
-            &remote_key,
-        )?;
-
-        box_object::<Fingerprint>(Ok(fprint))
-    })
-}
-
 /* SenderKeyName */
 
 fn sender_key_name_to_jobject<'a>(

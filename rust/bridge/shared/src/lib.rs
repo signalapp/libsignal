@@ -71,6 +71,7 @@ fn HKDF_DeriveSecrets(
     })
 }
 
+// Alternate implementation to fill an existing buffer.
 #[bridge_fn_void(jni = false, node = false)]
 fn HKDF_Derive(
     output: &mut [u8],
@@ -173,6 +174,48 @@ fn IdentityKeyPair_Serialize<T: Env>(
 ) -> Result<T::Buffer, SignalProtocolError> {
     let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(*public_key), *private_key);
     Ok(env.buffer(identity_key_pair.serialize().into_vec()))
+}
+
+#[bridge_fn(jni = false)]
+fn Fingerprint_New(
+    iterations: u32,
+    version: u32,
+    local_identifier: &[u8],
+    local_key: &PublicKey,
+    remote_identifier: &[u8],
+    remote_key: &PublicKey,
+) -> Result<Fingerprint, SignalProtocolError> {
+    Fingerprint::new(
+        version,
+        iterations,
+        local_identifier,
+        &IdentityKey::new(*local_key),
+        remote_identifier,
+        &IdentityKey::new(*remote_key),
+    )
+}
+
+// Alternate implementation that takes untyped buffers.
+#[bridge_fn(ffi = false, node = false)]
+fn NumericFingerprintGenerator_New(
+    iterations: u32,
+    version: u32,
+    local_identifier: &[u8],
+    local_key: &[u8],
+    remote_identifier: &[u8],
+    remote_key: &[u8],
+) -> Result<Fingerprint, SignalProtocolError> {
+    let local_key = IdentityKey::decode(local_key)?;
+    let remote_key = IdentityKey::decode(remote_key)?;
+
+    Fingerprint::new(
+        version,
+        iterations,
+        local_identifier,
+        &local_key,
+        remote_identifier,
+        &remote_key,
+    )
 }
 
 bridge_get_bytearray!(

@@ -196,16 +196,6 @@ SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_ke
                                                    const unsigned char *input,
                                                    size_t input_len);
 
-SignalFfiError *signal_fingerprint_new(SignalFingerprint **obj,
-                                       unsigned int iterations,
-                                       unsigned int version,
-                                       const unsigned char *local_identifier,
-                                       size_t local_identifier_len,
-                                       const SignalPublicKey *local_key,
-                                       const unsigned char *remote_identifier,
-                                       size_t remote_identifier_len,
-                                       const SignalPublicKey *remote_key);
-
 SignalFfiError *signal_process_prekey_bundle(SignalPreKeyBundle *bundle,
                                              const SignalProtocolAddress *protocol_address,
                                              const SignalSessionStore *session_store,
@@ -450,6 +440,16 @@ SignalFfiError *signal_identitykeypair_serialize(const unsigned char **out,
                                                  size_t *out_len,
                                                  const SignalPublicKey *public_key,
                                                  const SignalPrivateKey *private_key);
+
+SignalFfiError *signal_fingerprint_new(SignalFingerprint **out,
+                                       uint32_t iterations,
+                                       uint32_t version,
+                                       const unsigned char *local_identifier,
+                                       size_t local_identifier_len,
+                                       const SignalPublicKey *local_key,
+                                       const unsigned char *remote_identifier,
+                                       size_t remote_identifier_len,
+                                       const SignalPublicKey *remote_key);
 
 SignalFfiError *signal_fingerprint_scannable_encoding(const unsigned char **out,
                                                       size_t *out_len,

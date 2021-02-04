@@ -91,38 +91,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
     })
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn signal_fingerprint_new(
-    obj: *mut *mut Fingerprint,
-    iterations: c_uint,
-    version: c_uint,
-    local_identifier: *const c_uchar,
-    local_identifier_len: size_t,
-    local_key: *const PublicKey,
-    remote_identifier: *const c_uchar,
-    remote_identifier_len: size_t,
-    remote_key: *const PublicKey,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let local_identifier = as_slice(local_identifier, local_identifier_len)?;
-        let local_key = native_handle_cast::<PublicKey>(local_key)?;
-
-        let remote_identifier = as_slice(remote_identifier, remote_identifier_len)?;
-        let remote_key = native_handle_cast::<PublicKey>(remote_key)?;
-
-        let fprint = Fingerprint::new(
-            version,
-            iterations,
-            local_identifier,
-            &IdentityKey::new(*local_key),
-            remote_identifier,
-            &IdentityKey::new(*remote_key),
-        );
-
-        box_object::<Fingerprint>(obj, fprint)
-    })
-}
-
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
 type GetLocalRegistrationId =
