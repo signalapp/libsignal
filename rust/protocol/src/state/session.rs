@@ -123,6 +123,12 @@ impl SessionState {
         }
     }
 
+    pub(crate) fn sender_ratchet_key_for_logging(&self) -> Result<String> {
+        self.sender_ratchet_key()?
+            .public_key_bytes()
+            .map(hex::encode)
+    }
+
     pub(crate) fn sender_ratchet_private_key(&self) -> Result<curve::PrivateKey> {
         match self.session.sender_chain {
             None => Err(SignalProtocolError::InvalidProtobufEncoding),
@@ -210,6 +216,12 @@ impl SessionState {
         self.session.receiver_chains.push(chain);
 
         if self.session.receiver_chains.len() > consts::MAX_RECEIVER_CHAINS {
+            log::info!(
+                "Trimming excessive receiver_chain for session with base key {}, chain count: {}",
+                self.sender_ratchet_key_for_logging()
+                    .unwrap_or_else(|e| format!("<error: {}>", e)),
+                self.session.receiver_chains.len()
+            );
             self.session.receiver_chains.remove(0);
         }
 
@@ -559,6 +571,8 @@ impl SessionRecord {
             if self.previous_sessions.len() > consts::ARCHIVED_STATES_MAX_LENGTH {
                 self.previous_sessions.pop_back();
             }
+        } else {
+            log::info!("Skipping archive, current session state is fresh",);
         }
 
         Ok(())

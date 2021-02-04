@@ -9,6 +9,7 @@ use crate::crypto;
 use crate::curve;
 use crate::error::{Result, SignalProtocolError};
 use crate::kdf::HKDF;
+use std::fmt;
 
 pub struct MessageKeys {
     cipher_key: [u8; 32],
@@ -166,6 +167,12 @@ impl RootKey {
                 index: 0,
             },
         ))
+    }
+}
+
+impl fmt::Display for RootKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.key))
     }
 }
 
