@@ -620,6 +620,18 @@ fn CiphertextMessage_Type(msg: &CiphertextMessage) -> u8 {
 
 bridge_get_bytearray!(serialize(CiphertextMessage), jni = false => |m| Ok(m.serialize()));
 
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_NewFresh() -> SessionRecord {
+    SessionRecord::new_fresh()
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_FromSingleSessionState(
+    session_state: &[u8],
+) -> Result<SessionRecord, SignalProtocolError> {
+    SessionRecord::from_single_session_state(session_state)
+}
+
 // For historical reasons Android assumes this function will return zero if there is no session state
 #[bridge_fn(ffi = false, node = false)]
 fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32, SignalProtocolError> {
@@ -653,10 +665,90 @@ bridge_get_optional_bytearray!(GetRemoteIdentityKeyPublic(SessionRecord), ffi = 
 bridge_get!(SessionRecord::local_registration_id -> u32);
 bridge_get!(SessionRecord::remote_registration_id -> u32);
 bridge_get!(SessionRecord::has_sender_chain as HasSenderChain -> bool, ffi = false, node = false);
-// Only needed for testing
+
+// The following SessionRecord APIs are just exposed to make it possible to retain some of the Java tests:
+
 bridge_get_bytearray!(GetSenderChainKeyValue(SessionRecord), ffi = false, node = false =>
     SessionRecord::get_sender_chain_key_bytes
 );
+#[bridge_fn_buffer(ffi = false, node = false)]
+fn SessionRecord_GetReceiverChainKeyValue<E: Env>(
+    env: E,
+    session_state: &SessionRecord,
+    key: &PublicKey,
+) -> Result<Option<E::Buffer>, SignalProtocolError> {
+    let chain_key = session_state.get_receiver_chain_key(key)?;
+    Ok(chain_key.map(|ck| env.buffer(&ck.key()[..])))
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_InitializeAliceSession(
+    identity_key_private: &PrivateKey,
+    identity_key_public: &PublicKey,
+    base_private: &PrivateKey,
+    base_public: &PublicKey,
+    their_identity_key: &PublicKey,
+    their_signed_prekey: &PublicKey,
+    their_ratchet_key: &PublicKey,
+) -> Result<SessionRecord, SignalProtocolError> {
+    let our_identity_key_pair = IdentityKeyPair::new(
+        IdentityKey::new(*identity_key_public),
+        *identity_key_private,
+    );
+
+    let our_base_key_pair = KeyPair::new(*base_public, *base_private);
+
+    let their_identity_key = IdentityKey::new(*their_identity_key);
+
+    let mut csprng = rand::rngs::OsRng;
+
+    let parameters = AliceSignalProtocolParameters::new(
+        our_identity_key_pair,
+        our_base_key_pair,
+        their_identity_key,
+        *their_signed_prekey,
+        None,
+        *their_ratchet_key,
+    );
+
+    initialize_alice_session_record(&parameters, &mut csprng)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_InitializeBobSession(
+    identity_key_private: &PrivateKey,
+    identity_key_public: &PublicKey,
+    signed_prekey_private: &PrivateKey,
+    signed_prekey_public: &PublicKey,
+    eph_private: &PrivateKey,
+    eph_public: &PublicKey,
+    their_identity_key: &PublicKey,
+    their_base_key: &PublicKey,
+) -> Result<SessionRecord, SignalProtocolError> {
+    let our_identity_key_pair = IdentityKeyPair::new(
+        IdentityKey::new(*identity_key_public),
+        *identity_key_private,
+    );
+
+    let our_signed_pre_key_pair = KeyPair::new(*signed_prekey_public, *signed_prekey_private);
+
+    let our_ratchet_key_pair = KeyPair::new(*eph_public, *eph_private);
+
+    let their_identity_key = IdentityKey::new(*their_identity_key);
+
+    let parameters = BobSignalProtocolParameters::new(
+        our_identity_key_pair,
+        our_signed_pre_key_pair,
+        None,
+        our_ratchet_key_pair,
+        their_identity_key,
+        *their_base_key,
+    );
+
+    initialize_bob_session_record(&parameters)
+}
+
+// End SessionRecord testing functions
 
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv, aes_gcm_siv::Error> {

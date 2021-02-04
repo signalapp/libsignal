@@ -232,6 +232,23 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
     }
 }
 
+impl<T> ResultTypeInfo for Option<Result<T, SignalJniError>>
+where
+    Option<T>: ResultTypeInfo,
+{
+    type ResultType = <Option<T> as ResultTypeInfo>::ResultType;
+    fn convert_into(self, env: &jni::JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        self.transpose()?.convert_into(env)
+    }
+}
+
+impl ResultTypeInfo for Option<jobject> {
+    type ResultType = jobject;
+    fn convert_into(self, _env: &jni::JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(self.unwrap_or(std::ptr::null_mut()))
+    }
+}
+
 impl crate::Env for &'_ JNIEnv<'_> {
     type Buffer = Result<jbyteArray, SignalJniError>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
