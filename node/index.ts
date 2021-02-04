@@ -45,7 +45,7 @@ export class ScannableFingerprint {
     this.scannable = scannable;
   }
 
-  static fromBuffer(scannable: Buffer): ScannableFingerprint {
+  static _fromBuffer(scannable: Buffer): ScannableFingerprint {
     return new ScannableFingerprint(scannable);
   }
 
@@ -65,7 +65,7 @@ export class DisplayableFingerprint {
     this.display = display;
   }
 
-  static fromString(display: string): DisplayableFingerprint {
+  static _fromString(display: string): DisplayableFingerprint {
     return new DisplayableFingerprint(display);
   }
 
@@ -102,13 +102,13 @@ export class Fingerprint {
   }
 
   public displayableFingerprint(): DisplayableFingerprint {
-    return DisplayableFingerprint.fromString(
+    return DisplayableFingerprint._fromString(
       SC.Fingerprint_DisplayString(this.nativeHandle)
     );
   }
 
   public scannableFingerprint(): ScannableFingerprint {
-    return ScannableFingerprint.fromBuffer(
+    return ScannableFingerprint._fromBuffer(
       SC.Fingerprint_ScannableEncoding(this.nativeHandle)
     );
   }
