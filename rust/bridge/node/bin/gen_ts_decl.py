@@ -31,6 +31,7 @@ def translate_to_ts(typ):
         "u64": "number",
         "bool": "boolean",
         "String": "string",
+        "&str": "string",
         "Vec<u8>": "Buffer",
     }
 

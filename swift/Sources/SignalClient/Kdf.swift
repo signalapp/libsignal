@@ -18,10 +18,10 @@ where InputBytes: ContiguousBytes, SaltBytes: ContiguousBytes, InfoBytes: Contig
             try info.withUnsafeBytes { infoBytes in
                 try checkError(signal_hkdf_derive(&output,
                                                   outputLength,
-                                                  Int32(version),
+                                                  version,
                                                   inputBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), inputBytes.count,
-                                                  saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), saltBytes.count,
-                                                  infoBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), infoBytes.count))
+                                                  infoBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), infoBytes.count,
+                                                  saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), saltBytes.count))
             }
         }
     }

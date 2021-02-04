@@ -7,7 +7,7 @@
 
 use async_trait::async_trait;
 use jni::objects::{JClass, JObject, JValue};
-use jni::sys::{jbyteArray, jint, jlongArray, jobject};
+use jni::sys::{jbyteArray, jlongArray, jobject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -27,21 +27,6 @@ type JavaCiphertextMessage = jobject;
 type JavaSenderKeyStore = jobject;
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_ECPublicKey_1Deserialize(
-    env: JNIEnv,
-    _class: JClass,
-    data: jbyteArray,
-    offset: jint,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let offset = jint_to_u32(offset)? as usize;
-        let data = env.convert_byte_array(data)?;
-        let key = PublicKey::deserialize(&data[offset..])?;
-        box_object::<PublicKey>(Ok(key))
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Deserialize(
     env: JNIEnv,
     _class: JClass,
@@ -58,81 +43,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_
         let result = env.new_long_array(2)?;
         env.set_long_array_region(result, 0, &tuple)?;
         Ok(result)
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_NumericFingerprintGenerator_1New(
-    env: JNIEnv,
-    _class: JClass,
-    iterations: jint,
-    version: jint,
-    local_identifier: jbyteArray,
-    local_key: jbyteArray,
-    remote_identifier: jbyteArray,
-    remote_key: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let version = jint_to_u32(version)?;
-        let iterations = jint_to_u32(iterations)?;
-
-        let local_identifier = env.convert_byte_array(local_identifier)?;
-        let local_key = env.convert_byte_array(local_key)?;
-
-        let remote_identifier = env.convert_byte_array(remote_identifier)?;
-        let remote_key = env.convert_byte_array(remote_key)?;
-
-        let local_key = IdentityKey::decode(&local_key)?;
-        let remote_key = IdentityKey::decode(&remote_key)?;
-        let fprint = Fingerprint::new(
-            version,
-            iterations,
-            &local_identifier,
-            &local_key,
-            &remote_identifier,
-            &remote_key,
-        )?;
-
-        box_object::<Fingerprint>(Ok(fprint))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_HKDF_1DeriveSecrets(
-    env: JNIEnv,
-    _class: JClass,
-    version: jint,
-    input_key_material: jbyteArray,
-    salt: jbyteArray,
-    info: jbyteArray,
-    output_length: jint,
-) -> jbyteArray {
-    run_ffi_safe(&env, || {
-        let version = jint_to_u32(version)?;
-        let output_length = output_length as usize;
-
-        let input_key_material = env.convert_byte_array(input_key_material)?;
-
-        let salt = if salt.is_null() {
-            None
-        } else {
-            Some(env.convert_byte_array(salt)?)
-        };
-
-        let info = if info.is_null() {
-            vec![]
-        } else {
-            env.convert_byte_array(info)?
-        };
-
-        let hkdf = HKDF::new(version)?;
-        let derived = if let Some(salt) = salt {
-            hkdf.derive_salted_secrets(&input_key_material, &salt, &info, output_length)
-        } else {
-            hkdf.derive_secrets(&input_key_material, &info, output_length)
-        };
-
-        to_jbytearray(&env, derived)
     })
 }
 
@@ -949,143 +859,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Dec
     })
 }
 
-// SessionRecord
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1NewFresh(
-    env: JNIEnv,
-    _class: JClass,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        box_object::<SessionRecord>(Ok(SessionRecord::new_fresh()))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1FromSingleSessionState(
-    env: JNIEnv,
-    _class: JClass,
-    session_state: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let session_state = env.convert_byte_array(session_state)?;
-        box_object::<SessionRecord>(SessionRecord::from_single_session_state(&session_state))
-    })
-}
-
-// The following are just exposed to make it possible to retain some of the Java tests:
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1GetReceiverChainKeyValue(
-    env: JNIEnv,
-    _class: JClass,
-    session_state: ObjectHandle,
-    key: ObjectHandle,
-) -> jbyteArray {
-    run_ffi_safe(&env, || {
-        let session = native_handle_cast::<SessionRecord>(session_state)?;
-        let sender = native_handle_cast::<PublicKey>(key)?;
-
-        let chain_key = session.get_receiver_chain_key(sender)?;
-
-        match chain_key {
-            None => Ok(std::ptr::null_mut()),
-            Some(ck) => to_jbytearray(&env, Ok(ck.key())),
-        }
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1InitializeAliceSession(
-    env: JNIEnv,
-    _class: JClass,
-    identity_key_private: ObjectHandle,
-    identity_key_public: ObjectHandle,
-    base_private: ObjectHandle,
-    base_public: ObjectHandle,
-    their_identity_key: ObjectHandle,
-    their_signed_prekey: ObjectHandle,
-    their_ratchet_key: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let identity_key_private = native_handle_cast::<PrivateKey>(identity_key_private)?;
-        let identity_key_public = native_handle_cast::<PublicKey>(identity_key_public)?;
-        let base_private = native_handle_cast::<PrivateKey>(base_private)?;
-        let base_public = native_handle_cast::<PublicKey>(base_public)?;
-        let their_identity_key = native_handle_cast::<PublicKey>(their_identity_key)?;
-        let their_signed_prekey = native_handle_cast::<PublicKey>(their_signed_prekey)?;
-        let their_ratchet_key = native_handle_cast::<PublicKey>(their_ratchet_key)?;
-
-        let our_identity_key_pair = IdentityKeyPair::new(
-            IdentityKey::new(*identity_key_public),
-            *identity_key_private,
-        );
-
-        let our_base_key_pair = KeyPair::new(*base_public, *base_private);
-
-        let their_identity_key = IdentityKey::new(*their_identity_key);
-
-        let mut csprng = rand::rngs::OsRng;
-
-        let parameters = AliceSignalProtocolParameters::new(
-            our_identity_key_pair,
-            our_base_key_pair,
-            their_identity_key,
-            *their_signed_prekey,
-            None,
-            *their_ratchet_key,
-        );
-
-        box_object::<SessionRecord>(initialize_alice_session_record(&parameters, &mut csprng))
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1InitializeBobSession(
-    env: JNIEnv,
-    _class: JClass,
-    identity_key_private: ObjectHandle,
-    identity_key_public: ObjectHandle,
-    signed_prekey_private: ObjectHandle,
-    signed_prekey_public: ObjectHandle,
-    eph_private: ObjectHandle,
-    eph_public: ObjectHandle,
-    their_identity_key: ObjectHandle,
-    their_base_key: ObjectHandle,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let identity_key_private = native_handle_cast::<PrivateKey>(identity_key_private)?;
-        let identity_key_public = native_handle_cast::<PublicKey>(identity_key_public)?;
-        let signed_prekey_private = native_handle_cast::<PrivateKey>(signed_prekey_private)?;
-        let signed_prekey_public = native_handle_cast::<PublicKey>(signed_prekey_public)?;
-        let eph_private = native_handle_cast::<PrivateKey>(eph_private)?;
-        let eph_public = native_handle_cast::<PublicKey>(eph_public)?;
-        let their_identity_key = native_handle_cast::<PublicKey>(their_identity_key)?;
-        let their_base_key = native_handle_cast::<PublicKey>(their_base_key)?;
-
-        let our_identity_key_pair = IdentityKeyPair::new(
-            IdentityKey::new(*identity_key_public),
-            *identity_key_private,
-        );
-
-        let our_signed_pre_key_pair = KeyPair::new(*signed_prekey_public, *signed_prekey_private);
-
-        let our_ratchet_key_pair = KeyPair::new(*eph_public, *eph_private);
-
-        let their_identity_key = IdentityKey::new(*their_identity_key);
-
-        let parameters = BobSignalProtocolParameters::new(
-            our_identity_key_pair,
-            our_signed_pre_key_pair,
-            None,
-            our_ratchet_key_pair,
-            their_identity_key,
-            *their_base_key,
-        );
-
-        box_object::<SessionRecord>(initialize_bob_session_record(&parameters))
-    })
-}
-
 // Sender Certificate
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificate_1PreferredAddress(
@@ -1100,52 +873,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SenderCertificat
 
         let address = expect_ready(cert.preferred_address(&session_store, None))?;
         box_object::<ProtocolAddress>(Ok(address))
-    })
-}
-
-// UnidentifiedSenderMessageContent
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessageContent_1New(
-    env: JNIEnv,
-    _class: JClass,
-    msg_type: jint,
-    sender: ObjectHandle,
-    contents: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let sender = native_handle_cast::<SenderCertificate>(sender)?;
-        let contents = env.convert_byte_array(contents)?;
-
-        // This encoding is from the protobufs
-        let msg_type = match msg_type {
-            1 => Ok(CiphertextMessageType::PreKey),
-            2 => Ok(CiphertextMessageType::Whisper),
-            x => Err(SignalJniError::Signal(
-                SignalProtocolError::InvalidArgument(format!("invalid msg_type argument {}", x)),
-            )),
-        }?;
-
-        let usmc = UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents)?;
-        box_object::<UnidentifiedSenderMessageContent>(Ok(usmc))
-    })
-}
-
-// UnidentifiedSenderMessage
-#[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_UnidentifiedSenderMessage_1New(
-    env: JNIEnv,
-    _class: JClass,
-    public_key: ObjectHandle,
-    encrypted_static: jbyteArray,
-    encrypted_message: jbyteArray,
-) -> ObjectHandle {
-    run_ffi_safe(&env, || {
-        let encrypted_static = env.convert_byte_array(encrypted_static)?;
-        let encrypted_message = env.convert_byte_array(encrypted_message)?;
-        let public_key = native_handle_cast::<PublicKey>(public_key)?;
-
-        let usm = UnidentifiedSenderMessage::new(*public_key, encrypted_static, encrypted_message)?;
-        box_object::<UnidentifiedSenderMessage>(Ok(usm))
     })
 }
 

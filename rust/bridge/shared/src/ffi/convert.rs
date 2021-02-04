@@ -47,6 +47,21 @@ impl SizedArgTypeInfo for &[u8] {
     }
 }
 
+impl SizedArgTypeInfo for &mut [u8] {
+    type ArgType = *mut c_uchar;
+    fn convert_from(input: Self::ArgType, input_len: usize) -> Result<Self, SignalFfiError> {
+        if input.is_null() {
+            if input_len != 0 {
+                return Err(SignalFfiError::NullPointer);
+            }
+            // We can't just fall through because slice::from_raw_parts_mut still expects a non-null pointer. Reference a dummy buffer instead.
+            return Ok(&mut []);
+        }
+
+        unsafe { Ok(std::slice::from_raw_parts_mut(input, input_len)) }
+    }
+}
+
 impl ArgTypeInfo for Option<u32> {
     type ArgType = u32;
     fn convert_from(foreign: u32) -> Result<Self, SignalFfiError> {
@@ -113,6 +128,14 @@ impl ResultTypeInfo for Option<String> {
             Some(s) => s.convert_into(),
             None => Ok(std::ptr::null()),
         }
+    }
+}
+
+impl ResultTypeInfo for &str {
+    type ResultType = *const libc::c_char;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
+        Ok(cstr.into_raw())
     }
 }
 
@@ -229,6 +252,7 @@ macro_rules! ffi_arg_type {
     (Option<u32>) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
+    (&mut [u8]) => (*mut libc::c_uchar);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
@@ -238,12 +262,15 @@ macro_rules! ffi_arg_type {
 
 macro_rules! ffi_result_type {
     (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
+    (Result<&$typ:tt, $_:ty>) => (ffi_result_type!(&$typ));
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
+    (u8) => (u8);
     (i32) => (i32);
     (u32) => (u32);
     (Option<u32>) => (u32);
     (u64) => (u64);
     (bool) => (bool);
+    (&str) => (*const libc::c_char);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (Option<$typ:ty>) => (*mut $typ);

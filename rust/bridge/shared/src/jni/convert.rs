@@ -121,10 +121,38 @@ impl<'a> ArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for Option<&'a [u8]> {
+    type ArgType = jbyteArray;
+    type StoredType = Option<AutoByteSlice<'a>>;
+    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            <&'a [u8]>::borrow(env, foreign).map(Some)
+        }
+    }
+    fn load_from(
+        env: &'a JNIEnv,
+        stored: &mut Self::StoredType,
+    ) -> Result<Option<&'a [u8]>, SignalJniError> {
+        stored
+            .as_mut()
+            .map(|s| <&'a [u8]>::load_from(env, s))
+            .transpose()
+    }
+}
+
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
     fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
+    }
+}
+
+impl ResultTypeInfo for u8 {
+    type ResultType = jint;
+    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(self as jint)
     }
 }
 
@@ -169,6 +197,20 @@ impl ResultTypeInfo for Option<String> {
     }
 }
 
+impl ResultTypeInfo for &str {
+    type ResultType = jstring;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(env.new_string(self)?.into_inner())
+    }
+}
+
+impl ResultTypeInfo for Vec<u8> {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(env.byte_array_from_slice(&self)?)
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -187,6 +229,23 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
         T::convert_into(self?, env)
+    }
+}
+
+impl<T> ResultTypeInfo for Option<Result<T, SignalJniError>>
+where
+    Option<T>: ResultTypeInfo,
+{
+    type ResultType = <Option<T> as ResultTypeInfo>::ResultType;
+    fn convert_into(self, env: &jni::JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        self.transpose()?.convert_into(env)
+    }
+}
+
+impl ResultTypeInfo for Option<jobject> {
+    type ResultType = jobject;
+    fn convert_into(self, _env: &jni::JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        Ok(self.unwrap_or(std::ptr::null_mut()))
     }
 }
 
@@ -284,6 +343,7 @@ trivial!(());
 
 macro_rules! jni_arg_type {
     (u8) => {
+        // Note: not a jbyte. It's better to preserve the signedness here.
         jni::jint
     };
     (u32) => {
@@ -304,6 +364,9 @@ macro_rules! jni_arg_type {
     (&[u8]) => {
         jni::jbyteArray
     };
+    (Option<&[u8]>) => {
+        jni::jbyteArray
+    };
     (& $typ:ty) => {
         jni::ObjectHandle
     };
@@ -319,11 +382,18 @@ macro_rules! jni_result_type {
     (Result<$typ:tt, $_:ty>) => {
         jni_result_type!($typ)
     };
+    (Result<&$typ:tt, $_:ty>) => {
+        jni_result_type!(&$typ)
+    };
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => {
         jni_result_type!($typ<$($args)+>)
     };
     (bool) => {
         jni::jboolean
+    };
+    (u8) => {
+        // Note: not a jbyte. It's better to preserve the signedness here.
+        jni::jint
     };
     (i32) => {
         jni::jint
@@ -337,11 +407,17 @@ macro_rules! jni_result_type {
     (Option<u32>) => {
         jni::jint
     };
+    (&str) => {
+        jni::jstring
+    };
     (String) => {
         jni::jstring
     };
     (Option<String>) => {
         jni::jstring
+    };
+    (Vec<u8>) => {
+        jni::jbyteArray
     };
     ( $typ:ty ) => {
         jni::ObjectHandle

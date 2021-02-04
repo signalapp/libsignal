@@ -88,20 +88,6 @@ macro_rules! bridge_get_optional_bytearray {
     }
 }
 
-macro_rules! bridge_get_string {
-    ($name:ident($typ:ty) $(, $param:ident = $val:tt)* => $body:expr ) => {
-        paste! {
-            #[bridge_fn($($param = $val),*)]
-            fn [<$typ _ $name>](obj: &$typ) -> Result<String, SignalProtocolError> {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<impl Into<String> + 'a, SignalProtocolError> => $body);
-                Ok(inner_get(obj)?.into())
-            }
-        }
-    }
-}
-
 macro_rules! bridge_get {
     ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)* ) => {
         paste! {

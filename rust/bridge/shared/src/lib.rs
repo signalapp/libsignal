@@ -8,6 +8,7 @@
 use aes_gcm_siv::Aes256GcmSiv;
 use libsignal_bridge_macros::*;
 use libsignal_protocol_rust::*;
+use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 
 #[cfg(not(any(feature = "ffi", feature = "jni", feature = "node")))]
@@ -50,8 +51,8 @@ bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 
-#[bridge_fn(ffi = false, jni = false)]
-fn HKDF_deriveSecrets(
+#[bridge_fn(ffi = false)]
+fn HKDF_DeriveSecrets(
     output_length: u32,
     version: u32,
     ikm: &[u8],
@@ -70,12 +71,35 @@ fn HKDF_deriveSecrets(
     })
 }
 
+// Alternate implementation to fill an existing buffer.
+#[bridge_fn_void(jni = false, node = false)]
+fn HKDF_Derive(
+    output: &mut [u8],
+    version: u32,
+    ikm: &[u8],
+    label: &[u8],
+    salt: &[u8],
+) -> Result<(), SignalProtocolError> {
+    let kdf = HKDF::new(version)?;
+    let kdf_output = kdf.derive_salted_secrets(ikm, salt, label, output.len())?;
+    output.copy_from_slice(&kdf_output);
+    Ok(())
+}
+
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id)
 }
 
 bridge_deserialize!(PublicKey::deserialize, ffi = publickey, jni = false);
+
+// Alternate implementation to deserialize from an offset.
+#[bridge_fn(ffi = false, node = false)]
+fn ECPublicKey_Deserialize(data: &[u8], offset: u32) -> Result<PublicKey, SignalProtocolError> {
+    let offset = offset as usize;
+    PublicKey::deserialize(&data[offset..])
+}
+
 bridge_get_bytearray!(Serialize(PublicKey), ffi = "publickey_serialize", jni = "ECPublicKey_1Serialize" =>
     |k| Ok(k.serialize()));
 bridge_get_bytearray!(
@@ -85,7 +109,7 @@ bridge_get_bytearray!(
     PublicKey::public_key_bytes
 );
 bridge_get!(ProtocolAddress::device_id as DeviceId -> u32, ffi = "address_get_device_id");
-bridge_get!(ProtocolAddress::name as Name -> String, ffi = "address_get_name");
+bridge_get!(ProtocolAddress::name as Name -> &str, ffi = "address_get_name");
 
 #[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
 fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
@@ -158,6 +182,48 @@ fn IdentityKeyPair_Serialize<T: Env>(
 ) -> Result<T::Buffer, SignalProtocolError> {
     let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(*public_key), *private_key);
     Ok(env.buffer(identity_key_pair.serialize().into_vec()))
+}
+
+#[bridge_fn(jni = false)]
+fn Fingerprint_New(
+    iterations: u32,
+    version: u32,
+    local_identifier: &[u8],
+    local_key: &PublicKey,
+    remote_identifier: &[u8],
+    remote_key: &PublicKey,
+) -> Result<Fingerprint, SignalProtocolError> {
+    Fingerprint::new(
+        version,
+        iterations,
+        local_identifier,
+        &IdentityKey::new(*local_key),
+        remote_identifier,
+        &IdentityKey::new(*remote_key),
+    )
+}
+
+// Alternate implementation that takes untyped buffers.
+#[bridge_fn(ffi = false, node = false)]
+fn NumericFingerprintGenerator_New(
+    iterations: u32,
+    version: u32,
+    local_identifier: &[u8],
+    local_key: &[u8],
+    remote_identifier: &[u8],
+    remote_key: &[u8],
+) -> Result<Fingerprint, SignalProtocolError> {
+    let local_key = IdentityKey::decode(local_key)?;
+    let remote_key = IdentityKey::decode(remote_key)?;
+
+    Fingerprint::new(
+        version,
+        iterations,
+        local_identifier,
+        &local_key,
+        remote_identifier,
+        &remote_key,
+    )
 }
 
 bridge_get_bytearray!(
@@ -431,7 +497,11 @@ fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreK
 }
 
 bridge_get!(SenderKeyName::group_id -> String);
-bridge_get_string!(GetSenderName(SenderKeyName) => |skn| Ok(skn.sender()?.name().to_string()));
+
+#[bridge_fn]
+fn SenderKeyName_GetSenderName(obj: &SenderKeyName) -> Result<String, SignalProtocolError> {
+    Ok(obj.sender()?.name().to_string())
+}
 
 #[bridge_fn]
 fn SenderKeyName_New(
@@ -544,11 +614,31 @@ fn UnidentifiedSenderMessageContent_GetSenderCert(
     Ok(m.sender()?.clone())
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn]
 fn UnidentifiedSenderMessageContent_GetMsgType(
     m: &UnidentifiedSenderMessageContent,
-) -> Result<u32, SignalProtocolError> {
-    Ok(m.msg_type()? as u32)
+) -> Result<u8, SignalProtocolError> {
+    Ok(m.msg_type()? as u8)
+}
+
+// For testing only
+#[bridge_fn(ffi = false, node = false)]
+fn UnidentifiedSenderMessageContent_New(
+    msg_type: u32,
+    sender: &SenderCertificate,
+    contents: &[u8],
+) -> Result<UnidentifiedSenderMessageContent, SignalProtocolError> {
+    // This encoding is from the protobufs
+    let msg_type = match msg_type {
+        1 => Ok(CiphertextMessageType::PreKey),
+        2 => Ok(CiphertextMessageType::Whisper),
+        x => Err(SignalProtocolError::InvalidArgument(format!(
+            "invalid msg_type argument {}",
+            x
+        ))),
+    }?;
+
+    UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents.to_owned())
 }
 
 bridge_deserialize!(
@@ -567,6 +657,66 @@ bridge_get_bytearray!(GetEncryptedStatic(UnidentifiedSenderMessage), ffi = false
 );
 bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
 
+// For testing only
+#[bridge_fn(ffi = false, node = false)]
+fn UnidentifiedSenderMessage_New(
+    public_key: &PublicKey,
+    encrypted_static: &[u8],
+    encrypted_message: &[u8],
+) -> Result<UnidentifiedSenderMessage, SignalProtocolError> {
+    UnidentifiedSenderMessage::new(
+        *public_key,
+        encrypted_static.to_owned(),
+        encrypted_message.to_owned(),
+    )
+}
+
+/// ts: export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
+#[derive(Debug)]
+#[repr(C)]
+pub enum FfiCiphertextMessageType {
+    Whisper = 2,
+    PreKey = 3,
+    SenderKey = 4,
+    SenderKeyDistribution = 5,
+}
+
+const_assert_eq!(
+    FfiCiphertextMessageType::Whisper as u8,
+    CiphertextMessageType::Whisper as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::PreKey as u8,
+    CiphertextMessageType::PreKey as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::SenderKey as u8,
+    CiphertextMessageType::SenderKey as u8
+);
+const_assert_eq!(
+    FfiCiphertextMessageType::SenderKeyDistribution as u8,
+    CiphertextMessageType::SenderKeyDistribution as u8
+);
+
+#[bridge_fn(jni = false)]
+fn CiphertextMessage_Type(msg: &CiphertextMessage) -> u8 {
+    msg.message_type() as u8
+}
+
+bridge_get_bytearray!(serialize(CiphertextMessage), jni = false => |m| Ok(m.serialize()));
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_NewFresh() -> SessionRecord {
+    SessionRecord::new_fresh()
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_FromSingleSessionState(
+    session_state: &[u8],
+) -> Result<SessionRecord, SignalProtocolError> {
+    SessionRecord::from_single_session_state(session_state)
+}
+
 // For historical reasons Android assumes this function will return zero if there is no session state
 #[bridge_fn(ffi = false, node = false)]
 fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32, SignalProtocolError> {
@@ -584,6 +734,8 @@ fn SessionRecord_ArchiveCurrentState(
     session_record.archive_current_state()
 }
 
+bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false, node = false);
+
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(Serialize(SessionRecord) => SessionRecord::serialize);
 bridge_get_bytearray!(GetAliceBaseKey(SessionRecord), ffi = false, node = false =>
@@ -598,10 +750,90 @@ bridge_get_optional_bytearray!(GetRemoteIdentityKeyPublic(SessionRecord), ffi = 
 bridge_get!(SessionRecord::local_registration_id -> u32);
 bridge_get!(SessionRecord::remote_registration_id -> u32);
 bridge_get!(SessionRecord::has_sender_chain as HasSenderChain -> bool, ffi = false, node = false);
-// Only needed for testing
+
+// The following SessionRecord APIs are just exposed to make it possible to retain some of the Java tests:
+
 bridge_get_bytearray!(GetSenderChainKeyValue(SessionRecord), ffi = false, node = false =>
     SessionRecord::get_sender_chain_key_bytes
 );
+#[bridge_fn_buffer(ffi = false, node = false)]
+fn SessionRecord_GetReceiverChainKeyValue<E: Env>(
+    env: E,
+    session_state: &SessionRecord,
+    key: &PublicKey,
+) -> Result<Option<E::Buffer>, SignalProtocolError> {
+    let chain_key = session_state.get_receiver_chain_key(key)?;
+    Ok(chain_key.map(|ck| env.buffer(&ck.key()[..])))
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_InitializeAliceSession(
+    identity_key_private: &PrivateKey,
+    identity_key_public: &PublicKey,
+    base_private: &PrivateKey,
+    base_public: &PublicKey,
+    their_identity_key: &PublicKey,
+    their_signed_prekey: &PublicKey,
+    their_ratchet_key: &PublicKey,
+) -> Result<SessionRecord, SignalProtocolError> {
+    let our_identity_key_pair = IdentityKeyPair::new(
+        IdentityKey::new(*identity_key_public),
+        *identity_key_private,
+    );
+
+    let our_base_key_pair = KeyPair::new(*base_public, *base_private);
+
+    let their_identity_key = IdentityKey::new(*their_identity_key);
+
+    let mut csprng = rand::rngs::OsRng;
+
+    let parameters = AliceSignalProtocolParameters::new(
+        our_identity_key_pair,
+        our_base_key_pair,
+        their_identity_key,
+        *their_signed_prekey,
+        None,
+        *their_ratchet_key,
+    );
+
+    initialize_alice_session_record(&parameters, &mut csprng)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SessionRecord_InitializeBobSession(
+    identity_key_private: &PrivateKey,
+    identity_key_public: &PublicKey,
+    signed_prekey_private: &PrivateKey,
+    signed_prekey_public: &PublicKey,
+    eph_private: &PrivateKey,
+    eph_public: &PublicKey,
+    their_identity_key: &PublicKey,
+    their_base_key: &PublicKey,
+) -> Result<SessionRecord, SignalProtocolError> {
+    let our_identity_key_pair = IdentityKeyPair::new(
+        IdentityKey::new(*identity_key_public),
+        *identity_key_private,
+    );
+
+    let our_signed_pre_key_pair = KeyPair::new(*signed_prekey_public, *signed_prekey_private);
+
+    let our_ratchet_key_pair = KeyPair::new(*eph_public, *eph_private);
+
+    let their_identity_key = IdentityKey::new(*their_identity_key);
+
+    let parameters = BobSignalProtocolParameters::new(
+        our_identity_key_pair,
+        our_signed_pre_key_pair,
+        None,
+        our_ratchet_key_pair,
+        their_identity_key,
+        *their_base_key,
+    );
+
+    initialize_bob_session_record(&parameters)
+}
+
+// End SessionRecord testing functions
 
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv, aes_gcm_siv::Error> {
