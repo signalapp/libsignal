@@ -45,13 +45,13 @@ macro_rules! expr_as_fn {
 }
 
 macro_rules! bridge_handle {
-    ($typ:ty $(, clone = $_:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
+    ($typ:ty $(, clone = $_clone:tt)? $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
         #[cfg(feature = "ffi")]
-        ffi_bridge_handle!($typ $(as $ffi_name)? $(, clone = $_)?);
+        ffi_bridge_handle!($typ $(as $ffi_name)? $(, clone = $_clone)?);
         #[cfg(feature = "jni")]
         jni_bridge_handle!($typ $(as $jni_name)?);
         #[cfg(feature = "node")]
-        node_bridge_handle!($typ $(as $node_name)?);
+        node_bridge_handle!($typ $(as $node_name)? $(, mut = $_mut)?);
     };
 }
 

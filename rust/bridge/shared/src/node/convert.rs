@@ -259,6 +259,16 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for () {
+    type ResultType = JsUndefined;
+    fn convert_into(
+        self,
+        cx: &mut FunctionContext<'a>,
+    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+        Ok(cx.undefined())
+    }
+}
+
 impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     type ResultType = T;
     fn convert_into(
@@ -267,6 +277,10 @@ impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     ) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(self)
     }
+}
+
+pub(crate) unsafe fn extend_lifetime_to_static<T>(some_ref: &T) -> &'static T {
+    std::mem::transmute::<&'_ T, &'static T>(some_ref)
 }
 
 macro_rules! node_bridge_handle {
@@ -302,9 +316,67 @@ macro_rules! node_bridge_handle {
             }
         }
     };
-    ( $typ:ty ) => {
+    ( $typ:ty as $node_name:ident, mut = true ) => {
+        impl<'a> node::ArgTypeInfo<'a> for &'a $typ {
+            type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
+            // The lifetime of the boxed RefCell is necessarily longer than the lifetime of any handles referring to it.
+            // However, Deref'ing a Handle can only give us a Ref whose lifetime matches a *particular* handle.
+            // Since we can't introduce a new lifetime "just longer than 'a", we erase it to 'static instead, and store a Handle alongside it to prove that the value is still alive.
+            // (Handle isn't actually responsible for this, as a Copy type, but even so.)
+            // We know the RefCell can't move because we can't know how many JS references there are referring to the JsBox.
+            type StoredType = (node::Handle<'a, Self::ArgType>, std::cell::Ref<'static, $typ>);
+            fn borrow(
+                _cx: &mut node::FunctionContext,
+                foreign: node::Handle<'a, Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                let cell: &std::cell::RefCell<_> = &***foreign;
+                let cell_with_extended_lifetime = unsafe { node::extend_lifetime_to_static(cell) };
+                Ok((foreign, cell_with_extended_lifetime.borrow()))
+            }
+            fn load_from(
+                _cx: &mut node::FunctionContext,
+                stored: &'a mut Self::StoredType,
+            ) -> node::NeonResult<Self> {
+                Ok(&*stored.1)
+            }
+        }
+
+        impl<'a> node::ArgTypeInfo<'a> for &'a mut $typ {
+            type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
+            // See above.
+            type StoredType = (node::Handle<'a, Self::ArgType>, std::cell::RefMut<'static, $typ>);
+            fn borrow(
+                _cx: &mut node::FunctionContext,
+                foreign: node::Handle<'a, Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                let cell: &std::cell::RefCell<_> = &***foreign;
+                let cell_with_extended_lifetime = unsafe { node::extend_lifetime_to_static(cell) };
+                Ok((foreign, cell_with_extended_lifetime.borrow_mut()))
+            }
+            fn load_from(
+                _cx: &mut node::FunctionContext,
+                stored: &'a mut Self::StoredType,
+            ) -> node::NeonResult<Self> {
+                Ok(&mut *stored.1)
+            }
+        }
+
         paste! {
-            node_bridge_handle!($typ as $typ);
+            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
+            impl<'a> node::ResultTypeInfo<'a> for $typ {
+                type ResultType = node::JsValue;
+                fn convert_into(
+                    self,
+                    cx: &mut node::FunctionContext<'a>,
+                ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
+                    node::return_boxed_object(cx, Ok(std::cell::RefCell::new(self)))
+                }
+            }
+        }
+    };
+    ( $typ:ty $(, mut = $_:tt)?) => {
+        paste! {
+            node_bridge_handle!($typ as $typ $(, mut = $_)?);
         }
     };
 }

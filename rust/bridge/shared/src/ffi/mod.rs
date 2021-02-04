@@ -58,6 +58,14 @@ pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, Sign
     Ok(&*(handle))
 }
 
+pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
+    if handle.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+
+    Ok(&mut *handle)
+}
+
 pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     out: *mut *const c_uchar,
     out_len: *mut size_t,

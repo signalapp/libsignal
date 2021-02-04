@@ -44,7 +44,7 @@ bridge_handle!(SenderKeyMessage);
 bridge_handle!(SenderKeyName);
 bridge_handle!(SenderKeyRecord);
 bridge_handle!(ServerCertificate);
-bridge_handle!(SessionRecord);
+bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
@@ -575,6 +575,13 @@ fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32, SignalProto
         Err(SignalProtocolError::InvalidState(_, _)) => Ok(0),
         Err(e) => Err(e),
     }
+}
+
+#[bridge_fn_void]
+fn SessionRecord_ArchiveCurrentState(
+    session_record: &mut SessionRecord,
+) -> Result<(), SignalProtocolError> {
+    session_record.archive_current_state()
 }
 
 bridge_deserialize!(SessionRecord::deserialize);

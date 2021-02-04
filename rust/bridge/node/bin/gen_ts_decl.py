@@ -37,6 +37,9 @@ def translate_to_ts(typ):
     if typ in type_map:
         return type_map[typ]
 
+    if typ.startswith('&mut'):
+        return typ[4:]
+
     if typ.startswith('&'):
         return typ[1:]
 

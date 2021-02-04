@@ -30,12 +30,13 @@ fn value_for_meta_key<'a>(
 enum ResultKind {
     Regular,
     Buffer,
+    Void,
 }
 
 impl ResultKind {
     fn has_env(self) -> bool {
         match self {
-            Self::Regular => false,
+            Self::Regular | Self::Void => false,
             Self::Buffer => true,
         }
     }
@@ -51,6 +52,8 @@ fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
             quote!(),
             quote!(<#ty as ffi::ResultTypeInfo>::write_to(out, __result)?),
         ),
+        (ResultKind::Void, ReturnType::Default) => (quote!(), quote!(), quote!()),
+        (ResultKind::Void, ReturnType::Type(_, _)) => (quote!(), quote!(), quote!(__result?;)),
         (ResultKind::Buffer, ReturnType::Type(_, _)) => (
             quote!(
                 out: *mut *const libc::c_uchar,
@@ -156,6 +159,7 @@ fn jni_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
         (ResultKind::Regular, ReturnType::Type(_, ref ty)) => {
             (quote!(), quote!(-> jni_result_type!(#ty)))
         }
+        (ResultKind::Void, _) => (quote!(), quote!()),
         (ResultKind::Buffer, ReturnType::Type(_, _)) => (quote!(&env,), quote!(-> jni::jbyteArray)),
         (ResultKind::Buffer, ReturnType::Default) => {
             return Error::new(
@@ -231,6 +235,7 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
     let (env_arg, result_type_str) = match (result_kind, &sig.output) {
         (ResultKind::Regular, ReturnType::Default) => (quote!(), "()".to_string()),
         (ResultKind::Regular, ReturnType::Type(_, ty)) => (quote!(), quote!(#ty).to_string()),
+        (ResultKind::Void, _) => (quote!(), "()".to_string()),
         (ResultKind::Buffer, ReturnType::Type(_, _)) => (quote!(&mut cx,), "Buffer".to_string()),
         (ResultKind::Buffer, ReturnType::Default) => {
             return Error::new(
@@ -257,14 +262,15 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
                 pat: box Pat::Ident(name),
                 colon_token: _,
                 ty,
-            }) => (
-                name.ident.clone(),
-                quote!(
-                    let #name = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
-                    let mut #name = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name)?;
-                    let #name = <#ty as node::ArgTypeInfo>::load_from(&mut cx, &mut #name)?;
-                ),
-            ),
+            }) => (name.ident.clone(), {
+                let name_arg = format_ident!("{}_arg", name.ident);
+                let name_borrow = format_ident!("{}_borrow", name.ident);
+                quote! {
+                    let #name_arg = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
+                    let mut #name_borrow = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name_arg)?;
+                    let #name = <#ty as node::ArgTypeInfo>::load_from(&mut cx, &mut #name_borrow)?;
+                }
+            }),
             FnArg::Typed(PatType { pat, .. }) => (
                 Ident::new("unexpected", pat.span()),
                 Error::new(pat.span(), "cannot use patterns in paramater").to_compile_error(),
@@ -293,8 +299,10 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
             mut cx: node::FunctionContext,
         ) -> node::JsResult<node::JsValue> {
             #(#input_processing);*;
-            let __result = #orig_name(#env_arg #(#input_names),*);
-            Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
+            {
+                let __result = #orig_name(#env_arg #(#input_names),*);
+                Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
+            }
         }
 
         #[cfg(feature = "node")]
@@ -374,4 +382,9 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn bridge_fn_buffer(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, ResultKind::Buffer)
+}
+
+#[proc_macro_attribute]
+pub fn bridge_fn_void(attr: TokenStream, item: TokenStream) -> TokenStream {
+    bridge_fn_impl(attr, item, ResultKind::Void)
 }

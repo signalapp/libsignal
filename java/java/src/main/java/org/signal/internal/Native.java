@@ -210,7 +210,7 @@ public final class Native {
   public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
   public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
 
-  public static native void SessionRecord_ArchiveCurrentState(long handle);
+  public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);
   public static native long SessionRecord_Deserialize(byte[] data);
   public static native void SessionRecord_Destroy(long handle);
   public static native long SessionRecord_FromSingleSessionState(byte[] sessionState);

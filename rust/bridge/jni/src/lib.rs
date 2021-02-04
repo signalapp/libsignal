@@ -951,19 +951,6 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_GroupCipher_1Dec
 
 // SessionRecord
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1ArchiveCurrentState(
-    env: JNIEnv,
-    _class: JClass,
-    handle: ObjectHandle,
-) {
-    run_ffi_safe(&env, || {
-        let session_record = native_handle_cast::<SessionRecord>(handle)?;
-        session_record.archive_current_state()?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionRecord_1NewFresh(
     env: JNIEnv,
     _class: JClass,

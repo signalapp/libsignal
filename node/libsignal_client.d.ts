@@ -90,6 +90,7 @@ export function ServerCertificate_GetKeyId(obj: ServerCertificate): number;
 export function ServerCertificate_GetSerialized(obj: ServerCertificate): Buffer;
 export function ServerCertificate_GetSignature(obj: ServerCertificate): Buffer;
 export function ServerCertificate_New(keyId: number, serverKey: PublicKey, trustRoot: PrivateKey): ServerCertificate;
+export function SessionRecord_ArchiveCurrentState(sessionRecord: SessionRecord): void;
 export function SessionRecord_Deserialize(buffer: Buffer): SessionRecord;
 export function SessionRecord_GetLocalRegistrationId(obj: SessionRecord): number;
 export function SessionRecord_GetRemoteRegistrationId(obj: SessionRecord): number;
