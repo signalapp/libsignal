@@ -50,6 +50,79 @@ describe('SignalClient', () => {
     assert.deepEqual(addr.name(), 'name');
     assert.deepEqual(addr.deviceId(), 42);
   });
+  it('Fingerprint', () => {
+    const aliceKey = SignalClient.PublicKey.deserialize(
+      Buffer.from(
+        '0506863bc66d02b40d27b8d49ca7c09e9239236f9d7d25d6fcca5ce13c7064d868',
+        'hex'
+      )
+    );
+    const aliceIdentifier = Buffer.from('+14152222222', 'utf8');
+    const bobKey = SignalClient.PublicKey.deserialize(
+      Buffer.from(
+        '05f781b6fb32fed9ba1cf2de978d4d5da28dc34046ae814402b5c0dbd96fda907b',
+        'hex'
+      )
+    );
+    const bobIdentifier = Buffer.from('+14153333333', 'utf8');
+    const iterations = 5200;
+    const aFprint1 = SignalClient.Fingerprint.new(
+      iterations,
+      1,
+      aliceIdentifier,
+      aliceKey,
+      bobIdentifier,
+      bobKey
+    );
+
+    assert.deepEqual(
+      aFprint1
+        .scannableFingerprint()
+        .toBuffer()
+        .toString('hex'),
+      '080112220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d'
+    );
+
+    assert.deepEqual(
+      aFprint1.displayableFingerprint().toString(),
+      '300354477692869396892869876765458257569162576843440918079131'
+    );
+
+    const bFprint1 = SignalClient.Fingerprint.new(
+      iterations,
+      1,
+      bobIdentifier,
+      bobKey,
+      aliceIdentifier,
+      aliceKey
+    );
+
+    assert.deepEqual(
+      bFprint1
+        .scannableFingerprint()
+        .toBuffer()
+        .toString('hex'),
+      '080112220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df'
+    );
+    assert.deepEqual(
+      bFprint1.displayableFingerprint().toString(),
+      '300354477692869396892869876765458257569162576843440918079131'
+    );
+
+    assert(
+      aFprint1.scannableFingerprint().compare(bFprint1.scannableFingerprint())
+    );
+    assert(
+      bFprint1.scannableFingerprint().compare(aFprint1.scannableFingerprint())
+    );
+
+    assert.isNotTrue(
+      aFprint1.scannableFingerprint().compare(aFprint1.scannableFingerprint())
+    );
+    assert.isNotTrue(
+      bFprint1.scannableFingerprint().compare(bFprint1.scannableFingerprint())
+    );
+  });
   it('PublicKeyBundle', () => {
     const registrationId = 5;
     const deviceId = 23;
