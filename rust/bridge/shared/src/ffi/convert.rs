@@ -47,6 +47,21 @@ impl SizedArgTypeInfo for &[u8] {
     }
 }
 
+impl SizedArgTypeInfo for &mut [u8] {
+    type ArgType = *mut c_uchar;
+    fn convert_from(input: Self::ArgType, input_len: usize) -> Result<Self, SignalFfiError> {
+        if input.is_null() {
+            if input_len != 0 {
+                return Err(SignalFfiError::NullPointer);
+            }
+            // We can't just fall through because slice::from_raw_parts_mut still expects a non-null pointer. Reference a dummy buffer instead.
+            return Ok(&mut []);
+        }
+
+        unsafe { Ok(std::slice::from_raw_parts_mut(input, input_len)) }
+    }
+}
+
 impl ArgTypeInfo for Option<u32> {
     type ArgType = u32;
     fn convert_from(foreign: u32) -> Result<Self, SignalFfiError> {
@@ -237,6 +252,7 @@ macro_rules! ffi_arg_type {
     (Option<u32>) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
+    (&mut [u8]) => (*mut libc::c_uchar);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);

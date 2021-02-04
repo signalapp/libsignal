@@ -191,16 +191,6 @@ uint32_t signal_error_get_type(const SignalFfiError *err);
 
 void signal_error_free(SignalFfiError *err);
 
-SignalFfiError *signal_hkdf_derive(unsigned char *output,
-                                   size_t output_length,
-                                   int version,
-                                   const unsigned char *input_key_material,
-                                   size_t input_key_material_len,
-                                   const unsigned char *salt,
-                                   size_t salt_len,
-                                   const unsigned char *info,
-                                   size_t info_len);
-
 SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_key,
                                                    SignalPublicKey **public_key,
                                                    const unsigned char *input,
@@ -391,6 +381,16 @@ SignalFfiError *signal_signed_pre_key_record_clone(SignalSignedPreKeyRecord **ne
                                                    const SignalSignedPreKeyRecord *obj);
 
 SignalFfiError *signal_unidentified_sender_message_content_destroy(SignalUnidentifiedSenderMessageContent *p);
+
+SignalFfiError *signal_hkdf_derive(unsigned char *output,
+                                   size_t output_len,
+                                   uint32_t version,
+                                   const unsigned char *ikm,
+                                   size_t ikm_len,
+                                   const unsigned char *label,
+                                   size_t label_len,
+                                   const unsigned char *salt,
+                                   size_t salt_len);
 
 SignalFfiError *signal_address_new(SignalProtocolAddress **out,
                                    const char *name,

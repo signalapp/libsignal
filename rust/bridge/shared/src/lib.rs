@@ -71,6 +71,20 @@ fn HKDF_DeriveSecrets(
     })
 }
 
+#[bridge_fn_void(jni = false, node = false)]
+fn HKDF_Derive(
+    output: &mut [u8],
+    version: u32,
+    ikm: &[u8],
+    label: &[u8],
+    salt: &[u8],
+) -> Result<(), SignalProtocolError> {
+    let kdf = HKDF::new(version)?;
+    let kdf_output = kdf.derive_salted_secrets(ikm, salt, label, output.len())?;
+    output.copy_from_slice(&kdf_output);
+    Ok(())
+}
+
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id)
