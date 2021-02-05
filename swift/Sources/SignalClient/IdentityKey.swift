@@ -35,7 +35,7 @@ public struct IdentityKeyPair {
         var pubkeyPtr: OpaquePointer?
         var privkeyPtr: OpaquePointer?
         try bytes.withUnsafeBytes {
-            try checkError(signal_identitykeypair_deserialize(&pubkeyPtr, &privkeyPtr, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            try checkError(signal_identitykeypair_deserialize(&privkeyPtr, &pubkeyPtr, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
         }
 
         publicKey = PublicKey(owned: pubkeyPtr!)

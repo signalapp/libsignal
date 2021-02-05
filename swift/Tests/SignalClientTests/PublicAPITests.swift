@@ -290,6 +290,31 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(serverCert.signatureBytes.count, 64)
     }
 
+    private func testRoundTrip<Handle>(_ initial: Handle, serialize: (Handle) -> [UInt8], deserialize: ([UInt8]) throws -> Handle, line: UInt = #line) {
+        let bytes = serialize(initial)
+        let roundTripBytes = serialize(try! deserialize(bytes))
+        XCTAssertEqual(bytes, roundTripBytes, "\(Handle.self) did not round trip correctly", line: line)
+    }
+
+    func testSerializationRoundTrip() {
+        let keyPair = IdentityKeyPair.generate()
+        testRoundTrip(keyPair, serialize: { $0.serialize() }, deserialize: { try .init(bytes: $0) })
+        testRoundTrip(keyPair.publicKey, serialize: { $0.serialize() }, deserialize: { try .init($0) })
+        testRoundTrip(keyPair.privateKey, serialize: { $0.serialize() }, deserialize: { try .init($0) })
+        testRoundTrip(keyPair.identityKey, serialize: { $0.serialize() }, deserialize: { try .init(bytes: $0) })
+
+        let preKeyRecord = try! PreKeyRecord(id: 7, publicKey: keyPair.publicKey, privateKey: keyPair.privateKey)
+        testRoundTrip(preKeyRecord, serialize: { $0.serialize() }, deserialize: { try .init(bytes: $0) })
+
+        let signedPreKeyRecord = try! SignedPreKeyRecord(
+            id: 77,
+            timestamp: 42000,
+            privateKey: keyPair.privateKey,
+            signature: keyPair.privateKey.generateSignature(message: keyPair.publicKey.serialize())
+        )
+        testRoundTrip(signedPreKeyRecord, serialize: { $0.serialize() }, deserialize: { try .init(bytes: $0) })
+    }
+
     static var allTests: [(String, (PublicAPITests) -> () throws -> Void)] {
         return [
             ("testAddreses", testAddress),
@@ -300,6 +325,7 @@ class PublicAPITests: TestCaseBase {
             ("testAesGcmSiv", testAesGcmSiv),
             ("testGroupCipher", testGroupCipher),
             ("testSenderCertifications", testSenderCertificates),
+            ("testSerializationRoundTrip", testSerializationRoundTrip),
         ]
     }
 }
