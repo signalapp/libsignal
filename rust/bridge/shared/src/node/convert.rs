@@ -45,8 +45,7 @@ where
 
 pub(crate) trait ResultTypeInfo<'a>: Sized {
     type ResultType: neon::types::Value;
-    fn convert_into(self, cx: &mut FunctionContext<'a>)
-        -> NeonResult<Handle<'a, Self::ResultType>>;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>>;
 }
 
 fn can_convert_js_number_to_int(value: f64, valid_range: RangeInclusive<f64>) -> bool {
@@ -119,20 +118,14 @@ impl<'a> ArgTypeInfo<'a, 'a> for &'a [u8] {
 
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.boolean(self))
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for u64 {
     type ResultType = JsNumber;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         let result = self as f64;
         if result > MAX_SAFE_JS_INTEGER {
             cx.throw_range_error(format!(
@@ -146,30 +139,21 @@ impl<'a> ResultTypeInfo<'a> for u64 {
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JsString;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
     }
 }
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
     type ResultType = JsValue;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
             Some(value) => Ok(value.convert_into(cx)?.upcast()),
             None => Ok(cx.null().upcast()),
@@ -179,10 +163,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     type ResultType = JsBuffer;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         let bytes_len = match u32::try_from(self.len()) {
             Ok(l) => l,
             Err(_) => return cx.throw_error("Cannot return very large object to JS environment"),
@@ -200,10 +181,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
     for Result<T, libsignal_protocol::SignalProtocolError>
 {
     type ResultType = T::ResultType;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
             Ok(value) => value.convert_into(cx),
             // FIXME: Use a dedicated Error type?
@@ -214,10 +192,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Error> {
     type ResultType = T::ResultType;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
             Ok(value) => value.convert_into(cx),
             // FIXME: Use a dedicated Error type?
@@ -228,30 +203,21 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Er
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     type ResultType = T::ResultType;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self?.convert_into(cx)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for () {
     type ResultType = JsUndefined;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.undefined())
     }
 }
 
 impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     type ResultType = T;
-    fn convert_into(
-        self,
-        _cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, _cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(self)
     }
 }
@@ -279,7 +245,7 @@ macro_rules! full_range_integer {
             type ResultType = JsNumber;
             fn convert_into(
                 self,
-                cx: &mut FunctionContext<'a>,
+                cx: &mut impl Context<'a>,
             ) -> NeonResult<Handle<'a, Self::ResultType>> {
                 Ok(cx.number(self as f64))
             }
@@ -321,7 +287,7 @@ macro_rules! node_bridge_handle {
                 type ResultType = node::JsValue;
                 fn convert_into(
                     self,
-                    cx: &mut node::FunctionContext<'a>,
+                    cx: &mut impl node::Context<'a>,
                 ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
                     node::return_boxed_object(cx, Ok(self))
                 }
@@ -393,7 +359,7 @@ macro_rules! node_bridge_handle {
                 type ResultType = node::JsValue;
                 fn convert_into(
                     self,
-                    cx: &mut node::FunctionContext<'a>,
+                    cx: &mut impl node::Context<'a>,
                 ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
                     node::return_boxed_object(cx, Ok(std::cell::RefCell::new(self)))
                 }

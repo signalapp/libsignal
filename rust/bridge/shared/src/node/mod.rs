@@ -42,7 +42,7 @@ impl<T> Deref for DefaultFinalize<T> {
 pub type DefaultJsBox<T> = JsBox<DefaultFinalize<T>>;
 
 pub fn return_boxed_object<'a, T: 'static + Send>(
-    cx: &mut FunctionContext<'a>,
+    cx: &mut impl Context<'a>,
     value: Result<T, SignalProtocolError>,
 ) -> JsResult<'a, JsValue> {
     match value {
