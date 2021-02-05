@@ -50,6 +50,12 @@ describe('SignalClient', () => {
     assert.deepEqual(addr.name(), 'name');
     assert.deepEqual(addr.deviceId(), 42);
   });
+  it('SenderKeyName', () => {
+    const addr = SignalClient.SenderKeyName.new('group', 'sender', 42);
+    assert.deepEqual(addr.groupId(), 'group');
+    assert.deepEqual(addr.senderName(), 'sender');
+    assert.deepEqual(addr.senderDeviceId(), 42);
+  });
   it('Fingerprint', () => {
     const aliceKey = SignalClient.PublicKey.deserialize(
       Buffer.from(
@@ -123,6 +129,98 @@ describe('SignalClient', () => {
       bFprint1.scannableFingerprint().compare(bFprint1.scannableFingerprint())
     );
   });
+  it('SenderCertificate', () => {
+    const trustRoot = SignalClient.PrivateKey.generate();
+    const serverKey = SignalClient.PrivateKey.generate();
+
+    const keyId = 23;
+
+    const serverCert = SignalClient.ServerCertificate.new(
+      keyId,
+      serverKey.getPublicKey(),
+      trustRoot
+    );
+    assert.deepEqual(serverCert.keyId(), keyId);
+    assert.deepEqual(serverCert.key(), serverKey.getPublicKey());
+
+    const serverCertFromBytes = SignalClient.ServerCertificate.deserialize(
+      serverCert.serialize()
+    );
+    assert.deepEqual(serverCert, serverCertFromBytes);
+
+    const senderUuid = 'fedfe51e-2b91-4156-8710-7cc1bdd57cd8';
+    const senderE164 = '555-123-4567';
+    const senderDeviceId = 9;
+    const senderKey = SignalClient.PrivateKey.generate();
+    const expiration = 2114398800; // Jan 1, 2037
+
+    const senderCert = SignalClient.SenderCertificate.new(
+      senderUuid,
+      senderE164,
+      senderDeviceId,
+      senderKey.getPublicKey(),
+      expiration,
+      serverCert,
+      serverKey
+    );
+
+    assert.deepEqual(senderCert.serverCertificate(), serverCert);
+    assert.deepEqual(senderCert.senderUuid(), senderUuid);
+    assert.deepEqual(senderCert.senderE164(), senderE164);
+    assert.deepEqual(senderCert.senderDeviceId(), senderDeviceId);
+
+    const senderCertFromBytes = SignalClient.SenderCertificate.deserialize(
+      senderCert.serialize()
+    );
+    assert.deepEqual(senderCert, senderCertFromBytes);
+
+    assert(senderCert.validate(trustRoot.getPublicKey(), expiration - 1000));
+    assert(!senderCert.validate(trustRoot.getPublicKey(), expiration + 10)); // expired
+  });
+  it('SenderKeyMessage', () => {
+    const keyId = 9;
+    const iteration = 101;
+    const ciphertext = Buffer.alloc(32, 0xfe);
+    const pk = SignalClient.PrivateKey.generate();
+
+    const skm = SignalClient.SenderKeyMessage.new(
+      keyId,
+      iteration,
+      ciphertext,
+      pk
+    );
+    assert.deepEqual(skm.keyId(), keyId);
+    assert.deepEqual(skm.iteration(), iteration);
+    assert.deepEqual(skm.ciphertext(), ciphertext);
+
+    assert(skm.verifySignature(pk.getPublicKey()));
+
+    const skmFromBytes = SignalClient.SenderKeyMessage.deserialize(
+      skm.serialize()
+    );
+    assert.deepEqual(skm, skmFromBytes);
+  });
+  it('SenderKeyDistributionMessage', () => {
+    const keyId = 9;
+    const iteration = 101;
+    const chainKey = Buffer.alloc(32, 0xfe);
+    const pk = SignalClient.PrivateKey.generate();
+
+    const skdm = SignalClient.SenderKeyDistributionMessage.new(
+      keyId,
+      iteration,
+      chainKey,
+      pk.getPublicKey()
+    );
+    assert.deepEqual(skdm.id(), keyId);
+    assert.deepEqual(skdm.iteration(), iteration);
+    assert.deepEqual(skdm.chainKey(), chainKey);
+
+    const skdmFromBytes = SignalClient.SenderKeyDistributionMessage.deserialize(
+      skdm.serialize()
+    );
+    assert.deepEqual(skdm, skdmFromBytes);
+  });
   it('PublicKeyBundle', () => {
     const registrationId = 5;
     const deviceId = 23;
@@ -189,6 +287,38 @@ describe('SignalClient', () => {
     assert.deepEqual(pkr2.id(), 23);
     assert.deepEqual(pkr2.publicKey(), pubKey);
     assert.deepEqual(pkr2.privateKey(), privKey);
+  });
+  it('SignedPreKeyRecord', () => {
+    const privKey = SignalClient.PrivateKey.generate();
+    const pubKey = privKey.getPublicKey();
+    const timestamp = 9000;
+    const keyId = 23;
+    const signature = Buffer.alloc(64, 64);
+    const spkr = SignalClient.SignedPreKeyRecord.new(
+      keyId,
+      timestamp,
+      pubKey,
+      privKey,
+      signature
+    );
+
+    assert.deepEqual(spkr.id(), keyId);
+    assert.deepEqual(spkr.timestamp(), timestamp);
+    assert.deepEqual(spkr.publicKey(), pubKey);
+    assert.deepEqual(spkr.privateKey(), privKey);
+    assert.deepEqual(spkr.signature(), signature);
+
+    const spkrFromBytes = SignalClient.SignedPreKeyRecord.deserialize(
+      spkr.serialize()
+    );
+    assert.deepEqual(spkrFromBytes, spkr);
+  });
+  it('SenderKeyRecord', () => {
+    const skr = SignalClient.SenderKeyRecord.new();
+    const skrFromBytes = SignalClient.SenderKeyRecord.deserialize(
+      skr.serialize()
+    );
+    assert.deepEqual(skr, skrFromBytes);
   });
   it('SignalMessage and PreKeySignalMessage', () => {
     const messageVersion = 2;

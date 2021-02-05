@@ -151,7 +151,7 @@ export class ProtocolAddress {
     this.nativeHandle = handle;
   }
 
-  static fromNativeHandle(
+  static _fromNativeHandle(
     handle: SignalClient.ProtocolAddress
   ): ProtocolAddress {
     return new ProtocolAddress(handle);
@@ -177,7 +177,7 @@ export class PublicKey {
     this.nativeHandle = handle;
   }
 
-  static fromNativeHandle(handle: SignalClient.PublicKey): PublicKey {
+  static _fromNativeHandle(handle: SignalClient.PublicKey): PublicKey {
     return new PublicKey(handle);
   }
 
@@ -205,7 +205,7 @@ export class PrivateKey {
     this.nativeHandle = handle;
   }
 
-  static fromNativeHandle(handle: SignalClient.PrivateKey): PrivateKey {
+  static _fromNativeHandle(handle: SignalClient.PrivateKey): PrivateKey {
     return new PrivateKey(handle);
   }
 
@@ -237,7 +237,7 @@ export class PrivateKey {
   }
 
   getPublicKey(): PublicKey {
-    return PublicKey.fromNativeHandle(
+    return PublicKey._fromNativeHandle(
       SC.PrivateKey_GetPublicKey(this.nativeHandle)
     );
   }
@@ -279,7 +279,7 @@ export class PreKeyBundle {
     return SC.PreKeyBundle_GetDeviceId(this.nativeHandle);
   }
   identityKey(): PublicKey {
-    return PublicKey.fromNativeHandle(
+    return PublicKey._fromNativeHandle(
       SC.PreKeyBundle_GetIdentityKey(this.nativeHandle)
     );
   }
@@ -292,7 +292,7 @@ export class PreKeyBundle {
     if (handle == null) {
       return null;
     } else {
-      return PublicKey.fromNativeHandle(handle);
+      return PublicKey._fromNativeHandle(handle);
     }
   }
   registrationId(): number {
@@ -302,7 +302,7 @@ export class PreKeyBundle {
     return SC.PreKeyBundle_GetSignedPreKeyId(this.nativeHandle);
   }
   signedPreKeyPublic(): PublicKey {
-    return PublicKey.fromNativeHandle(
+    return PublicKey._fromNativeHandle(
       SC.PreKeyBundle_GetSignedPreKeyPublic(this.nativeHandle)
     );
   }
@@ -337,19 +337,77 @@ export class PreKeyRecord {
   }
 
   privateKey(): PrivateKey {
-    return PrivateKey.fromNativeHandle(
+    return PrivateKey._fromNativeHandle(
       SC.PreKeyRecord_GetPrivateKey(this.nativeHandle)
     );
   }
 
   publicKey(): PublicKey {
-    return PublicKey.fromNativeHandle(
+    return PublicKey._fromNativeHandle(
       SC.PreKeyRecord_GetPublicKey(this.nativeHandle)
     );
   }
 
   serialize(): Buffer {
     return SC.PreKeyRecord_Serialize(this.nativeHandle);
+  }
+}
+
+export class SignedPreKeyRecord {
+  private readonly nativeHandle: SignalClient.SignedPreKeyRecord;
+
+  private constructor(handle: SignalClient.SignedPreKeyRecord) {
+    this.nativeHandle = handle;
+  }
+
+  static new(
+    id: number,
+    timestamp: number,
+    pubKey: PublicKey,
+    privKey: PrivateKey,
+    signature: Buffer
+  ): SignedPreKeyRecord {
+    return new SignedPreKeyRecord(
+      SC.SignedPreKeyRecord_New(
+        id,
+        timestamp,
+        pubKey._unsafeGetNativeHandle(),
+        privKey._unsafeGetNativeHandle(),
+        signature
+      )
+    );
+  }
+
+  static deserialize(buffer: Buffer): SignedPreKeyRecord {
+    return new SignedPreKeyRecord(SC.SignedPreKeyRecord_Deserialize(buffer));
+  }
+
+  id(): number {
+    return SC.SignedPreKeyRecord_GetId(this.nativeHandle);
+  }
+
+  privateKey(): PrivateKey {
+    return PrivateKey._fromNativeHandle(
+      SC.SignedPreKeyRecord_GetPrivateKey(this.nativeHandle)
+    );
+  }
+
+  publicKey(): PublicKey {
+    return PublicKey._fromNativeHandle(
+      SC.SignedPreKeyRecord_GetPublicKey(this.nativeHandle)
+    );
+  }
+
+  serialize(): Buffer {
+    return SC.SignedPreKeyRecord_Serialize(this.nativeHandle);
+  }
+
+  signature(): Buffer {
+    return SC.SignedPreKeyRecord_GetSignature(this.nativeHandle);
+  }
+
+  timestamp(): number {
+    return SC.SignedPreKeyRecord_GetTimestamp(this.nativeHandle);
   }
 }
 
@@ -473,5 +531,351 @@ export class PreKeySignalMessage {
 
   serialize(): Buffer {
     return SC.PreKeySignalMessage_Serialize(this.nativeHandle);
+  }
+}
+
+export class SessionRecord {
+  private readonly nativeHandle: SignalClient.SessionRecord;
+
+  private constructor(nativeHandle: SignalClient.SessionRecord) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static deserialize(buffer: Buffer): SessionRecord {
+    return new SessionRecord(SC.SessionRecord_Deserialize(buffer));
+  }
+
+  serialize(): Buffer {
+    return SC.SessionRecord_Serialize(this.nativeHandle);
+  }
+
+  archiveCurrentState(): void {
+    SC.SessionRecord_ArchiveCurrentState(this.nativeHandle);
+  }
+
+  localRegistrationId(): number {
+    return SC.SessionRecord_GetLocalRegistrationId(this.nativeHandle);
+  }
+
+  remoteRegistrationId(): number {
+    return SC.SessionRecord_GetRemoteRegistrationId(this.nativeHandle);
+  }
+}
+
+export class SenderKeyName {
+  private readonly nativeHandle: SignalClient.SenderKeyName;
+
+  private constructor(nativeHandle: SignalClient.SenderKeyName) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static new(
+    groupId: string,
+    senderName: string,
+    senderDeviceId: number
+  ): SenderKeyName {
+    return new SenderKeyName(
+      SC.SenderKeyName_New(groupId, senderName, senderDeviceId)
+    );
+  }
+
+  groupId(): string {
+    return SC.SenderKeyName_GetGroupId(this.nativeHandle);
+  }
+
+  senderName(): string {
+    return SC.SenderKeyName_GetSenderName(this.nativeHandle);
+  }
+  senderDeviceId(): number {
+    return SC.SenderKeyName_GetSenderDeviceId(this.nativeHandle);
+  }
+}
+
+export class ServerCertificate {
+  private readonly nativeHandle: SignalClient.ServerCertificate;
+
+  _unsafeGetNativeHandle(): SignalClient.ServerCertificate {
+    return this.nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.ServerCertificate
+  ): ServerCertificate {
+    return new ServerCertificate(nativeHandle);
+  }
+
+  private constructor(nativeHandle: SignalClient.ServerCertificate) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static new(
+    keyId: number,
+    serverKey: PublicKey,
+    trustRoot: PrivateKey
+  ): ServerCertificate {
+    return new ServerCertificate(
+      SC.ServerCertificate_New(
+        keyId,
+        serverKey._unsafeGetNativeHandle(),
+        trustRoot._unsafeGetNativeHandle()
+      )
+    );
+  }
+
+  static deserialize(buffer: Buffer): ServerCertificate {
+    return new ServerCertificate(SC.ServerCertificate_Deserialize(buffer));
+  }
+
+  certificateData(): Buffer {
+    return SC.ServerCertificate_GetCertificate(this.nativeHandle);
+  }
+
+  key(): PublicKey {
+    return PublicKey._fromNativeHandle(
+      SC.ServerCertificate_GetKey(this.nativeHandle)
+    );
+  }
+
+  keyId(): number {
+    return SC.ServerCertificate_GetKeyId(this.nativeHandle);
+  }
+
+  serialize(): Buffer {
+    return SC.ServerCertificate_GetSerialized(this.nativeHandle);
+  }
+
+  signature(): Buffer {
+    return SC.ServerCertificate_GetSignature(this.nativeHandle);
+  }
+}
+
+export class SenderKeyRecord {
+  private readonly nativeHandle: SignalClient.SenderKeyRecord;
+
+  private constructor(nativeHandle: SignalClient.SenderKeyRecord) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static new(): SenderKeyRecord {
+    return new SenderKeyRecord(SC.SenderKeyRecord_New());
+  }
+
+  static deserialize(buffer: Buffer): SenderKeyRecord {
+    return new SenderKeyRecord(SC.SenderKeyRecord_Deserialize(buffer));
+  }
+
+  serialize(): Buffer {
+    return SC.SenderKeyRecord_Serialize(this.nativeHandle);
+  }
+}
+
+export class SenderCertificate {
+  private readonly nativeHandle: SignalClient.SenderCertificate;
+
+  private constructor(nativeHandle: SignalClient.SenderCertificate) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.SenderCertificate
+  ): SenderCertificate {
+    return new SenderCertificate(nativeHandle);
+  }
+
+  static new(
+    senderUuid: string,
+    senderE164: string | null,
+    senderDeviceId: number,
+    senderKey: PublicKey,
+    expiration: number,
+    signerCert: ServerCertificate,
+    signerKey: PrivateKey
+  ): SenderCertificate {
+    return new SenderCertificate(
+      SC.SenderCertificate_New(
+        senderUuid,
+        senderE164,
+        senderDeviceId,
+        senderKey._unsafeGetNativeHandle(),
+        expiration,
+        signerCert._unsafeGetNativeHandle(),
+        signerKey._unsafeGetNativeHandle()
+      )
+    );
+  }
+
+  static deserialize(buffer: Buffer): SenderCertificate {
+    return new SenderCertificate(SC.SenderCertificate_Deserialize(buffer));
+  }
+
+  serialize(): Buffer {
+    return SC.SenderCertificate_GetSerialized(this.nativeHandle);
+  }
+
+  certificate(): Buffer {
+    return SC.SenderCertificate_GetCertificate(this.nativeHandle);
+  }
+  expiration(): number {
+    return SC.SenderCertificate_GetExpiration(this.nativeHandle);
+  }
+  key(): PublicKey {
+    return PublicKey._fromNativeHandle(
+      SC.SenderCertificate_GetKey(this.nativeHandle)
+    );
+  }
+  senderE164(): string | null {
+    return SC.SenderCertificate_GetSenderE164(this.nativeHandle);
+  }
+  senderUuid(): string {
+    return SC.SenderCertificate_GetSenderUuid(this.nativeHandle);
+  }
+  senderDeviceId(): number {
+    return SC.SenderCertificate_GetDeviceId(this.nativeHandle);
+  }
+  serverCertificate(): ServerCertificate {
+    return ServerCertificate._fromNativeHandle(
+      SC.SenderCertificate_GetServerCertificate(this.nativeHandle)
+    );
+  }
+  signature(): Buffer {
+    return SC.SenderCertificate_GetSignature(this.nativeHandle);
+  }
+  validate(trustRoot: PublicKey, time: number): boolean {
+    return SC.SenderCertificate_Validate(
+      this.nativeHandle,
+      trustRoot._unsafeGetNativeHandle(),
+      time
+    );
+  }
+}
+
+export class SenderKeyDistributionMessage {
+  private readonly nativeHandle: SignalClient.SenderKeyDistributionMessage;
+
+  private constructor(nativeHandle: SignalClient.SenderKeyDistributionMessage) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static new(
+    keyId: number,
+    iteration: number,
+    chainKey: Buffer,
+    pk: PublicKey
+  ): SenderKeyDistributionMessage {
+    return new SenderKeyDistributionMessage(
+      SC.SenderKeyDistributionMessage_New(
+        keyId,
+        iteration,
+        chainKey,
+        pk._unsafeGetNativeHandle()
+      )
+    );
+  }
+
+  static deserialize(buffer: Buffer): SenderKeyDistributionMessage {
+    return new SenderKeyDistributionMessage(
+      SC.SenderKeyDistributionMessage_Deserialize(buffer)
+    );
+  }
+
+  serialize(): Buffer {
+    return SC.SenderKeyDistributionMessage_Serialize(this.nativeHandle);
+  }
+
+  chainKey(): Buffer {
+    return SC.SenderKeyDistributionMessage_GetChainKey(this.nativeHandle);
+  }
+
+  iteration(): number {
+    return SC.SenderKeyDistributionMessage_GetIteration(this.nativeHandle);
+  }
+
+  id(): number {
+    return SC.SenderKeyDistributionMessage_GetId(this.nativeHandle);
+  }
+}
+
+export class SenderKeyMessage {
+  private readonly nativeHandle: SignalClient.SenderKeyMessage;
+
+  private constructor(nativeHandle: SignalClient.SenderKeyMessage) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static new(
+    keyId: number,
+    iteration: number,
+    ciphertext: Buffer,
+    pk: PrivateKey
+  ): SenderKeyMessage {
+    return new SenderKeyMessage(
+      SC.SenderKeyMessage_New(
+        keyId,
+        iteration,
+        ciphertext,
+        pk._unsafeGetNativeHandle()
+      )
+    );
+  }
+
+  static deserialize(buffer: Buffer): SenderKeyMessage {
+    return new SenderKeyMessage(SC.SenderKeyMessage_Deserialize(buffer));
+  }
+
+  serialize(): Buffer {
+    return SC.SenderKeyMessage_Serialize(this.nativeHandle);
+  }
+
+  ciphertext(): Buffer {
+    return SC.SenderKeyMessage_GetCipherText(this.nativeHandle);
+  }
+
+  iteration(): number {
+    return SC.SenderKeyMessage_GetIteration(this.nativeHandle);
+  }
+
+  keyId(): number {
+    return SC.SenderKeyMessage_GetKeyId(this.nativeHandle);
+  }
+
+  verifySignature(key: PublicKey): boolean {
+    return SC.SenderKeyMessage_VerifySignature(
+      this.nativeHandle,
+      key._unsafeGetNativeHandle()
+    );
+  }
+}
+
+export class UnidentifiedSenderMessageContent {
+  private readonly nativeHandle: SignalClient.UnidentifiedSenderMessageContent;
+
+  private constructor(
+    nativeHandle: SignalClient.UnidentifiedSenderMessageContent
+  ) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static deserialize(buffer: Buffer): UnidentifiedSenderMessageContent {
+    return new UnidentifiedSenderMessageContent(
+      SC.UnidentifiedSenderMessageContent_Deserialize(buffer)
+    );
+  }
+
+  serialize(): Buffer {
+    return SC.UnidentifiedSenderMessageContent_Serialize(this.nativeHandle);
+  }
+
+  contents(): Buffer {
+    return SC.UnidentifiedSenderMessageContent_GetContents(this.nativeHandle);
+  }
+
+  msgType(): number {
+    return SC.UnidentifiedSenderMessageContent_GetMsgType(this.nativeHandle);
+  }
+
+  senderCertificate(): SenderCertificate {
+    return SenderCertificate._fromNativeHandle(
+      SC.UnidentifiedSenderMessageContent_GetSenderCert(this.nativeHandle)
+    );
   }
 }
