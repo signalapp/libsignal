@@ -72,7 +72,7 @@ fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
 
     let recovered = ServerCertificate::deserialize(&serialized)?;
 
-    assert_eq!(recovered.validate(&trust_root.public_key).unwrap(), false);
+    assert_eq!(recovered.validate(&trust_root.public_key)?, false);
 
     Ok(())
 }
@@ -151,8 +151,8 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
 
         let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
 

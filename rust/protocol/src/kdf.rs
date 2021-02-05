@@ -94,7 +94,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_vector_v3() {
+    fn test_vector_v3() -> Result<()> {
         let ikm = [
             0x0bu8, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
             0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
@@ -109,16 +109,15 @@ mod tests {
             0xec, 0xc4, 0xc5, 0xbf, 0x34, 0x00, 0x72, 0x08, 0xd5, 0xb8, 0x87, 0x18, 0x58, 0x65,
         ];
 
-        let output = HKDF::new(3)
-            .unwrap()
-            .derive_salted_secrets(&ikm, &salt, &info, okm.len())
-            .unwrap();
+        let output = HKDF::new(3)?.derive_salted_secrets(&ikm, &salt, &info, okm.len())?;
 
         assert_eq!(&okm[..], &output[..]);
+
+        Ok(())
     }
 
     #[test]
-    fn test_vector_long_v3() {
+    fn test_vector_long_v3() -> Result<()> {
         let ikm = [
             0x00u8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
             0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
@@ -152,16 +151,15 @@ mod tests {
             0x3e, 0x87, 0xc1, 0x4c, 0x01, 0xd5, 0xc1, 0xf3, 0x43, 0x4f, 0x1d, 0x87,
         ];
 
-        let output = HKDF::new(3)
-            .unwrap()
-            .derive_salted_secrets(&ikm, &salt, &info, okm.len())
-            .unwrap();
+        let output = HKDF::new(3)?.derive_salted_secrets(&ikm, &salt, &info, okm.len())?;
 
         assert_eq!(&okm[..], &output[..]);
+
+        Ok(())
     }
 
     #[test]
-    fn test_vector_v2() {
+    fn test_vector_v2() -> Result<()> {
         let ikm = [
             0x0bu8, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
             0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
@@ -178,11 +176,10 @@ mod tests {
             0x4a, 0xa9, 0xfd, 0xa8, 0x99, 0xda, 0xeb, 0xec,
         ];
 
-        let output = HKDF::new(2)
-            .unwrap()
-            .derive_salted_secrets(&ikm, &salt, &info, okm.len())
-            .unwrap();
+        let output = HKDF::new(2)?.derive_salted_secrets(&ikm, &salt, &info, okm.len())?;
 
         assert_eq!(&okm[..], &output[..]);
+
+        Ok(())
     }
 }

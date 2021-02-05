@@ -111,7 +111,7 @@ impl Aes256GcmSiv {
 
         let mut ctr = [0u8; PAD_SIZE];
         let mut pad = [0u8; PAD_SIZE];
-        let mut counter = u32::from_le_bytes(nonce[..4].try_into().unwrap());
+        let mut counter = u32::from_le_bytes(nonce[..4].try_into().expect("Correct size"));
 
         let pads_required = (buffer.len() + PAD_SIZE) / PAD_SIZE;
 

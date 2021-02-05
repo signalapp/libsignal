@@ -80,15 +80,17 @@ impl Polyval {
 }
 
 #[test]
-fn polyval_kat() {
-    let h = hex::decode("25629347589242761d31f826ba4b757b").unwrap();
-    let input1 = hex::decode("4f4f95668c83dfb6401762bb2d01a262").unwrap();
-    let input2 = hex::decode("d1a24ddd2721d006bbe45f20d3c9f362").unwrap();
-    let mut poly = Polyval::new(&h).unwrap();
-    poly.update(&input1).unwrap();
-    poly.update(&input2).unwrap();
+fn polyval_kat() -> Result<()> {
+    let h = hex::decode("25629347589242761d31f826ba4b757b").expect("valid hex");
+    let input1 = hex::decode("4f4f95668c83dfb6401762bb2d01a262").expect("valid hex");
+    let input2 = hex::decode("d1a24ddd2721d006bbe45f20d3c9f362").expect("valid hex");
+    let mut poly = Polyval::new(&h)?;
+    poly.update(&input1)?;
+    poly.update(&input2)?;
 
-    let result = poly.finalize().unwrap();
+    let result = poly.finalize()?;
 
     assert_eq!(hex::encode(&result), "f7a3b47b846119fae5b7866cf5e5b77e");
+
+    Ok(())
 }

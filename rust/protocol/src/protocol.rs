@@ -346,22 +346,30 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
         }
 
         let proto_structure = proto::wire::PreKeySignalMessage::decode(&value[1..])?;
-        if proto_structure.signed_pre_key_id.is_none()
-            || proto_structure.base_key.is_none()
-            || proto_structure.identity_key.is_none()
-            || proto_structure.message.is_none()
-        {
-            return Err(SignalProtocolError::InvalidProtobufEncoding);
-        }
-        let base_key = PublicKey::deserialize(proto_structure.base_key.unwrap().as_ref())?;
+
+        let base_key = proto_structure
+            .base_key
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let identity_key = proto_structure
+            .identity_key
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let message = proto_structure
+            .message
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let signed_pre_key_id = proto_structure
+            .signed_pre_key_id
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+
+        let base_key = PublicKey::deserialize(base_key.as_ref())?;
+
         Ok(PreKeySignalMessage {
             message_version,
             registration_id: proto_structure.registration_id.unwrap_or(0),
             pre_key_id: proto_structure.pre_key_id,
-            signed_pre_key_id: proto_structure.signed_pre_key_id.unwrap(),
+            signed_pre_key_id,
             base_key,
-            identity_key: IdentityKey::try_from(proto_structure.identity_key.unwrap().as_ref())?,
-            message: SignalMessage::try_from(proto_structure.message.unwrap().as_ref())?,
+            identity_key: IdentityKey::try_from(identity_key.as_ref())?,
+            message: SignalMessage::try_from(message.as_ref())?,
             serialized: Box::from(value),
         })
     }
@@ -624,7 +632,7 @@ mod tests {
     use rand::rngs::OsRng;
     use rand::{CryptoRng, Rng};
 
-    fn create_signal_message<T>(csprng: &mut T) -> SignalMessage
+    fn create_signal_message<T>(csprng: &mut T) -> Result<SignalMessage>
     where
         T: Rng + CryptoRng,
     {
@@ -650,7 +658,6 @@ mod tests {
             &sender_identity_key_pair.public_key.into(),
             &receiver_identity_key_pair.public_key.into(),
         )
-        .unwrap()
     }
 
     fn assert_signal_message_equals(m1: &SignalMessage, m2: &SignalMessage) {
@@ -663,20 +670,21 @@ mod tests {
     }
 
     #[test]
-    fn test_signal_message_serialize_deserialize() {
+    fn test_signal_message_serialize_deserialize() -> Result<()> {
         let mut csprng = OsRng;
-        let message = create_signal_message(&mut csprng);
+        let message = create_signal_message(&mut csprng)?;
         let deser_message =
             SignalMessage::try_from(message.as_ref()).expect("should deserialize without error");
         assert_signal_message_equals(&message, &deser_message);
+        Ok(())
     }
 
     #[test]
-    fn test_pre_key_signal_message_serialize_deserialize() {
+    fn test_pre_key_signal_message_serialize_deserialize() -> Result<()> {
         let mut csprng = OsRng;
         let identity_key_pair = KeyPair::generate(&mut csprng);
         let base_key_pair = KeyPair::generate(&mut csprng);
-        let message = create_signal_message(&mut csprng);
+        let message = create_signal_message(&mut csprng)?;
         let pre_key_signal_message = PreKeySignalMessage::new(
             3,
             365,
@@ -685,8 +693,7 @@ mod tests {
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,
-        )
-        .unwrap();
+        )?;
         let deser_pre_key_signal_message =
             PreKeySignalMessage::try_from(pre_key_signal_message.as_ref())
                 .expect("should deserialize without error");
@@ -722,10 +729,11 @@ mod tests {
             pre_key_signal_message.serialized,
             deser_pre_key_signal_message.serialized
         );
+        Ok(())
     }
 
     #[test]
-    fn test_sender_key_message_serialize_deserialize() {
+    fn test_sender_key_message_serialize_deserialize() -> Result<()> {
         let mut csprng = OsRng;
         let signature_key_pair = KeyPair::generate(&mut csprng);
         let sender_key_message = SenderKeyMessage::new(
@@ -734,8 +742,7 @@ mod tests {
             &[1u8, 2, 3],
             &mut csprng,
             &signature_key_pair.private_key,
-        )
-        .unwrap();
+        )?;
         let deser_sender_key_message = SenderKeyMessage::try_from(sender_key_message.as_ref())
             .expect("should deserialize without error");
         assert_eq!(
@@ -755,5 +762,6 @@ mod tests {
             sender_key_message.serialized,
             deser_sender_key_message.serialized
         );
+        Ok(())
     }
 }
