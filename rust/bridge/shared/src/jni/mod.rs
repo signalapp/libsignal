@@ -9,6 +9,7 @@ use jni::sys::jobject;
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol::*;
 use std::convert::TryFrom;
+use std::error::Error;
 
 pub(crate) use jni::objects::{JClass, JString};
 pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring};
@@ -32,21 +33,22 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             callback,
             exception,
         )) => {
-            match exception.downcast::<ThrownException>() {
-                Ok(exception) => {
-                    if let Err(e) = env.throw(exception.as_obj()) {
-                        log::error!("failed to rethrow exception from {}: {}", callback, e);
-                    }
-                    return;
+            // The usual way to write this code would be to match on the result of Error::downcast.
+            // However, the "failure" result, which is intended to return the original type back,
+            // only supports Send and Sync as additional traits. For anything else, we have to test first.
+            if Error::is::<ThrownException>(&*exception) {
+                let exception =
+                    Error::downcast::<ThrownException>(exception).expect("just checked");
+                if let Err(e) = env.throw(exception.as_obj()) {
+                    log::error!("failed to rethrow exception from {}: {}", callback, e);
                 }
-                Err(other_underlying_error) => {
-                    // Fall through to generic handling below.
-                    SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
-                        callback,
-                        other_underlying_error,
-                    ))
-                }
+                return;
             }
+
+            // Fall through to generic handling below.
+            SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
+                callback, exception,
+            ))
         }
 
         SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(ref addr)) => {

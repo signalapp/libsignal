@@ -7,6 +7,7 @@ use crate::curve::KeyType;
 
 use std::error::Error;
 use std::fmt;
+use std::panic::UnwindSafe;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 
@@ -57,7 +58,7 @@ pub enum SignalProtocolError {
     MessageDecryptionFailed(String),
     InternalError(&'static str),
     FfiBindingError(String),
-    ApplicationCallbackError(&'static str, Box<dyn Error + 'static>),
+    ApplicationCallbackError(&'static str, Box<dyn Error + Send + UnwindSafe + 'static>),
 
     InvalidSealedSenderMessage(String),
     UnknownSealedSenderVersion(u8),
