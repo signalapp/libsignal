@@ -94,7 +94,7 @@ jobs:
 
     - name: Check for duplicate dependencies
       run: |
-        DUPS=$(cargo tree -d -e normal)
+        DUPS=$(cargo tree -d -e normal --workspace)
         echo $DUPS
         test -z "$DUPS"
 

@@ -22,4 +22,4 @@ libsignal-protocol = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node"] }
 neon = { version = "0.7", default-features = false, features = ["napi-4", "event-queue-api"] }
 rand = "0.7.3"
-log = "0.4.11"
+log = "0.4"

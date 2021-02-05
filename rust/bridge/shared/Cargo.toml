@@ -15,7 +15,7 @@ libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
 libsignal-bridge-macros = { path = "macros" }
 futures = "0.3.7"
-log = "0.4.11"
+log = "0.4"
 paste = "1.0"
 rand = "0.7.3"
 static_assertions = "1.1"
