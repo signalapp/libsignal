@@ -38,3 +38,4 @@ mod result;
 pub use result::JsPromiseResult;
 
 mod util;
+pub use util::call_method;

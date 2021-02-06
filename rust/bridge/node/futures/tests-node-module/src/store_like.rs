@@ -27,11 +27,7 @@ impl NameStore {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_queue, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
-            let op = store_object
-                .get(cx, "getName")?
-                .downcast_or_throw::<JsFunction, _>(cx)?;
-            let result = op
-                .call(cx, store_object, std::iter::empty::<Handle<JsValue>>())?
+            let result = call_method(cx, store_object, "getName", std::iter::empty())?
                 .downcast_or_throw(cx)?;
             store_object_shared.finalize(cx);
             Ok(result)

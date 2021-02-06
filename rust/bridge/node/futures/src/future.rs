@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex, Weak};
 use std::task::{Poll, Waker};
 
 use crate::result::*;
+use crate::util::call_method;
 
 mod builder;
 pub use builder::JsFutureBuilder;
@@ -99,14 +100,8 @@ impl<T: Send + 'static> WeakFutureToken<T> {
         cx: &mut C,
     ) -> JsResult<'a, JsValue> {
         let settle = JsFunction::new(cx, settle_promise::<T, R>)?;
-        let bind = settle
-            .get(cx, "bind")?
-            .downcast_or_throw::<JsFunction, _>(cx)?;
-        let bind_args = vec![
-            cx.undefined().upcast::<JsValue>(),
-            cx.boxed(self.clone()).upcast(),
-        ];
-        bind.call(cx, settle, bind_args)
+        let bind_args = vec![cx.undefined().upcast(), cx.boxed(self.clone()).upcast()];
+        call_method(cx, settle, "bind", bind_args)
     }
 }
 
@@ -178,10 +173,7 @@ impl<T: 'static + Send> JsFuture<T> {
         let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
         let bound_reject = settle_token.bind_settle_promise::<_, JsRejectedResult>(cx)?;
 
-        let then = promise
-            .get(cx, "then")?
-            .downcast_or_throw::<JsFunction, _>(cx)?;
-        then.call(cx, promise, vec![bound_fulfill, bound_reject])?;
+        call_method(cx, promise, "then", vec![bound_fulfill, bound_reject])?;
 
         Ok(future)
     }

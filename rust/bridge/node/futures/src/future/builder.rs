@@ -42,10 +42,8 @@ impl<F: GetPromiseCallback, T: 'static + Send> JsFutureBuilder<'_, F, T> {
                 let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
 
                 let promise = get_promise(cx)?;
-                let then = promise
-                    .get(cx, "then")?
-                    .downcast_or_throw::<JsFunction, _>(cx)?;
-                then.call(cx, promise, vec![bound_fulfill, bound_reject])?;
+                call_method(cx, promise, "then", vec![bound_fulfill, bound_reject])?;
+
                 Ok(())
             });
             if let Err(exception) = result {

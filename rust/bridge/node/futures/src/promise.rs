@@ -68,11 +68,12 @@ where
 {
     let callbacks_object = cx.empty_object();
     let save_promise_callbacks_fn = JsFunction::new(cx, save_promise_callbacks)?;
-    let bind_fn: Handle<JsFunction> = save_promise_callbacks_fn
-        .get(cx, "bind")?
-        .downcast_or_throw(cx)?;
-    let bound_save_promise_callbacks =
-        bind_fn.call(cx, save_promise_callbacks_fn, vec![callbacks_object])?;
+    let bound_save_promise_callbacks = call_method(
+        cx,
+        save_promise_callbacks_fn,
+        "bind",
+        vec![callbacks_object.upcast()],
+    )?;
 
     let promise_ctor: Handle<JsFunction> = cx.global().get(cx, "Promise")?.downcast_or_throw(cx)?;
     let promise = promise_ctor.construct(cx, vec![bound_save_promise_callbacks])?;
