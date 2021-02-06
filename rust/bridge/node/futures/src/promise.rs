@@ -82,38 +82,48 @@ where
     let queue = cx.queue();
 
     cx.run_future_on_queue(async move {
-        let result = future.catch_unwind().await;
+        let result: std::thread::Result<Result<F, PersistentException>> =
+            future.catch_unwind().await;
 
         queue.send(move |mut cx| -> NeonResult<()> {
-            let settled_result = match result {
-                Ok(Ok(settle)) => {
-                    // This AssertUnwindSafe is not technically safe.
-                    // If we get a panic downstream, it is entirely possible the JavaScript context won't be usable anymore.
-                    // However, that's no more unsafe than JsAsyncContext::with_context,
-                    // or for that matter Neon automatically catching panics by default.
-                    let mut cx = AssertUnwindSafe(&mut cx);
-                    catch_unwind(move || cx.try_catch(|cx| settle(cx)))
-                }
-                Ok(Err(exception)) => Ok(Err(exception.into_inner(&mut cx))),
-                Err(panic) => Err(panic),
-            };
-            let folded_result = settled_result.unwrap_or_else(|panic| {
-                Err(cx
-                    .error(format!("unexpected panic: {}", describe_panic(&panic)))
-                    .expect("can create an Error")
-                    .upcast())
-            });
+            let settled_result: std::thread::Result<Result<Handle<V>, Handle<JsValue>>> =
+                match result {
+                    Ok(Ok(settle)) => {
+                        // This AssertUnwindSafe is not technically safe.
+                        // If we get a panic downstream, it is entirely possible the JavaScript context won't be usable anymore.
+                        // However, that's no more unsafe than JsAsyncContext::with_context,
+                        // or for that matter Neon automatically catching panics by default.
+                        let mut cx = AssertUnwindSafe(&mut cx);
+                        catch_unwind(move || cx.try_catch(|cx| settle(cx)))
+                    }
+                    Ok(Err(exception)) => Ok(Err(exception.into_inner(&mut cx))),
+                    Err(panic) => Err(panic),
+                };
 
-            let (value, callback_name) = match folded_result {
-                Ok(value) => (value.upcast(), RESOLVE_SLOT),
-                Err(exception) => (exception, REJECT_SLOT),
-            };
+            let folded_result: Result<Handle<V>, Handle<JsValue>> =
+                settled_result.unwrap_or_else(|panic| {
+                    Err(cx
+                        .error(format!("unexpected panic: {}", describe_panic(&panic)))
+                        .expect("can create an Error")
+                        .upcast())
+                });
 
             let callbacks_object = callbacks_object_root.into_inner(&mut cx);
-            let promise_callback: Handle<JsFunction> = callbacks_object
-                .get(&mut cx, callback_name)?
-                .downcast_or_throw(&mut cx)?;
-            promise_callback.call(&mut cx, callbacks_object, vec![value])?;
+
+            match folded_result {
+                Ok(value) => {
+                    call_method(
+                        &mut cx,
+                        callbacks_object,
+                        RESOLVE_SLOT,
+                        vec![value.upcast()],
+                    )?;
+                }
+                Err(exception) => {
+                    call_method(&mut cx, callbacks_object, REJECT_SLOT, vec![exception])?;
+                }
+            }
+
             Ok(())
         });
     });
