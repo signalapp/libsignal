@@ -79,6 +79,9 @@ impl<F: GetPromiseCallback, T: 'static + Send>
             + 'static
             + Send,
     {
-        self.then(move |cx, result| PersistentException::try_catch(cx, |cx| transform(cx, result)))
+        self.then(move |cx, result| {
+            cx.try_catch(|cx| transform(cx, result))
+                .map_err(|e| PersistentException::new(cx, e))
+        })
     }
 }

@@ -51,10 +51,11 @@ fn increment_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
     // A much simpler variant that uses the higher abstractions provided by promise.
     let promise = cx.argument::<JsObject>(0)?;
     let future = JsFuture::from_promise(&mut cx, promise, move |cx, result| {
-        PersistentException::try_catch(cx, |cx| {
+        cx.try_catch(|cx| {
             let value = result.or_else(|e| cx.throw(e))?;
             Ok(value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx))
         })
+        .map_err(|e| PersistentException::new(cx, e))
     })?;
 
     signal_neon_futures::promise(&mut cx, async move {
