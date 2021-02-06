@@ -72,7 +72,7 @@ pub fn double_name_from_store(mut cx: FunctionContext) -> JsResult<JsObject> {
     promise(&mut cx, async move {
         let future = AssertUnwindSafe(double_name_from_store_impl(&mut store));
         let result = future.await;
-        fulfill_promise(move |cx| {
+        settle_promise(move |cx| {
             store.finalize(cx);
             match result {
                 Ok(doubled) => Ok(cx.string(doubled)),
@@ -95,7 +95,7 @@ pub fn double_name_from_store_using_join(mut cx: FunctionContext) -> JsResult<Js
     promise(&mut cx, async move {
         let future = AssertUnwindSafe(double_name_from_store_using_join_impl(&mut store));
         let result = future.await;
-        fulfill_promise(move |cx| {
+        settle_promise(move |cx| {
             store.finalize(cx);
             match result {
                 Ok(doubled) => Ok(cx.string(doubled)),

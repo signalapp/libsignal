@@ -19,7 +19,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let completion_callback = cx.argument::<JsFunction>(1)?.root(&mut cx);
     let queue = cx.queue();
 
-    let future = JsFuture::await_promise(&mut cx, promise, |cx, result| match result {
+    let future = JsFuture::from_promise(&mut cx, promise, |cx, result| match result {
         Ok(value) => Ok(value
             .downcast::<JsNumber, _>(cx)
             .expect("is number")
@@ -50,7 +50,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn increment_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
     // A much simpler variant that uses the higher abstractions provided by promise.
     let promise = cx.argument::<JsObject>(0)?;
-    let future = JsFuture::await_promise(&mut cx, promise, move |cx, result| {
+    let future = JsFuture::from_promise(&mut cx, promise, move |cx, result| {
         PersistentException::try_catch(cx, |cx| {
             let value = result.or_else(|e| cx.throw(e))?;
             Ok(value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx))
@@ -59,7 +59,7 @@ fn increment_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
 
     signal_neon_futures::promise(&mut cx, async move {
         let value = future.await?;
-        fulfill_promise(move |cx| Ok(cx.number(value + 1.0)))
+        settle_promise(move |cx| Ok(cx.number(value + 1.0)))
     })
 }
 
@@ -76,12 +76,12 @@ register_module!(mut cx, {
     cx.export_function("panicPreAwait", panic_pre_await)?;
     cx.export_function("panicDuringCallback", panic_during_callback)?;
     cx.export_function("panicPostAwait", panic_post_await)?;
-    cx.export_function("panicDuringFulfill", panic_during_fulfill)?;
+    cx.export_function("panicDuringSettle", panic_during_settle)?;
 
     cx.export_function("throwPreAwait", throw_pre_await)?;
     cx.export_function("throwDuringCallback", throw_during_callback)?;
     cx.export_function("throwPostAwait", throw_post_await)?;
-    cx.export_function("throwDuringFulfill", throw_during_fulfill)?;
+    cx.export_function("throwDuringSettle", throw_during_settle)?;
 
     Ok(())
 });

@@ -9,7 +9,7 @@ use std::future::Future;
 use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
 
 use crate::executor::ContextEx;
-use crate::util::describe_any;
+use crate::util::describe_panic;
 use crate::*;
 
 const RESOLVE_SLOT: &str = "_resolve";
@@ -31,11 +31,11 @@ fn save_promise_callbacks(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 /// Produces a JavaScript Promise that represents the result of a Rust computation.
 ///
 /// There's a lot going on here, so let's break it down:
-/// - `future` must return a "fulfill" function, or fail with a JavaScript error stored as a PersistentException.
-/// - The "fulfill" function (`F`) must produce a result in a synchronous JavaScript context, or fail with a JavaScript exception.
+/// - `future` must return a "settle" function, or fail with a JavaScript error stored as a PersistentException.
+/// - The "settle" function (`F`) must produce a result in a synchronous JavaScript context, or fail with a JavaScript exception.
 /// - That value (`V`) will be the final result of the JavaScript Promise.
-/// - If there are any failures during the evaluation of the future or "fulfill" function, they will result in the rejection of the Promise.
-/// - If there are any panics during the evaluation of the future or "fulfill" function, they will be translated to JavaScript Errors (per Neon conventions).
+/// - If there are any failures during the evaluation of the future or "settle" function, they will result in the rejection of the Promise.
+/// - If there are any panics during the evaluation of the future or "settle" function, they will be translated to JavaScript Errors (per Neon conventions).
 ///
 /// In practice, this is going to be the easiest way to produce a JavaScript Promise, especially for safely handling errors.
 ///
@@ -54,7 +54,7 @@ fn save_promise_callbacks(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 ///     let trait_impl = TraitImpl::new(cx.queue(), js_info.root(&mut cx));
 ///     promise(&mut cx, async move {
 ///         let result = compute_result(trait_impl).await?;
-///         fulfill_promise(move |cx| Ok(cx.string(result)))
+///         settle_promise(move |cx| Ok(cx.string(result)))
 ///     })
 /// }
 /// ```
@@ -84,21 +84,21 @@ where
         let result = future.catch_unwind().await;
 
         queue.send(move |mut cx| -> NeonResult<()> {
-            let resolved_result = match result {
-                Ok(Ok(resolve)) => {
+            let settled_result = match result {
+                Ok(Ok(settle)) => {
                     // This AssertUnwindSafe is not technically safe.
                     // If we get a panic downstream, it is entirely possible the JavaScript context won't be usable anymore.
                     // However, that's no more unsafe than JsAsyncContext::with_context,
                     // or for that matter Neon automatically catching panics by default.
                     let mut cx = AssertUnwindSafe(&mut cx);
-                    catch_unwind(move || cx.try_catch(|cx| resolve(cx)))
+                    catch_unwind(move || cx.try_catch(|cx| settle(cx)))
                 }
                 Ok(Err(exception)) => Ok(Err(exception.into_inner(&mut cx))),
                 Err(panic) => Err(panic),
             };
-            let folded_result = resolved_result.unwrap_or_else(|panic| {
+            let folded_result = settled_result.unwrap_or_else(|panic| {
                 Err(cx
-                    .error(format!("unexpected panic: {}", describe_any(&panic)))
+                    .error(format!("unexpected panic: {}", describe_panic(&panic)))
                     .expect("can create an Error")
                     .upcast())
             });
@@ -120,11 +120,11 @@ where
     Ok(promise)
 }
 
-/// Use this to return your "fulfill" function when using [promise()].
+/// Use this to return your "settle" function when using [promise()].
 ///
 /// This works around a bug in the Rust compiler by providing extra type information.
 /// It is equivalent to [Ok].
-pub fn fulfill_promise<C, T, E>(callback: C) -> Result<C, E>
+pub fn settle_promise<C, T, E>(callback: C) -> Result<C, E>
 where
     T: Value,
     C: for<'a> FnOnce(&mut TaskContext<'a>) -> JsResult<'a, T>,

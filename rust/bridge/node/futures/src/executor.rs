@@ -49,6 +49,9 @@ pub trait ContextEx<'a>: Context<'a> {
     ///
     /// Equivalent to `cx.queue().send(f)` except that `f` doesn't need to be `Send`.
     fn run_on_queue(&mut self, f: impl FnOnce(TaskContext<'_>) -> NeonResult<()> + 'static) {
+        // Because we're currently in a JavaScript context,
+        // and `f` will run on the event queue associated with the current context,
+        // we can assert that it's safe to Send `f` to the queue.
         let f = AssertSendSafe(f);
         self.queue().send(move |cx| f.0(cx));
     }
@@ -57,6 +60,9 @@ pub trait ContextEx<'a>: Context<'a> {
     ///
     /// Equivalent to `cx.queue().send_future(f)` except that `f` doesn't need to be `Send`.
     fn run_future_on_queue(&mut self, f: impl Future<Output = ()> + 'static) {
+        // Because we're currently in a JavaScript context,
+        // and `f` will run on the event queue associated with the current context,
+        // we can assert that it's safe to Send `f` to the queue.
         let f = AssertSendSafe(f);
         self.queue().send_future(f);
     }

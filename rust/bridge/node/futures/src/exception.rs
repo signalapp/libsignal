@@ -5,8 +5,10 @@
 
 use neon::prelude::*;
 
-/// See [PersistentException]
-enum PersistentExceptionImpl {
+/// Private implementation for [PersistentException].
+///
+/// This is a separate type to avoid exposing the cases to clients.
+enum PersistentExceptionValue {
     Object(Root<JsObject>),
     String(String),
 }
@@ -23,7 +25,7 @@ enum PersistentExceptionImpl {
 ///
 /// [root]: https://docs.rs/neon/0.7.0-napi.3/neon/handle/struct.Root.html
 pub struct PersistentException {
-    wrapped: PersistentExceptionImpl,
+    wrapped: PersistentExceptionValue,
 }
 
 impl PersistentException {
@@ -31,10 +33,9 @@ impl PersistentException {
     ///
     /// If `value` is not a JavaScript Object, it will be converted to a string instead.
     pub fn new<'a, V: Value>(cx: &mut impl Context<'a>, value: Handle<'a, V>) -> Self {
-        use PersistentExceptionImpl as Impl;
         let wrapped = match value.downcast::<JsObject, _>(cx) {
-            Ok(object) => Impl::Object(object.root(cx)),
-            Err(_) => Impl::String(value.to_string(cx).unwrap().value(cx)),
+            Ok(object) => PersistentExceptionValue::Object(object.root(cx)),
+            Err(_) => PersistentExceptionValue::String(value.to_string(cx).unwrap().value(cx)),
         };
         Self { wrapped }
     }
@@ -51,10 +52,9 @@ impl PersistentException {
     ///
     /// If the wrapped value was converted to a string, a JavaScript string will be produced instead.
     pub fn into_inner<'a>(self, cx: &mut impl Context<'a>) -> Handle<'a, JsValue> {
-        use PersistentExceptionImpl as Impl;
         match self.wrapped {
-            Impl::Object(root) => root.into_inner(cx).upcast(),
-            Impl::String(message) => cx.string(message).upcast(),
+            PersistentExceptionValue::Object(root) => root.into_inner(cx).upcast(),
+            PersistentExceptionValue::String(message) => cx.string(message).upcast(),
         }
     }
 
@@ -62,10 +62,9 @@ impl PersistentException {
     ///
     /// If the wrapped value was converted to a string, a JavaScript string will be produced.
     pub fn to_inner<'a>(&self, cx: &mut impl Context<'a>) -> Handle<'a, JsValue> {
-        use PersistentExceptionImpl as Impl;
         match &self.wrapped {
-            Impl::Object(root) => root.to_inner(cx).upcast(),
-            Impl::String(message) => cx.string(message).upcast(),
+            PersistentExceptionValue::Object(root) => root.to_inner(cx).upcast(),
+            PersistentExceptionValue::String(message) => cx.string(message).upcast(),
         }
     }
 
@@ -85,8 +84,7 @@ impl PersistentException {
 
 impl Finalize for PersistentException {
     fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
-        use PersistentExceptionImpl as Impl;
-        if let Impl::Object(root) = self.wrapped {
+        if let PersistentExceptionValue::Object(root) = self.wrapped {
             root.finalize(cx)
         }
     }

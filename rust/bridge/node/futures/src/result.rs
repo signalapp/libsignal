@@ -14,9 +14,9 @@ pub(crate) trait JsPromiseResultConstructor {
 }
 
 /// A constructor for [Result::Ok].
-pub(crate) struct JsResolvedResult;
+pub(crate) struct JsFulfilledResult;
 
-impl JsPromiseResultConstructor for JsResolvedResult {
+impl JsPromiseResultConstructor for JsFulfilledResult {
     fn make(value: Handle<JsValue>) -> JsPromiseResult {
         Ok(value)
     }

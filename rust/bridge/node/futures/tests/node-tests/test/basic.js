@@ -43,7 +43,7 @@ describe('native', () => {
       then: function(resolve, reject) {
         queueMicrotask(() => {
           resolve(5);
-          assert.throws(() => resolve(-5), /promise fulfilled twice/);
+          assert.throws(() => resolve(-5), /promise settled twice/);
         });
       },
     });
@@ -113,8 +113,8 @@ describe('native', () => {
       await assert.isRejected(promise, /unexpected panic: check for this/);
     });
 
-    it('handles fulfillment panics', async () => {
-      const promise = native.panicDuringFulfill(Promise.resolve(6));
+    it('handles settle panics', async () => {
+      const promise = native.panicDuringSettle(Promise.resolve(6));
       await assert.isRejected(promise, /unexpected panic: check for this/);
     });
   });
@@ -135,8 +135,8 @@ describe('native', () => {
       await assert.isRejected(promise, /^check for this$/);
     });
 
-    it('handles fulfillment throws', async () => {
-      const promise = native.throwDuringFulfill(Promise.resolve(6));
+    it('handles settle throws', async () => {
+      const promise = native.throwDuringSettle(Promise.resolve(6));
       await assert.isRejected(promise, /^check for this$/);
     });
   });

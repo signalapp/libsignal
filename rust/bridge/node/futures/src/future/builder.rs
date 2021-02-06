@@ -8,11 +8,11 @@ use neon::prelude::*;
 use crate::future::*;
 use crate::PersistentException;
 
-/// A callback that can retrieve a JavaScript promise object. See [JsFuture::await_promise].
+/// A callback that can retrieve a JavaScript promise object. See [JsFuture::get_promise].
 pub trait GetPromiseCallback =
     for<'a> FnOnce(&mut TaskContext<'a>) -> JsResult<'a, JsObject> + 'static + Send;
 
-/// Sets up a [JsFuture] using a builder pattern. See [JsFuture::await_promise].
+/// Sets up a [JsFuture] using a builder pattern. See [JsFuture::get_promise].
 pub struct JsFutureBuilder<'a, F: GetPromiseCallback, T: 'static + Send> {
     pub(super) queue: &'a EventQueue,
     pub(super) get_promise: F,
@@ -30,24 +30,22 @@ impl<F: GetPromiseCallback, T: 'static + Send> JsFutureBuilder<'_, F, T> {
         XF: for<'b> FnOnce(&mut FunctionContext<'b>, JsPromiseResult<'b>) -> T + 'static + Send,
     {
         let future = JsFuture::new(transform);
-        let fulfillment_token = WeakFutureToken::new(&future);
+        let settle_token = WeakFutureToken::new(&future);
         let get_promise = self.get_promise;
 
         self.queue.send(move |mut cx| {
             let mut maybe_bound_reject = None;
             let result = cx.try_catch(|cx| {
-                let bound_reject =
-                    fulfillment_token.bind_fulfill_promise::<_, JsRejectedResult>(cx)?;
+                let bound_reject = settle_token.bind_settle_promise::<_, JsRejectedResult>(cx)?;
                 maybe_bound_reject = Some(bound_reject);
 
-                let bound_resolve =
-                    fulfillment_token.bind_fulfill_promise::<_, JsResolvedResult>(cx)?;
+                let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
 
                 let promise = get_promise(cx)?;
                 let then = promise
                     .get(cx, "then")?
                     .downcast_or_throw::<JsFunction, _>(cx)?;
-                then.call(cx, promise, vec![bound_resolve, bound_reject])?;
+                then.call(cx, promise, vec![bound_fulfill, bound_reject])?;
                 Ok(())
             });
             if let Err(exception) = result {
