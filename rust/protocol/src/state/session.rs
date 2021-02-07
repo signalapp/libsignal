@@ -12,19 +12,25 @@ use crate::curve;
 use crate::kdf;
 use crate::proto::storage::session_structure;
 use crate::proto::storage::{RecordStructure, SessionStructure};
+use crate::state::prekey::PreKeyId;
+use crate::state::signed_prekey::SignedPreKeyId;
 use prost::Message;
 
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub(crate) struct UnacknowledgedPreKeyMessageItems {
-    pre_key_id: Option<u32>,
-    signed_pre_key_id: u32,
+    pre_key_id: Option<PreKeyId>,
+    signed_pre_key_id: SignedPreKeyId,
     base_key: curve::PublicKey,
 }
 
 impl UnacknowledgedPreKeyMessageItems {
-    fn new(pre_key_id: Option<u32>, signed_pre_key_id: u32, base_key: curve::PublicKey) -> Self {
+    fn new(
+        pre_key_id: Option<PreKeyId>,
+        signed_pre_key_id: SignedPreKeyId,
+        base_key: curve::PublicKey,
+    ) -> Self {
         Self {
             pre_key_id,
             signed_pre_key_id,
@@ -32,11 +38,11 @@ impl UnacknowledgedPreKeyMessageItems {
         }
     }
 
-    pub(crate) fn pre_key_id(&self) -> Result<Option<u32>> {
+    pub(crate) fn pre_key_id(&self) -> Result<Option<PreKeyId>> {
         Ok(self.pre_key_id)
     }
 
-    pub(crate) fn signed_pre_key_id(&self) -> Result<u32> {
+    pub(crate) fn signed_pre_key_id(&self) -> Result<SignedPreKeyId> {
         Ok(self.signed_pre_key_id)
     }
 
@@ -365,8 +371,8 @@ impl SessionState {
 
     pub(crate) fn set_unacknowledged_pre_key_message(
         &mut self,
-        pre_key_id: Option<u32>,
-        signed_pre_key_id: u32,
+        pre_key_id: Option<PreKeyId>,
+        signed_pre_key_id: SignedPreKeyId,
         base_key: &curve::PublicKey,
     ) -> Result<()> {
         let pending = session_structure::PendingPreKey {
@@ -387,7 +393,7 @@ impl SessionState {
                     0 => None,
                     v => Some(v),
                 },
-                pending_pre_key.signed_pre_key_id as u32,
+                pending_pre_key.signed_pre_key_id as SignedPreKeyId,
                 curve::decode_point(&pending_pre_key.base_key)?,
             )))
         } else {
