@@ -454,6 +454,17 @@ describe('SignalClient', () => {
     const pub2 = SignalClient.PublicKey.deserialize(pub_bytes);
 
     assert.deepEqual(pub.serialize(), pub2.serialize());
+
+    assert.deepEqual(pub.compare(pub2), 0);
+    assert.deepEqual(pub2.compare(pub), 0);
+
+    const anotherKey = SignalClient.PrivateKey.deserialize(
+      Buffer.alloc(32, 0xcd)
+    ).getPublicKey();
+    assert.deepEqual(pub.compare(anotherKey), 1);
+    assert.deepEqual(anotherKey.compare(pub), -1);
+
+    assert.lengthOf(pub.getPublicKeyBytes(), 32);
   });
 
   it('decoding invalid ECC key throws an error', () => {
