@@ -15,13 +15,10 @@ pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
         cx: &mut FunctionContext,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
-    fn load_from(
-        cx: &mut FunctionContext,
-        stored: &'storage mut Self::StoredType,
-    ) -> NeonResult<Self>;
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self;
 }
 
-pub trait SimpleArgTypeInfo: Sized {
+pub trait SimpleArgTypeInfo: Sized + 'static {
     type ArgType: neon::types::Value;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self>;
 }
@@ -31,15 +28,15 @@ where
     T: SimpleArgTypeInfo,
 {
     type ArgType = T::ArgType;
-    type StoredType = Handle<'a, Self::ArgType>;
+    type StoredType = Option<Self>;
     fn borrow(
-        _cx: &mut FunctionContext,
+        cx: &mut FunctionContext,
         foreign: Handle<'a, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        Ok(foreign)
+        Ok(Some(Self::convert_from(cx, foreign)?))
     }
-    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
-        Self::convert_from(cx, *stored)
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored.take().expect("should only be loaded once")
     }
 }
 
@@ -90,14 +87,8 @@ where
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
         T::borrow(cx, non_optional_value).map(Some)
     }
-    fn load_from(
-        cx: &mut FunctionContext,
-        stored: &'storage mut Self::StoredType,
-    ) -> NeonResult<Self> {
-        match stored {
-            None => Ok(None),
-            Some(non_optional_stored) => T::load_from(cx, non_optional_stored).map(Some),
-        }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.as_mut().map(T::load_from)
     }
 }
 
@@ -111,8 +102,8 @@ impl<'a> ArgTypeInfo<'a, 'a> for &'a [u8] {
     ) -> NeonResult<Self::StoredType> {
         Ok(cx.borrow(&foreign, |buf| buf.as_slice().to_vec()))
     }
-    fn load_from(_cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
-        Ok(stored)
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored
     }
 }
 
@@ -274,10 +265,9 @@ macro_rules! node_bridge_handle {
                 Ok(foreign)
             }
             fn load_from(
-                _cx: &mut node::FunctionContext,
                 foreign: &'a mut node::Handle<'a, Self::ArgType>,
-            ) -> node::NeonResult<Self> {
-                Ok(&*foreign)
+            ) -> Self {
+                &*foreign
             }
         }
 
@@ -319,10 +309,9 @@ macro_rules! node_bridge_handle {
                 Ok((foreign, cell_with_extended_lifetime.borrow()))
             }
             fn load_from(
-                _cx: &mut node::FunctionContext,
                 stored: &'storage mut Self::StoredType,
-            ) -> node::NeonResult<Self> {
-                Ok(&*stored.1)
+            ) -> Self {
+                &*stored.1
             }
         }
 
@@ -346,10 +335,9 @@ macro_rules! node_bridge_handle {
                 Ok((foreign, cell_with_extended_lifetime.borrow_mut()))
             }
             fn load_from(
-                _cx: &mut node::FunctionContext,
                 stored: &'storage mut Self::StoredType,
-            ) -> node::NeonResult<Self> {
-                Ok(&mut *stored.1)
+            ) -> Self {
+                &mut *stored.1
             }
         }
 

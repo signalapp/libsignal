@@ -268,7 +268,7 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
                 quote! {
                     let #name_arg = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
                     let mut #name_borrow = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name_arg)?;
-                    let #name = <#ty as node::ArgTypeInfo>::load_from(&mut cx, &mut #name_borrow)?;
+                    let #name = <#ty as node::ArgTypeInfo>::load_from(&mut #name_borrow);
                 }
             }),
             FnArg::Typed(PatType { pat, .. }) => (
