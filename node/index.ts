@@ -9,7 +9,7 @@ import * as SignalClient from './libsignal_client';
 
 const SC = bindings('libsignal_client_' + os.platform()) as typeof SignalClient;
 
-export const { initLogger, LogLevel } = SC;
+export const { initLogger, LogLevel, CiphertextMessageType } = SC;
 
 export class HKDF {
   private readonly version: number;
@@ -185,8 +185,17 @@ export class PublicKey {
     return new PublicKey(SC.PublicKey_Deserialize(buf));
   }
 
+  /// Returns -1, 0, or 1
+  compare(other: PublicKey): number {
+    return SC.PublicKey_Compare(this.nativeHandle, other.nativeHandle);
+  }
+
   serialize(): Buffer {
     return SC.PublicKey_Serialize(this.nativeHandle);
+  }
+
+  getPublicKeyBytes(): Buffer {
+    return SC.PublicKey_GetPublicKeyBytes(this.nativeHandle);
   }
 
   verify(msg: Buffer, sig: Buffer): boolean {
@@ -239,6 +248,27 @@ export class PrivateKey {
   getPublicKey(): PublicKey {
     return PublicKey._fromNativeHandle(
       SC.PrivateKey_GetPublicKey(this.nativeHandle)
+    );
+  }
+}
+
+export class IdentityKeyPair {
+  private readonly publicKey: PublicKey;
+  private readonly privateKey: PrivateKey;
+
+  constructor(publicKey: PublicKey, privateKey: PrivateKey) {
+    this.publicKey = publicKey;
+    this.privateKey = privateKey;
+  }
+
+  static new(publicKey: PublicKey, privateKey: PrivateKey): IdentityKeyPair {
+    return new IdentityKeyPair(publicKey, privateKey);
+  }
+
+  serialize(): Buffer {
+    return SC.IdentityKeyPair_Serialize(
+      this.publicKey._unsafeGetNativeHandle(),
+      this.privateKey._unsafeGetNativeHandle()
     );
   }
 }
