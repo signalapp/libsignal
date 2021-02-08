@@ -25,6 +25,10 @@ the Android NDK/SDK, and add the Android targets to the Rust compiler, using
 
 ```rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android```
 
+as well as the Cargo NDK tool using
+
+```cargo install --version=1.0.0 cargo-ndk```
+
 To build the Java/Android ``jar`` and ``aar``, and run the tests:
 
 ```shell
