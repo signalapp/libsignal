@@ -17,6 +17,29 @@ SignalClient.initLogger(
   }
 );
 
+class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
+  private state = new Map();
+  saveSenderKey(
+    name: SignalClient.SenderKeyName,
+    record: SignalClient.SenderKeyRecord
+  ): void {
+    const key =
+      name.groupId() + '::' + name.senderName() + '::' + name.senderDeviceId();
+    this.state.set(key, record);
+  }
+  getSenderKey(
+    name: SignalClient.SenderKeyName
+  ): SignalClient.SenderKeyRecord | null {
+    const key =
+      name.groupId() + '::' + name.senderName() + '::' + name.senderDeviceId();
+    if (this.state.has(key)) {
+      return this.state.get(key);
+    } else {
+      return null;
+    }
+  }
+}
+
 describe('SignalClient', () => {
   it('HKDF test vector', () => {
     const hkdf = SignalClient.HKDF.new(3);
@@ -220,6 +243,37 @@ describe('SignalClient', () => {
       skdm.serialize()
     );
     assert.deepEqual(skdm, skdmFromBytes);
+  });
+  it('SenderKeyDistributionMessage Store API', async () => {
+    const senderKeyName = SignalClient.SenderKeyName.new('group', 'sender', 1);
+    const aSenderKeyStore = new InMemorySenderKeyStore();
+    const skdm = await SignalClient.SenderKeyDistributionMessage.create(
+      senderKeyName,
+      aSenderKeyStore
+    );
+
+    const bSenderKeyStore = new InMemorySenderKeyStore();
+    await SignalClient.SenderKeyDistributionMessage.process(
+      senderKeyName,
+      skdm,
+      bSenderKeyStore
+    );
+
+    const message = Buffer.from('0a0b0c', 'hex');
+
+    const aCtext = await SignalClient.GroupCipher_Encrypt(
+      senderKeyName,
+      aSenderKeyStore,
+      message
+    );
+
+    const bPtext = await SignalClient.GroupCipher_Decrypt(
+      senderKeyName,
+      bSenderKeyStore,
+      aCtext
+    );
+
+    assert.deepEqual(message, bPtext);
   });
   it('PublicKeyBundle', () => {
     const registrationId = 5;

@@ -97,6 +97,7 @@ def collect_decls(crate_dir, features=''):
         had_error = True
 
     if had_error:
+        print("Exiting with error")
         sys.exit(1)
 
     comment_decl = re.compile(r'\s*///\s*ts: (.+)')

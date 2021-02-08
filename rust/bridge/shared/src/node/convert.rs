@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use std::convert::{TryFrom, TryInto};
 use std::ops::RangeInclusive;
 
-pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
+pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType: neon::types::Value;
     type StoredType: 'storage;
     fn borrow(
@@ -40,7 +40,7 @@ where
     }
 }
 
-pub(crate) trait ResultTypeInfo<'a>: Sized {
+pub trait ResultTypeInfo<'a>: Sized {
     type ResultType: neon::types::Value;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>>;
 }

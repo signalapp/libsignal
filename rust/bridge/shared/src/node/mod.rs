@@ -12,8 +12,9 @@ pub use neon::prelude::*;
 
 #[macro_use]
 mod convert;
+pub use convert::ResultTypeInfo;
 pub use convert::SimpleArgTypeInfo;
-pub(crate) use convert::*;
+pub use convert::*;
 
 pub type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
 
@@ -27,7 +28,7 @@ pub fn register(cx: &mut ModuleContext) -> NeonResult<()> {
     Ok(())
 }
 
-pub struct DefaultFinalize<T>(T);
+pub struct DefaultFinalize<T>(pub T);
 
 impl<T> Finalize for DefaultFinalize<T> {}
 
@@ -52,7 +53,7 @@ pub fn return_boxed_object<'a, T: 'static + Send>(
 }
 
 pub fn return_binary_data<'a, T: AsRef<[u8]>>(
-    cx: &mut FunctionContext<'a>,
+    cx: &mut impl Context<'a>,
     bytes: Result<Option<T>, SignalProtocolError>,
 ) -> JsResult<'a, JsValue> {
     match bytes {
