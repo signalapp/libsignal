@@ -823,6 +823,7 @@ dependencies = [
  "futures",
  "hex",
  "hmac",
+ "log",
  "prost",
  "prost-build",
  "rand",

@@ -28,6 +28,7 @@ sha2 = "0.9"
 subtle = "2.2.3"
 x25519-dalek = "1.0"
 hex = "0.4"
+log = "0.4"
 
 [features]
 default = ["u64_backend"]
