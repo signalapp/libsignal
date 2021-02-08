@@ -5,6 +5,8 @@
 /node_modules
 /build
 
+/rust/bridge/node/futures/tests/node-tests/node_modules
+
 *.orig
 *.rej
 
