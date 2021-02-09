@@ -15,13 +15,10 @@ pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
         cx: &mut FunctionContext,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
-    fn load_from(
-        cx: &mut FunctionContext,
-        stored: &'storage mut Self::StoredType,
-    ) -> NeonResult<Self>;
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self;
 }
 
-pub trait SimpleArgTypeInfo: Sized {
+pub trait SimpleArgTypeInfo: Sized + 'static {
     type ArgType: neon::types::Value;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self>;
 }
@@ -31,22 +28,21 @@ where
     T: SimpleArgTypeInfo,
 {
     type ArgType = T::ArgType;
-    type StoredType = Handle<'a, Self::ArgType>;
+    type StoredType = Option<Self>;
     fn borrow(
-        _cx: &mut FunctionContext,
+        cx: &mut FunctionContext,
         foreign: Handle<'a, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        Ok(foreign)
+        Ok(Some(Self::convert_from(cx, foreign)?))
     }
-    fn load_from(cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
-        Self::convert_from(cx, *stored)
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored.take().expect("should only be loaded once")
     }
 }
 
 pub(crate) trait ResultTypeInfo<'a>: Sized {
     type ResultType: neon::types::Value;
-    fn convert_into(self, cx: &mut FunctionContext<'a>)
-        -> NeonResult<Handle<'a, Self::ResultType>>;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>>;
 }
 
 fn can_convert_js_number_to_int(value: f64, valid_range: RangeInclusive<f64>) -> bool {
@@ -91,14 +87,8 @@ where
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
         T::borrow(cx, non_optional_value).map(Some)
     }
-    fn load_from(
-        cx: &mut FunctionContext,
-        stored: &'storage mut Self::StoredType,
-    ) -> NeonResult<Self> {
-        match stored {
-            None => Ok(None),
-            Some(non_optional_stored) => T::load_from(cx, non_optional_stored).map(Some),
-        }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.as_mut().map(T::load_from)
     }
 }
 
@@ -112,27 +102,21 @@ impl<'a> ArgTypeInfo<'a, 'a> for &'a [u8] {
     ) -> NeonResult<Self::StoredType> {
         Ok(cx.borrow(&foreign, |buf| buf.as_slice().to_vec()))
     }
-    fn load_from(_cx: &mut FunctionContext, stored: &'a mut Self::StoredType) -> NeonResult<Self> {
-        Ok(stored)
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.boolean(self))
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for u64 {
     type ResultType = JsNumber;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         let result = self as f64;
         if result > MAX_SAFE_JS_INTEGER {
             cx.throw_range_error(format!(
@@ -146,30 +130,21 @@ impl<'a> ResultTypeInfo<'a> for u64 {
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JsString;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
     }
 }
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
     type ResultType = JsValue;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
             Some(value) => Ok(value.convert_into(cx)?.upcast()),
             None => Ok(cx.null().upcast()),
@@ -179,10 +154,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     type ResultType = JsBuffer;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         let bytes_len = match u32::try_from(self.len()) {
             Ok(l) => l,
             Err(_) => return cx.throw_error("Cannot return very large object to JS environment"),
@@ -200,10 +172,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
     for Result<T, libsignal_protocol::SignalProtocolError>
 {
     type ResultType = T::ResultType;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
             Ok(value) => value.convert_into(cx),
             // FIXME: Use a dedicated Error type?
@@ -214,10 +183,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Error> {
     type ResultType = T::ResultType;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
             Ok(value) => value.convert_into(cx),
             // FIXME: Use a dedicated Error type?
@@ -228,30 +194,21 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Er
 
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     type ResultType = T::ResultType;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self?.convert_into(cx)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for () {
     type ResultType = JsUndefined;
-    fn convert_into(
-        self,
-        cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.undefined())
     }
 }
 
 impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     type ResultType = T;
-    fn convert_into(
-        self,
-        _cx: &mut FunctionContext<'a>,
-    ) -> NeonResult<Handle<'a, Self::ResultType>> {
+    fn convert_into(self, _cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(self)
     }
 }
@@ -279,7 +236,7 @@ macro_rules! full_range_integer {
             type ResultType = JsNumber;
             fn convert_into(
                 self,
-                cx: &mut FunctionContext<'a>,
+                cx: &mut impl Context<'a>,
             ) -> NeonResult<Handle<'a, Self::ResultType>> {
                 Ok(cx.number(self as f64))
             }
@@ -308,10 +265,9 @@ macro_rules! node_bridge_handle {
                 Ok(foreign)
             }
             fn load_from(
-                _cx: &mut node::FunctionContext,
                 foreign: &'a mut node::Handle<'a, Self::ArgType>,
-            ) -> node::NeonResult<Self> {
-                Ok(&*foreign)
+            ) -> Self {
+                &*foreign
             }
         }
 
@@ -321,7 +277,7 @@ macro_rules! node_bridge_handle {
                 type ResultType = node::JsValue;
                 fn convert_into(
                     self,
-                    cx: &mut node::FunctionContext<'a>,
+                    cx: &mut impl node::Context<'a>,
                 ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
                     node::return_boxed_object(cx, Ok(self))
                 }
@@ -353,10 +309,9 @@ macro_rules! node_bridge_handle {
                 Ok((foreign, cell_with_extended_lifetime.borrow()))
             }
             fn load_from(
-                _cx: &mut node::FunctionContext,
                 stored: &'storage mut Self::StoredType,
-            ) -> node::NeonResult<Self> {
-                Ok(&*stored.1)
+            ) -> Self {
+                &*stored.1
             }
         }
 
@@ -380,10 +335,9 @@ macro_rules! node_bridge_handle {
                 Ok((foreign, cell_with_extended_lifetime.borrow_mut()))
             }
             fn load_from(
-                _cx: &mut node::FunctionContext,
                 stored: &'storage mut Self::StoredType,
-            ) -> node::NeonResult<Self> {
-                Ok(&mut *stored.1)
+            ) -> Self {
+                &mut *stored.1
             }
         }
 
@@ -393,7 +347,7 @@ macro_rules! node_bridge_handle {
                 type ResultType = node::JsValue;
                 fn convert_into(
                     self,
-                    cx: &mut node::FunctionContext<'a>,
+                    cx: &mut impl node::Context<'a>,
                 ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
                     node::return_boxed_object(cx, Ok(std::cell::RefCell::new(self)))
                 }
