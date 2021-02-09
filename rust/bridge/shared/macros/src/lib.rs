@@ -14,7 +14,10 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::{FnArg, ItemFn, Pat, PatType, Signature};
-use unzip3::Unzip3;
+use unzip_n::unzip_n;
+
+unzip_n!(3);
+unzip_n!(4);
 
 fn value_for_meta_key<'a>(
     meta_values: &'a Punctuated<MetaNameValue, Token![,]>,
@@ -71,11 +74,13 @@ fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
         }
     };
 
-    let (input_names, input_args, input_processing): (
-        Vec<Ident>,
-        Vec<TokenStream2>,
-        Vec<TokenStream2>,
-    ) = sig
+    let await_if_needed = sig.asyncness.map(|_| {
+        quote! {
+            let __result = expect_ready(__result);
+        }
+    });
+
+    let (input_names, input_args, input_processing) = sig
         .inputs
         .iter()
         .skip(if result_kind.has_env() { 1 } else { 0 })
@@ -126,7 +131,7 @@ fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
                 quote!(),
             ),
         })
-        .unzip3();
+        .unzip_n_vec();
 
     let orig_name = sig.ident.clone();
 
@@ -140,6 +145,7 @@ fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
             ffi::run_ffi_safe(|| {
                 #(#input_processing);*;
                 let __result = #orig_name(#env_arg #(#input_names),*);
+                #await_if_needed;
                 #output_processing;
                 Ok(())
             })
@@ -170,11 +176,13 @@ fn jni_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
         }
     };
 
-    let (input_names, input_args, input_processing): (
-        Vec<Ident>,
-        Vec<TokenStream2>,
-        Vec<TokenStream2>,
-    ) = sig
+    let await_if_needed = sig.asyncness.map(|_| {
+        quote! {
+            let __result = expect_ready(__result);
+        }
+    });
+
+    let (input_names, input_args, input_processing) = sig
         .inputs
         .iter()
         .skip(if result_kind.has_env() { 1 } else { 0 })
@@ -204,7 +212,7 @@ fn jni_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
                 quote!(),
             ),
         })
-        .unzip3();
+        .unzip_n_vec();
 
     let orig_name = sig.ident.clone();
 
@@ -218,7 +226,9 @@ fn jni_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
         ) #output {
             jni::run_ffi_safe(&env, || {
                 #(#input_processing);*;
-                jni::ResultTypeInfo::convert_into(#orig_name(#env_arg #(#input_names),*), &env)
+                let __result = #orig_name(#env_arg #(#input_names),*);
+                #await_if_needed;
+                jni::ResultTypeInfo::convert_into(__result, &env)
             })
         }
     }
@@ -246,7 +256,7 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
         }
     };
 
-    let (input_names, input_processing): (Vec<Ident>, Vec<TokenStream2>) = sig
+    let (input_names, input_borrowing, input_loading, input_finalization) = sig
         .inputs
         .iter()
         .skip(if result_kind.has_env() { 1 } else { 0 })
@@ -256,27 +266,43 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
                 Ident::new("self", tokens.self_token.span),
                 Error::new(tokens.self_token.span, "cannot have 'self' parameter")
                     .to_compile_error(),
+                quote!(),
+                quote!(),
             ),
             FnArg::Typed(PatType {
                 attrs: _,
                 pat: box Pat::Ident(name),
                 colon_token: _,
                 ty,
-            }) => (name.ident.clone(), {
+            }) => {
+                let (type_info_trait, borrow_or_save) = match sig.asyncness {
+                    Some(_) => (quote!(AsyncArgTypeInfo), quote!(save)),
+                    None => (quote!(ArgTypeInfo), quote!(borrow)),
+                };
                 let name_arg = format_ident!("{}_arg", name.ident);
                 let name_borrow = format_ident!("{}_borrow", name.ident);
-                quote! {
-                    let #name_arg = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
-                    let mut #name_borrow = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name_arg)?;
-                    let #name = <#ty as node::ArgTypeInfo>::load_from(&mut #name_borrow);
-                }
-            }),
+                (
+                    name.ident.clone(),
+                    quote! {
+                        let #name_arg = cx.argument::<<#ty as node::#type_info_trait>::ArgType>(#i)?;
+                        let mut #name_borrow = <#ty as node::#type_info_trait>::#borrow_or_save(&mut cx, #name_arg)?;
+                    },
+                    quote! {
+                        let #name = <#ty as node::#type_info_trait>::load_from(&mut #name_borrow);
+                    },
+                    quote! {
+                        neon::prelude::Finalize::finalize(#name_borrow, cx);
+                    },
+                )
+            }
             FnArg::Typed(PatType { pat, .. }) => (
                 Ident::new("unexpected", pat.span()),
-                Error::new(pat.span(), "cannot use patterns in paramater").to_compile_error(),
+                Error::new(pat.span(), "cannot use patterns in parameter").to_compile_error(),
+                quote!(),
+                quote!(),
             ),
         })
-        .unzip();
+        .unzip_n_vec();
 
     let orig_name = sig.ident.clone();
     let node_annotation = format!(
@@ -291,6 +317,28 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
         result_type_str
     );
 
+    let body = match sig.asyncness {
+        Some(_) => quote! {
+            #(#input_borrowing)*
+            Ok(signal_neon_futures::promise(&mut cx, async move {
+                #(#input_loading)*
+                let __result = #orig_name(#env_arg #(#input_names),*).await;
+                signal_neon_futures::settle_promise(move |cx| {
+                    let mut cx = scopeguard::guard(cx, |cx| {
+                        #(#input_finalization)*
+                    });
+                    node::ResultTypeInfo::convert_into(__result, *cx)
+                })
+            })?.upcast())
+        },
+        None => quote! {
+            #(#input_borrowing)*
+            #(#input_loading)*
+            let __result = #orig_name(#env_arg #(#input_names),*);
+            Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
+        },
+    };
+
     quote! {
         #[cfg(feature = "node")]
         #[allow(non_snake_case)]
@@ -298,11 +346,7 @@ fn node_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Tok
         pub fn #name_with_prefix(
             mut cx: node::FunctionContext,
         ) -> node::JsResult<node::JsValue> {
-            #(#input_processing);*;
-            {
-                let __result = #orig_name(#env_arg #(#input_names),*);
-                Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
-            }
+            #body
         }
 
         #[cfg(feature = "node")]

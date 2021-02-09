@@ -19,12 +19,14 @@ log = "0.4"
 paste = "1.0"
 rand = "0.7.3"
 static_assertions = "1.1"
+scopeguard = "1.0"
 
 libc = { version = "0.2", optional = true }
 jni = { version = "0.17", optional = true }
 neon = { version = "0.7.0", optional = true, default-features = false, features = ["napi-4"] }
 linkme = { version = "0.2.4", optional = true }
+signal-neon-futures = { path = "../node/futures", optional = true }
 
 [features]
 ffi = ["libc"]
-node = ["neon", "linkme"]
+node = ["neon", "linkme", "signal-neon-futures"]

@@ -8,7 +8,8 @@ use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
 use std::hash::Hasher;
-use std::ops::RangeInclusive;
+use std::ops::{Deref, RangeInclusive};
+use std::slice;
 
 pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType: neon::types::Value;
@@ -16,6 +17,16 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     fn borrow(
         cx: &mut FunctionContext<'context>,
         foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType>;
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self;
+}
+
+pub(crate) trait AsyncArgTypeInfo<'storage>: Sized {
+    type ArgType: neon::types::Value;
+    type StoredType: 'static + Finalize;
+    fn save(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
     fn load_from(stored: &'storage mut Self::StoredType) -> Self;
 }
@@ -39,6 +50,25 @@ where
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         stored.take().expect("should only be loaded once")
+    }
+}
+
+impl<'a, T> AsyncArgTypeInfo<'a> for T
+where
+    T: SimpleArgTypeInfo,
+{
+    type ArgType = T::ArgType;
+    type StoredType = super::DefaultFinalize<Option<Self>>;
+    fn save(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(super::DefaultFinalize(Some(Self::convert_from(
+            cx, foreign,
+        )?)))
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored.0.take().expect("should only be loaded once")
     }
 }
 
@@ -91,6 +121,37 @@ where
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.as_mut().map(T::load_from)
+    }
+}
+
+pub(crate) struct FinalizableOption<T: Finalize>(Option<T>);
+
+impl<T: Finalize> Finalize for FinalizableOption<T> {
+    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
+        if let Some(value) = self.0 {
+            value.finalize(cx)
+        }
+    }
+}
+
+impl<'storage, T> AsyncArgTypeInfo<'storage> for Option<T>
+where
+    T: AsyncArgTypeInfo<'storage>,
+{
+    type ArgType = JsValue;
+    type StoredType = FinalizableOption<T::StoredType>;
+    fn save(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        if foreign.downcast::<JsNull, _>(cx).is_ok() {
+            return Ok(FinalizableOption(None));
+        }
+        let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
+        Ok(FinalizableOption(Some(T::save(cx, non_optional_value)?)))
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.0.as_mut().map(T::load_from)
     }
 }
 
@@ -149,6 +210,81 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.buffer
+    }
+}
+
+pub(crate) struct PersistentAssumedImmutableBuffer {
+    owner: Root<JsBuffer>,
+    buffer_start: *const u8,
+    buffer_len: usize,
+    hash: u64,
+}
+
+impl PersistentAssumedImmutableBuffer {
+    fn new<'a>(cx: &mut impl Context<'a>, buffer: Handle<JsBuffer>) -> Self {
+        let owner = buffer.root(cx);
+        let (buffer_start, buffer_len, hash) = cx.borrow(&buffer, |buf| {
+            (
+                if buf.len() == 0 {
+                    std::ptr::null()
+                } else {
+                    buf.as_slice().as_ptr()
+                },
+                buf.len(),
+                calculate_checksum_for_immutable_buffer(buf.as_slice()),
+            )
+        });
+        Self {
+            owner,
+            buffer_start,
+            buffer_len,
+            hash,
+        }
+    }
+}
+
+impl Deref for PersistentAssumedImmutableBuffer {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        // A JsBuffer owns its storage*, so it's safe to assume the buffer hasn't been deallocated.
+        // What's unsafe is assuming that no one else will modify the buffer
+        // while we have a reference to it, which is why we checksum it.
+        // (We can't stop the Rust compiler from potentially optimizing out that checksum, though.)
+        //
+        // * https://nodejs.org/api/n-api.html#n_api_napi_get_buffer_info
+        if self.buffer_start.is_null() {
+            &[]
+        } else {
+            unsafe { slice::from_raw_parts(self.buffer_start, self.buffer_len) }
+        }
+    }
+}
+
+// PersistentAssumedImmutableBuffer is not automatically Send because it contains a pointer.
+// We're already assuming (and checking) that the contents of the buffer won't be modified
+// while in use, and we know it won't be deallocated (see above).
+unsafe impl Send for PersistentAssumedImmutableBuffer {}
+
+impl Finalize for PersistentAssumedImmutableBuffer {
+    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
+        if self.hash != calculate_checksum_for_immutable_buffer(&*self) {
+            log::error!("buffer modified while in use");
+        }
+        self.owner.finalize(cx)
+    }
+}
+
+impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
+    type ArgType = JsBuffer;
+    type StoredType = PersistentAssumedImmutableBuffer;
+    fn save(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(PersistentAssumedImmutableBuffer::new(cx, foreign))
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        &*stored
     }
 }
 
