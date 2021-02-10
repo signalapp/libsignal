@@ -138,7 +138,7 @@ macro_rules! node_bridge_get_bytearray {
     ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
-            #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer"]
+            #[doc = "ts: export function " $node_name "(obj: &" $typ "): Buffer"]
             pub fn [<node_ $node_name>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {
@@ -167,7 +167,7 @@ macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
         paste! {
             #[allow(non_snake_case)]
-            #[doc = "ts: export function " $node_name "(obj: " $typ "): Buffer | null"]
+            #[doc = "ts: export function " $node_name "(obj: &" $typ "): Buffer | null"]
             pub fn [<node_ $node_name>](
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {

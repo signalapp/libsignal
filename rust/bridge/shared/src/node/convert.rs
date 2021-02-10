@@ -14,7 +14,7 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType: neon::types::Value;
     type StoredType: 'storage;
     fn borrow(
-        cx: &mut FunctionContext,
+        cx: &mut FunctionContext<'context>,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
     fn load_from(stored: &'storage mut Self::StoredType) -> Self;
@@ -32,7 +32,7 @@ where
     type ArgType = T::ArgType;
     type StoredType = Option<Self>;
     fn borrow(
-        cx: &mut FunctionContext,
+        cx: &mut FunctionContext<'a>,
         foreign: Handle<'a, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         Ok(Some(Self::convert_from(cx, foreign)?))
@@ -80,7 +80,7 @@ where
     type ArgType = JsValue;
     type StoredType = Option<T::StoredType>;
     fn borrow(
-        cx: &mut FunctionContext,
+        cx: &mut FunctionContext<'context>,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         if foreign.downcast::<JsNull, _>(cx).is_ok() {
@@ -297,20 +297,23 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
     std::mem::transmute::<&'a T, &'b T>(some_ref)
 }
 
+pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
+
 macro_rules! node_bridge_handle {
     ( $typ:ty as false ) => {};
     ( $typ:ty as $node_name:ident ) => {
-        impl<'a> node::ArgTypeInfo<'a, 'a> for &'a $typ {
-            type ArgType = node::DefaultJsBox<$typ>;
-            type StoredType = node::Handle<'a, Self::ArgType>;
+        impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
+        for &'storage $typ {
+            type ArgType = node::JsObject;
+            type StoredType = node::Handle<'context, node::DefaultJsBox<$typ>>;
             fn borrow(
-                _cx: &mut node::FunctionContext,
-                foreign: node::Handle<'a, Self::ArgType>,
+                cx: &mut node::FunctionContext<'context>,
+                foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                Ok(foreign)
+                node::Object::get(*foreign, cx, node::NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)
             }
             fn load_from(
-                foreign: &'a mut node::Handle<'a, Self::ArgType>,
+                foreign: &'storage mut Self::StoredType,
             ) -> Self {
                 &*foreign
             }
@@ -333,16 +336,18 @@ macro_rules! node_bridge_handle {
         impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
             for &'storage $typ
         {
-            type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
+            type ArgType = node::JsObject;
             type StoredType = (
-                node::Handle<'context, Self::ArgType>,
+                node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>>,
                 std::cell::Ref<'context, $typ>,
             );
             fn borrow(
-                _cx: &mut node::FunctionContext,
+                cx: &mut node::FunctionContext<'context>,
                 foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                let cell: &std::cell::RefCell<_> = &***foreign;
+                let boxed_value: node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>> =
+                    node::Object::get(*foreign, cx, node::NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)?;
+                let cell: &std::cell::RefCell<_> = &***boxed_value;
                 // FIXME: Workaround for https://github.com/neon-bindings/neon/issues/678
                 // The lifetime of the boxed RefCell is necessarily longer than the lifetime of any handles referring to it, i.e. longer than 'context.
                 // However, Deref'ing a Handle can only give us a Ref whose lifetime matches a *particular* handle.
@@ -351,7 +356,7 @@ macro_rules! node_bridge_handle {
                 let cell_with_extended_lifetime: &'context std::cell::RefCell<_> = unsafe {
                     node::extend_lifetime(cell)
                 };
-                Ok((foreign, cell_with_extended_lifetime.borrow()))
+                Ok((boxed_value, cell_with_extended_lifetime.borrow()))
             }
             fn load_from(
                 stored: &'storage mut Self::StoredType,

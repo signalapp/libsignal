@@ -39,10 +39,10 @@ def translate_to_ts(typ):
         return type_map[typ]
 
     if typ.startswith('&mut'):
-        return typ[4:]
+        return 'Wrapper<' + typ[4:] + '>'
 
     if typ.startswith('&'):
-        return typ[1:]
+        return 'Wrapper<' + typ[1:] + '>'
 
     if typ.startswith('Option<'):
         assert(typ.endswith('>'))
