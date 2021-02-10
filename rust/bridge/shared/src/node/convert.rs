@@ -435,6 +435,46 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
 
 pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
 
+pub(crate) struct PersistentBoxedValue<T: Send + Sync + 'static> {
+    owner: Root<JsObject>,
+    value_ptr: *const T,
+}
+
+impl<T: Send + Sync + 'static> PersistentBoxedValue<T> {
+    pub(crate) fn new<'a>(
+        cx: &mut impl Context<'a>,
+        wrapper: Handle<JsObject>,
+    ) -> NeonResult<Self> {
+        let owner = wrapper.root(cx);
+        let value_box: Handle<super::DefaultJsBox<T>> = wrapper
+            .get(cx, NATIVE_HANDLE_PROPERTY)?
+            .downcast_or_throw(cx)?;
+        let value_ptr = &***value_box as *const T;
+        Ok(Self { owner, value_ptr })
+    }
+}
+
+impl<T: Send + Sync + 'static> Deref for PersistentBoxedValue<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        // We're unsafely assuming that `self.owner` still has a reference to the JsBox containing
+        // the storage referenced by `self.value_ptr`.
+        // N-API won't let us put a JsBox in a Root, so this indirection is necessary.
+        unsafe { self.value_ptr.as_ref().expect("JsBox never contains NULL") }
+    }
+}
+
+// PersistentBoxedValue is not automatically Send because it contains a pointer.
+// We already know the contents of the value are only accessible to Rust, immutably,
+// and we're promising it won't be deallocated (see above).
+unsafe impl<T: Send + Sync + 'static> Send for PersistentBoxedValue<T> {}
+
+impl<T: Send + Sync + 'static> Finalize for PersistentBoxedValue<T> {
+    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
+        self.owner.finalize(cx)
+    }
+}
+
 macro_rules! node_bridge_handle {
     ( $typ:ty as false ) => {};
     ( $typ:ty as $node_name:ident ) => {
@@ -465,6 +505,22 @@ macro_rules! node_bridge_handle {
                 ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
                     node::return_boxed_object(cx, Ok(self))
                 }
+            }
+        }
+
+        impl<'storage> node::AsyncArgTypeInfo<'storage> for &'storage $typ {
+            type ArgType = node::JsObject;
+            type StoredType = node::PersistentBoxedValue<$typ>;
+            fn save(
+                cx: &mut node::FunctionContext,
+                foreign: node::Handle<Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                node::PersistentBoxedValue::new(cx, foreign)
+            }
+            fn load_from(
+                stored: &'storage mut Self::StoredType,
+            ) -> Self {
+                &*stored
             }
         }
     };
