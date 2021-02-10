@@ -355,7 +355,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                             .expect("successful decrypt always has a valid base key")
                     ),
                 );
-                record.set_session_state(current_state)?; // update the state
+                record.update_session_state(current_state)?; // update the state
                 return Ok(ptext);
             }
             Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
@@ -400,7 +400,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     }
 
     if let Some((ptext, idx, updated_session)) = updated_session {
-        record.promote_old_session(idx, updated_session)?;
+        record.update_old_session_state(idx, updated_session)?;
         Ok(ptext)
     } else {
         let previous_state_count = || {

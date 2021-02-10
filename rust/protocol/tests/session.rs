@@ -996,7 +996,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
 
         assert_eq!(
             is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            true
+            false,
         );
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "you as well").await?;
@@ -1016,7 +1016,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
 
         assert_eq!(
             is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
+            false,
         );
 
         Ok(())
@@ -1269,7 +1269,7 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
 
         assert_eq!(
             is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
+            false,
         );
 
         Ok(())
@@ -1461,7 +1461,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
 
         assert_eq!(
             is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
+            false
         );
 
         Ok(())
@@ -1667,7 +1667,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
 
         assert_eq!(
             is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
+            false
         );
 
         let blast_from_the_past = decrypt(
@@ -1702,7 +1702,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
 
         assert_eq!(
             is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
+            false,
         );
 
         Ok(())

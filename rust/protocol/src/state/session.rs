@@ -544,24 +544,27 @@ impl SessionRecord {
         }
     }
 
-    pub(crate) fn set_session_state(&mut self, session: SessionState) -> Result<()> {
+    pub(crate) fn update_session_state(&mut self, session: SessionState) -> Result<()> {
         self.current_session = Some(session);
+        Ok(())
+    }
+
+    pub(crate) fn update_old_session_state(
+        &mut self,
+        index: usize,
+        session: SessionState,
+    ) -> Result<()> {
+        if self.previous_sessions.len() < index {
+            return Err(SignalProtocolError::InternalError(
+                "Trying to update old session out of range",
+            ));
+        }
+        self.previous_sessions[index] = session;
         Ok(())
     }
 
     pub(crate) fn previous_session_states(&self) -> Result<impl Iterator<Item = &SessionState>> {
         Ok(self.previous_sessions.iter())
-    }
-
-    pub(crate) fn promote_old_session(
-        &mut self,
-        old_session: usize,
-        updated_session: SessionState,
-    ) -> Result<()> {
-        self.previous_sessions.remove(old_session).ok_or_else(|| {
-            SignalProtocolError::InvalidState("promote_old_session", "out of range".into())
-        })?;
-        self.promote_state(updated_session)
     }
 
     pub(crate) fn promote_state(&mut self, new_state: SessionState) -> Result<()> {
