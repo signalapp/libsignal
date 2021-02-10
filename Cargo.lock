@@ -702,7 +702,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
@@ -715,7 +715,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.1.0"
+version = "0.2.3"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
@@ -728,7 +728,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libsignal-bridge",
  "libsignal-protocol",
