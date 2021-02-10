@@ -101,6 +101,9 @@ jobs:
     - name: Rustfmt check
       run: cargo fmt --all -- --check
 
+    - name: Check bridge versioning
+      run: ./bin/verify_crate_versions.py
+
     - name: Build
       run: cargo build --all --verbose
 

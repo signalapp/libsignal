@@ -96,7 +96,10 @@ pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogg
     match log::set_logger(Box::leak(Box::new(logger))) {
         Ok(_) => {
             log::set_max_level(log::Level::from(max_level).to_level_filter());
-            log::debug!("logging initialized for libsignal-client");
+            log::info!(
+                "Initializing libsignal-client version:{}",
+                env!("CARGO_PKG_VERSION")
+            );
         }
         Err(_) => {
             log::warn!("logging already initialized for libsignal-client; ignoring later call");

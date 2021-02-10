@@ -136,7 +136,10 @@ pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     match log::set_logger(Box::leak(Box::new(logger))) {
         Ok(_) => {
             set_max_level_from_js_level(max_level);
-            log::debug!("logging initialized for libsignal-client");
+            log::info!(
+                "Initializing libsignal-client version:{}",
+                env!("CARGO_PKG_VERSION")
+            );
         }
         Err(_) => {
             log::warn!("logging already initialized for libsignal-client; ignoring later call");
