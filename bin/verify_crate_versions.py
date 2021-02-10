@@ -12,25 +12,29 @@ import re
 import json
 import os
 
+
 def swift_version():
-    version_re = re.compile(".*\.version\s+=\s+'(.*)'")
+    version_re = re.compile(r".*\.version\s+=\s+'(.*)'")
     for line in open('SignalClient.podspec'):
         match = version_re.match(line)
         if match:
             return match.group(1)
     raise Exception("Could not determine version from SignalClient.podspec")
 
+
 def java_version():
-    version_re = re.compile("\s+ext\.version_number\s+=\s+\"(.*)\"")
+    version_re = re.compile(r"\s+ext\.version_number\s+=\s+\"(.*)\"")
     for line in open('java/build.gradle'):
         match = version_re.match(line)
         if match:
             return match.group(1)
     raise Exception("Could not determine version from java/build.gradle")
 
+
 def node_version():
     package_json = json.load(open('package.json'))
     return package_json['version']
+
 
 def bridge_version(bridge):
     version_re = re.compile('^version = "(.*)"')
@@ -40,6 +44,7 @@ def bridge_version(bridge):
         if match:
             return match.group(1)
     raise Exception("Could not determine version from ", bridge_cargo_toml)
+
 
 def main():
 
@@ -63,6 +68,7 @@ def main():
             rc = 1
 
     return rc
+
 
 if __name__ == '__main__':
     sys.exit(main())
