@@ -20,27 +20,18 @@ Pod::Spec.new do |s|
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
-    'bin/*',
-    'Cargo.toml',
-    'Cargo.lock',
-    'rust-toolchain',
-    'rust/*',
-    'swift/*.sh',
+    'target/*/release/libsignal_ffi.a',
     'swift/Sources/SignalFfi',
   ]
 
   s.pod_target_xcconfig = {
-      'CARGO_BUILD_TARGET_DIR' => '$(DERIVED_FILE_DIR)/libsignal-ffi',
-      'CARGO_PROFILE_RELEASE_DEBUG' => '1', # enable line tables
-      'LIBSIGNAL_FFI_DIR' => '$(CARGO_BUILD_TARGET_DIR)/$(CARGO_BUILD_TARGET)/release',
-
       'HEADER_SEARCH_PATHS' => '$(PODS_TARGET_SRCROOT)/swift/Sources/SignalFfi',
       # Duplicate this here to make sure the search path is passed on to Swift dependencies.
       'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
 
       # Make sure we link the static library, not a dynamic one.
       # Use an extra level of indirection because CocoaPods messes with OTHER_LDFLAGS too.
-      'LIBSIGNAL_FFI_LIB_IF_NEEDED' => '$(LIBSIGNAL_FFI_DIR)/libsignal_ffi.a',
+      'LIBSIGNAL_FFI_LIB_IF_NEEDED' => '$(PODS_TARGET_SRCROOT)/target/$(CARGO_BUILD_TARGET)/release/libsignal_ffi.a',
       'OTHER_LDFLAGS' => '$(LIBSIGNAL_FFI_LIB_IF_NEEDED)',
 
       # Some day this will have to be updated for arm64 Macs (and the corresponding arm64 iOS simulator)
@@ -52,11 +43,22 @@ Pod::Spec.new do |s|
   }
 
   s.script_phases = [
-    { :name => 'Build libsignal-ffi',
+    { :name => 'Check libsignal-ffi',
       :execution_position => :before_compile,
-      :script => '"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh"',
+      :script => %q(
+        test -e ${LIBSIGNAL_FFI_LIB_IF_NEEDED} && exit 0
+        echo 'error: libsignal_ffi.a not built; run the following to build it:' >&2
+        echo "CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET} \"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh\"" >&2
+        false
+      ),
     }
   ]
+
+  s.prepare_command = %q(
+    set -euo pipefail
+    CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh
+    CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh
+  )
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'swift/Tests/*/*.swift'

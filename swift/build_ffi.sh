@@ -11,6 +11,8 @@ SCRIPT_DIR=$(dirname "$0")
 cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
 
+export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
+
 usage() {
   cat >&2 <<END
 Usage: $(basename "$0") [-d]
