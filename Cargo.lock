@@ -730,6 +730,7 @@ dependencies = [
 name = "libsignal-node"
 version = "0.2.0"
 dependencies = [
+ "async-trait",
  "libsignal-bridge",
  "libsignal-protocol",
  "log",
