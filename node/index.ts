@@ -964,14 +964,14 @@ export abstract class SenderKeyStore implements SignalClient.SenderKeyStore {
     record: SignalClient.SenderKeyRecord
   ): Promise<void> {
     return this.saveSenderKey(
-        SenderKeyName._fromNativeHandle(name),
-        SenderKeyRecord._fromNativeHandle(record)
+      SenderKeyName._fromNativeHandle(name),
+      SenderKeyRecord._fromNativeHandle(record)
     );
   }
   async _getSenderKey(
     name: SignalClient.SenderKeyName
   ): Promise<SignalClient.SenderKeyRecord | null> {
-    const skr = this.getSenderKey(SenderKeyName._fromNativeHandle(name));
+    const skr = await this.getSenderKey(SenderKeyName._fromNativeHandle(name));
     if (skr == null) {
       return null;
     } else {
@@ -979,8 +979,11 @@ export abstract class SenderKeyStore implements SignalClient.SenderKeyStore {
     }
   }
 
-  abstract saveSenderKey(name: SenderKeyName, record: SenderKeyRecord): void;
-  abstract getSenderKey(name: SenderKeyName): SenderKeyRecord | null;
+  abstract saveSenderKey(
+    name: SenderKeyName,
+    record: SenderKeyRecord
+  ): Promise<void>;
+  abstract getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
 }
 
 export async function GroupCipher_Encrypt(

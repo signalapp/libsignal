@@ -19,23 +19,23 @@ SignalClient.initLogger(
 
 class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
   private state = new Map();
-  saveSenderKey(
+  async saveSenderKey(
     name: SignalClient.SenderKeyName,
     record: SignalClient.SenderKeyRecord
-  ): void {
+  ): Promise<void> {
     const key =
       name.groupId() + '::' + name.senderName() + '::' + name.senderDeviceId();
-    this.state.set(key, record);
+    Promise.resolve(this.state.set(key, record));
   }
-  getSenderKey(
+  async getSenderKey(
     name: SignalClient.SenderKeyName
-  ): SignalClient.SenderKeyRecord | null {
+  ): Promise<SignalClient.SenderKeyRecord | null> {
     const key =
       name.groupId() + '::' + name.senderName() + '::' + name.senderDeviceId();
     if (this.state.has(key)) {
-      return this.state.get(key);
+      return Promise.resolve(this.state.get(key));
     } else {
-      return null;
+      return Promise.resolve(null);
     }
   }
 }
