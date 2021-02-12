@@ -7,7 +7,9 @@ import * as os from 'os';
 import bindings = require('bindings'); // eslint-disable-line @typescript-eslint/no-require-imports
 import * as SignalClient from './libsignal_client';
 
-const SC = bindings('libsignal_client_' + os.platform()) as typeof SignalClient;
+const SC = bindings(
+  'libsignal_client_' + os.platform() + '_' + process.arch
+) as typeof SignalClient;
 
 export const { initLogger, LogLevel, CiphertextMessageType } = SC;
 

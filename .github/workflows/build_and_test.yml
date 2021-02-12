@@ -172,7 +172,11 @@ jobs:
   node:
     name: Node
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     needs: changes
 
@@ -186,8 +190,14 @@ jobs:
       with:
         profile: minimal
 
-    - run: nvm install && nvm use
-      shell: bash -l {0}
+    - name: Get Node version from .nvmrc
+      id: get-nvm-version
+      shell: bash
+      run: echo "::set-output name=node-version::$(cat .nvmrc)"
+
+    - uses: actions/setup-node@v2
+      with:
+        node-version: ${{ steps.get-nvm-version.outputs.node-version }}
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
@@ -197,8 +207,10 @@ jobs:
     - run: yarn tsc
 
     - run: yarn lint
+      if: matrix.arch == 'ubuntu-latest'
 
     - run: yarn format -c
+      if: matrix.arch == 'ubuntu-latest'
 
     - name: Run yarn test
       uses: GabrielBB/xvfb-action@v1.4

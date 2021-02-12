@@ -31,6 +31,10 @@ def main(args=None):
                       help='specify Node OS name')
     parser.add_option('--cargo-build-dir', default='target', metavar='PATH',
                       help='specify cargo build dir (default %default)')
+    parser.add_option('--cargo-target', default=None,
+                      help='specify cargo target')
+    parser.add_option('--node-arch', default=None,
+                      help='specify node arch (x64, ia32, arm64)')
 
     (options, args) = parser.parse_args(args)
 
@@ -49,9 +53,23 @@ def main(args=None):
     if node_os_name.startswith('..\\'):
         node_os_name = node_os_name[3:]
 
+    cargo_target = options.cargo_target
+    if cargo_target is None:
+        print('ERROR: --cargo-target is required')
+        return 1
+    if cargo_target.startswith('..\\'):
+        cargo_target = cargo_target[3:]
+
+    node_arch = options.node_arch
+    if node_arch is None:
+        print('ERROR: --node_arch is required')
+        return 1
+    if node_arch.startswith('..\\'):
+        node_arch = node_arch[3:]
+
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 
-    cmdline = ['cargo', 'build', '-p', 'libsignal-node'] + ['--release'] if configuration_name == 'Release' else []
+    cmdline = ['cargo', 'build', '--target', cargo_target, '-p', 'libsignal-node'] + ['--release'] if configuration_name == 'Release' else []
     print("Running '%s'" % (' '.join(cmdline)))
 
     cargo_env = os.environ.copy()
@@ -70,13 +88,14 @@ def main(args=None):
         return 1
 
     libs_in = os.path.join(options.cargo_build_dir,
+                           cargo_target,
                            configuration_name.lower())
 
     found_a_lib = False
     for lib_format in ['%s.dll', 'lib%s.so', 'lib%s.dylib']:
         src_path = os.path.join(libs_in, lib_format % 'signal_node')
         if os.access(src_path, os.R_OK):
-            dst_path = os.path.join(out_dir, 'libsignal_client_%s.node' % (node_os_name))
+            dst_path = os.path.join(out_dir, 'libsignal_client_%s_%s.node' % (node_os_name, node_arch))
             print("Copying %s to %s" % (src_path, dst_path))
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
