@@ -207,10 +207,10 @@ jobs:
     - run: yarn tsc
 
     - run: yarn lint
-      if: matrix.arch == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest'
 
     - run: yarn format -c
-      if: matrix.arch == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest'
 
     - name: Run yarn test
       uses: GabrielBB/xvfb-action@v1.4
