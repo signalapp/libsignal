@@ -706,12 +706,13 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.1.0"
+version = "0.1.6"
 dependencies = [
  "async-trait",
  "futures",
  "jni",
  "libsignal-protocol-rust",
+ "log",
  "rand",
 ]
 
@@ -739,6 +740,7 @@ dependencies = [
  "futures",
  "hex",
  "hmac",
+ "log",
  "prost",
  "prost-build",
  "rand",

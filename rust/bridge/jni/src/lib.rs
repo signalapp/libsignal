@@ -13,6 +13,7 @@ use jni::JNIEnv;
 use libsignal_protocol_rust::*;
 use std::convert::TryFrom;
 
+pub mod logging;
 mod util;
 
 use crate::util::*;

@@ -97,6 +97,7 @@ async fn process_prekey_v3(
                 .key_pair()?,
         )
     } else {
+        log::warn!("Processing PreKey message which had no one-time prekey");
         None
     };
 
@@ -172,6 +173,12 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     );
 
     let mut session = ratchet::initialize_alice_session(&parameters, csprng)?;
+
+    log::info!(
+        "set_unacknowledged_pre_key_message for: {} with preKeyId: {}",
+        remote_address,
+        their_one_time_prekey_id.map_or_else(|| "<none>".to_string(), |id| id.to_string())
+    );
 
     session.set_unacknowledged_pre_key_message(
         their_one_time_prekey_id,
