@@ -758,3 +758,69 @@ pub async fn sealed_sender_decrypt(
         message,
     })
 }
+
+#[test]
+fn test_lossless_round_trip() -> Result<()> {
+    let trust_root = PrivateKey::deserialize(&[0u8; 32])?;
+
+    // To test a hypothetical addition of a new field:
+    //
+    // Step 1: tempororarily add a new field to the .proto.
+    //
+    //    --- a/rust/protocol/src/proto/sealed_sender.proto
+    //    +++ b/rust/protocol/src/proto/sealed_sender.proto
+    //    @@ -26,3 +26,4 @@ message SenderCertificate {
+    //             optional bytes             identityKey   = 4;
+    //             optional ServerCertificate signer        = 5;
+    //    +        optional string someFakeField = 999;
+    //     }
+    //
+    // Step 2: Add `some_fake_field: None` to the above construction of
+    // proto::sealed_sender::sender_certificate::Certificate.
+    //
+    // Step 3: Serialize and print out the new fixture data (uncomment the following)
+    //
+    // let mut rng = rand::rngs::OsRng;
+    // let server_key = KeyPair::generate(&mut rng);
+    // let sender_key = KeyPair::generate(&mut rng);
+    //
+    // let server_cert =
+    //     ServerCertificate::new(1, server_key.public_key, &trust_root, &mut rng)?;
+    //
+    // let sender_cert = proto::sealed_sender::sender_certificate::Certificate {
+    //     sender_uuid: Some("aaaaaaaa-7000-11eb-b32a-33b8a8a487a6".to_string()),
+    //     sender_e164: None,
+    //     sender_device: Some(1),
+    //     expires: Some(31337),
+    //     identity_key: Some(sender_key.public_key.serialize().to_vec()),
+    //     signer: Some(server_cert.to_protobuf()?),
+    //     some_fake_field: Some("crashing right down".to_string()),
+    // };
+    //
+    // eprintln!("<SNIP>");
+    // let mut serialized_certificate_data = vec![];
+    // sender_cert.encode(&mut serialized_certificate_data).expect("can't fail encoding to Vec");
+    // let certificate_data_encoded = hex::encode(&serialized_certificate_data);
+    // eprintln!("let certificate_data_encoded = \"{}\";", certificate_data_encoded);
+    //
+    // let certificate_signature = server_key.calculate_signature(&serialized_certificate_data, &mut rng)?;
+    // let certificate_signature_encoded = hex::encode(certificate_signature);
+    // eprintln!("let certificate_signature_encoded = \"{}\";", certificate_signature_encoded);
+
+    // Step 4: update the following *_encoded fixture data with the new values from above.
+    let certificate_data_encoded = "100119697a0000000000002221056c9d1f8deb82b9a898f9c277a1b74989ec009afb5c0acb5e8e69e3d5ca29d6322a690a2508011221053b03ca070e6f6b2f271d32f27321689cdf4e59b106c10b58fbe15063ed868a5a124024bc92954e52ad1a105b5bda85c9db410dcfeb42a671b45a523b3a46e9594a8bde0efc671d8e8e046b32c67f59b80a46ffdf24071850779bc21325107902af89322461616161616161612d373030302d313165622d623332612d333362386138613438376136ba3e136372617368696e6720726967687420646f776e";
+    let certificate_signature_encoded = "a22d8f86f5d00794f319add821e342c6ffffb6b34f741e569f8b321ab0255f2d1757ecf648e53a3602cae8f09b3fc80dcf27534d67efd272b6739afc31f75c8c";
+
+    // The rest of the test should be stable.
+    let certificate_data = hex::decode(certificate_data_encoded).expect("valid hex");
+    let certificate_signature = hex::decode(certificate_signature_encoded).expect("valid hex");
+
+    let sender_certificate_data = proto::sealed_sender::SenderCertificate {
+        certificate: Some(certificate_data),
+        signature: Some(certificate_signature),
+    };
+
+    let sender_certificate = SenderCertificate::from_protobuf(&sender_certificate_data)?;
+    assert!(sender_certificate.validate(&trust_root.public_key()?, 31336)?);
+    Ok(())
+}
