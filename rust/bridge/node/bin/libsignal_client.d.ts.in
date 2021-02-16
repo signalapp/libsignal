@@ -5,7 +5,32 @@
 
 // WARNING: this file was automatically generated
 
+export abstract class IdentityKeyStore {
+  _getIdentityKey(): Promise<PrivateKey>;
+  _getLocalRegistrationId(): Promise<number>;
+  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<boolean>;
+  _isTrustedIdentity(name: ProtocolAddress, key: PublicKey, sending: boolean): Promise<boolean>;
+  _getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
+}
+
+export abstract class SessionStore {
+  _saveSession(addr: ProtocolAddress, record: SessionRecord): Promise<void>;
+  _getSession(addr: ProtocolAddress): Promise<SessionRecord | null>;
+}
+
+export abstract class PreKeyStore {
+  _savePreKey(preKeyId: number, record: PreKeyRecord): Promise<void>;
+  _getPreKey(preKeyId: number): Promise<PreKeyRecord>;
+  _removePreKey(preKeyId: number): Promise<void>;
+}
+
+export abstract class SignedPreKeyStore {
+  _saveSignedPreKey(signedPreKeyId: number, record: SignedPreKeyRecord): Promise<void>;
+  _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
+}
+
 export abstract class SenderKeyStore {
   _saveSenderKey(name: SenderKeyName, record: SenderKeyRecord): Promise<void>;
   _getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
 }
+

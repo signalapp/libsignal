@@ -50,6 +50,7 @@ bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
+bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 
 #[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(
@@ -544,7 +545,7 @@ bridge_deserialize!(SenderCertificate::deserialize);
 bridge_get_bytearray!(GetSerialized(SenderCertificate) => SenderCertificate::serialized);
 bridge_get_bytearray!(GetCertificate(SenderCertificate) => SenderCertificate::certificate);
 bridge_get_bytearray!(GetSignature(SenderCertificate) => SenderCertificate::signature);
-bridge_get!(SenderCertificate::sender_uuid -> String);
+bridge_get!(SenderCertificate::sender_uuid -> &str);
 bridge_get!(SenderCertificate::sender_e164 -> Option<String>);
 bridge_get!(SenderCertificate::expiration -> u64);
 bridge_get!(SenderCertificate::sender_device_id as GetDeviceId -> u32);
@@ -664,7 +665,6 @@ fn UnidentifiedSenderMessage_New(
     )
 }
 
-/// ts: export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
 #[derive(Debug)]
 #[repr(C)]
 pub enum FfiCiphertextMessageType {
@@ -743,6 +743,13 @@ bridge_get_optional_bytearray!(GetRemoteIdentityKeyPublic(SessionRecord), ffi = 
 bridge_get!(SessionRecord::local_registration_id -> u32);
 bridge_get!(SessionRecord::remote_registration_id -> u32);
 bridge_get!(SessionRecord::has_sender_chain as HasSenderChain -> bool, ffi = false, node = false);
+
+bridge_get!(SealedSenderDecryptionResult::sender_uuid -> String, ffi = false, jni = false);
+bridge_get!(SealedSenderDecryptionResult::sender_e164 -> Option<String>, ffi = false, jni = false);
+bridge_get!(SealedSenderDecryptionResult::device_id -> u32, ffi = false, jni = false);
+bridge_get_bytearray!(Message(SealedSenderDecryptionResult), ffi = false, jni = false =>
+                      SealedSenderDecryptionResult::message
+);
 
 // The following SessionRecord APIs are just exposed to make it possible to retain some of the Java tests:
 

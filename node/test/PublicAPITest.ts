@@ -17,23 +17,140 @@ SignalClient.initLogger(
   }
 );
 
+class InMemorySessionStore extends SignalClient.SessionStore {
+  private state = new Map();
+  async saveSession(
+    name: SignalClient.ProtocolAddress,
+    record: SignalClient.SessionRecord
+  ): Promise<void> {
+    const idx = name.name() + '::' + name.deviceId();
+    Promise.resolve(this.state.set(idx, record.serialize()));
+  }
+  async getSession(
+    name: SignalClient.ProtocolAddress
+  ): Promise<SignalClient.SessionRecord | null> {
+    const idx = name.name() + '::' + name.deviceId();
+    if (this.state.has(idx)) {
+      return Promise.resolve(
+        SignalClient.SessionRecord.deserialize(this.state.get(idx))
+      );
+    } else {
+      return Promise.resolve(null);
+    }
+  }
+}
+
+class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
+  private idKeys = new Map();
+  private localRegistrationId: number;
+  private identityKey: SignalClient.PrivateKey;
+
+  constructor() {
+    super();
+    this.identityKey = SignalClient.PrivateKey.generate();
+    this.localRegistrationId = 5;
+  }
+
+  async getIdentityKey(): Promise<SignalClient.PrivateKey> {
+    return Promise.resolve(this.identityKey);
+  }
+  async getLocalRegistrationId(): Promise<number> {
+    return Promise.resolve(this.localRegistrationId);
+  }
+
+  async isTrustedIdentity(
+    name: SignalClient.ProtocolAddress,
+    key: SignalClient.PublicKey,
+    _direction: SignalClient.Direction
+  ): Promise<boolean> {
+    const idx = name.name() + '::' + name.deviceId();
+    if (this.idKeys.has(idx)) {
+      const currentKey = this.idKeys.get(idx);
+      return Promise.resolve(currentKey.compare(key) == 0);
+    } else {
+      return Promise.resolve(true);
+    }
+  }
+
+  async saveIdentity(
+    name: SignalClient.ProtocolAddress,
+    key: SignalClient.PublicKey
+  ): Promise<boolean> {
+    const idx = name.name() + '::' + name.deviceId();
+    const seen = this.idKeys.has(idx);
+    if (seen) {
+      const currentKey = this.idKeys.get(idx);
+      const changed = currentKey.compare(key) != 0;
+      this.idKeys.set(idx, key);
+      return Promise.resolve(changed);
+    }
+
+    this.idKeys.set(idx, key);
+    return Promise.resolve(false);
+  }
+  async getIdentity(
+    name: SignalClient.ProtocolAddress
+  ): Promise<SignalClient.PublicKey | null> {
+    const idx = name.name() + '::' + name.deviceId();
+    if (this.idKeys.has(idx)) {
+      return Promise.resolve(this.idKeys.get(idx));
+    } else {
+      return Promise.resolve(null);
+    }
+  }
+}
+
+class InMemoryPreKeyStore extends SignalClient.PreKeyStore {
+  private state = new Map();
+  async savePreKey(
+    id: number,
+    record: SignalClient.PreKeyRecord
+  ): Promise<void> {
+    Promise.resolve(this.state.set(id, record.serialize()));
+  }
+  async getPreKey(id: number): Promise<SignalClient.PreKeyRecord> {
+    return Promise.resolve(
+      SignalClient.PreKeyRecord.deserialize(this.state.get(id))
+    );
+  }
+  async removePreKey(id: number): Promise<void> {
+    this.state.delete(id);
+    return Promise.resolve();
+  }
+}
+
+class InMemorySignedPreKeyStore extends SignalClient.SignedPreKeyStore {
+  private state = new Map();
+  async saveSignedPreKey(
+    id: number,
+    record: SignalClient.SignedPreKeyRecord
+  ): Promise<void> {
+    Promise.resolve(this.state.set(id, record.serialize()));
+  }
+  async getSignedPreKey(id: number): Promise<SignalClient.SignedPreKeyRecord> {
+    return Promise.resolve(
+      SignalClient.SignedPreKeyRecord.deserialize(this.state.get(id))
+    );
+  }
+}
+
 class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
   private state = new Map();
   async saveSenderKey(
     name: SignalClient.SenderKeyName,
     record: SignalClient.SenderKeyRecord
   ): Promise<void> {
-    const key =
+    const idx =
       name.groupId() + '::' + name.senderName() + '::' + name.senderDeviceId();
-    Promise.resolve(this.state.set(key, record));
+    Promise.resolve(this.state.set(idx, record));
   }
   async getSenderKey(
     name: SignalClient.SenderKeyName
   ): Promise<SignalClient.SenderKeyRecord | null> {
-    const key =
+    const idx =
       name.groupId() + '::' + name.senderName() + '::' + name.senderDeviceId();
-    if (this.state.has(key)) {
-      return Promise.resolve(this.state.get(key));
+    if (this.state.has(idx)) {
+      return Promise.resolve(this.state.get(idx));
     } else {
       return Promise.resolve(null);
     }
@@ -429,6 +546,123 @@ describe('SignalClient', () => {
     const pkm2 = SignalClient.PreKeySignalMessage.deserialize(pkm_bytes);
 
     assert.deepEqual(pkm2.serialize(), pkm_bytes);
+  });
+  it('BasicPreKeyMessaging', async () => {
+    // basic_prekey_v3 in Rust
+    const aKeys = new InMemoryIdentityKeyStore();
+    const bKeys = new InMemoryIdentityKeyStore();
+
+    const aSess = new InMemorySessionStore();
+    const bSess = new InMemorySessionStore();
+
+    const bPreK = new InMemoryPreKeyStore();
+    const bSPreK = new InMemorySignedPreKeyStore();
+
+    const bPreKey = SignalClient.PrivateKey.generate();
+    const bSPreKey = SignalClient.PrivateKey.generate();
+
+    const bIdentityKey = await bKeys.getIdentityKey();
+    const bSignedPreKeySig = bIdentityKey.sign(
+      bSPreKey.getPublicKey().serialize()
+    );
+
+    const aAddress = SignalClient.ProtocolAddress.new('+14151111111', 1);
+    const bAddress = SignalClient.ProtocolAddress.new('+19192222222', 1);
+
+    const bRegistrationId = await bKeys.getLocalRegistrationId();
+    const bPreKeyId = 31337;
+    const bSignedPreKeyId = 22;
+
+    const bPreKeyBundle = SignalClient.PreKeyBundle.new(
+      bRegistrationId,
+      bAddress.deviceId(),
+      bPreKeyId,
+      bPreKey.getPublicKey(),
+      bSignedPreKeyId,
+      bSPreKey.getPublicKey(),
+      bSignedPreKeySig,
+      bIdentityKey.getPublicKey()
+    );
+
+    const bPreKeyRecord = SignalClient.PreKeyRecord.new(
+      bPreKeyId,
+      bPreKey.getPublicKey(),
+      bPreKey
+    );
+    bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+
+    const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
+      bSignedPreKeyId,
+      42, // timestamp
+      bSPreKey.getPublicKey(),
+      bSPreKey,
+      bSignedPreKeySig
+    );
+    bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+    await SignalClient.ProcessPreKeyBundle(
+      bPreKeyBundle,
+      bAddress,
+      aSess,
+      aKeys
+    );
+    const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
+
+    const aCiphertext = await SignalClient.EncryptMessage(
+      aMessage,
+      bAddress,
+      aSess,
+      aKeys
+    );
+
+    assert.deepEqual(
+      aCiphertext.type(),
+      SignalClient.CiphertextMessageType.PreKey
+    );
+
+    const aCiphertextR = SignalClient.PreKeySignalMessage.deserialize(
+      aCiphertext.serialize()
+    );
+
+    const bDPlaintext = await SignalClient.DecryptPreKeySignalMessage(
+      aCiphertextR,
+      aAddress,
+      bSess,
+      bKeys,
+      bPreK,
+      bSPreK
+    );
+    assert.deepEqual(bDPlaintext, aMessage);
+
+    const bMessage = Buffer.from(
+      'Sometimes the only thing more dangerous than a question is an answer.',
+      'utf8'
+    );
+
+    const bCiphertext = await SignalClient.EncryptMessage(
+      bMessage,
+      aAddress,
+      bSess,
+      bKeys
+    );
+
+    assert.deepEqual(
+      bCiphertext.type(),
+      SignalClient.CiphertextMessageType.Whisper
+    );
+
+    const bCiphertextR = SignalClient.SignalMessage.deserialize(
+      bCiphertext.serialize()
+    );
+
+    const aDPlaintext = await SignalClient.DecryptSignalMessage(
+      bCiphertextR,
+      bAddress,
+      aSess,
+      aKeys
+    );
+
+    assert.deepEqual(aDPlaintext, bMessage);
   });
   it('AES-GCM-SIV test vector', () => {
     // RFC 8452, appendix C.2

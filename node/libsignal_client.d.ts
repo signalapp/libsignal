@@ -5,12 +5,36 @@
 
 // WARNING: this file was automatically generated
 
+export abstract class IdentityKeyStore {
+  _getIdentityKey(): Promise<PrivateKey>;
+  _getLocalRegistrationId(): Promise<number>;
+  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<boolean>;
+  _isTrustedIdentity(name: ProtocolAddress, key: PublicKey, sending: boolean): Promise<boolean>;
+  _getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
+}
+
+export abstract class SessionStore {
+  _saveSession(addr: ProtocolAddress, record: SessionRecord): Promise<void>;
+  _getSession(addr: ProtocolAddress): Promise<SessionRecord | null>;
+}
+
+export abstract class PreKeyStore {
+  _savePreKey(preKeyId: number, record: PreKeyRecord): Promise<void>;
+  _getPreKey(preKeyId: number): Promise<PreKeyRecord>;
+  _removePreKey(preKeyId: number): Promise<void>;
+}
+
+export abstract class SignedPreKeyStore {
+  _saveSignedPreKey(signedPreKeyId: number, record: SignedPreKeyRecord): Promise<void>;
+  _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
+}
+
 export abstract class SenderKeyStore {
   _saveSenderKey(name: SenderKeyName, record: SenderKeyRecord): Promise<void>;
   _getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
 }
 
-export const enum CiphertextMessageType { Whisper = 2, PreKey = 3, SenderKey = 4, SenderKeyDistribution = 5 }
+
 export const enum LogLevel { Error, Warn, Info, Debug, Trace }
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Aes256GcmSiv, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_Encrypt(aesGcmSiv: Aes256GcmSiv, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
@@ -61,6 +85,13 @@ export function PublicKey_GetPublicKeyBytes(obj: PublicKey): Buffer;
 export function PublicKey_Serialize(obj: PublicKey): Buffer;
 export function PublicKey_Verify(key: PublicKey, message: Buffer, signature: Buffer): boolean;
 export function ScannableFingerprint_Compare(fprint1: Buffer, fprint2: Buffer): boolean;
+export function SealedSenderDecryptionResult_GetDeviceId(obj: SealedSenderDecryptionResult): number;
+export function SealedSenderDecryptionResult_GetSenderE164(obj: SealedSenderDecryptionResult): string | null;
+export function SealedSenderDecryptionResult_GetSenderUuid(obj: SealedSenderDecryptionResult): string;
+export function SealedSenderDecryptionResult_Message(obj: SealedSenderDecryptionResult): Buffer;
+export function SealedSender_DecryptMessage(message: Buffer, trustRoot: PublicKey, timestamp: number, localE164: string|null, localUuid: string, localDeviceId: number, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore): Promise<SealedSenderDecryptionResult>;
+export function SealedSender_DecryptToUsmc(message: Buffer, identityStore: IdentityKeyStore): Promise<UnidentifiedSenderMessageContent>;
+export function SealedSender_EncryptMessage(message: Buffer, address: ProtocolAddress, senderCert: SenderCertificate, sessionStore: SessionStore, identityStore: IdentityKeyStore): Promise<Buffer>;
 export function SenderCertificate_Deserialize(buffer: Buffer): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: SenderCertificate): Buffer;
 export function SenderCertificate_GetDeviceId(obj: SenderCertificate): number;
@@ -102,6 +133,10 @@ export function ServerCertificate_GetKeyId(obj: ServerCertificate): number;
 export function ServerCertificate_GetSerialized(obj: ServerCertificate): Buffer;
 export function ServerCertificate_GetSignature(obj: ServerCertificate): Buffer;
 export function ServerCertificate_New(keyId: number, serverKey: PublicKey, trustRoot: PrivateKey): ServerCertificate;
+export function SessionBuilder_ProcessPreKeyBundle(bundle: PreKeyBundle, address: ProtocolAddress, sessionStore: SessionStore, identityStore: IdentityKeyStore): Promise<void>;
+export function SessionCipher_DecryptPreKeySignalMessage(message: PreKeySignalMessage, address: ProtocolAddress, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore): Promise<Buffer>;
+export function SessionCipher_DecryptSignalMessage(message: SignalMessage, address: ProtocolAddress, sessionStore: SessionStore, identityStore: IdentityKeyStore): Promise<Buffer>;
+export function SessionCipher_EncryptMessage(message: Buffer, address: ProtocolAddress, sessionStore: SessionStore, identityStore: IdentityKeyStore): Promise<CiphertextMessage>;
 export function SessionRecord_ArchiveCurrentState(sessionRecord: SessionRecord): void;
 export function SessionRecord_Deserialize(buffer: Buffer): SessionRecord;
 export function SessionRecord_GetLocalRegistrationId(obj: SessionRecord): number;
@@ -137,6 +172,7 @@ interface PreKeySignalMessage { readonly __type: unique symbol; }
 interface PrivateKey { readonly __type: unique symbol; }
 interface ProtocolAddress { readonly __type: unique symbol; }
 interface PublicKey { readonly __type: unique symbol; }
+interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }
 interface SenderKeyDistributionMessage { readonly __type: unique symbol; }
 interface SenderKeyMessage { readonly __type: unique symbol; }
