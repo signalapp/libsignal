@@ -144,7 +144,15 @@ impl SignalMessage {
             &self.serialized[..self.serialized.len() - Self::MAC_LENGTH],
         )?;
         let their_mac = &self.serialized[self.serialized.len() - Self::MAC_LENGTH..];
-        Ok(our_mac.ct_eq(their_mac).into())
+        let result: bool = our_mac.ct_eq(their_mac).into();
+        if !result {
+            log::error!(
+                "Bad Mac! Their Mac: {} Our Mac: {}",
+                hex::encode(their_mac),
+                hex::encode(our_mac)
+            );
+        }
+        Ok(result)
     }
 
     fn compute_mac(
