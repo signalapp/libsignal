@@ -80,6 +80,11 @@ def main(args=None):
     # https://github.com/rust-lang/rfcs/issues/2771
     cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
 
+    if node_os_name == 'win32':
+        # By default, Rust on Windows depends on an MSVC component for the C runtime.
+        # Link it statically to avoid propagating that dependency.
+        cargo_env['RUSTFLAGS'] = '-C target-feature=+crt-static'
+
     cmd = subprocess.Popen(cmdline, env=cargo_env)
     cmd.wait()
 
