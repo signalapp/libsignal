@@ -12,7 +12,7 @@
     "build": "node-gyp build",
     "tsc": "tsc -b node",
     "clean": "rimraf node/dist build",
-    "test": "electron-mocha --recursive node/dist/test",
+    "test": "electron-mocha --recursive node/dist/test --require source-map-support/register",
     "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
   },
@@ -39,6 +39,7 @@
     "node-gyp": "^7.1.2",
     "prettier": "1.19.1",
     "rimraf": "3.0.1",
+    "source-map-support": "^0.5.19",
     "typescript": "3.7.4"
   }
 }
