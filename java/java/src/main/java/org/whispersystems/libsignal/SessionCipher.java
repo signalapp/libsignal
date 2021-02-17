@@ -28,10 +28,11 @@ import java.security.NoSuchAlgorithmException;
  * this class can be used for all encrypt/decrypt operations within
  * that session.
  *
+ * This class is not thread-safe.
+ *
  * @author Moxie Marlinspike
  */
 public class SessionCipher {
-  public static final Object SESSION_LOCK = new Object();
 
   private final SessionStore          sessionStore;
   private final IdentityKeyStore      identityKeyStore;
@@ -69,12 +70,10 @@ public class SessionCipher {
    * @return A ciphertext message encrypted to the recipient+device tuple.
    */
   public CiphertextMessage encrypt(byte[] paddedMessage) throws UntrustedIdentityException {
-    synchronized (SESSION_LOCK) {
-       return Native.SessionCipher_EncryptMessage(paddedMessage,
-                             this.remoteAddress.nativeHandle(),
-                             sessionStore,
-                             identityKeyStore);
-    }
+     return Native.SessionCipher_EncryptMessage(paddedMessage,
+                           this.remoteAddress.nativeHandle(),
+                           sessionStore,
+                           identityKeyStore);
   }
 
   /**
@@ -96,14 +95,12 @@ public class SessionCipher {
       throws DuplicateMessageException, LegacyMessageException, InvalidMessageException,
              InvalidKeyIdException, InvalidKeyException, UntrustedIdentityException
   {
-    synchronized (SESSION_LOCK) {
-      return Native.SessionCipher_DecryptPreKeySignalMessage(ciphertext.nativeHandle(),
-                                        remoteAddress.nativeHandle(),
-                                        sessionStore,
-                                        identityKeyStore,
-                                        preKeyStore,
-                                        signedPreKeyStore);
-    }
+    return Native.SessionCipher_DecryptPreKeySignalMessage(ciphertext.nativeHandle(),
+                                      remoteAddress.nativeHandle(),
+                                      sessionStore,
+                                      identityKeyStore,
+                                      preKeyStore,
+                                      signedPreKeyStore);
   }
 
   /**
@@ -122,29 +119,27 @@ public class SessionCipher {
       throws InvalidMessageException, DuplicateMessageException, LegacyMessageException,
       NoSessionException, UntrustedIdentityException
   {
-    synchronized (SESSION_LOCK) {
-       return Native.SessionCipher_DecryptSignalMessage(ciphertext.nativeHandle(),
-                                   remoteAddress.nativeHandle(),
-                                   sessionStore,
-                                   identityKeyStore);
-    }
+     return Native.SessionCipher_DecryptSignalMessage(ciphertext.nativeHandle(),
+                                 remoteAddress.nativeHandle(),
+                                 sessionStore,
+                                 identityKeyStore);
   }
 
   public int getRemoteRegistrationId() {
-    synchronized (SESSION_LOCK) {
-      SessionRecord record = sessionStore.loadSession(remoteAddress);
-      return record.getRemoteRegistrationId();
+    if (!sessionStore.containsSession(remoteAddress)) {
+      throw new IllegalStateException(String.format("No session for (%s)!", remoteAddress));
     }
+
+    SessionRecord record = sessionStore.loadSession(remoteAddress);
+    return record.getRemoteRegistrationId();
   }
 
   public int getSessionVersion() {
-    synchronized (SESSION_LOCK) {
-      if (!sessionStore.containsSession(remoteAddress)) {
-        throw new IllegalStateException(String.format("No session for (%s)!", remoteAddress));
-      }
-
-      SessionRecord record = sessionStore.loadSession(remoteAddress);
-      return record.getSessionVersion();
+    if (!sessionStore.containsSession(remoteAddress)) {
+      throw new IllegalStateException(String.format("No session for (%s)!", remoteAddress));
     }
+
+    SessionRecord record = sessionStore.loadSession(remoteAddress);
+    return record.getSessionVersion();
   }
 }
