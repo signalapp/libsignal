@@ -19,12 +19,13 @@ mod util;
 
 use crate::util::*;
 
-type JavaSessionStore = jobject;
-type JavaIdentityKeyStore = jobject;
-type JavaPreKeyStore = jobject;
-type JavaSignedPreKeyStore = jobject;
+type JavaSessionStore<'a> = JObject<'a>;
+type JavaIdentityKeyStore<'a> = JObject<'a>;
+type JavaPreKeyStore<'a> = JObject<'a>;
+type JavaSignedPreKeyStore<'a> = JObject<'a>;
+type JavaSenderKeyStore<'a> = JObject<'a>;
+
 type JavaCiphertextMessage = jobject;
-type JavaSenderKeyStore = jobject;
 
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Deserialize(
@@ -86,11 +87,11 @@ fn protocol_address_to_jobject<'a>(
 
 pub struct JniIdentityKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    store: jobject,
+    store: JObject<'a>,
 }
 
 impl<'a> JniIdentityKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+    fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
             &env,
             store,
@@ -280,11 +281,11 @@ impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
 
 pub struct JniPreKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    store: jobject,
+    store: JObject<'a>,
 }
 
 impl<'a> JniPreKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+    fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
             &env,
             store,
@@ -380,11 +381,11 @@ impl<'a> PreKeyStore for JniPreKeyStore<'a> {
 
 pub struct JniSignedPreKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    store: jobject,
+    store: JObject<'a>,
 }
 
 impl<'a> JniSignedPreKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+    fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
             &env,
             store,
@@ -461,11 +462,11 @@ impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
 
 pub struct JniSessionStore<'a> {
     env: &'a JNIEnv<'a>,
-    store: jobject,
+    store: JObject<'a>,
 }
 
 impl<'a> JniSessionStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+    fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
             &env,
             store,
@@ -679,11 +680,11 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_SessionCipher_1D
 
 pub struct JniSenderKeyStore<'a> {
     env: &'a JNIEnv<'a>,
-    store: jobject,
+    store: JObject<'a>,
 }
 
 impl<'a> JniSenderKeyStore<'a> {
-    fn new(env: &'a JNIEnv, store: jobject) -> Result<Self, SignalJniError> {
+    fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
             &env,
             store,
