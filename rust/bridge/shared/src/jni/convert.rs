@@ -204,6 +204,16 @@ impl ResultTypeInfo for &str {
     }
 }
 
+impl ResultTypeInfo for Option<&str> {
+    type ResultType = jstring;
+    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+        match self {
+            Some(s) => s.convert_into(env),
+            None => Ok(std::ptr::null_mut()),
+        }
+    }
+}
+
 impl ResultTypeInfo for Vec<u8> {
     type ResultType = jbyteArray;
     fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -385,6 +395,9 @@ macro_rules! jni_result_type {
     (Result<&$typ:tt, $_:ty>) => {
         jni_result_type!(&$typ)
     };
+    (Result<Option<&$typ:tt>, $_:ty>) => {
+        jni_result_type!(&$typ)
+    };
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => {
         jni_result_type!($typ<$($args)+>)
     };
@@ -414,6 +427,9 @@ macro_rules! jni_result_type {
         jni::jstring
     };
     (Option<String>) => {
+        jni::jstring
+    };
+    (Option<&str>) => {
         jni::jstring
     };
     (Vec<u8>) => {

@@ -546,7 +546,7 @@ bridge_get_bytearray!(GetSerialized(SenderCertificate) => SenderCertificate::ser
 bridge_get_bytearray!(GetCertificate(SenderCertificate) => SenderCertificate::certificate);
 bridge_get_bytearray!(GetSignature(SenderCertificate) => SenderCertificate::signature);
 bridge_get!(SenderCertificate::sender_uuid -> &str);
-bridge_get!(SenderCertificate::sender_e164 -> Option<String>);
+bridge_get!(SenderCertificate::sender_e164 -> Option<&str>);
 bridge_get!(SenderCertificate::expiration -> u64);
 bridge_get!(SenderCertificate::sender_device_id as GetDeviceId -> u32);
 bridge_get!(SenderCertificate::key -> PublicKey);
