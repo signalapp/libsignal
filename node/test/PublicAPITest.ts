@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert } from 'chai';
+import { assert, use } from 'chai';
+import * as chaiAsPromised from 'chai-as-promised';
 import * as SignalClient from '../index';
+
+use(chaiAsPromised);
 
 SignalClient.initLogger(
   SignalClient.LogLevel.Trace,
@@ -361,36 +364,62 @@ describe('SignalClient', () => {
     );
     assert.deepEqual(skdm, skdmFromBytes);
   });
-  it('SenderKeyDistributionMessage Store API', async () => {
-    const senderKeyName = SignalClient.SenderKeyName.new('group', 'sender', 1);
-    const aSenderKeyStore = new InMemorySenderKeyStore();
-    const skdm = await SignalClient.SenderKeyDistributionMessage.create(
-      senderKeyName,
-      aSenderKeyStore
-    );
+  describe('SenderKeyDistributionMessage Store API', () => {
+    it('can encrypt and decrypt', async () => {
+      const senderKeyName = SignalClient.SenderKeyName.new(
+        'group',
+        'sender',
+        1
+      );
+      const aSenderKeyStore = new InMemorySenderKeyStore();
+      const skdm = await SignalClient.SenderKeyDistributionMessage.create(
+        senderKeyName,
+        aSenderKeyStore
+      );
 
-    const bSenderKeyStore = new InMemorySenderKeyStore();
-    await SignalClient.processSenderKeyDistributionMessage(
-      senderKeyName,
-      skdm,
-      bSenderKeyStore
-    );
+      const bSenderKeyStore = new InMemorySenderKeyStore();
+      await SignalClient.processSenderKeyDistributionMessage(
+        senderKeyName,
+        skdm,
+        bSenderKeyStore
+      );
 
-    const message = Buffer.from('0a0b0c', 'hex');
+      const message = Buffer.from('0a0b0c', 'hex');
 
-    const aCtext = await SignalClient.groupEncrypt(
-      senderKeyName,
-      aSenderKeyStore,
-      message
-    );
+      const aCtext = await SignalClient.groupEncrypt(
+        senderKeyName,
+        aSenderKeyStore,
+        message
+      );
 
-    const bPtext = await SignalClient.groupDecrypt(
-      senderKeyName,
-      bSenderKeyStore,
-      aCtext
-    );
+      const bPtext = await SignalClient.groupDecrypt(
+        senderKeyName,
+        bSenderKeyStore,
+        aCtext
+      );
 
-    assert.deepEqual(message, bPtext);
+      assert.deepEqual(message, bPtext);
+    });
+    it("does not panic if there's an error", async () => {
+      const senderKeyName = SignalClient.SenderKeyName.new(
+        'group',
+        'sender',
+        1
+      );
+      const aSenderKeyStore = new InMemorySenderKeyStore();
+
+      const messagePromise = SignalClient.SenderKeyDistributionMessage.create(
+        senderKeyName,
+        (undefined as unknown) as SignalClient.SenderKeyStore
+      );
+      await assert.isRejected(messagePromise, TypeError);
+
+      const messagePromise2 = SignalClient.SenderKeyDistributionMessage.create(
+        ({} as unknown) as SignalClient.SenderKeyName,
+        aSenderKeyStore
+      );
+      await assert.isRejected(messagePromise2, TypeError);
+    });
   });
   it('PublicKeyBundle', () => {
     const registrationId = 5;
