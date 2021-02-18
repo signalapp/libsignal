@@ -30,6 +30,8 @@ import org.whispersystems.libsignal.state.SignedPreKeyStore;
  * Sessions are constructed per recipientId + deviceId tuple.  Remote logical users are identified
  * by their recipientId, and each logical recipientId can have multiple physical devices.
  *
+ * This class is not thread-safe.
+ *
  * @author Moxie Marlinspike
  */
 public class SessionBuilder {
@@ -83,12 +85,9 @@ public class SessionBuilder {
    *                                                                  trusted.
    */
   public void process(PreKeyBundle preKey) throws InvalidKeyException, UntrustedIdentityException {
-    synchronized (SessionCipher.SESSION_LOCK) {
-      Native.SessionBuilder_ProcessPreKeyBundle(preKey.nativeHandle(),
-                          remoteAddress.nativeHandle(),
-                          sessionStore,
-                          identityKeyStore);
-    }
+    Native.SessionBuilder_ProcessPreKeyBundle(preKey.nativeHandle(),
+                        remoteAddress.nativeHandle(),
+                        sessionStore,
+                        identityKeyStore);
   }
-
 }
