@@ -664,6 +664,122 @@ describe('SignalClient', () => {
 
     assert.deepEqual(aDPlaintext, bMessage);
   });
+  it('SealedSender', async () => {
+    const aKeys = new InMemoryIdentityKeyStore();
+    const bKeys = new InMemoryIdentityKeyStore();
+
+    const aSess = new InMemorySessionStore();
+    const bSess = new InMemorySessionStore();
+
+    const bPreK = new InMemoryPreKeyStore();
+    const bSPreK = new InMemorySignedPreKeyStore();
+
+    const bPreKey = SignalClient.PrivateKey.generate();
+    const bSPreKey = SignalClient.PrivateKey.generate();
+
+    const aIdentityKey = await aKeys.getIdentityKey();
+    const bIdentityKey = await bKeys.getIdentityKey();
+
+    const aE164 = '+14151111111';
+    const bE164 = '+19192222222';
+
+    const aDeviceId = 1;
+    const bDeviceId = 3;
+
+    const aUuid = '9d0652a3-dcc3-4d11-975f-74d61598733f';
+    const bUuid = '796abedb-ca4e-4f18-8803-1fde5b921f9f';
+
+    const trustRoot = SignalClient.PrivateKey.generate();
+    const serverKey = SignalClient.PrivateKey.generate();
+
+    const serverCert = SignalClient.ServerCertificate.new(
+      1,
+      serverKey.getPublicKey(),
+      trustRoot
+    );
+
+    const expires = 1605722925;
+    const senderCert = SignalClient.SenderCertificate.new(
+      aUuid,
+      aE164,
+      aDeviceId,
+      aIdentityKey.getPublicKey(),
+      expires,
+      serverCert,
+      serverKey
+    );
+
+    const bRegistrationId = await bKeys.getLocalRegistrationId();
+    const bPreKeyId = 31337;
+    const bSignedPreKeyId = 22;
+
+    const bSignedPreKeySig = bIdentityKey.sign(
+      bSPreKey.getPublicKey().serialize()
+    );
+
+    const bPreKeyBundle = SignalClient.PreKeyBundle.new(
+      bRegistrationId,
+      bDeviceId,
+      bPreKeyId,
+      bPreKey.getPublicKey(),
+      bSignedPreKeyId,
+      bSPreKey.getPublicKey(),
+      bSignedPreKeySig,
+      bIdentityKey.getPublicKey()
+    );
+
+    const bPreKeyRecord = SignalClient.PreKeyRecord.new(
+      bPreKeyId,
+      bPreKey.getPublicKey(),
+      bPreKey
+    );
+    bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+
+    const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
+      bSignedPreKeyId,
+      42, // timestamp
+      bSPreKey.getPublicKey(),
+      bSPreKey,
+      bSignedPreKeySig
+    );
+    bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+    const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
+    await SignalClient.ProcessPreKeyBundle(
+      bPreKeyBundle,
+      bAddress,
+      aSess,
+      aKeys
+    );
+
+    const aPlaintext = Buffer.from('hi there', 'utf8');
+
+    const aCiphertext = await SignalClient.SealedSender_EncryptMessage(
+      aPlaintext,
+      bAddress,
+      senderCert,
+      aSess,
+      aKeys
+    );
+
+    const bPlaintext = await SignalClient.SealedSender_DecryptMessage(
+      aCiphertext,
+      trustRoot.getPublicKey(),
+      43, // timestamp,
+      bE164,
+      bUuid,
+      bDeviceId,
+      bSess,
+      bKeys,
+      bPreK,
+      bSPreK
+    );
+
+    assert.deepEqual(bPlaintext.message(), aPlaintext);
+    assert.deepEqual(bPlaintext.senderE164(), aE164);
+    assert.deepEqual(bPlaintext.senderUuid(), aUuid);
+    assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
+  });
   it('AES-GCM-SIV test vector', () => {
     // RFC 8452, appendix C.2
     const key = Buffer.from(
