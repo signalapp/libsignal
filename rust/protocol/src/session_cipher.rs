@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -425,8 +425,12 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                 previous_state_count(),
             );
         }
-        Err(SignalProtocolError::MessageDecryptionFailed(
-            create_decryption_failure_log(remote_address, &errs, record, ciphertext)?,
+        log::error!(
+            "{}",
+            create_decryption_failure_log(remote_address, &errs, record, ciphertext)?
+        );
+        Err(SignalProtocolError::InvalidMessage(
+            "Message decryption failed",
         ))
     }
 }
