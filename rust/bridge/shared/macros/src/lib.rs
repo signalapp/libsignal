@@ -123,7 +123,10 @@ fn ffi_bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> Toke
             }) => (
                 name.ident.clone(),
                 quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty)),
-                quote!(let #name = <#ty as ffi::ArgTypeInfo>::convert_from(#name)?),
+                quote! {
+                    let mut #name = <#ty as ffi::ArgTypeInfo>::borrow(#name)?;
+                    let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name)?
+                },
             ),
             FnArg::Typed(PatType { pat, .. }) => (
                 Ident::new("unexpected", pat.span()),
