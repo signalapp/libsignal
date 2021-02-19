@@ -13,6 +13,7 @@ use signal_neon_futures::*;
 use std::fmt;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
+use std::convert::TryFrom;
 
 pub mod logging;
 
