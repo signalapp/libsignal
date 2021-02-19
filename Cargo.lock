@@ -375,19 +375,6 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8492de420e9e60bc9a1d66e2dbb91825390b738a388606600663fc529b4b307"
-dependencies = [
- "byteorder",
- "digest",
- "rand_core",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
-version = "3.0.0"
 source = "git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2#2694ad3b789635f90f941648ae952f58d59ffc73"
 dependencies = [
  "byteorder",
@@ -763,7 +750,7 @@ dependencies = [
  "bytes",
  "criterion",
  "ctr",
- "curve25519-dalek 3.0.0 (git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2)",
+ "curve25519-dalek",
  "futures",
  "hex",
  "hmac",
@@ -999,7 +986,7 @@ dependencies = [
 name = "poksho"
 version = "0.7.0"
 dependencies = [
- "curve25519-dalek 3.0.0 (git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2)",
+ "curve25519-dalek",
  "hex",
  "hmac",
  "sha2",
@@ -1594,7 +1581,7 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc614d95359fd7afc321b66d2107ede58b246b844cf5d8a0adcca413e439f088"
 dependencies = [
- "curve25519-dalek 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curve25519-dalek",
  "rand_core",
  "zeroize",
 ]
