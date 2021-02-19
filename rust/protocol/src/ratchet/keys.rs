@@ -6,8 +6,7 @@
 use arrayref::array_ref;
 
 use crate::crypto;
-use crate::kdf::HKDF;
-use crate::{PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
 use std::fmt;
 
 pub struct MessageKeys {

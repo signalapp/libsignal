@@ -4,16 +4,13 @@
 //
 
 use crate::{
-    Context, IdentityKeyStore, KeyPair, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
-    SignalProtocolError, SignedPreKeyStore,
+    Context, Direction, IdentityKeyStore, KeyPair, PreKeyBundle, PreKeySignalMessage, PreKeyStore,
+    ProtocolAddress, Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
 };
 
-use crate::error::Result;
-use crate::protocol::PreKeySignalMessage;
 use crate::ratchet;
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
-use crate::state::{PreKeyBundle, PreKeyId};
-use crate::storage::Direction;
+use crate::state::PreKeyId;
 use rand::{CryptoRng, Rng};
 
 /*

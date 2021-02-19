@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Result, SignalProtocolError};
+use crate::{Result, SignalProtocolError};
 
 use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;

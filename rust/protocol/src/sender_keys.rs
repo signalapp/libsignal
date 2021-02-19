@@ -5,9 +5,8 @@
 
 use crate::consts;
 use crate::crypto::hmac_sha256;
-use crate::kdf::HKDF;
 use crate::proto::storage as storage_proto;
-use crate::{PrivateKey, ProtocolAddress, PublicKey, Result, SignalProtocolError};
+use crate::{PrivateKey, ProtocolAddress, PublicKey, Result, SignalProtocolError, HKDF};
 
 use prost::Message;
 use std::collections::VecDeque;

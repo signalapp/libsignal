@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Result, SignalProtocolError};
-use crate::IdentityKey;
-use crate::{proto, PrivateKey, PublicKey};
+use crate::proto;
+use crate::{IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use std::convert::TryFrom;
 

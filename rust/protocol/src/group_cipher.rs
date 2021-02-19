@@ -5,10 +5,13 @@
 
 use crate::consts;
 use crate::crypto;
-use crate::error::Result;
-use crate::protocol::{SenderKeyDistributionMessage, SenderKeyMessage};
-use crate::sender_keys::{SenderKeyRecord, SenderKeyState, SenderMessageKey};
-use crate::{Context, KeyPair, SenderKeyName, SenderKeyStore, SignalProtocolError};
+
+use crate::{
+    Context, KeyPair, Result, SenderKeyDistributionMessage, SenderKeyMessage, SenderKeyName,
+    SenderKeyRecord, SenderKeyStore, SignalProtocolError,
+};
+
+use crate::sender_keys::{SenderKeyState, SenderMessageKey};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;

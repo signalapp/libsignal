@@ -3,16 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::crypto;
-use crate::error::{Result, SignalProtocolError};
-use crate::kdf::HKDF;
-use crate::proto;
-use crate::session_cipher;
 use crate::{
     message_encrypt, CiphertextMessageType, Context, IdentityKeyStore, KeyPair,
-    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, SessionStore,
-    SignalMessage, SignedPreKeyStore,
+    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, SessionStore,
+    SignalMessage, SignalProtocolError, SignedPreKeyStore, HKDF,
 };
+
+use crate::crypto;
+use crate::proto;
+use crate::session_cipher;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;

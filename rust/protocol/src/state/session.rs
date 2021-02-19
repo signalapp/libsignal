@@ -3,16 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Result, SignalProtocolError};
 use crate::ratchet::{ChainKey, MessageKeys, RootKey};
-use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey};
+use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
 
 use crate::consts;
-use crate::kdf;
 use crate::proto::storage::session_structure;
 use crate::proto::storage::{RecordStructure, SessionStructure};
-use crate::state::prekey::PreKeyId;
-use crate::state::signed_prekey::SignedPreKeyId;
+use crate::state::{PreKeyId, SignedPreKeyId};
 use prost::Message;
 
 use std::collections::VecDeque;
@@ -112,7 +109,7 @@ impl SessionState {
         if self.session.root_key.len() != 32 {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
-        let hkdf = kdf::HKDF::new(self.session_version()?)?;
+        let hkdf = HKDF::new(self.session_version()?)?;
         RootKey::new(hkdf, &self.session.root_key)
     }
 
@@ -191,7 +188,7 @@ impl SessionState {
                     if c.key.len() != 32 {
                         return Err(SignalProtocolError::InvalidProtobufEncoding);
                     }
-                    let hkdf = kdf::HKDF::new(self.session_version()?)?;
+                    let hkdf = HKDF::new(self.session_version()?)?;
                     Ok(Some(ChainKey::new(hkdf, &c.key, c.index)?))
                 }
             },
@@ -261,7 +258,7 @@ impl SessionState {
             SignalProtocolError::InvalidState("get_sender_chain_key", "No chain key".to_owned())
         })?;
 
-        let hkdf = kdf::HKDF::new(self.session_version()?)?;
+        let hkdf = HKDF::new(self.session_version()?)?;
         ChainKey::new(hkdf, &chain_key.key, chain_key.index)
     }
 

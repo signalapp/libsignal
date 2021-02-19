@@ -5,7 +5,7 @@
 
 mod curve25519;
 
-use crate::error::{Result, SignalProtocolError};
+use crate::{Result, SignalProtocolError};
 
 use std::cmp::Ordering;
 use std::convert::TryFrom;

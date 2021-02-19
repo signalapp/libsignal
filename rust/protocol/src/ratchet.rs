@@ -10,8 +10,8 @@ pub use self::keys::{ChainKey, MessageKeys, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::proto::storage::SessionStructure;
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-use crate::state::{SessionRecord, SessionState};
-use crate::{KeyPair, Result};
+use crate::state::SessionState;
+use crate::{KeyPair, Result, SessionRecord};
 use rand::{CryptoRng, Rng};
 
 fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
