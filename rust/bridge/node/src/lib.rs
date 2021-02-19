@@ -10,10 +10,10 @@ use libsignal_protocol::*;
 use neon::context::Context;
 use neon::prelude::*;
 use signal_neon_futures::*;
+use std::convert::TryFrom;
 use std::fmt;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
-use std::convert::TryFrom;
 
 pub mod logging;
 
