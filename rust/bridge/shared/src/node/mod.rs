@@ -16,6 +16,12 @@ pub use convert::ResultTypeInfo;
 pub use convert::SimpleArgTypeInfo;
 pub use convert::*;
 
+mod error;
+pub use error::*;
+
+mod storage;
+pub use storage::*;
+
 pub type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
 
 #[linkme::distributed_slice]

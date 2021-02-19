@@ -675,6 +675,7 @@ name = "libsignal-bridge"
 version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
+ "async-trait",
  "futures",
  "jni",
  "libc",
@@ -730,7 +731,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "libsignal-bridge",

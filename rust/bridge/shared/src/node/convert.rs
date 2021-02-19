@@ -11,6 +11,8 @@ use std::hash::Hasher;
 use std::ops::{Deref, RangeInclusive};
 use std::slice;
 
+use super::*;
+
 pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType: neon::types::Value;
     type StoredType: 'storage;
@@ -288,6 +290,20 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
+impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::SenderKeyStore {
+    type ArgType = JsObject;
+    type StoredType = NodeSenderKeyStore;
+    fn save(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(NodeSenderKeyStore::new(cx, foreign))
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
@@ -445,11 +461,12 @@ impl<T: Send + Sync + 'static> PersistentBoxedValue<T> {
         cx: &mut impl Context<'a>,
         wrapper: Handle<JsObject>,
     ) -> NeonResult<Self> {
-        let owner = wrapper.root(cx);
         let value_box: Handle<super::DefaultJsBox<T>> = wrapper
             .get(cx, NATIVE_HANDLE_PROPERTY)?
             .downcast_or_throw(cx)?;
         let value_ptr = &***value_box as *const T;
+        // We must create the root after all failable operations.
+        let owner = wrapper.root(cx);
         Ok(Self { owner, value_ptr })
     }
 }
@@ -616,5 +633,15 @@ impl<'a> crate::Env for &'_ mut FunctionContext<'a> {
             buf.as_mut_slice().copy_from_slice(input.as_ref())
         });
         Ok(result)
+    }
+}
+
+pub(crate) struct AsyncEnv;
+
+impl crate::Env for AsyncEnv {
+    // FIXME: Can we avoid this copy?
+    type Buffer = Vec<u8>;
+    fn buffer<'b, T: Into<Cow<'b, [u8]>>>(self, input: T) -> Self::Buffer {
+        input.into().into_owned()
     }
 }

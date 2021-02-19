@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar};
+use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -117,6 +117,27 @@ impl SimpleArgTypeInfo for Option<String> {
         } else {
             String::convert_from(foreign).map(Some)
         }
+    }
+}
+
+impl SimpleArgTypeInfo for Context {
+    type ArgType = *mut c_void;
+    fn convert_from(foreign: *mut c_void) -> Result<Self, SignalFfiError> {
+        Ok(Some(foreign))
+    }
+}
+
+impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::SenderKeyStore {
+    type ArgType = *const FfiSenderKeyStoreStruct;
+    type StoredType = &'a FfiSenderKeyStoreStruct;
+    fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
+        match unsafe { foreign.as_ref() } {
+            None => Err(SignalFfiError::NullPointer),
+            Some(store) => Ok(store),
+        }
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
+        Ok(stored)
     }
 }
 
@@ -286,6 +307,8 @@ macro_rules! ffi_arg_type {
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
+    (Context) => (*mut libc::c_void);
+    (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);

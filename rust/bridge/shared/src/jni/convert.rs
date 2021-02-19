@@ -154,6 +154,25 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'
     }
 }
 
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for &'storage mut dyn libsignal_protocol::SenderKeyStore
+{
+    type ArgType = JObject<'context>;
+    type StoredType = JniSenderKeyStore<'context>;
+    fn borrow(
+        env: &'context JNIEnv,
+        store: Self::ArgType,
+    ) -> Result<Self::StoredType, SignalJniError> {
+        JniSenderKeyStore::new(env, store)
+    }
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> Result<Self, SignalJniError> {
+        Ok(stored)
+    }
+}
+
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
     fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
@@ -388,6 +407,9 @@ macro_rules! jni_arg_type {
     };
     (Option<&[u8]>) => {
         jni::jbyteArray
+    };
+    (&mut dyn $typ:ty) => {
+        paste!(jni::[<Java $typ>])
     };
     (& $typ:ty) => {
         jni::ObjectHandle
