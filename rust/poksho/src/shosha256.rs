@@ -53,7 +53,8 @@ impl ShoApi for ShoSha256 {
         }
 
         // Double hash
-        self.cv.copy_from_slice(&Sha256::digest(&self.hasher.finalize_reset()[..])[..]);
+        self.cv
+            .copy_from_slice(&Sha256::digest(&self.hasher.finalize_reset()[..])[..]);
         self.mode = Mode::RATCHETED;
     }
 

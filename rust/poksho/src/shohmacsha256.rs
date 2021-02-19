@@ -76,7 +76,8 @@ impl ShoApi for ShoHmacSha256 {
         let mut next_hasher = output_hasher_prefix;
         next_hasher.update(&(outlen as u64).to_be_bytes());
         next_hasher.update(&[0x02]);
-        self.cv.copy_from_slice(&next_hasher.finalize().into_bytes()[..]);
+        self.cv
+            .copy_from_slice(&next_hasher.finalize().into_bytes()[..]);
         self.mode = Mode::RATCHETED;
         output
     }
