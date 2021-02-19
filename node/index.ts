@@ -882,18 +882,6 @@ export class SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(handle);
   }
 
-  static async process(
-    name: SenderKeyName,
-    message: SenderKeyDistributionMessage,
-    store: SenderKeyStore
-  ): Promise<void> {
-    await SC.SenderKeyDistributionMessage_Process(
-      name._unsafeGetNativeHandle(),
-      message._unsafeGetNativeHandle(),
-      store
-    );
-  }
-
   static new(
     keyId: number,
     iteration: number,
@@ -931,6 +919,18 @@ export class SenderKeyDistributionMessage {
   id(): number {
     return SC.SenderKeyDistributionMessage_GetId(this.nativeHandle);
   }
+}
+
+export async function processSenderKeyDistributionMessage(
+  name: SenderKeyName,
+  message: SenderKeyDistributionMessage,
+  store: SenderKeyStore
+): Promise<void> {
+  await SC.SenderKeyDistributionMessage_Process(
+    name._unsafeGetNativeHandle(),
+    message._unsafeGetNativeHandle(),
+    store
+  );
 }
 
 export class SenderKeyMessage {
@@ -1180,7 +1180,7 @@ export abstract class SenderKeyStore implements SignalClient.SenderKeyStore {
   abstract getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
 }
 
-export async function GroupCipher_Encrypt(
+export async function groupEncrypt(
   name: SenderKeyName,
   store: SenderKeyStore,
   message: Buffer
@@ -1188,7 +1188,7 @@ export async function GroupCipher_Encrypt(
   return SC.GroupCipher_Encrypt(name._unsafeGetNativeHandle(), store, message);
 }
 
-export async function GroupCipher_Decrypt(
+export async function groupDecrypt(
   name: SenderKeyName,
   store: SenderKeyStore,
   message: Buffer
@@ -1248,7 +1248,7 @@ export class CiphertextMessage {
   }
 }
 
-export function ProcessPreKeyBundle(
+export function processPreKeyBundle(
   bundle: PreKeyBundle,
   address: ProtocolAddress,
   sessionStore: SessionStore,
@@ -1262,7 +1262,7 @@ export function ProcessPreKeyBundle(
   );
 }
 
-export async function EncryptMessage(
+export async function signalEncrypt(
   message: Buffer,
   address: ProtocolAddress,
   sessionStore: SessionStore,
@@ -1278,7 +1278,7 @@ export async function EncryptMessage(
   );
 }
 
-export function DecryptSignalMessage(
+export function signalDecrypt(
   message: SignalMessage,
   address: ProtocolAddress,
   sessionStore: SessionStore,
@@ -1292,7 +1292,7 @@ export function DecryptSignalMessage(
   );
 }
 
-export function DecryptPreKeySignalMessage(
+export function signalDecryptPreKey(
   message: PreKeySignalMessage,
   address: ProtocolAddress,
   sessionStore: SessionStore,
@@ -1310,7 +1310,7 @@ export function DecryptPreKeySignalMessage(
   );
 }
 
-export function SealedSender_EncryptMessage(
+export function sealedSenderEncryptMessage(
   message: Buffer,
   address: ProtocolAddress,
   senderCert: SenderCertificate,
@@ -1326,7 +1326,7 @@ export function SealedSender_EncryptMessage(
   );
 }
 
-export async function SealedSender_DecryptMessage(
+export async function sealedSenderDecryptMessage(
   message: Buffer,
   trustRoot: PublicKey,
   timestamp: number,
@@ -1353,7 +1353,7 @@ export async function SealedSender_DecryptMessage(
   return SealedSenderDecryptionResult._fromNativeHandle(ssdr);
 }
 
-export async function SealedSender_DecryptToUsmc(
+export async function sealedSenderDecryptToUsmc(
   message: Buffer,
   identityStore: IdentityKeyStore
 ): Promise<UnidentifiedSenderMessageContent> {

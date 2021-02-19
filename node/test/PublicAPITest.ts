@@ -370,7 +370,7 @@ describe('SignalClient', () => {
     );
 
     const bSenderKeyStore = new InMemorySenderKeyStore();
-    await SignalClient.SenderKeyDistributionMessage.process(
+    await SignalClient.processSenderKeyDistributionMessage(
       senderKeyName,
       skdm,
       bSenderKeyStore
@@ -378,13 +378,13 @@ describe('SignalClient', () => {
 
     const message = Buffer.from('0a0b0c', 'hex');
 
-    const aCtext = await SignalClient.GroupCipher_Encrypt(
+    const aCtext = await SignalClient.groupEncrypt(
       senderKeyName,
       aSenderKeyStore,
       message
     );
 
-    const bPtext = await SignalClient.GroupCipher_Decrypt(
+    const bPtext = await SignalClient.groupDecrypt(
       senderKeyName,
       bSenderKeyStore,
       aCtext
@@ -600,7 +600,7 @@ describe('SignalClient', () => {
     );
     bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
-    await SignalClient.ProcessPreKeyBundle(
+    await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       bAddress,
       aSess,
@@ -608,7 +608,7 @@ describe('SignalClient', () => {
     );
     const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
 
-    const aCiphertext = await SignalClient.EncryptMessage(
+    const aCiphertext = await SignalClient.signalEncrypt(
       aMessage,
       bAddress,
       aSess,
@@ -624,7 +624,7 @@ describe('SignalClient', () => {
       aCiphertext.serialize()
     );
 
-    const bDPlaintext = await SignalClient.DecryptPreKeySignalMessage(
+    const bDPlaintext = await SignalClient.signalDecryptPreKey(
       aCiphertextR,
       aAddress,
       bSess,
@@ -639,7 +639,7 @@ describe('SignalClient', () => {
       'utf8'
     );
 
-    const bCiphertext = await SignalClient.EncryptMessage(
+    const bCiphertext = await SignalClient.signalEncrypt(
       bMessage,
       aAddress,
       bSess,
@@ -655,7 +655,7 @@ describe('SignalClient', () => {
       bCiphertext.serialize()
     );
 
-    const aDPlaintext = await SignalClient.DecryptSignalMessage(
+    const aDPlaintext = await SignalClient.signalDecrypt(
       bCiphertextR,
       bAddress,
       aSess,
@@ -745,7 +745,7 @@ describe('SignalClient', () => {
     bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
     const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
-    await SignalClient.ProcessPreKeyBundle(
+    await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
       bAddress,
       aSess,
@@ -754,7 +754,7 @@ describe('SignalClient', () => {
 
     const aPlaintext = Buffer.from('hi there', 'utf8');
 
-    const aCiphertext = await SignalClient.SealedSender_EncryptMessage(
+    const aCiphertext = await SignalClient.sealedSenderEncryptMessage(
       aPlaintext,
       bAddress,
       senderCert,
@@ -762,7 +762,7 @@ describe('SignalClient', () => {
       aKeys
     );
 
-    const bPlaintext = await SignalClient.SealedSender_DecryptMessage(
+    const bPlaintext = await SignalClient.sealedSenderDecryptMessage(
       aCiphertext,
       trustRoot.getPublicKey(),
       43, // timestamp,
