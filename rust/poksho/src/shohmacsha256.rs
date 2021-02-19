@@ -75,7 +75,7 @@ impl ShoApi for ShoHmacSha256 {
             i += 1
         }
 
-        let mut next_hasher = output_hasher_prefix.clone();
+        let mut next_hasher = output_hasher_prefix;
         next_hasher.input(&(outlen as u64).to_be_bytes());
         next_hasher.input(&[0x02]);
         self.cv.copy_from_slice(&next_hasher.result().code()[..]);
@@ -95,10 +95,7 @@ mod tests {
         sho.absorb_and_ratchet(b"asdasd");
         let out = sho.squeeze_and_ratchet(64);
         /*
-        for b in out.iter() {
-            print!("0x{:02x}, ", b);
-        }
-        println!("");
+        println!("{}", hex::encode(out));
         */
         assert!(
             out == vec![
@@ -114,10 +111,7 @@ mod tests {
         sho.absorb_and_ratchet(b"asdasd");
         let out = sho.squeeze_and_ratchet(65);
         /*
-        for b in out.iter() {
-            print!("0x{:02x}, ", b);
-        }
-        println!("");
+        println!("{}", hex::encode(out));
         */
         assert!(
             out == vec![
@@ -145,10 +139,7 @@ mod tests {
         sho.squeeze_and_ratchet(129);
         sho.absorb_and_ratchet(b"def");
         let out = sho.squeeze_and_ratchet(63);
-        for b in out.iter() {
-            print!("0x{:02x}, ", b);
-        }
-        println!("");
+        println!("{}", hex::encode(out));
         assert!(
             out == vec![
                 0xc5, 0xc1, 0x3b, 0xcc, 0x65, 0x96, 0xc2, 0x5f, 0xc4, 0x51, 0x4e, 0xac, 0x92, 0x69,

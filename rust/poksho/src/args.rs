@@ -27,6 +27,10 @@ impl ScalarArgs {
     }
 }
 
+impl Default for ScalarArgs {
+    fn default() -> Self { Self::new() }
+}
+
 impl PointArgs {
     pub fn new() -> Self {
         Self(HashMap::<String, RistrettoPoint>::new())
@@ -36,3 +40,8 @@ impl PointArgs {
         self.0.insert(s.to_string(), val);
     }
 }
+
+impl Default for PointArgs {
+    fn default() -> Self { Self::new() }
+}
+

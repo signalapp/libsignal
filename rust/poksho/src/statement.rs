@@ -147,18 +147,18 @@ impl Statement {
 
     // panics on invalid input
     pub fn add(&mut self, lhs_str: &str, rhs_pairs: &[(&str, &str)]) {
-        if (lhs_str.len() == 0)
-            || (rhs_pairs.len() == 0)
+        if (lhs_str.is_empty())
+            || (rhs_pairs.is_empty())
             || (rhs_pairs.len() > 255)
             || (self.equations.len() >= 255)
         {
-            assert!(false);
+            panic!("Unexpected input sizes to add");
         }
         let lhs = self.add_point(lhs_str.to_string()).unwrap();
         let mut rhs = Vec::<Term>::with_capacity(rhs_pairs.len());
         for pair in rhs_pairs {
-            if pair.0.len() == 0 || pair.1.len() == 0 {
-                assert!(false);
+            if pair.0.is_empty() || pair.1.is_empty() {
+                panic!("Unexpected pair size");
             }
             let scalar = self.add_scalar(pair.0.to_string()).unwrap();
             let point = self.add_point(pair.1.to_string()).unwrap();
@@ -357,8 +357,8 @@ impl Statement {
     // the Schnorr commitment
     fn homomorphism_with_subtraction(
         &self,
-        g1: &G1,
-        all_points: &Vec<RistrettoPoint>,
+        g1: &[Scalar],
+        all_points: &[RistrettoPoint],
         challenge: Option<Scalar>,
     ) -> G2 {
         let mut g2 = self.g2_new();
@@ -418,6 +418,11 @@ impl Statement {
         Ok(all_points)
     }
 }
+
+impl Default for Statement {
+    fn default() -> Self { Self::new() }
+}
+
 
 #[cfg(test)]
 mod tests {

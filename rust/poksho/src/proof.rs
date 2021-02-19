@@ -18,7 +18,7 @@ pub struct Proof {
 impl Proof {
     pub fn from_slice(bytes: &[u8]) -> Option<Self> {
         let num_scalars = bytes.len() / 32;
-        if num_scalars < 2 || num_scalars > 257 || num_scalars * 32 != bytes.len() {
+        if !(2..=257).contains(&num_scalars) || num_scalars * 32 != bytes.len() {
             return None;
         }
         let challenge = scalar_from_slice_canonical(&bytes[0..32])?;
