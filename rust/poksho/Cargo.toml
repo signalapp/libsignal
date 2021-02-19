@@ -19,7 +19,7 @@ hex = "0.4"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "alloc"]
-version = "2.0.0"
+version = "3.0.0"
 git = "https://github.com/signalapp/curve25519-dalek.git"
 branch = "lizard2"
 

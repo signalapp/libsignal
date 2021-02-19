@@ -34,7 +34,7 @@ dependencies = [
  "aesni",
  "cipher",
  "criterion",
- "generic-array 0.14.4",
+ "generic-array",
  "hex",
  "libc",
  "polyval",
@@ -129,7 +129,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
 ]
 
 [[package]]
@@ -211,7 +211,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12f8e7987cbd042a63249497f41aed09f8e65add917ea6566effbc56578d6801"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
 ]
 
 [[package]]
@@ -331,7 +331,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58bcd97a54c7ca5ce2f6eb16f6bede5b0ab5f0055fedc17d2f0b4466e21671ca"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
  "subtle",
 ]
 
@@ -374,11 +374,24 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "2.0.0"
-source = "git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2#477356e017c7cc2aa168f956786b34690870768f"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8492de420e9e60bc9a1d66e2dbb91825390b738a388606600663fc529b4b307"
 dependencies = [
  "byteorder",
- "digest 0.8.1",
+ "digest",
+ "rand_core",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek"
+version = "3.0.0"
+source = "git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2#2694ad3b789635f90f941648ae952f58d59ffc73"
+dependencies = [
+ "byteorder",
+ "digest",
  "packed_simd",
  "rand_core",
  "serde",
@@ -387,35 +400,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "curve25519-dalek"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8492de420e9e60bc9a1d66e2dbb91825390b738a388606600663fc529b4b307"
-dependencies = [
- "byteorder",
- "digest 0.9.0",
- "packed_simd",
- "rand_core",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "digest"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
-dependencies = [
- "generic-array 0.12.3",
-]
-
-[[package]]
 name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
 ]
 
 [[package]]
@@ -537,15 +527,6 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
-dependencies = [
- "typenum",
-]
-
-[[package]]
-name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
@@ -614,7 +595,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "deae6d9dbb35ec2c502d62b8f7b1c000a0822c3b0794ba36b3149c0a1c840dff"
 dependencies = [
  "crypto-mac",
- "digest 0.9.0",
+ "digest",
 ]
 
 [[package]]
@@ -782,7 +763,7 @@ dependencies = [
  "bytes",
  "criterion",
  "ctr",
- "curve25519-dalek 3.0.0",
+ "curve25519-dalek 3.0.0 (git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2)",
  "futures",
  "hex",
  "hmac",
@@ -1018,7 +999,7 @@ dependencies = [
 name = "poksho"
 version = "0.7.0"
 dependencies = [
- "curve25519-dalek 2.0.0",
+ "curve25519-dalek 3.0.0 (git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2)",
  "hex",
  "hmac",
  "sha2",
@@ -1327,7 +1308,7 @@ dependencies = [
  "block-buffer",
  "cfg-if 1.0.0",
  "cpuid-bool",
- "digest 0.9.0",
+ "digest",
  "opaque-debug",
 ]
 
@@ -1470,7 +1451,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
  "subtle",
 ]
 
@@ -1613,7 +1594,7 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc614d95359fd7afc321b66d2107ede58b246b844cf5d8a0adcca413e439f088"
 dependencies = [
- "curve25519-dalek 3.0.0",
+ "curve25519-dalek 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core",
  "zeroize",
 ]
