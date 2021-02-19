@@ -677,6 +677,24 @@ pub struct SealedSenderDecryptionResult {
     pub message: Vec<u8>,
 }
 
+impl SealedSenderDecryptionResult {
+    pub fn sender_uuid(&self) -> Result<&str> {
+        Ok(self.sender_uuid.as_ref())
+    }
+
+    pub fn sender_e164(&self) -> Result<Option<&str>> {
+        Ok(self.sender_e164.as_deref())
+    }
+
+    pub fn device_id(&self) -> Result<u32> {
+        Ok(self.device_id)
+    }
+
+    pub fn message(&self) -> Result<&[u8]> {
+        Ok(self.message.as_ref())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],

@@ -11,7 +11,19 @@ const SC = bindings(
   'libsignal_client_' + os.platform() + '_' + process.arch
 ) as typeof SignalClient;
 
-export const { initLogger, LogLevel, CiphertextMessageType } = SC;
+export const { initLogger, LogLevel } = SC;
+
+export const enum CiphertextMessageType {
+  Whisper = 2,
+  PreKey = 3,
+  SenderKey = 4,
+  SenderKeyDistribution = 5,
+}
+
+export const enum Direction {
+  Sending,
+  Receiving,
+}
 
 export class HKDF {
   private readonly version: number;
@@ -149,6 +161,10 @@ export class Aes256GcmSiv {
 export class ProtocolAddress {
   private readonly nativeHandle: SignalClient.ProtocolAddress;
 
+  _unsafeGetNativeHandle(): SignalClient.ProtocolAddress {
+    return this.nativeHandle;
+  }
+
   private constructor(handle: SignalClient.ProtocolAddress) {
     this.nativeHandle = handle;
   }
@@ -278,6 +294,10 @@ export class IdentityKeyPair {
 export class PreKeyBundle {
   private readonly nativeHandle: SignalClient.PreKeyBundle;
 
+  _unsafeGetNativeHandle(): SignalClient.PreKeyBundle {
+    return this.nativeHandle;
+  }
+
   private constructor(handle: SignalClient.PreKeyBundle) {
     this.nativeHandle = handle;
   }
@@ -350,6 +370,16 @@ export class PreKeyRecord {
     this.nativeHandle = handle;
   }
 
+  _unsafeGetNativeHandle(): SignalClient.PreKeyRecord {
+    return this.nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.PreKeyRecord
+  ): PreKeyRecord {
+    return new PreKeyRecord(nativeHandle);
+  }
+
   static new(id: number, pubKey: PublicKey, privKey: PrivateKey): PreKeyRecord {
     return new PreKeyRecord(
       SC.PreKeyRecord_New(
@@ -390,6 +420,16 @@ export class SignedPreKeyRecord {
 
   private constructor(handle: SignalClient.SignedPreKeyRecord) {
     this.nativeHandle = handle;
+  }
+
+  _unsafeGetNativeHandle(): SignalClient.SignedPreKeyRecord {
+    return this.nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.SignedPreKeyRecord
+  ): SignedPreKeyRecord {
+    return new SignedPreKeyRecord(nativeHandle);
   }
 
   static new(
@@ -519,6 +559,10 @@ export class PreKeySignalMessage {
     this.nativeHandle = handle;
   }
 
+  _unsafeGetNativeHandle(): SignalClient.PreKeySignalMessage {
+    return this.nativeHandle;
+  }
+
   static new(
     messageVersion: number,
     registrationId: number,
@@ -571,6 +615,16 @@ export class SessionRecord {
 
   private constructor(nativeHandle: SignalClient.SessionRecord) {
     this.nativeHandle = nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.SessionRecord
+  ): SessionRecord {
+    return new SessionRecord(nativeHandle);
+  }
+
+  _unsafeGetNativeHandle(): SignalClient.SessionRecord {
+    return this.nativeHandle;
   }
 
   static deserialize(buffer: Buffer): SessionRecord {
@@ -729,6 +783,10 @@ export class SenderCertificate {
     this.nativeHandle = nativeHandle;
   }
 
+  _unsafeGetNativeHandle(): SignalClient.SenderCertificate {
+    return this.nativeHandle;
+  }
+
   static _fromNativeHandle(
     nativeHandle: SignalClient.SenderCertificate
   ): SenderCertificate {
@@ -824,18 +882,6 @@ export class SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(handle);
   }
 
-  static async process(
-    name: SenderKeyName,
-    message: SenderKeyDistributionMessage,
-    store: SenderKeyStore
-  ): Promise<void> {
-    await SC.SenderKeyDistributionMessage_Process(
-      name._unsafeGetNativeHandle(),
-      message._unsafeGetNativeHandle(),
-      store
-    );
-  }
-
   static new(
     keyId: number,
     iteration: number,
@@ -873,6 +919,18 @@ export class SenderKeyDistributionMessage {
   id(): number {
     return SC.SenderKeyDistributionMessage_GetId(this.nativeHandle);
   }
+}
+
+export async function processSenderKeyDistributionMessage(
+  name: SenderKeyName,
+  message: SenderKeyDistributionMessage,
+  store: SenderKeyStore
+): Promise<void> {
+  await SC.SenderKeyDistributionMessage_Process(
+    name._unsafeGetNativeHandle(),
+    message._unsafeGetNativeHandle(),
+    store
+  );
 }
 
 export class SenderKeyMessage {
@@ -935,6 +993,12 @@ export class UnidentifiedSenderMessageContent {
     this.nativeHandle = nativeHandle;
   }
 
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.UnidentifiedSenderMessageContent
+  ): UnidentifiedSenderMessageContent {
+    return new UnidentifiedSenderMessageContent(nativeHandle);
+  }
+
   static deserialize(buffer: Buffer): UnidentifiedSenderMessageContent {
     return new UnidentifiedSenderMessageContent(
       SC.UnidentifiedSenderMessageContent_Deserialize(buffer)
@@ -958,6 +1022,134 @@ export class UnidentifiedSenderMessageContent {
       SC.UnidentifiedSenderMessageContent_GetSenderCert(this.nativeHandle)
     );
   }
+}
+
+export abstract class SessionStore implements SignalClient.SessionStore {
+  async _saveSession(
+    name: SignalClient.ProtocolAddress,
+    record: SignalClient.SessionRecord
+  ): Promise<void> {
+    return this.saveSession(
+      ProtocolAddress._fromNativeHandle(name),
+      SessionRecord._fromNativeHandle(record)
+    );
+  }
+  async _getSession(
+    name: SignalClient.ProtocolAddress
+  ): Promise<SignalClient.SessionRecord | null> {
+    const sess = await this.getSession(ProtocolAddress._fromNativeHandle(name));
+    if (sess == null) {
+      return null;
+    } else {
+      return sess._unsafeGetNativeHandle();
+    }
+  }
+
+  abstract saveSession(
+    name: ProtocolAddress,
+    record: SessionRecord
+  ): Promise<void>;
+  abstract getSession(name: ProtocolAddress): Promise<SessionRecord | null>;
+}
+
+export abstract class IdentityKeyStore
+  implements SignalClient.IdentityKeyStore {
+  async _getIdentityKey(): Promise<SignalClient.PrivateKey> {
+    const key = await this.getIdentityKey();
+    return key._unsafeGetNativeHandle();
+  }
+
+  async _getLocalRegistrationId(): Promise<number> {
+    return this.getLocalRegistrationId();
+  }
+  async _saveIdentity(
+    name: SignalClient.ProtocolAddress,
+    key: SignalClient.PublicKey
+  ): Promise<boolean> {
+    return this.saveIdentity(
+      ProtocolAddress._fromNativeHandle(name),
+      PublicKey._fromNativeHandle(key)
+    );
+  }
+  async _isTrustedIdentity(
+    name: SignalClient.ProtocolAddress,
+    key: SignalClient.PublicKey,
+    sending: boolean
+  ): Promise<boolean> {
+    const direction = sending ? Direction.Sending : Direction.Receiving;
+
+    return this.isTrustedIdentity(
+      ProtocolAddress._fromNativeHandle(name),
+      PublicKey._fromNativeHandle(key),
+      direction
+    );
+  }
+  async _getIdentity(
+    name: SignalClient.ProtocolAddress
+  ): Promise<SignalClient.PublicKey | null> {
+    const key = await this.getIdentity(ProtocolAddress._fromNativeHandle(name));
+    if (key == null) {
+      return Promise.resolve(null);
+    } else {
+      return key._unsafeGetNativeHandle();
+    }
+  }
+
+  abstract getIdentityKey(): Promise<PrivateKey>;
+  abstract getLocalRegistrationId(): Promise<number>;
+  abstract saveIdentity(
+    name: ProtocolAddress,
+    key: PublicKey
+  ): Promise<boolean>;
+  abstract isTrustedIdentity(
+    name: ProtocolAddress,
+    key: PublicKey,
+    direction: Direction
+  ): Promise<boolean>;
+  abstract getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
+}
+
+export abstract class PreKeyStore implements SignalClient.PreKeyStore {
+  async _savePreKey(
+    id: number,
+    record: SignalClient.PreKeyRecord
+  ): Promise<void> {
+    return this.savePreKey(id, PreKeyRecord._fromNativeHandle(record));
+  }
+  async _getPreKey(id: number): Promise<SignalClient.PreKeyRecord> {
+    const pk = await this.getPreKey(id);
+    return pk._unsafeGetNativeHandle();
+  }
+  async _removePreKey(id: number): Promise<void> {
+    return this.removePreKey(id);
+  }
+
+  abstract savePreKey(id: number, record: PreKeyRecord): Promise<void>;
+  abstract getPreKey(id: number): Promise<PreKeyRecord>;
+  abstract removePreKey(id: number): Promise<void>;
+}
+
+export abstract class SignedPreKeyStore
+  implements SignalClient.SignedPreKeyStore {
+  async _saveSignedPreKey(
+    id: number,
+    record: SignalClient.SignedPreKeyRecord
+  ): Promise<void> {
+    return this.saveSignedPreKey(
+      id,
+      SignedPreKeyRecord._fromNativeHandle(record)
+    );
+  }
+  async _getSignedPreKey(id: number): Promise<SignalClient.SignedPreKeyRecord> {
+    const pk = await this.getSignedPreKey(id);
+    return pk._unsafeGetNativeHandle();
+  }
+
+  abstract saveSignedPreKey(
+    id: number,
+    record: SignedPreKeyRecord
+  ): Promise<void>;
+  abstract getSignedPreKey(id: number): Promise<SignedPreKeyRecord>;
 }
 
 export abstract class SenderKeyStore implements SignalClient.SenderKeyStore {
@@ -988,7 +1180,7 @@ export abstract class SenderKeyStore implements SignalClient.SenderKeyStore {
   abstract getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
 }
 
-export async function GroupCipher_Encrypt(
+export async function groupEncrypt(
   name: SenderKeyName,
   store: SenderKeyStore,
   message: Buffer
@@ -996,10 +1188,175 @@ export async function GroupCipher_Encrypt(
   return SC.GroupCipher_Encrypt(name._unsafeGetNativeHandle(), store, message);
 }
 
-export async function GroupCipher_Decrypt(
+export async function groupDecrypt(
   name: SenderKeyName,
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
   return SC.GroupCipher_Decrypt(name._unsafeGetNativeHandle(), store, message);
+}
+
+export class SealedSenderDecryptionResult {
+  private readonly nativeHandle: SignalClient.SealedSenderDecryptionResult;
+
+  private constructor(nativeHandle: SignalClient.SealedSenderDecryptionResult) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.SealedSenderDecryptionResult
+  ): SealedSenderDecryptionResult {
+    return new SealedSenderDecryptionResult(nativeHandle);
+  }
+
+  message(): Buffer {
+    return SC.SealedSenderDecryptionResult_Message(this.nativeHandle);
+  }
+
+  senderE164(): string | null {
+    return SC.SealedSenderDecryptionResult_GetSenderE164(this.nativeHandle);
+  }
+
+  senderUuid(): string {
+    return SC.SealedSenderDecryptionResult_GetSenderUuid(this.nativeHandle);
+  }
+
+  deviceId(): number {
+    return SC.SealedSenderDecryptionResult_GetDeviceId(this.nativeHandle);
+  }
+}
+
+export class CiphertextMessage {
+  private readonly nativeHandle: SignalClient.CiphertextMessage;
+
+  private constructor(nativeHandle: SignalClient.CiphertextMessage) {
+    this.nativeHandle = nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: SignalClient.CiphertextMessage
+  ): CiphertextMessage {
+    return new CiphertextMessage(nativeHandle);
+  }
+
+  serialize(): Buffer {
+    return SC.CiphertextMessage_Serialize(this.nativeHandle);
+  }
+
+  type(): number {
+    return SC.CiphertextMessage_Type(this.nativeHandle);
+  }
+}
+
+export function processPreKeyBundle(
+  bundle: PreKeyBundle,
+  address: ProtocolAddress,
+  sessionStore: SessionStore,
+  identityStore: IdentityKeyStore
+): Promise<void> {
+  return SC.SessionBuilder_ProcessPreKeyBundle(
+    bundle._unsafeGetNativeHandle(),
+    address._unsafeGetNativeHandle(),
+    sessionStore,
+    identityStore
+  );
+}
+
+export async function signalEncrypt(
+  message: Buffer,
+  address: ProtocolAddress,
+  sessionStore: SessionStore,
+  identityStore: IdentityKeyStore
+): Promise<CiphertextMessage> {
+  return CiphertextMessage._fromNativeHandle(
+    await SC.SessionCipher_EncryptMessage(
+      message,
+      address._unsafeGetNativeHandle(),
+      sessionStore,
+      identityStore
+    )
+  );
+}
+
+export function signalDecrypt(
+  message: SignalMessage,
+  address: ProtocolAddress,
+  sessionStore: SessionStore,
+  identityStore: IdentityKeyStore
+): Promise<Buffer> {
+  return SC.SessionCipher_DecryptSignalMessage(
+    message._unsafeGetNativeHandle(),
+    address._unsafeGetNativeHandle(),
+    sessionStore,
+    identityStore
+  );
+}
+
+export function signalDecryptPreKey(
+  message: PreKeySignalMessage,
+  address: ProtocolAddress,
+  sessionStore: SessionStore,
+  identityStore: IdentityKeyStore,
+  prekeyStore: PreKeyStore,
+  signedPrekeyStore: SignedPreKeyStore
+): Promise<Buffer> {
+  return SC.SessionCipher_DecryptPreKeySignalMessage(
+    message._unsafeGetNativeHandle(),
+    address._unsafeGetNativeHandle(),
+    sessionStore,
+    identityStore,
+    prekeyStore,
+    signedPrekeyStore
+  );
+}
+
+export function sealedSenderEncryptMessage(
+  message: Buffer,
+  address: ProtocolAddress,
+  senderCert: SenderCertificate,
+  sessionStore: SessionStore,
+  identityStore: IdentityKeyStore
+): Promise<Buffer> {
+  return SC.SealedSender_EncryptMessage(
+    message,
+    address._unsafeGetNativeHandle(),
+    senderCert._unsafeGetNativeHandle(),
+    sessionStore,
+    identityStore
+  );
+}
+
+export async function sealedSenderDecryptMessage(
+  message: Buffer,
+  trustRoot: PublicKey,
+  timestamp: number,
+  localE164: string | null,
+  localUuid: string,
+  localDeviceId: number,
+  sessionStore: SessionStore,
+  identityStore: IdentityKeyStore,
+  prekeyStore: PreKeyStore,
+  signedPrekeyStore: SignedPreKeyStore
+): Promise<SealedSenderDecryptionResult> {
+  const ssdr = await SC.SealedSender_DecryptMessage(
+    message,
+    trustRoot._unsafeGetNativeHandle(),
+    timestamp,
+    localE164,
+    localUuid,
+    localDeviceId,
+    sessionStore,
+    identityStore,
+    prekeyStore,
+    signedPrekeyStore
+  );
+  return SealedSenderDecryptionResult._fromNativeHandle(ssdr);
+}
+
+export async function sealedSenderDecryptToUsmc(
+  message: Buffer,
+  identityStore: IdentityKeyStore
+): Promise<UnidentifiedSenderMessageContent> {
+  const usmc = await SC.SealedSender_DecryptToUsmc(message, identityStore);
+  return UnidentifiedSenderMessageContent._fromNativeHandle(usmc);
 }

@@ -67,6 +67,11 @@ impl IdentityKeyPair {
         }
     }
 
+    pub fn from_private_key(private_key: curve::PrivateKey) -> Result<Self> {
+        let identity_key = IdentityKey::new(private_key.public_key()?);
+        Ok(Self::new(identity_key, private_key))
+    }
+
     pub fn generate<R: CryptoRng + Rng>(csprng: &mut R) -> Self {
         let keypair = curve::KeyPair::generate(csprng);
 
