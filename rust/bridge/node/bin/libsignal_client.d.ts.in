@@ -34,3 +34,7 @@ export abstract class SenderKeyStore {
   _getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
 }
 
+interface Wrapper<T> {
+  readonly _nativeHandle: T
+}
+

@@ -692,7 +692,7 @@ impl SenderKeyStore for NodeSenderKeyStore {
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SenderKeyDistributionMessage_Create(name: SenderKeyName, store: SenderKeyStore): Promise<SenderKeyDistributionMessage>
+/// ts: export function SenderKeyDistributionMessage_Create(name: Wrapper<SenderKeyName>, store: SenderKeyStore): Promise<SenderKeyDistributionMessage>
 pub fn SenderKeyDistributionMessage_Create(mut cx: FunctionContext) -> JsResult<JsObject> {
     let name_arg = cx.argument(0)?;
     let mut name_borrow = <&SenderKeyName as node::ArgTypeInfo>::borrow(&mut cx, name_arg)?;
@@ -716,7 +716,7 @@ pub fn SenderKeyDistributionMessage_Create(mut cx: FunctionContext) -> JsResult<
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SenderKeyDistributionMessage_Process(name: SenderKeyName, msg: SenderKeyDistributionMessage, store: SenderKeyStore): Promise<void>
+/// ts: export function SenderKeyDistributionMessage_Process(name: Wrapper<SenderKeyName>, msg: Wrapper<SenderKeyDistributionMessage>, store: SenderKeyStore): Promise<void>
 pub fn SenderKeyDistributionMessage_Process(mut cx: FunctionContext) -> JsResult<JsObject> {
     let name_arg = cx.argument(0)?;
     let mut name_borrow = <&SenderKeyName as node::ArgTypeInfo>::borrow(&mut cx, name_arg)?;
@@ -745,7 +745,7 @@ pub fn SenderKeyDistributionMessage_Process(mut cx: FunctionContext) -> JsResult
 }
 
 #[allow(non_snake_case)]
-/// ts: export function GroupCipher_Encrypt(name: SenderKeyName, store: SenderKeyStore, message: Buffer): Promise<Buffer>
+/// ts: export function GroupCipher_Encrypt(name: Wrapper<SenderKeyName>, store: SenderKeyStore, message: Buffer): Promise<Buffer>
 pub fn GroupCipher_Encrypt(mut cx: FunctionContext) -> JsResult<JsObject> {
     let name_arg = cx.argument(0)?;
     let mut name_borrow = <&SenderKeyName as node::ArgTypeInfo>::borrow(&mut cx, name_arg)?;
@@ -774,7 +774,7 @@ pub fn GroupCipher_Encrypt(mut cx: FunctionContext) -> JsResult<JsObject> {
 }
 
 #[allow(non_snake_case)]
-/// ts: export function GroupCipher_Decrypt(name: SenderKeyName, store: SenderKeyStore, message: Buffer): Promise<Buffer>
+/// ts: export function GroupCipher_Decrypt(name: Wrapper<SenderKeyName>, store: SenderKeyStore, message: Buffer): Promise<Buffer>
 pub fn GroupCipher_Decrypt(mut cx: FunctionContext) -> JsResult<JsObject> {
     let name_arg = cx.argument(0)?;
     let mut name_borrow = <&SenderKeyName as node::ArgTypeInfo>::borrow(&mut cx, name_arg)?;
@@ -802,7 +802,7 @@ pub fn GroupCipher_Decrypt(mut cx: FunctionContext) -> JsResult<JsObject> {
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SessionBuilder_ProcessPreKeyBundle(bundle: PreKeyBundle, address: ProtocolAddress, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<void>
+/// ts: export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, address: Wrapper<ProtocolAddress>, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<void>
 pub fn SessionBuilder_ProcessPreKeyBundle(mut cx: FunctionContext) -> JsResult<JsObject> {
     let bundle_arg = cx.argument(0)?;
     let mut bundle_borrow = <&PreKeyBundle as node::ArgTypeInfo>::borrow(&mut cx, bundle_arg)?;
@@ -841,7 +841,7 @@ pub fn SessionBuilder_ProcessPreKeyBundle(mut cx: FunctionContext) -> JsResult<J
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SessionCipher_EncryptMessage(message: Buffer, address: ProtocolAddress, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<CiphertextMessage>
+/// ts: export function SessionCipher_EncryptMessage(message: Buffer, address: Wrapper<ProtocolAddress>, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<CiphertextMessage>
 pub fn SessionCipher_EncryptMessage(mut cx: FunctionContext) -> JsResult<JsObject> {
     let message = cx.argument::<JsBuffer>(0)?;
     let message = {
@@ -880,7 +880,7 @@ pub fn SessionCipher_EncryptMessage(mut cx: FunctionContext) -> JsResult<JsObjec
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SessionCipher_DecryptSignalMessage(message: SignalMessage, address: ProtocolAddress, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<Buffer>
+/// ts: export function SessionCipher_DecryptSignalMessage(message: Wrapper<SignalMessage>, address: Wrapper<ProtocolAddress>, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<Buffer>
 pub fn SessionCipher_DecryptSignalMessage(mut cx: FunctionContext) -> JsResult<JsObject> {
     let message_arg = cx.argument(0)?;
     let mut message_borrow = <&SignalMessage as node::ArgTypeInfo>::borrow(&mut cx, message_arg)?;
@@ -918,7 +918,7 @@ pub fn SessionCipher_DecryptSignalMessage(mut cx: FunctionContext) -> JsResult<J
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SessionCipher_DecryptPreKeySignalMessage(message: PreKeySignalMessage, address: ProtocolAddress, session_store: SessionStore, identity_store: IdentityKeyStore, prekey_store: PreKeyStore, signed_prekey_store: SignedPreKeyStore): Promise<Buffer>
+/// ts: export function SessionCipher_DecryptPreKeySignalMessage(message: Wrapper<PreKeySignalMessage>, address: Wrapper<ProtocolAddress>, session_store: SessionStore, identity_store: IdentityKeyStore, prekey_store: PreKeyStore, signed_prekey_store: SignedPreKeyStore): Promise<Buffer>
 pub fn SessionCipher_DecryptPreKeySignalMessage(mut cx: FunctionContext) -> JsResult<JsObject> {
     let message_arg = cx.argument(0)?;
     let mut message_borrow =
@@ -967,7 +967,7 @@ pub fn SessionCipher_DecryptPreKeySignalMessage(mut cx: FunctionContext) -> JsRe
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SealedSender_EncryptMessage(message: Buffer, address: ProtocolAddress, sender_cert: SenderCertificate, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<Buffer>
+/// ts: export function SealedSender_EncryptMessage(message: Buffer, address: Wrapper<ProtocolAddress>, sender_cert: Wrapper<SenderCertificate>, session_store: SessionStore, identity_store: IdentityKeyStore): Promise<Buffer>
 pub fn SealedSender_EncryptMessage(mut cx: FunctionContext) -> JsResult<JsObject> {
     let message = cx.argument::<JsBuffer>(0)?;
     let message = {
@@ -1044,7 +1044,7 @@ pub fn SealedSender_DecryptToUsmc(mut cx: FunctionContext) -> JsResult<JsObject>
 }
 
 #[allow(non_snake_case)]
-/// ts: export function SealedSender_DecryptMessage(message: Buffer, trust_root: PublicKey, timestamp: number, local_e164: string | null, local_uuid: string, local_device_id: number, session_store: SessionStore, identity_store: IdentityKeyStore, prekey_store: PreKeyStore, signed_prekey_store: SignedPreKeyStore): Promise<SealedSenderDecryptionResult>
+/// ts: export function SealedSender_DecryptMessage(message: Buffer, trust_root: Wrapper<PublicKey>, timestamp: number, local_e164: string | null, local_uuid: string, local_device_id: number, session_store: SessionStore, identity_store: IdentityKeyStore, prekey_store: PreKeyStore, signed_prekey_store: SignedPreKeyStore): Promise<SealedSenderDecryptionResult>
 pub fn SealedSender_DecryptMessage(mut cx: FunctionContext) -> JsResult<JsObject> {
     let message = cx.argument::<JsBuffer>(0)?;
     let message = {
