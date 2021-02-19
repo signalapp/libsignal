@@ -1,0 +1,30 @@
+#
+# Copyright (C) 2020 Signal Messenger, LLC.
+# All rights reserved.
+#
+# SPDX-License-Identifier: GPL-3.0-only
+#
+
+[package]
+name = "poksho"
+version = "0.7.0"
+authors = ["Trevor Perrin <trevp@signal.org>"]
+edition = "2018"
+license = "GPL-3.0-only"
+
+[dependencies]
+sha2 = "0.8.0"
+hmac = "0.7.1"
+
+[dependencies.curve25519-dalek]
+features = ["serde", "alloc"]
+version = "2.0.0"
+git = "https://github.com/signalapp/curve25519-dalek.git"
+branch = "lizard2"
+
+[features]
+default = ["u64_backend"]
+u32_backend = ["curve25519-dalek/u32_backend"]
+u64_backend = ["curve25519-dalek/u64_backend"]
+simd_backend = ["curve25519-dalek/simd_backend"]
+nightly = ["curve25519-dalek/nightly"]
