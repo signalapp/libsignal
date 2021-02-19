@@ -10,4 +10,5 @@ members = [
 default-members = [
     "rust/aes-gcm-siv",
     "rust/protocol",
+    "rust/poksho",
 ]
