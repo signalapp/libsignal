@@ -139,6 +139,15 @@ impl ResultTypeInfo for &str {
     }
 }
 
+impl ResultTypeInfo for Option<&str> {
+    type ResultType = *const libc::c_char;
+    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+        match self {
+            Some(s) => s.convert_into(),
+            None => Ok(std::ptr::null()),
+        }
+    }
+}
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
     fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
@@ -255,6 +264,7 @@ macro_rules! ffi_arg_type {
     (&mut [u8]) => (*mut libc::c_uchar);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
+    (Option<&str>) => (*const libc::c_char);
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
@@ -263,6 +273,7 @@ macro_rules! ffi_arg_type {
 macro_rules! ffi_result_type {
     (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
     (Result<&$typ:tt, $_:ty>) => (ffi_result_type!(&$typ));
+    (Result<Option<&$typ:tt>, $_:ty>) => (ffi_result_type!(&$typ));
     (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
     (u8) => (u8);
     (i32) => (i32);
@@ -273,6 +284,7 @@ macro_rules! ffi_result_type {
     (&str) => (*const libc::c_char);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
+    (Option<&str>) => (*const libc::c_char);
     (Option<$typ:ty>) => (*mut $typ);
     ( $typ:ty ) => (*mut $typ);
 }
