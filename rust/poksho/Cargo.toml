@@ -2,7 +2,7 @@
 # Copyright (C) 2020 Signal Messenger, LLC.
 # All rights reserved.
 #
-# SPDX-License-Identifier: GPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 #
 
 [package]
@@ -10,7 +10,7 @@ name = "poksho"
 version = "0.7.0"
 authors = ["Trevor Perrin <trevp@signal.org>"]
 edition = "2018"
-license = "GPL-3.0-only"
+license = "AGPL-3.0-only"
 
 [dependencies]
 sha2 = "0.8.0"

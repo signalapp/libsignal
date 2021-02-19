@@ -1,8 +1,6 @@
 //
-// Copyright (C) 2020 Signal Messenger, LLC.
-// All rights reserved.
-//
-// SPDX-License-Identifier: GPL-3.0-only
+// Copyright 2020 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use curve25519_dalek::ristretto::RistrettoPoint;
@@ -28,7 +26,9 @@ impl ScalarArgs {
 }
 
 impl Default for ScalarArgs {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PointArgs {
@@ -42,6 +42,7 @@ impl PointArgs {
 }
 
 impl Default for PointArgs {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
-
