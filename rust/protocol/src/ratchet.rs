@@ -8,11 +8,10 @@ mod params;
 
 pub use self::keys::{ChainKey, MessageKeys, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
-use crate::curve;
-use crate::error::Result;
 use crate::proto::storage::SessionStructure;
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-use crate::state::{SessionRecord, SessionState};
+use crate::state::SessionState;
+use crate::{KeyPair, Result, SessionRecord};
 use rand::{CryptoRng, Rng};
 
 fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
@@ -32,7 +31,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
 
-    let sending_ratchet_key = curve::KeyPair::generate(&mut csprng);
+    let sending_ratchet_key = KeyPair::generate(&mut csprng);
 
     let mut secrets = Vec::with_capacity(32 * 5);
 
@@ -40,26 +39,24 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     let our_base_private_key = parameters.our_base_key_pair().private_key;
 
-    secrets.extend_from_slice(&curve::calculate_agreement(
-        parameters.their_signed_pre_key(),
-        parameters.our_identity_key_pair().private_key(),
-    )?);
+    secrets.extend_from_slice(
+        &parameters
+            .our_identity_key_pair()
+            .private_key()
+            .calculate_agreement(parameters.their_signed_pre_key())?,
+    );
 
-    secrets.extend_from_slice(&curve::calculate_agreement(
-        parameters.their_identity_key().public_key(),
-        &our_base_private_key,
-    )?);
+    secrets.extend_from_slice(
+        &our_base_private_key.calculate_agreement(parameters.their_identity_key().public_key())?,
+    );
 
-    secrets.extend_from_slice(&curve::calculate_agreement(
-        parameters.their_signed_pre_key(),
-        &our_base_private_key,
-    )?);
+    secrets.extend_from_slice(
+        &our_base_private_key.calculate_agreement(parameters.their_signed_pre_key())?,
+    );
 
     if let Some(their_one_time_prekey) = parameters.their_one_time_pre_key() {
-        secrets.extend_from_slice(&curve::calculate_agreement(
-            their_one_time_prekey,
-            &our_base_private_key,
-        )?);
+        secrets
+            .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
 
     let (root_key, chain_key) = derive_keys(&secrets)?;
@@ -101,26 +98,33 @@ pub(crate) fn initialize_bob_session(
 
     secrets.extend_from_slice(&[0xFFu8; 32]); // "discontinuity bytes"
 
-    secrets.extend_from_slice(&curve::calculate_agreement(
-        parameters.their_identity_key().public_key(),
-        &parameters.our_signed_pre_key_pair().private_key,
-    )?);
+    secrets.extend_from_slice(
+        &parameters
+            .our_signed_pre_key_pair()
+            .private_key
+            .calculate_agreement(parameters.their_identity_key().public_key())?,
+    );
 
-    secrets.extend_from_slice(&curve::calculate_agreement(
-        parameters.their_base_key(),
-        parameters.our_identity_key_pair().private_key(),
-    )?);
+    secrets.extend_from_slice(
+        &parameters
+            .our_identity_key_pair()
+            .private_key()
+            .calculate_agreement(parameters.their_base_key())?,
+    );
 
-    secrets.extend_from_slice(&curve::calculate_agreement(
-        parameters.their_base_key(),
-        &parameters.our_signed_pre_key_pair().private_key,
-    )?);
+    secrets.extend_from_slice(
+        &parameters
+            .our_signed_pre_key_pair()
+            .private_key
+            .calculate_agreement(parameters.their_base_key())?,
+    );
 
     if let Some(our_one_time_pre_key_pair) = parameters.our_one_time_pre_key_pair() {
-        secrets.extend_from_slice(&curve::calculate_agreement(
-            parameters.their_base_key(),
-            &our_one_time_pre_key_pair.private_key,
-        )?);
+        secrets.extend_from_slice(
+            &our_one_time_pre_key_pair
+                .private_key
+                .calculate_agreement(parameters.their_base_key())?,
+        );
     }
 
     let (root_key, chain_key) = derive_keys(&secrets)?;

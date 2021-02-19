@@ -4,19 +4,16 @@
 //
 
 use crate::{
-    Context, IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
+    CiphertextMessage, Context, Direction, IdentityKeyStore, KeyPair, PreKeySignalMessage,
+    PreKeyStore, ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
     SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::consts::MAX_FORWARD_JUMPS;
 use crate::crypto;
-use crate::curve;
-use crate::error::Result;
-use crate::protocol::{CiphertextMessage, PreKeySignalMessage, SignalMessage};
 use crate::ratchet::{ChainKey, MessageKeys};
 use crate::session;
 use crate::state::SessionState;
-use crate::storage::Direction;
 
 use rand::{CryptoRng, Rng};
 
@@ -487,7 +484,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
 
 fn get_or_create_chain_key<R: Rng + CryptoRng>(
     state: &mut SessionState,
-    their_ephemeral: &curve::PublicKey,
+    their_ephemeral: &PublicKey,
     remote_address: &ProtocolAddress,
     csprng: &mut R,
 ) -> Result<ChainKey> {
@@ -501,7 +498,7 @@ fn get_or_create_chain_key<R: Rng + CryptoRng>(
     let root_key = state.root_key()?;
     let our_ephemeral = state.sender_ratchet_private_key()?;
     let receiver_chain = root_key.create_chain(their_ephemeral, &our_ephemeral)?;
-    let our_new_ephemeral = curve::KeyPair::generate(csprng);
+    let our_new_ephemeral = KeyPair::generate(csprng);
     let sender_chain = receiver_chain
         .0
         .create_chain(their_ephemeral, &our_new_ephemeral.private_key)?;
@@ -523,7 +520,7 @@ fn get_or_create_chain_key<R: Rng + CryptoRng>(
 
 fn get_or_create_message_key(
     state: &mut SessionState,
-    their_ephemeral: &curve::PublicKey,
+    their_ephemeral: &PublicKey,
     remote_address: &ProtocolAddress,
     chain_key: &ChainKey,
     counter: u32,

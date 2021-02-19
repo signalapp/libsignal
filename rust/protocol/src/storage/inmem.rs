@@ -3,11 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Result, SignalProtocolError};
-use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
+use crate::{
+    IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyName,
+    SenderKeyRecord, SessionRecord, SignalProtocolError, SignedPreKeyRecord,
+};
+
+use crate::state::{PreKeyId, SignedPreKeyId};
 use crate::storage::traits;
 use crate::storage::Context;
-use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress, SenderKeyName, SenderKeyRecord};
 
 use async_trait::async_trait;
 use std::collections::HashMap;

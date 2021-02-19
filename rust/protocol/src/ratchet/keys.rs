@@ -6,9 +6,7 @@
 use arrayref::array_ref;
 
 use crate::crypto;
-use crate::curve;
-use crate::error::{Result, SignalProtocolError};
-use crate::kdf::HKDF;
+use crate::{PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
 use std::fmt;
 
 pub struct MessageKeys {
@@ -146,10 +144,10 @@ impl RootKey {
 
     pub fn create_chain(
         &self,
-        their_ratchet_key: &curve::PublicKey,
-        our_ratchet_key: &curve::PrivateKey,
+        their_ratchet_key: &PublicKey,
+        our_ratchet_key: &PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {
-        let shared_secret = curve::calculate_agreement(their_ratchet_key, our_ratchet_key)?;
+        let shared_secret = our_ratchet_key.calculate_agreement(their_ratchet_key)?;
         let derived_secret_bytes = self.kdf.derive_salted_secrets(
             shared_secret.as_ref(),
             &self.key,
@@ -179,6 +177,7 @@ impl fmt::Display for RootKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{PrivateKey, PublicKey};
 
     #[test]
     fn test_chain_key_derivation_v2() -> Result<()> {
@@ -285,8 +284,8 @@ mod tests {
             0xa7, 0xe3, 0x35, 0xd1,
         ];
 
-        let alice_private_key = curve::decode_private_point(&alice_private)?;
-        let bob_public_key = curve::decode_point(&bob_public)?;
+        let alice_private_key = PrivateKey::deserialize(&alice_private)?;
+        let bob_public_key = PublicKey::deserialize(&bob_public)?;
         let root_key = RootKey::new(HKDF::new(2)?, &root_key_seed)?;
 
         let (next_root_key, next_chain_key) =

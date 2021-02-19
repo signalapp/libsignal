@@ -3,10 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::curve;
 use crate::proto;
-
-use crate::error::{Result, SignalProtocolError};
+use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
@@ -15,16 +13,16 @@ use prost::Message;
 
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 pub struct IdentityKey {
-    public_key: curve::PublicKey,
+    public_key: PublicKey,
 }
 
 impl IdentityKey {
-    pub fn new(public_key: curve::PublicKey) -> Self {
+    pub fn new(public_key: PublicKey) -> Self {
         Self { public_key }
     }
 
     #[inline]
-    pub fn public_key(&self) -> &curve::PublicKey {
+    pub fn public_key(&self) -> &PublicKey {
         &self.public_key
     }
 
@@ -34,7 +32,7 @@ impl IdentityKey {
     }
 
     pub fn decode(value: &[u8]) -> Result<Self> {
-        let pk = curve::PublicKey::deserialize(value)?;
+        let pk = PublicKey::try_from(value)?;
         Ok(Self { public_key: pk })
     }
 }
@@ -47,8 +45,8 @@ impl TryFrom<&[u8]> for IdentityKey {
     }
 }
 
-impl From<curve::PublicKey> for IdentityKey {
-    fn from(value: curve::PublicKey) -> Self {
+impl From<PublicKey> for IdentityKey {
+    fn from(value: PublicKey) -> Self {
         Self { public_key: value }
     }
 }
@@ -56,24 +54,19 @@ impl From<curve::PublicKey> for IdentityKey {
 #[derive(Copy, Clone)]
 pub struct IdentityKeyPair {
     identity_key: IdentityKey,
-    private_key: curve::PrivateKey,
+    private_key: PrivateKey,
 }
 
 impl IdentityKeyPair {
-    pub fn new(identity_key: IdentityKey, private_key: curve::PrivateKey) -> Self {
+    pub fn new(identity_key: IdentityKey, private_key: PrivateKey) -> Self {
         Self {
             identity_key,
             private_key,
         }
     }
 
-    pub fn from_private_key(private_key: curve::PrivateKey) -> Result<Self> {
-        let identity_key = IdentityKey::new(private_key.public_key()?);
-        Ok(Self::new(identity_key, private_key))
-    }
-
     pub fn generate<R: CryptoRng + Rng>(csprng: &mut R) -> Self {
-        let keypair = curve::KeyPair::generate(csprng);
+        let keypair = KeyPair::generate(csprng);
 
         Self {
             identity_key: keypair.public_key.into(),
@@ -87,12 +80,12 @@ impl IdentityKeyPair {
     }
 
     #[inline]
-    pub fn public_key(&self) -> &curve::PublicKey {
+    pub fn public_key(&self) -> &PublicKey {
         &self.identity_key.public_key()
     }
 
     #[inline]
-    pub fn private_key(&self) -> &curve::PrivateKey {
+    pub fn private_key(&self) -> &PrivateKey {
         &self.private_key
     }
 
@@ -114,13 +107,22 @@ impl TryFrom<&[u8]> for IdentityKeyPair {
         let structure = proto::storage::IdentityKeyPairStructure::decode(value)?;
         Ok(Self {
             identity_key: IdentityKey::try_from(&structure.public_key[..])?,
-            private_key: curve::PrivateKey::deserialize(&structure.private_key)?,
+            private_key: PrivateKey::deserialize(&structure.private_key)?,
         })
     }
 }
 
-impl From<curve::KeyPair> for IdentityKeyPair {
-    fn from(value: curve::KeyPair) -> Self {
+impl TryFrom<PrivateKey> for IdentityKeyPair {
+    type Error = SignalProtocolError;
+
+    fn try_from(private_key: PrivateKey) -> Result<Self> {
+        let identity_key = IdentityKey::new(private_key.public_key()?);
+        Ok(Self::new(identity_key, private_key))
+    }
+}
+
+impl From<KeyPair> for IdentityKeyPair {
+    fn from(value: KeyPair) -> Self {
         Self {
             identity_key: value.public_key.into(),
             private_key: value.private_key,
@@ -136,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_identity_key_from() {
-        let key_pair = curve::KeyPair::generate(&mut OsRng);
+        let key_pair = KeyPair::generate(&mut OsRng);
         let key_pair_public_serialized = key_pair.public_key.serialize();
         let identity_key = IdentityKey::from(key_pair.public_key);
         assert_eq!(key_pair_public_serialized, identity_key.serialize());

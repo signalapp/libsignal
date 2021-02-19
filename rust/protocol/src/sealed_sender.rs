@@ -3,16 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::crypto;
-use crate::error::{Result, SignalProtocolError};
-use crate::kdf::HKDF;
-use crate::proto;
-use crate::session_cipher;
 use crate::{
     message_encrypt, CiphertextMessageType, Context, IdentityKeyStore, KeyPair,
-    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, SessionStore,
-    SignalMessage, SignedPreKeyStore,
+    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, SessionStore,
+    SignalMessage, SignalProtocolError, SignedPreKeyStore, HKDF,
 };
+
+use crate::crypto;
+use crate::proto;
+use crate::session_cipher;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
@@ -53,10 +52,10 @@ impl ServerCertificate {
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let certificate_data =
             proto::sealed_sender::server_certificate::Certificate::decode(certificate.as_ref())?;
-        let key = PublicKey::deserialize(
+        let key = PublicKey::try_from(
             &certificate_data
                 .key
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?[..],
         )?;
         let key_id = certificate_data
             .id
@@ -177,10 +176,10 @@ impl SenderCertificate {
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender_e164 = certificate_data.sender_e164;
 
-        let key = PublicKey::deserialize(
+        let key = PublicKey::try_from(
             &certificate_data
                 .identity_key
-                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?,
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?[..],
         )?;
 
         let mut signer_bits = vec![];
@@ -434,7 +433,7 @@ impl UnidentifiedSenderMessage {
             .encrypted_message
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
 
-        let ephemeral_public = PublicKey::deserialize(&ephemeral_public)?;
+        let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
 
         let serialized = data.to_vec();
 
@@ -643,7 +642,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
         &eph_keys.mac_key()?,
     )?;
 
-    let static_key = PublicKey::deserialize(&static_key_bytes)?;
+    let static_key = PublicKey::try_from(&static_key_bytes[..])?;
 
     let static_keys = StaticKeys::calculate(
         &static_key,

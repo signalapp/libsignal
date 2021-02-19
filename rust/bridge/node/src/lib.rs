@@ -10,6 +10,7 @@ use libsignal_protocol::*;
 use neon::context::Context;
 use neon::prelude::*;
 use signal_neon_futures::*;
+use std::convert::TryFrom;
 use std::fmt;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
@@ -538,7 +539,7 @@ impl IdentityKeyStore for NodeIdentityStore {
             .await
             .map_err(|s| js_error_to_rust("getIdentityPrivateKey", s))?;
 
-        IdentityKeyPair::from_private_key(pk)
+        IdentityKeyPair::try_from(pk)
     }
 
     async fn get_local_registration_id(

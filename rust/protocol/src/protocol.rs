@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Result, SignalProtocolError};
-use crate::IdentityKey;
-use crate::{curve, proto};
+use crate::proto;
+use crate::{IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use std::convert::TryFrom;
 
@@ -57,7 +56,7 @@ impl CiphertextMessage {
 #[derive(Debug, Clone)]
 pub struct SignalMessage {
     message_version: u8,
-    sender_ratchet_key: curve::PublicKey,
+    sender_ratchet_key: PublicKey,
     counter: u32,
     #[allow(dead_code)]
     previous_counter: u32,
@@ -71,7 +70,7 @@ impl SignalMessage {
     pub fn new(
         message_version: u8,
         mac_key: &[u8],
-        sender_ratchet_key: curve::PublicKey,
+        sender_ratchet_key: PublicKey,
         counter: u32,
         previous_counter: u32,
         ciphertext: &[u8],
@@ -112,7 +111,7 @@ impl SignalMessage {
     }
 
     #[inline]
-    pub fn sender_ratchet_key(&self) -> &curve::PublicKey {
+    pub fn sender_ratchet_key(&self) -> &PublicKey {
         &self.sender_ratchet_key
     }
 
@@ -212,7 +211,7 @@ impl TryFrom<&[u8]> for SignalMessage {
         let sender_ratchet_key = proto_structure
             .ratchet_key
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let sender_ratchet_key = curve::decode_point(&sender_ratchet_key)?;
+        let sender_ratchet_key = PublicKey::deserialize(&sender_ratchet_key)?;
         let counter = proto_structure
             .counter
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -239,7 +238,7 @@ pub struct PreKeySignalMessage {
     registration_id: u32,
     pre_key_id: Option<u32>,
     signed_pre_key_id: u32,
-    base_key: curve::PublicKey,
+    base_key: PublicKey,
     identity_key: IdentityKey,
     message: SignalMessage,
     serialized: Box<[u8]>,
@@ -251,7 +250,7 @@ impl PreKeySignalMessage {
         registration_id: u32,
         pre_key_id: Option<u32>,
         signed_pre_key_id: u32,
-        base_key: curve::PublicKey,
+        base_key: PublicKey,
         identity_key: IdentityKey,
         message: SignalMessage,
     ) -> Result<Self> {
@@ -299,7 +298,7 @@ impl PreKeySignalMessage {
     }
 
     #[inline]
-    pub fn base_key(&self) -> &curve::PublicKey {
+    pub fn base_key(&self) -> &PublicKey {
         &self.base_key
     }
 
@@ -354,7 +353,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
         {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
-        let base_key = curve::decode_point(proto_structure.base_key.unwrap().as_ref())?;
+        let base_key = PublicKey::deserialize(proto_structure.base_key.unwrap().as_ref())?;
         Ok(PreKeySignalMessage {
             message_version,
             registration_id: proto_structure.registration_id.unwrap_or(0),
@@ -385,7 +384,7 @@ impl SenderKeyMessage {
         iteration: u32,
         ciphertext: &[u8],
         csprng: &mut R,
-        signature_key: &curve::PrivateKey,
+        signature_key: &PrivateKey,
     ) -> Result<Self> {
         let proto_message = proto::wire::SenderKeyMessage {
             id: Some(key_id),
@@ -397,11 +396,8 @@ impl SenderKeyMessage {
         serialized[0] =
             ((CIPHERTEXT_MESSAGE_CURRENT_VERSION & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
         proto_message.encode(&mut &mut serialized[1..1 + proto_message_len])?;
-        let signature = curve::calculate_signature(
-            csprng,
-            signature_key,
-            &serialized[..1 + proto_message_len],
-        )?;
+        let signature =
+            signature_key.calculate_signature(&serialized[..1 + proto_message_len], csprng)?;
         serialized[1 + proto_message_len..].copy_from_slice(&signature[..]);
         Ok(Self {
             message_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION,
@@ -412,9 +408,8 @@ impl SenderKeyMessage {
         })
     }
 
-    pub fn verify_signature(&self, signature_key: &curve::PublicKey) -> Result<bool> {
-        let valid = curve::verify_signature(
-            signature_key,
+    pub fn verify_signature(&self, signature_key: &PublicKey) -> Result<bool> {
+        let valid = signature_key.verify_signature(
             &self.serialized[..self.serialized.len() - Self::SIGNATURE_LEN],
             &self.serialized[self.serialized.len() - Self::SIGNATURE_LEN..],
         )?;
@@ -503,17 +498,12 @@ pub struct SenderKeyDistributionMessage {
     id: u32,
     iteration: u32,
     chain_key: Vec<u8>,
-    signing_key: curve::PublicKey,
+    signing_key: PublicKey,
     serialized: Box<[u8]>,
 }
 
 impl SenderKeyDistributionMessage {
-    pub fn new(
-        id: u32,
-        iteration: u32,
-        chain_key: &[u8],
-        signing_key: curve::PublicKey,
-    ) -> Result<Self> {
+    pub fn new(id: u32, iteration: u32, chain_key: &[u8], signing_key: PublicKey) -> Result<Self> {
         let proto_message = proto::wire::SenderKeyDistributionMessage {
             id: Some(id),
             iteration: Some(iteration),
@@ -556,7 +546,7 @@ impl SenderKeyDistributionMessage {
     }
 
     #[inline]
-    pub fn signing_key(&self) -> Result<&curve::PublicKey> {
+    pub fn signing_key(&self) -> Result<&PublicKey> {
         Ok(&self.signing_key)
     }
 
@@ -613,7 +603,7 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
 
-        let signing_key = curve::PublicKey::deserialize(&signing_key)?;
+        let signing_key = PublicKey::deserialize(&signing_key)?;
 
         Ok(SenderKeyDistributionMessage {
             message_version,
@@ -629,6 +619,7 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::KeyPair;
 
     use rand::rngs::OsRng;
     use rand::{CryptoRng, Rng};
@@ -645,9 +636,9 @@ mod tests {
         csprng.fill_bytes(&mut ciphertext);
         let ciphertext = ciphertext;
 
-        let sender_ratchet_key_pair = curve::KeyPair::generate(csprng);
-        let sender_identity_key_pair = curve::KeyPair::generate(csprng);
-        let receiver_identity_key_pair = curve::KeyPair::generate(csprng);
+        let sender_ratchet_key_pair = KeyPair::generate(csprng);
+        let sender_identity_key_pair = KeyPair::generate(csprng);
+        let receiver_identity_key_pair = KeyPair::generate(csprng);
 
         SignalMessage::new(
             3,
@@ -683,8 +674,8 @@ mod tests {
     #[test]
     fn test_pre_key_signal_message_serialize_deserialize() {
         let mut csprng = OsRng;
-        let identity_key_pair = curve::KeyPair::generate(&mut csprng);
-        let base_key_pair = curve::KeyPair::generate(&mut csprng);
+        let identity_key_pair = KeyPair::generate(&mut csprng);
+        let base_key_pair = KeyPair::generate(&mut csprng);
         let message = create_signal_message(&mut csprng);
         let pre_key_signal_message = PreKeySignalMessage::new(
             3,
@@ -736,7 +727,7 @@ mod tests {
     #[test]
     fn test_sender_key_message_serialize_deserialize() {
         let mut csprng = OsRng;
-        let signature_key_pair = curve::KeyPair::generate(&mut csprng);
+        let signature_key_pair = KeyPair::generate(&mut csprng);
         let sender_key_message = SenderKeyMessage::new(
             42,
             7,

@@ -5,14 +5,12 @@
 
 use crate::consts;
 use crate::crypto::hmac_sha256;
-use crate::curve;
-use crate::error::{Result, SignalProtocolError};
-use crate::kdf::HKDF;
 use crate::proto::storage as storage_proto;
-use crate::ProtocolAddress;
+use crate::{PrivateKey, ProtocolAddress, PublicKey, Result, SignalProtocolError, HKDF};
 
 use prost::Message;
 use std::collections::VecDeque;
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct SenderKeyName {
@@ -158,8 +156,8 @@ impl SenderKeyState {
         id: u32,
         iteration: u32,
         chain_key: &[u8],
-        signature_key: curve::PublicKey,
-        signature_private_key: Option<curve::PrivateKey>,
+        signature_key: PublicKey,
+        signature_private_key: Option<PrivateKey>,
     ) -> Result<SenderKeyState> {
         let state = storage_proto::SenderKeyStateStructure {
             sender_key_id: id,
@@ -214,17 +212,17 @@ impl SenderKeyState {
         Ok(())
     }
 
-    pub fn signing_key_public(&self) -> Result<curve::PublicKey> {
+    pub fn signing_key_public(&self) -> Result<PublicKey> {
         if let Some(ref signing_key) = self.state.sender_signing_key {
-            Ok(curve::PublicKey::deserialize(&signing_key.public)?)
+            Ok(PublicKey::try_from(&signing_key.public[..])?)
         } else {
             Err(SignalProtocolError::InvalidProtobufEncoding)
         }
     }
 
-    pub fn signing_key_private(&self) -> Result<curve::PrivateKey> {
+    pub fn signing_key_private(&self) -> Result<PrivateKey> {
         if let Some(ref signing_key) = self.state.sender_signing_key {
-            Ok(curve::PrivateKey::deserialize(&signing_key.private)?)
+            Ok(PrivateKey::deserialize(&signing_key.private)?)
         } else {
             Err(SignalProtocolError::InvalidProtobufEncoding)
         }
@@ -318,8 +316,8 @@ impl SenderKeyRecord {
         id: u32,
         iteration: u32,
         chain_key: &[u8],
-        signature_key: curve::PublicKey,
-        signature_private_key: Option<curve::PrivateKey>,
+        signature_key: PublicKey,
+        signature_private_key: Option<PrivateKey>,
     ) -> Result<()> {
         self.states.push_front(SenderKeyState::new(
             id,
@@ -340,8 +338,8 @@ impl SenderKeyRecord {
         id: u32,
         iteration: u32,
         chain_key: &[u8],
-        signature_key: curve::PublicKey,
-        signature_private_key: Option<curve::PrivateKey>,
+        signature_key: PublicKey,
+        signature_private_key: Option<PrivateKey>,
     ) -> Result<()> {
         self.states.clear();
         self.add_sender_key_state(

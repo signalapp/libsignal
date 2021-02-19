@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::curve;
-use crate::error::Result;
 use crate::proto::storage::SignedPreKeyRecordStructure;
+use crate::{KeyPair, PrivateKey, PublicKey, Result};
 use prost::Message;
 
 pub type SignedPreKeyId = u32;
@@ -16,7 +15,7 @@ pub struct SignedPreKeyRecord {
 }
 
 impl SignedPreKeyRecord {
-    pub fn new(id: SignedPreKeyId, timestamp: u64, key: &curve::KeyPair, signature: &[u8]) -> Self {
+    pub fn new(id: SignedPreKeyId, timestamp: u64, key: &KeyPair, signature: &[u8]) -> Self {
         let public_key = key.public_key.serialize().to_vec();
         let private_key = key.private_key.serialize().to_vec();
         let signature = signature.to_vec();
@@ -49,16 +48,16 @@ impl SignedPreKeyRecord {
         Ok(self.signed_pre_key.signature.clone())
     }
 
-    pub fn public_key(&self) -> Result<curve::PublicKey> {
-        curve::PublicKey::deserialize(&self.signed_pre_key.public_key)
+    pub fn public_key(&self) -> Result<PublicKey> {
+        PublicKey::deserialize(&self.signed_pre_key.public_key)
     }
 
-    pub fn private_key(&self) -> Result<curve::PrivateKey> {
-        curve::PrivateKey::deserialize(&self.signed_pre_key.private_key)
+    pub fn private_key(&self) -> Result<PrivateKey> {
+        PrivateKey::deserialize(&self.signed_pre_key.private_key)
     }
 
-    pub fn key_pair(&self) -> Result<curve::KeyPair> {
-        curve::KeyPair::from_public_and_private(
+    pub fn key_pair(&self) -> Result<KeyPair> {
+        KeyPair::from_public_and_private(
             &self.signed_pre_key.public_key,
             &self.signed_pre_key.private_key,
         )
