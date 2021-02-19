@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "rust/aes-gcm-siv",
+    "rust/poksho",
     "rust/protocol",
     "rust/bridge/ffi",
     "rust/bridge/jni",
