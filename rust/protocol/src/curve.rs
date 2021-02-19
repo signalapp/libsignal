@@ -132,6 +132,14 @@ impl From<PublicKeyData> for PublicKey {
     }
 }
 
+impl TryFrom<&[u8]> for PublicKey {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
+        Self::deserialize(value)
+    }
+}
+
 impl PartialEq for PublicKey {
     fn eq(&self, other: &PublicKey) -> bool {
         self.key_type() == other.key_type() && self.key_data().ct_eq(other.key_data()).into()
@@ -238,6 +246,14 @@ impl From<PrivateKeyData> for PrivateKey {
     }
 }
 
+impl TryFrom<&[u8]> for PrivateKey {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
+        Self::deserialize(value)
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct KeyPair {
     pub public_key: PublicKey,
@@ -265,8 +281,8 @@ impl KeyPair {
     }
 
     pub fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
-        let public_key = decode_point(public_key)?;
-        let private_key = decode_private_point(private_key)?;
+        let public_key = PublicKey::try_from(public_key)?;
+        let private_key = PrivateKey::try_from(private_key)?;
         Ok(Self {
             public_key,
             private_key,
@@ -286,30 +302,6 @@ impl KeyPair {
     }
 }
 
-pub fn verify_signature(public_key: &PublicKey, message: &[u8], signature: &[u8]) -> Result<bool> {
-    public_key.verify_signature(message, signature)
-}
-
-pub fn calculate_signature<R: CryptoRng + Rng>(
-    csprng: &mut R,
-    private_key: &PrivateKey,
-    message: &[u8],
-) -> Result<Box<[u8]>> {
-    private_key.calculate_signature(message, csprng)
-}
-
-pub fn calculate_agreement(public_key: &PublicKey, private_key: &PrivateKey) -> Result<Box<[u8]>> {
-    private_key.calculate_agreement(public_key)
-}
-
-pub fn decode_private_point(value: &[u8]) -> Result<PrivateKey> {
-    PrivateKey::deserialize(value)
-}
-
-pub fn decode_point(v: &[u8]) -> Result<PublicKey> {
-    PublicKey::deserialize(v)
-}
-
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
@@ -321,14 +313,23 @@ mod tests {
         let mut csprng = OsRng;
         let key_pair = KeyPair::generate(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
-        let signature = calculate_signature(&mut csprng, &key_pair.private_key, &message).unwrap();
+        let signature = key_pair
+            .private_key
+            .calculate_signature(&message, &mut csprng)
+            .unwrap();
 
-        assert!(verify_signature(&key_pair.public_key, &message, &signature).unwrap());
+        assert!(key_pair
+            .public_key
+            .verify_signature(&message, &signature)
+            .unwrap());
         message[0] ^= 0x01u8;
-        assert!(!verify_signature(&key_pair.public_key, &message, &signature).unwrap());
+        assert!(!key_pair
+            .public_key
+            .verify_signature(&message, &signature)
+            .unwrap());
         message[0] ^= 0x01u8;
         let public_key = key_pair.private_key.public_key().unwrap();
-        assert!(verify_signature(&public_key, &message, &signature).unwrap());
+        assert!(public_key.verify_signature(&message, &signature).unwrap());
     }
 
     #[test]
@@ -343,20 +344,20 @@ mod tests {
         );
         let empty: [u8; 0] = [];
 
-        let just_right = decode_point(&serialized_public[..]);
+        let just_right = PublicKey::try_from(&serialized_public[..]);
 
         assert!(just_right.is_ok());
-        assert!(decode_point(&serialized_public[1..]).is_err());
-        assert!(decode_point(&empty[..]).is_err());
+        assert!(PublicKey::try_from(&serialized_public[1..]).is_err());
+        assert!(PublicKey::try_from(&empty[..]).is_err());
 
         let mut bad_key_type = [0u8; 33];
         bad_key_type[..].copy_from_slice(&serialized_public[..]);
         bad_key_type[0] = 0x01u8;
-        assert!(decode_point(&bad_key_type).is_err());
+        assert!(PublicKey::try_from(&bad_key_type[..]).is_err());
 
         let mut extra_space = [0u8; 34];
         extra_space[..33].copy_from_slice(&serialized_public[..]);
-        let extra_space_decode = decode_point(&extra_space);
+        let extra_space_decode = PublicKey::try_from(&extra_space[..]);
         assert!(extra_space_decode.is_ok());
 
         assert_eq!(&serialized_public[..], &just_right.unwrap().serialize()[..]);

@@ -25,6 +25,8 @@ mod state;
 mod storage;
 mod utils;
 
+use error::Result;
+
 pub use {
     address::ProtocolAddress,
     curve::{KeyPair, PrivateKey, PublicKey},

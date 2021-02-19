@@ -4,11 +4,10 @@
 //
 
 use crate::{
-    Context, IdentityKeyStore, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
+    Context, IdentityKeyStore, KeyPair, PreKeyStore, ProtocolAddress, SessionRecord, SessionStore,
     SignalProtocolError, SignedPreKeyStore,
 };
 
-use crate::curve;
 use crate::error::Result;
 use crate::protocol::PreKeySignalMessage;
 use crate::ratchet;
@@ -142,8 +141,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         ));
     }
 
-    if !curve::verify_signature(
-        their_identity_key.public_key(),
+    if !their_identity_key.public_key().verify_signature(
         &bundle.signed_pre_key_public()?.serialize(),
         bundle.signed_pre_key_signature()?,
     )? {
@@ -155,7 +153,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         .await?
         .unwrap_or_else(SessionRecord::new_fresh);
 
-    let our_base_key_pair = curve::KeyPair::generate(&mut csprng);
+    let our_base_key_pair = KeyPair::generate(&mut csprng);
     let their_signed_prekey = bundle.signed_pre_key_public()?;
 
     let their_one_time_prekey = bundle.pre_key_public()?;

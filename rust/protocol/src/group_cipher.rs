@@ -5,11 +5,10 @@
 
 use crate::consts;
 use crate::crypto;
-use crate::curve;
 use crate::error::Result;
 use crate::protocol::{SenderKeyDistributionMessage, SenderKeyMessage};
 use crate::sender_keys::{SenderKeyRecord, SenderKeyState, SenderMessageKey};
-use crate::{Context, SenderKeyName, SenderKeyStore, SignalProtocolError};
+use crate::{Context, KeyPair, SenderKeyName, SenderKeyStore, SignalProtocolError};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
@@ -159,7 +158,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
         let sender_key_id = (csprng.gen::<u32>()) >> 1;
         let iteration = 0;
         let sender_key: [u8; 32] = csprng.gen();
-        let signing_key = curve::KeyPair::generate(csprng);
+        let signing_key = KeyPair::generate(csprng);
         sender_key_record.set_sender_key_state(
             sender_key_id,
             iteration,
