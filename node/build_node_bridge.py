@@ -69,7 +69,9 @@ def main(args=None):
 
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 
-    cmdline = ['cargo', 'build', '--target', cargo_target, '-p', 'libsignal-node'] + ['--release'] if configuration_name == 'Release' else []
+    cmdline = ['cargo', 'build', '--target', cargo_target, '-p', 'libsignal-node']
+    if configuration_name == 'Release':
+        cmdline.append('--release')
     print("Running '%s'" % (' '.join(cmdline)))
 
     cargo_env = os.environ.copy()
