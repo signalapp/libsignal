@@ -11,7 +11,6 @@ use neon::context::Context;
 use neon::prelude::*;
 use signal_neon_futures::*;
 use std::fmt;
-use std::marker::PhantomData;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 
@@ -40,18 +39,16 @@ fn js_error_to_rust(func: &'static str, err: String) -> SignalProtocolError {
     SignalProtocolError::ApplicationCallbackError(func, Box::new(CallbackError::new(err)))
 }
 
-struct NodePreKeyStore<'a> {
+struct NodePreKeyStore {
     js_queue: EventQueue,
     store_object: Arc<Root<JsObject>>,
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> NodePreKeyStore<'a> {
+impl NodePreKeyStore {
     fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
             js_queue: cx.queue(),
             store_object: Arc::new(store.root(cx)),
-            phantom: PhantomData,
         }
     }
 
@@ -126,14 +123,14 @@ impl<'a> NodePreKeyStore<'a> {
     }
 }
 
-impl<'a> Finalize for NodePreKeyStore<'a> {
+impl Finalize for NodePreKeyStore {
     fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
         self.store_object.finalize(cx)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a> PreKeyStore for NodePreKeyStore<'a> {
+impl PreKeyStore for NodePreKeyStore {
     async fn get_pre_key(
         &self,
         pre_key_id: u32,
@@ -166,18 +163,16 @@ impl<'a> PreKeyStore for NodePreKeyStore<'a> {
     }
 }
 
-struct NodeSignedPreKeyStore<'a> {
+struct NodeSignedPreKeyStore {
     js_queue: EventQueue,
     store_object: Arc<Root<JsObject>>,
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> NodeSignedPreKeyStore<'a> {
+impl NodeSignedPreKeyStore {
     fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
             js_queue: cx.queue(),
             store_object: Arc::new(store.root(cx)),
-            phantom: PhantomData,
         }
     }
 
@@ -238,14 +233,14 @@ impl<'a> NodeSignedPreKeyStore<'a> {
     }
 }
 
-impl<'a> Finalize for NodeSignedPreKeyStore<'a> {
+impl Finalize for NodeSignedPreKeyStore {
     fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
         self.store_object.finalize(cx)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a> SignedPreKeyStore for NodeSignedPreKeyStore<'a> {
+impl SignedPreKeyStore for NodeSignedPreKeyStore {
     async fn get_signed_pre_key(
         &self,
         signed_pre_key_id: u32,
@@ -268,18 +263,16 @@ impl<'a> SignedPreKeyStore for NodeSignedPreKeyStore<'a> {
     }
 }
 
-struct NodeSessionStore<'a> {
+struct NodeSessionStore {
     js_queue: EventQueue,
     store_object: Arc<Root<JsObject>>,
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> NodeSessionStore<'a> {
+impl NodeSessionStore {
     fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
             js_queue: cx.queue(),
             store_object: Arc::new(store.root(cx)),
-            phantom: PhantomData,
         }
     }
 
@@ -346,14 +339,14 @@ impl<'a> NodeSessionStore<'a> {
     }
 }
 
-impl<'a> Finalize for NodeSessionStore<'a> {
+impl Finalize for NodeSessionStore {
     fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
         self.store_object.finalize(cx)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a> SessionStore for NodeSessionStore<'a> {
+impl SessionStore for NodeSessionStore {
     async fn load_session(
         &self,
         name: &ProtocolAddress,
@@ -376,18 +369,16 @@ impl<'a> SessionStore for NodeSessionStore<'a> {
     }
 }
 
-struct NodeIdentityStore<'a> {
+struct NodeIdentityStore {
     js_queue: EventQueue,
     store_object: Arc<Root<JsObject>>,
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> NodeIdentityStore<'a> {
+impl NodeIdentityStore {
     fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
             js_queue: cx.queue(),
             store_object: Arc::new(store.root(cx)),
-            phantom: PhantomData,
         }
     }
 
@@ -530,14 +521,14 @@ impl<'a> NodeIdentityStore<'a> {
     }
 }
 
-impl<'a> Finalize for NodeIdentityStore<'a> {
+impl Finalize for NodeIdentityStore {
     fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
         self.store_object.finalize(cx)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a> IdentityKeyStore for NodeIdentityStore<'a> {
+impl IdentityKeyStore for NodeIdentityStore {
     async fn get_identity_key_pair(
         &self,
         _ctx: libsignal_protocol::Context,
@@ -595,18 +586,16 @@ impl<'a> IdentityKeyStore for NodeIdentityStore<'a> {
     }
 }
 
-struct NodeSenderKeyStore<'a> {
+struct NodeSenderKeyStore {
     js_queue: EventQueue,
     store_object: Arc<Root<JsObject>>,
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> NodeSenderKeyStore<'a> {
+impl NodeSenderKeyStore {
     fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
             js_queue: cx.queue(),
             store_object: Arc::new(store.root(cx)),
-            phantom: PhantomData,
         }
     }
 
@@ -671,14 +660,14 @@ impl<'a> NodeSenderKeyStore<'a> {
     }
 }
 
-impl<'a> Finalize for NodeSenderKeyStore<'a> {
+impl Finalize for NodeSenderKeyStore {
     fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
         self.store_object.finalize(cx)
     }
 }
 
 #[async_trait(?Send)]
-impl<'a> SenderKeyStore for NodeSenderKeyStore<'a> {
+impl SenderKeyStore for NodeSenderKeyStore {
     async fn load_sender_key(
         &mut self,
         sender_key_name: &SenderKeyName,
