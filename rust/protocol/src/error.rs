@@ -55,7 +55,6 @@ pub enum SignalProtocolError {
 
     DuplicatedMessage(u32, u32),
     InvalidMessage(&'static str),
-    MessageDecryptionFailed(String),
     InternalError(&'static str),
     FfiBindingError(String),
     ApplicationCallbackError(&'static str, Box<dyn Error + Send + UnwindSafe + 'static>),
@@ -184,9 +183,6 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::SealedSenderSelfSend => {
                 write!(f, "self send of a sealed sender message")
-            }
-            SignalProtocolError::MessageDecryptionFailed(info) => {
-                write!(f, "{}", info)
             }
         }
     }
