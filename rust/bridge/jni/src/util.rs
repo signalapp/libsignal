@@ -4,7 +4,7 @@
 //
 
 use jni::objects::{JObject, JValue};
-use jni::sys::{jint, jobject};
+use jni::sys::jint;
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
@@ -28,7 +28,7 @@ pub fn jint_from_u32(value: Result<u32, SignalProtocolError>) -> Result<jint, Si
 
 pub fn check_jobject_type(
     env: &JNIEnv,
-    obj: jobject,
+    obj: JObject,
     class_name: &'static str,
 ) -> Result<(), SignalJniError> {
     if obj.is_null() {
@@ -46,7 +46,7 @@ pub fn check_jobject_type(
 
 pub fn get_object_with_native_handle<T: 'static + Clone>(
     env: &JNIEnv,
-    store_obj: jobject,
+    store_obj: JObject,
     callback_args: &[JValue],
     callback_sig: &'static str,
     callback_fn: &'static str,
@@ -85,7 +85,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
 
 pub fn get_object_with_serialization(
     env: &JNIEnv,
-    store_obj: jobject,
+    store_obj: JObject,
     callback_args: &[JValue],
     callback_sig: &'static str,
     callback_fn: &'static str,
