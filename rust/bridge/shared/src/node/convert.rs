@@ -5,7 +5,9 @@
 
 use neon::prelude::*;
 use std::borrow::Cow;
+use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
+use std::hash::Hasher;
 use std::ops::RangeInclusive;
 
 pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
@@ -92,18 +94,61 @@ where
     }
 }
 
-impl<'a> ArgTypeInfo<'a, 'a> for &'a [u8] {
+fn calculate_checksum_for_immutable_buffer(buffer: &[u8]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    const LIMIT: usize = 1024;
+    if log::log_enabled!(log::Level::Debug) || buffer.len() < LIMIT {
+        hasher.write(buffer);
+    } else {
+        hasher.write(&buffer[..LIMIT]);
+    }
+    hasher.finish()
+}
+
+pub struct AssumedImmutableBuffer<'a> {
+    buffer: &'a [u8],
+    hash: u64,
+}
+
+impl<'a> AssumedImmutableBuffer<'a> {
+    fn new<'b>(cx: &mut impl Context<'b>, handle: Handle<'a, JsBuffer>) -> Self {
+        // A JsBuffer owns its storage*, so it's safe to assume the buffer won't get deallocated.
+        // What's unsafe is assuming that no one else will modify the buffer
+        // while we have a reference to it, which is why we checksum it.
+        // (We can't stop the Rust compiler from potentially optimizing out that checksum, though.)
+        //
+        // * https://nodejs.org/api/n-api.html#n_api_napi_get_buffer_info
+        let buffer = cx.borrow(&handle, |buf| {
+            if buf.len() == 0 {
+                &[]
+            } else {
+                unsafe { extend_lifetime::<'_, 'a, [u8]>(buf.as_slice()) }
+            }
+        });
+        let hash = calculate_checksum_for_immutable_buffer(buffer);
+        Self { buffer, hash }
+    }
+}
+
+impl Drop for AssumedImmutableBuffer<'_> {
+    fn drop(&mut self) {
+        if self.hash != calculate_checksum_for_immutable_buffer(self.buffer) {
+            log::error!("buffer modified while in use");
+        }
+    }
+}
+
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u8] {
     type ArgType = JsBuffer;
-    // FIXME: Avoid copying this data.
-    type StoredType = Vec<u8>;
+    type StoredType = AssumedImmutableBuffer<'context>;
     fn borrow(
         cx: &mut FunctionContext,
-        foreign: Handle<'a, Self::ArgType>,
+        foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        Ok(cx.borrow(&foreign, |buf| buf.as_slice().to_vec()))
+        Ok(AssumedImmutableBuffer::new(cx, foreign))
     }
-    fn load_from(stored: &'a mut Self::StoredType) -> Self {
-        stored
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.buffer
     }
 }
 
@@ -248,7 +293,7 @@ full_range_integer!(u8);
 full_range_integer!(u32);
 full_range_integer!(i32);
 
-pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T>(some_ref: &'a T) -> &'b T {
+pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> &'b T {
     std::mem::transmute::<&'a T, &'b T>(some_ref)
 }
 
