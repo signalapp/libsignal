@@ -39,11 +39,11 @@ impl ShoApi for ShoSha256 {
 
     fn absorb(&mut self, input: &[u8]) {
         if let Mode::RATCHETED = self.mode {
-            self.hasher.input(&[0u8; BLOCK_LEN][..]);
-            self.hasher.input(&self.cv);
+            self.hasher.update(&[0u8; BLOCK_LEN]);
+            self.hasher.update(&self.cv);
             self.mode = Mode::ABSORBING;
         }
-        self.hasher.input(input);
+        self.hasher.update(input);
     }
 
     // called after absorb() only; streaming squeeze not yet supported
@@ -51,8 +51,9 @@ impl ShoApi for ShoSha256 {
         if let Mode::RATCHETED = self.mode {
             panic!();
         }
-        self.cv
-            .copy_from_slice(&Sha256::digest(&self.hasher.result_reset()[..])[..]);
+
+        // Double hash
+        self.cv.copy_from_slice(&Sha256::digest(&self.hasher.finalize_reset()[..])[..]);
         self.mode = Mode::RATCHETED;
     }
 
@@ -62,25 +63,25 @@ impl ShoApi for ShoSha256 {
         }
         let mut output = Vec::<u8>::new();
         let mut output_hasher_prefix = Sha256::new();
-        output_hasher_prefix.input(&[0u8; BLOCK_LEN - 1][..]);
-        output_hasher_prefix.input(&[1u8]); // domain separator byte
-        output_hasher_prefix.input(self.cv);
+        output_hasher_prefix.update(&[0u8; BLOCK_LEN - 1]);
+        output_hasher_prefix.update(&[1u8]); // domain separator byte
+        output_hasher_prefix.update(self.cv);
         let mut i = 0;
         while i * HASH_LEN < outlen {
             let mut output_hasher = output_hasher_prefix.clone();
-            output_hasher.input((i as u64).to_be_bytes());
-            let digest = output_hasher.result();
+            output_hasher.update((i as u64).to_be_bytes());
+            let digest = output_hasher.finalize();
             let num_bytes = cmp::min(HASH_LEN, outlen - i * HASH_LEN);
             output.extend_from_slice(&digest[0..num_bytes]);
             i += 1
         }
 
         let mut next_hasher = Sha256::new();
-        next_hasher.input(&[0u8; BLOCK_LEN - 1][..]);
-        next_hasher.input(&[2u8]); // domain separator byte
-        next_hasher.input(self.cv);
-        next_hasher.input((outlen as u64).to_be_bytes());
-        self.cv.copy_from_slice(&next_hasher.result()[..]);
+        next_hasher.update(&[0u8; BLOCK_LEN - 1]);
+        next_hasher.update(&[2u8]); // domain separator byte
+        next_hasher.update(self.cv);
+        next_hasher.update((outlen as u64).to_be_bytes());
+        self.cv.copy_from_slice(&next_hasher.finalize()[..]);
         self.mode = Mode::RATCHETED;
         output
     }
@@ -96,12 +97,9 @@ mod tests {
         let mut sho = ShoSha256::new(b"asd");
         sho.absorb_and_ratchet(b"asdasd");
         let out = sho.squeeze_and_ratchet(64);
-        /*
-        for b in out.iter() {
-            print!("0x{:02x}, ", b);
-        }
-        println!("");
-        */
+
+        println!("{}", hex::encode(&out));
+
         assert!(
             out == vec![
                 0xeb, 0xe4, 0xef, 0x29, 0xe1, 0x8a, 0xa5, 0x41, 0x37, 0xed, 0xd8, 0x9c, 0x23, 0xf8,
@@ -116,10 +114,7 @@ mod tests {
         sho.absorb_and_ratchet(b"asdasd");
         let out = sho.squeeze_and_ratchet(65);
         /*
-        for b in out.iter() {
-            print!("0x{:02x}, ", b);
-        }
-        println!("");
+        println!("{}", hex::encode(&out));
         */
         assert!(
             out == vec![
@@ -148,10 +143,7 @@ mod tests {
         sho.absorb_and_ratchet(b"def");
         let out = sho.squeeze_and_ratchet(63);
         /*
-        for b in out.iter() {
-            print!("0x{:02x}, ", b);
-        }
-        println!("");
+        println!("{}", hex::encode(&out));
         */
         assert!(
             out == vec![
