@@ -4,6 +4,7 @@
 //
 
 use neon::prelude::*;
+use paste::paste;
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
@@ -290,19 +291,31 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
-impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::SenderKeyStore {
-    type ArgType = JsObject;
-    type StoredType = NodeSenderKeyStore;
-    fn save(
-        cx: &mut FunctionContext,
-        foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        Ok(NodeSenderKeyStore::new(cx, foreign))
-    }
-    fn load_from(stored: &'a mut Self::StoredType) -> Self {
-        stored
-    }
+macro_rules! store {
+    ($name:ident) => {
+        paste! {
+            impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
+                type ArgType = JsObject;
+                type StoredType = [<Node $name>];
+                fn save(
+                    cx: &mut FunctionContext,
+                    foreign: Handle<Self::ArgType>,
+                ) -> NeonResult<Self::StoredType> {
+                    Ok(Self::StoredType::new(cx, foreign))
+                }
+                fn load_from(stored: &'a mut Self::StoredType) -> Self {
+                    stored
+                }
+            }
+        }
+    };
 }
+
+store!(IdentityKeyStore);
+store!(PreKeyStore);
+store!(SenderKeyStore);
+store!(SessionStore);
+store!(SignedPreKeyStore);
 
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;

@@ -1194,9 +1194,9 @@ export function sealedSenderEncryptMessage(
   identityStore: IdentityKeyStore
 ): Promise<Buffer> {
   return SC.SealedSender_EncryptMessage(
-    message,
     address,
     senderCert,
+    message,
     sessionStore,
     identityStore
   );

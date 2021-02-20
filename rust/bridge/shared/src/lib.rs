@@ -855,6 +855,25 @@ async fn ProcessPreKeyBundle(
     .await
 }
 
+#[bridge_fn_void(ffi = false)]
+async fn SessionBuilder_ProcessPreKeyBundle(
+    bundle: &PreKeyBundle,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+) -> Result<(), SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    process_prekey_bundle(
+        protocol_address,
+        session_store,
+        identity_key_store,
+        bundle,
+        &mut csprng,
+        None,
+    )
+    .await
+}
+
 #[bridge_fn(jni = false, node = false)]
 async fn EncryptMessage(
     ptext: &[u8],
@@ -869,6 +888,23 @@ async fn EncryptMessage(
         session_store,
         identity_key_store,
         ctx,
+    )
+    .await
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+async fn SessionCipher_EncryptMessage(
+    ptext: &[u8],
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+) -> Result<CiphertextMessage, SignalProtocolError> {
+    message_encrypt(
+        ptext,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        None,
     )
     .await
 }
@@ -890,6 +926,27 @@ async fn DecryptMessage<E: Env>(
         identity_key_store,
         &mut csprng,
         ctx,
+    )
+    .await?;
+    Ok(env.buffer(ptext))
+}
+
+#[bridge_fn_buffer(ffi = false)]
+async fn SessionCipher_DecryptSignalMessage<E: Env>(
+    env: E,
+    message: &SignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    let ptext = message_decrypt_signal(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        &mut csprng,
+        None,
     )
     .await?;
     Ok(env.buffer(ptext))
@@ -921,6 +978,31 @@ async fn DecryptPreKeyMessage<E: Env>(
     Ok(env.buffer(ptext))
 }
 
+#[bridge_fn_buffer(ffi = false)]
+async fn SessionCipher_DecryptPreKeySignalMessage<E: Env>(
+    env: E,
+    message: &PreKeySignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    let ptext = message_decrypt_prekey(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        prekey_store,
+        signed_prekey_store,
+        &mut csprng,
+        None,
+    )
+    .await?;
+
+    Ok(env.buffer(ptext))
+}
 #[bridge_fn_buffer(jni = false, node = false)]
 async fn SealedSessionCipherEncrypt<E: Env>(
     env: E,
@@ -945,13 +1027,75 @@ async fn SealedSessionCipherEncrypt<E: Env>(
     Ok(env.buffer(ctext))
 }
 
+#[bridge_fn_buffer(ffi = false, node = "SealedSender_EncryptMessage")]
+async fn SealedSessionCipher_Encrypt<E: Env>(
+    env: E,
+    destination: &ProtocolAddress,
+    sender_cert: &SenderCertificate,
+    ptext: &[u8],
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+
+    let ctext = sealed_sender_encrypt(
+        destination,
+        sender_cert,
+        &ptext,
+        session_store,
+        identity_store,
+        None,
+        &mut rng,
+    )
+    .await?;
+    Ok(env.buffer(ctext))
+}
+
 #[bridge_fn(jni = false, node = false)]
-async fn SealedSessionCipherDecryptToUSMC(
+async fn SealedSessionCipherDecryptToUsmc(
     ctext: &[u8],
     identity_store: &mut dyn IdentityKeyStore,
     ctx: Context,
 ) -> Result<UnidentifiedSenderMessageContent, SignalProtocolError> {
     sealed_sender_decrypt_to_usmc(ctext, identity_store, ctx).await
+}
+
+#[bridge_fn(ffi = false, node = "SealedSender_DecryptToUsmc")]
+async fn SealedSessionCipher_DecryptToUsmc(
+    ctext: &[u8],
+    identity_store: &mut dyn IdentityKeyStore,
+) -> Result<UnidentifiedSenderMessageContent, SignalProtocolError> {
+    sealed_sender_decrypt_to_usmc(ctext, identity_store, None).await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_fn(ffi = false, jni = false)]
+async fn SealedSender_DecryptMessage(
+    message: &[u8],
+    trust_root: &PublicKey,
+    timestamp: u64,
+    local_e164: Option<String>,
+    local_uuid: String,
+    local_device_id: u32,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+) -> Result<SealedSenderDecryptionResult, SignalProtocolError> {
+    sealed_sender_decrypt(
+        message,
+        trust_root,
+        timestamp,
+        local_e164,
+        local_uuid,
+        local_device_id,
+        identity_store,
+        session_store,
+        prekey_store,
+        signed_prekey_store,
+        None,
+    )
+    .await
 }
 
 #[bridge_fn(

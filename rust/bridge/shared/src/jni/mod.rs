@@ -322,6 +322,17 @@ pub fn jobject_from_native_handle<'a>(
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 
+pub fn jobject_from_serialized<'a>(
+    env: &'a JNIEnv,
+    class_name: &str,
+    serialized: &[u8],
+) -> Result<JObject<'a>, SignalJniError> {
+    let class_type = env.find_class(class_name)?;
+    let ctor_sig = "([B)V";
+    let ctor_args = [JValue::from(to_jbytearray(env, Ok(serialized))?)];
+    Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
+}
+
 pub fn check_jobject_type(
     env: &JNIEnv,
     obj: JObject,
@@ -375,6 +386,40 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
         _ => Err(SignalJniError::UnexpectedJniResultType(
             "nativeHandle",
             handle.type_name(),
+        )),
+    }
+}
+
+pub fn get_object_with_serialization(
+    env: &JNIEnv,
+    store_obj: JObject,
+    callback_args: &[JValue],
+    callback_sig: &'static str,
+    callback_fn: &'static str,
+) -> Result<Option<Vec<u8>>, SignalJniError> {
+    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
+
+    let obj = match rvalue {
+        JValue::Object(o) => *o,
+        _ => {
+            return Err(SignalJniError::UnexpectedJniResultType(
+                callback_fn,
+                rvalue.type_name(),
+            ))
+        }
+    };
+
+    if obj.is_null() {
+        return Ok(None);
+    }
+
+    let bytes = call_method_checked(env, obj, "serialize", "()[B", &[])?;
+
+    match bytes {
+        JValue::Object(o) => Ok(Some(env.convert_byte_array(*o)?)),
+        _ => Err(SignalJniError::UnexpectedJniResultType(
+            "serialize",
+            bytes.type_name(),
         )),
     }
 }

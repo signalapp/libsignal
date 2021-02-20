@@ -7,6 +7,7 @@ use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
+use paste::paste;
 use std::borrow::Cow;
 
 use super::*;
@@ -154,24 +155,36 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'
     }
 }
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
-    for &'storage mut dyn libsignal_protocol::SenderKeyStore
-{
-    type ArgType = JObject<'context>;
-    type StoredType = JniSenderKeyStore<'context>;
-    fn borrow(
-        env: &'context JNIEnv,
-        store: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError> {
-        JniSenderKeyStore::new(env, store)
-    }
-    fn load_from(
-        _env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> Result<Self, SignalJniError> {
-        Ok(stored)
-    }
+macro_rules! store {
+    ($name:ident) => {
+        paste! {
+            impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+                for &'storage mut dyn libsignal_protocol::$name
+            {
+                type ArgType = JObject<'context>;
+                type StoredType = [<Jni $name>]<'context>;
+                fn borrow(
+                    env: &'context JNIEnv,
+                    store: Self::ArgType,
+                ) -> Result<Self::StoredType, SignalJniError> {
+                    Self::StoredType::new(env, store)
+                }
+                fn load_from(
+                    _env: &JNIEnv,
+                    stored: &'storage mut Self::StoredType,
+                ) -> Result<Self, SignalJniError> {
+                    Ok(stored)
+                }
+            }
+        }
+    };
 }
+
+store!(IdentityKeyStore);
+store!(PreKeyStore);
+store!(SenderKeyStore);
+store!(SessionStore);
+store!(SignedPreKeyStore);
 
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
