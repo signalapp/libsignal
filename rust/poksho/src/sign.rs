@@ -50,6 +50,7 @@ mod tests {
     use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 
     #[test]
+    #[allow(clippy::needless_range_loop)]
     fn test_signature() {
         let mut block64 = [0u8; 64];
         let mut block32 = [0u8; 32];

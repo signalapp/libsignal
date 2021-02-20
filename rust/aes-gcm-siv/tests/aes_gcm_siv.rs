@@ -70,7 +70,7 @@ fn test_kat(kat: WycheproofTest) {
     let mut buf = pt.clone();
     let generated_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &aad).unwrap();
 
-    if valid == true {
+    if valid {
         assert_eq!(hex::encode(generated_tag), hex::encode(&tag));
         assert_eq!(hex::encode(&buf), hex::encode(ct));
         aes_gcm_siv.decrypt(&mut buf, &nonce, &aad, &tag).unwrap();
@@ -78,7 +78,7 @@ fn test_kat(kat: WycheproofTest) {
     } else {
         assert_ne!(hex::encode(generated_tag), hex::encode(&tag));
 
-        if buf.len() > 0 {
+        if !buf.is_empty() {
             assert_ne!(hex::encode(&buf), hex::encode(ct));
         }
 
@@ -137,8 +137,8 @@ impl FromStr for BoringKat {
 
     fn from_str(s: &str) -> Result<BoringKat, Self::Err> {
         let mut kat: BoringKat = Default::default();
-        for line in s.split("\n") {
-            if line == "" {
+        for line in s.split('\n') {
+            if line.is_empty() {
                 continue;
             }
             let parts = line.split(": ").collect::<Vec<_>>();
