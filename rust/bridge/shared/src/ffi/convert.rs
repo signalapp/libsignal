@@ -5,6 +5,7 @@
 
 use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
+use paste::paste;
 use std::borrow::Cow;
 use std::ffi::CStr;
 
@@ -127,19 +128,31 @@ impl SimpleArgTypeInfo for Context {
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::SenderKeyStore {
-    type ArgType = *const FfiSenderKeyStoreStruct;
-    type StoredType = &'a FfiSenderKeyStoreStruct;
-    fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
-        match unsafe { foreign.as_ref() } {
-            None => Err(SignalFfiError::NullPointer),
-            Some(store) => Ok(store),
+macro_rules! store {
+    ($name:ident) => {
+        paste! {
+            impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
+                type ArgType = *const [<Ffi $name Struct>];
+                type StoredType = &'a [<Ffi $name Struct>];
+                fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
+                    match unsafe { foreign.as_ref() } {
+                        None => Err(SignalFfiError::NullPointer),
+                        Some(store) => Ok(store),
+                    }
+                }
+                fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
+                    Ok(stored)
+                }
+            }
         }
-    }
-    fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
-        Ok(stored)
-    }
+    };
 }
+
+store!(IdentityKeyStore);
+store!(PreKeyStore);
+store!(SenderKeyStore);
+store!(SessionStore);
+store!(SignedPreKeyStore);
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
