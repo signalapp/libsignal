@@ -116,27 +116,6 @@ jobs:
     - name: Clippy
       run: cargo clippy --all-targets -- -D warnings
 
-  rust_ios:
-    name: Build Rust for iOS
-
-    runs-on: macos-latest
-
-    needs: changes
-
-    if: ${{ needs.changes.outputs.rust_ios == 'true' }}
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        target: aarch64-apple-ios
-
-    - name: Build
-      run: cargo build --verbose --target aarch64-apple-ios -p libsignal-ffi
-
   java:
     name: Java
 
@@ -272,15 +251,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Check out SignalCoreKit
+        uses: actions/checkout@v2
+        with:
+          repository: signalapp/SignalCoreKit
+          path: SignalCoreKit
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          target: x86_64-apple-ios
+
+      - name: Add iOS targets
+        run: rustup target add x86_64-apple-ios aarch64-apple-ios
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
-        run: pod lib lint --verbose --platforms=ios --skip-import-validation
+        run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
         env:
           XCODE_XCCONFIG_FILE: swift/PodLibLint.xcconfig
 
