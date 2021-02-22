@@ -303,7 +303,7 @@ impl ResultTypeInfo for Option<jobject> {
     }
 }
 
-impl crate::Env for &'_ JNIEnv<'_> {
+impl crate::support::Env for &'_ JNIEnv<'_> {
     type Buffer = Result<jbyteArray, SignalJniError>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
         to_jbytearray(&self, Ok(input.into()))
@@ -318,7 +318,7 @@ macro_rules! jni_bridge_handle {
             fn convert_from(
                 _env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> Result<Self, jni::SignalJniError> {
+            ) -> std::result::Result<Self, jni::SignalJniError> {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
@@ -327,7 +327,7 @@ macro_rules! jni_bridge_handle {
             fn convert_from(
                 env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> Result<Self, jni::SignalJniError> {
+            ) -> std::result::Result<Self, jni::SignalJniError> {
                 if foreign == 0 {
                     Ok(None)
                 } else {
@@ -340,7 +340,7 @@ macro_rules! jni_bridge_handle {
             fn convert_from(
                 _env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> Result<Self, jni::SignalJniError> {
+            ) -> std::result::Result<Self, jni::SignalJniError> {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
@@ -349,7 +349,7 @@ macro_rules! jni_bridge_handle {
             fn convert_into(
                 self,
                 _env: &jni::JNIEnv,
-            ) -> Result<Self::ResultType, jni::SignalJniError> {
+            ) -> std::result::Result<Self::ResultType, jni::SignalJniError> {
                 jni::box_object(Ok(self))
             }
         }
@@ -358,7 +358,7 @@ macro_rules! jni_bridge_handle {
             fn convert_into(
                 self,
                 env: &jni::JNIEnv,
-            ) -> Result<Self::ResultType, jni::SignalJniError> {
+            ) -> std::result::Result<Self::ResultType, jni::SignalJniError> {
                 match self {
                     Some(obj) => obj.convert_into(env),
                     None => Ok(0),
@@ -436,16 +436,16 @@ macro_rules! jni_arg_type {
 }
 
 macro_rules! jni_result_type {
-    (Result<$typ:tt, $_:ty>) => {
+    (Result<$typ:tt $(, $_:ty)?>) => {
         jni_result_type!($typ)
     };
-    (Result<&$typ:tt, $_:ty>) => {
+    (Result<&$typ:tt $(, $_:ty)?>) => {
         jni_result_type!(&$typ)
     };
-    (Result<Option<&$typ:tt>, $_:ty>) => {
+    (Result<Option<&$typ:tt> $(, $_:ty)?>) => {
         jni_result_type!(&$typ)
     };
-    (Result<$typ:tt<$($args:tt),+>, $_:ty>) => {
+    (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
         jni_result_type!($typ<$($args)+>)
     };
     (bool) => {

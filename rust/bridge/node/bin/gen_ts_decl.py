@@ -53,7 +53,10 @@ def translate_to_ts(typ):
 
     if typ.startswith('Result<'):
         assert(typ.endswith('>'))
-        success_type = typ[7:].split(',')[0]
+        if ',' in typ:
+            success_type = typ[7:].split(',')[0]
+        else:
+            success_type = typ[7:-1]
         return translate_to_ts(success_type)
 
     if typ.startswith('Promise<'):

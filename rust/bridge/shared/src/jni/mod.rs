@@ -475,7 +475,7 @@ macro_rules! jni_bridge_get_bytearray {
             ) -> jni::jbyteArray {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
-                ) -> Result<impl AsRef<[u8]> + 'a, SignalProtocolError> => $body);
+                ) -> Result<impl AsRef<[u8]> + 'a> => $body);
                 jni::run_ffi_safe(&env, || {
                     let obj = jni::native_handle_cast::<$typ>(handle)?;
                     jni::to_jbytearray(&env, inner_get(obj))
@@ -502,7 +502,7 @@ macro_rules! jni_bridge_get_optional_bytearray {
             ) -> jni::jbyteArray {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
-                ) -> Result<Option<impl AsRef<[u8]> + 'a>, SignalProtocolError> => $body);
+                ) -> Result<Option<impl AsRef<[u8]> + 'a>> => $body);
                 jni::run_ffi_safe(&env, || {
                     let obj = jni::native_handle_cast::<$typ>(handle)?;
                     match inner_get(obj)? {

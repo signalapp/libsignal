@@ -9,7 +9,7 @@
 mod aes;
 mod aes_gcm_siv;
 mod cpuid;
-mod error;
+pub mod error;
 mod polyval;
 
 pub use crate::aes_gcm_siv::Aes256GcmSiv;

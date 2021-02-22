@@ -212,7 +212,7 @@ impl ResultTypeInfo for Option<u32> {
 
 pub(crate) struct Env;
 
-impl crate::Env for Env {
+impl crate::support::Env for Env {
     type Buffer = Box<[u8]>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
         input.into().into()
@@ -225,13 +225,13 @@ macro_rules! ffi_bridge_handle {
         impl ffi::SimpleArgTypeInfo for &$typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
+            fn convert_from(foreign: *const $typ) -> std::result::Result<Self, ffi::SignalFfiError> {
                 unsafe { ffi::native_handle_cast(foreign) }
             }
         }
         impl ffi::SimpleArgTypeInfo for Option<&$typ> {
             type ArgType = *const $typ;
-            fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
+            fn convert_from(foreign: *const $typ) -> std::result::Result<Self, ffi::SignalFfiError> {
                 if foreign.is_null() {
                     Ok(None)
                 } else {
@@ -242,19 +242,19 @@ macro_rules! ffi_bridge_handle {
         impl ffi::SimpleArgTypeInfo for &mut $typ {
             type ArgType = *mut $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *mut $typ) -> Result<Self, ffi::SignalFfiError> {
+            fn convert_from(foreign: *mut $typ) -> std::result::Result<Self, ffi::SignalFfiError> {
                 unsafe { ffi::native_handle_cast_mut(foreign) }
             }
         }
         impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
-            fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
+            fn convert_into(self) -> std::result::Result<Self::ResultType, ffi::SignalFfiError> {
                 Ok(Box::into_raw(Box::new(self)))
             }
         }
         impl ffi::ResultTypeInfo for Option<$typ> {
             type ResultType = *mut $typ;
-            fn convert_into(self) -> Result<Self::ResultType, ffi::SignalFfiError> {
+            fn convert_into(self) -> std::result::Result<Self::ResultType, ffi::SignalFfiError> {
                 match self {
                     Some(obj) => obj.convert_into(),
                     None => Ok(std::ptr::null_mut()),
@@ -328,10 +328,10 @@ macro_rules! ffi_arg_type {
 }
 
 macro_rules! ffi_result_type {
-    (Result<$typ:tt, $_:ty>) => (ffi_result_type!($typ));
-    (Result<&$typ:tt, $_:ty>) => (ffi_result_type!(&$typ));
-    (Result<Option<&$typ:tt>, $_:ty>) => (ffi_result_type!(&$typ));
-    (Result<$typ:tt<$($args:tt),+>, $_:ty>) => (ffi_result_type!($typ<$($args)+>));
+    (Result<$typ:tt $(, $_:ty)?>) => (ffi_result_type!($typ));
+    (Result<&$typ:tt $(, $_:ty)?>) => (ffi_result_type!(&$typ));
+    (Result<Option<&$typ:tt> $(, $_:ty)?>) => (ffi_result_type!(&$typ));
+    (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => (ffi_result_type!($typ<$($args)+>));
     (u8) => (u8);
     (i32) => (i32);
     (u32) => (u32);
