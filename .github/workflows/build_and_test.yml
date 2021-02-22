@@ -114,7 +114,7 @@ jobs:
       run: cargo build --benches --verbose
 
     - name: Clippy
-      run: cargo clippy --all -- -D warnings
+      run: cargo clippy --all-targets -- -D warnings
 
   rust_ios:
     name: Build Rust for iOS

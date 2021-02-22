@@ -25,7 +25,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
 
     assert_eq!(recovered.validate(&trust_root.public_key)?, true);
 
-    let mut cert_data = serialized.clone();
+    let mut cert_data = serialized;
     let cert_bits = cert_data.len() * 8;
 
     for b in 0..cert_bits {

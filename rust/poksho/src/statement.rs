@@ -446,6 +446,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::needless_range_loop, clippy::redundant_clone)]
     fn test_complex_statement() {
         let mut block32 = [0u8; 32];
         let mut block64a = [0u8; 64];
@@ -520,10 +521,10 @@ mod tests {
         scalar_args2.add("abc", a);
 
         // Test bad args - extra scalar
-        match st.prove(&scalar_args2, &point_args, &message, &randomness) {
-            Err(PokshoError::BadArgsWrongNumberOfScalarArgs) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.prove(&scalar_args2, &point_args, &message, &randomness),
+            Err(PokshoError::BadArgsWrongNumberOfScalarArgs)
+        ));
 
         // Good proof
         let mut proof = st
@@ -558,47 +559,47 @@ mod tests {
         // Test bad args - extra point
         let mut point_args2 = point_args.clone();
         point_args2.add("xyz", A);
-        match st.verify_proof(&proof, &point_args2, &message) {
-            Err(PokshoError::BadArgsWrongNumberOfPointArgs) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.verify_proof(&proof, &point_args2, &message),
+            Err(PokshoError::BadArgsWrongNumberOfPointArgs)
+        ));
 
         // Test bad message
-        match st.verify_proof(&proof, &point_args, &block32) {
-            Err(VerificationFailure) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.verify_proof(&proof, &point_args, &block32),
+            Err(VerificationFailure)
+        ));
 
         // Test bad proof #1 - extra byte at end
         let mut proof2 = proof.clone();
         proof2.push(0);
-        match st.verify_proof(&proof2, &point_args, &message) {
-            Err(VerificationFailure) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.verify_proof(&proof2, &point_args, &message),
+            Err(VerificationFailure)
+        ));
 
         // Test bad proof #2 - last byte changed
         let prooflen = proof.len();
         proof[prooflen - 1] += 1;
-        match st.verify_proof(&proof, &point_args, &message) {
-            Err(VerificationFailure) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.verify_proof(&proof, &point_args, &message),
+            Err(VerificationFailure)
+        ));
 
         // Test bad proof #3 - incorrect # of scalars (1 too few)
         let mut proof2 = proof.clone();
         proof2.truncate(proof2.len() - 32);
-        match st.verify_proof(&proof2, &point_args, &message) {
-            Err(VerificationFailure) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.verify_proof(&proof2, &point_args, &message),
+            Err(VerificationFailure)
+        ));
 
         // Test bad proof #3 - incorrect # of scalars (1 too few)
         let mut proof2 = proof.clone();
         proof2.truncate(proof2.len() - 32);
-        match st.verify_proof(&proof2, &point_args, &message) {
-            Err(VerificationFailure) => (),
-            _ => assert!(false),
-        }
+        assert!(matches!(
+            st.verify_proof(&proof2, &point_args, &message),
+            Err(VerificationFailure)
+        ));
     }
 }

@@ -12,6 +12,7 @@ use std::convert::TryFrom;
 use support::*;
 
 #[test]
+#[allow(clippy::eval_order_dependence)]
 fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
     block_on(async {
         let mut csprng = OsRng;
@@ -242,6 +243,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+#[allow(clippy::eval_order_dependence)]
 fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
     block_on(async {
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
@@ -320,6 +322,7 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
 // testRepeatBundleMessageV2 cannot be represented
 
 #[test]
+#[allow(clippy::eval_order_dependence)]
 fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
     block_on(async {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
@@ -439,6 +442,7 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+#[allow(clippy::eval_order_dependence)]
 fn bad_message_bundle() -> Result<(), SignalProtocolError> {
     block_on(async {
         let mut csprng = OsRng;
@@ -556,6 +560,7 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+#[allow(clippy::eval_order_dependence)]
 fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
     block_on(async {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
@@ -703,6 +708,7 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
     })
 }
 
+#[allow(clippy::needless_range_loop)]
 fn run_session_interaction(
     alice_session: SessionRecord,
     bob_session: SessionRecord,
@@ -865,6 +871,7 @@ async fn run_interaction(
     Ok(())
 }
 
+#[allow(clippy::eval_order_dependence)]
 async fn is_session_id_equal(
     alice_store: &dyn ProtocolStore,
     alice_address: &ProtocolAddress,

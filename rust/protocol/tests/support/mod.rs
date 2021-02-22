@@ -50,7 +50,7 @@ pub async fn decrypt(
     .await
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::eval_order_dependence)]
 pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
     store: &mut dyn ProtocolStore,
     mut csprng: &mut R,

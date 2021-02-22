@@ -135,7 +135,7 @@ mod test {
 
         let ctext = super::aes_256_ctr_encrypt(&ptext, &key).unwrap();
         assert_eq!(
-            hex::encode(ctext.clone()),
+            hex::encode(ctext),
             "e568f68194cf76d6174d4cc04310a85491151e5d0b7a1f1bc0d7acd0ae3e51e4170e23"
         );
     }
