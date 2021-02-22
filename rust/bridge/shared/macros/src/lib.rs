@@ -28,8 +28,12 @@ fn value_for_meta_key<'a>(
 fn name_for_meta_key(
     meta_values: &Punctuated<MetaNameValue, Token![,]>,
     key: &str,
+    enabled: bool,
     default: impl FnOnce() -> String,
 ) -> Result<Option<String>> {
+    if !enabled {
+        return Ok(None);
+    }
     match value_for_meta_key(meta_values, key) {
         Some(Lit::Str(name_str)) => Ok(Some(name_str.value())),
         Some(Lit::Bool(LitBool { value: false, .. })) => Ok(None),
@@ -59,19 +63,19 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
 
     let item_names =
         parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
-    let ffi_name = match name_for_meta_key(&item_names, "ffi", || {
+    let ffi_name = match name_for_meta_key(&item_names, "ffi", cfg!(feature = "ffi"), || {
         ffi::name_from_ident(&function.sig.ident)
     }) {
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
     };
-    let jni_name = match name_for_meta_key(&item_names, "jni", || {
+    let jni_name = match name_for_meta_key(&item_names, "jni", cfg!(feature = "jni"), || {
         jni::name_from_ident(&function.sig.ident)
     }) {
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
     };
-    let node_name = match name_for_meta_key(&item_names, "node", || {
+    let node_name = match name_for_meta_key(&item_names, "node", cfg!(feature = "node"), || {
         node::name_from_ident(&function.sig.ident)
     }) {
         Ok(name) => name,

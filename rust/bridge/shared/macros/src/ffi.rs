@@ -107,7 +107,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
     let orig_name = sig.ident.clone();
 
     quote! {
-        #[cfg(feature = "ffi")]
         #[no_mangle]
         pub unsafe extern "C" fn #name(
             #output_args

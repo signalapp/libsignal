@@ -20,3 +20,8 @@ quote = "1.0"
 syn = { version = "1.0" }
 syn-mid = "0.5"
 unzip3 = "1.0"
+
+[features]
+ffi = []
+jni = []
+node = []

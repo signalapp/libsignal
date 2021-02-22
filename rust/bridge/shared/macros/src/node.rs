@@ -192,7 +192,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
     );
 
     quote! {
-        #[cfg(feature = "node")]
         #[allow(non_snake_case)]
         #[doc = #node_annotation]
         pub fn #name_with_prefix(
@@ -201,7 +200,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
             #body
         }
 
-        #[cfg(feature = "node")]
         node_register!(#name_without_prefix);
     }
 }

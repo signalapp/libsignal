@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+extern crate jni_crate as jni;
+
 use jni::objects::{JObject, JThrowable, JValue};
 use jni::sys::jobject;
 
