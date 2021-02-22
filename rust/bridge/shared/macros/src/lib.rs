@@ -25,6 +25,19 @@ fn value_for_meta_key<'a>(
         .map(|meta| &meta.lit)
 }
 
+fn name_for_meta_key(
+    meta_values: &Punctuated<MetaNameValue, Token![,]>,
+    key: &str,
+    default: impl FnOnce() -> String,
+) -> Result<Option<String>> {
+    match value_for_meta_key(meta_values, key) {
+        Some(Lit::Str(name_str)) => Ok(Some(name_str.value())),
+        Some(Lit::Bool(LitBool { value: false, .. })) => Ok(None),
+        Some(value) => Err(Error::new(value.span(), "name must be a string literal")),
+        None => Ok(Some(default())),
+    }
+}
+
 #[derive(Clone, Copy)]
 enum ResultKind {
     Regular,
@@ -46,35 +59,23 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
 
     let item_names =
         parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
-    let ffi_name = match value_for_meta_key(&item_names, "ffi") {
-        Some(Lit::Str(name_str)) => Some(name_str.value()),
-        Some(Lit::Bool(LitBool { value: false, .. })) => None,
-        Some(value) => {
-            return Error::new(value.span(), "ffi name must be a string literal")
-                .to_compile_error()
-                .into()
-        }
-        None => Some(ffi::name_from_ident(&function.sig.ident)),
+    let ffi_name = match name_for_meta_key(&item_names, "ffi", || {
+        ffi::name_from_ident(&function.sig.ident)
+    }) {
+        Ok(name) => name,
+        Err(error) => return error.to_compile_error().into(),
     };
-    let jni_name = match value_for_meta_key(&item_names, "jni") {
-        Some(Lit::Str(name_str)) => Some(name_str.value()),
-        Some(Lit::Bool(LitBool { value: false, .. })) => None,
-        Some(value) => {
-            return Error::new(value.span(), "jni name must be a string literal")
-                .to_compile_error()
-                .into()
-        }
-        None => Some(jni::name_from_ident(&function.sig.ident)),
+    let jni_name = match name_for_meta_key(&item_names, "jni", || {
+        jni::name_from_ident(&function.sig.ident)
+    }) {
+        Ok(name) => name,
+        Err(error) => return error.to_compile_error().into(),
     };
-    let node_name = match value_for_meta_key(&item_names, "node") {
-        Some(Lit::Str(name_str)) => Some(name_str.value()),
-        Some(Lit::Bool(LitBool { value: false, .. })) => None,
-        Some(value) => {
-            return Error::new(value.span(), "node name must be a string literal")
-                .to_compile_error()
-                .into()
-        }
-        None => Some(node::name_from_ident(&function.sig.ident)),
+    let node_name = match name_for_meta_key(&item_names, "node", || {
+        node::name_from_ident(&function.sig.ident)
+    }) {
+        Ok(name) => name,
+        Err(error) => return error.to_compile_error().into(),
     };
 
     let ffi_feature = ffi_name.as_ref().map(|_| quote!(feature = "ffi"));
