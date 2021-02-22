@@ -7,15 +7,22 @@ use jni::objects::{AutoByteArray, JString, ReleaseMode};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
+use paste::paste;
 use std::borrow::Cow;
 
-use crate::jni::*;
+use super::*;
 
-pub(crate) trait ArgTypeInfo<'a>: Sized {
+pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType;
-    type StoredType: 'a;
-    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError>;
-    fn load_from(env: &'a JNIEnv, stored: &mut Self::StoredType) -> Result<Self, SignalJniError>;
+    type StoredType;
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: Self::ArgType,
+    ) -> Result<Self::StoredType, SignalJniError>;
+    fn load_from(
+        env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> Result<Self, SignalJniError>;
 }
 
 pub(crate) trait SimpleArgTypeInfo<'a>: Sized {
@@ -23,7 +30,7 @@ pub(crate) trait SimpleArgTypeInfo<'a>: Sized {
     fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> Result<Self, SignalJniError>;
 }
 
-impl<'a, T> ArgTypeInfo<'a> for T
+impl<'a, T> ArgTypeInfo<'a, 'a> for T
 where
     T: SimpleArgTypeInfo<'a>,
 {
@@ -35,7 +42,7 @@ where
     ) -> Result<Self::StoredType, SignalJniError> {
         Ok(foreign)
     }
-    fn load_from(env: &'a JNIEnv, stored: &mut Self::StoredType) -> Result<Self, SignalJniError> {
+    fn load_from(env: &JNIEnv, stored: &'a mut Self::StoredType) -> Result<Self, SignalJniError> {
         Self::convert_from(env, *stored)
     }
 }
@@ -100,10 +107,13 @@ pub(crate) struct AutoByteSlice<'a> {
     len: usize,
 }
 
-impl<'a> ArgTypeInfo<'a> for &'a [u8] {
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u8] {
     type ArgType = jbyteArray;
-    type StoredType = AutoByteSlice<'a>;
-    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+    type StoredType = AutoByteSlice<'context>;
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: Self::ArgType,
+    ) -> Result<Self::StoredType, SignalJniError> {
         let len = env.get_array_length(foreign)?;
         assert!(len >= 0);
         Ok(AutoByteSlice {
@@ -112,35 +122,69 @@ impl<'a> ArgTypeInfo<'a> for &'a [u8] {
         })
     }
     fn load_from(
-        _env: &'a JNIEnv,
-        stored: &mut Self::StoredType,
-    ) -> Result<&'a [u8], SignalJniError> {
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> Result<&'storage [u8], SignalJniError> {
         Ok(unsafe {
             std::slice::from_raw_parts(stored.jni_array.as_ptr() as *const u8, stored.len)
         })
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for Option<&'a [u8]> {
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'storage [u8]> {
     type ArgType = jbyteArray;
-    type StoredType = Option<AutoByteSlice<'a>>;
-    fn borrow(env: &'a JNIEnv, foreign: Self::ArgType) -> Result<Self::StoredType, SignalJniError> {
+    type StoredType = Option<AutoByteSlice<'context>>;
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: Self::ArgType,
+    ) -> Result<Self::StoredType, SignalJniError> {
         if foreign.is_null() {
             Ok(None)
         } else {
-            <&'a [u8]>::borrow(env, foreign).map(Some)
+            <&'storage [u8]>::borrow(env, foreign).map(Some)
         }
     }
     fn load_from(
-        env: &'a JNIEnv,
-        stored: &mut Self::StoredType,
-    ) -> Result<Option<&'a [u8]>, SignalJniError> {
+        env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> Result<Option<&'storage [u8]>, SignalJniError> {
         stored
             .as_mut()
-            .map(|s| <&'a [u8]>::load_from(env, s))
+            .map(|s| <&'storage [u8]>::load_from(env, s))
             .transpose()
     }
 }
+
+macro_rules! store {
+    ($name:ident) => {
+        paste! {
+            impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+                for &'storage mut dyn libsignal_protocol::$name
+            {
+                type ArgType = JObject<'context>;
+                type StoredType = [<Jni $name>]<'context>;
+                fn borrow(
+                    env: &'context JNIEnv,
+                    store: Self::ArgType,
+                ) -> Result<Self::StoredType, SignalJniError> {
+                    Self::StoredType::new(env, store)
+                }
+                fn load_from(
+                    _env: &JNIEnv,
+                    stored: &'storage mut Self::StoredType,
+                ) -> Result<Self, SignalJniError> {
+                    Ok(stored)
+                }
+            }
+        }
+    };
+}
+
+store!(IdentityKeyStore);
+store!(PreKeyStore);
+store!(SenderKeyStore);
+store!(SessionStore);
+store!(SignedPreKeyStore);
 
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
@@ -376,6 +420,9 @@ macro_rules! jni_arg_type {
     };
     (Option<&[u8]>) => {
         jni::jbyteArray
+    };
+    (&mut dyn $typ:ty) => {
+        paste!(jni::[<Java $typ>])
     };
     (& $typ:ty) => {
         jni::ObjectHandle

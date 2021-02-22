@@ -154,16 +154,6 @@ typedef struct {
   SignalStoreSignedPreKey store_signed_pre_key;
 } SignalSignedPreKeyStore;
 
-typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalSenderKeyName*, void *ctx);
-
-typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalSenderKeyName*, const SignalSenderKeyRecord*, void *ctx);
-
-typedef struct {
-  void *ctx;
-  SignalLoadSenderKey load_sender_key;
-  SignalStoreSenderKey store_sender_key;
-} SignalSenderKeyStore;
-
 typedef bool (*SignalLogEnabledCallback)(const char *target, SignalLogLevel level);
 
 typedef void (*SignalLogCallback)(const char *target, SignalLogLevel level, const char *file, uint32_t line, const char *message);
@@ -175,6 +165,16 @@ typedef struct {
   SignalLogCallback log;
   SignalLogFlushCallback flush;
 } SignalFfiLogger;
+
+typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalSenderKeyName*, void *ctx);
+
+typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalSenderKeyName*, const SignalSenderKeyRecord*, void *ctx);
+
+typedef struct {
+  void *ctx;
+  SignalLoadSenderKey load_sender_key;
+  SignalStoreSenderKey store_sender_key;
+} SignalSenderKeyStore;
 
 void signal_print_ptr(const void *p);
 
@@ -192,80 +192,6 @@ SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_ke
                                                    SignalPublicKey **public_key,
                                                    const unsigned char *input,
                                                    size_t input_len);
-
-SignalFfiError *signal_process_prekey_bundle(SignalPreKeyBundle *bundle,
-                                             const SignalProtocolAddress *protocol_address,
-                                             const SignalSessionStore *session_store,
-                                             const SignalIdentityKeyStore *identity_key_store,
-                                             void *ctx);
-
-SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **msg,
-                                       const unsigned char *ptext,
-                                       size_t ptext_len,
-                                       const SignalProtocolAddress *protocol_address,
-                                       const SignalSessionStore *session_store,
-                                       const SignalIdentityKeyStore *identity_key_store,
-                                       void *ctx);
-
-SignalFfiError *signal_decrypt_message(const unsigned char **result,
-                                       size_t *result_len,
-                                       const SignalMessage *message,
-                                       const SignalProtocolAddress *protocol_address,
-                                       const SignalSessionStore *session_store,
-                                       const SignalIdentityKeyStore *identity_key_store,
-                                       void *ctx);
-
-SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **result,
-                                               size_t *result_len,
-                                               const SignalPreKeySignalMessage *message,
-                                               const SignalProtocolAddress *protocol_address,
-                                               const SignalSessionStore *session_store,
-                                               const SignalIdentityKeyStore *identity_key_store,
-                                               const SignalPreKeyStore *prekey_store,
-                                               const SignalSignedPreKeyStore *signed_prekey_store,
-                                               void *ctx);
-
-SignalFfiError *signal_create_sender_key_distribution_message(SignalSenderKeyDistributionMessage **obj,
-                                                              const SignalSenderKeyName *sender_key_name,
-                                                              const SignalSenderKeyStore *store,
-                                                              void *ctx);
-
-SignalFfiError *signal_process_sender_key_distribution_message(const SignalSenderKeyName *sender_key_name,
-                                                               const SignalSenderKeyDistributionMessage *sender_key_distribution_message,
-                                                               const SignalSenderKeyStore *store,
-                                                               void *ctx);
-
-SignalFfiError *signal_group_encrypt_message(const unsigned char **out,
-                                             size_t *out_len,
-                                             const SignalSenderKeyName *sender_key_name,
-                                             const unsigned char *message,
-                                             size_t message_len,
-                                             const SignalSenderKeyStore *store,
-                                             void *ctx);
-
-SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
-                                             size_t *out_len,
-                                             const SignalSenderKeyName *sender_key_name,
-                                             const unsigned char *message,
-                                             size_t message_len,
-                                             const SignalSenderKeyStore *store,
-                                             void *ctx);
-
-SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
-                                                     size_t *out_len,
-                                                     const SignalProtocolAddress *destination,
-                                                     const SignalSenderCertificate *sender_cert,
-                                                     const unsigned char *ptext,
-                                                     size_t ptext_len,
-                                                     const SignalSessionStore *session_store,
-                                                     const SignalIdentityKeyStore *identity_key_store,
-                                                     void *ctx);
-
-SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out,
-                                                             const unsigned char *ctext,
-                                                             size_t ctext_len,
-                                                             const SignalIdentityKeyStore *identity_store,
-                                                             void *ctx);
 
 SignalFfiError *signal_sealed_session_cipher_decrypt(const unsigned char **out,
                                                      size_t *out_len,
@@ -820,6 +746,80 @@ SignalFfiError *signal_session_record_get_local_registration_id(uint32_t *out,
 
 SignalFfiError *signal_session_record_get_remote_registration_id(uint32_t *out,
                                                                  const SignalSessionRecord *obj);
+
+SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle,
+                                             const SignalProtocolAddress *protocol_address,
+                                             const SignalSessionStore *session_store,
+                                             const SignalIdentityKeyStore *identity_key_store,
+                                             void *ctx);
+
+SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out,
+                                       const unsigned char *ptext,
+                                       size_t ptext_len,
+                                       const SignalProtocolAddress *protocol_address,
+                                       const SignalSessionStore *session_store,
+                                       const SignalIdentityKeyStore *identity_key_store,
+                                       void *ctx);
+
+SignalFfiError *signal_decrypt_message(const unsigned char **out,
+                                       size_t *out_len,
+                                       const SignalMessage *message,
+                                       const SignalProtocolAddress *protocol_address,
+                                       const SignalSessionStore *session_store,
+                                       const SignalIdentityKeyStore *identity_key_store,
+                                       void *ctx);
+
+SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **out,
+                                               size_t *out_len,
+                                               const SignalPreKeySignalMessage *message,
+                                               const SignalProtocolAddress *protocol_address,
+                                               const SignalSessionStore *session_store,
+                                               const SignalIdentityKeyStore *identity_key_store,
+                                               const SignalPreKeyStore *prekey_store,
+                                               const SignalSignedPreKeyStore *signed_prekey_store,
+                                               void *ctx);
+
+SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
+                                                     size_t *out_len,
+                                                     const SignalProtocolAddress *destination,
+                                                     const SignalSenderCertificate *sender_cert,
+                                                     const unsigned char *ptext,
+                                                     size_t ptext_len,
+                                                     const SignalSessionStore *session_store,
+                                                     const SignalIdentityKeyStore *identity_key_store,
+                                                     void *ctx);
+
+SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out,
+                                                             const unsigned char *ctext,
+                                                             size_t ctext_len,
+                                                             const SignalIdentityKeyStore *identity_store,
+                                                             void *ctx);
+
+SignalFfiError *signal_create_sender_key_distribution_message(SignalSenderKeyDistributionMessage **out,
+                                                              const SignalSenderKeyName *sender_key_name,
+                                                              const SignalSenderKeyStore *store,
+                                                              void *ctx);
+
+SignalFfiError *signal_process_sender_key_distribution_message(const SignalSenderKeyName *sender_key_name,
+                                                               const SignalSenderKeyDistributionMessage *sender_key_distribution_message,
+                                                               const SignalSenderKeyStore *store,
+                                                               void *ctx);
+
+SignalFfiError *signal_group_encrypt_message(const unsigned char **out,
+                                             size_t *out_len,
+                                             const SignalSenderKeyName *sender_key_name,
+                                             const unsigned char *message,
+                                             size_t message_len,
+                                             const SignalSenderKeyStore *store,
+                                             void *ctx);
+
+SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
+                                             size_t *out_len,
+                                             const SignalSenderKeyName *sender_key_name,
+                                             const unsigned char *message,
+                                             size_t message_len,
+                                             const SignalSenderKeyStore *store,
+                                             void *ctx);
 
 SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
                                           const unsigned char *key,

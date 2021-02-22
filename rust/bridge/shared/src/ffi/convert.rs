@@ -1,18 +1,40 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar};
+use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
+use paste::paste;
 use std::borrow::Cow;
 use std::ffi::CStr;
 
-use crate::ffi::*;
+use super::*;
 
-pub(crate) trait ArgTypeInfo: Sized {
+pub(crate) trait ArgTypeInfo<'a>: Sized {
     type ArgType;
+    type StoredType;
+    fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError>;
+    fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError>;
+}
+
+pub(crate) trait SimpleArgTypeInfo: Sized {
+    type ArgType: Copy;
     fn convert_from(foreign: Self::ArgType) -> Result<Self, SignalFfiError>;
+}
+
+impl<'a, T> ArgTypeInfo<'a> for T
+where
+    T: SimpleArgTypeInfo,
+{
+    type ArgType = <Self as SimpleArgTypeInfo>::ArgType;
+    type StoredType = Self::ArgType;
+    fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
+        Ok(foreign)
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
+        Self::convert_from(*stored)
+    }
 }
 
 pub(crate) trait SizedArgTypeInfo: Sized {
@@ -62,7 +84,7 @@ impl SizedArgTypeInfo for &mut [u8] {
     }
 }
 
-impl ArgTypeInfo for Option<u32> {
+impl SimpleArgTypeInfo for Option<u32> {
     type ArgType = u32;
     fn convert_from(foreign: u32) -> Result<Self, SignalFfiError> {
         if foreign == u32::MAX {
@@ -73,7 +95,7 @@ impl ArgTypeInfo for Option<u32> {
     }
 }
 
-impl ArgTypeInfo for String {
+impl SimpleArgTypeInfo for String {
     type ArgType = *const c_char;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: *const c_char) -> Result<Self, SignalFfiError> {
@@ -88,7 +110,7 @@ impl ArgTypeInfo for String {
     }
 }
 
-impl ArgTypeInfo for Option<String> {
+impl SimpleArgTypeInfo for Option<String> {
     type ArgType = *const c_char;
     fn convert_from(foreign: *const c_char) -> Result<Self, SignalFfiError> {
         if foreign.is_null() {
@@ -98,6 +120,39 @@ impl ArgTypeInfo for Option<String> {
         }
     }
 }
+
+impl SimpleArgTypeInfo for Context {
+    type ArgType = *mut c_void;
+    fn convert_from(foreign: *mut c_void) -> Result<Self, SignalFfiError> {
+        Ok(Some(foreign))
+    }
+}
+
+macro_rules! store {
+    ($name:ident) => {
+        paste! {
+            impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
+                type ArgType = *const [<Ffi $name Struct>];
+                type StoredType = &'a [<Ffi $name Struct>];
+                fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
+                    match unsafe { foreign.as_ref() } {
+                        None => Err(SignalFfiError::NullPointer),
+                        Some(store) => Ok(store),
+                    }
+                }
+                fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
+                    Ok(stored)
+                }
+            }
+        }
+    };
+}
+
+store!(IdentityKeyStore);
+store!(PreKeyStore);
+store!(SenderKeyStore);
+store!(SessionStore);
+store!(SignedPreKeyStore);
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
@@ -167,14 +222,14 @@ impl crate::Env for Env {
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false ) => {};
     ( $typ:ty as $ffi_name:ident, clone = false ) => {
-        impl ffi::ArgTypeInfo for &'static $typ {
+        impl ffi::SimpleArgTypeInfo for &$typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
             fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
                 unsafe { ffi::native_handle_cast(foreign) }
             }
         }
-        impl ffi::ArgTypeInfo for Option<&'static $typ> {
+        impl ffi::SimpleArgTypeInfo for Option<&$typ> {
             type ArgType = *const $typ;
             fn convert_from(foreign: *const $typ) -> Result<Self, ffi::SignalFfiError> {
                 if foreign.is_null() {
@@ -184,7 +239,7 @@ macro_rules! ffi_bridge_handle {
                 }
             }
         }
-        impl ffi::ArgTypeInfo for &'static mut $typ {
+        impl ffi::SimpleArgTypeInfo for &mut $typ {
             type ArgType = *mut $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
             fn convert_from(foreign: *mut $typ) -> Result<Self, ffi::SignalFfiError> {
@@ -232,7 +287,7 @@ macro_rules! ffi_bridge_handle {
 
 macro_rules! trivial {
     ($typ:ty) => {
-        impl ArgTypeInfo for $typ {
+        impl SimpleArgTypeInfo for $typ {
             type ArgType = Self;
             fn convert_from(foreign: Self) -> Result<Self, SignalFfiError> {
                 Ok(foreign)
@@ -265,6 +320,8 @@ macro_rules! ffi_arg_type {
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
+    (Context) => (*mut libc::c_void);
+    (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);

@@ -1,8 +1,9 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::TryFrom;
 use std::fmt;
 
 use aes_gcm_siv::Error as AesGcmSivError;
@@ -52,3 +53,23 @@ impl From<AesGcmSivError> for SignalFfiError {
         SignalFfiError::AesGcmSiv(e)
     }
 }
+
+#[derive(Debug)]
+pub struct CallbackError {
+    value: std::num::NonZeroI32,
+}
+
+impl CallbackError {
+    pub fn check(value: i32) -> Option<Self> {
+        let value = std::num::NonZeroI32::try_from(value).ok()?;
+        Some(Self { value })
+    }
+}
+
+impl fmt::Display for CallbackError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "error code {}", self.value)
+    }
+}
+
+impl std::error::Error for CallbackError {}

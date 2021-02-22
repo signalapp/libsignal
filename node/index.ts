@@ -1061,7 +1061,7 @@ export async function groupEncrypt(
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return SC.GroupCipher_Encrypt(name, store, message);
+  return SC.GroupCipher_Encrypt(name, message, store);
 }
 
 export async function groupDecrypt(
@@ -1069,7 +1069,7 @@ export async function groupDecrypt(
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return SC.GroupCipher_Decrypt(name, store, message);
+  return SC.GroupCipher_Decrypt(name, message, store);
 }
 
 export class SealedSenderDecryptionResult {
@@ -1194,9 +1194,9 @@ export function sealedSenderEncryptMessage(
   identityStore: IdentityKeyStore
 ): Promise<Buffer> {
   return SC.SealedSender_EncryptMessage(
-    message,
     address,
     senderCert,
+    message,
     sessionStore,
     identityStore
   );

@@ -38,6 +38,9 @@ def translate_to_ts(typ):
     if typ in type_map:
         return type_map[typ]
 
+    if typ.startswith('&mutdyn'):
+        return typ[7:]
+
     if typ.startswith('&mut'):
         return 'Wrapper<' + typ[4:] + '>'
 
@@ -52,6 +55,10 @@ def translate_to_ts(typ):
         assert(typ.endswith('>'))
         success_type = typ[7:].split(',')[0]
         return translate_to_ts(success_type)
+
+    if typ.startswith('Promise<'):
+        assert(typ.endswith('>'))
+        return 'Promise<' + translate_to_ts(typ[8:-1]) + '>'
 
     return typ
 

@@ -835,6 +835,381 @@ fn SessionRecord_InitializeBobSession(
 
 // End SessionRecord testing functions
 
+#[bridge_fn_void(ffi = "process_prekey_bundle", jni = false, node = false)]
+async fn ProcessPreKeyBundle(
+    bundle: &PreKeyBundle,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<(), SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    process_prekey_bundle(
+        protocol_address,
+        session_store,
+        identity_key_store,
+        bundle,
+        &mut csprng,
+        ctx,
+    )
+    .await
+}
+
+#[bridge_fn_void(ffi = false)]
+async fn SessionBuilder_ProcessPreKeyBundle(
+    bundle: &PreKeyBundle,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+) -> Result<(), SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    process_prekey_bundle(
+        protocol_address,
+        session_store,
+        identity_key_store,
+        bundle,
+        &mut csprng,
+        None,
+    )
+    .await
+}
+
+#[bridge_fn(jni = false, node = false)]
+async fn EncryptMessage(
+    ptext: &[u8],
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<CiphertextMessage, SignalProtocolError> {
+    message_encrypt(
+        ptext,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        ctx,
+    )
+    .await
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+async fn SessionCipher_EncryptMessage(
+    ptext: &[u8],
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+) -> Result<CiphertextMessage, SignalProtocolError> {
+    message_encrypt(
+        ptext,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        None,
+    )
+    .await
+}
+
+#[bridge_fn_buffer(jni = false, node = false)]
+async fn DecryptMessage<E: Env>(
+    env: E,
+    message: &SignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    let ptext = message_decrypt_signal(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        &mut csprng,
+        ctx,
+    )
+    .await?;
+    Ok(env.buffer(ptext))
+}
+
+#[bridge_fn_buffer(ffi = false)]
+async fn SessionCipher_DecryptSignalMessage<E: Env>(
+    env: E,
+    message: &SignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    let ptext = message_decrypt_signal(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        &mut csprng,
+        None,
+    )
+    .await?;
+    Ok(env.buffer(ptext))
+}
+
+#[bridge_fn_buffer(jni = false, node = false)]
+async fn DecryptPreKeyMessage<E: Env>(
+    env: E,
+    message: &PreKeySignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    let ptext = message_decrypt_prekey(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        prekey_store,
+        signed_prekey_store,
+        &mut csprng,
+        ctx,
+    )
+    .await?;
+    Ok(env.buffer(ptext))
+}
+
+#[bridge_fn_buffer(ffi = false)]
+async fn SessionCipher_DecryptPreKeySignalMessage<E: Env>(
+    env: E,
+    message: &PreKeySignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    let ptext = message_decrypt_prekey(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        prekey_store,
+        signed_prekey_store,
+        &mut csprng,
+        None,
+    )
+    .await?;
+
+    Ok(env.buffer(ptext))
+}
+#[bridge_fn_buffer(jni = false, node = false)]
+async fn SealedSessionCipherEncrypt<E: Env>(
+    env: E,
+    destination: &ProtocolAddress,
+    sender_cert: &SenderCertificate,
+    ptext: &[u8],
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+    let ctext = sealed_sender_encrypt(
+        destination,
+        sender_cert,
+        ptext,
+        session_store,
+        identity_key_store,
+        ctx,
+        &mut rng,
+    )
+    .await?;
+    Ok(env.buffer(ctext))
+}
+
+#[bridge_fn_buffer(ffi = false, node = "SealedSender_EncryptMessage")]
+async fn SealedSessionCipher_Encrypt<E: Env>(
+    env: E,
+    destination: &ProtocolAddress,
+    sender_cert: &SenderCertificate,
+    ptext: &[u8],
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+
+    let ctext = sealed_sender_encrypt(
+        destination,
+        sender_cert,
+        &ptext,
+        session_store,
+        identity_store,
+        None,
+        &mut rng,
+    )
+    .await?;
+    Ok(env.buffer(ctext))
+}
+
+#[bridge_fn(jni = false, node = false)]
+async fn SealedSessionCipherDecryptToUsmc(
+    ctext: &[u8],
+    identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<UnidentifiedSenderMessageContent, SignalProtocolError> {
+    sealed_sender_decrypt_to_usmc(ctext, identity_store, ctx).await
+}
+
+#[bridge_fn(ffi = false, node = "SealedSender_DecryptToUsmc")]
+async fn SealedSessionCipher_DecryptToUsmc(
+    ctext: &[u8],
+    identity_store: &mut dyn IdentityKeyStore,
+) -> Result<UnidentifiedSenderMessageContent, SignalProtocolError> {
+    sealed_sender_decrypt_to_usmc(ctext, identity_store, None).await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_fn(ffi = false, jni = false)]
+async fn SealedSender_DecryptMessage(
+    message: &[u8],
+    trust_root: &PublicKey,
+    timestamp: u64,
+    local_e164: Option<String>,
+    local_uuid: String,
+    local_device_id: u32,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+) -> Result<SealedSenderDecryptionResult, SignalProtocolError> {
+    sealed_sender_decrypt(
+        message,
+        trust_root,
+        timestamp,
+        local_e164,
+        local_uuid,
+        local_device_id,
+        identity_store,
+        session_store,
+        prekey_store,
+        signed_prekey_store,
+        None,
+    )
+    .await
+}
+
+#[bridge_fn(
+    ffi = "create_sender_key_distribution_message",
+    jni = false,
+    node = false
+)]
+async fn CreateSenderKeyDistributionMessage(
+    sender_key_name: &SenderKeyName,
+    store: &mut dyn SenderKeyStore,
+    ctx: Context,
+) -> Result<SenderKeyDistributionMessage, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    create_sender_key_distribution_message(sender_key_name, store, &mut csprng, ctx).await
+}
+
+#[bridge_fn(
+    ffi = false,
+    jni = "GroupSessionBuilder_1CreateSenderKeyDistributionMessage"
+)]
+async fn SenderKeyDistributionMessage_Create(
+    sender_key_name: &SenderKeyName,
+    store: &mut dyn SenderKeyStore,
+) -> Result<SenderKeyDistributionMessage, SignalProtocolError> {
+    let mut csprng = rand::rngs::OsRng;
+    create_sender_key_distribution_message(sender_key_name, store, &mut csprng, None).await
+}
+
+#[bridge_fn_void(
+    ffi = "process_sender_key_distribution_message",
+    jni = false,
+    node = false
+)]
+async fn ProcessSenderKeyDistributionMessage(
+    sender_key_name: &SenderKeyName,
+    sender_key_distribution_message: &SenderKeyDistributionMessage,
+    store: &mut dyn SenderKeyStore,
+    ctx: Context,
+) -> Result<(), SignalProtocolError> {
+    process_sender_key_distribution_message(
+        sender_key_name,
+        sender_key_distribution_message,
+        store,
+        ctx,
+    )
+    .await
+}
+
+#[bridge_fn_void(
+    ffi = false,
+    jni = "GroupSessionBuilder_1ProcessSenderKeyDistributionMessage"
+)]
+async fn SenderKeyDistributionMessage_Process(
+    sender_key_name: &SenderKeyName,
+    sender_key_distribution_message: &SenderKeyDistributionMessage,
+    store: &mut dyn SenderKeyStore,
+) -> Result<(), SignalProtocolError> {
+    process_sender_key_distribution_message(
+        sender_key_name,
+        sender_key_distribution_message,
+        store,
+        None,
+    )
+    .await
+}
+
+#[bridge_fn_buffer(ffi = "group_encrypt_message", jni = false, node = false)]
+async fn GroupEncryptMessage<E: Env>(
+    env: E,
+    sender_key_name: &SenderKeyName,
+    message: &[u8],
+    store: &mut dyn SenderKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+    let ctext = group_encrypt(store, sender_key_name, message, &mut rng, ctx).await?;
+    Ok(env.buffer(ctext))
+}
+
+#[bridge_fn_buffer(ffi = false, jni = "GroupCipher_1EncryptMessage")]
+async fn GroupCipher_Encrypt<E: Env>(
+    env: E,
+    sender_key_name: &SenderKeyName,
+    message: &[u8],
+    store: &mut dyn SenderKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let mut rng = rand::rngs::OsRng;
+    let ctext = group_encrypt(store, sender_key_name, message, &mut rng, None).await?;
+    Ok(env.buffer(ctext))
+}
+
+#[bridge_fn_buffer(ffi = "group_decrypt_message", jni = false, node = false)]
+async fn GroupDecryptMessage<E: Env>(
+    env: E,
+    sender_key_name: &SenderKeyName,
+    message: &[u8],
+    store: &mut dyn SenderKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let ptext = group_decrypt(message, store, sender_key_name, ctx).await?;
+    Ok(env.buffer(ptext))
+}
+
+#[bridge_fn_buffer(ffi = false, jni = "GroupCipher_1DecryptMessage")]
+async fn GroupCipher_Decrypt<E: Env>(
+    env: E,
+    sender_key_name: &SenderKeyName,
+    message: &[u8],
+    store: &mut dyn SenderKeyStore,
+) -> Result<E::Buffer, SignalProtocolError> {
+    let ptext = group_decrypt(message, store, sender_key_name, None).await?;
+    Ok(env.buffer(ptext))
+}
+
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv, aes_gcm_siv::Error> {
     aes_gcm_siv::Aes256GcmSiv::new(&key)

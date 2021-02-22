@@ -675,6 +675,7 @@ name = "libsignal-bridge"
 version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
+ "async-trait",
  "futures",
  "jni",
  "libc",
@@ -685,6 +686,8 @@ dependencies = [
  "neon",
  "paste",
  "rand",
+ "scopeguard",
+ "signal-neon-futures",
  "static_assertions",
 ]
 
@@ -697,7 +700,7 @@ dependencies = [
  "quote",
  "syn",
  "syn-mid",
- "unzip3",
+ "unzip-n",
 ]
 
 [[package]]
@@ -1443,10 +1446,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "unzip3"
-version = "1.0.0"
+name = "unzip-n"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99c0ec316ab08201476c032feb2f94a5c8ece5b209765c1fbc4430dd6e931ad6"
+checksum = "c2e7e85a0596447f0f2ac090e16bc4c516c6fe91771fb0c0ccf7fa3dae896b9c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "version_check"
