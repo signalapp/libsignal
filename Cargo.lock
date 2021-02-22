@@ -700,7 +700,7 @@ dependencies = [
  "quote",
  "syn",
  "syn-mid",
- "unzip-n",
+ "unzip3",
 ]
 
 [[package]]
@@ -1446,15 +1446,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "unzip-n"
-version = "0.1.2"
+name = "unzip3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2e7e85a0596447f0f2ac090e16bc4c516c6fe91771fb0c0ccf7fa3dae896b9c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
+checksum = "99c0ec316ab08201476c032feb2f94a5c8ece5b209765c1fbc4430dd6e931ad6"
 
 [[package]]
 name = "version_check"
