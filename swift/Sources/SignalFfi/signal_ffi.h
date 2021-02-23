@@ -215,6 +215,30 @@ void signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
 
 SignalFfiError *signal_aes256_gcm_siv_destroy(SignalAes256GcmSiv *p);
 
+SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
+                                          const unsigned char *key,
+                                          size_t key_len);
+
+SignalFfiError *signal_aes256_gcm_siv_encrypt(const unsigned char **out,
+                                              size_t *out_len,
+                                              const SignalAes256GcmSiv *aes_gcm_siv,
+                                              const unsigned char *ptext,
+                                              size_t ptext_len,
+                                              const unsigned char *nonce,
+                                              size_t nonce_len,
+                                              const unsigned char *associated_data,
+                                              size_t associated_data_len);
+
+SignalFfiError *signal_aes256_gcm_siv_decrypt(const unsigned char **out,
+                                              size_t *out_len,
+                                              const SignalAes256GcmSiv *aes_gcm_siv,
+                                              const unsigned char *ctext,
+                                              size_t ctext_len,
+                                              const unsigned char *nonce,
+                                              size_t nonce_len,
+                                              const unsigned char *associated_data,
+                                              size_t associated_data_len);
+
 SignalFfiError *signal_ciphertext_message_destroy(SignalCiphertextMessage *p);
 
 SignalFfiError *signal_fingerprint_destroy(SignalFingerprint *p);
@@ -820,29 +844,5 @@ SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
                                              size_t message_len,
                                              const SignalSenderKeyStore *store,
                                              void *ctx);
-
-SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
-                                          const unsigned char *key,
-                                          size_t key_len);
-
-SignalFfiError *signal_aes256_gcm_siv_encrypt(const unsigned char **out,
-                                              size_t *out_len,
-                                              const SignalAes256GcmSiv *aes_gcm_siv,
-                                              const unsigned char *ptext,
-                                              size_t ptext_len,
-                                              const unsigned char *nonce,
-                                              size_t nonce_len,
-                                              const unsigned char *associated_data,
-                                              size_t associated_data_len);
-
-SignalFfiError *signal_aes256_gcm_siv_decrypt(const unsigned char **out,
-                                              size_t *out_len,
-                                              const SignalAes256GcmSiv *aes_gcm_siv,
-                                              const unsigned char *ctext,
-                                              size_t ctext_len,
-                                              const unsigned char *nonce,
-                                              size_t nonce_len,
-                                              const unsigned char *associated_data,
-                                              size_t associated_data_len);
 
 #endif /* SIGNAL_FFI_H_ */

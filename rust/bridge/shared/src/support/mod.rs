@@ -92,8 +92,8 @@ macro_rules! bridge_get {
     ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)* ) => {
         paste! {
             #[bridge_fn($($param = $val),*)]
-            fn [<$typ _ $name>](obj: &$typ) -> Result<$result, SignalProtocolError> {
-                let result = support::TransformHelper($typ::$method(obj));
+            fn [<$typ _ $name>](obj: &$typ) -> Result<$result> {
+                let result = TransformHelper($typ::$method(obj));
                 Ok(result.ok_if_needed()?.option_map_into().into())
             }
         }

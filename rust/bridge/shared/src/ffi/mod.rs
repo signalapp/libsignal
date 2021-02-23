@@ -176,7 +176,7 @@ macro_rules! ffi_bridge_get_bytearray {
             ) -> *mut ffi::SignalFfiError {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
-                ) -> Result<impl Into<Box<[u8]>> + 'a, SignalProtocolError> => $body);
+                ) -> Result<impl Into<Box<[u8]>> + 'a> => $body);
                 ffi::run_ffi_safe(|| {
                     let obj = ffi::native_handle_cast::<$typ>(obj)?;
                     ffi::write_bytearray_to(out, out_len, inner_get(obj)?)

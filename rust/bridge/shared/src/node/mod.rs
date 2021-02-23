@@ -126,7 +126,7 @@ macro_rules! node_bridge_deserialize {
                 mut cx: node::FunctionContext
             ) -> node::JsResult<node::JsValue> {
                 let buffer = cx.argument::<node::JsBuffer>(0)?;
-                let obj: Result<$typ, _> =
+                let obj: Result<$typ> =
                     node::with_buffer_contents(&mut cx, buffer, |buf| $typ::$fn(buf));
                 node::return_boxed_object(&mut cx, obj)
             }
@@ -150,7 +150,7 @@ macro_rules! node_bridge_get_bytearray {
             ) -> node::JsResult<node::JsValue> {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
-                ) -> Result<impl AsRef<[u8]> + 'a, SignalProtocolError> => $body);
+                ) -> Result<impl AsRef<[u8]> + 'a> => $body);
                 let obj_arg = cx.argument::<<&$typ as node::ArgTypeInfo>::ArgType>(0)?;
                 let mut obj_borrow = <&$typ as node::ArgTypeInfo>::borrow(&mut cx, obj_arg)?;
                 let obj = <&$typ as node::ArgTypeInfo>::load_from(&mut obj_borrow);
@@ -179,7 +179,7 @@ macro_rules! node_bridge_get_optional_bytearray {
             ) -> node::JsResult<node::JsValue> {
                 expr_as_fn!(inner_get<'a>(
                     obj: &'a $typ
-                ) -> Result<Option<impl AsRef<[u8]> + 'a>, SignalProtocolError> => $body);
+                ) -> Result<Option<impl AsRef<[u8]> + 'a>> => $body);
                 let obj_arg = cx.argument::<<&$typ as node::ArgTypeInfo>::ArgType>(0)?;
                 let mut obj_borrow = <&$typ as node::ArgTypeInfo>::borrow(&mut cx, obj_arg)?;
                 let obj = <&$typ as node::ArgTypeInfo>::load_from(&mut obj_borrow);

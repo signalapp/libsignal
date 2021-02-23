@@ -633,7 +633,7 @@ macro_rules! node_bridge_handle {
     };
 }
 
-impl<'a> crate::Env for &'_ mut FunctionContext<'a> {
+impl<'a> crate::support::Env for &'_ mut FunctionContext<'a> {
     type Buffer = JsResult<'a, JsBuffer>;
     fn buffer<'b, T: Into<Cow<'b, [u8]>>>(self, input: T) -> Self::Buffer {
         let input = input.into();
@@ -651,7 +651,7 @@ impl<'a> crate::Env for &'_ mut FunctionContext<'a> {
 
 pub(crate) struct AsyncEnv;
 
-impl crate::Env for AsyncEnv {
+impl crate::support::Env for AsyncEnv {
     // FIXME: Can we avoid this copy?
     type Buffer = Vec<u8>;
     fn buffer<'b, T: Into<Cow<'b, [u8]>>>(self, input: T) -> Self::Buffer {
