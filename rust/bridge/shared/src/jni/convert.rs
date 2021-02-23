@@ -15,19 +15,13 @@ use super::*;
 pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
     type ArgType;
     type StoredType;
-    fn borrow(
-        env: &'context JNIEnv,
-        foreign: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError>;
-    fn load_from(
-        env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> Result<Self, SignalJniError>;
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType>;
+    fn load_from(env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self>;
 }
 
 pub(crate) trait SimpleArgTypeInfo<'a>: Sized {
     type ArgType: Copy + 'a;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> Result<Self, SignalJniError>;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self>;
 }
 
 impl<'a, T> ArgTypeInfo<'a, 'a> for T
@@ -36,32 +30,29 @@ where
 {
     type ArgType = <Self as SimpleArgTypeInfo<'a>>::ArgType;
     type StoredType = Self::ArgType;
-    fn borrow(
-        _env: &'a JNIEnv,
-        foreign: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError> {
+    fn borrow(_env: &'a JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
         Ok(foreign)
     }
-    fn load_from(env: &JNIEnv, stored: &'a mut Self::StoredType) -> Result<Self, SignalJniError> {
+    fn load_from(env: &JNIEnv, stored: &'a mut Self::StoredType) -> SignalJniResult<Self> {
         Self::convert_from(env, *stored)
     }
 }
 
 pub(crate) trait ResultTypeInfo: Sized {
     type ResultType;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError>;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType>;
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for u32 {
     type ArgType = jint;
-    fn convert_from(_env: &JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
         jint_to_u32(foreign)
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
     type ArgType = jint;
-    fn convert_from(env: &JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
         if foreign < 0 {
             Ok(None)
         } else {
@@ -72,28 +63,28 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
 
 impl<'a> SimpleArgTypeInfo<'a> for u64 {
     type ArgType = jlong;
-    fn convert_from(_env: &JNIEnv, foreign: jlong) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
         jlong_to_u64(foreign)
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for u8 {
     type ArgType = jint;
-    fn convert_from(_env: &JNIEnv, foreign: jint) -> Result<Self, SignalJniError> {
+    fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
         jint_to_u8(foreign)
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
-    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> SignalJniResult<Self> {
         Ok(env.get_string(foreign)?.into())
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     type ArgType = JString<'a>;
-    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> Result<Self, SignalJniError> {
+    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> SignalJniResult<Self> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -110,10 +101,7 @@ pub(crate) struct AutoByteSlice<'a> {
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u8] {
     type ArgType = jbyteArray;
     type StoredType = AutoByteSlice<'context>;
-    fn borrow(
-        env: &'context JNIEnv,
-        foreign: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError> {
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
         let len = env.get_array_length(foreign)?;
         assert!(len >= 0);
         Ok(AutoByteSlice {
@@ -124,7 +112,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
     fn load_from(
         _env: &JNIEnv,
         stored: &'storage mut Self::StoredType,
-    ) -> Result<&'storage [u8], SignalJniError> {
+    ) -> SignalJniResult<&'storage [u8]> {
         Ok(unsafe {
             std::slice::from_raw_parts(stored.jni_array.as_ptr() as *const u8, stored.len)
         })
@@ -134,10 +122,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'storage [u8]> {
     type ArgType = jbyteArray;
     type StoredType = Option<AutoByteSlice<'context>>;
-    fn borrow(
-        env: &'context JNIEnv,
-        foreign: Self::ArgType,
-    ) -> Result<Self::StoredType, SignalJniError> {
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -147,7 +132,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'
     fn load_from(
         env: &JNIEnv,
         stored: &'storage mut Self::StoredType,
-    ) -> Result<Option<&'storage [u8]>, SignalJniError> {
+    ) -> SignalJniResult<Option<&'storage [u8]>> {
         stored
             .as_mut()
             .map(|s| <&'storage [u8]>::load_from(env, s))
@@ -166,13 +151,13 @@ macro_rules! store {
                 fn borrow(
                     env: &'context JNIEnv,
                     store: Self::ArgType,
-                ) -> Result<Self::StoredType, SignalJniError> {
+                ) -> SignalJniResult<Self::StoredType> {
                     Self::StoredType::new(env, store)
                 }
                 fn load_from(
                     _env: &JNIEnv,
                     stored: &'storage mut Self::StoredType,
-                ) -> Result<Self, SignalJniError> {
+                ) -> SignalJniResult<Self> {
                     Ok(stored)
                 }
             }
@@ -188,21 +173,21 @@ store!(SignedPreKeyStore);
 
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
-    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
     }
 }
 
 impl ResultTypeInfo for u8 {
     type ResultType = jint;
-    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(self as jint)
     }
 }
 
 impl ResultTypeInfo for u32 {
     type ResultType = jint;
-    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
         Ok(self as jint)
     }
@@ -210,7 +195,7 @@ impl ResultTypeInfo for u32 {
 
 impl ResultTypeInfo for Option<u32> {
     type ResultType = jint;
-    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
         Ok(self.unwrap_or(u32::MAX) as jint)
     }
@@ -218,7 +203,7 @@ impl ResultTypeInfo for Option<u32> {
 
 impl ResultTypeInfo for u64 {
     type ResultType = jlong;
-    fn convert_into(self, _env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
         Ok(self as jlong)
     }
@@ -226,14 +211,14 @@ impl ResultTypeInfo for u64 {
 
 impl ResultTypeInfo for String {
     type ResultType = jstring;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(env.new_string(self)?.into_inner())
     }
 }
 
 impl ResultTypeInfo for Option<String> {
     type ResultType = jstring;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         match self {
             Some(s) => s.convert_into(env),
             None => Ok(std::ptr::null_mut()),
@@ -243,14 +228,14 @@ impl ResultTypeInfo for Option<String> {
 
 impl ResultTypeInfo for &str {
     type ResultType = jstring;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(env.new_string(self)?.into_inner())
     }
 }
 
 impl ResultTypeInfo for Option<&str> {
     type ResultType = jstring;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         match self {
             Some(s) => s.convert_into(env),
             None => Ok(std::ptr::null_mut()),
@@ -260,51 +245,51 @@ impl ResultTypeInfo for Option<&str> {
 
 impl ResultTypeInfo for Vec<u8> {
     type ResultType = jbyteArray;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(env.byte_array_from_slice(&self)?)
     }
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
     }
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
     type ResultType = T::ResultType;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
     }
 }
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalJniError> {
+impl<T: ResultTypeInfo> ResultTypeInfo for SignalJniResult<T> {
     type ResultType = T::ResultType;
-    fn convert_into(self, env: &JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
     }
 }
 
-impl<T> ResultTypeInfo for Option<Result<T, SignalJniError>>
+impl<T> ResultTypeInfo for Option<SignalJniResult<T>>
 where
     Option<T>: ResultTypeInfo,
 {
     type ResultType = <Option<T> as ResultTypeInfo>::ResultType;
-    fn convert_into(self, env: &jni::JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, env: &jni::JNIEnv) -> SignalJniResult<Self::ResultType> {
         self.transpose()?.convert_into(env)
     }
 }
 
 impl ResultTypeInfo for Option<jobject> {
     type ResultType = jobject;
-    fn convert_into(self, _env: &jni::JNIEnv) -> Result<Self::ResultType, SignalJniError> {
+    fn convert_into(self, _env: &jni::JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(self.unwrap_or(std::ptr::null_mut()))
     }
 }
 
 impl crate::support::Env for &'_ JNIEnv<'_> {
-    type Buffer = Result<jbyteArray, SignalJniError>;
+    type Buffer = SignalJniResult<jbyteArray>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
         to_jbytearray(&self, Ok(input.into()))
     }
@@ -318,7 +303,7 @@ macro_rules! jni_bridge_handle {
             fn convert_from(
                 _env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> std::result::Result<Self, jni::SignalJniError> {
+            ) -> jni::SignalJniResult<Self> {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
@@ -327,7 +312,7 @@ macro_rules! jni_bridge_handle {
             fn convert_from(
                 env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> std::result::Result<Self, jni::SignalJniError> {
+            ) -> jni::SignalJniResult<Self> {
                 if foreign == 0 {
                     Ok(None)
                 } else {
@@ -340,25 +325,19 @@ macro_rules! jni_bridge_handle {
             fn convert_from(
                 _env: &jni::JNIEnv,
                 foreign: Self::ArgType,
-            ) -> std::result::Result<Self, jni::SignalJniError> {
+            ) -> jni::SignalJniResult<Self> {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
         impl jni::ResultTypeInfo for $typ {
             type ResultType = jni::ObjectHandle;
-            fn convert_into(
-                self,
-                _env: &jni::JNIEnv,
-            ) -> std::result::Result<Self::ResultType, jni::SignalJniError> {
+            fn convert_into(self, _env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
                 jni::box_object(Ok(self))
             }
         }
         impl jni::ResultTypeInfo for Option<$typ> {
             type ResultType = jni::ObjectHandle;
-            fn convert_into(
-                self,
-                env: &jni::JNIEnv,
-            ) -> std::result::Result<Self::ResultType, jni::SignalJniError> {
+            fn convert_into(self, env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
                 match self {
                     Some(obj) => obj.convert_into(env),
                     None => Ok(0),
@@ -378,13 +357,13 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl<'a> SimpleArgTypeInfo<'a> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &JNIEnv, foreign: Self) -> Result<Self, SignalJniError> {
+            fn convert_from(_env: &JNIEnv, foreign: Self) -> SignalJniResult<Self> {
                 Ok(foreign)
             }
         }
         impl ResultTypeInfo for $typ {
             type ResultType = Self;
-            fn convert_into(self, _env: &JNIEnv) -> Result<Self, SignalJniError> {
+            fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self> {
                 Ok(self)
             }
         }

@@ -54,6 +54,8 @@ impl From<AesGcmSivError> for SignalFfiError {
     }
 }
 
+pub type SignalFfiResult<T> = Result<T, SignalFfiError>;
+
 #[derive(Debug)]
 pub struct CallbackError {
     value: std::num::NonZeroI32,

@@ -77,6 +77,8 @@ impl From<SignalJniError> for SignalProtocolError {
     }
 }
 
+pub type SignalJniResult<T> = Result<T, SignalJniError>;
+
 pub struct ThrownException {
     jvm: JavaVM,
     exception_ref: GlobalRef,

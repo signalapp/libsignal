@@ -14,13 +14,13 @@ use super::*;
 pub(crate) trait ArgTypeInfo<'a>: Sized {
     type ArgType;
     type StoredType;
-    fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError>;
-    fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError>;
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType>;
+    fn load_from(stored: &'a mut Self::StoredType) -> SignalFfiResult<Self>;
 }
 
 pub(crate) trait SimpleArgTypeInfo: Sized {
     type ArgType: Copy;
-    fn convert_from(foreign: Self::ArgType) -> Result<Self, SignalFfiError>;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self>;
 }
 
 impl<'a, T> ArgTypeInfo<'a> for T
@@ -29,23 +29,23 @@ where
 {
     type ArgType = <Self as SimpleArgTypeInfo>::ArgType;
     type StoredType = Self::ArgType;
-    fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         Ok(foreign)
     }
-    fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
+    fn load_from(stored: &'a mut Self::StoredType) -> SignalFfiResult<Self> {
         Self::convert_from(*stored)
     }
 }
 
 pub(crate) trait SizedArgTypeInfo: Sized {
     type ArgType;
-    fn convert_from(foreign: Self::ArgType, size: usize) -> Result<Self, SignalFfiError>;
+    fn convert_from(foreign: Self::ArgType, size: usize) -> SignalFfiResult<Self>;
 }
 
 pub(crate) trait ResultTypeInfo: Sized {
     type ResultType;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError>;
-    fn write_to(ptr: *mut Self::ResultType, value: Self) -> Result<(), SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType>;
+    fn write_to(ptr: *mut Self::ResultType, value: Self) -> SignalFfiResult<()> {
         if ptr.is_null() {
             return Err(SignalFfiError::NullPointer);
         }
@@ -56,7 +56,7 @@ pub(crate) trait ResultTypeInfo: Sized {
 
 impl SizedArgTypeInfo for &[u8] {
     type ArgType = *const c_uchar;
-    fn convert_from(input: Self::ArgType, input_len: usize) -> Result<Self, SignalFfiError> {
+    fn convert_from(input: Self::ArgType, input_len: usize) -> SignalFfiResult<Self> {
         if input.is_null() {
             if input_len != 0 {
                 return Err(SignalFfiError::NullPointer);
@@ -71,7 +71,7 @@ impl SizedArgTypeInfo for &[u8] {
 
 impl SizedArgTypeInfo for &mut [u8] {
     type ArgType = *mut c_uchar;
-    fn convert_from(input: Self::ArgType, input_len: usize) -> Result<Self, SignalFfiError> {
+    fn convert_from(input: Self::ArgType, input_len: usize) -> SignalFfiResult<Self> {
         if input.is_null() {
             if input_len != 0 {
                 return Err(SignalFfiError::NullPointer);
@@ -86,7 +86,7 @@ impl SizedArgTypeInfo for &mut [u8] {
 
 impl SimpleArgTypeInfo for Option<u32> {
     type ArgType = u32;
-    fn convert_from(foreign: u32) -> Result<Self, SignalFfiError> {
+    fn convert_from(foreign: u32) -> SignalFfiResult<Self> {
         if foreign == u32::MAX {
             Ok(None)
         } else {
@@ -98,7 +98,7 @@ impl SimpleArgTypeInfo for Option<u32> {
 impl SimpleArgTypeInfo for String {
     type ArgType = *const c_char;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn convert_from(foreign: *const c_char) -> Result<Self, SignalFfiError> {
+    fn convert_from(foreign: *const c_char) -> SignalFfiResult<Self> {
         if foreign.is_null() {
             return Err(SignalFfiError::NullPointer);
         }
@@ -112,7 +112,7 @@ impl SimpleArgTypeInfo for String {
 
 impl SimpleArgTypeInfo for Option<String> {
     type ArgType = *const c_char;
-    fn convert_from(foreign: *const c_char) -> Result<Self, SignalFfiError> {
+    fn convert_from(foreign: *const c_char) -> SignalFfiResult<Self> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -123,7 +123,7 @@ impl SimpleArgTypeInfo for Option<String> {
 
 impl SimpleArgTypeInfo for Context {
     type ArgType = *mut c_void;
-    fn convert_from(foreign: *mut c_void) -> Result<Self, SignalFfiError> {
+    fn convert_from(foreign: *mut c_void) -> SignalFfiResult<Self> {
         Ok(Some(foreign))
     }
 }
@@ -134,13 +134,13 @@ macro_rules! store {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
                 type ArgType = *const [<Ffi $name Struct>];
                 type StoredType = &'a [<Ffi $name Struct>];
-                fn borrow(foreign: Self::ArgType) -> Result<Self::StoredType, SignalFfiError> {
+                fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
                     match unsafe { foreign.as_ref() } {
                         None => Err(SignalFfiError::NullPointer),
                         Some(store) => Ok(store),
                     }
                 }
-                fn load_from(stored: &'a mut Self::StoredType) -> Result<Self, SignalFfiError> {
+                fn load_from(stored: &'a mut Self::StoredType) -> SignalFfiResult<Self> {
                     Ok(stored)
                 }
             }
@@ -156,21 +156,21 @@ store!(SignedPreKeyStore);
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         T::convert_into(self?)
     }
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
     type ResultType = T::ResultType;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         T::convert_into(self?)
     }
 }
 
 impl ResultTypeInfo for String {
     type ResultType = *const libc::c_char;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
         Ok(cstr.into_raw())
     }
@@ -178,7 +178,7 @@ impl ResultTypeInfo for String {
 
 impl ResultTypeInfo for Option<String> {
     type ResultType = *const libc::c_char;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         match self {
             Some(s) => s.convert_into(),
             None => Ok(std::ptr::null()),
@@ -188,7 +188,7 @@ impl ResultTypeInfo for Option<String> {
 
 impl ResultTypeInfo for &str {
     type ResultType = *const libc::c_char;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
         Ok(cstr.into_raw())
     }
@@ -196,7 +196,7 @@ impl ResultTypeInfo for &str {
 
 impl ResultTypeInfo for Option<&str> {
     type ResultType = *const libc::c_char;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         match self {
             Some(s) => s.convert_into(),
             None => Ok(std::ptr::null()),
@@ -205,7 +205,7 @@ impl ResultTypeInfo for Option<&str> {
 }
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
-    fn convert_into(self) -> Result<Self::ResultType, SignalFfiError> {
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.unwrap_or(u32::MAX))
     }
 }
@@ -225,13 +225,13 @@ macro_rules! ffi_bridge_handle {
         impl ffi::SimpleArgTypeInfo for &$typ {
             type ArgType = *const $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *const $typ) -> std::result::Result<Self, ffi::SignalFfiError> {
+            fn convert_from(foreign: *const $typ) -> ffi::SignalFfiResult<Self> {
                 unsafe { ffi::native_handle_cast(foreign) }
             }
         }
         impl ffi::SimpleArgTypeInfo for Option<&$typ> {
             type ArgType = *const $typ;
-            fn convert_from(foreign: *const $typ) -> std::result::Result<Self, ffi::SignalFfiError> {
+            fn convert_from(foreign: *const $typ) -> ffi::SignalFfiResult<Self> {
                 if foreign.is_null() {
                     Ok(None)
                 } else {
@@ -242,19 +242,19 @@ macro_rules! ffi_bridge_handle {
         impl ffi::SimpleArgTypeInfo for &mut $typ {
             type ArgType = *mut $typ;
             #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *mut $typ) -> std::result::Result<Self, ffi::SignalFfiError> {
+            fn convert_from(foreign: *mut $typ) -> ffi::SignalFfiResult<Self> {
                 unsafe { ffi::native_handle_cast_mut(foreign) }
             }
         }
         impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
-            fn convert_into(self) -> std::result::Result<Self::ResultType, ffi::SignalFfiError> {
+            fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
                 Ok(Box::into_raw(Box::new(self)))
             }
         }
         impl ffi::ResultTypeInfo for Option<$typ> {
             type ResultType = *mut $typ;
-            fn convert_into(self) -> std::result::Result<Self::ResultType, ffi::SignalFfiError> {
+            fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
                 match self {
                     Some(obj) => obj.convert_into(),
                     None => Ok(std::ptr::null_mut()),
@@ -289,13 +289,13 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl SimpleArgTypeInfo for $typ {
             type ArgType = Self;
-            fn convert_from(foreign: Self) -> Result<Self, SignalFfiError> {
+            fn convert_from(foreign: Self) -> SignalFfiResult<Self> {
                 Ok(foreign)
             }
         }
         impl ResultTypeInfo for $typ {
             type ResultType = Self;
-            fn convert_into(self) -> Result<Self, SignalFfiError> {
+            fn convert_into(self) -> SignalFfiResult<Self> {
                 Ok(self)
             }
         }
