@@ -119,8 +119,8 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
             .as_ref()
             .ok_or(SignalFfiError::NullPointer)?;
 
-        let local_e164 = read_optional_c_string(local_e164)?;
-        let local_uuid = read_optional_c_string(local_uuid)?.ok_or(SignalFfiError::NullPointer)?;
+        let local_e164 = Option::convert_from(local_e164)?;
+        let local_uuid = Option::convert_from(local_uuid)?.ok_or(SignalFfiError::NullPointer)?;
 
         let decrypted = expect_ready(sealed_sender_decrypt(
             &ctext,

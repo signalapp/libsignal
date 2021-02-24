@@ -1,15 +1,15 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar, size_t};
+use libc::{c_uchar, size_t};
 use libsignal_protocol::*;
 use std::ffi::CString;
 
 #[macro_use]
 mod convert;
-pub(crate) use convert::*;
+pub use convert::*;
 
 mod error;
 pub use error::*;
@@ -85,36 +85,6 @@ pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     *out = (*mem).as_ptr();
 
     Ok(())
-}
-
-pub unsafe fn write_cstr_to(
-    out: *mut *const c_char,
-    value: Result<impl Into<Vec<u8>>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    write_optional_cstr_to(out, value.map(Some))
-}
-
-pub unsafe fn write_optional_cstr_to(
-    out: *mut *const c_char,
-    value: Result<Option<impl Into<Vec<u8>>>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(Some(value)) => {
-            let cstr =
-                CString::new(value).expect("No NULL characters in string being returned to C");
-            *out = cstr.into_raw();
-            Ok(())
-        }
-        Ok(None) => {
-            *out = std::ptr::null();
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
-    }
 }
 
 macro_rules! ffi_bridge_destroy {
