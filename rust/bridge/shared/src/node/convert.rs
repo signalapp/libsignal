@@ -27,11 +27,11 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
 pub(crate) trait AsyncArgTypeInfo<'storage>: Sized {
     type ArgType: neon::types::Value;
     type StoredType: 'static + Finalize;
-    fn save(
+    fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType>;
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self;
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self;
 }
 
 pub trait SimpleArgTypeInfo: Sized + 'static {
@@ -62,7 +62,7 @@ where
 {
     type ArgType = T::ArgType;
     type StoredType = super::DefaultFinalize<Option<Self>>;
-    fn save(
+    fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
@@ -70,7 +70,7 @@ where
             cx, foreign,
         )?)))
     }
-    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored.0.take().expect("should only be loaded once")
     }
 }
@@ -143,7 +143,7 @@ where
 {
     type ArgType = JsValue;
     type StoredType = FinalizableOption<T::StoredType>;
-    fn save(
+    fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
@@ -151,10 +151,13 @@ where
             return Ok(FinalizableOption(None));
         }
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
-        Ok(FinalizableOption(Some(T::save(cx, non_optional_value)?)))
+        Ok(FinalizableOption(Some(T::save_async_arg(
+            cx,
+            non_optional_value,
+        )?)))
     }
-    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored.0.as_mut().map(T::load_from)
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        stored.0.as_mut().map(T::load_async_arg)
     }
 }
 
@@ -280,13 +283,13 @@ impl Finalize for PersistentAssumedImmutableBuffer {
 impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     type ArgType = JsBuffer;
     type StoredType = PersistentAssumedImmutableBuffer;
-    fn save(
+    fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         Ok(PersistentAssumedImmutableBuffer::new(cx, foreign))
     }
-    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         &*stored
     }
 }
@@ -297,13 +300,13 @@ macro_rules! store {
             impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
                 type ArgType = JsObject;
                 type StoredType = [<Node $name>];
-                fn save(
+                fn save_async_arg(
                     cx: &mut FunctionContext,
                     foreign: Handle<Self::ArgType>,
                 ) -> NeonResult<Self::StoredType> {
                     Ok(Self::StoredType::new(cx, foreign))
                 }
-                fn load_from(stored: &'a mut Self::StoredType) -> Self {
+                fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
                     stored
                 }
             }
@@ -541,13 +544,13 @@ macro_rules! node_bridge_handle {
         impl<'storage> node::AsyncArgTypeInfo<'storage> for &'storage $typ {
             type ArgType = node::JsObject;
             type StoredType = node::PersistentBoxedValue<$typ>;
-            fn save(
+            fn save_async_arg(
                 cx: &mut node::FunctionContext,
                 foreign: node::Handle<Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
                 node::PersistentBoxedValue::new(cx, foreign)
             }
-            fn load_from(
+            fn load_async_arg(
                 stored: &'storage mut Self::StoredType,
             ) -> Self {
                 &*stored
