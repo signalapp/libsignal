@@ -341,7 +341,7 @@ impl<'a> ResultTypeInfo<'a> for u64 {
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        Ok(cx.string(self))
+        self.deref().convert_into(cx)
     }
 }
 

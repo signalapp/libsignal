@@ -6,8 +6,8 @@
 use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
 use paste::paste;
-use std::borrow::Cow;
 use std::ffi::CStr;
+use std::{borrow::Cow, ops::Deref};
 
 use super::*;
 
@@ -164,18 +164,14 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
 impl ResultTypeInfo for String {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let cstr = CString::new(self).expect("No NULL characters in string being returned to C");
-        Ok(cstr.into_raw())
+        self.deref().convert_into()
     }
 }
 
 impl ResultTypeInfo for Option<String> {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        match self {
-            Some(s) => s.convert_into(),
-            None => Ok(std::ptr::null()),
-        }
+        self.as_deref().convert_into()
     }
 }
 

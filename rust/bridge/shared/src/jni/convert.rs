@@ -9,6 +9,7 @@ use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
 use std::borrow::Cow;
+use std::ops::Deref;
 
 use super::*;
 
@@ -212,17 +213,14 @@ impl ResultTypeInfo for u64 {
 impl ResultTypeInfo for String {
     type ResultType = jstring;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
-        Ok(env.new_string(self)?.into_inner())
+        self.deref().convert_into(env)
     }
 }
 
 impl ResultTypeInfo for Option<String> {
     type ResultType = jstring;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
-        match self {
-            Some(s) => s.convert_into(env),
-            None => Ok(std::ptr::null_mut()),
-        }
+        self.as_deref().convert_into(env)
     }
 }
 
