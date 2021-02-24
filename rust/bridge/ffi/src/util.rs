@@ -4,7 +4,7 @@
 //
 
 use aes_gcm_siv::Error as AesGcmSivError;
-use libc::{c_char, c_uchar, c_uint, size_t};
+use libc::{c_char, c_uchar, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use std::ffi::CString;
@@ -167,13 +167,6 @@ pub(crate) unsafe fn as_slice<'a>(
     input_len: size_t,
 ) -> Result<&'a [u8], SignalFfiError> {
     SizedArgTypeInfo::convert_from(input, input_len)
-}
-
-pub(crate) unsafe fn write_uint32_to(
-    out: *mut c_uint,
-    value: Result<u32, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    ResultTypeInfo::write_to(out, value)
 }
 
 pub(crate) unsafe fn write_cstr_to(

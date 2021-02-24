@@ -45,13 +45,6 @@ pub trait SizedArgTypeInfo: Sized {
 pub trait ResultTypeInfo: Sized {
     type ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType>;
-    unsafe fn write_to(ptr: *mut Self::ResultType, value: Self) -> SignalFfiResult<()> {
-        if ptr.is_null() {
-            return Err(SignalFfiError::NullPointer);
-        }
-        *ptr = value.convert_into()?;
-        Ok(())
-    }
 }
 
 impl SizedArgTypeInfo for &[u8] {

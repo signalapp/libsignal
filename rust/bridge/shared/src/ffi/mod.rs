@@ -69,6 +69,17 @@ pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T
     Ok(&mut *handle)
 }
 
+pub unsafe fn write_result_to<T: ResultTypeInfo>(
+    ptr: *mut T::ResultType,
+    value: T,
+) -> SignalFfiResult<()> {
+    if ptr.is_null() {
+        return Err(SignalFfiError::NullPointer);
+    }
+    *ptr = value.convert_into()?;
+    Ok(())
+}
+
 pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     out: *mut *const c_uchar,
     out_len: *mut size_t,
