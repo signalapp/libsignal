@@ -7,13 +7,14 @@ use super::*;
 
 use std::fmt;
 
+/// Represents an error returned by a callback.
 #[derive(Debug)]
-pub struct CallbackError {
+struct CallbackError {
     message: String,
 }
 
 impl CallbackError {
-    pub(crate) fn new(message: String) -> CallbackError {
+    fn new(message: String) -> CallbackError {
         Self { message }
     }
 }
@@ -26,6 +27,7 @@ impl fmt::Display for CallbackError {
 
 impl std::error::Error for CallbackError {}
 
+/// Converts a JavaScript error message to a [`SignalProtocolError::ApplicationCallbackError`].
 pub fn js_error_to_rust(func: &'static str, err: String) -> SignalProtocolError {
     SignalProtocolError::ApplicationCallbackError(func, Box::new(CallbackError::new(err)))
 }

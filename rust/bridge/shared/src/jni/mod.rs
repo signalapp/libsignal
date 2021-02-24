@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -19,7 +19,7 @@ pub(crate) use jni::JNIEnv;
 
 #[macro_use]
 mod convert;
-pub(crate) use convert::*;
+pub use convert::*;
 
 mod error;
 pub use error::*;
@@ -29,8 +29,13 @@ pub use storage::*;
 
 pub use crate::support::expect_ready;
 
+/// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
 
+/// Translates errors into Java exceptions.
+///
+/// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
+/// appropriate Java exception class and thrown.
 fn throw_error(env: &JNIEnv, error: SignalJniError) {
     // Handle special cases first.
     let error = match error {
@@ -183,7 +188,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
     }
 }
 
-// A dummy value to return when we are throwing an exception
+/// Provides a dummy value to return when an exception is thrown.
 pub trait JniDummyValue {
     fn dummy_value() -> Self;
 }
@@ -202,7 +207,7 @@ impl JniDummyValue for jint {
 
 impl JniDummyValue for jobject {
     fn dummy_value() -> Self {
-        0 as jstring
+        std::ptr::null_mut()
     }
 }
 
@@ -288,6 +293,10 @@ pub fn to_jbytearray<T: AsRef<[u8]>>(
     Ok(env.byte_array_from_slice(data)?)
 }
 
+/// Calls a method and translates any thrown exceptions to
+/// [`SignalProtocolError::ApplicationCallbackError`].
+///
+/// Wraps [`JNIEnv::call_method`]; all arguments are the same.
 pub fn call_method_checked<'a>(
     env: &JNIEnv<'a>,
     obj: impl Into<JObject<'a>>,
@@ -313,6 +322,9 @@ pub fn call_method_checked<'a>(
     }
 }
 
+/// Constructs a Java object from the given boxed Rust value.
+///
+/// Assumes there's a corresponding constructor that takes a single `long` to represent the address.
 pub fn jobject_from_native_handle<'a>(
     env: &'a JNIEnv,
     class_name: &str,
@@ -324,6 +336,9 @@ pub fn jobject_from_native_handle<'a>(
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 
+/// Constructs a Java object from its serialized form.
+///
+/// Assumes there's a corresponding constructor that takes a single `byte[]`.
 pub fn jobject_from_serialized<'a>(
     env: &'a JNIEnv,
     class_name: &str,
@@ -335,6 +350,7 @@ pub fn jobject_from_serialized<'a>(
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 
+/// Verifies that a Java object is a non-`null` instance of the given class.
 pub fn check_jobject_type(
     env: &JNIEnv,
     obj: JObject,
@@ -353,6 +369,10 @@ pub fn check_jobject_type(
     Ok(())
 }
 
+/// Calls a method, then clones the Rust value from the result.
+///
+/// The method is assumed to return a type with a `long nativeHandle()` method, which in turn must
+/// produce a boxed Rust value.
 pub fn get_object_with_native_handle<T: 'static + Clone>(
     env: &JNIEnv,
     store_obj: JObject,
@@ -392,6 +412,9 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     }
 }
 
+/// Calls a method, then serializes the result.
+///
+/// The method is assumed to return a type with a `byte[] serialize()` method.
 pub fn get_object_with_serialization(
     env: &JNIEnv,
     store_obj: JObject,
@@ -426,6 +449,9 @@ pub fn get_object_with_serialization(
     }
 }
 
+/// Used by [`bridge_handle`](crate::support::bridge_handle).
+///
+/// Not intended to be invoked directly.
 macro_rules! jni_bridge_destroy {
     ( $typ:ty as $jni_name:ident ) => {
         paste! {
@@ -443,6 +469,7 @@ macro_rules! jni_bridge_destroy {
     };
 }
 
+/// Implementation of [`bridge_deserialize`](crate::support::bridge_deserialize) for JNI.
 macro_rules! jni_bridge_deserialize {
     ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $jni_name:ident ) => {
@@ -465,6 +492,7 @@ macro_rules! jni_bridge_deserialize {
     };
 }
 
+/// Implementation of [`bridge_get_bytearray`](crate::support::bridge_get_bytearray) for JNI.
 macro_rules! jni_bridge_get_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $jni_name:tt => $body:expr ) => {
@@ -492,6 +520,7 @@ macro_rules! jni_bridge_get_bytearray {
     };
 }
 
+/// Implementation of [`bridge_get_optional_bytearray`](crate::support::bridge_get_optional_bytearray) for JNI.
 macro_rules! jni_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $jni_name:tt => $body:expr ) => {
