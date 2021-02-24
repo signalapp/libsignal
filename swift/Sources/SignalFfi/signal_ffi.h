@@ -94,6 +94,9 @@ typedef struct SignalServerCertificate SignalServerCertificate;
 
 typedef struct SignalSessionRecord SignalSessionRecord;
 
+/**
+ * The top-level error type (opaquely) returned to C clients when something goes wrong.
+ */
 typedef struct SignalFfiError SignalFfiError;
 
 typedef struct SignalMessage SignalMessage;
