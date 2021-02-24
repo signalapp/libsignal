@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{AutoByteArray, JString, ReleaseMode};
-use jni::sys::{JNI_FALSE, JNI_TRUE};
+use jni::objects::{AutoArray, JString, ReleaseMode};
+use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
@@ -94,7 +94,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
 }
 
 pub(crate) struct AutoByteSlice<'a> {
-    jni_array: AutoByteArray<'a, 'a>,
+    jni_array: AutoArray<'a, 'a, jbyte>,
     len: usize,
 }
 
@@ -105,7 +105,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
         let len = env.get_array_length(foreign)?;
         assert!(len >= 0);
         Ok(AutoByteSlice {
-            jni_array: env.get_auto_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?,
+            jni_array: env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?,
             len: len as usize,
         })
     }
