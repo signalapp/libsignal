@@ -351,7 +351,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "3.0.0"
-source = "git+https://github.com/signalapp/curve25519-dalek?branch=lizard2#2694ad3b789635f90f941648ae952f58d59ffc73"
+source = "git+https://github.com/signalapp/curve25519-dalek.git?branch=3.0.0-lizard2#2694ad3b789635f90f941648ae952f58d59ffc73"
 dependencies = [
  "byteorder",
  "digest",
@@ -666,7 +666,7 @@ dependencies = [
  "log",
  "neon",
  "paste",
- "rand",
+ "rand 0.7.3",
  "scopeguard",
  "signal-neon-futures",
  "static_assertions",

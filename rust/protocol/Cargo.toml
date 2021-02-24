@@ -32,7 +32,7 @@ log = "0.4"
 features = ["serde", "alloc"]
 version = "3.0.0"
 git = "https://github.com/signalapp/curve25519-dalek.git"
-branch = "lizard2"
+branch = "3.0.0-lizard2"
 
 [features]
 default = ["u64_backend"]
