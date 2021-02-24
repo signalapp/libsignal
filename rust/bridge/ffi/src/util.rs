@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar, c_uint, size_t};
+use aes_gcm_siv::Error as AesGcmSivError;
+use libc::{c_char, c_uchar, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
-use std::ffi::CStr;
-
-use aes_gcm_siv::Error as AesGcmSivError;
+use std::ffi::CString;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -163,47 +162,37 @@ impl From<&SignalFfiError> for SignalErrorCode {
     }
 }
 
-pub unsafe fn as_slice<'a>(
+pub(crate) unsafe fn as_slice<'a>(
     input: *const c_uchar,
     input_len: size_t,
 ) -> Result<&'a [u8], SignalFfiError> {
-    if input.is_null() {
-        if input_len != 0 {
-            return Err(SignalFfiError::NullPointer);
-        }
-        // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
-        return Ok(&[]);
-    }
-
-    Ok(std::slice::from_raw_parts(input, input_len as usize))
+    SizedArgTypeInfo::convert_from(input, input_len)
 }
 
-pub unsafe fn read_optional_c_string(
-    cstr: *const c_char,
-) -> Result<Option<String>, SignalFfiError> {
-    if cstr.is_null() {
-        return Ok(None);
-    }
-
-    match CStr::from_ptr(cstr).to_str() {
-        Ok(s) => Ok(Some(s.to_owned())),
-        Err(_) => Err(SignalFfiError::InvalidUtf8String),
-    }
+pub(crate) unsafe fn write_cstr_to(
+    out: *mut *const c_char,
+    value: Result<impl Into<Vec<u8>>, SignalProtocolError>,
+) -> Result<(), SignalFfiError> {
+    write_optional_cstr_to(out, value.map(Some))
 }
 
-pub fn write_uint32_to(
-    out: *mut c_uint,
-    value: Result<u32, SignalProtocolError>,
+pub(crate) unsafe fn write_optional_cstr_to(
+    out: *mut *const c_char,
+    value: Result<Option<impl Into<Vec<u8>>>, SignalProtocolError>,
 ) -> Result<(), SignalFfiError> {
     if out.is_null() {
         return Err(SignalFfiError::NullPointer);
     }
 
     match value {
-        Ok(value) => {
-            unsafe {
-                *out = value;
-            }
+        Ok(Some(value)) => {
+            let cstr =
+                CString::new(value).expect("No NULL characters in string being returned to C");
+            *out = cstr.into_raw();
+            Ok(())
+        }
+        Ok(None) => {
+            *out = std::ptr::null();
             Ok(())
         }
         Err(e) => Err(SignalFfiError::Signal(e)),

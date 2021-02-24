@@ -21,7 +21,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
         (ResultKind::Regular, ReturnType::Type(_, ref ty)) => (
             quote!(out: *mut ffi_result_type!(#ty),), // note the trailing comma
             quote!(),
-            quote!(<#ty as ffi::ResultTypeInfo>::write_to(out, __result)?),
+            quote!(ffi::write_result_to(out, __result)?),
         ),
         (ResultKind::Void, ReturnType::Default) => (quote!(), quote!(), quote!()),
         (ResultKind::Void, ReturnType::Type(_, _)) => (quote!(), quote!(), quote!(__result?;)),
