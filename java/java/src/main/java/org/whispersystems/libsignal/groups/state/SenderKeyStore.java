@@ -11,16 +11,16 @@ public interface SenderKeyStore {
 
   /**
    * Commit to storage the {@link org.whispersystems.libsignal.groups.state.SenderKeyRecord} for a
-   * given (groupId + senderId + deviceId) tuple.
+   * given (id + senderName + deviceId) tuple.
    *
-   * @param senderKeyName the (groupId + senderId + deviceId) tuple.
+   * @param senderKeyName the (id + senderName + deviceId) tuple.
    * @param record the current SenderKeyRecord for the specified senderKeyName.
    */
   public void storeSenderKey(SenderKeyName senderKeyName, SenderKeyRecord record);
 
   /**
    * Returns a copy of the {@link org.whispersystems.libsignal.groups.state.SenderKeyRecord}
-   * corresponding to the (groupId + senderId + deviceId) tuple, or a new SenderKeyRecord if
+   * corresponding to the (id + senderName + deviceId) tuple, or a new SenderKeyRecord if
    * one does not currently exist.
    * <p>
    * It is important that implementations return a copy of the current durable information.  The
@@ -28,8 +28,8 @@ public interface SenderKeyStore {
    * durable session state (what is returned by subsequent calls to this method) without the
    * store method being called here first.
    *
-   * @param senderKeyName The (groupId + senderId + deviceId) tuple.
-   * @return a copy of the SenderKeyRecord corresponding to the (groupId + senderId + deviceId tuple, or
+   * @param senderKeyName The (id + senderName + deviceId) tuple.
+   * @return a copy of the SenderKeyRecord corresponding to the (id + senderName + deviceId tuple, or
    *         a new SenderKeyRecord if one does not currently exist.
    */
 

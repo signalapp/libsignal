@@ -18,8 +18,8 @@ import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
  * The built sessions are unidirectional: they can be used either for sending or for receiving,
  * but not both.
  *
- * Sessions are constructed per (groupId + senderId + deviceId) tuple.  Remote logical users
- * are identified by their senderId, and each logical recipientId can have multiple physical
+ * Sessions are constructed per (id + senderName + deviceId) tuple.  Remote logical users
+ * are identified by their senderName, and each logical recipientId can have multiple physical
  * devices.
  *
  * @author Moxie Marlinspike
@@ -35,7 +35,7 @@ public class GroupSessionBuilder {
   /**
    * Construct a group session for receiving messages from senderKeyName.
    *
-   * @param senderKeyName The (groupId, senderId, deviceId) tuple associated with the SenderKeyDistributionMessage.
+   * @param senderKeyName The (id, senderName, deviceId) tuple associated with the SenderKeyDistributionMessage.
    * @param senderKeyDistributionMessage A received SenderKeyDistributionMessage.
    */
   public void process(SenderKeyName senderKeyName, SenderKeyDistributionMessage senderKeyDistributionMessage) {
@@ -49,7 +49,7 @@ public class GroupSessionBuilder {
   /**
    * Construct a group session for sending messages.
    *
-   * @param senderKeyName The (groupId, senderId, deviceId) tuple.  In this case, 'senderId' should be the caller.
+   * @param senderKeyName The (id, senderName, deviceId) tuple.  In this case, 'senderName' should be the caller.
    * @return A SenderKeyDistributionMessage that is individually distributed to each member of the group.
    */
   public SenderKeyDistributionMessage create(SenderKeyName senderKeyName) {

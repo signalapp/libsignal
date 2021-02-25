@@ -26,14 +26,14 @@ public class SenderKeyDistributionMessage {
         }
     }
 
-    public init<Bytes: ContiguousBytes>(keyId: UInt32,
+    public init<Bytes: ContiguousBytes>(chainId: UInt32,
                                         iteration: UInt32,
                                         chainKey: Bytes,
                                         publicKey: PublicKey) throws {
         handle = try chainKey.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_sender_key_distribution_message_new(&result,
-                                                                      keyId,
+                                                                      chainId,
                                                                       iteration,
                                                                       $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
                                                                       $0.count,
@@ -54,10 +54,10 @@ public class SenderKeyDistributionMessage {
         }
     }
 
-    public var id: UInt32 {
+    public var chainId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_distribution_message_get_id($0, handle)
+                signal_sender_key_distribution_message_get_chain_id($0, handle)
             }
         }
     }

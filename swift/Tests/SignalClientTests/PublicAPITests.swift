@@ -232,7 +232,7 @@ class PublicAPITests: TestCaseBase {
     func testGroupCipher() {
 
         let sender = try! ProtocolAddress(name: "+14159999111", deviceId: 4)
-        let group_id = try! SenderKeyName(groupName: "summer camp", sender: sender)
+        let group_id = try! SenderKeyName(distributionId: "summer camp", sender: sender)
 
         let a_store = InMemorySignalProtocolStore()
 

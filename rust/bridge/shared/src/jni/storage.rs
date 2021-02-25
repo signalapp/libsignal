@@ -19,7 +19,7 @@ fn sender_key_name_to_jobject<'a>(
     let sender_key_name_class =
         env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
     let sender_key_name_ctor_args = [
-        JObject::from(env.new_string(sender_key_name.group_id()?)?).into(),
+        JObject::from(env.new_string(sender_key_name.distribution_id()?)?).into(),
         JObject::from(env.new_string(sender_key_name.sender_name()?)?).into(),
         JValue::from(sender_key_name.sender_device_id().convert_into(env)?),
     ];

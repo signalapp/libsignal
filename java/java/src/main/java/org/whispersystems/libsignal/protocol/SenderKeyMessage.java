@@ -30,12 +30,18 @@ public class SenderKeyMessage implements CiphertextMessage {
     handle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 
-  public SenderKeyMessage(int keyId, int iteration, byte[] ciphertext, ECPrivateKey signatureKey) {
-    handle = Native.SenderKeyMessage_New(keyId, iteration, ciphertext, signatureKey.nativeHandle());
+  public SenderKeyMessage(int chainId, int iteration, byte[] ciphertext, ECPrivateKey signatureKey) {
+    handle = Native.SenderKeyMessage_New(chainId, iteration, ciphertext, signatureKey.nativeHandle());
   }
 
+  public int getChainId() {
+    return Native.SenderKeyMessage_GetChainId(this.handle);
+  }
+
+  /** @deprecated Renamed to {@link #getChainId} */
+  @Deprecated
   public int getKeyId() {
-    return Native.SenderKeyMessage_GetKeyId(this.handle);
+    return Native.SenderKeyMessage_GetChainId(this.handle);
   }
 
   public int getIteration() {

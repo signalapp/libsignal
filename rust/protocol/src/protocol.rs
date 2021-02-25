@@ -378,7 +378,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
 #[derive(Debug, Clone)]
 pub struct SenderKeyMessage {
     message_version: u8,
-    key_id: u32,
+    chain_id: u32,
     iteration: u32,
     ciphertext: Box<[u8]>,
     serialized: Box<[u8]>,
@@ -388,14 +388,14 @@ impl SenderKeyMessage {
     const SIGNATURE_LEN: usize = 64;
 
     pub fn new<R: CryptoRng + Rng>(
-        key_id: u32,
+        chain_id: u32,
         iteration: u32,
         ciphertext: &[u8],
         csprng: &mut R,
         signature_key: &PrivateKey,
     ) -> Result<Self> {
         let proto_message = proto::wire::SenderKeyMessage {
-            id: Some(key_id),
+            chain_id: Some(chain_id),
             iteration: Some(iteration),
             ciphertext: Some(ciphertext.to_vec()),
         };
@@ -409,7 +409,7 @@ impl SenderKeyMessage {
         serialized[1 + proto_message_len..].copy_from_slice(&signature[..]);
         Ok(Self {
             message_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION,
-            key_id,
+            chain_id,
             iteration,
             ciphertext: ciphertext.into(),
             serialized: serialized.into_boxed_slice(),
@@ -431,8 +431,8 @@ impl SenderKeyMessage {
     }
 
     #[inline]
-    pub fn key_id(&self) -> u32 {
-        self.key_id
+    pub fn chain_id(&self) -> u32 {
+        self.chain_id
     }
 
     #[inline]
@@ -479,8 +479,8 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
         let proto_structure =
             proto::wire::SenderKeyMessage::decode(&value[1..value.len() - Self::SIGNATURE_LEN])?;
 
-        let key_id = proto_structure
-            .id
+        let chain_id = proto_structure
+            .chain_id
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let iteration = proto_structure
             .iteration
@@ -492,7 +492,7 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
 
         Ok(SenderKeyMessage {
             message_version,
-            key_id,
+            chain_id,
             iteration,
             ciphertext,
             serialized: Box::from(value),
@@ -503,7 +503,7 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
 #[derive(Debug, Clone)]
 pub struct SenderKeyDistributionMessage {
     message_version: u8,
-    id: u32,
+    chain_id: u32,
     iteration: u32,
     chain_key: Vec<u8>,
     signing_key: PublicKey,
@@ -511,9 +511,14 @@ pub struct SenderKeyDistributionMessage {
 }
 
 impl SenderKeyDistributionMessage {
-    pub fn new(id: u32, iteration: u32, chain_key: &[u8], signing_key: PublicKey) -> Result<Self> {
+    pub fn new(
+        chain_id: u32,
+        iteration: u32,
+        chain_key: &[u8],
+        signing_key: PublicKey,
+    ) -> Result<Self> {
         let proto_message = proto::wire::SenderKeyDistributionMessage {
-            id: Some(id),
+            chain_id: Some(chain_id),
             iteration: Some(iteration),
             chain_key: Some(chain_key.to_vec()),
             signing_key: Some(signing_key.serialize().to_vec()),
@@ -525,7 +530,7 @@ impl SenderKeyDistributionMessage {
 
         Ok(Self {
             message_version,
-            id,
+            chain_id,
             iteration,
             chain_key: chain_key.to_vec(),
             signing_key,
@@ -539,8 +544,8 @@ impl SenderKeyDistributionMessage {
     }
 
     #[inline]
-    pub fn id(&self) -> Result<u32> {
-        Ok(self.id)
+    pub fn chain_id(&self) -> Result<u32> {
+        Ok(self.chain_id)
     }
 
     #[inline]
@@ -594,8 +599,8 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
 
         let proto_structure = proto::wire::SenderKeyDistributionMessage::decode(&value[1..])?;
 
-        let id = proto_structure
-            .id
+        let chain_id = proto_structure
+            .chain_id
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let iteration = proto_structure
             .iteration
@@ -615,7 +620,7 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
 
         Ok(SenderKeyDistributionMessage {
             message_version,
-            id,
+            chain_id,
             iteration,
             chain_key,
             signing_key,
@@ -749,7 +754,10 @@ mod tests {
             sender_key_message.message_version,
             deser_sender_key_message.message_version
         );
-        assert_eq!(sender_key_message.key_id, deser_sender_key_message.key_id);
+        assert_eq!(
+            sender_key_message.chain_id,
+            deser_sender_key_message.chain_id
+        );
         assert_eq!(
             sender_key_message.iteration,
             deser_sender_key_message.iteration

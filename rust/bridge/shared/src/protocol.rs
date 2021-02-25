@@ -345,18 +345,18 @@ bridge_get_bytearray!(
     SenderKeyMessage::serialized as Serialize,
     jni = "SenderKeyMessage_1GetSerialized"
 );
-bridge_get!(SenderKeyMessage::key_id -> u32);
+bridge_get!(SenderKeyMessage::chain_id -> u32);
 bridge_get!(SenderKeyMessage::iteration -> u32);
 
 #[bridge_fn]
 fn SenderKeyMessage_New(
-    key_id: u32,
+    chain_id: u32,
     iteration: u32,
     ciphertext: &[u8],
     pk: &PrivateKey,
 ) -> Result<SenderKeyMessage> {
     let mut csprng = rand::rngs::OsRng;
-    SenderKeyMessage::new(key_id, iteration, &ciphertext, &mut csprng, pk)
+    SenderKeyMessage::new(chain_id, iteration, &ciphertext, &mut csprng, pk)
 }
 
 #[bridge_fn]
@@ -383,17 +383,17 @@ bridge_get_bytearray!(
     SenderKeyDistributionMessage::serialized as Serialize,
     jni = "SenderKeyDistributionMessage_1GetSerialized"
 );
-bridge_get!(SenderKeyDistributionMessage::id -> u32);
+bridge_get!(SenderKeyDistributionMessage::chain_id -> u32);
 bridge_get!(SenderKeyDistributionMessage::iteration -> u32);
 
 #[bridge_fn]
 fn SenderKeyDistributionMessage_New(
-    key_id: u32,
+    chain_id: u32,
     iteration: u32,
     chainkey: &[u8],
     pk: &PublicKey,
 ) -> Result<SenderKeyDistributionMessage> {
-    SenderKeyDistributionMessage::new(key_id, iteration, &chainkey, *pk)
+    SenderKeyDistributionMessage::new(chain_id, iteration, &chainkey, *pk)
 }
 
 #[bridge_fn(jni = false, node = false)]
@@ -488,7 +488,7 @@ fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreK
     PreKeyRecord::new(id, &keypair)
 }
 
-bridge_get!(SenderKeyName::group_id -> String);
+bridge_get!(SenderKeyName::distribution_id -> String);
 
 #[bridge_fn]
 fn SenderKeyName_GetSenderName(obj: &SenderKeyName) -> Result<String> {
@@ -497,12 +497,12 @@ fn SenderKeyName_GetSenderName(obj: &SenderKeyName) -> Result<String> {
 
 #[bridge_fn]
 fn SenderKeyName_New(
-    group_id: String,
+    distribution_id: String,
     sender_name: String,
     sender_device_id: u32,
 ) -> Result<SenderKeyName> {
     SenderKeyName::new(
-        group_id,
+        distribution_id,
         ProtocolAddress::new(sender_name, sender_device_id),
     )
 }

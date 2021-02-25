@@ -135,7 +135,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
         | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeyId) => {
+        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeyName) => {
             "org/whispersystems/libsignal/InvalidKeyIdException"
         }
 

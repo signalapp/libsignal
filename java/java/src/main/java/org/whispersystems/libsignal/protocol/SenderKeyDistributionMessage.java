@@ -56,8 +56,14 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
     return new ECPublicKey(Native.SenderKeyDistributionMessage_GetSignatureKey(this.handle));
   }
 
+  public int getChainId() {
+    return Native.SenderKeyDistributionMessage_GetChainId(this.handle);
+  }
+
+  /** @deprecated Renamed to {@link #getChainId} */
+  @Deprecated
   public int getId() {
-    return Native.SenderKeyDistributionMessage_GetId(this.handle);
+    return Native.SenderKeyDistributionMessage_GetChainId(this.handle);
   }
 
   public long nativeHandle() {

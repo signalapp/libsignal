@@ -594,17 +594,17 @@ export class SenderKeyName {
   }
 
   static new(
-    groupId: string,
+    distributionId: string,
     senderName: string,
     senderDeviceId: number
   ): SenderKeyName {
     return new SenderKeyName(
-      SC.SenderKeyName_New(groupId, senderName, senderDeviceId)
+      SC.SenderKeyName_New(distributionId, senderName, senderDeviceId)
     );
   }
 
-  groupId(): string {
-    return SC.SenderKeyName_GetGroupId(this);
+  distributionId(): string {
+    return SC.SenderKeyName_GetDistributionId(this);
   }
 
   senderName(): string {
@@ -784,13 +784,13 @@ export class SenderKeyDistributionMessage {
   }
 
   static new(
-    keyId: number,
+    chainId: number,
     iteration: number,
     chainKey: Buffer,
     pk: PublicKey
   ): SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(
-      SC.SenderKeyDistributionMessage_New(keyId, iteration, chainKey, pk)
+      SC.SenderKeyDistributionMessage_New(chainId, iteration, chainKey, pk)
     );
   }
 
@@ -812,8 +812,8 @@ export class SenderKeyDistributionMessage {
     return SC.SenderKeyDistributionMessage_GetIteration(this);
   }
 
-  id(): number {
-    return SC.SenderKeyDistributionMessage_GetId(this);
+  chainId(): number {
+    return SC.SenderKeyDistributionMessage_GetChainId(this);
   }
 }
 
@@ -833,13 +833,13 @@ export class SenderKeyMessage {
   }
 
   static new(
-    keyId: number,
+    chainId: number,
     iteration: number,
     ciphertext: Buffer,
     pk: PrivateKey
   ): SenderKeyMessage {
     return new SenderKeyMessage(
-      SC.SenderKeyMessage_New(keyId, iteration, ciphertext, pk)
+      SC.SenderKeyMessage_New(chainId, iteration, ciphertext, pk)
     );
   }
 
@@ -859,8 +859,8 @@ export class SenderKeyMessage {
     return SC.SenderKeyMessage_GetIteration(this);
   }
 
-  keyId(): number {
-    return SC.SenderKeyMessage_GetKeyId(this);
+  chainId(): number {
+    return SC.SenderKeyMessage_GetChainId(this);
   }
 
   verifySignature(key: PublicKey): boolean {

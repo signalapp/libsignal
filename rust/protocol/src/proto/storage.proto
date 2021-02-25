@@ -96,7 +96,7 @@ message SenderKeyStateStructure {
     bytes private = 2;
   }
 
-  uint32                    sender_key_id       = 1;
+  uint32                    chain_id            = 1;
   SenderChainKey            sender_chain_key    = 2;
   SenderSigningKey          sender_signing_key  = 3;
   repeated SenderMessageKey sender_message_keys = 4;
