@@ -410,7 +410,7 @@ impl NodeIdentityKeyStore {
             Ok(value) => match value.downcast::<DefaultJsBox<PublicKey>, _>(cx) {
                 Ok(obj) => Ok(Some(***obj)),
                 Err(_) => {
-                    if value.is_a::<JsNull, _>(cx) {
+                    if value.is_a::<JsNull, _>(cx) || value.is_a::<JsUndefined, _>(cx) {
                         Ok(None)
                     } else {
                         Err("result must be an object".to_owned())
@@ -586,7 +586,7 @@ impl NodeSenderKeyStore {
             Ok(value) => match value.downcast::<DefaultJsBox<SenderKeyRecord>, _>(cx) {
                 Ok(obj) => Ok(Some((***obj).clone())),
                 Err(_) => {
-                    if value.is_a::<JsNull, _>(cx) {
+                    if value.is_a::<JsNull, _>(cx) || value.is_a::<JsUndefined, _>(cx) {
                         Ok(None)
                     } else {
                         Err("result must be an object".to_owned())

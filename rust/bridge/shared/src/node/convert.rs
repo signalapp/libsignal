@@ -249,7 +249,7 @@ where
         cx: &mut FunctionContext<'context>,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        if foreign.downcast::<JsNull, _>(cx).is_ok() {
+        if foreign.is_a::<JsNull, _>(cx) || foreign.is_a::<JsUndefined, _>(cx) {
             return Ok(None);
         }
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
@@ -286,7 +286,7 @@ where
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        if foreign.downcast::<JsNull, _>(cx).is_ok() {
+        if foreign.is_a::<JsNull, _>(cx) || foreign.is_a::<JsUndefined, _>(cx) {
             return Ok(FinalizableOption(None));
         }
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
