@@ -194,27 +194,27 @@ public final class Native {
 
   public static native long SenderKeyDistributionMessage_Deserialize(byte[] data);
   public static native void SenderKeyDistributionMessage_Destroy(long handle);
+  public static native int SenderKeyDistributionMessage_GetChainId(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetChainKey(long obj);
-  public static native int SenderKeyDistributionMessage_GetId(long obj);
   public static native int SenderKeyDistributionMessage_GetIteration(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSerialized(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSignatureKey(long m);
-  public static native long SenderKeyDistributionMessage_New(int keyId, int iteration, byte[] chainkey, long pk);
+  public static native long SenderKeyDistributionMessage_New(int chainId, int iteration, byte[] chainkey, long pk);
 
   public static native long SenderKeyMessage_Deserialize(byte[] data);
   public static native void SenderKeyMessage_Destroy(long handle);
+  public static native int SenderKeyMessage_GetChainId(long obj);
   public static native byte[] SenderKeyMessage_GetCipherText(long obj);
   public static native int SenderKeyMessage_GetIteration(long obj);
-  public static native int SenderKeyMessage_GetKeyId(long obj);
   public static native byte[] SenderKeyMessage_GetSerialized(long obj);
-  public static native long SenderKeyMessage_New(int keyId, int iteration, byte[] ciphertext, long pk);
+  public static native long SenderKeyMessage_New(int chainId, int iteration, byte[] ciphertext, long pk);
   public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
 
   public static native void SenderKeyName_Destroy(long handle);
-  public static native String SenderKeyName_GetGroupId(long obj);
+  public static native String SenderKeyName_GetDistributionId(long obj);
   public static native int SenderKeyName_GetSenderDeviceId(long skn);
   public static native String SenderKeyName_GetSenderName(long obj);
-  public static native long SenderKeyName_New(String groupId, String senderName, int senderDeviceId);
+  public static native long SenderKeyName_New(String distributionId, String senderName, int senderDeviceId);
 
   public static native long SenderKeyRecord_Deserialize(byte[] data);
   public static native void SenderKeyRecord_Destroy(long handle);

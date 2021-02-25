@@ -9,17 +9,17 @@ import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 
 /**
- * A representation of a (groupId + senderId + deviceId) tuple.
+ * A representation of a (senderKeyId + senderName + deviceId) tuple.
  */
 public class SenderKeyName {
   private long handle;
 
-  public SenderKeyName(String groupId, SignalProtocolAddress sender) {
-    this.handle = Native.SenderKeyName_New(groupId, sender.getName(), sender.getDeviceId());
+  public SenderKeyName(String senderKeyId, SignalProtocolAddress sender) {
+    this.handle = Native.SenderKeyName_New(senderKeyId, sender.getName(), sender.getDeviceId());
   }
 
-  public SenderKeyName(String groupId, String senderName, int senderDeviceId) {
-    this.handle = Native.SenderKeyName_New(groupId, senderName, senderDeviceId);
+  public SenderKeyName(String senderKeyId, String senderName, int senderDeviceId) {
+    this.handle = Native.SenderKeyName_New(senderKeyId, senderName, senderDeviceId);
   }
 
   @Override
@@ -27,8 +27,14 @@ public class SenderKeyName {
     Native.SenderKeyName_Destroy(this.handle);
   }
 
+  public String getDistributionId() {
+    return Native.SenderKeyName_GetDistributionId(this.handle);
+  }
+
+  /** @deprecated Renamed to {@link #getDistributionId}. */
+  @Deprecated
   public String getGroupId() {
-    return Native.SenderKeyName_GetGroupId(this.handle);
+    return Native.SenderKeyName_GetDistributionId(this.handle);
   }
 
   public SignalProtocolAddress getSender() {
@@ -43,13 +49,13 @@ public class SenderKeyName {
     SenderKeyName that = (SenderKeyName)other;
 
     return
-       this.getGroupId().equals(that.getGroupId()) &&
+       this.getDistributionId().equals(that.getDistributionId()) &&
        this.getSender().equals(that.getSender());
   }
 
   @Override
   public int hashCode() {
-    return this.getGroupId().hashCode() ^ this.getSender().hashCode();
+    return this.getDistributionId().hashCode() ^ this.getSender().hashCode();
   }
 
   public long nativeHandle() {

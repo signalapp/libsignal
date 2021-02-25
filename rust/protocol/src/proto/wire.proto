@@ -24,13 +24,13 @@ message PreKeySignalMessage {
 }
 
 message SenderKeyMessage {
-  optional uint32 id         = 1;
+  optional uint32 chain_id   = 1;
   optional uint32 iteration  = 2;
   optional bytes  ciphertext = 3;
 }
 
 message SenderKeyDistributionMessage {
-  optional uint32 id          = 1;
+  optional uint32 chain_id    = 1;
   optional uint32 iteration   = 2;
   optional bytes  chain_key   = 3;
   optional bytes  signing_key = 4;

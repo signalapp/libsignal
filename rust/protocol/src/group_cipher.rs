@@ -18,15 +18,15 @@ use std::convert::TryFrom;
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_store: &mut dyn SenderKeyStore,
-    sender_key_id: &SenderKeyName,
+    sender_key_name: &SenderKeyName,
     plaintext: &[u8],
     csprng: &mut R,
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut record = sender_key_store
-        .load_sender_key(&sender_key_id, ctx)
+        .load_sender_key(&sender_key_name, ctx)
         .await?
-        .ok_or(SignalProtocolError::InvalidSenderKeyId)?;
+        .ok_or(SignalProtocolError::InvalidSenderKeyName)?;
 
     let sender_key_state = record.sender_key_state()?;
 
@@ -38,7 +38,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let signing_key = sender_key_state.signing_key_private()?;
 
     let skm = SenderKeyMessage::new(
-        sender_key_state.sender_key_id()?,
+        sender_key_state.chain_id()?,
         sender_key.iteration()?,
         &ciphertext,
         csprng,
@@ -48,7 +48,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_state.set_sender_chain_key(sender_key_state.sender_chain_key()?.next()?)?;
 
     sender_key_store
-        .store_sender_key(sender_key_id, &record, ctx)
+        .store_sender_key(sender_key_name, &record, ctx)
         .await?;
 
     Ok(skm.serialized().to_vec())
@@ -89,17 +89,17 @@ fn get_sender_key(state: &mut SenderKeyState, iteration: u32) -> Result<SenderMe
 pub async fn group_decrypt(
     skm_bytes: &[u8],
     sender_key_store: &mut dyn SenderKeyStore,
-    sender_key_id: &SenderKeyName,
+    sender_key_name: &SenderKeyName,
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut record = sender_key_store
-        .load_sender_key(&sender_key_id, ctx)
+        .load_sender_key(&sender_key_name, ctx)
         .await?
-        .ok_or(SignalProtocolError::InvalidSenderKeyId)?;
+        .ok_or(SignalProtocolError::InvalidSenderKeyName)?;
 
     let skm = SenderKeyMessage::try_from(skm_bytes)?;
 
-    let mut sender_key_state = record.sender_key_state_for_keyid(skm.key_id())?;
+    let mut sender_key_state = record.sender_key_state_for_chain_id(skm.chain_id())?;
 
     let signing_key = sender_key_state.signing_key_public()?;
     if !skm.verify_signature(&signing_key)? {
@@ -115,7 +115,7 @@ pub async fn group_decrypt(
     )?;
 
     sender_key_store
-        .store_sender_key(sender_key_id, &record, ctx)
+        .store_sender_key(sender_key_name, &record, ctx)
         .await?;
 
     Ok(plaintext)
@@ -133,7 +133,7 @@ pub async fn process_sender_key_distribution_message(
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     sender_key_record.add_sender_key_state(
-        skdm.id()?,
+        skdm.chain_id()?,
         skdm.iteration()?,
         skdm.chain_key()?,
         *skdm.signing_key()?,
@@ -157,13 +157,13 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     if sender_key_record.is_empty()? {
-        // libsignal-protocol-java uses 31-bit integers for sender key IDs
-        let sender_key_id = (csprng.gen::<u32>()) >> 1;
+        // libsignal-protocol-java uses 31-bit integers for sender key chain IDs
+        let chain_id = (csprng.gen::<u32>()) >> 1;
         let iteration = 0;
         let sender_key: [u8; 32] = csprng.gen();
         let signing_key = KeyPair::generate(csprng);
         sender_key_record.set_sender_key_state(
-            sender_key_id,
+            chain_id,
             iteration,
             &sender_key,
             signing_key.public_key,
@@ -178,7 +178,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     let sender_chain_key = state.sender_chain_key()?;
 
     SenderKeyDistributionMessage::new(
-        state.sender_key_id()?,
+        state.chain_id()?,
         sender_chain_key.iteration()?,
         &sender_chain_key.seed()?,
         state.signing_key_public()?,

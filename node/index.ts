@@ -620,17 +620,17 @@ export class SenderKeyName {
   }
 
   static new(
-    groupId: string,
+    distributionId: string,
     senderName: string,
     senderDeviceId: number
   ): SenderKeyName {
     return new SenderKeyName(
-      NativeImpl.SenderKeyName_New(groupId, senderName, senderDeviceId)
+      NativeImpl.SenderKeyName_New(distributionId, senderName, senderDeviceId)
     );
   }
 
-  groupId(): string {
-    return NativeImpl.SenderKeyName_GetGroupId(this);
+  distributionId(): string {
+    return NativeImpl.SenderKeyName_GetDistributionId(this);
   }
 
   senderName(): string {
@@ -818,14 +818,14 @@ export class SenderKeyDistributionMessage {
   }
 
   static new(
-    keyId: number,
+    chainId: number,
     iteration: number,
     chainKey: Buffer,
     pk: PublicKey
   ): SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(
       NativeImpl.SenderKeyDistributionMessage_New(
-        keyId,
+        chainId,
         iteration,
         chainKey,
         pk
@@ -851,8 +851,8 @@ export class SenderKeyDistributionMessage {
     return NativeImpl.SenderKeyDistributionMessage_GetIteration(this);
   }
 
-  id(): number {
-    return NativeImpl.SenderKeyDistributionMessage_GetId(this);
+  chainId(): number {
+    return NativeImpl.SenderKeyDistributionMessage_GetChainId(this);
   }
 }
 
@@ -877,13 +877,13 @@ export class SenderKeyMessage {
   }
 
   static new(
-    keyId: number,
+    chainId: number,
     iteration: number,
     ciphertext: Buffer,
     pk: PrivateKey
   ): SenderKeyMessage {
     return new SenderKeyMessage(
-      NativeImpl.SenderKeyMessage_New(keyId, iteration, ciphertext, pk)
+      NativeImpl.SenderKeyMessage_New(chainId, iteration, ciphertext, pk)
     );
   }
 
@@ -905,8 +905,8 @@ export class SenderKeyMessage {
     return NativeImpl.SenderKeyMessage_GetIteration(this);
   }
 
-  keyId(): number {
-    return NativeImpl.SenderKeyMessage_GetKeyId(this);
+  chainId(): number {
+    return NativeImpl.SenderKeyMessage_GetChainId(this);
   }
 
   verifySignature(key: PublicKey): boolean {
