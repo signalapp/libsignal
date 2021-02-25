@@ -13,15 +13,75 @@ use std::ops::Deref;
 
 use super::*;
 
-pub(crate) trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
+/// Converts arguments from their JNI form to their Rust form.
+///
+/// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
+///
+/// ```no_run
+/// # use libsignal_bridge::jni::*;
+/// # use jni_crate::JNIEnv;
+/// # struct Foo;
+/// # impl SimpleArgTypeInfo<'_> for Foo {
+/// #     type ArgType = isize;
+/// #     fn convert_from(env: &JNIEnv, foreign: isize) -> SignalJniResult<Self> { Ok(Foo) }
+/// # }
+/// # fn test(env: &JNIEnv, jni_arg: isize) -> SignalJniResult<()> {
+/// let mut jni_arg_borrowed = Foo::borrow(env, jni_arg)?;
+/// let rust_arg = Foo::load_from(env, &mut jni_arg_borrowed)?;
+/// #     Ok(())
+/// # }
+/// ```
+///
+/// The `'context` lifetime allows for borrowed values to depend on the current JNI stack frame;
+/// that is, they can be assured that referenced objects will not be GC'd out from under them.
+///
+/// `ArgTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
+///
+/// If the Rust type can be directly loaded from `ArgType` with no local storage needed,
+/// implement [`SimpleArgTypeInfo`] instead.
+///
+/// Implementers should also see the `jni_arg_type` macro in `convert.rs`.
+pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
+    /// The JNI form of the argument (e.g. `jni::jint`).
     type ArgType;
-    type StoredType;
+    /// Local storage for the argument (ideally borrowed rather than copied).
+    type StoredType: 'storage;
+    /// "Borrows" the data in `foreign`, usually to establish a local lifetime or owning type.
     fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType>;
+    /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
     fn load_from(env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self>;
 }
 
-pub(crate) trait SimpleArgTypeInfo<'a>: Sized {
+/// A simpler interface for [`ArgTypeInfo`] for when no local storage is needed.
+///
+/// This trait is easier to use when writing JNI functions manually:
+///
+/// ```no_run
+/// # use libsignal_bridge::jni::*;
+/// # use jni_crate::objects::JObject;
+/// # use jni_crate::JNIEnv;
+/// # struct Foo;
+/// impl<'a> SimpleArgTypeInfo<'a> for Foo {
+///     type ArgType = JObject<'a>;
+///     fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
+///         // ...
+///         # Ok(Foo)
+///     }
+/// }
+///
+/// # fn test<'a>(env: &JNIEnv<'a>, jni_arg: JObject<'a>) -> SignalJniResult<()> {
+/// let rust_arg = Foo::convert_from(env, jni_arg)?;
+/// #     Ok(())
+/// # }
+/// ```
+///
+/// However, some types do need the full flexibility of `ArgTypeInfo`.
+pub trait SimpleArgTypeInfo<'a>: Sized {
+    /// The JNI form of the argument (e.g. `jint`).
+    ///
+    /// Must be [`Copy`] to help the compiler optimize out local storage.
     type ArgType: Copy + 'a;
+    /// Converts the data in `foreign` to the Rust type.
     fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self>;
 }
 
@@ -39,11 +99,37 @@ where
     }
 }
 
-pub(crate) trait ResultTypeInfo: Sized {
+/// Converts result values from their Rust form to their FFI form.
+///
+/// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
+///
+/// ```no_run
+/// # use libsignal_bridge::jni::*;
+/// # use jni_crate::JNIEnv;
+/// # struct Foo;
+/// # impl ResultTypeInfo for Foo {
+/// #     type ResultType = isize;
+/// #     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<isize> { Ok(1) }
+/// # }
+/// # fn test<'a>(env: &JNIEnv<'a>) -> SignalJniResult<()> {
+/// #     let rust_result = Foo;
+/// let jni_result = rust_result.convert_into(env)?;
+/// #     Ok(())
+/// # }
+/// ```
+///
+/// Implementers should also see the `jni_result_type` macro in `convert.rs`.
+pub trait ResultTypeInfo: Sized {
+    /// The JNI form of the result (e.g. `jint`).
     type ResultType;
+    /// Converts the data in `self` to the JNI type, similar to `try_into()`.
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType>;
 }
 
+/// Supports values `0..=Integer.MAX_VALUE`.
+///
+/// Negative `int` values are *not* reinterpreted as large `u32` values.
+/// Note that this is different from the implementation of [`ResultTypeInfo`] for `u32`.
 impl<'a> SimpleArgTypeInfo<'a> for u32 {
     type ArgType = jint;
     fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
@@ -51,6 +137,9 @@ impl<'a> SimpleArgTypeInfo<'a> for u32 {
     }
 }
 
+/// Supports values `0..=Integer.MAX_VALUE`. Negative values are considered `None`.
+///
+/// Note that this is different from the implementation of [`ResultTypeInfo`] for `Option<u32>`.
 impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
     type ArgType = jint;
     fn convert_from(env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
@@ -62,6 +151,10 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
     }
 }
 
+/// Supports values `0..=Long.MAX_VALUE`.
+///
+/// Negative `long` values are *not* reinterpreted as large `u64` values.
+/// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
 impl<'a> SimpleArgTypeInfo<'a> for u64 {
     type ArgType = jlong;
     fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
@@ -69,6 +162,7 @@ impl<'a> SimpleArgTypeInfo<'a> for u64 {
     }
 }
 
+/// Supports all valid byte values `0..=255`.
 impl<'a> SimpleArgTypeInfo<'a> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
@@ -94,7 +188,8 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     }
 }
 
-pub(crate) struct AutoByteSlice<'a> {
+/// A wrapper around [`jni::objects::AutoArray`] that also stores the array's length.
+pub struct AutoByteSlice<'a> {
     jni_array: AutoArray<'a, 'a, jbyte>,
     len: usize,
 }
@@ -179,6 +274,7 @@ impl ResultTypeInfo for bool {
     }
 }
 
+/// Supports all valid byte values `0..=255`.
 impl ResultTypeInfo for u8 {
     type ResultType = jint;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -186,6 +282,9 @@ impl ResultTypeInfo for u8 {
     }
 }
 
+/// Reinterprets the bits of the `u32` as a Java `int`.
+///
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for `u32`.
 impl ResultTypeInfo for u32 {
     type ResultType = jint;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -194,6 +293,9 @@ impl ResultTypeInfo for u32 {
     }
 }
 
+/// Reinterprets the bits of the `u32` as a Java `int`. Returns `-1` for `None`.
+///
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for `Option<u32>`.
 impl ResultTypeInfo for Option<u32> {
     type ResultType = jint;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -202,6 +304,9 @@ impl ResultTypeInfo for Option<u32> {
     }
 }
 
+/// Reinterprets the bits of the `u64` as a Java `long`.
+///
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for `u64`.
 impl ResultTypeInfo for u64 {
     type ResultType = jlong;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -293,6 +398,7 @@ impl crate::support::Env for &'_ JNIEnv<'_> {
     }
 }
 
+/// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
 macro_rules! jni_bridge_handle {
     ( $typ:ty as false ) => {};
     ( $typ:ty as $jni_name:ident ) => {
@@ -372,6 +478,13 @@ trivial!(i32);
 trivial!(jbyteArray);
 trivial!(());
 
+/// Syntactically translates `bridge_fn` argument types to JNI types for `cbindgen` and
+/// `gen_java_decl.py`.
+///
+/// This is a syntactic transformation (because that's how Rust macros work), so new argument types
+/// will need to be added here directly even if they already implement [`ArgTypeInfo`]. The default
+/// behavior for references is to assume they're opaque handles to Rust values; the default
+/// behavior for `&mut dyn Foo` is to assume there's a type called `jni::JavaFoo`.
 macro_rules! jni_arg_type {
     (u8) => {
         // Note: not a jbyte. It's better to preserve the signedness here.
@@ -412,7 +525,17 @@ macro_rules! jni_arg_type {
     };
 }
 
+/// Syntactically translates `bridge_fn` result types to JNI types for `cbindgen` and
+/// `gen_java_decl.py`.
+///
+/// This is a syntactic transformation (because that's how Rust macros work), so new result types
+/// will need to be added here directly even if they already implement [`ResultTypeInfo`]. The
+/// default behavior is to assume we're returning an opaque handle to a Rust value.
 macro_rules! jni_result_type {
+    // These rules only match a single token for a Result's success type.
+    // We can't use `:ty` because we need the resulting tokens to be matched recursively rather than
+    // treated as a single unit, and we can't match multiple tokens because Rust's macros match
+    // eagerly. Therefore, if you need to return a more complicated Result type, you'll have to add // another rule for its form.
     (Result<$typ:tt $(, $_:ty)?>) => {
         jni_result_type!($typ)
     };

@@ -63,7 +63,7 @@ fn bridge_fn_async_body(
         quote! {
             // First, load each argument and save it in a context-independent form.
             let #name_arg = cx.borrow_mut().argument::<<#ty as node::AsyncArgTypeInfo>::ArgType>(#i)?;
-            let #name_stored = <#ty as node::AsyncArgTypeInfo>::save(&mut cx.borrow_mut(), #name_arg)?;
+            let #name_stored = <#ty as node::AsyncArgTypeInfo>::save_async_arg(&mut cx.borrow_mut(), #name_arg)?;
             // Make sure we Finalize any arguments we've loaded if there's an error.
             let mut #name_guard = scopeguard::guard(#name_stored, |#name_stored| {
                 neon::prelude::Finalize::finalize(#name_stored, &mut *cx.borrow_mut())
@@ -84,7 +84,7 @@ fn bridge_fn_async_body(
         let name_stored = format_ident!("{}_stored", name);
         quote! {
             // Inside the future, we load the expected types from the stored values.
-            let #name = <#ty as node::AsyncArgTypeInfo>::load_from(&mut #name_stored);
+            let #name = <#ty as node::AsyncArgTypeInfo>::load_async_arg(&mut #name_stored);
         }
     });
 

@@ -7,13 +7,11 @@ use libsignal_protocol::*;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-pub use neon::context::{Context, Lock};
-pub use neon::prelude::*;
+pub(crate) use neon::context::Context;
+pub(crate) use neon::prelude::*;
 
 #[macro_use]
 mod convert;
-pub use convert::ResultTypeInfo;
-pub use convert::SimpleArgTypeInfo;
 pub use convert::*;
 
 mod error;
@@ -22,11 +20,15 @@ pub use error::*;
 mod storage;
 pub use storage::*;
 
-pub type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
+/// A function pointer referring to a Neon-based Node entry point.
+#[doc(hidden)]
+pub(crate) type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
 
+#[doc(hidden)]
 #[linkme::distributed_slice]
 pub(crate) static LIBSIGNAL_FNS: [(&'static str, JsFn)] = [..];
 
+/// Exports all `bridge_fn`-generated entry points.
 pub fn register(cx: &mut ModuleContext) -> NeonResult<()> {
     for (name, f) in LIBSIGNAL_FNS {
         cx.export_function(name, *f)?;
@@ -34,6 +36,7 @@ pub fn register(cx: &mut ModuleContext) -> NeonResult<()> {
     Ok(())
 }
 
+/// A wrapper around a type that implements Neon's [`Finalize`] by simply dropping the type.
 pub struct DefaultFinalize<T>(pub T);
 
 impl<T> Finalize for DefaultFinalize<T> {}
@@ -104,6 +107,9 @@ pub(crate) fn with_buffer_contents<R>(
     f(slice)
 }
 
+/// Used in the implementation of `bridge_fn` to keep track of all generated entry points.
+///
+/// Not intended to be invoked directly.
 macro_rules! node_register {
     ( $name:ident ) => {
         paste! {
@@ -116,6 +122,7 @@ macro_rules! node_register {
     };
 }
 
+/// Implementation of [`bridge_deserialize`](crate::support::bridge_deserialize) for Node.
 macro_rules! node_bridge_deserialize {
     ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $node_name:ident ) => {
@@ -139,6 +146,7 @@ macro_rules! node_bridge_deserialize {
     };
 }
 
+/// Implementation of [`bridge_get_bytearray`](crate::support::bridge_get_bytearray) for Node.
 macro_rules! node_bridge_get_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {
@@ -168,6 +176,7 @@ macro_rules! node_bridge_get_bytearray {
     };
 }
 
+/// Implementation of [`bridge_get_optional_bytearray`](crate::support::bridge_get_optional_bytearray) for Node.
 macro_rules! node_bridge_get_optional_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $node_name:tt => $body:expr ) => {

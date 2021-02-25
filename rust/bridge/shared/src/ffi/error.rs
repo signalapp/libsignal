@@ -9,6 +9,7 @@ use std::fmt;
 use aes_gcm_siv::Error as AesGcmSivError;
 use libsignal_protocol::*;
 
+/// The top-level error type (opaquely) returned to C clients when something goes wrong.
 #[derive(Debug)]
 pub enum SignalFfiError {
     Signal(SignalProtocolError),
@@ -56,12 +57,14 @@ impl From<AesGcmSivError> for SignalFfiError {
 
 pub type SignalFfiResult<T> = Result<T, SignalFfiError>;
 
+/// Represents an error returned by a callback, following the C conventions that 0 means "success".
 #[derive(Debug)]
 pub struct CallbackError {
     value: std::num::NonZeroI32,
 }
 
 impl CallbackError {
+    /// Returns `None` if `value` is zero; otherwise, wraps the value in `Self`.
     pub fn check(value: i32) -> Option<Self> {
         let value = std::num::NonZeroI32::try_from(value).ok()?;
         Some(Self { value })

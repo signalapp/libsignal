@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -12,6 +12,7 @@ use libsignal_protocol::*;
 
 use super::*;
 
+/// The top-level error type for when something goes wrong.
 #[derive(Debug)]
 pub enum SignalJniError {
     Signal(SignalProtocolError),
@@ -79,16 +80,26 @@ impl From<SignalJniError> for SignalProtocolError {
 
 pub type SignalJniResult<T> = Result<T, SignalJniError>;
 
+/// A lifetime-less reference to a thrown Java exception that can be used as an [`Error`].
+///
+/// `ThrownException` allows a Java exception to be safely persisted past the lifetime of a
+/// particular call.
+///
+/// Ideally, `ThrownException` should be Dropped on the thread the JVM is running on; see
+/// [`jni::objects::GlobalRef`] for more details.
 pub struct ThrownException {
+    // GlobalRef already carries a JavaVM reference, but it's not accessible to us.
     jvm: JavaVM,
     exception_ref: GlobalRef,
 }
 
 impl ThrownException {
-    pub fn as_obj(&self) -> JThrowable {
+    /// Gets the wrapped exception as a live object with a lifetime.
+    pub fn as_obj(&self) -> JThrowable<'_> {
         self.exception_ref.as_obj().into()
     }
 
+    /// Persists the given throwable.
     pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, SignalJniError> {
         assert!(**throwable != *JObject::null());
         Ok(Self {

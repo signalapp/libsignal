@@ -11,21 +11,78 @@ use std::{borrow::Cow, ops::Deref};
 
 use super::*;
 
-pub trait ArgTypeInfo<'a>: Sized {
+/// Converts arguments from their FFI form to their Rust form.
+///
+/// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
+///
+/// ```
+/// # use libsignal_bridge::ffi::*;
+/// # struct Foo;
+/// # impl SimpleArgTypeInfo for Foo {
+/// #     type ArgType = isize;
+/// #     fn convert_from(foreign: isize) -> SignalFfiResult<Self> { Ok(Foo) }
+/// # }
+/// # fn main() -> SignalFfiResult<()> {
+/// #     let ffi_arg = 2;
+/// let mut ffi_arg_borrowed = Foo::borrow(ffi_arg)?;
+/// let rust_arg = Foo::load_from(&mut ffi_arg_borrowed)?;
+/// #     Ok(())
+/// # }
+/// ```
+///
+/// `ArgTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
+///
+/// If the Rust type can be directly loaded from `ArgType` with no local storage or lifetime needed,
+/// implement [`SimpleArgTypeInfo`] instead.
+///
+/// Implementers should also see the `ffi_arg_type` macro in `convert.rs`.
+pub trait ArgTypeInfo<'storage>: Sized {
+    /// The FFI form of the argument (e.g. `libc::c_uchar`).
     type ArgType;
-    type StoredType;
+    /// Local storage for the argument (ideally borrowed rather than copied).
+    type StoredType: 'storage;
+    /// "Borrows" the data in `foreign`, usually to establish a local lifetime or owning type.
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType>;
-    fn load_from(stored: &'a mut Self::StoredType) -> SignalFfiResult<Self>;
+    /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
+    fn load_from(stored: &'storage mut Self::StoredType) -> SignalFfiResult<Self>;
 }
 
+/// A simpler interface for [`ArgTypeInfo`] for when no local storage is needed.
+///
+/// This trait is easier to use when writing FFI functions manually:
+///
+/// ```
+/// # use libsignal_bridge::ffi::*;
+/// # struct Foo;
+/// impl SimpleArgTypeInfo for Foo {
+///     type ArgType = isize;
+///     fn convert_from(foreign: isize) -> SignalFfiResult<Self> {
+///         // ...
+///         # Ok(Foo)
+///     }
+/// }
+///
+/// # fn main() -> SignalFfiResult<()> {
+/// #     let ffi_arg = 2;
+/// let rust_arg = Foo::convert_from(ffi_arg)?;
+/// #     Ok(())
+/// # }
+/// ```
+///
+/// However, some types do need the full flexibility of `ArgTypeInfo`.
 pub trait SimpleArgTypeInfo: Sized {
+    /// The FFI form of the argument (e.g. `libc::c_uchar`).
+    ///
+    /// Must be [`Copy`] to help the compiler optimize out local storage.
     type ArgType: Copy;
+    /// Converts the data in `foreign` to the Rust type.
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self>;
 }
 
 impl<'a, T> ArgTypeInfo<'a> for T
 where
     T: SimpleArgTypeInfo,
+    T::ArgType: 'a,
 {
     type ArgType = <Self as SimpleArgTypeInfo>::ArgType;
     type StoredType = Self::ArgType;
@@ -37,13 +94,61 @@ where
     }
 }
 
+/// Converts "sized" arguments from their FFI form to their Rust form.
+///
+/// This is used for buffers and such passed as a base+length pair. Implementing types are usually
+/// slices; the `ArgType` will usually be a pointer.
+///
+/// `SizedArgTypeInfo` is used to implement the `bridge_fn` macro for slice-typed arguments, but
+/// can also be used outside it.
+///
+/// ```
+/// # use libsignal_bridge::ffi::*;
+/// # struct Foo;
+/// # impl SizedArgTypeInfo for Foo {
+/// #     type ArgType = isize;
+/// #     fn convert_from(foreign: isize, size: usize) -> SignalFfiResult<Self> { Ok(Foo) }
+/// # }
+/// # fn main() -> SignalFfiResult<()> {
+/// #     let ffi_arg = 2;
+/// #     let ffi_arg_len = 3;
+/// let rust_arg = Foo::convert_from(ffi_arg, ffi_arg_len)?;
+/// #     Ok(())
+/// # }
+/// ```
 pub trait SizedArgTypeInfo: Sized {
+    /// The FFI form of the "base" argument (e.g. `*const u8`).
+    ///
+    /// Note that the "length" argument type is not customizable; it is always `usize`
+    /// (`size_t` in C).
     type ArgType;
+    /// Converts the data in `foreign` to the Rust type.
     fn convert_from(foreign: Self::ArgType, size: usize) -> SignalFfiResult<Self>;
 }
 
+/// Converts result values from their Rust form to their FFI form.
+///
+/// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
+///
+/// ```
+/// # use libsignal_bridge::ffi::*;
+/// # struct Foo;
+/// # impl ResultTypeInfo for Foo {
+/// #     type ResultType = isize;
+/// #     fn convert_into(self) -> SignalFfiResult<isize> { Ok(1) }
+/// # }
+/// # fn main() -> SignalFfiResult<()> {
+/// #     let rust_result = Foo;
+/// let ffi_result = rust_result.convert_into()?;
+/// #     Ok(())
+/// # }
+/// ```
+///
+/// Implementers should also see the `ffi_result_type` macro in `convert.rs`.
 pub trait ResultTypeInfo: Sized {
+    /// The FFI form of the result (e.g. `libc::c_uchar`).
     type ResultType;
+    /// Converts the data in `self` to the FFI type, similar to `try_into()`.
     fn convert_into(self) -> SignalFfiResult<Self::ResultType>;
 }
 
@@ -77,6 +182,7 @@ impl SizedArgTypeInfo for &mut [u8] {
     }
 }
 
+/// `u32::MAX` (`UINT_MAX`, `~0u`) is used to represent `None` here.
 impl SimpleArgTypeInfo for Option<u32> {
     type ArgType = u32;
     fn convert_from(foreign: u32) -> SignalFfiResult<Self> {
@@ -88,6 +194,7 @@ impl SimpleArgTypeInfo for Option<u32> {
     }
 }
 
+/// Converts a non-`NULL` C string to a Rust String.
 impl SimpleArgTypeInfo for String {
     type ArgType = *const c_char;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -103,6 +210,7 @@ impl SimpleArgTypeInfo for String {
     }
 }
 
+/// Converts a possibly-`NULL` C string to a Rust String (or `None`).
 impl SimpleArgTypeInfo for Option<String> {
     type ArgType = *const c_char;
     fn convert_from(foreign: *const c_char) -> SignalFfiResult<Self> {
@@ -161,6 +269,7 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
     }
 }
 
+/// Allocates and returns a new Rust-owned C string.
 impl ResultTypeInfo for String {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -168,6 +277,7 @@ impl ResultTypeInfo for String {
     }
 }
 
+/// Allocates and returns a new Rust-owned C string (or `NULL`).
 impl ResultTypeInfo for Option<String> {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -175,6 +285,7 @@ impl ResultTypeInfo for Option<String> {
     }
 }
 
+/// Allocates and returns a new Rust-owned C string.
 impl ResultTypeInfo for &str {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -183,6 +294,7 @@ impl ResultTypeInfo for &str {
     }
 }
 
+/// Allocates and returns a new Rust-owned C string (or `NULL`).
 impl ResultTypeInfo for Option<&str> {
     type ResultType = *const libc::c_char;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -192,6 +304,7 @@ impl ResultTypeInfo for Option<&str> {
         }
     }
 }
+/// `u32::MAX` (`UINT_MAX`, `~0u`) is used to represent `None` here.
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -199,8 +312,10 @@ impl ResultTypeInfo for Option<u32> {
     }
 }
 
+/// A dummy type used to implement [`crate::support::Env`].
 pub(crate) struct Env;
 
+/// Returns a Rust-owned boxed `[u8]`, which will be split up into a pointer/length pair.
 impl crate::support::Env for Env {
     type Buffer = Box<[u8]>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
@@ -208,6 +323,7 @@ impl crate::support::Env for Env {
     }
 }
 
+/// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false ) => {};
     ( $typ:ty as $ffi_name:ident, clone = false ) => {
@@ -298,6 +414,16 @@ trivial!(u64);
 trivial!(usize);
 trivial!(bool);
 
+/// Syntactically translates `bridge_fn` argument types to FFI types for `cbindgen`.
+///
+/// This is a syntactic transformation (because that's how Rust macros work), so new argument types
+/// will need to be added here directly even if they already implement [`ArgTypeInfo`]. The default
+/// behavior for references is to pass them through as pointers; the default behavior for
+/// `&mut dyn Foo` is to assume there's a struct called `ffi::FfiFooStruct` and produce a pointer
+/// to that.
+///
+/// Types that implement [`SizedArgTypeInfo`] should only include their base type here.
+/// (For example, `(&[u8]) => (*const libc::c_uchar);`.)
 macro_rules! ffi_arg_type {
     (u8) => (u8);
     (u32) => (u32);
@@ -316,11 +442,21 @@ macro_rules! ffi_arg_type {
     (Option<& $typ:ty>) => (*const $typ);
 }
 
+/// Syntactically translates `bridge_fn` result types to FFI types for `cbindgen`.
+///
+/// This is a syntactic transformation (because that's how Rust macros work), so new result types
+/// will need to be added here directly even if they already implement [`ResultTypeInfo`]. The
+/// default behavior is to assume we're returning an opaque boxed value `*mut Foo` (`Foo *` in C).
 macro_rules! ffi_result_type {
+    // These rules only match a single token for a Result's success type.
+    // We can't use `:ty` because we need the resulting tokens to be matched recursively rather than
+    // treated as a single unit, and we can't match multiple tokens because Rust's macros match
+    // eagerly. Therefore, if you need to return a more complicated Result type, you'll have to add // another rule for its form.
     (Result<$typ:tt $(, $_:ty)?>) => (ffi_result_type!($typ));
     (Result<&$typ:tt $(, $_:ty)?>) => (ffi_result_type!(&$typ));
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => (ffi_result_type!(&$typ));
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => (ffi_result_type!($typ<$($args)+>));
+
     (u8) => (u8);
     (i32) => (i32);
     (u32) => (u32);

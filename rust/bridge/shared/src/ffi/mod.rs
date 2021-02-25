@@ -98,6 +98,9 @@ pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     Ok(())
 }
 
+/// Used by [`bridge_handle`](crate::support::bridge_handle).
+///
+/// Not intended to be invoked directly.
 macro_rules! ffi_bridge_destroy {
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
@@ -117,6 +120,7 @@ macro_rules! ffi_bridge_destroy {
     };
 }
 
+/// Implementation of [`bridge_deserialize`](crate::support::bridge_deserialize) for FFI.
 macro_rules! ffi_bridge_deserialize {
     ( $typ:ident::$fn:path as false ) => {};
     ( $typ:ident::$fn:path as $ffi_name:ident ) => {
@@ -145,6 +149,7 @@ macro_rules! ffi_bridge_deserialize {
     };
 }
 
+/// Implementation of [`bridge_get_bytearray`](crate::support::bridge_get_bytearray) for FFI.
 macro_rules! ffi_bridge_get_bytearray {
     ( $name:ident($typ:ty) as false => $body:expr ) => {};
     ( $name:ident($typ:ty) as $ffi_name:tt => $body:expr ) => {
