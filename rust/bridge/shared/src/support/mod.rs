@@ -33,20 +33,6 @@ pub(crate) trait Env {
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer;
 }
 
-/// Wraps an expression in a function with a given name and type...
-/// except that if the expression is a closure with a single typeless argument,
-/// it's flattened into the function.
-///
-/// This allows the expression to return a value with a lifetime depending on the input.
-macro_rules! expr_as_fn {
-    ($name:ident $(<$l:lifetime>)? ($_:ident: $arg_ty:ty) -> $result:ty => |$arg:ident| $e:expr) => {
-        fn $name $(<$l>)? ($arg: $arg_ty) -> $result { $e }
-    };
-    ($name:ident $(<$l:lifetime>)? ($arg:ident: $arg_ty:ty) -> $result:ty => $e:expr) => {
-        fn $name $(<$l>)? ($arg: $arg_ty) -> $result { $e($arg) }
-    };
-}
-
 /// Exposes a Rust type to each of the bridges as a boxed value.
 ///
 /// Full form:
@@ -157,25 +143,29 @@ macro_rules! bridge_deserialize {
 /// #     }
 /// # }
 ///
-/// bridge_get_bytearray!(Serialize(Foo) => Foo::payload); // generates Foo_Serialize
+/// bridge_get_bytearray!(Foo::payload); // generates Foo_GetPayload
 /// ```
 ///
-/// The underlying implementation is expected to return a [`Result`] of a type that adopts
-/// `AsRef<[u8]>`. Note that the most common "body" is a method name, but it can also be a closure.
+/// The underlying implementation is expected to return `Result<T, _>`, where `T` is a type that
+/// adopts `Into<Cow<[u8]>>`. As a special case, `T` can also be `Box<[u8]>`.
 ///
 /// Like `bridge_fn`, the `ffi`, `jni`, and `node` parameters allow customizing the name of the
 /// resulting entry points; they can also be `false` to disable a particular entry point.
-///
-/// _Note: This is not currently based on `bridge_fn_buffer`, but it probably should be._
 macro_rules! bridge_get_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
-        #[cfg(feature = "ffi")]
-        ffi_bridge_get_bytearray!($name($typ) $(as $ffi_name)? => $body);
-        #[cfg(feature = "jni")]
-        jni_bridge_get_bytearray!($name($typ) $(as $jni_name)? => $body);
-        #[cfg(feature = "node")]
-        node_bridge_get_bytearray!($name($typ) $(as $node_name)? => $body);
-    }
+    ($typ:ident :: $method:ident as $name:ident $(, $param:ident = $val:tt)*) => {
+        paste! {
+            #[bridge_fn_buffer($($param = $val),*)]
+            fn [<$typ _ $name>]<E: Env>(env: E, obj: &$typ) -> Result<E::Buffer> {
+                let result = TransformHelper($typ::$method(obj));
+                Ok(env.buffer(result.ok_if_needed()?.into_vec_if_needed().0))
+            }
+        }
+    };
+    ($typ:ident :: $method:ident $(, $param:ident = $val:tt)*) => {
+        paste! {
+            bridge_get_bytearray!($typ::$method as [<Get $method:camel>] $(, $param = $val)*);
+        }
+    };
 }
 
 /// Exposes an optional-buffer-returning getter to the bridges.
@@ -191,26 +181,34 @@ macro_rules! bridge_get_bytearray {
 /// #     }
 /// # }
 ///
-/// bridge_get_optional_bytearray!(Payload(Foo) => Foo::payload); // generates Foo_Payload
+/// bridge_get_optional_bytearray!(Foo::payload); // generates Foo_GetPayload
 /// ```
 ///
 /// The underlying implementation is expected to return `Result<Option<T>, _>`, where `T` is a type
-/// that adopts `AsRef<[u8]>`. Note that the most common "body" is a method name, but it can also
-/// be a  closure.
+/// that adopts `Into<Cow<[u8]>>`. As a special case, `T` can also be `Box<[u8]>`.
 ///
 /// Like `bridge_fn`, the `ffi`, `jni`, and `node` parameters allow customizing the name of the
 /// resulting entry points; they can also be `false` to disable a particular entry point.
-///
-/// _Note: This is not currently based on `bridge_fn_buffer`, but it probably should be._
 macro_rules! bridge_get_optional_bytearray {
-    ($name:ident($typ:ty) $(, ffi = $ffi_name:tt)? $(, jni = $jni_name:tt)? $(, node = $node_name:tt)? => $body:expr ) => {
-        #[cfg(feature = "ffi")]
-        ffi_bridge_get_optional_bytearray!($name($typ) $(as $ffi_name)? => $body);
-        #[cfg(feature = "jni")]
-        jni_bridge_get_optional_bytearray!($name($typ) $(as $jni_name)? => $body);
-        #[cfg(feature = "node")]
-        node_bridge_get_optional_bytearray!($name($typ) $(as $node_name)? => $body);
-    }
+    ($typ:ident :: $method:ident as $name:ident $(, $param:ident = $val:tt)*) => {
+        paste! {
+            #[bridge_fn_buffer($($param = $val),*)]
+            fn [<$typ _ $name>]<E: Env>(env: E, obj: &$typ) -> Result<Option<E::Buffer>> {
+                let result = $typ::$method(obj);
+                let result_without_errors = TransformHelper(result).ok_if_needed()?.0;
+                let result_buffer = result_without_errors.map(|b| {
+                    env.buffer(TransformHelper(b).into_vec_if_needed().0)
+                });
+                Ok(result_buffer)
+            }
+        }
+    };
+    ($typ:ident :: $method:ident $(, $param:ident = $val:tt)*) => {
+        paste! {
+            bridge_get_optional_bytearray!(
+                $typ::$method as [<Get $method:camel>] $(, $param = $val)*);
+        }
+    };
 }
 
 /// Exposes a getter method as a `bridge_fn`.

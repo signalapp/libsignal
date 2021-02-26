@@ -34,6 +34,7 @@ impl<T, E> TransformHelper<Result<T, E>> {
         self.0.map(TransformHelper)
     }
 }
+
 impl<T> TransformHelper<Option<T>> {
     /// Transforms `TransformHelper<Option<T>>` into a `TransformHelper<Option<U>>`
     /// and leaves other TransformHelper values unchanged.
@@ -45,11 +46,22 @@ impl<T> TransformHelper<Option<T>> {
     }
 }
 
+impl<T> TransformHelper<Box<[T]>> {
+    /// Transforms `TransformHelper<Box<[T]>>` into a `TransformHelper<Vec<T>>`
+    /// and leaves other TransformHelper values unchanged.
+    pub(crate) fn into_vec_if_needed(self) -> TransformHelper<Vec<T>> {
+        TransformHelper(self.0.into_vec())
+    }
+}
+
 pub(crate) trait TransformHelperImpl: Sized {
     fn ok_if_needed(self) -> Result<Self, libsignal_protocol::SignalProtocolError> {
         Ok(self)
     }
     fn option_map_into(self) -> Self {
+        self
+    }
+    fn into_vec_if_needed(self) -> Self {
         self
     }
 }

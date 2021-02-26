@@ -148,36 +148,3 @@ macro_rules! ffi_bridge_deserialize {
         }
     };
 }
-
-/// Implementation of [`bridge_get_bytearray`](crate::support::bridge_get_bytearray) for FFI.
-macro_rules! ffi_bridge_get_bytearray {
-    ( $name:ident($typ:ty) as false => $body:expr ) => {};
-    ( $name:ident($typ:ty) as $ffi_name:tt => $body:expr ) => {
-        paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name>](
-                out: *mut *const libc::c_uchar,
-                out_len: *mut libc::size_t,
-                obj: *const $typ,
-            ) -> *mut ffi::SignalFfiError {
-                expr_as_fn!(inner_get<'a>(
-                    obj: &'a $typ
-                ) -> Result<impl Into<Box<[u8]>> + 'a> => $body);
-                ffi::run_ffi_safe(|| {
-                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_bytearray_to(out, out_len, inner_get(obj)?)
-                })
-            }
-        }
-    };
-    ( $name:ident($typ:ty) => $body:expr ) => {
-        paste! {
-            ffi_bridge_get_bytearray!($name($typ) as [<$typ:snake _ $name:snake>] => $body);
-        }
-    };
-}
-
-// Currently unneeded.
-macro_rules! ffi_bridge_get_optional_bytearray {
-    ( $name:ident($typ:ty) as false => $body:expr ) => {};
-}
