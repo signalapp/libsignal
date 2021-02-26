@@ -876,7 +876,7 @@ describe('SignalClient', () => {
   });
 
   it('ECC keys roundtrip through serialization', () => {
-    const key = Buffer.alloc(32, 0xab);
+    const key = Buffer.alloc(32, 0x40);
     const priv = SignalClient.PrivateKey.deserialize(key);
     assert(key.equals(priv.serialize()));
 
