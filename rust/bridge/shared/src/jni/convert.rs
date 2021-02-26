@@ -346,13 +346,6 @@ impl ResultTypeInfo for Option<&str> {
     }
 }
 
-impl ResultTypeInfo for Vec<u8> {
-    type ResultType = jbyteArray;
-    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
-        Ok(env.byte_array_from_slice(&self)?)
-    }
-}
-
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {

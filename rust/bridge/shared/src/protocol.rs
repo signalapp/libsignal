@@ -33,24 +33,21 @@ bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 
-#[bridge_fn(ffi = false)]
-fn HKDF_DeriveSecrets(
+#[bridge_fn_buffer(ffi = false)]
+fn HKDF_DeriveSecrets<E: Env>(
+    env: E,
     output_length: u32,
     version: u32,
     ikm: &[u8],
     label: &[u8],
     salt: Option<&[u8]>,
-) -> Result<Vec<u8>> {
+) -> Result<E::Buffer> {
     let kdf = HKDF::new(version)?;
-
-    Ok(match salt {
-        Some(salt) => kdf
-            .derive_salted_secrets(ikm, salt, label, output_length as usize)?
-            .to_vec(),
-        None => kdf
-            .derive_secrets(ikm, label, output_length as usize)?
-            .to_vec(),
-    })
+    let buffer = match salt {
+        Some(salt) => kdf.derive_salted_secrets(ikm, salt, label, output_length as usize)?,
+        None => kdf.derive_secrets(ikm, label, output_length as usize)?,
+    };
+    Ok(env.buffer(buffer.into_vec()))
 }
 
 // Alternate implementation to fill an existing buffer.
