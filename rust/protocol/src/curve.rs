@@ -190,6 +190,10 @@ impl PrivateKey {
         } else {
             let mut key = [0u8; 32];
             key.copy_from_slice(&value[..32]);
+            // Clamp:
+            key[0] &= 0xF8;
+            key[31] &= 0x7F;
+            key[31] |= 0x40;
             Ok(Self {
                 key: PrivateKeyData::DjbPrivateKey(key),
             })
