@@ -140,6 +140,7 @@ pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 "Initializing libsignal-client version:{}",
                 env!("CARGO_PKG_VERSION")
             );
+            log_panics::init();
         }
         Err(_) => {
             log::warn!("logging already initialized for libsignal-client; ignoring later call");

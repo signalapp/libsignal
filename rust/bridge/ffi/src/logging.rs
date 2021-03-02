@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -100,6 +100,7 @@ pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogg
                 "Initializing libsignal-client version:{}",
                 env!("CARGO_PKG_VERSION")
             );
+            log_panics::init();
         }
         Err(_) => {
             log::warn!("logging already initialized for libsignal-client; ignoring later call");
