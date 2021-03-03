@@ -93,7 +93,7 @@ export function SealedSenderDecryptionResult_GetDeviceId(obj: Wrapper<SealedSend
 export function SealedSenderDecryptionResult_GetSenderE164(obj: Wrapper<SealedSenderDecryptionResult>): string | null;
 export function SealedSenderDecryptionResult_GetSenderUuid(obj: Wrapper<SealedSenderDecryptionResult>): string;
 export function SealedSenderDecryptionResult_Message(obj: Wrapper<SealedSenderDecryptionResult>): Buffer;
-export function SealedSender_DecryptMessage(message: Buffer, trustRoot: Wrapper<PublicKey>, timestamp: number, localE164: string | null, localUuid: string, localDeviceId: number, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore): Promise<SealedSenderDecryptionResult>;
+export function SealedSender_DecryptMessage(message: Buffer, trustRoot: Wrapper<PublicKey>, timestamp: number, localE164: string | null, localUuid: string, localDeviceId: number, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore): Promise<SealedSenderDecryptionResult | null>;
 export function SealedSender_DecryptToUsmc(ctext: Buffer, identityStore: IdentityKeyStore): Promise<UnidentifiedSenderMessageContent>;
 export function SealedSender_EncryptMessage(destination: Wrapper<ProtocolAddress>, senderCert: Wrapper<SenderCertificate>, ptext: Buffer, sessionStore: SessionStore, identityStore: IdentityKeyStore): Promise<Buffer>;
 export function SenderCertificate_Deserialize(buffer: Buffer): SenderCertificate;
