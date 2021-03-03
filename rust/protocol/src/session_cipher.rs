@@ -546,16 +546,26 @@ fn get_or_create_message_key(
     let jump = (counter - chain_index) as usize;
 
     if jump > MAX_FORWARD_JUMPS {
-        log::error!(
-            "{} Exceeded future message limit: {}, index: {}, counter: {})",
-            remote_address,
-            MAX_FORWARD_JUMPS,
-            chain_index,
-            counter
-        );
-        return Err(SignalProtocolError::InvalidMessage(
-            "message from too far into the future",
-        ));
+        if state.session_with_self()? {
+            log::info!(
+                "{} Jumping ahead {} messages (index: {}, counter: {})",
+                remote_address,
+                jump,
+                chain_index,
+                counter
+            );
+        } else {
+            log::error!(
+                "{} Exceeded future message limit: {}, index: {}, counter: {})",
+                remote_address,
+                MAX_FORWARD_JUMPS,
+                chain_index,
+                counter
+            );
+            return Err(SignalProtocolError::InvalidMessage(
+                "message from too far into the future",
+            ));
+        }
     }
 
     let mut chain_key = chain_key.clone();

@@ -96,6 +96,16 @@ impl SessionState {
         Ok(self.local_identity_key()?.serialize().to_vec())
     }
 
+    pub(crate) fn session_with_self(&self) -> Result<bool> {
+        if let Some(remote_id) = self.remote_identity_key_bytes()? {
+            let local_id = self.local_identity_key_bytes()?;
+            return Ok(remote_id == local_id);
+        }
+
+        // If remote ID is not set then we can't be sure but treat as non-self
+        Ok(false)
+    }
+
     pub(crate) fn previous_counter(&self) -> Result<u32> {
         Ok(self.session.previous_counter)
     }
