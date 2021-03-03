@@ -721,7 +721,7 @@ fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Resu
     session_record.archive_current_state()
 }
 
-bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false, node = false);
+bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false);
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_bytearray!(SessionRecord::serialize as Serialize);
