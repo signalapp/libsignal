@@ -145,6 +145,7 @@ export function SessionRecord_ArchiveCurrentState(sessionRecord: Wrapper<Session
 export function SessionRecord_Deserialize(buffer: Buffer): SessionRecord;
 export function SessionRecord_GetLocalRegistrationId(obj: Wrapper<SessionRecord>): number;
 export function SessionRecord_GetRemoteRegistrationId(obj: Wrapper<SessionRecord>): number;
+export function SessionRecord_HasCurrentState(obj: Wrapper<SessionRecord>): boolean;
 export function SessionRecord_Serialize(obj: Wrapper<SessionRecord>): Buffer;
 export function SignalMessage_Deserialize(buffer: Buffer): SignalMessage;
 export function SignalMessage_GetBody(obj: Wrapper<SignalMessage>): Buffer;

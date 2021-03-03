@@ -574,6 +574,10 @@ export class SessionRecord {
   remoteRegistrationId(): number {
     return SC.SessionRecord_GetRemoteRegistrationId(this);
   }
+
+  hasCurrentState(): boolean {
+    return SC.SessionRecord_HasCurrentState(this);
+  }
 }
 
 export class SenderKeyName {
