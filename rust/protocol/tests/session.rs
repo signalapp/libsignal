@@ -311,12 +311,19 @@ fn chain_jump_over_limit() -> Result<(), SignalProtocolError> {
         pub const MAX_FORWARD_JUMPS: usize = 25_000;
 
         for _i in 0..(MAX_FORWARD_JUMPS + 1) {
-            let _msg = encrypt(&mut alice_store, &bob_address, "Yet another message for you").await?;
+            let _msg = encrypt(
+                &mut alice_store,
+                &bob_address,
+                "Yet another message for you",
+            )
+            .await?;
         }
 
         let too_far = encrypt(&mut alice_store, &bob_address, "Now you have gone too far").await?;
 
-        assert!(decrypt(&mut bob_store, &alice_address, &too_far).await.is_err());
+        assert!(decrypt(&mut bob_store, &alice_address, &too_far)
+            .await
+            .is_err());
         Ok(())
     })
 }
@@ -348,9 +355,9 @@ fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
 
         let a2_pre_key_bundle = PreKeyBundle::new(
             a2_store.get_local_registration_id(None).await?,
-            1,                                               // device id
+            1,                                              // device id
             Some((pre_key_id, a2_pre_key_pair.public_key)), // pre key
-            signed_pre_key_id,                               // signed pre key id
+            signed_pre_key_id,                              // signed pre key id
             a2_signed_pre_key_pair.public_key,
             a2_signed_pre_key_signature.to_vec(),
             *a2_store.get_identity_key_pair(None).await?.identity_key(),
@@ -390,13 +397,26 @@ fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
         pub const MAX_FORWARD_JUMPS: usize = 25_000;
 
         for _i in 0..(MAX_FORWARD_JUMPS + 1) {
-            let _msg = encrypt(&mut a1_store, &a2_address, "Yet another message for youself").await?;
+            let _msg = encrypt(
+                &mut a1_store,
+                &a2_address,
+                "Yet another message for youself",
+            )
+            .await?;
         }
 
-        let too_far = encrypt(&mut a1_store, &a2_address, "This is the song that never ends").await?;
+        let too_far = encrypt(
+            &mut a1_store,
+            &a2_address,
+            "This is the song that never ends",
+        )
+        .await?;
 
         let ptext = decrypt(&mut a2_store, &a1_address, &too_far).await?;
-        assert_eq!(String::from_utf8(ptext).unwrap(), "This is the song that never ends");
+        assert_eq!(
+            String::from_utf8(ptext).unwrap(),
+            "This is the song that never ends"
+        );
 
         Ok(())
     })

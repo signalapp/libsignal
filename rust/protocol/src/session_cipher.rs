@@ -547,11 +547,13 @@ fn get_or_create_message_key(
 
     if jump > MAX_FORWARD_JUMPS {
         if state.session_with_self()? {
-            log::info!("{} Jumping ahead {} messages (index: {}, counter: {})",
-                       remote_address,
-                       jump,
-                       chain_index,
-                       counter);
+            log::info!(
+                "{} Jumping ahead {} messages (index: {}, counter: {})",
+                remote_address,
+                jump,
+                chain_index,
+                counter
+            );
         } else {
             log::error!(
                 "{} Exceeded future message limit: {}, index: {}, counter: {})",
