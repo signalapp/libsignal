@@ -4,6 +4,7 @@
 //
 
 use aes_gcm_siv::Error as AesGcmSivError;
+use device_transfer::Error as DeviceTransferError;
 use libc::{c_char, c_uchar, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
@@ -57,6 +58,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::UnexpectedPanic(_)
             | SignalFfiError::Signal(SignalProtocolError::InternalError(_))
+            | SignalFfiError::DeviceTransfer(DeviceTransferError::InternalError(_))
             | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidChainKeyLength(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidRootKeyLength(_))
@@ -97,6 +99,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
+            | SignalFfiError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
             | SignalFfiError::AesGcmSiv(AesGcmSivError::InvalidKeySize) => {
                 SignalErrorCode::InvalidKey
             }

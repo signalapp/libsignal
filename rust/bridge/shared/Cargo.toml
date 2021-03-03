@@ -13,6 +13,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
+device-transfer = { path = "../../device-transfer" }
 libsignal-bridge-macros = { path = "macros" }
 futures = "0.3.7"
 log = "0.4"

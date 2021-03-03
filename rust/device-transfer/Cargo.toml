@@ -1,0 +1,18 @@
+[package]
+name = "device-transfer"
+version = "0.1.0"
+authors = ["Jack Lloyd <jack@signal.org>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.7"
+rsa = "0.3"
+num-bigint-dig = { version = "0.6.1", features = ["i128", "u64_digit", "prime", "zeroize"], default-features = false }
+yasna = { version = "0.3", features = ["num-bigint", "chrono"] }
+hex = "0.4"
+num-bigint = "0.2"
+chrono = "0.4"
+sha2 = "0.9"
+
+[dev-dependencies]
+openssl = "0.10"

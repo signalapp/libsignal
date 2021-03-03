@@ -6,42 +6,6 @@
 import SignalFfi
 import Foundation
 
-/*
- SignalFfiError *signal_process_prekey_bundle(PreKeyBundle *bundle,
-                                             const ProtocolAddress *protocol_address,
-                                             FfiSessionStoreStruct *session_store,
-                                             FfiIdentityKeyStoreStruct *identity_key_store,
-                                             void *ctx)
-
-SignalFfiError *signal_encrypt_message(const unsigned char **result,
-                                       size_t *result_len,
-                                       const unsigned char *ptext,
-                                       size_t ptext_len,
-                                       const ProtocolAddress *protocol_address,
-                                       FfiSessionStoreStruct *session_store,
-                                       FfiIdentityKeyStoreStruct *identity_key_store,
-                                       void *ctx)
-
-SignalFfiError *signal_decrypt_message(const unsigned char **result,
-                                       size_t *result_len,
-                                       const SignalMessage *message,
-                                       const ProtocolAddress *protocol_address,
-                                       FfiSessionStoreStruct *session_store,
-                                       FfiIdentityKeyStoreStruct *identity_key_store,
-                                       void *ctx)
-
-SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **result,
-                                               size_t *result_len,
-                                               const PreKeySignalMessage *message,
-                                               const ProtocolAddress *protocol_address,
-                                               FfiSessionStoreStruct *session_store,
-                                               FfiIdentityKeyStoreStruct *identity_key_store,
-                                               FfiPreKeyStoreStruct *prekey_store,
-                                               FfiSignedPreKeyStoreStruct *signed_prekey_store,
-                                               void *ctx)
-
- */
-
 public func signalEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                   for address: ProtocolAddress,
                                                   sessionStore: SessionStore,

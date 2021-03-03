@@ -360,6 +360,13 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for SignalJniResult<T> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {

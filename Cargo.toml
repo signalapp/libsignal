@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "rust/aes-gcm-siv",
+    "rust/device-transfer",
     "rust/poksho",
     "rust/protocol",
     "rust/bridge/ffi",
@@ -9,8 +10,9 @@ members = [
 ]
 default-members = [
     "rust/aes-gcm-siv",
-    "rust/protocol",
+    "rust/device-transfer",
     "rust/poksho",
+    "rust/protocol",
 ]
 
 [patch.crates-io]

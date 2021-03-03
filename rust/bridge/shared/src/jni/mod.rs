@@ -9,6 +9,7 @@ use jni::objects::{JObject, JThrowable, JValue};
 use jni::sys::jobject;
 
 use aes_gcm_siv::Error as AesGcmSivError;
+use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use std::convert::TryFrom;
 use std::error::Error;
@@ -118,6 +119,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(_, _))
         | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::Signal(SignalProtocolError::InternalError(_))
+        | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
+        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
         | SignalJniError::Signal(SignalProtocolError::InvalidChainKeyLength(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidCipherCryptographicParameters(_, _))
         | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
