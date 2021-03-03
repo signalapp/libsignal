@@ -1217,7 +1217,7 @@ export async function sealedSenderDecryptMessage(
   identityStore: IdentityKeyStore,
   prekeyStore: PreKeyStore,
   signedPrekeyStore: SignedPreKeyStore
-): Promise<SealedSenderDecryptionResult> {
+): Promise<SealedSenderDecryptionResult | null> {
   const ssdr = await SC.SealedSender_DecryptMessage(
     message,
     trustRoot,
@@ -1230,6 +1230,9 @@ export async function sealedSenderDecryptMessage(
     prekeyStore,
     signedPrekeyStore
   );
+  if (ssdr == null) {
+    return null;
+  }
   return SealedSenderDecryptionResult._fromNativeHandle(ssdr);
 }
 

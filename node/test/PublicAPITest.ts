@@ -804,10 +804,14 @@ describe('SignalClient', () => {
       bSPreK
     );
 
-    assert.deepEqual(bPlaintext.message(), aPlaintext);
-    assert.deepEqual(bPlaintext.senderE164(), aE164);
-    assert.deepEqual(bPlaintext.senderUuid(), aUuid);
-    assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
+    assert(bPlaintext != null);
+
+    if (bPlaintext != null) {
+      assert.deepEqual(bPlaintext.message(), aPlaintext);
+      assert.deepEqual(bPlaintext.senderE164(), aE164);
+      assert.deepEqual(bPlaintext.senderUuid(), aUuid);
+      assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
+    }
   });
   it('AES-GCM-SIV test vector', () => {
     // RFC 8452, appendix C.2
