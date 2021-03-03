@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
+# Copyright (C) 2020-2021 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -14,8 +14,6 @@ license = "AGPL-3.0-only"
 name = "signal_jni"
 crate-type = ["cdylib"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
@@ -24,3 +22,4 @@ async-trait = "0.1.41"
 jni = "0.19"
 rand = "0.7.3"
 log = "0.4"
+log-panics = { version = "2.0.0", features = ["with-backtrace"] }

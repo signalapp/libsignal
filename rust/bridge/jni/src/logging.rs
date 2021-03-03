@@ -173,6 +173,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Logger_1Initiali
                     "Initializing libsignal-client version:{}",
                     env!("CARGO_PKG_VERSION")
                 );
+                log_panics::init();
             }
             Err(_) => {
                 log::warn!("logging already initialized for libsignal-client; ignoring later call");
