@@ -95,7 +95,10 @@ impl IdentityKeyPair {
             private_key: self.private_key.serialize().to_vec(),
         };
         let mut result = Vec::new();
-        structure.encode(&mut result).unwrap();
+
+        // prost documents the only possible encoding error is if there is insufficient
+        // space, which is not a problem when it is allowed to encode into a Vec
+        structure.encode(&mut result).expect("No encoding error");
         result.into_boxed_slice()
     }
 }
@@ -145,10 +148,10 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_identity_key_pair() {
+    fn test_serialize_identity_key_pair() -> Result<()> {
         let identity_key_pair = IdentityKeyPair::generate(&mut OsRng);
         let serialized = identity_key_pair.serialize();
-        let deserialized_identity_key_pair = IdentityKeyPair::try_from(&serialized[..]).unwrap();
+        let deserialized_identity_key_pair = IdentityKeyPair::try_from(&serialized[..])?;
         assert_eq!(
             identity_key_pair.identity_key(),
             deserialized_identity_key_pair.identity_key()
@@ -161,5 +164,7 @@ mod tests {
             identity_key_pair.private_key().serialize(),
             deserialized_identity_key_pair.private_key().serialize()
         );
+
+        Ok(())
     }
 }

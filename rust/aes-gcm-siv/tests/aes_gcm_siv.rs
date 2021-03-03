@@ -51,7 +51,7 @@ struct WycheproofTestSet {
     test_groups: Vec<WycheproofTestGroup>,
 }
 
-fn test_kat(kat: WycheproofTest) {
+fn test_kat(kat: WycheproofTest) -> Result<(), aes_gcm_siv::Error> {
     let key = hex::decode(kat.key).expect("valid hex");
     let aad = hex::decode(kat.aad).expect("valid hex");
     let nonce = hex::decode(kat.nonce).expect("valid hex");
@@ -65,15 +65,15 @@ fn test_kat(kat: WycheproofTest) {
         wut => panic!("unknown result field {}", wut),
     };
 
-    let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key).unwrap();
+    let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
 
     let mut buf = pt.clone();
-    let generated_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &aad).unwrap();
+    let generated_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &aad)?;
 
     if valid {
         assert_eq!(hex::encode(generated_tag), hex::encode(&tag));
         assert_eq!(hex::encode(&buf), hex::encode(ct));
-        aes_gcm_siv.decrypt(&mut buf, &nonce, &aad, &tag).unwrap();
+        aes_gcm_siv.decrypt(&mut buf, &nonce, &aad, &tag)?;
         assert_eq!(hex::encode(&buf), hex::encode(pt));
     } else {
         assert_ne!(hex::encode(generated_tag), hex::encode(&tag));
@@ -87,10 +87,12 @@ fn test_kat(kat: WycheproofTest) {
             Err(aes_gcm_siv::Error::InvalidTag)
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn wycheproof_kats() {
+fn wycheproof_kats() -> Result<(), aes_gcm_siv::Error> {
     let kat_data = include_bytes!("data/aes_gcm_siv_test.json");
     let kats: WycheproofTestSet = serde_json::from_slice(kat_data).expect("Valid JSON");
 
@@ -99,10 +101,12 @@ fn wycheproof_kats() {
     for group in kats.test_groups {
         if group.iv_size == 96 && group.key_size == 256 && group.tag_size == 128 {
             for test in group.tests {
-                test_kat(test)
+                test_kat(test)?
             }
         }
     }
+
+    Ok(())
 }
 
 #[derive(Default, Debug)]
@@ -165,20 +169,22 @@ impl FromStr for BoringKat {
 }
 
 #[test]
-fn boringssl_tests() {
+fn boringssl_tests() -> Result<(), aes_gcm_siv::Error> {
     let kat_data = include_bytes!("data/boringssl.txt");
     let kat_data = String::from_utf8(kat_data.to_vec()).expect("Valid UTF-8");
 
     for kats in kat_data.split("\n\n") {
         let kat = BoringKat::from_str(kats).expect("valid");
-        test_kat(kat.into());
+        test_kat(kat.into())?;
     }
+
+    Ok(())
 }
 
 // This test takes several minutes when compiled without optimizations.
 #[cfg(not(debug_assertions))]
 #[test]
-fn iterated_input_test() {
+fn iterated_input_test() -> Result<(), aes_gcm_siv::Error> {
     /*
     A test which iteratively encrypts messages with lengths between 0
     and 128K bytes, with the nonce changing every invocation. Finally
@@ -189,48 +195,50 @@ fn iterated_input_test() {
     BoringSSL's implementation.
     */
 
-    let key =
-        hex::decode("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef").unwrap();
-    let aead = aes_gcm_siv::Aes256GcmSiv::new(&key).unwrap();
+    let key = hex::decode("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+        .expect("valid hex");
+    let aead = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
 
-    let mut nonce = hex::decode("00112233445566778899aabb").unwrap();
+    let mut nonce = hex::decode("00112233445566778899aabb").expect("valid hex");
     let mut buf = vec![];
     let mut aad = [0u8; 32];
 
     for _ in 0..(128 * 1024) {
-        let tag = aead.encrypt(&mut buf, &nonce, &aad).unwrap();
+        let tag = aead.encrypt(&mut buf, &nonce, &aad)?;
         nonce[0..12].copy_from_slice(&tag[0..12]);
         buf.push(tag[15]);
         aad[(tag[13] as usize) % aad.len()] = tag[14];
     }
 
     let mut empty = vec![];
-    let final_tag = aead.encrypt(&mut empty, &nonce, &buf).unwrap();
+    let final_tag = aead.encrypt(&mut empty, &nonce, &buf)?;
 
     assert_eq!(hex::encode(final_tag), "329f590781135f33c9a13d9553392b06");
+    Ok(())
 }
 
 // This test takes several minutes when compiled without optimizations.
 #[cfg(not(debug_assertions))]
 #[test]
-fn long_input_tests() {
+fn long_input_tests() -> Result<(), aes_gcm_siv::Error> {
     /*
     128 megabyte input, then hashed down to 128 bits. Crosschecked by BoringSSL
      */
-    let key =
-        hex::decode("0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF").unwrap();
-    let aead = aes_gcm_siv::Aes256GcmSiv::new(&key).unwrap();
+    let key = hex::decode("0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF")
+        .expect("valid hex");
+    let aead = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
 
-    let nonce = hex::decode("00112233445566778899AABB").unwrap();
+    let nonce = hex::decode("00112233445566778899AABB").expect("valid hex");
     let mut buf = vec![0u8; 1024 * 1024 * 128];
     let aad = [0u8; 32];
 
-    let tag = aead.encrypt(&mut buf, &nonce, &aad).unwrap();
+    let tag = aead.encrypt(&mut buf, &nonce, &aad)?;
 
     assert_eq!(hex::encode(tag), "4d37433fd26590cc6e3b2217f5167cae");
 
     let mut empty = vec![];
-    let tag = aead.encrypt(&mut empty, &nonce, &buf).unwrap();
+    let tag = aead.encrypt(&mut empty, &nonce, &buf)?;
 
     assert_eq!(hex::encode(tag), "337615a813dfde73e0fe646b16780b76");
+    Ok(())
 }

@@ -16,8 +16,8 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
     let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = support::test_in_memory_protocol_store()?;
+    let mut bob_store = support::test_in_memory_protocol_store()?;
 
     block_on(alice_store.store_session(&bob_address, &alice_session_record, None))?;
     block_on(bob_store.store_session(&alice_address, &bob_session_record, None))?;
@@ -82,8 +82,8 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
     let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
     let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = support::test_in_memory_protocol_store()?;
+    let mut bob_store = support::test_in_memory_protocol_store()?;
 
     block_on(alice_store.store_session(&bob_address, &alice_session_record, None))?;
     block_on(bob_store.store_session(&alice_address, &bob_session_record, None))?;

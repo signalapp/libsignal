@@ -105,7 +105,7 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
             1 => Ok(true),
             r => Err(SignalProtocolError::ApplicationCallbackError(
                 "save_identity",
-                Box::new(CallbackError::check(r).unwrap()),
+                Box::new(CallbackError::check(r).expect("verified non-zero")),
             )),
         }
     }
@@ -135,7 +135,7 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
             1 => Ok(true),
             r => Err(SignalProtocolError::ApplicationCallbackError(
                 "is_trusted_identity",
-                Box::new(CallbackError::check(r).unwrap()),
+                Box::new(CallbackError::check(r).expect("verified non-zero")),
             )),
         }
     }

@@ -21,6 +21,7 @@
 #![feature(trait_alias)]
 #![feature(wake_trait)]
 #![warn(missing_docs)]
+#![warn(clippy::unwrap_used)]
 
 mod executor;
 pub use executor::{ContextEx, EventQueueEx};

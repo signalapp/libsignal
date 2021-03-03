@@ -6,12 +6,12 @@
 use libsignal_protocol::*;
 use rand::{rngs::OsRng, CryptoRng, Rng};
 
-pub fn test_in_memory_protocol_store() -> InMemSignalProtocolStore {
+pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, SignalProtocolError> {
     let mut csprng = OsRng;
     let identity_key = IdentityKeyPair::generate(&mut csprng);
     let registration_id = 5; // fixme randomly generate this
 
-    InMemSignalProtocolStore::new(identity_key, registration_id).unwrap()
+    InMemSignalProtocolStore::new(identity_key, registration_id)
 }
 
 #[allow(dead_code)]

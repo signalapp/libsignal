@@ -28,7 +28,7 @@ pub struct ShoHmacSha256 {
 impl ShoApi for ShoHmacSha256 {
     fn new(label: &[u8]) -> ShoHmacSha256 {
         let mut sho = ShoHmacSha256 {
-            hasher: Hmac::<Sha256>::new_varkey(&[0; HASH_LEN]).unwrap(),
+            hasher: Hmac::<Sha256>::new_varkey(&[0; HASH_LEN]).expect("HMAC accepts 256-bit keys"),
             cv: [0; HASH_LEN],
             mode: Mode::RATCHETED,
         };
@@ -38,7 +38,7 @@ impl ShoApi for ShoHmacSha256 {
 
     fn absorb(&mut self, input: &[u8]) {
         if let Mode::RATCHETED = self.mode {
-            self.hasher = Hmac::<Sha256>::new_varkey(&self.cv).unwrap();
+            self.hasher = Hmac::<Sha256>::new_varkey(&self.cv).expect("HMAC accepts 256-bit keys");
             self.mode = Mode::ABSORBING;
         }
         self.hasher.update(input);
@@ -61,7 +61,8 @@ impl ShoApi for ShoHmacSha256 {
             panic!();
         }
         let mut output = Vec::<u8>::new();
-        let output_hasher_prefix = Hmac::<Sha256>::new_varkey(&self.cv).unwrap();
+        let output_hasher_prefix =
+            Hmac::<Sha256>::new_varkey(&self.cv).expect("HMAC accepts 256-bit keys");
         let mut i = 0;
         while i * HASH_LEN < outlen {
             let mut output_hasher = output_hasher_prefix.clone();

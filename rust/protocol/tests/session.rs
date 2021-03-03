@@ -20,8 +20,8 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let bob_pre_key_pair = KeyPair::generate(&mut csprng);
         let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -64,7 +64,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -104,7 +104,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
-        assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(ptext).expect("valid utf8"),
+            original_message
+        );
 
         let bobs_response = "Who watches the watchers?";
 
@@ -112,7 +115,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             .load_session(&alice_address, None)
             .await?
             .is_some());
-        let bobs_session_with_alice = bob_store.load_session(&alice_address, None).await?.unwrap();
+        let bobs_session_with_alice = bob_store
+            .load_session(&alice_address, None)
+            .await?
+            .expect("session found");
         assert_eq!(bobs_session_with_alice.session_version()?, 3);
         assert_eq!(bobs_session_with_alice.alice_base_key()?.len(), 32 + 1);
 
@@ -122,7 +128,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
         let alice_decrypts = decrypt(&mut alice_store, &bob_address, &bob_outgoing).await?;
 
-        assert_eq!(String::from_utf8(alice_decrypts).unwrap(), bobs_response);
+        assert_eq!(
+            String::from_utf8(alice_decrypts).expect("valid utf8"),
+            bobs_response
+        );
 
         run_interaction(
             &mut alice_store,
@@ -132,7 +141,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let mut alice_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
 
         let bob_pre_key_pair = KeyPair::generate(&mut csprng);
         let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -211,7 +220,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
         );
 
         let decrypted = decrypt(&mut bob_store, &alice_address, &outgoing_message).await?;
-        assert_eq!(String::from_utf8(decrypted).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(decrypted).expect("valid utf8"),
+            original_message
+        );
 
         // Sign pre-key with wrong key:
         let bob_pre_key_bundle = PreKeyBundle::new(
@@ -251,8 +263,8 @@ fn chain_jump_over_limit() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let bob_pre_key_pair = KeyPair::generate(&mut csprng);
         let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -337,7 +349,7 @@ fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
         let a1_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let a2_address = ProtocolAddress::new("+14151111111".to_owned(), 2);
 
-        let mut a1_store = support::test_in_memory_protocol_store();
+        let mut a1_store = support::test_in_memory_protocol_store()?;
         let mut a2_store = a1_store.clone(); // same key!
 
         let a2_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -428,8 +440,8 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
     block_on(async {
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let bob_store = support::test_in_memory_protocol_store()?;
 
         let mut csprng = OsRng;
         let bob_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -508,8 +520,8 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let mut csprng = OsRng;
         let bob_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -553,7 +565,7 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -597,12 +609,18 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
             .await?;
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
-        assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(ptext).expect("valid utf8"),
+            original_message
+        );
 
         let bob_outgoing = encrypt(&mut bob_store, &alice_address, original_message).await?;
         assert_eq!(bob_outgoing.message_type(), CiphertextMessageType::Whisper);
         let alice_decrypts = decrypt(&mut alice_store, &bob_address, &bob_outgoing).await?;
-        assert_eq!(String::from_utf8(alice_decrypts).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(alice_decrypts).expect("valid utf8"),
+            original_message
+        );
 
         // The test
 
@@ -611,11 +629,17 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
         );
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message2).await?;
-        assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(ptext).expect("valid utf8"),
+            original_message
+        );
 
         let bob_outgoing = encrypt(&mut bob_store, &alice_address, original_message).await?;
         let alice_decrypts = decrypt(&mut alice_store, &bob_address, &bob_outgoing).await?;
-        assert_eq!(String::from_utf8(alice_decrypts).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(alice_decrypts).expect("valid utf8"),
+            original_message
+        );
 
         Ok(())
     })
@@ -630,8 +654,8 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let bob_pre_key_pair = KeyPair::generate(&mut csprng);
         let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -694,7 +718,7 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -729,7 +753,10 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
-        assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(ptext).expect("valid utf8"),
+            original_message
+        );
         assert!(matches!(
             bob_store.get_pre_key(pre_key_id, None).await.unwrap_err(),
             SignalProtocolError::InvalidPreKeyId
@@ -746,8 +773,8 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let mut csprng = OsRng;
         let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
@@ -785,7 +812,7 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -818,7 +845,10 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
 
         let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
 
-        assert_eq!(String::from_utf8(ptext).unwrap(), original_message);
+        assert_eq!(
+            String::from_utf8(ptext).expect("valid utf8"),
+            original_message
+        );
 
         Ok(())
     })
@@ -839,8 +869,8 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         alice_store
             .store_session(&bob_address, &alice_session_record, None)
@@ -861,7 +891,7 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
 
         assert_eq!(
             String::from_utf8(decrypt(&mut bob_store, &alice_address, &inflight[1000]).await?)
-                .unwrap(),
+                .expect("valid utf8"),
             "It's over 1000"
         );
         assert_eq!(
@@ -873,7 +903,7 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
                 )
                 .await?
             )
-            .unwrap(),
+            .expect("valid utf8"),
             format!("It's over {}", TOO_MANY_MESSAGES - 1)
         );
 
@@ -899,8 +929,8 @@ fn run_session_interaction(
         let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         alice_store
             .store_session(&bob_address, &alice_session, None)
@@ -912,13 +942,19 @@ fn run_session_interaction(
         let alice_plaintext = "This is Alice's message";
         let alice_ciphertext = encrypt(&mut alice_store, &bob_address, alice_plaintext).await?;
         let bob_decrypted = decrypt(&mut bob_store, &alice_address, &alice_ciphertext).await?;
-        assert_eq!(String::from_utf8(bob_decrypted).unwrap(), alice_plaintext);
+        assert_eq!(
+            String::from_utf8(bob_decrypted).expect("valid utf8"),
+            alice_plaintext
+        );
 
         let bob_plaintext = "This is Bob's reply";
 
         let bob_ciphertext = encrypt(&mut bob_store, &alice_address, bob_plaintext).await?;
         let alice_decrypted = decrypt(&mut alice_store, &bob_address, &bob_ciphertext).await?;
-        assert_eq!(String::from_utf8(alice_decrypted).unwrap(), bob_plaintext);
+        assert_eq!(
+            String::from_utf8(alice_decrypted).expect("valid utf8"),
+            bob_plaintext
+        );
 
         const ALICE_MESSAGE_COUNT: usize = 50;
         const BOB_MESSAGE_COUNT: usize = 50;
@@ -937,7 +973,10 @@ fn run_session_interaction(
 
         for i in 0..ALICE_MESSAGE_COUNT / 2 {
             let ptext = decrypt(&mut bob_store, &alice_address, &alice_messages[i].1).await?;
-            assert_eq!(String::from_utf8(ptext).unwrap(), alice_messages[i].0);
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                alice_messages[i].0
+            );
         }
 
         let mut bob_messages = Vec::with_capacity(BOB_MESSAGE_COUNT);
@@ -952,17 +991,26 @@ fn run_session_interaction(
 
         for i in 0..BOB_MESSAGE_COUNT / 2 {
             let ptext = decrypt(&mut alice_store, &bob_address, &bob_messages[i].1).await?;
-            assert_eq!(String::from_utf8(ptext).unwrap(), bob_messages[i].0);
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                bob_messages[i].0
+            );
         }
 
         for i in ALICE_MESSAGE_COUNT / 2..ALICE_MESSAGE_COUNT {
             let ptext = decrypt(&mut bob_store, &alice_address, &alice_messages[i].1).await?;
-            assert_eq!(String::from_utf8(ptext).unwrap(), alice_messages[i].0);
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                alice_messages[i].0
+            );
         }
 
         for i in BOB_MESSAGE_COUNT / 2..BOB_MESSAGE_COUNT {
             let ptext = decrypt(&mut alice_store, &bob_address, &bob_messages[i].1).await?;
-            assert_eq!(String::from_utf8(ptext).unwrap(), bob_messages[i].0);
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                bob_messages[i].0
+            );
         }
 
         Ok(())
@@ -980,7 +1028,8 @@ async fn run_interaction(
     let alice_message = encrypt(alice_store, bob_address, alice_ptext).await?;
     assert_eq!(alice_message.message_type(), CiphertextMessageType::Whisper);
     assert_eq!(
-        String::from_utf8(decrypt(bob_store, alice_address, &alice_message).await?).unwrap(),
+        String::from_utf8(decrypt(bob_store, alice_address, &alice_message).await?)
+            .expect("valid utf8"),
         alice_ptext
     );
 
@@ -989,7 +1038,8 @@ async fn run_interaction(
     let bob_message = encrypt(bob_store, alice_address, bob_ptext).await?;
     assert_eq!(bob_message.message_type(), CiphertextMessageType::Whisper);
     assert_eq!(
-        String::from_utf8(decrypt(alice_store, bob_address, &bob_message).await?).unwrap(),
+        String::from_utf8(decrypt(alice_store, bob_address, &bob_message).await?)
+            .expect("valid utf8"),
         bob_ptext
     );
 
@@ -998,7 +1048,8 @@ async fn run_interaction(
         let alice_message = encrypt(alice_store, bob_address, &alice_ptext).await?;
         assert_eq!(alice_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
-            String::from_utf8(decrypt(bob_store, alice_address, &alice_message).await?).unwrap(),
+            String::from_utf8(decrypt(bob_store, alice_address, &alice_message).await?)
+                .expect("valid utf8"),
             alice_ptext
         );
     }
@@ -1008,7 +1059,8 @@ async fn run_interaction(
         let bob_message = encrypt(bob_store, alice_address, &bob_ptext).await?;
         assert_eq!(bob_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
-            String::from_utf8(decrypt(alice_store, bob_address, &bob_message).await?).unwrap(),
+            String::from_utf8(decrypt(alice_store, bob_address, &bob_message).await?)
+                .expect("valid utf8"),
             bob_ptext
         );
     }
@@ -1026,7 +1078,8 @@ async fn run_interaction(
         let alice_message = encrypt(alice_store, bob_address, &alice_ptext).await?;
         assert_eq!(alice_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
-            String::from_utf8(decrypt(bob_store, alice_address, &alice_message).await?).unwrap(),
+            String::from_utf8(decrypt(bob_store, alice_address, &alice_message).await?)
+                .expect("valid utf8"),
             alice_ptext
         );
     }
@@ -1036,14 +1089,16 @@ async fn run_interaction(
         let bob_message = encrypt(bob_store, alice_address, &bob_ptext).await?;
         assert_eq!(bob_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
-            String::from_utf8(decrypt(alice_store, bob_address, &bob_message).await?).unwrap(),
+            String::from_utf8(decrypt(alice_store, bob_address, &bob_message).await?)
+                .expect("valid utf8"),
             bob_ptext
         );
     }
 
     for (ptext, ctext) in alice_ooo_messages {
         assert_eq!(
-            String::from_utf8(decrypt(bob_store, alice_address, &ctext).await?).unwrap(),
+            String::from_utf8(decrypt(bob_store, alice_address, &ctext).await?)
+                .expect("valid utf8"),
             ptext
         );
     }
@@ -1061,12 +1116,12 @@ async fn is_session_id_equal(
     Ok(alice_store
         .load_session(bob_address, None)
         .await?
-        .unwrap()
+        .expect("session found")
         .alice_base_key()?
         == bob_store
             .load_session(alice_address, None)
             .await?
-            .unwrap()
+            .expect("session found")
             .alice_base_key()?)
 }
 
@@ -1078,8 +1133,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng).await?;
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng).await?;
@@ -1129,7 +1184,10 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             )?),
         )
         .await?;
-        assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+        assert_eq!(
+            String::from_utf8(alice_plaintext).expect("valid utf8"),
+            "hi alice"
+        );
 
         let bob_plaintext = decrypt(
             &mut bob_store,
@@ -1139,13 +1197,16 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             )?),
         )
         .await?;
-        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+        assert_eq!(
+            String::from_utf8(bob_plaintext).expect("valid utf8"),
+            "hi bob"
+        );
 
         assert_eq!(
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -1153,7 +1214,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             bob_store
                 .load_session(&alice_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -1177,7 +1238,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "nice to see you"
         );
 
@@ -1197,7 +1258,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "you as well"
         );
 
@@ -1218,8 +1279,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng).await?;
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng).await?;
@@ -1269,13 +1330,16 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             )?),
         )
         .await?;
-        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+        assert_eq!(
+            String::from_utf8(bob_plaintext).expect("valid utf8"),
+            "hi bob"
+        );
 
         assert_eq!(
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -1283,7 +1347,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             bob_store
                 .load_session(&alice_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -1301,7 +1365,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "nice to see you"
         );
 
@@ -1321,7 +1385,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "you as well"
         );
 
@@ -1342,8 +1406,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng).await?;
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng).await?;
@@ -1393,7 +1457,10 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             )?),
         )
         .await?;
-        assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+        assert_eq!(
+            String::from_utf8(alice_plaintext).expect("valid utf8"),
+            "hi alice"
+        );
 
         let bob_plaintext = decrypt(
             &mut bob_store,
@@ -1403,13 +1470,16 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             )?),
         )
         .await?;
-        assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+        assert_eq!(
+            String::from_utf8(bob_plaintext).expect("valid utf8"),
+            "hi bob"
+        );
 
         assert_eq!(
             alice_store
                 .load_session(&bob_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -1417,7 +1487,7 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             bob_store
                 .load_session(&alice_address, None)
                 .await?
-                .unwrap()
+                .expect("session found")
                 .session_version()?,
             3
         );
@@ -1450,7 +1520,7 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "you as well"
         );
 
@@ -1471,8 +1541,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         for _ in 0..15 {
             let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut csprng).await?;
@@ -1523,7 +1593,10 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+            assert_eq!(
+                String::from_utf8(alice_plaintext).expect("valid utf8"),
+                "hi alice"
+            );
 
             let bob_plaintext = decrypt(
                 &mut bob_store,
@@ -1533,13 +1606,16 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+            assert_eq!(
+                String::from_utf8(bob_plaintext).expect("valid utf8"),
+                "hi bob"
+            );
 
             assert_eq!(
                 alice_store
                     .load_session(&bob_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1547,7 +1623,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 bob_store
                     .load_session(&alice_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1584,7 +1660,10 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+            assert_eq!(
+                String::from_utf8(alice_plaintext).expect("valid utf8"),
+                "hi alice"
+            );
 
             let bob_plaintext = decrypt(
                 &mut bob_store,
@@ -1594,13 +1673,16 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+            assert_eq!(
+                String::from_utf8(bob_plaintext).expect("valid utf8"),
+                "hi bob"
+            );
 
             assert_eq!(
                 alice_store
                     .load_session(&bob_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1608,7 +1690,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 bob_store
                     .load_session(&alice_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1642,7 +1724,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "you as well"
         );
 
@@ -1663,8 +1745,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
 
-        let mut alice_store = support::test_in_memory_protocol_store();
-        let mut bob_store = support::test_in_memory_protocol_store();
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
 
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng).await?;
 
@@ -1729,7 +1811,10 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+            assert_eq!(
+                String::from_utf8(alice_plaintext).expect("valid utf8"),
+                "hi alice"
+            );
 
             let bob_plaintext = decrypt(
                 &mut bob_store,
@@ -1739,13 +1824,16 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+            assert_eq!(
+                String::from_utf8(bob_plaintext).expect("valid utf8"),
+                "hi bob"
+            );
 
             assert_eq!(
                 alice_store
                     .load_session(&bob_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1753,7 +1841,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 bob_store
                     .load_session(&alice_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1790,7 +1878,10 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(alice_plaintext).unwrap(), "hi alice");
+            assert_eq!(
+                String::from_utf8(alice_plaintext).expect("valid utf8"),
+                "hi alice"
+            );
 
             let bob_plaintext = decrypt(
                 &mut bob_store,
@@ -1800,13 +1891,16 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 )?),
             )
             .await?;
-            assert_eq!(String::from_utf8(bob_plaintext).unwrap(), "hi bob");
+            assert_eq!(
+                String::from_utf8(bob_plaintext).expect("valid utf8"),
+                "hi bob"
+            );
 
             assert_eq!(
                 alice_store
                     .load_session(&bob_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1814,7 +1908,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 bob_store
                     .load_session(&alice_address, None)
                     .await?
-                    .unwrap()
+                    .expect("session found")
                     .session_version()?,
                 3
             );
@@ -1848,7 +1942,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
         )
         .await?;
         assert_eq!(
-            String::from_utf8(response_plaintext).unwrap(),
+            String::from_utf8(response_plaintext).expect("valid utf8"),
             "you as well"
         );
 
@@ -1866,7 +1960,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
         )
         .await?;
         assert_eq!(
-            String::from_utf8(blast_from_the_past).unwrap(),
+            String::from_utf8(blast_from_the_past).expect("valid utf8"),
             "it was so long ago"
         );
 
@@ -1885,7 +1979,10 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             &CiphertextMessage::SignalMessage(SignalMessage::try_from(bob_response.serialize())?),
         )
         .await?;
-        assert_eq!(String::from_utf8(response_plaintext).unwrap(), "so it was");
+        assert_eq!(
+            String::from_utf8(response_plaintext).expect("valid utf8"),
+            "so it was"
+        );
 
         assert_eq!(
             is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,

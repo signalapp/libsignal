@@ -4,6 +4,7 @@
 //
 
 #![allow(clippy::missing_safety_doc)]
+#![deny(clippy::unwrap_used)]
 
 use jni::objects::JClass;
 use jni::sys::{jbyteArray, jlongArray, jobject};

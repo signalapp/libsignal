@@ -72,7 +72,7 @@ impl<T: 'static + Send> Future for JsFuture<T> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
-        let mut state_guard = self.state.lock().unwrap();
+        let mut state_guard = self.state.lock().expect("Lock can be taken");
         let state = mem::replace(&mut *state_guard, JsFutureState::Consumed);
         match state {
             JsFutureState::Settled(Ok(result)) => return Poll::Ready(result),
@@ -126,7 +126,7 @@ fn settle_promise<T: Send + 'static, R: JsPromiseResultConstructor>(
     let js_result = cx.argument(1)?;
 
     if let Some(future_state) = future_state.upgrade() {
-        let mut state_guard = future_state.lock().unwrap();
+        let mut state_guard = future_state.lock().expect("Lock can be taken");
         let previous_state = mem::replace(&mut *state_guard, JsFutureState::Consumed);
 
         if let JsFutureState::Pending { transform, waker } = previous_state {

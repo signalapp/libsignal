@@ -23,8 +23,8 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let group_sender =
         SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
 
-    let mut alice_store = support::test_in_memory_protocol_store();
-    let mut bob_store = support::test_in_memory_protocol_store();
+    let mut alice_store = support::test_in_memory_protocol_store()?;
+    let mut bob_store = support::test_in_memory_protocol_store()?;
 
     let sent_distribution_message = block_on(create_sender_key_distribution_message(
         &group_sender,
@@ -34,7 +34,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     ))?;
 
     let recv_distribution_message =
-        SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized()).unwrap();
+        SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
     block_on(process_sender_key_distribution_message(
         &group_sender,

@@ -313,38 +313,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_large_signatures() {
+    fn test_large_signatures() -> Result<()> {
         let mut csprng = OsRng;
         let key_pair = KeyPair::generate(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
         let signature = key_pair
             .private_key
-            .calculate_signature(&message, &mut csprng)
-            .unwrap();
+            .calculate_signature(&message, &mut csprng)?;
 
-        assert!(key_pair
-            .public_key
-            .verify_signature(&message, &signature)
-            .unwrap());
+        assert!(key_pair.public_key.verify_signature(&message, &signature)?);
         message[0] ^= 0x01u8;
-        assert!(!key_pair
-            .public_key
-            .verify_signature(&message, &signature)
-            .unwrap());
+        assert!(!key_pair.public_key.verify_signature(&message, &signature)?);
         message[0] ^= 0x01u8;
-        let public_key = key_pair.private_key.public_key().unwrap();
-        assert!(public_key.verify_signature(&message, &signature).unwrap());
+        let public_key = key_pair.private_key.public_key()?;
+        assert!(public_key.verify_signature(&message, &signature)?);
+
+        Ok(())
     }
 
     #[test]
-    fn test_decode_size() {
+    fn test_decode_size() -> Result<()> {
         let mut csprng = OsRng;
         let key_pair = KeyPair::generate(&mut csprng);
         let serialized_public = key_pair.public_key.serialize();
 
         assert_eq!(
             serialized_public,
-            key_pair.private_key.public_key().unwrap().serialize()
+            key_pair.private_key.public_key()?.serialize()
         );
         let empty: [u8; 0] = [];
 
@@ -364,10 +359,8 @@ mod tests {
         let extra_space_decode = PublicKey::try_from(&extra_space[..]);
         assert!(extra_space_decode.is_ok());
 
-        assert_eq!(&serialized_public[..], &just_right.unwrap().serialize()[..]);
-        assert_eq!(
-            &serialized_public[..],
-            &extra_space_decode.unwrap().serialize()[..]
-        );
+        assert_eq!(&serialized_public[..], &just_right?.serialize()[..]);
+        assert_eq!(&serialized_public[..], &extra_space_decode?.serialize()[..]);
+        Ok(())
     }
 }

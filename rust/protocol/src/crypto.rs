@@ -99,22 +99,23 @@ pub fn aes256_ctr_hmacsha256_decrypt(
 
 #[cfg(test)]
 mod test {
+    use super::Result;
 
     #[test]
-    fn aes_cbc_test() {
+    fn aes_cbc_test() -> Result<()> {
         let key = hex::decode("4e22eb16d964779994222e82192ce9f747da72dc4abe49dfdeeb71d0ffe3796e")
-            .unwrap();
-        let iv = hex::decode("6f8a557ddc0a140c878063a6d5f31d3d").unwrap();
+            .expect("valid hex");
+        let iv = hex::decode("6f8a557ddc0a140c878063a6d5f31d3d").expect("valid hex");
 
-        let ptext = hex::decode("30736294a124482a4159").unwrap();
+        let ptext = hex::decode("30736294a124482a4159").expect("valid hex");
 
-        let ctext = super::aes_256_cbc_encrypt(&ptext, &key, &iv).unwrap();
+        let ctext = super::aes_256_cbc_encrypt(&ptext, &key, &iv)?;
         assert_eq!(
             hex::encode(ctext.clone()),
             "dd3f573ab4508b9ed0e45e0baf5608f3"
         );
 
-        let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &iv).unwrap();
+        let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &iv)?;
         assert_eq!(hex::encode(ptext), hex::encode(recovered.clone()));
 
         // padding is invalid:
@@ -122,21 +123,25 @@ mod test {
         assert!(super::aes_256_cbc_decrypt(&ctext, &key, &ctext).is_err());
 
         // bitflip the IV to cause a change in the recovered text
-        let bad_iv = hex::decode("ef8a557ddc0a140c878063a6d5f31d3d").unwrap();
-        let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &bad_iv).unwrap();
+        let bad_iv = hex::decode("ef8a557ddc0a140c878063a6d5f31d3d").expect("valid hex");
+        let recovered = super::aes_256_cbc_decrypt(&ctext, &key, &bad_iv)?;
         assert_eq!(hex::encode(recovered), "b0736294a124482a4159");
+
+        Ok(())
     }
 
     #[test]
-    fn aes_ctr_test() {
+    fn aes_ctr_test() -> Result<()> {
         let key = hex::decode("603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4")
-            .unwrap();
+            .expect("valid hex");
         let ptext = [0u8; 35];
 
-        let ctext = super::aes_256_ctr_encrypt(&ptext, &key).unwrap();
+        let ctext = super::aes_256_ctr_encrypt(&ptext, &key)?;
         assert_eq!(
             hex::encode(ctext),
             "e568f68194cf76d6174d4cc04310a85491151e5d0b7a1f1bc0d7acd0ae3e51e4170e23"
         );
+
+        Ok(())
     }
 }

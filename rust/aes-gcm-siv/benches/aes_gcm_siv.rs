@@ -10,7 +10,7 @@ pub fn aes_gcm_siv(c: &mut Criterion) {
 
     let key = vec![0xFF; 32];
 
-    let cipher = aes_gcm_siv::Aes256GcmSiv::new(&key).unwrap();
+    let cipher = aes_gcm_siv::Aes256GcmSiv::new(&key).expect("valid key size");
     let aad = [0xADu8; 16];
     let nonce = [0x42u8; 12];
     let tag = [0x01; 16];

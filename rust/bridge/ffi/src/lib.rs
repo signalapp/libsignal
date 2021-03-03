@@ -4,6 +4,7 @@
 //
 
 #![allow(clippy::missing_safety_doc)]
+#![warn(clippy::unwrap_used)]
 
 use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
