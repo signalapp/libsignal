@@ -89,7 +89,7 @@ where
     ///
     /// When the future completes, it is replaced by `None` to avoid accidentally polling twice.
     fn poll(self: Arc<Self>) {
-        let future = &mut *self.future.lock().unwrap();
+        let future = &mut *self.future.lock().expect("Lock can be taken");
         if let Some(active_future) = future {
             match active_future
                 .as_mut()

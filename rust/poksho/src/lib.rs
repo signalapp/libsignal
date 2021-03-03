@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#![warn(clippy::unwrap_used)]
+
 pub mod args;
 pub mod errors;
 pub mod proof;

@@ -35,7 +35,12 @@ impl PersistentException {
     pub fn new<'a, V: Value>(cx: &mut impl Context<'a>, value: Handle<'a, V>) -> Self {
         let wrapped = match value.downcast::<JsObject, _>(cx) {
             Ok(object) => PersistentExceptionValue::Object(object.root(cx)),
-            Err(_) => PersistentExceptionValue::String(value.to_string(cx).unwrap().value(cx)),
+            Err(_) => PersistentExceptionValue::String(
+                value
+                    .to_string(cx)
+                    .expect("Exception can be converted to string")
+                    .value(cx),
+            ),
         };
         Self { wrapped }
     }

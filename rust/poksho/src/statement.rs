@@ -152,14 +152,20 @@ impl Statement {
         {
             panic!("Unexpected input sizes to add");
         }
-        let lhs = self.add_point(lhs_str.to_string()).unwrap();
+        let lhs = self
+            .add_point(lhs_str.to_string())
+            .expect("add_point succeeds");
         let mut rhs = Vec::<Term>::with_capacity(rhs_pairs.len());
         for pair in rhs_pairs {
             if pair.0.is_empty() || pair.1.is_empty() {
                 panic!("Unexpected pair size");
             }
-            let scalar = self.add_scalar(pair.0.to_string()).unwrap();
-            let point = self.add_point(pair.1.to_string()).unwrap();
+            let scalar = self
+                .add_scalar(pair.0.to_string())
+                .expect("add_scalar succeeds");
+            let point = self
+                .add_point(pair.1.to_string())
+                .expect("add_point succeeds");
             rhs.push(Term { scalar, point });
         }
         self.equations.push(Equation { lhs, rhs });
@@ -446,7 +452,11 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::needless_range_loop, clippy::redundant_clone)]
+    #[allow(
+        clippy::needless_range_loop,
+        clippy::redundant_clone,
+        clippy::unwrap_used
+    )]
     fn test_complex_statement() {
         let mut block32 = [0u8; 32];
         let mut block64a = [0u8; 64];
