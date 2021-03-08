@@ -7,6 +7,7 @@ use super::*;
 
 use async_trait::async_trait;
 use signal_neon_futures::*;
+use std::cell::RefCell;
 use std::sync::Arc;
 
 pub struct NodePreKeyStore {
@@ -257,8 +258,8 @@ impl NodeSessionStore {
             Ok(result)
         })
         .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<DefaultJsBox<SessionRecord>, _>(cx) {
-                Ok(obj) => Ok(Some((***obj).clone())),
+            Ok(value) => match value.downcast::<DefaultJsBox<RefCell<SessionRecord>>, _>(cx) {
+                Ok(obj) => Ok(Some((***obj).borrow().clone())),
                 Err(_) => {
                     if value.is_a::<JsNull, _>(cx) || value.is_a::<JsUndefined, _>(cx) {
                         Ok(None)

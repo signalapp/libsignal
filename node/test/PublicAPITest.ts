@@ -692,6 +692,17 @@ describe('SignalClient', () => {
     );
 
     assert.deepEqual(aDPlaintext, bMessage);
+
+    const session = await bSess.getSession(aAddress);
+
+    if (session != null) {
+      assert(session.serialize().length > 0);
+      assert.deepEqual(session.localRegistrationId(), 5);
+      assert.deepEqual(session.remoteRegistrationId(), 5);
+      assert(session.hasCurrentState());
+      session.archiveCurrentState();
+      assert(!session.hasCurrentState());
+    }
   });
   it('SealedSender', async () => {
     const aKeys = new InMemoryIdentityKeyStore();

@@ -135,7 +135,7 @@ macro_rules! node_bridge_deserialize {
                 let buffer = cx.argument::<node::JsBuffer>(0)?;
                 let obj: Result<$typ> =
                     node::with_buffer_contents(&mut cx, buffer, |buf| $typ::$fn(buf));
-                node::return_boxed_object(&mut cx, obj)
+                node::ResultTypeInfo::convert_into(obj, &mut cx)
             }
 
             node_register!([<$node_name _Deserialize>]);

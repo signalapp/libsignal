@@ -137,7 +137,7 @@ macro_rules! ffi_bridge_deserialize {
                         return Err(ffi::SignalFfiError::NullPointer);
                     }
                     let data = std::slice::from_raw_parts(data, data_len);
-                    ffi::box_object(p, $typ::$fn(data))
+                    ffi::write_result_to(p, $typ::$fn(data))
                 })
             }
         }
