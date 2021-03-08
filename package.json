@@ -1,6 +1,6 @@
 {
   "name": "signal-client",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "license": "AGPL-3.0-only",
   "main": "node/dist/index.js",
   "types": "node/dist/index.d.ts",
