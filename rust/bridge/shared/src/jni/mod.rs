@@ -482,7 +482,7 @@ macro_rules! jni_bridge_deserialize {
             ) -> jni::ObjectHandle {
                 jni::run_ffi_safe(&env, || {
                     let data = env.convert_byte_array(data)?;
-                    jni::box_object($typ::$fn(data.as_ref()))
+                    jni::ResultTypeInfo::convert_into($typ::$fn(data.as_ref()), &env)
                 })
             }
         }
