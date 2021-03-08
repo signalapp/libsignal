@@ -19,7 +19,11 @@ public struct DeviceTransferKey {
         return Self(privateKey: privateKey)
     }
 
-    public func generateCertificate(name: String, daysTilExpire: Int) -> [UInt8] {
+    public func privateKeyMaterial() -> [UInt8] {
+        return self.privateKey
+    }
+
+    public func generateCertificate(_ name: String, _ daysTilExpire: Int) -> [UInt8] {
         return privateKey.withUnsafeBytes { privateKeyBytes in
             failOnError {
                 try invokeFnReturningArray {

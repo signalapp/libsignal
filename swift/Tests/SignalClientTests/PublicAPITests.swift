@@ -315,6 +315,22 @@ class PublicAPITests: TestCaseBase {
         testRoundTrip(signedPreKeyRecord, serialize: { $0.serialize() }, deserialize: { try .init(bytes: $0) })
     }
 
+    func testDeviceTransferKey() {
+        let deviceKey = DeviceTransferKey.generate()
+
+        /*
+         Anything encoded in an ASN.1 SEQUENCE starts with 0x30 when encoded
+         as DER. (This test could be better.)
+         */
+        let key = deviceKey.privateKeyMaterial()
+        XCTAssert(key.count > 0)
+        XCTAssertEqual(key[0], 0x30)
+
+        let cert = deviceKey.generateCertificate("name", 30)
+        XCTAssert(cert.count > 0)
+        XCTAssertEqual(cert[0], 0x30)
+    }
+
     static var allTests: [(String, (PublicAPITests) -> () throws -> Void)] {
         return [
             ("testAddreses", testAddress),

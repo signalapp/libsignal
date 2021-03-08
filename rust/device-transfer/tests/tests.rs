@@ -5,12 +5,12 @@
 
 use device_transfer::*;
 use openssl::pkey::PKey;
-use openssl::x509::X509;
 use openssl::rsa::Padding;
+use openssl::x509::X509;
 
 #[test]
 fn test_generate_and_parse() -> Result<(), Error> {
-    let bit_size = 1024;
+    let bit_size = 4096;
     let key = create_rsa_private_key(bit_size)?;
     let cert = create_self_signed_cert(&key, "test", 10)?;
 
@@ -22,10 +22,12 @@ fn test_generate_and_parse() -> Result<(), Error> {
 
     let openssl_rsa = openssl_key.rsa().expect("This is a RSA key");
 
-    let mut signature = vec![0; bit_size/8];
+    let mut signature = vec![0; bit_size / 8];
     let digest = vec![0x23; 20];
-    let sig_len = openssl_rsa.private_encrypt(&digest, &mut signature, Padding::PKCS1).unwrap();
-    assert_eq!(sig_len, bit_size/8);
+    let sig_len = openssl_rsa
+        .private_encrypt(&digest, &mut signature, Padding::PKCS1)
+        .unwrap();
+    assert_eq!(sig_len, bit_size / 8);
 
     assert!(openssl_rsa.check_key().unwrap(), true);
 
