@@ -693,7 +693,7 @@ describe('SignalClient', () => {
 
     assert.deepEqual(aDPlaintext, bMessage);
 
-    let session = await bSess.getSession(aAddress);
+    const session = await bSess.getSession(aAddress);
 
     if (session != null) {
       assert(session.hasCurrentState());
