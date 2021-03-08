@@ -696,6 +696,9 @@ describe('SignalClient', () => {
     const session = await bSess.getSession(aAddress);
 
     if (session != null) {
+      assert(session.serialize().length > 0);
+      assert.deepEqual(session.localRegistrationId(), 5);
+      assert.deepEqual(session.remoteRegistrationId(), 5);
       assert(session.hasCurrentState());
       session.archiveCurrentState();
       assert(!session.hasCurrentState());
