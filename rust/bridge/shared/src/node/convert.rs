@@ -773,21 +773,23 @@ macro_rules! node_bridge_handle {
         impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
             for &'storage mut $typ
         {
-            type ArgType = node::DefaultJsBox<std::cell::RefCell<$typ>>;
+            type ArgType = node::JsObject;
             type StoredType = (
-                node::Handle<'context, Self::ArgType>,
+                node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>>,
                 std::cell::RefMut<'context, $typ>,
             );
             fn borrow(
-                _cx: &mut node::FunctionContext,
+                cx: &mut node::FunctionContext<'context>,
                 foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                let cell: &std::cell::RefCell<_> = &***foreign;
+                let boxed_value: node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>> =
+                    node::Object::get(*foreign, cx, node::NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)?;
+                let cell: &std::cell::RefCell<_> = &***boxed_value;
                 // See above.
                 let cell_with_extended_lifetime: &'context std::cell::RefCell<_> = unsafe {
                     node::extend_lifetime(cell)
                 };
-                Ok((foreign, cell_with_extended_lifetime.borrow_mut()))
+                Ok((boxed_value, cell_with_extended_lifetime.borrow_mut()))
             }
             fn load_from(
                 stored: &'storage mut Self::StoredType,
