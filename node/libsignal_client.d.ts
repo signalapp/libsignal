@@ -39,7 +39,7 @@ interface Wrapper<T> {
 }
 
 
-export const enum LogLevel { Error, Warn, Info, Debug, Trace }
+export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_Encrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;
