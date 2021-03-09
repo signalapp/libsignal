@@ -1,0 +1,13 @@
+[package]
+name = "device-transfer"
+version = "0.1.0"
+authors = ["Jack Lloyd <jack@signal.org>"]
+edition = "2018"
+
+[dependencies]
+picky = { version = "6", default-features = false, features = ["x509"] }
+chrono = "0.4"
+
+[dev-dependencies]
+openssl = "0.10"
+hex = "0.4"

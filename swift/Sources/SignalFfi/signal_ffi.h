@@ -848,4 +848,14 @@ SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
                                              const SignalSenderKeyStore *store,
                                              void *ctx);
 
+SignalFfiError *signal_device_transfer_generate_private_key(const unsigned char **out,
+                                                            size_t *out_len);
+
+SignalFfiError *signal_device_transfer_generate_certificate(const unsigned char **out,
+                                                            size_t *out_len,
+                                                            const unsigned char *private_key,
+                                                            size_t private_key_len,
+                                                            const char *name,
+                                                            uint32_t days_to_expire);
+
 #endif /* SIGNAL_FFI_H_ */

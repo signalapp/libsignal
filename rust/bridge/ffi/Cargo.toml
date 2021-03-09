@@ -17,6 +17,7 @@ crate-type = ["staticlib"]
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 aes-gcm-siv = { path = "../../aes-gcm-siv" }
+device-transfer = { path = "../../device-transfer" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 libc = "0.2"

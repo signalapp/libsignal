@@ -8,6 +8,7 @@ use jni::{JNIEnv, JavaVM};
 use std::fmt;
 
 use aes_gcm_siv::Error as AesGcmSivError;
+use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 
 use super::*;
@@ -17,6 +18,7 @@ use super::*;
 pub enum SignalJniError {
     Signal(SignalProtocolError),
     AesGcmSiv(AesGcmSivError),
+    DeviceTransfer(DeviceTransferError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -30,6 +32,7 @@ impl fmt::Display for SignalJniError {
         match self {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::AesGcmSiv(s) => write!(f, "{}", s),
+            SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -56,6 +59,12 @@ impl From<SignalProtocolError> for SignalJniError {
 impl From<AesGcmSivError> for SignalJniError {
     fn from(e: AesGcmSivError) -> SignalJniError {
         SignalJniError::AesGcmSiv(e)
+    }
+}
+
+impl From<DeviceTransferError> for SignalJniError {
+    fn from(e: DeviceTransferError) -> SignalJniError {
+        SignalJniError::DeviceTransfer(e)
     }
 }
 

@@ -26,3 +26,7 @@ mod support;
 
 pub mod aes_gcm_siv;
 pub mod protocol;
+
+// Desktop does not make use of device transfer certificates
+#[cfg(any(feature = "jni", feature = "ffi"))]
+pub mod device_transfer;
