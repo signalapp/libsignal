@@ -6,7 +6,7 @@
 use libsignal_bridge::node::SimpleArgTypeInfo;
 use neon::prelude::*;
 
-/// ts: export const enum LogLevel { Error, Warn, Info, Debug, Trace }
+/// ts: export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
 #[derive(Clone, Copy)]
 enum LogLevel {
     Error = 1,
