@@ -10,15 +10,15 @@ import org.signal.client.internal.Native;
 public class DeviceTransferKey {
   byte[] keyMaterial;
 
-  DeviceTransferKey() {
+  public DeviceTransferKey() {
     this.keyMaterial = Native.DeviceTransfer_GeneratePrivateKey();
   }
 
-  byte[] keyMaterial() {
+  public byte[] keyMaterial() {
     return this.keyMaterial;
   }
 
-  byte[] generateCertificate(String name, int daysTilExpires) {
+  public byte[] generateCertificate(String name, int daysTilExpires) {
     return Native.DeviceTransfer_GenerateCertificate(this.keyMaterial, name, daysTilExpires);
   }
 }
