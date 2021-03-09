@@ -35,8 +35,11 @@ message UnidentifiedSenderMessage {
 
     message Message {
         enum Type {
-            PREKEY_MESSAGE = 1;
-            MESSAGE        = 2;
+            PREKEY_MESSAGE         = 1;
+            MESSAGE                = 2;
+            // 3 deliberately skipped to bring in line with non-wire enum CiphertextMessageType
+            SENDERKEY_MESSAGE      = 4;
+            SENDERKEY_DISTRIBUTION = 5;
         }
 
         optional Type              type              = 1;
