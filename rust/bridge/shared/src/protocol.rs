@@ -646,7 +646,7 @@ bridge_get_bytearray!(
     node = false
 );
 bridge_get_bytearray!(
-    UnidentifiedSenderMessage::encrypted_static,
+    UnidentifiedSenderMessage::encrypted_message_key as GetEncryptedStatic,
     ffi = false,
     node = false
 );

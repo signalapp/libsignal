@@ -50,7 +50,8 @@ pub use {
     },
     sealed_sender::{
         sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
-        sealed_sender_encrypt_from_usmc, SealedSenderDecryptionResult, SenderCertificate,
+        sealed_sender_encrypt_from_usmc, sealed_sender_multi_recipient_encrypt,
+        sealed_sender_multi_recipient_fan_out, SealedSenderDecryptionResult, SenderCertificate,
         ServerCertificate, UnidentifiedSenderMessage, UnidentifiedSenderMessageContent,
     },
     sender_keys::SenderKeyRecord,

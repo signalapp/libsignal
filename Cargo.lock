@@ -840,6 +840,7 @@ dependencies = [
  "prost-build",
  "rand 0.7.3",
  "sha2",
+ "signal-crypto",
  "subtle",
  "x25519-dalek",
 ]

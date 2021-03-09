@@ -10,8 +10,6 @@ use std::convert::TryInto;
 
 use subtle::ConstantTimeEq;
 
-pub const NONCE_SIZE: usize = 12;
-pub const TAG_SIZE: usize = 16;
 pub const AAD_MAX: u64 = 1 << 36;
 pub const PTEXT_MAX: u64 = 1 << 36;
 pub const AES_BLOCK_SIZE: usize = 16;
@@ -23,6 +21,9 @@ pub struct Aes256GcmSiv {
 }
 
 impl Aes256GcmSiv {
+    pub const NONCE_SIZE: usize = 12;
+    pub const TAG_SIZE: usize = 16;
+
     pub fn new(key: &[u8]) -> Result<Self> {
         Ok(Self {
             key_generator: Aes256::new(key)?,
@@ -30,7 +31,7 @@ impl Aes256GcmSiv {
     }
 
     fn derive_keys(&self, nonce: &[u8]) -> Result<([u8; AES_KEY_SIZE], [u8; POLYVAL_KEY_SIZE])> {
-        if nonce.len() != NONCE_SIZE {
+        if nonce.len() != Self::NONCE_SIZE {
             return Err(Error::InvalidNonceSize);
         }
 
@@ -141,7 +142,7 @@ impl Aes256GcmSiv {
         buffer: &mut [u8],
         nonce: &[u8],
         associated_data: &[u8],
-    ) -> Result<[u8; TAG_SIZE]> {
+    ) -> Result<[u8; Self::TAG_SIZE]> {
         if buffer.len() as u64 > PTEXT_MAX || associated_data.len() as u64 > AAD_MAX {
             return Err(Error::InvalidInputSize);
         }
@@ -160,10 +161,10 @@ impl Aes256GcmSiv {
         associated_data: &[u8],
         tag: &[u8],
     ) -> Result<()> {
-        if nonce.len() != NONCE_SIZE {
+        if nonce.len() != Self::NONCE_SIZE {
             return Err(Error::InvalidNonceSize);
         }
-        if tag.len() != TAG_SIZE {
+        if tag.len() != Self::TAG_SIZE {
             return Err(Error::InvalidTag);
         }
         if buffer.len() as u64 > PTEXT_MAX || associated_data.len() as u64 > AAD_MAX {
@@ -192,11 +193,11 @@ impl Aes256GcmSiv {
         nonce: &[u8],
         associated_data: &[u8],
     ) -> Result<()> {
-        if buffer.len() < TAG_SIZE {
+        if buffer.len() < Self::TAG_SIZE {
             return Err(Error::InvalidInputSize);
         }
 
-        let tag = buffer.split_off(buffer.len() - TAG_SIZE);
+        let tag = buffer.split_off(buffer.len() - Self::TAG_SIZE);
         self.decrypt(buffer, nonce, associated_data, &tag)
     }
 }

@@ -4,7 +4,7 @@
 //
 
 use crate::{
-    message_encrypt, CiphertextMessageType, Context, IdentityKeyStore, KeyPair,
+    message_encrypt, CiphertextMessageType, Context, Direction, IdentityKeyStore, KeyPair,
     PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, SessionStore,
     SignalMessage, SignalProtocolError, SignedPreKeyStore, HKDF,
 };
@@ -12,9 +12,11 @@ use crate::{
 use crate::crypto;
 use crate::proto;
 use crate::session_cipher;
+use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand::{CryptoRng, Rng};
-use std::convert::TryFrom;
+use signal_crypto::Aes256GcmSiv;
+use std::convert::{TryFrom, TryInto};
 use subtle::ConstantTimeEq;
 
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
@@ -438,12 +440,13 @@ impl UnidentifiedSenderMessageContent {
 pub struct UnidentifiedSenderMessage {
     version: u8,
     ephemeral_public: PublicKey,
-    encrypted_static: Vec<u8>,
+    encrypted_message_key: Vec<u8>,
     encrypted_message: Vec<u8>,
     serialized: Vec<u8>,
 }
 
 const SEALED_SENDER_VERSION: u8 = 1;
+const SEALED_SENDER_MULTI_RECIPIENT_VERSION: u8 = 2;
 
 impl UnidentifiedSenderMessage {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
@@ -454,34 +457,68 @@ impl UnidentifiedSenderMessage {
         }
         let version = data[0] >> 4;
 
-        if version > SEALED_SENDER_VERSION {
-            // XXX should we really be accepted version == 0 here?
-            return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
+        match version {
+            0 | SEALED_SENDER_VERSION => {
+                // XXX should we really be accepted version == 0 here?
+                let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])?;
+
+                let ephemeral_public = pb
+                    .ephemeral_public
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+                let encrypted_static = pb
+                    .encrypted_static
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+                let encrypted_message = pb
+                    .encrypted_message
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+
+                let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
+
+                let serialized = data.to_vec();
+
+                Ok(Self {
+                    version,
+                    ephemeral_public,
+                    encrypted_message_key: encrypted_static,
+                    encrypted_message,
+                    serialized,
+                })
+            }
+            SEALED_SENDER_MULTI_RECIPIENT_VERSION => {
+                let pb = proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage::decode(
+                    &data[1..],
+                )?;
+
+                let ephemeral_public = pb
+                    .ephemeral_public_key
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+                let encrypted_message = pb
+                    .encrypted_message
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+
+                let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
+
+                if pb.encrypted_message_keys.len() != 1 {
+                    return Err(SignalProtocolError::InvalidProtobufEncoding);
+                }
+                let encrypted_message_key = pb
+                    .encrypted_message_keys
+                    .into_iter()
+                    .next()
+                    .expect("exactly one item");
+
+                let serialized = data.to_vec();
+
+                Ok(Self {
+                    version,
+                    ephemeral_public,
+                    encrypted_message_key,
+                    encrypted_message,
+                    serialized,
+                })
+            }
+            _ => Err(SignalProtocolError::UnknownSealedSenderVersion(version)),
         }
-
-        let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])?;
-
-        let ephemeral_public = pb
-            .ephemeral_public
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let encrypted_static = pb
-            .encrypted_static
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        let encrypted_message = pb
-            .encrypted_message
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-
-        let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
-
-        let serialized = data.to_vec();
-
-        Ok(Self {
-            version,
-            ephemeral_public,
-            encrypted_static,
-            encrypted_message,
-            serialized,
-        })
     }
 
     pub fn new(
@@ -502,7 +539,7 @@ impl UnidentifiedSenderMessage {
         Ok(Self {
             version,
             ephemeral_public,
-            encrypted_static,
+            encrypted_message_key: encrypted_static,
             encrypted_message,
             serialized,
         })
@@ -516,8 +553,8 @@ impl UnidentifiedSenderMessage {
         Ok(self.ephemeral_public)
     }
 
-    pub fn encrypted_static(&self) -> Result<&[u8]> {
-        Ok(&self.encrypted_static)
+    pub fn encrypted_message_key(&self) -> Result<&[u8]> {
+        Ok(&self.encrypted_message_key)
     }
 
     pub fn encrypted_message(&self) -> Result<&[u8]> {
@@ -668,6 +705,175 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     )
 }
 
+mod sealed_sender_v2 {
+    // ENCRYPT(message, R_i):
+    //     M = Random(32)
+    //     r = KDF(label_r, M, len=64)
+    //     K = KDF(label_K, M, len=32)
+    //     E = DeriveKeyPair(r)
+    //     for i in num_recipients:
+    //         C_i = KDF(label_DH, DH(E, R_i) || E.public || R_i.public, len=32) XOR M
+    //     ciphertext = AEAD_Encrypt(K, message)
+    //     return E.public, C_i, ciphertext
+
+    // DECRYPT(E.public, C, ciphertext):
+    //     M = KDF(label_DH, DH(E, R) || E.public || R.public, len=32) xor C
+    //     r = KDF(label_r, M, len=64)
+    //     K = KDF(label_K, M, len=32)
+    //     E' = DeriveKeyPair(r)
+    //     if E.public != E'.public:
+    //         return DecryptionError
+    //     return AEAD_Decrypt(K, ciphertext)
+
+    // This is a single-key multi-recipient KEM, defined in Manuel Barbosa's "Randomness Reuse:
+    // Extensions and Improvements" [1]. It uses the "Generic Construction" in 4.1 of that paper,
+    // instantiated with ElGamal encryption.
+    //
+    // [1]: https://haslab.uminho.pt/mbb/files/reuse.pdf
+
+    use super::*;
+
+    const LABEL_R: &[u8] = b"Sealed Sender v2: r";
+    const LABEL_K: &[u8] = b"Sealed Sender v2: K";
+    const LABEL_DH: &[u8] = b"Sealed Sender v2: DH";
+
+    pub(crate) fn derive_keys(m: &[u8]) -> (Box<[u8]>, PrivateKey) {
+        let kdf = HKDF::new(3).expect("valid KDF version");
+        let r = kdf
+            .derive_secrets(&m, LABEL_R, 64)
+            .expect("valid use of KDF");
+        let k = kdf
+            .derive_secrets(&m, LABEL_K, 32)
+            .expect("valid use of KDF");
+        let e_raw =
+            Scalar::from_bytes_mod_order_wide(r.as_ref().try_into().expect("64-byte slice"));
+        let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
+        (k, e)
+    }
+
+    pub(crate) fn apply_agreement_xor(
+        priv_key: &PrivateKey,
+        pub_key: &PublicKey,
+        direction: Direction,
+        input: &[u8],
+    ) -> Result<Box<[u8]>> {
+        let agreement = priv_key.calculate_agreement(&pub_key)?;
+        let agreement_key_input = match direction {
+            Direction::Sending => [
+                agreement,
+                priv_key.public_key()?.serialize(),
+                pub_key.serialize(),
+            ],
+            Direction::Receiving => [
+                agreement,
+                pub_key.serialize(),
+                priv_key.public_key()?.serialize(),
+            ],
+        }
+        .concat();
+
+        let mut result = HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH, 32)?;
+        result
+            .iter_mut()
+            .zip(input)
+            .for_each(|(result_byte, input_byte)| *result_byte ^= input_byte);
+        Ok(result)
+    }
+}
+
+pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
+    destinations: &[&ProtocolAddress],
+    usmc: &UnidentifiedSenderMessageContent,
+    identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+    rng: &mut R,
+) -> Result<Vec<u8>> {
+    let m: [u8; 32] = rng.gen();
+    let (k, e) = sealed_sender_v2::derive_keys(&m);
+    let e_pub = e.public_key()?;
+
+    let ciphertext = {
+        let mut ciphertext = usmc.serialized()?.to_vec();
+        let tag_or_error = Aes256GcmSiv::new(&k).and_then(|aes_gcm_siv| {
+            aes_gcm_siv.encrypt(
+                &mut ciphertext,
+                // There's no nonce because the key is already one-use.
+                &[0; Aes256GcmSiv::NONCE_SIZE],
+                // And there's no associated data.
+                &[],
+            )
+        });
+        match tag_or_error {
+            Ok(tag) => {
+                ciphertext.extend_from_slice(&tag);
+            }
+            Err(err) => {
+                log::error!("failed to encrypt using AES-GCM-SIV: {}", err);
+                return Err(SignalProtocolError::InternalError(
+                    "failed to encrypt using AES-GCM-SIV",
+                ));
+            }
+        }
+        ciphertext
+    };
+
+    let mut c: Vec<Vec<u8>> = Vec::with_capacity(destinations.len());
+    for destination in destinations {
+        let their_identity = identity_store
+            .get_identity(destination, ctx)
+            .await?
+            .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", destination)))?;
+
+        let c_i = sealed_sender_v2::apply_agreement_xor(
+            &e,
+            their_identity.public_key(),
+            Direction::Sending,
+            &m,
+        )?;
+        c.push(c_i.into_vec())
+    }
+
+    let message = proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage {
+        ephemeral_public_key: Some(e_pub.serialize().into_vec()),
+        encrypted_message_keys: c,
+        encrypted_message: Some(ciphertext),
+    };
+
+    let version = SEALED_SENDER_MULTI_RECIPIENT_VERSION;
+    let mut serialized = vec![];
+    serialized.push(version | (version << 4));
+    message.encode(&mut serialized)?;
+
+    Ok(serialized)
+}
+
+// For testing
+pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>> {
+    let version = data[0] >> 4;
+    if version != SEALED_SENDER_MULTI_RECIPIENT_VERSION {
+        return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
+    }
+
+    let message =
+        proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage::decode(&data[1..])?;
+    let ephemeral_public = message.ephemeral_public_key;
+    let encrypted_message = message.encrypted_message;
+    message
+        .encrypted_message_keys
+        .into_iter()
+        .map(|encrypted_key| {
+            let recipient_message = proto::sealed_sender::UnidentifiedSenderMessage {
+                ephemeral_public: ephemeral_public.clone(),
+                encrypted_static: Some(encrypted_key),
+                encrypted_message: encrypted_message.clone(),
+            };
+            let mut result = vec![data[0]];
+            recipient_message.encode(&mut result)?;
+            Ok(result)
+        })
+        .collect()
+}
+
 pub async fn sealed_sender_decrypt_to_usmc(
     ciphertext: &[u8],
     identity_store: &mut dyn IdentityKeyStore,
@@ -675,41 +881,86 @@ pub async fn sealed_sender_decrypt_to_usmc(
 ) -> Result<UnidentifiedSenderMessageContent> {
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     let usm = UnidentifiedSenderMessage::deserialize(ciphertext)?;
+    let mut expected_cert_key: Option<Vec<u8>> = None;
 
-    let eph_keys = EphemeralKeys::calculate(
-        &usm.ephemeral_public()?,
-        &our_identity.public_key(),
-        &our_identity.private_key(),
-        false,
-    )?;
+    let message_bytes = match usm.version {
+        0 | SEALED_SENDER_VERSION => {
+            let eph_keys = EphemeralKeys::calculate(
+                &usm.ephemeral_public()?,
+                &our_identity.public_key(),
+                &our_identity.private_key(),
+                false,
+            )?;
 
-    let static_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
-        usm.encrypted_static()?,
-        &eph_keys.cipher_key()?,
-        &eph_keys.mac_key()?,
-    )?;
+            let message_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+                usm.encrypted_message_key()?,
+                &eph_keys.cipher_key()?,
+                &eph_keys.mac_key()?,
+            )?;
 
-    let static_key = PublicKey::try_from(&static_key_bytes[..])?;
+            let static_key = PublicKey::try_from(&message_key_bytes[..])?;
+            expected_cert_key = Some(message_key_bytes);
 
-    let static_keys = StaticKeys::calculate(
-        &static_key,
-        our_identity.private_key(),
-        eph_keys.chain_key()?,
-        usm.encrypted_static()?,
-    )?;
+            let static_keys = StaticKeys::calculate(
+                &static_key,
+                our_identity.private_key(),
+                eph_keys.chain_key()?,
+                usm.encrypted_message_key()?,
+            )?;
 
-    let message_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
-        usm.encrypted_message()?,
-        &static_keys.cipher_key()?,
-        &static_keys.mac_key()?,
-    )?;
+            crypto::aes256_ctr_hmacsha256_decrypt(
+                usm.encrypted_message()?,
+                &static_keys.cipher_key()?,
+                &static_keys.mac_key()?,
+            )?
+        }
+        SEALED_SENDER_MULTI_RECIPIENT_VERSION => {
+            let e_pub = usm.ephemeral_public()?;
+            let c = usm.encrypted_message_key()?;
+
+            let m = sealed_sender_v2::apply_agreement_xor(
+                our_identity.private_key(),
+                &e_pub,
+                Direction::Receiving,
+                &c,
+            )?;
+
+            let (k, e) = sealed_sender_v2::derive_keys(&m);
+            if e.public_key()? != e_pub {
+                return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                    "derived ephemeral key did not match key provided in message".to_string(),
+                ));
+            }
+
+            let mut message_bytes = usm.encrypted_message()?.to_vec();
+            let result = Aes256GcmSiv::new(&k).and_then(|aes_gcm_siv| {
+                aes_gcm_siv.decrypt_with_appended_tag(
+                    &mut message_bytes,
+                    // There's no nonce because the key is already one-use.
+                    &[0; Aes256GcmSiv::NONCE_SIZE],
+                    // And there's no associated data.
+                    &[],
+                )
+            });
+            if let Err(err) = result {
+                return Err(SignalProtocolError::InvalidSealedSenderMessage(format!(
+                    "failed to decrypt inner message: {}",
+                    err
+                )));
+            }
+            message_bytes
+        }
+        _ => return Err(SignalProtocolError::UnknownSealedSenderVersion(usm.version)),
+    };
 
     let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
 
-    if !bool::from(static_key_bytes.ct_eq(&usmc.sender()?.key()?.serialize())) {
-        return Err(SignalProtocolError::InvalidSealedSenderMessage(
-            "sender certificate key does not match message key".to_string(),
-        ));
+    if let Some(expected_cert_key) = expected_cert_key {
+        if !bool::from(expected_cert_key.ct_eq(&usmc.sender()?.key()?.serialize())) {
+            return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                "sender certificate key does not match message key".to_string(),
+            ));
+        }
     }
 
     Ok(usmc)
