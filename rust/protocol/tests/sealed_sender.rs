@@ -1,9 +1,11 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 mod support;
+
+use std::convert::TryFrom;
 
 use futures::executor::block_on;
 use libsignal_protocol::*;
@@ -296,6 +298,155 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
                 panic!("Shouldn't have decrypted")
             }
         }
+
+        Ok(())
+    })
+}
+
+#[test]
+fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
+    block_on(async {
+        let mut rng = OsRng;
+
+        let alice_device_id = 23;
+        let bob_device_id = 42;
+
+        let alice_e164 = "+14151111111".to_owned();
+
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+
+        let alice_uuid_address = ProtocolAddress::new(alice_uuid.clone(), 1);
+        let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
+
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
+
+        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+
+        let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
+
+        process_prekey_bundle(
+            &bob_uuid_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            &mut rng,
+            None,
+        )
+        .await?;
+
+        let trust_root = KeyPair::generate(&mut rng);
+        let server_key = KeyPair::generate(&mut rng);
+
+        let server_cert =
+            ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+
+        let expires = 1605722925;
+
+        let sender_cert = SenderCertificate::new(
+            alice_uuid.clone(),
+            Some(alice_e164.clone()),
+            alice_pubkey,
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut rng,
+        )?;
+
+        let alice_distribution_message = create_sender_key_distribution_message(
+            &alice_uuid_address,
+            distribution_id,
+            &mut alice_store,
+            &mut rng,
+            None,
+        )
+        .await?;
+        let alice_distribution_usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::SenderKeyDistribution,
+            sender_cert.clone(),
+            alice_distribution_message.serialized().to_vec(),
+        )?;
+
+        let alice_distribution_ctext = sealed_sender_encrypt_from_usmc(
+            &bob_uuid_address,
+            &alice_distribution_usmc,
+            &mut alice_store.identity_store,
+            None,
+            &mut rng,
+        )
+        .await?;
+
+        let bob_distribution_usmc = sealed_sender_decrypt_to_usmc(
+            &alice_distribution_ctext,
+            &mut bob_store.identity_store,
+            None,
+        )
+        .await?;
+
+        assert!(matches!(
+            bob_distribution_usmc.msg_type()?,
+            CiphertextMessageType::SenderKeyDistribution,
+        ));
+        let bob_distribution_message =
+            SenderKeyDistributionMessage::try_from(bob_distribution_usmc.contents()?)?;
+
+        process_sender_key_distribution_message(
+            &alice_uuid_address,
+            &bob_distribution_message,
+            &mut bob_store,
+            None,
+        )
+        .await?;
+
+        let alice_message = group_encrypt(
+            &mut alice_store,
+            &alice_uuid_address,
+            distribution_id,
+            "swim camp".as_bytes(),
+            &mut rng,
+            None,
+        )
+        .await?;
+        let alice_usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::SenderKey,
+            sender_cert.clone(),
+            alice_message,
+        )?;
+
+        let alice_ctext = sealed_sender_encrypt_from_usmc(
+            &bob_uuid_address,
+            &alice_usmc,
+            &mut alice_store.identity_store,
+            None,
+            &mut rng,
+        )
+        .await?;
+
+        let bob_usmc =
+            sealed_sender_decrypt_to_usmc(&alice_ctext, &mut bob_store.identity_store, None)
+                .await?;
+
+        assert!(matches!(
+            bob_usmc.msg_type()?,
+            CiphertextMessageType::SenderKey,
+        ));
+
+        let bob_plaintext = group_decrypt(
+            bob_usmc.contents()?,
+            &mut bob_store,
+            &alice_uuid_address,
+            None,
+        )
+        .await?;
+
+        assert_eq!(
+            String::from_utf8(bob_plaintext).expect("valid UTF-8"),
+            "swim camp"
+        );
 
         Ok(())
     })

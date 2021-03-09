@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -16,6 +16,8 @@ use prost::Message;
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
 use subtle::ConstantTimeEq;
+
+use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 
 #[derive(Debug, Clone)]
 pub struct ServerCertificate {
@@ -313,6 +315,34 @@ impl SenderCertificate {
     }
 }
 
+impl From<ProtoMessageType> for CiphertextMessageType {
+    fn from(message_type: ProtoMessageType) -> Self {
+        let result = match message_type {
+            ProtoMessageType::Message => Self::Whisper,
+            ProtoMessageType::PrekeyMessage => Self::PreKey,
+            ProtoMessageType::SenderkeyMessage => Self::SenderKey,
+            ProtoMessageType::SenderkeyDistribution => Self::SenderKeyDistribution,
+        };
+        // Keep raw values in sync from now on, for efficient codegen.
+        assert!(result == Self::PreKey || message_type as i32 == result as i32);
+        result
+    }
+}
+
+impl From<CiphertextMessageType> for ProtoMessageType {
+    fn from(message_type: CiphertextMessageType) -> Self {
+        let result = match message_type {
+            CiphertextMessageType::PreKey => Self::PrekeyMessage,
+            CiphertextMessageType::Whisper => Self::Message,
+            CiphertextMessageType::SenderKey => Self::SenderkeyMessage,
+            CiphertextMessageType::SenderKeyDistribution => Self::SenderkeyDistribution,
+        };
+        // Keep raw values in sync from now on, for efficient codegen.
+        assert!(result == Self::PrekeyMessage || message_type as i32 == result as i32);
+        result
+    }
+}
+
 pub struct UnidentifiedSenderMessageContent {
     serialized: Vec<u8>,
     contents: Vec<u8>,
@@ -326,6 +356,8 @@ impl UnidentifiedSenderMessageContent {
 
         let msg_type = pb
             .r#type
+            .and_then(ProtoMessageType::from_i32)
+            .map(CiphertextMessageType::from)
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender = pb
             .sender_certificate
@@ -333,12 +365,6 @@ impl UnidentifiedSenderMessageContent {
         let contents = pb
             .content
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-
-        let msg_type = match msg_type {
-            1 => Ok(CiphertextMessageType::PreKey),
-            2 => Ok(CiphertextMessageType::Whisper),
-            _ => Err(SignalProtocolError::InvalidProtobufEncoding),
-        }?;
 
         let sender = SenderCertificate::from_protobuf(&sender)?;
 
@@ -357,14 +383,10 @@ impl UnidentifiedSenderMessageContent {
         sender: SenderCertificate,
         contents: Vec<u8>,
     ) -> Result<Self> {
-        let proto_msg_type = match msg_type {
-            CiphertextMessageType::PreKey => Ok(1),
-            CiphertextMessageType::Whisper => Ok(2),
-            _ => Err(SignalProtocolError::InvalidProtobufEncoding),
-        }?;
+        let proto_msg_type = ProtoMessageType::from(msg_type);
         let msg = proto::sealed_sender::unidentified_sender_message::Message {
             content: Some(contents.clone()),
-            r#type: Some(proto_msg_type),
+            r#type: Some(proto_msg_type.into()),
             sender_certificate: Some(sender.to_protobuf()?),
         };
 
@@ -574,7 +596,21 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     let message = message_encrypt(ptext, destination, session_store, identity_store, ctx).await?;
+    let usmc = UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender_cert.clone(),
+        message.serialize().to_vec(),
+    )?;
+    sealed_sender_encrypt_from_usmc(destination, &usmc, identity_store, ctx, rng).await
+}
 
+pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
+    destination: &ProtocolAddress,
+    usmc: &UnidentifiedSenderMessageContent,
+    identity_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+    rng: &mut R,
+) -> Result<Vec<u8>> {
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     let their_identity = identity_store
         .get_identity(destination, ctx)
@@ -603,11 +639,6 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
         &static_key_ctext,
     )?;
 
-    let usmc = UnidentifiedSenderMessageContent::new(
-        message.message_type(),
-        sender_cert.clone(),
-        message.serialize().to_vec(),
-    )?;
     let message_data = crypto::aes256_ctr_hmacsha256_encrypt(
         usmc.serialized()?,
         &static_keys.cipher_key()?,
@@ -761,10 +792,11 @@ pub async fn sealed_sender_decrypt(
             )
             .await?
         }
-        _ => {
-            return Err(SignalProtocolError::InvalidSealedSenderMessage(
-                "Unknown message type".to_owned(),
-            ))
+        msg_type => {
+            return Err(SignalProtocolError::InvalidSealedSenderMessage(format!(
+                "Unexpected message type {}",
+                msg_type as i32,
+            )))
         }
     };
 
