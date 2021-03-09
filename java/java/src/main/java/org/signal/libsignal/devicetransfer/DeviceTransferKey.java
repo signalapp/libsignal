@@ -7,11 +7,15 @@ package org.signal.libsignal.devicetransfer;
 
 import org.signal.client.internal.Native;
 
-class DeviceTransferKey {
+public class DeviceTransferKey {
   byte[] keyMaterial;
 
   DeviceTransferKey() {
     this.keyMaterial = Native.DeviceTransfer_GeneratePrivateKey();
+  }
+
+  byte[] keyMaterial() {
+    return this.keyMaterial;
   }
 
   byte[] generateCertificate(String name, int daysTilExpires) {
