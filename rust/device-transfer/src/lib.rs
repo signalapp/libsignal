@@ -43,7 +43,7 @@ pub fn create_self_signed_cert(
     let rsa_key = PrivateKey::from_pkcs8(rsa_key_pkcs8).map_err(|_| Error::KeyDecodingFailed)?;
 
     let mut dn = DirectoryName::new_common_name(name);
-    dn.add_attr(NameAttr::OrganizationName, "Signal Messenger LLC");
+    dn.add_attr(NameAttr::OrganizationName, "Signal Foundation");
     dn.add_attr(NameAttr::OrganizationalUnitName, "Device Transfer");
 
     let now = Utc::now();
