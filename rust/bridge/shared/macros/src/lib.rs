@@ -17,6 +17,7 @@
 //! # Example
 //!
 //! ```ignore
+//! # #[cfg(ignore_even_when_running_all_tests)]
 //! #[bridge_fn]
 //! fn SenderKeyMessage_New(
 //!     key_id: u32,
@@ -84,6 +85,7 @@
 //! Any of these names can be replaced by specifying an argument to the `bridge_fn` attribute:
 //!
 //! ```ignore
+//! # #[cfg(ignore_even_when_running_all_tests)]
 //! #[bridge_fn(ffi = "magic_alakazam", jni = "Magic_1Alakazam")]
 //! fn Abracadabra() {
 //!   // ...
@@ -252,6 +254,7 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
 /// // Produces a C function named "signal_checksum_buffer"
 /// // and a TypeScript function manually named "Buffer_Checksum",
 /// // with the Java entry point disabled.
+/// # #[cfg(ignore_even_when_running_all_tests)]
 /// #[bridge_fn(jni = false, node = "Buffer_Checksum")]
 /// fn ChecksumBuffer(buffer: &[u8]) -> u64 {
 ///   // ...
@@ -277,6 +280,7 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// // Produces a JNI function manually named "Cipher_Rot13" (with JNI "_1" mangling)
 /// // and a TypeScript function named "Rot13",
 /// // with the FFI entry point disabled.
+/// # #[cfg(ignore_even_when_running_all_tests)]
 /// #[bridge_fn_buffer(ffi = false, jni = "Cipher_1Rot13")]
 /// fn Rot13<E: Env>(env: E, buffer: &[u8]) -> E::Buffer {
 ///   // let result = ...;
@@ -301,6 +305,7 @@ pub fn bridge_fn_buffer(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// // Produces a C function manually named "signal_process_postkey"
 /// // and a JNI function named "PostKey_1Process" (with JNI "_1" mangling for an underscore),
 /// // with the Node entry point disabled.
+/// # #[cfg(ignore_even_when_running_all_tests)]
 /// #[bridge_fn_void(ffi = "process_postkey", node = false)]
 /// fn PostKey_Process(post_key: &PostKey) -> Result<()> {
 ///   // ...

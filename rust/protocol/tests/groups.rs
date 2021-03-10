@@ -465,6 +465,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+#[ignore = "slow to run locally"]
 fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
     block_on(async {
         let mut csprng = OsRng;

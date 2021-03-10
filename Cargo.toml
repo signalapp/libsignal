@@ -17,3 +17,6 @@ default-members = [
 
 [patch.crates-io]
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', branch = '3.0.0-lizard2' }
+
+[profile.dev.package.num-bigint-dig]
+opt-level = 2 # too slow otherwise!

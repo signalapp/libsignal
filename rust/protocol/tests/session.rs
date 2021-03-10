@@ -255,6 +255,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+#[ignore = "slow to run locally"]
 #[allow(clippy::eval_order_dependence)]
 fn chain_jump_over_limit() -> Result<(), SignalProtocolError> {
     block_on(async {
@@ -341,6 +342,7 @@ fn chain_jump_over_limit() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+#[ignore = "slow to run locally"]
 #[allow(clippy::eval_order_dependence)]
 fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
     block_on(async {

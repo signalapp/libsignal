@@ -812,7 +812,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.2.3"
+version = "0.3.4"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
