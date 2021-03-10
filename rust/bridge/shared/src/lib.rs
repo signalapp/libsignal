@@ -25,6 +25,7 @@ pub mod node;
 mod support;
 
 pub mod aes_gcm_siv;
+pub mod crypto;
 pub mod protocol;
 
 // Desktop does not make use of device transfer certificates

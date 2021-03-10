@@ -74,6 +74,18 @@ public final class Native {
   public static native byte[] Aes256GcmSiv_Encrypt(long aesGcmSiv, byte[] ptext, byte[] nonce, byte[] associatedData);
   public static native long Aes256GcmSiv_New(byte[] key);
 
+  public static native void CryptographicHash_Destroy(long handle);
+  public static native byte[] CryptographicHash_Finalize(long hash);
+  public static native long CryptographicHash_New(String algo);
+  public static native void CryptographicHash_Update(long hash, byte[] input);
+  public static native void CryptographicHash_UpdateWithOffset(long hash, byte[] input, int offset, int len);
+
+  public static native void CryptographicMac_Destroy(long handle);
+  public static native byte[] CryptographicMac_Finalize(long mac);
+  public static native long CryptographicMac_New(String algo, byte[] key);
+  public static native void CryptographicMac_Update(long mac, byte[] input);
+  public static native void CryptographicMac_UpdateWithOffset(long mac, byte[] input, int offset, int len);
+
   public static native byte[] DeviceTransfer_GenerateCertificate(byte[] privateKey, String name, int daysToExpire);
   public static native byte[] DeviceTransfer_GeneratePrivateKey();
 

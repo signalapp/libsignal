@@ -779,6 +779,7 @@ dependencies = [
  "paste",
  "rand 0.7.3",
  "scopeguard",
+ "signal-crypto",
  "signal-neon-futures",
  "static_assertions",
 ]
@@ -808,6 +809,7 @@ dependencies = [
  "log",
  "log-panics",
  "rand 0.7.3",
+ "signal-crypto",
 ]
 
 [[package]]
@@ -1682,6 +1684,21 @@ dependencies = [
  "digest",
  "keccak",
  "opaque-debug",
+]
+
+[[package]]
+name = "signal-crypto"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "block-modes",
+ "ctr",
+ "hex",
+ "hmac",
+ "rand 0.7.3",
+ "sha-1",
+ "sha2",
+ "subtle",
 ]
 
 [[package]]

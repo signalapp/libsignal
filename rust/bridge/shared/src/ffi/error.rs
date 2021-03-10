@@ -9,6 +9,7 @@ use std::fmt;
 use aes_gcm_siv::Error as AesGcmSivError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
+use signal_crypto::Error as SignalCryptoError;
 
 /// The top-level error type (opaquely) returned to C clients when something goes wrong.
 #[derive(Debug)]
@@ -16,6 +17,7 @@ pub enum SignalFfiError {
     Signal(SignalProtocolError),
     AesGcmSiv(AesGcmSivError),
     DeviceTransfer(DeviceTransferError),
+    SignalCrypto(SignalCryptoError),
     InsufficientOutputSize(usize, usize),
     NullPointer,
     InvalidUtf8String,
@@ -32,6 +34,9 @@ impl fmt::Display for SignalFfiError {
             }
             SignalFfiError::DeviceTransfer(c) => {
                 write!(f, "Device transfer operation failed: {}", c)
+            }
+            SignalFfiError::SignalCrypto(c) => {
+                write!(f, "Cryptographic operation failed: {}", c)
             }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidType => write!(f, "invalid type"),
@@ -63,6 +68,12 @@ impl From<AesGcmSivError> for SignalFfiError {
 impl From<DeviceTransferError> for SignalFfiError {
     fn from(e: DeviceTransferError) -> SignalFfiError {
         SignalFfiError::DeviceTransfer(e)
+    }
+}
+
+impl From<SignalCryptoError> for SignalFfiError {
+    fn from(e: SignalCryptoError) -> SignalFfiError {
+        SignalFfiError::SignalCrypto(e)
     }
 }
 

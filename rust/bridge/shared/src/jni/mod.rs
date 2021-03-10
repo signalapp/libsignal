@@ -11,6 +11,7 @@ use jni::sys::jobject;
 use aes_gcm_siv::Error as AesGcmSivError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
+use signal_crypto::Error as SignalCryptoError;
 use std::convert::TryFrom;
 use std::error::Error;
 
@@ -106,7 +107,10 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
         | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidInputSize)
-        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidNonceSize) => {
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidNonceSize)
+        | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize) => {
             "java/lang/IllegalArgumentException"
         }
 
@@ -143,7 +147,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::SignatureValidationFailed)
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
         | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
-        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidKeySize) => {
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidKeySize)
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
             "org/whispersystems/libsignal/InvalidKeyException"
         }
 
@@ -157,7 +162,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
         | SignalJniError::Signal(SignalProtocolError::ProtobufDecodingError(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
-        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidTag) => {
+        | SignalJniError::AesGcmSiv(AesGcmSivError::InvalidTag)
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => {
             "org/whispersystems/libsignal/InvalidMessageException"
         }
 

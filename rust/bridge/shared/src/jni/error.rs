@@ -10,6 +10,7 @@ use std::fmt;
 use aes_gcm_siv::Error as AesGcmSivError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
+use signal_crypto::Error as SignalCryptoError;
 
 use super::*;
 
@@ -19,6 +20,7 @@ pub enum SignalJniError {
     Signal(SignalProtocolError),
     AesGcmSiv(AesGcmSivError),
     DeviceTransfer(DeviceTransferError),
+    SignalCrypto(SignalCryptoError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -33,6 +35,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::AesGcmSiv(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
+            SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -65,6 +68,12 @@ impl From<AesGcmSivError> for SignalJniError {
 impl From<DeviceTransferError> for SignalJniError {
     fn from(e: DeviceTransferError) -> SignalJniError {
         SignalJniError::DeviceTransfer(e)
+    }
+}
+
+impl From<SignalCryptoError> for SignalJniError {
+    fn from(e: SignalCryptoError) -> SignalJniError {
+        SignalJniError::SignalCrypto(e)
     }
 }
 
