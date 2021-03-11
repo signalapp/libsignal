@@ -1,2 +1,2 @@
 node/dist/**
-node/libsignal_client.d.ts
+node/Native.d.ts
