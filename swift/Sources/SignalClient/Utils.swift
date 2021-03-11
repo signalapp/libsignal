@@ -337,31 +337,35 @@ internal func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePoi
 
 internal func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<SignalSenderKeyStore>) throws -> Result) rethrows -> Result {
     func ffiShimStoreSenderKey(store_ctx: UnsafeMutableRawPointer?,
-                               sender_name: OpaquePointer?,
+                               sender: OpaquePointer?,
+                               distributionId: UnsafePointer<CChar>?,
                                record: OpaquePointer?,
                                ctx: UnsafeMutableRawPointer?) -> Int32 {
         let storeContext = store_ctx!.assumingMemoryBound(to: ErrorHandlingContext<SenderKeyStore>.self)
         return storeContext.pointee.catchCallbackErrors { store in
             let context = ctx!.assumingMemoryBound(to: StoreContext.self).pointee
-            var sender_name = SenderKeyName(borrowing: sender_name)
-            defer { cloneOrForgetAsNeeded(&sender_name) }
+            var sender = ProtocolAddress(borrowing: sender)
+            let distributionId = String(cString: distributionId!)
+            defer { cloneOrForgetAsNeeded(&sender) }
             var record = SenderKeyRecord(borrowing: record)
             defer { cloneOrForgetAsNeeded(&record) }
-            try store.storeSenderKey(name: sender_name, record: record, context: context)
+            try store.storeSenderKey(from: sender, distributionId: distributionId, record: record, context: context)
             return 0
         }
     }
 
     func ffiShimLoadSenderKey(store_ctx: UnsafeMutableRawPointer?,
                               recordp: UnsafeMutablePointer<OpaquePointer?>?,
-                              sender_name: OpaquePointer?,
+                              sender: OpaquePointer?,
+                              distributionId: UnsafePointer<CChar>?,
                               ctx: UnsafeMutableRawPointer?) -> Int32 {
         let storeContext = store_ctx!.assumingMemoryBound(to: ErrorHandlingContext<SenderKeyStore>.self)
         return storeContext.pointee.catchCallbackErrors { store in
             let context = ctx!.assumingMemoryBound(to: StoreContext.self).pointee
-            var sender_name = SenderKeyName(borrowing: sender_name)
-            defer { cloneOrForgetAsNeeded(&sender_name) }
-            if var record = try store.loadSenderKey(name: sender_name, context: context) {
+            var sender = ProtocolAddress(borrowing: sender)
+            let distributionId = String(cString: distributionId!)
+            defer { cloneOrForgetAsNeeded(&sender) }
+            if var record = try store.loadSenderKey(from: sender, distributionId: distributionId, context: context) {
                 recordp!.pointee = try cloneOrTakeHandle(from: &record)
             } else {
                 recordp!.pointee = nil

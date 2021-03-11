@@ -92,8 +92,6 @@ typedef struct SignalSenderKeyDistributionMessage SignalSenderKeyDistributionMes
 
 typedef struct SignalSenderKeyMessage SignalSenderKeyMessage;
 
-typedef struct SignalSenderKeyName SignalSenderKeyName;
-
 typedef struct SignalSenderKeyRecord SignalSenderKeyRecord;
 
 typedef struct SignalServerCertificate SignalServerCertificate;
@@ -175,9 +173,9 @@ typedef struct {
   SignalLogFlushCallback flush;
 } SignalFfiLogger;
 
-typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalSenderKeyName*, void *ctx);
+typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalProtocolAddress*, const char *distribution_id, void *ctx);
 
-typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalSenderKeyName*, const SignalSenderKeyRecord*, void *ctx);
+typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalProtocolAddress*, const char *distribution_id, const SignalSenderKeyRecord*, void *ctx);
 
 typedef struct {
   void *ctx;
@@ -361,11 +359,6 @@ SignalFfiError *signal_sender_key_message_destroy(SignalSenderKeyMessage *p);
 
 SignalFfiError *signal_sender_key_message_clone(SignalSenderKeyMessage **new_obj,
                                                 const SignalSenderKeyMessage *obj);
-
-SignalFfiError *signal_sender_key_name_destroy(SignalSenderKeyName *p);
-
-SignalFfiError *signal_sender_key_name_clone(SignalSenderKeyName **new_obj,
-                                             const SignalSenderKeyName *obj);
 
 SignalFfiError *signal_sender_key_record_destroy(SignalSenderKeyRecord *p);
 
@@ -712,20 +705,6 @@ SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **out,
                                           const SignalPublicKey *pub_key,
                                           const SignalPrivateKey *priv_key);
 
-SignalFfiError *signal_sender_key_name_get_distribution_id(const char **out,
-                                                           const SignalSenderKeyName *obj);
-
-SignalFfiError *signal_sender_key_name_get_sender_name(const char **out,
-                                                       const SignalSenderKeyName *obj);
-
-SignalFfiError *signal_sender_key_name_new(SignalSenderKeyName **out,
-                                           const char *distribution_id,
-                                           const char *sender_name,
-                                           uint32_t sender_device_id);
-
-SignalFfiError *signal_sender_key_name_get_sender_device_id(uint32_t *out,
-                                                            const SignalSenderKeyName *skn);
-
 SignalFfiError *signal_sender_key_record_deserialize(SignalSenderKeyRecord **p,
                                                      const unsigned char *data,
                                                      size_t data_len);
@@ -902,7 +881,8 @@ SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedS
                                                              void *ctx);
 
 SignalFfiError *signal_sender_key_distribution_message_create(SignalSenderKeyDistributionMessage **out,
-                                                              const SignalSenderKeyName *sender_key_name,
+                                                              const SignalProtocolAddress *sender,
+                                                              const char *distribution_id,
                                                               const SignalSenderKeyStore *store,
                                                               void *ctx);
 
@@ -913,7 +893,8 @@ SignalFfiError *signal_process_sender_key_distribution_message(const SignalProto
 
 SignalFfiError *signal_group_encrypt_message(const unsigned char **out,
                                              size_t *out_len,
-                                             const SignalSenderKeyName *sender_key_name,
+                                             const SignalProtocolAddress *sender,
+                                             const char *distribution_id,
                                              const unsigned char *message,
                                              size_t message_len,
                                              const SignalSenderKeyStore *store,

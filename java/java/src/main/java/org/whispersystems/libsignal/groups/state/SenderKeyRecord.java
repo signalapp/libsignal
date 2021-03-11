@@ -10,7 +10,7 @@ import java.io.IOException;
 
 /**
  * A durable representation of a set of SenderKeyStates for a specific
- * SenderKeyName.
+ * (senderName, deviceId, distributionId) tuple.
  *
  * @author Moxie Marlinspike
  */

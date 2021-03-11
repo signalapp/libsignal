@@ -6,42 +6,11 @@
 use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::proto::storage as storage_proto;
-use crate::{PrivateKey, ProtocolAddress, PublicKey, Result, SignalProtocolError, HKDF};
+use crate::{PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
 
 use prost::Message;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct SenderKeyName {
-    distribution_id: String,
-    sender: ProtocolAddress,
-}
-
-impl SenderKeyName {
-    pub fn new(distribution_id: String, sender: ProtocolAddress) -> Result<Self> {
-        Ok(Self {
-            distribution_id,
-            sender,
-        })
-    }
-
-    pub fn distribution_id(&self) -> Result<String> {
-        Ok(self.distribution_id.clone())
-    }
-
-    pub fn sender_name(&self) -> Result<String> {
-        Ok(self.sender.name().to_string())
-    }
-
-    pub fn sender_device_id(&self) -> Result<u32> {
-        Ok(self.sender.device_id())
-    }
-
-    pub fn sender(&self) -> Result<ProtocolAddress> {
-        Ok(self.sender.clone())
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct SenderMessageKey {

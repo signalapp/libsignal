@@ -19,9 +19,9 @@ import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
  * The built sessions are unidirectional: they can be used either for sending or for receiving,
  * but not both.
  *
- * Sessions are constructed per (id + senderName + deviceId) tuple.  Remote logical users
- * are identified by their senderName, and each logical recipientId can have multiple physical
- * devices.
+ * Sessions are constructed per (senderName + deviceId) tuple, with sending additionally 
+ * parameterized on a per-group distributionId. Remote logical users are identified by their 
+ * senderName, and each logical user can have multiple physical devices.
  *
  * This class is not thread-safe.
  *
@@ -36,7 +36,7 @@ public class GroupSessionBuilder {
   }
 
   /**
-   * Construct a group session for receiving messages from senderKeyName.
+   * Construct a group session for receiving messages from sender.
    *
    * @param sender The address of the device that sent the message.
    * @param senderKeyDistributionMessage A received SenderKeyDistributionMessage.
@@ -50,10 +50,11 @@ public class GroupSessionBuilder {
   /**
    * Construct a group session for sending messages.
    *
-   * @param senderKeyName The (id, senderName, deviceId) tuple.  In this case, 'senderName' should be the caller.
+   * @param sender The address of the current client.
+   * @param distributionId An opaque identifier that uniquely identifies the group (but isn't the group ID).
    * @return A SenderKeyDistributionMessage that is individually distributed to each member of the group.
    */
-  public SenderKeyDistributionMessage create(SenderKeyName senderKeyName) {
-    return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderKeyName.nativeHandle(), senderKeyStore, null));
+  public SenderKeyDistributionMessage create(SignalProtocolAddress sender, String distributionId) {
+    return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(sender.nativeHandle(), distributionId, senderKeyStore, null));
   }
 }

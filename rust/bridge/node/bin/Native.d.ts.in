@@ -30,8 +30,8 @@ export abstract class SignedPreKeyStore {
 }
 
 export abstract class SenderKeyStore {
-  _saveSenderKey(name: SenderKeyName, record: SenderKeyRecord): Promise<void>;
-  _getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
+  _saveSenderKey(sender: ProtocolAddress, distributionId: string, record: SenderKeyRecord): Promise<void>;
+  _getSenderKey(sender: ProtocolAddress, distributionId: string): Promise<SenderKeyRecord | null>;
 }
 
 interface Wrapper<T> {

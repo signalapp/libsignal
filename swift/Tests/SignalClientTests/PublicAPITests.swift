@@ -232,17 +232,17 @@ class PublicAPITests: TestCaseBase {
     func testGroupCipher() {
 
         let sender = try! ProtocolAddress(name: "+14159999111", deviceId: 4)
-        let group_id = try! SenderKeyName(distributionId: "summer camp", sender: sender)
+        let distribution_id = "summer camp"
 
         let a_store = InMemorySignalProtocolStore()
 
-        let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, context: NullContext())
+        let skdm = try! SenderKeyDistributionMessage(from: sender, distributionId: distribution_id, store: a_store, context: NullContext())
 
         let skdm_bits = skdm.serialize()
 
         let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
 
-        let a_ctext = try! groupEncrypt(groupId: group_id, message: [1, 2, 3], store: a_store, context: NullContext())
+        let a_ctext = try! groupEncrypt([1, 2, 3], from: sender, distributionId: distribution_id, store: a_store, context: NullContext())
 
         let b_store = InMemorySignalProtocolStore()
         try! processSenderKeyDistributionMessage(skdm_r,

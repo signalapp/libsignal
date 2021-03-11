@@ -119,9 +119,9 @@ public final class Native {
   public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
   public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store, Object ctx);
-  public static native byte[] GroupCipher_EncryptMessage(long senderKeyName, byte[] message, SenderKeyStore store, Object ctx);
+  public static native byte[] GroupCipher_EncryptMessage(long sender, String distributionId, byte[] message, SenderKeyStore store, Object ctx);
 
-  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long senderKeyName, SenderKeyStore store, Object ctx);
+  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, String distributionId, SenderKeyStore store, Object ctx);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store, Object ctx);
 
   public static native byte[] HKDF_DeriveSecrets(int outputLength, int version, byte[] ikm, byte[] label, byte[] salt);
@@ -211,12 +211,6 @@ public final class Native {
   public static native byte[] SenderKeyMessage_GetSerialized(long obj);
   public static native long SenderKeyMessage_New(String distributionId, int chainId, int iteration, byte[] ciphertext, long pk);
   public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
-
-  public static native void SenderKeyName_Destroy(long handle);
-  public static native String SenderKeyName_GetDistributionId(long obj);
-  public static native int SenderKeyName_GetSenderDeviceId(long skn);
-  public static native String SenderKeyName_GetSenderName(long obj);
-  public static native long SenderKeyName_New(String distributionId, String senderName, int senderDeviceId);
 
   public static native long SenderKeyRecord_Deserialize(byte[] data);
   public static native void SenderKeyRecord_Destroy(long handle);

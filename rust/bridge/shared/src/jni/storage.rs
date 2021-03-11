@@ -12,27 +12,6 @@ pub type JavaSignedPreKeyStore<'a> = JObject<'a>;
 pub type JavaSessionStore<'a> = JObject<'a>;
 pub type JavaSenderKeyStore<'a> = JObject<'a>;
 
-fn sender_key_name_to_jobject<'a>(
-    env: &JNIEnv<'a>,
-    sender_key_name: &SenderKeyName,
-) -> Result<JObject<'a>, SignalJniError> {
-    let sender_key_name_class =
-        env.find_class("org/whispersystems/libsignal/groups/SenderKeyName")?;
-    let sender_key_name_ctor_args = [
-        JObject::from(env.new_string(sender_key_name.distribution_id()?)?).into(),
-        JObject::from(env.new_string(sender_key_name.sender_name()?)?).into(),
-        JValue::from(sender_key_name.sender_device_id().convert_into(env)?),
-    ];
-
-    let sender_key_name_ctor_sig = "(Ljava/lang/String;Ljava/lang/String;I)V";
-    let sender_key_name_jobject = env.new_object(
-        sender_key_name_class,
-        sender_key_name_ctor_sig,
-        &sender_key_name_ctor_args,
-    )?;
-    Ok(sender_key_name_jobject)
-}
-
 fn protocol_address_to_jobject<'a>(
     env: &'a JNIEnv,
     address: &ProtocolAddress,
@@ -543,10 +522,12 @@ impl<'a> JniSenderKeyStore<'a> {
 impl<'a> JniSenderKeyStore<'a> {
     fn do_store_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: &str,
         record: &SenderKeyRecord,
     ) -> Result<(), SignalJniError> {
-        let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
+        let sender_jobject = protocol_address_to_jobject(self.env, sender)?;
+        let distribution_id_jstring = distribution_id.convert_into(self.env)?;
         let sender_key_record_jobject = jobject_from_native_handle(
             self.env,
             "org/whispersystems/libsignal/groups/state/SenderKeyRecord",
@@ -554,11 +535,13 @@ impl<'a> JniSenderKeyStore<'a> {
         )?;
 
         let callback_args = [
-            sender_key_name_jobject.into(),
+            sender_jobject.into(),
+            distribution_id_jstring.into(),
             sender_key_record_jobject.into(),
         ];
         let callback_sig = jni_signature!((
-            org.whispersystems.libsignal.groups.SenderKeyName,
+            org.whispersystems.libsignal.SignalProtocolAddress,
+            java.lang.String,
             org.whispersystems.libsignal.groups.state.SenderKeyRecord,
         ) -> void);
         call_method_checked(
@@ -574,12 +557,15 @@ impl<'a> JniSenderKeyStore<'a> {
 
     fn do_load_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: &str,
     ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
-        let sender_key_name_jobject = sender_key_name_to_jobject(self.env, sender_key_name)?;
-        let callback_args = [sender_key_name_jobject.into()];
+        let sender_jobject = protocol_address_to_jobject(self.env, sender)?;
+        let distribution_id_jstring = distribution_id.convert_into(self.env)?;
+        let callback_args = [sender_jobject.into(), distribution_id_jstring.into()];
         let callback_sig = jni_signature!((
-            org.whispersystems.libsignal.groups.SenderKeyName,
+            org.whispersystems.libsignal.SignalProtocolAddress,
+            java.lang.String,
         ) -> org.whispersystems.libsignal.groups.state.SenderKeyRecord);
 
         let skr = get_object_with_native_handle::<SenderKeyRecord>(
@@ -598,18 +584,20 @@ impl<'a> JniSenderKeyStore<'a> {
 impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
     async fn store_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: &str,
         record: &SenderKeyRecord,
         _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_store_sender_key(sender_key_name, record)?)
+        Ok(self.do_store_sender_key(sender, distribution_id, record)?)
     }
 
     async fn load_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: &str,
         _ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        Ok(self.do_load_sender_key(sender_key_name)?)
+        Ok(self.do_load_sender_key(sender, distribution_id)?)
     }
 }

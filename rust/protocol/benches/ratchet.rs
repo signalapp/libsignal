@@ -20,16 +20,14 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let mut csprng = rand::rngs::OsRng;
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-    let group_sender = SenderKeyName::new(
-        "summer camp planning committee".to_owned(),
-        sender_address.clone(),
-    )?;
+    let distribution_id = "summer camp planning committee";
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;
 
     let sent_distribution_message = block_on(create_sender_key_distribution_message(
-        &group_sender,
+        &sender_address,
+        distribution_id,
         &mut alice_store,
         &mut csprng,
         None,
@@ -51,7 +49,8 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         for i in 0..ratchets {
             block_on(group_encrypt(
                 &mut alice_store,
-                &group_sender,
+                &sender_address,
+                distribution_id,
                 format!("nefarious plotting {}", i).as_bytes(),
                 &mut csprng,
                 None,
@@ -60,7 +59,8 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
         let alice_ciphertext = block_on(group_encrypt(
             &mut alice_store,
-            &group_sender,
+            &sender_address,
+            distribution_id,
             "you got the plan?".as_bytes(),
             &mut csprng,
             None,

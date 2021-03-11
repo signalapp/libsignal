@@ -23,7 +23,6 @@ bridge_handle!(PublicKey, ffi = publickey, jni = ECPublicKey);
 bridge_handle!(SenderCertificate);
 bridge_handle!(SenderKeyDistributionMessage);
 bridge_handle!(SenderKeyMessage);
-bridge_handle!(SenderKeyName);
 bridge_handle!(SenderKeyRecord);
 bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
@@ -497,30 +496,6 @@ bridge_get!(PreKeyRecord::private_key -> PrivateKey);
 fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
     PreKeyRecord::new(id, &keypair)
-}
-
-bridge_get!(SenderKeyName::distribution_id -> String);
-
-#[bridge_fn]
-fn SenderKeyName_GetSenderName(obj: &SenderKeyName) -> Result<String> {
-    Ok(obj.sender()?.name().to_string())
-}
-
-#[bridge_fn]
-fn SenderKeyName_New(
-    distribution_id: String,
-    sender_name: String,
-    sender_device_id: u32,
-) -> Result<SenderKeyName> {
-    SenderKeyName::new(
-        distribution_id,
-        ProtocolAddress::new(sender_name, sender_device_id),
-    )
-}
-
-#[bridge_fn]
-fn SenderKeyName_GetSenderDeviceId(skn: &SenderKeyName) -> Result<u32> {
-    Ok(skn.sender()?.device_id())
 }
 
 bridge_deserialize!(SenderKeyRecord::deserialize);
@@ -1003,12 +978,13 @@ async fn SealedSender_DecryptMessage(
 
 #[bridge_fn(jni = "GroupSessionBuilder_1CreateSenderKeyDistributionMessage")]
 async fn SenderKeyDistributionMessage_Create(
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
+    distribution_id: String,
     store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<SenderKeyDistributionMessage> {
     let mut csprng = rand::rngs::OsRng;
-    create_sender_key_distribution_message(sender_key_name, store, &mut csprng, ctx).await
+    create_sender_key_distribution_message(sender, &distribution_id, store, &mut csprng, ctx).await
 }
 
 #[bridge_fn_void(
@@ -1028,13 +1004,14 @@ async fn SenderKeyDistributionMessage_Process(
 #[bridge_fn_buffer(ffi = "group_encrypt_message")]
 async fn GroupCipher_EncryptMessage<E: Env>(
     env: E,
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
+    distribution_id: String,
     message: &[u8],
     store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
     let mut rng = rand::rngs::OsRng;
-    let ctext = group_encrypt(store, sender_key_name, message, &mut rng, ctx).await?;
+    let ctext = group_encrypt(store, sender, &distribution_id, message, &mut rng, ctx).await?;
     Ok(env.buffer(ctext))
 }
 

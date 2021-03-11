@@ -7,8 +7,8 @@ use async_trait::async_trait;
 
 use crate::state::{PreKeyId, SignedPreKeyId};
 use crate::{
-    IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyName,
-    SenderKeyRecord, SessionRecord, SignedPreKeyRecord,
+    IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyRecord,
+    SessionRecord, SignedPreKeyRecord,
 };
 
 pub type Context = Option<*mut std::ffi::c_void>;
@@ -97,14 +97,16 @@ pub trait SessionStore {
 pub trait SenderKeyStore {
     async fn store_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: &str,
         record: &SenderKeyRecord,
         ctx: Context,
     ) -> Result<()>;
 
     async fn load_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: &str,
         ctx: Context,
     ) -> Result<Option<SenderKeyRecord>>;
 }

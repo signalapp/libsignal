@@ -40,6 +40,6 @@ public protocol SessionStore: AnyObject {
 }
 
 public protocol SenderKeyStore: AnyObject {
-    func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, context: StoreContext) throws
-    func loadSenderKey(name: SenderKeyName, context: StoreContext) throws -> SenderKeyRecord?
+    func storeSenderKey(from sender: ProtocolAddress, distributionId: String, record: SenderKeyRecord, context: StoreContext) throws
+    func loadSenderKey(from sender: ProtocolAddress, distributionId: String, context: StoreContext) throws -> SenderKeyRecord?
 }

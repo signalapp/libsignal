@@ -140,26 +140,20 @@ class InMemorySignedPreKeyStore extends SignalClient.SignedPreKeyStore {
 class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
   private state = new Map();
   async saveSenderKey(
-    name: SignalClient.SenderKeyName,
+    sender: SignalClient.ProtocolAddress,
+    distributionId: string,
     record: SignalClient.SenderKeyRecord
   ): Promise<void> {
     const idx =
-      name.distributionId() +
-      '::' +
-      name.senderName() +
-      '::' +
-      name.senderDeviceId();
+      distributionId + '::' + sender.name() + '::' + sender.deviceId();
     Promise.resolve(this.state.set(idx, record));
   }
   async getSenderKey(
-    name: SignalClient.SenderKeyName
+    sender: SignalClient.ProtocolAddress,
+    distributionId: string
   ): Promise<SignalClient.SenderKeyRecord | null> {
     const idx =
-      name.distributionId() +
-      '::' +
-      name.senderName() +
-      '::' +
-      name.senderDeviceId();
+      distributionId + '::' + sender.name() + '::' + sender.deviceId();
     if (this.state.has(idx)) {
       return Promise.resolve(this.state.get(idx));
     } else {
@@ -200,12 +194,6 @@ describe('SignalClient', () => {
     const addr = SignalClient.ProtocolAddress.new('name', 42);
     assert.deepEqual(addr.name(), 'name');
     assert.deepEqual(addr.deviceId(), 42);
-  });
-  it('SenderKeyName', () => {
-    const addr = SignalClient.SenderKeyName.new('group', 'sender', 42);
-    assert.deepEqual(addr.distributionId(), 'group');
-    assert.deepEqual(addr.senderName(), 'sender');
-    assert.deepEqual(addr.senderDeviceId(), 42);
   });
   it('Fingerprint', () => {
     const aliceKey = SignalClient.PublicKey.deserialize(
@@ -380,23 +368,18 @@ describe('SignalClient', () => {
   });
   describe('SenderKeyDistributionMessage Store API', () => {
     it('can encrypt and decrypt', async () => {
-      const senderKeyName = SignalClient.SenderKeyName.new(
-        'group',
-        'sender',
-        1
-      );
+      const sender = SignalClient.ProtocolAddress.new('sender', 1);
+      const distributionId = 'group';
       const aSenderKeyStore = new InMemorySenderKeyStore();
       const skdm = await SignalClient.SenderKeyDistributionMessage.create(
-        senderKeyName,
+        sender,
+        distributionId,
         aSenderKeyStore
       );
 
       const bSenderKeyStore = new InMemorySenderKeyStore();
       await SignalClient.processSenderKeyDistributionMessage(
-        SignalClient.ProtocolAddress.new(
-          senderKeyName.senderName(),
-          senderKeyName.senderDeviceId()
-        ),
+        sender,
         skdm,
         bSenderKeyStore
       );
@@ -404,16 +387,14 @@ describe('SignalClient', () => {
       const message = Buffer.from('0a0b0c', 'hex');
 
       const aCtext = await SignalClient.groupEncrypt(
-        senderKeyName,
+        sender,
+        distributionId,
         aSenderKeyStore,
         message
       );
 
       const bPtext = await SignalClient.groupDecrypt(
-        SignalClient.ProtocolAddress.new(
-          senderKeyName.senderName(),
-          senderKeyName.senderDeviceId()
-        ),
+        sender,
         bSenderKeyStore,
         aCtext
       );
@@ -421,21 +402,20 @@ describe('SignalClient', () => {
       assert.deepEqual(message, bPtext);
     });
     it("does not panic if there's an error", async () => {
-      const senderKeyName = SignalClient.SenderKeyName.new(
-        'group',
-        'sender',
-        1
-      );
+      const sender = SignalClient.ProtocolAddress.new('sender', 1);
+      const distributionId = 'group';
       const aSenderKeyStore = new InMemorySenderKeyStore();
 
       const messagePromise = SignalClient.SenderKeyDistributionMessage.create(
-        senderKeyName,
+        sender,
+        distributionId,
         (undefined as unknown) as SignalClient.SenderKeyStore
       );
       await assert.isRejected(messagePromise, TypeError);
 
       const messagePromise2 = SignalClient.SenderKeyDistributionMessage.create(
-        ({} as unknown) as SignalClient.SenderKeyName,
+        ({} as unknown) as SignalClient.ProtocolAddress,
+        distributionId,
         aSenderKeyStore
       );
       await assert.isRejected(messagePromise2, TypeError);

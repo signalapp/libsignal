@@ -39,7 +39,6 @@ pub enum SignalProtocolError {
 
     InvalidPreKeyId,
     InvalidSignedPreKeyId,
-    InvalidSenderKeyName,
 
     InvalidRootKeyLength(usize),
     InvalidChainKeyLength(usize),
@@ -167,7 +166,6 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::InvalidMessage(m) => write!(f, "invalid message {}", m),
             SignalProtocolError::InternalError(m) => write!(f, "internal error {}", m),
-            SignalProtocolError::InvalidSenderKeyName => write!(f, "invalid sender key name"),
             SignalProtocolError::NoSenderKeyState => write!(f, "no sender key state"),
             SignalProtocolError::FfiBindingError(m) => {
                 write!(f, "error while invoking an ffi callback: {}", m)

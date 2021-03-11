@@ -76,15 +76,16 @@ public func processPreKeyBundle(_ bundle: PreKeyBundle,
     }
 }
 
-public func groupEncrypt<Bytes: ContiguousBytes>(groupId: SenderKeyName,
-                                                 message: Bytes,
+public func groupEncrypt<Bytes: ContiguousBytes>(_ message: Bytes,
+                                                 from sender: ProtocolAddress,
+                                                 distributionId: String,
                                                  store: SenderKeyStore,
                                                  context: StoreContext) throws -> [UInt8] {
     return try context.withOpaquePointer { context in
         try message.withUnsafeBytes { messageBytes in
             try withSenderKeyStore(store) { ffiStore in
                 try invokeFnReturningArray {
-                    signal_group_encrypt_message($0, $1, groupId.nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
+                    signal_group_encrypt_message($0, $1, sender.nativeHandle, distributionId, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
                 }
             }
         }

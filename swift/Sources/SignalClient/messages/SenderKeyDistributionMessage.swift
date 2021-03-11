@@ -17,10 +17,15 @@ public class SenderKeyDistributionMessage {
         return handle
     }
 
-    public init(name: SenderKeyName, store: SenderKeyStore, context: StoreContext) throws {
+    public init(from sender: ProtocolAddress,
+                distributionId: String,
+                store: SenderKeyStore,
+                context: StoreContext) throws {
         try context.withOpaquePointer { context in
             try withSenderKeyStore(store) {
-                try checkError(signal_sender_key_distribution_message_create(&handle, name.nativeHandle,
+                try checkError(signal_sender_key_distribution_message_create(&handle,
+                                                                             sender.nativeHandle,
+                                                                             distributionId,
                                                                              $0, context))
             }
         }

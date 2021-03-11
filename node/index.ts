@@ -608,40 +608,6 @@ export class SessionRecord {
   }
 }
 
-export class SenderKeyName {
-  readonly _nativeHandle: Native.SenderKeyName;
-
-  private constructor(nativeHandle: Native.SenderKeyName) {
-    this._nativeHandle = nativeHandle;
-  }
-
-  static _fromNativeHandle(nativeHandle: Native.SenderKeyName): SenderKeyName {
-    return new SenderKeyName(nativeHandle);
-  }
-
-  static new(
-    distributionId: string,
-    senderName: string,
-    senderDeviceId: number
-  ): SenderKeyName {
-    return new SenderKeyName(
-      NativeImpl.SenderKeyName_New(distributionId, senderName, senderDeviceId)
-    );
-  }
-
-  distributionId(): string {
-    return NativeImpl.SenderKeyName_GetDistributionId(this);
-  }
-
-  senderName(): string {
-    return NativeImpl.SenderKeyName_GetSenderName(this);
-  }
-
-  senderDeviceId(): number {
-    return NativeImpl.SenderKeyName_GetSenderDeviceId(this);
-  }
-}
-
 export class ServerCertificate {
   readonly _nativeHandle: Native.ServerCertificate;
 
@@ -806,11 +772,13 @@ export class SenderKeyDistributionMessage {
   }
 
   static async create(
-    name: SenderKeyName,
+    sender: ProtocolAddress,
+    distributionId: string,
     store: SenderKeyStore
   ): Promise<SenderKeyDistributionMessage> {
     const handle = await NativeImpl.SenderKeyDistributionMessage_Create(
-      name,
+      sender,
+      distributionId,
       store,
       null
     );
@@ -1094,18 +1062,24 @@ export abstract class SignedPreKeyStore implements Native.SignedPreKeyStore {
 
 export abstract class SenderKeyStore implements Native.SenderKeyStore {
   async _saveSenderKey(
-    name: Native.SenderKeyName,
+    sender: Native.ProtocolAddress,
+    distributionId: string,
     record: Native.SenderKeyRecord
   ): Promise<void> {
     return this.saveSenderKey(
-      SenderKeyName._fromNativeHandle(name),
+      ProtocolAddress._fromNativeHandle(sender),
+      distributionId,
       SenderKeyRecord._fromNativeHandle(record)
     );
   }
   async _getSenderKey(
-    name: Native.SenderKeyName
+    sender: Native.ProtocolAddress,
+    distributionId: string
   ): Promise<Native.SenderKeyRecord | null> {
-    const skr = await this.getSenderKey(SenderKeyName._fromNativeHandle(name));
+    const skr = await this.getSenderKey(
+      ProtocolAddress._fromNativeHandle(sender),
+      distributionId
+    );
     if (skr == null) {
       return null;
     } else {
@@ -1114,18 +1088,29 @@ export abstract class SenderKeyStore implements Native.SenderKeyStore {
   }
 
   abstract saveSenderKey(
-    name: SenderKeyName,
+    sender: ProtocolAddress,
+    distributionId: string,
     record: SenderKeyRecord
   ): Promise<void>;
-  abstract getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
+  abstract getSenderKey(
+    sender: ProtocolAddress,
+    distributionId: string
+  ): Promise<SenderKeyRecord | null>;
 }
 
 export async function groupEncrypt(
-  name: SenderKeyName,
+  sender: ProtocolAddress,
+  distributionId: string,
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return NativeImpl.GroupCipher_EncryptMessage(name, message, store, null);
+  return NativeImpl.GroupCipher_EncryptMessage(
+    sender,
+    distributionId,
+    message,
+    store,
+    null
+  );
 }
 
 export async function groupDecrypt(

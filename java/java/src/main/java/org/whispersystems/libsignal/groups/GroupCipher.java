@@ -48,8 +48,7 @@ public class GroupCipher {
    */
   public byte[] encrypt(String distributionId, byte[] paddedPlaintext) throws NoSessionException {
     try {
-      SenderKeyName name = new SenderKeyName(distributionId, this.sender);
-      return Native.GroupCipher_EncryptMessage(name.nativeHandle(), paddedPlaintext, this.senderKeyStore, null);
+      return Native.GroupCipher_EncryptMessage(this.sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
     }

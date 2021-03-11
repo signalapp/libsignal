@@ -8,6 +8,11 @@ public struct NullContext: StoreContext {
     public init() {}
 }
 
+private struct SenderKeyName: Hashable {
+    var sender: ProtocolAddress
+    var distributionId: String
+}
+
 public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, SessionStore, SenderKeyStore {
     private var publicKeys: [ProtocolAddress: IdentityKey] = [:]
     private var privateKey: IdentityKeyPair
@@ -91,11 +96,11 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         sessionMap[address] = record
     }
 
-    public func storeSenderKey(name: SenderKeyName, record: SenderKeyRecord, context: StoreContext) throws {
-        senderKeyMap[name] = record
+    public func storeSenderKey(from sender: ProtocolAddress, distributionId: String, record: SenderKeyRecord, context: StoreContext) throws {
+        senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)] = record
     }
 
-    public func loadSenderKey(name: SenderKeyName, context: StoreContext) throws -> SenderKeyRecord? {
-        return senderKeyMap[name]
+    public func loadSenderKey(from sender: ProtocolAddress, distributionId: String, context: StoreContext) throws -> SenderKeyRecord? {
+        return senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)]
     }
 }
