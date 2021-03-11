@@ -86,8 +86,9 @@ public class SessionBuilder {
    */
   public void process(PreKeyBundle preKey) throws InvalidKeyException, UntrustedIdentityException {
     Native.SessionBuilder_ProcessPreKeyBundle(preKey.nativeHandle(),
-                        remoteAddress.nativeHandle(),
-                        sessionStore,
-                        identityKeyStore);
+                                              remoteAddress.nativeHandle(),
+                                              sessionStore,
+                                              identityKeyStore,
+                                              null);
   }
 }

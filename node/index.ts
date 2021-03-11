@@ -775,7 +775,11 @@ export class SenderKeyDistributionMessage {
     name: SenderKeyName,
     store: SenderKeyStore
   ): Promise<SenderKeyDistributionMessage> {
-    const handle = await SC.SenderKeyDistributionMessage_Create(name, store);
+    const handle = await SC.SenderKeyDistributionMessage_Create(
+      name,
+      store,
+      null
+    );
     return new SenderKeyDistributionMessage(handle);
   }
 
@@ -818,7 +822,7 @@ export async function processSenderKeyDistributionMessage(
   message: SenderKeyDistributionMessage,
   store: SenderKeyStore
 ): Promise<void> {
-  await SC.SenderKeyDistributionMessage_Process(name, message, store);
+  await SC.SenderKeyDistributionMessage_Process(name, message, store, null);
 }
 
 export class SenderKeyMessage {
@@ -1065,7 +1069,7 @@ export async function groupEncrypt(
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return SC.GroupCipher_Encrypt(name, message, store);
+  return SC.GroupCipher_EncryptMessage(name, message, store, null);
 }
 
 export async function groupDecrypt(
@@ -1073,7 +1077,7 @@ export async function groupDecrypt(
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return SC.GroupCipher_Decrypt(name, message, store);
+  return SC.GroupCipher_DecryptMessage(name, message, store, null);
 }
 
 export class SealedSenderDecryptionResult {
@@ -1138,7 +1142,8 @@ export function processPreKeyBundle(
     bundle,
     address,
     sessionStore,
-    identityStore
+    identityStore,
+    null
   );
 }
 
@@ -1153,7 +1158,8 @@ export async function signalEncrypt(
       message,
       address,
       sessionStore,
-      identityStore
+      identityStore,
+      null
     )
   );
 }
@@ -1168,7 +1174,8 @@ export function signalDecrypt(
     message,
     address,
     sessionStore,
-    identityStore
+    identityStore,
+    null
   );
 }
 
@@ -1186,7 +1193,8 @@ export function signalDecryptPreKey(
     sessionStore,
     identityStore,
     prekeyStore,
-    signedPrekeyStore
+    signedPrekeyStore,
+    null
   );
 }
 
@@ -1202,7 +1210,8 @@ export function sealedSenderEncryptMessage(
     senderCert,
     message,
     sessionStore,
-    identityStore
+    identityStore,
+    null
   );
 }
 
@@ -1240,6 +1249,10 @@ export async function sealedSenderDecryptToUsmc(
   message: Buffer,
   identityStore: IdentityKeyStore
 ): Promise<UnidentifiedSenderMessageContent> {
-  const usmc = await SC.SealedSender_DecryptToUsmc(message, identityStore);
+  const usmc = await SC.SealedSender_DecryptToUsmc(
+    message,
+    identityStore,
+    null
+  );
   return UnidentifiedSenderMessageContent._fromNativeHandle(usmc);
 }

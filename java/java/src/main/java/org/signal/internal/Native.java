@@ -92,11 +92,11 @@ public final class Native {
   public static native byte[] ECPublicKey_Serialize(long obj);
   public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
-  public static native byte[] GroupCipher_DecryptMessage(long senderKeyName, byte[] message, SenderKeyStore store);
-  public static native byte[] GroupCipher_EncryptMessage(long senderKeyName, byte[] message, SenderKeyStore store);
+  public static native byte[] GroupCipher_DecryptMessage(long senderKeyName, byte[] message, SenderKeyStore store, Object ctx);
+  public static native byte[] GroupCipher_EncryptMessage(long senderKeyName, byte[] message, SenderKeyStore store, Object ctx);
 
-  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long senderKeyName, SenderKeyStore store);
-  public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long senderKeyName, long senderKeyDistributionMessage, SenderKeyStore store);
+  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long senderKeyName, SenderKeyStore store, Object ctx);
+  public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long senderKeyName, long senderKeyDistributionMessage, SenderKeyStore store, Object ctx);
 
   public static native byte[] HKDF_DeriveSecrets(int outputLength, int version, byte[] ikm, byte[] label, byte[] salt);
 
@@ -149,8 +149,8 @@ public final class Native {
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 
-  public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore);
-  public static native byte[] SealedSessionCipher_Encrypt(long destination, long senderCert, byte[] ptext, SessionStore sessionStore, IdentityKeyStore identityStore);
+  public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore, Object ctx);
+  public static native byte[] SealedSessionCipher_Encrypt(long destination, long senderCert, byte[] ptext, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
   public static native long SenderCertificate_Deserialize(byte[] data);
   public static native void SenderCertificate_Destroy(long handle);
@@ -204,10 +204,10 @@ public final class Native {
   public static native byte[] ServerCertificate_GetSignature(long obj);
   public static native long ServerCertificate_New(int keyId, long serverKey, long trustRoot);
 
-  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
-  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore);
-  public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, Object ctx);
+  public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
   public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
 
   public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);

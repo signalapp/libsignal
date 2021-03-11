@@ -33,6 +33,7 @@ def translate_to_ts(typ):
         "String": "string",
         "&str": "string",
         "Vec<u8>": "Buffer",
+        "Context": "null",
     }
 
     if typ in type_map:

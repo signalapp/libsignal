@@ -456,6 +456,21 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
+static_assertions::assert_type_eq_all!(libsignal_protocol::Context, Option<*mut std::ffi::c_void>);
+impl<'a> AsyncArgTypeInfo<'a> for *mut std::ffi::c_void {
+    type ArgType = JsNull;
+    type StoredType = ();
+    fn save_async_arg(
+        _cx: &mut FunctionContext,
+        _foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        unreachable!() // only used as part of libsignal_protocol::Context
+    }
+    fn load_async_arg(_stored: &'a mut Self::StoredType) -> Self {
+        unreachable!() // only used as part of libsignal_protocol::Context
+    }
+}
+
 macro_rules! store {
     ($name:ident) => {
         paste! {

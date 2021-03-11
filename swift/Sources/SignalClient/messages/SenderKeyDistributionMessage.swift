@@ -20,7 +20,7 @@ public class SenderKeyDistributionMessage {
     public init(name: SenderKeyName, store: SenderKeyStore, context: StoreContext) throws {
         try context.withOpaquePointer { context in
             try withSenderKeyStore(store) {
-                try checkError(signal_create_sender_key_distribution_message(&handle, name.nativeHandle,
+                try checkError(signal_sender_key_distribution_message_create(&handle, name.nativeHandle,
                                                                              $0, context))
             }
         }
