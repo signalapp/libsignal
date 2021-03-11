@@ -26,8 +26,8 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
     this.handle = handle;
   }
 
-  public SenderKeyDistributionMessage(int id, int iteration, byte[] chainKey, ECPublicKey signatureKey) {
-    handle = Native.SenderKeyDistributionMessage_New(id, iteration, chainKey, signatureKey.nativeHandle());
+  public SenderKeyDistributionMessage(String distributionId, int id, int iteration, byte[] chainKey, ECPublicKey signatureKey) {
+    handle = Native.SenderKeyDistributionMessage_New(distributionId, id, iteration, chainKey, signatureKey.nativeHandle());
   }
 
   public SenderKeyDistributionMessage(byte[] serialized) throws LegacyMessageException, InvalidMessageException {
@@ -44,6 +44,10 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
     return SENDERKEY_DISTRIBUTION_TYPE;
   }
 
+  public String getDistributionId() {
+    return Native.SenderKeyMessage_GetDistributionId(this.handle);
+  }
+
   public int getIteration() {
     return Native.SenderKeyDistributionMessage_GetIteration(this.handle);
   }
@@ -57,12 +61,6 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
   }
 
   public int getChainId() {
-    return Native.SenderKeyDistributionMessage_GetChainId(this.handle);
-  }
-
-  /** @deprecated Renamed to {@link #getChainId} */
-  @Deprecated
-  public int getId() {
     return Native.SenderKeyDistributionMessage_GetChainId(this.handle);
   }
 

@@ -818,6 +818,7 @@ export class SenderKeyDistributionMessage {
   }
 
   static new(
+    distributionId: string,
     chainId: number,
     iteration: number,
     chainKey: Buffer,
@@ -825,6 +826,7 @@ export class SenderKeyDistributionMessage {
   ): SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(
       NativeImpl.SenderKeyDistributionMessage_New(
+        distributionId,
         chainId,
         iteration,
         chainKey,
@@ -854,15 +856,19 @@ export class SenderKeyDistributionMessage {
   chainId(): number {
     return NativeImpl.SenderKeyDistributionMessage_GetChainId(this);
   }
+
+  distributionId(): string {
+    return NativeImpl.SenderKeyDistributionMessage_GetDistributionId(this);
+  }
 }
 
 export async function processSenderKeyDistributionMessage(
-  name: SenderKeyName,
+  sender: ProtocolAddress,
   message: SenderKeyDistributionMessage,
   store: SenderKeyStore
 ): Promise<void> {
   await NativeImpl.SenderKeyDistributionMessage_Process(
-    name,
+    sender,
     message,
     store,
     null
@@ -877,13 +883,20 @@ export class SenderKeyMessage {
   }
 
   static new(
+    distributionId: string,
     chainId: number,
     iteration: number,
     ciphertext: Buffer,
     pk: PrivateKey
   ): SenderKeyMessage {
     return new SenderKeyMessage(
-      NativeImpl.SenderKeyMessage_New(chainId, iteration, ciphertext, pk)
+      NativeImpl.SenderKeyMessage_New(
+        distributionId,
+        chainId,
+        iteration,
+        ciphertext,
+        pk
+      )
     );
   }
 
@@ -907,6 +920,10 @@ export class SenderKeyMessage {
 
   chainId(): number {
     return NativeImpl.SenderKeyMessage_GetChainId(this);
+  }
+
+  distributionId(): string {
+    return NativeImpl.SenderKeyMessage_GetDistributionId(this);
   }
 
   verifySignature(key: PublicKey): boolean {
@@ -1112,11 +1129,11 @@ export async function groupEncrypt(
 }
 
 export async function groupDecrypt(
-  name: SenderKeyName,
+  sender: ProtocolAddress,
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return NativeImpl.GroupCipher_DecryptMessage(name, message, store, null);
+  return NativeImpl.GroupCipher_DecryptMessage(sender, message, store, null);
 }
 
 export class SealedSenderDecryptionResult {

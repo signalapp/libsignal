@@ -245,11 +245,11 @@ class PublicAPITests: TestCaseBase {
         let a_ctext = try! groupEncrypt(groupId: group_id, message: [1, 2, 3], store: a_store, context: NullContext())
 
         let b_store = InMemorySignalProtocolStore()
-        try! processSenderKeyDistributionMessage(sender: group_id,
-                                                 message: skdm_r,
+        try! processSenderKeyDistributionMessage(skdm_r,
+                                                 from: sender,
                                                  store: b_store,
                                                  context: NullContext())
-        let b_ptext = try! groupDecrypt(groupId: group_id, message: a_ctext, store: b_store, context: NullContext())
+        let b_ptext = try! groupDecrypt(a_ctext, from: sender, store: b_store, context: NullContext())
 
         XCTAssertEqual(b_ptext, [1, 2, 3])
     }

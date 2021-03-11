@@ -329,17 +329,20 @@ describe('SignalClient', () => {
     assert(!senderCert.validate(trustRoot.getPublicKey(), expiration + 10)); // expired
   });
   it('SenderKeyMessage', () => {
+    const distributionId = 'abc';
     const chainId = 9;
     const iteration = 101;
     const ciphertext = Buffer.alloc(32, 0xfe);
     const pk = SignalClient.PrivateKey.generate();
 
     const skm = SignalClient.SenderKeyMessage.new(
+      distributionId,
       chainId,
       iteration,
       ciphertext,
       pk
     );
+    assert.deepEqual(skm.distributionId(), distributionId);
     assert.deepEqual(skm.chainId(), chainId);
     assert.deepEqual(skm.iteration(), iteration);
     assert.deepEqual(skm.ciphertext(), ciphertext);
@@ -352,17 +355,20 @@ describe('SignalClient', () => {
     assert.deepEqual(skm, skmFromBytes);
   });
   it('SenderKeyDistributionMessage', () => {
+    const distributionId = 'abc';
     const chainId = 9;
     const iteration = 101;
     const chainKey = Buffer.alloc(32, 0xfe);
     const pk = SignalClient.PrivateKey.generate();
 
     const skdm = SignalClient.SenderKeyDistributionMessage.new(
+      distributionId,
       chainId,
       iteration,
       chainKey,
       pk.getPublicKey()
     );
+    assert.deepEqual(skdm.distributionId(), distributionId);
     assert.deepEqual(skdm.chainId(), chainId);
     assert.deepEqual(skdm.iteration(), iteration);
     assert.deepEqual(skdm.chainKey(), chainKey);
@@ -387,7 +393,10 @@ describe('SignalClient', () => {
 
       const bSenderKeyStore = new InMemorySenderKeyStore();
       await SignalClient.processSenderKeyDistributionMessage(
-        senderKeyName,
+        SignalClient.ProtocolAddress.new(
+          senderKeyName.senderName(),
+          senderKeyName.senderDeviceId()
+        ),
         skdm,
         bSenderKeyStore
       );
@@ -401,7 +410,10 @@ describe('SignalClient', () => {
       );
 
       const bPtext = await SignalClient.groupDecrypt(
-        senderKeyName,
+        SignalClient.ProtocolAddress.new(
+          senderKeyName.senderName(),
+          senderKeyName.senderDeviceId()
+        ),
         bSenderKeyStore,
         aCtext
       );

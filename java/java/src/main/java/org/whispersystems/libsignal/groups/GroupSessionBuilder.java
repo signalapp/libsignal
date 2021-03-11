@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.groups;
 
 import org.signal.client.internal.Native;
+import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
 
@@ -37,13 +38,13 @@ public class GroupSessionBuilder {
   /**
    * Construct a group session for receiving messages from senderKeyName.
    *
-   * @param senderKeyName The (id, senderName, deviceId) tuple associated with the SenderKeyDistributionMessage.
+   * @param sender The address of the device that sent the message.
    * @param senderKeyDistributionMessage A received SenderKeyDistributionMessage.
    */
-  public void process(SenderKeyName senderKeyName, SenderKeyDistributionMessage senderKeyDistributionMessage) {
-      Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(senderKeyName.nativeHandle(),
-                                                                    senderKeyDistributionMessage.nativeHandle(),
-                                                                    senderKeyStore, null);
+  public void process(SignalProtocolAddress sender, SenderKeyDistributionMessage senderKeyDistributionMessage) {
+    Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(sender.nativeHandle(),
+                                                                   senderKeyDistributionMessage.nativeHandle(),
+                                                                   senderKeyStore, null);
   }
 
   /**

@@ -107,8 +107,10 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -134,7 +136,7 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
         .await?;
 
         let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &group_sender, None).await;
+            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await;
 
         assert!(bob_plaintext.is_err());
 
@@ -148,8 +150,10 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -175,7 +179,7 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         .await?;
 
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -183,7 +187,7 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         .await?;
 
         let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &group_sender, None).await?;
+            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await?;
 
         assert_eq!(
             String::from_utf8(bob_plaintext).expect("valid utf8"),
@@ -200,8 +204,10 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -232,7 +238,7 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         .await?;
 
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -240,7 +246,7 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         .await?;
 
         let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &group_sender, None).await?;
+            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await?;
 
         assert_eq!(bob_plaintext, large_message);
 
@@ -254,8 +260,10 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -272,7 +280,7 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
             SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -305,26 +313,26 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
         .await?;
 
         let bob_plaintext1 =
-            group_decrypt(&alice_ciphertext1, &mut bob_store, &group_sender, None).await?;
+            group_decrypt(&alice_ciphertext1, &mut bob_store, &sender_address, None).await?;
         assert_eq!(
             String::from_utf8(bob_plaintext1).expect("valid utf8"),
             "swim camp"
         );
 
         assert!(matches!(
-            group_decrypt(&alice_ciphertext1, &mut bob_store, &group_sender, None).await,
+            group_decrypt(&alice_ciphertext1, &mut bob_store, &sender_address, None).await,
             Err(SignalProtocolError::DuplicatedMessage(1, 0))
         ));
 
         let bob_plaintext3 =
-            group_decrypt(&alice_ciphertext3, &mut bob_store, &group_sender, None).await?;
+            group_decrypt(&alice_ciphertext3, &mut bob_store, &sender_address, None).await?;
         assert_eq!(
             String::from_utf8(bob_plaintext3).expect("valid utf8"),
             "ninja camp"
         );
 
         let bob_plaintext2 =
-            group_decrypt(&alice_ciphertext2, &mut bob_store, &group_sender, None).await?;
+            group_decrypt(&alice_ciphertext2, &mut bob_store, &sender_address, None).await?;
         assert_eq!(
             String::from_utf8(bob_plaintext2).expect("valid utf8"),
             "robot camp"
@@ -340,8 +348,10 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -370,7 +380,7 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
 
         // now bob joins:
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -387,7 +397,7 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
         .await?;
 
         let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &group_sender, None).await?;
+            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await?;
         assert_eq!(
             String::from_utf8(bob_plaintext).expect("valid utf8"),
             "welcome bob"
@@ -403,8 +413,10 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -421,7 +433,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
             SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -448,7 +460,8 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         let mut plaintexts = Vec::with_capacity(ciphertexts.len());
 
         for ciphertext in ciphertexts {
-            plaintexts.push(group_decrypt(&ciphertext, &mut bob_store, &group_sender, None).await?);
+            plaintexts
+                .push(group_decrypt(&ciphertext, &mut bob_store, &sender_address, None).await?);
         }
 
         plaintexts.sort();
@@ -471,8 +484,10 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -489,7 +504,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
             SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -517,7 +532,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         .await?;
 
         assert!(
-            group_decrypt(&alice_ciphertext, &mut bob_store, &group_sender, None)
+            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None)
                 .await
                 .is_err()
         );
@@ -532,8 +547,10 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let group_sender =
-            SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+        let group_sender = SenderKeyName::new(
+            "summer camp planning committee".to_owned(),
+            sender_address.clone(),
+        )?;
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -550,7 +567,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
             SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
         process_sender_key_distribution_message(
-            &group_sender,
+            &sender_address,
             &recv_distribution_message,
             &mut bob_store,
             None,
@@ -574,7 +591,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
 
         assert_eq!(
             String::from_utf8(
-                group_decrypt(&ciphertexts[1000], &mut bob_store, &group_sender, None,).await?
+                group_decrypt(&ciphertexts[1000], &mut bob_store, &sender_address, None,).await?
             )
             .expect("valid utf8"),
             "too many messages"
@@ -584,7 +601,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
                 group_decrypt(
                     &ciphertexts[ciphertexts.len() - 1],
                     &mut bob_store,
-                    &group_sender,
+                    &sender_address,
                     None,
                 )
                 .await?
@@ -593,7 +610,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
             "too many messages"
         );
         assert!(
-            group_decrypt(&ciphertexts[0], &mut bob_store, &group_sender, None)
+            group_decrypt(&ciphertexts[0], &mut bob_store, &sender_address, None)
                 .await
                 .is_err()
         );

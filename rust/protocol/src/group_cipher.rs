@@ -7,8 +7,8 @@ use crate::consts;
 use crate::crypto;
 
 use crate::{
-    Context, KeyPair, Result, SenderKeyDistributionMessage, SenderKeyMessage, SenderKeyName,
-    SenderKeyRecord, SenderKeyStore, SignalProtocolError,
+    Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage, SenderKeyMessage,
+    SenderKeyName, SenderKeyRecord, SenderKeyStore, SignalProtocolError,
 };
 
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
@@ -38,9 +38,10 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let signing_key = sender_key_state.signing_key_private()?;
 
     let skm = SenderKeyMessage::new(
+        sender_key_name.distribution_id()?,
         sender_key_state.chain_id()?,
         sender_key.iteration()?,
-        &ciphertext,
+        ciphertext.into_boxed_slice(),
         csprng,
         &signing_key,
     )?;
@@ -89,15 +90,17 @@ fn get_sender_key(state: &mut SenderKeyState, iteration: u32) -> Result<SenderMe
 pub async fn group_decrypt(
     skm_bytes: &[u8],
     sender_key_store: &mut dyn SenderKeyStore,
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
     ctx: Context,
 ) -> Result<Vec<u8>> {
+    let skm = SenderKeyMessage::try_from(skm_bytes)?;
+
+    let sender_key_name = SenderKeyName::new(skm.distribution_id().to_owned(), sender.clone())?;
+
     let mut record = sender_key_store
         .load_sender_key(&sender_key_name, ctx)
         .await?
         .ok_or(SignalProtocolError::InvalidSenderKeyName)?;
-
-    let skm = SenderKeyMessage::try_from(skm_bytes)?;
 
     let mut sender_key_state = record.sender_key_state_for_chain_id(skm.chain_id())?;
 
@@ -115,20 +118,21 @@ pub async fn group_decrypt(
     )?;
 
     sender_key_store
-        .store_sender_key(sender_key_name, &record, ctx)
+        .store_sender_key(&sender_key_name, &record, ctx)
         .await?;
 
     Ok(plaintext)
 }
 
 pub async fn process_sender_key_distribution_message(
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
     skdm: &SenderKeyDistributionMessage,
     sender_key_store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<()> {
+    let sender_key_name = SenderKeyName::new(skdm.distribution_id()?, sender.clone())?;
     let mut sender_key_record = sender_key_store
-        .load_sender_key(sender_key_name, ctx)
+        .load_sender_key(&sender_key_name, ctx)
         .await?
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
@@ -140,7 +144,7 @@ pub async fn process_sender_key_distribution_message(
         None,
     )?;
     sender_key_store
-        .store_sender_key(sender_key_name, &sender_key_record, ctx)
+        .store_sender_key(&sender_key_name, &sender_key_record, ctx)
         .await?;
     Ok(())
 }
@@ -178,9 +182,10 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     let sender_chain_key = state.sender_chain_key()?;
 
     SenderKeyDistributionMessage::new(
+        sender_key_name.distribution_id()?,
         state.chain_id()?,
         sender_chain_key.iteration()?,
-        &sender_chain_key.seed()?,
+        sender_chain_key.seed()?,
         state.signing_key_public()?,
     )
 }

@@ -11,6 +11,7 @@ import org.whispersystems.libsignal.InvalidKeyIdException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.NoSessionException;
+import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;
 
 import java.security.InvalidAlgorithmParameterException;
@@ -31,11 +32,11 @@ import java.security.NoSuchAlgorithmException;
 public class GroupCipher {
 
   private final SenderKeyStore senderKeyStore;
-  private final SenderKeyName senderKeyId;
+  private final SignalProtocolAddress sender;
 
-  public GroupCipher(SenderKeyStore senderKeyStore, SenderKeyName senderKeyId) {
+  public GroupCipher(SenderKeyStore senderKeyStore, SignalProtocolAddress sender) {
     this.senderKeyStore = senderKeyStore;
-    this.senderKeyId    = senderKeyId;
+    this.sender         = sender;
   }
 
   /**
@@ -45,9 +46,10 @@ public class GroupCipher {
    * @return Ciphertext.
    * @throws NoSessionException
    */
-  public byte[] encrypt(byte[] paddedPlaintext) throws NoSessionException {
+  public byte[] encrypt(String distributionId, byte[] paddedPlaintext) throws NoSessionException {
     try {
-      return Native.GroupCipher_EncryptMessage(this.senderKeyId.nativeHandle(), paddedPlaintext, this.senderKeyStore, null);
+      SenderKeyName name = new SenderKeyName(distributionId, this.sender);
+      return Native.GroupCipher_EncryptMessage(name.nativeHandle(), paddedPlaintext, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
     }
@@ -66,7 +68,7 @@ public class GroupCipher {
       throws LegacyMessageException, DuplicateMessageException, InvalidMessageException, NoSessionException
   {
     try {
-      return Native.GroupCipher_DecryptMessage(this.senderKeyId.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
+      return Native.GroupCipher_DecryptMessage(this.sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
     }
