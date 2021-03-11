@@ -5,7 +5,7 @@
 
 extern crate jni_crate as jni;
 
-use jni::objects::{JObject, JThrowable, JValue};
+use jni::objects::{JThrowable, JValue};
 use jni::sys::jobject;
 
 use aes_gcm_siv::Error as AesGcmSivError;
@@ -14,7 +14,7 @@ use libsignal_protocol::*;
 use std::convert::TryFrom;
 use std::error::Error;
 
-pub(crate) use jni::objects::{JClass, JString};
+pub(crate) use jni::objects::{JClass, JObject, JString};
 pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring};
 pub(crate) use jni::JNIEnv;
 

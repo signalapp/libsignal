@@ -55,7 +55,8 @@ public class SealedSessionCipher {
        senderCertificate.nativeHandle(),
        paddedPlaintext,
        this.signalProtocolStore,
-       this.signalProtocolStore);
+       this.signalProtocolStore,
+       null);
   }
 
   public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)
@@ -70,7 +71,7 @@ public class SealedSessionCipher {
     UnidentifiedSenderMessageContent content;
     try {
       content = new UnidentifiedSenderMessageContent(
-        Native.SealedSessionCipher_DecryptToUsmc(ciphertext, this.signalProtocolStore));
+        Native.SealedSessionCipher_DecryptToUsmc(ciphertext, this.signalProtocolStore, null));
       validator.validate(content.getSenderCertificate(), timestamp);
     } catch (Exception e) {
       throw new InvalidMetadataMessageException(e);

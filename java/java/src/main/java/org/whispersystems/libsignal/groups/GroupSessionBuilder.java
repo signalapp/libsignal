@@ -41,8 +41,8 @@ public class GroupSessionBuilder {
   public void process(SenderKeyName senderKeyName, SenderKeyDistributionMessage senderKeyDistributionMessage) {
     synchronized (GroupCipher.LOCK) {
        Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(senderKeyName.nativeHandle(),
-                                           senderKeyDistributionMessage.nativeHandle(),
-                                           senderKeyStore);
+                                                                      senderKeyDistributionMessage.nativeHandle(),
+                                                                      senderKeyStore, null);
     }
   }
 
@@ -54,7 +54,7 @@ public class GroupSessionBuilder {
    */
   public SenderKeyDistributionMessage create(SenderKeyName senderKeyName) {
     synchronized (GroupCipher.LOCK) {
-      return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderKeyName.nativeHandle(), senderKeyStore));
+      return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderKeyName.nativeHandle(), senderKeyStore, null));
     }
   }
 }

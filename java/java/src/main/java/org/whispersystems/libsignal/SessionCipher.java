@@ -96,11 +96,12 @@ public class SessionCipher {
              InvalidKeyIdException, InvalidKeyException, UntrustedIdentityException
   {
     return Native.SessionCipher_DecryptPreKeySignalMessage(ciphertext.nativeHandle(),
-                                      remoteAddress.nativeHandle(),
-                                      sessionStore,
-                                      identityKeyStore,
-                                      preKeyStore,
-                                      signedPreKeyStore);
+                                                           remoteAddress.nativeHandle(),
+                                                           sessionStore,
+                                                           identityKeyStore,
+                                                           preKeyStore,
+                                                           signedPreKeyStore,
+                                                           null);
   }
 
   /**
@@ -120,9 +121,10 @@ public class SessionCipher {
       NoSessionException, UntrustedIdentityException
   {
      return Native.SessionCipher_DecryptSignalMessage(ciphertext.nativeHandle(),
-                                 remoteAddress.nativeHandle(),
-                                 sessionStore,
-                                 identityKeyStore);
+                                                      remoteAddress.nativeHandle(),
+                                                      sessionStore,
+                                                      identityKeyStore,
+                                                      null);
   }
 
   public int getRemoteRegistrationId() {

@@ -822,7 +822,7 @@ SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedS
                                                              const SignalIdentityKeyStore *identity_store,
                                                              void *ctx);
 
-SignalFfiError *signal_create_sender_key_distribution_message(SignalSenderKeyDistributionMessage **out,
+SignalFfiError *signal_sender_key_distribution_message_create(SignalSenderKeyDistributionMessage **out,
                                                               const SignalSenderKeyName *sender_key_name,
                                                               const SignalSenderKeyStore *store,
                                                               void *ctx);
