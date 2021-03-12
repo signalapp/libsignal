@@ -20,7 +20,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let mut csprng = rand::rngs::OsRng;
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-    let distribution_id = "summer camp planning committee";
+    let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;

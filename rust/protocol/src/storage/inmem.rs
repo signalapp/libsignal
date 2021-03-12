@@ -5,7 +5,7 @@
 
 use crate::{
     IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyRecord,
-    SessionRecord, SignalProtocolError, SignedPreKeyRecord,
+    SessionRecord, SignalProtocolError, SignedPreKeyRecord, Uuid,
 };
 
 use crate::state::{PreKeyId, SignedPreKeyId};
@@ -230,7 +230,7 @@ impl traits::SessionStore for InMemSessionStore {
 pub struct InMemSenderKeyStore {
     // We use Cow keys in order to store owned values but compare to referenced ones.
     // See https://users.rust-lang.org/t/hashmap-with-tuple-keys/12711/6.
-    keys: HashMap<(Cow<'static, ProtocolAddress>, Cow<'static, str>), SenderKeyRecord>,
+    keys: HashMap<(Cow<'static, ProtocolAddress>, Uuid), SenderKeyRecord>,
 }
 
 impl InMemSenderKeyStore {
@@ -252,15 +252,12 @@ impl traits::SenderKeyStore for InMemSenderKeyStore {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         _ctx: Context,
     ) -> Result<()> {
         self.keys.insert(
-            (
-                Cow::Owned(sender.clone()),
-                Cow::from(distribution_id.to_owned()),
-            ),
+            (Cow::Owned(sender.clone()), distribution_id),
             record.clone(),
         );
         Ok(())
@@ -269,12 +266,12 @@ impl traits::SenderKeyStore for InMemSenderKeyStore {
     async fn load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         _ctx: Context,
     ) -> Result<Option<SenderKeyRecord>> {
         Ok(self
             .keys
-            .get(&(Cow::Borrowed(sender), Cow::from(distribution_id)))
+            .get(&(Cow::Borrowed(sender), distribution_id))
             .cloned())
     }
 }
@@ -409,7 +406,7 @@ impl traits::SenderKeyStore for InMemSignalProtocolStore {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         ctx: Context,
     ) -> Result<()> {
@@ -421,7 +418,7 @@ impl traits::SenderKeyStore for InMemSignalProtocolStore {
     async fn load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         ctx: Context,
     ) -> Result<Option<SenderKeyRecord>> {
         self.sender_key_store

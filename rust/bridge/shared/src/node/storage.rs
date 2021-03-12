@@ -573,7 +573,7 @@ impl NodeSenderKeyStore {
     async fn do_get_sender_key(
         &self,
         sender: ProtocolAddress,
-        distribution_id: String,
+        distribution_id: Uuid,
     ) -> Result<Option<SenderKeyRecord>, String> {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_queue, move |cx| {
@@ -612,7 +612,7 @@ impl NodeSenderKeyStore {
     async fn do_save_sender_key(
         &self,
         sender: ProtocolAddress,
-        distribution_id: String,
+        distribution_id: Uuid,
         record: SenderKeyRecord,
     ) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
@@ -656,10 +656,10 @@ impl SenderKeyStore for NodeSenderKeyStore {
     async fn load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         _ctx: libsignal_protocol::Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        self.do_get_sender_key(sender.clone(), distribution_id.to_string())
+        self.do_get_sender_key(sender.clone(), distribution_id)
             .await
             .map_err(|s| js_error_to_rust("getSenderKey", s))
     }
@@ -667,11 +667,11 @@ impl SenderKeyStore for NodeSenderKeyStore {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         _ctx: libsignal_protocol::Context,
     ) -> Result<(), SignalProtocolError> {
-        self.do_save_sender_key(sender.clone(), distribution_id.to_string(), record.clone())
+        self.do_save_sender_key(sender.clone(), distribution_id, record.clone())
             .await
             .map_err(|s| js_error_to_rust("saveSenderKey", s))
     }

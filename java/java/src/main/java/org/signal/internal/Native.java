@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.UUID;
 
 public final class Native {
   private static void copyToTempFileAndLoad(InputStream in, String extension) throws IOException {
@@ -119,9 +120,9 @@ public final class Native {
   public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
   public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store, Object ctx);
-  public static native byte[] GroupCipher_EncryptMessage(long sender, String distributionId, byte[] message, SenderKeyStore store, Object ctx);
+  public static native byte[] GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store, Object ctx);
 
-  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, String distributionId, SenderKeyStore store, Object ctx);
+  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store, Object ctx);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store, Object ctx);
 
   public static native byte[] HKDF_DeriveSecrets(int outputLength, int version, byte[] ikm, byte[] label, byte[] salt);
@@ -196,20 +197,20 @@ public final class Native {
   public static native void SenderKeyDistributionMessage_Destroy(long handle);
   public static native int SenderKeyDistributionMessage_GetChainId(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetChainKey(long obj);
-  public static native String SenderKeyDistributionMessage_GetDistributionId(long obj);
+  public static native UUID SenderKeyDistributionMessage_GetDistributionId(long obj);
   public static native int SenderKeyDistributionMessage_GetIteration(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSerialized(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSignatureKey(long m);
-  public static native long SenderKeyDistributionMessage_New(String distributionId, int chainId, int iteration, byte[] chainkey, long pk);
+  public static native long SenderKeyDistributionMessage_New(UUID distributionId, int chainId, int iteration, byte[] chainkey, long pk);
 
   public static native long SenderKeyMessage_Deserialize(byte[] data);
   public static native void SenderKeyMessage_Destroy(long handle);
   public static native int SenderKeyMessage_GetChainId(long obj);
   public static native byte[] SenderKeyMessage_GetCipherText(long obj);
-  public static native String SenderKeyMessage_GetDistributionId(long obj);
+  public static native UUID SenderKeyMessage_GetDistributionId(long obj);
   public static native int SenderKeyMessage_GetIteration(long obj);
   public static native byte[] SenderKeyMessage_GetSerialized(long obj);
-  public static native long SenderKeyMessage_New(String distributionId, int chainId, int iteration, byte[] ciphertext, long pk);
+  public static native long SenderKeyMessage_New(UUID distributionId, int chainId, int iteration, byte[] ciphertext, long pk);
   public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
 
   public static native long SenderKeyRecord_Deserialize(byte[] data);

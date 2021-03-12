@@ -141,7 +141,7 @@ class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
   private state = new Map();
   async saveSenderKey(
     sender: SignalClient.ProtocolAddress,
-    distributionId: string,
+    distributionId: SignalClient.Uuid,
     record: SignalClient.SenderKeyRecord
   ): Promise<void> {
     const idx =
@@ -150,7 +150,7 @@ class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
   }
   async getSenderKey(
     sender: SignalClient.ProtocolAddress,
-    distributionId: string
+    distributionId: SignalClient.Uuid
   ): Promise<SignalClient.SenderKeyRecord | null> {
     const idx =
       distributionId + '::' + sender.name() + '::' + sender.deviceId();
@@ -317,7 +317,7 @@ describe('SignalClient', () => {
     assert(!senderCert.validate(trustRoot.getPublicKey(), expiration + 10)); // expired
   });
   it('SenderKeyMessage', () => {
-    const distributionId = 'abc';
+    const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
     const chainId = 9;
     const iteration = 101;
     const ciphertext = Buffer.alloc(32, 0xfe);
@@ -343,7 +343,7 @@ describe('SignalClient', () => {
     assert.deepEqual(skm, skmFromBytes);
   });
   it('SenderKeyDistributionMessage', () => {
-    const distributionId = 'abc';
+    const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
     const chainId = 9;
     const iteration = 101;
     const chainKey = Buffer.alloc(32, 0xfe);
@@ -369,7 +369,7 @@ describe('SignalClient', () => {
   describe('SenderKeyDistributionMessage Store API', () => {
     it('can encrypt and decrypt', async () => {
       const sender = SignalClient.ProtocolAddress.new('sender', 1);
-      const distributionId = 'group';
+      const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
       const aSenderKeyStore = new InMemorySenderKeyStore();
       const skdm = await SignalClient.SenderKeyDistributionMessage.create(
         sender,
@@ -403,7 +403,7 @@ describe('SignalClient', () => {
     });
     it("does not panic if there's an error", async () => {
       const sender = SignalClient.ProtocolAddress.new('sender', 1);
-      const distributionId = 'group';
+      const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
       const aSenderKeyStore = new InMemorySenderKeyStore();
 
       const messagePromise = SignalClient.SenderKeyDistributionMessage.create(

@@ -12,8 +12,9 @@ import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
-public class SenderKeyDistributionMessage implements CiphertextMessage {
+import java.util.UUID;
 
+public class SenderKeyDistributionMessage implements CiphertextMessage {
 
   private final long handle;
 
@@ -26,7 +27,7 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
     this.handle = handle;
   }
 
-  public SenderKeyDistributionMessage(String distributionId, int id, int iteration, byte[] chainKey, ECPublicKey signatureKey) {
+  public SenderKeyDistributionMessage(UUID distributionId, int id, int iteration, byte[] chainKey, ECPublicKey signatureKey) {
     handle = Native.SenderKeyDistributionMessage_New(distributionId, id, iteration, chainKey, signatureKey.nativeHandle());
   }
 
@@ -44,7 +45,7 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
     return SENDERKEY_DISTRIBUTION_TYPE;
   }
 
-  public String getDistributionId() {
+  public UUID getDistributionId() {
     return Native.SenderKeyMessage_GetDistributionId(this.handle);
   }
 

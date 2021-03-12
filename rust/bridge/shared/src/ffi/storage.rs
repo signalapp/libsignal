@@ -393,13 +393,13 @@ type LoadSenderKey = extern "C" fn(
     store_ctx: *mut c_void,
     *mut *mut SenderKeyRecord,
     *const ProtocolAddress,
-    distribution_id: *const libc::c_char,
+    distribution_id: *const [u8; 16],
     ctx: *mut c_void,
 ) -> c_int;
 type StoreSenderKey = extern "C" fn(
     store_ctx: *mut c_void,
     *const ProtocolAddress,
-    distribution_id: *const libc::c_char,
+    distribution_id: *const [u8; 16],
     *const SenderKeyRecord,
     ctx: *mut c_void,
 ) -> c_int;
@@ -417,19 +417,13 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let distribution_id = CString::new(distribution_id).map_err(|_| {
-            SignalProtocolError::FfiBindingError(format!(
-                "SenderKey distribution ID contained NUL bytes: {:?}",
-                distribution_id
-            ))
-        })?;
         let result =
-            (self.store_sender_key)(self.ctx, &*sender, distribution_id.as_ptr(), &*record, ctx);
+            (self.store_sender_key)(self.ctx, &*sender, distribution_id.as_ref(), &*record, ctx);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -444,22 +438,16 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
     async fn load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let distribution_id = CString::new(distribution_id).map_err(|_| {
-            SignalProtocolError::FfiBindingError(format!(
-                "SenderKey distribution ID contained NUL bytes: {:?}",
-                distribution_id
-            ))
-        })?;
         let result = (self.load_sender_key)(
             self.ctx,
             &mut record,
             &*sender,
-            distribution_id.as_ptr(),
+            distribution_id.as_ref(),
             ctx,
         );
 

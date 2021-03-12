@@ -523,11 +523,11 @@ impl<'a> JniSenderKeyStore<'a> {
     fn do_store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
     ) -> Result<(), SignalJniError> {
         let sender_jobject = protocol_address_to_jobject(self.env, sender)?;
-        let distribution_id_jstring = distribution_id.convert_into(self.env)?;
+        let distribution_id_jobject = distribution_id.convert_into(self.env)?;
         let sender_key_record_jobject = jobject_from_native_handle(
             self.env,
             "org/whispersystems/libsignal/groups/state/SenderKeyRecord",
@@ -536,12 +536,12 @@ impl<'a> JniSenderKeyStore<'a> {
 
         let callback_args = [
             sender_jobject.into(),
-            distribution_id_jstring.into(),
+            distribution_id_jobject.into(),
             sender_key_record_jobject.into(),
         ];
         let callback_sig = jni_signature!((
             org.whispersystems.libsignal.SignalProtocolAddress,
-            java.lang.String,
+            java.util.UUID,
             org.whispersystems.libsignal.groups.state.SenderKeyRecord,
         ) -> void);
         call_method_checked(
@@ -558,14 +558,14 @@ impl<'a> JniSenderKeyStore<'a> {
     fn do_load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
     ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
         let sender_jobject = protocol_address_to_jobject(self.env, sender)?;
-        let distribution_id_jstring = distribution_id.convert_into(self.env)?;
-        let callback_args = [sender_jobject.into(), distribution_id_jstring.into()];
+        let distribution_id_jobject = distribution_id.convert_into(self.env)?;
+        let callback_args = [sender_jobject.into(), distribution_id_jobject.into()];
         let callback_sig = jni_signature!((
             org.whispersystems.libsignal.SignalProtocolAddress,
-            java.lang.String,
+            java.util.UUID,
         ) -> org.whispersystems.libsignal.groups.state.SenderKeyRecord);
 
         let skr = get_object_with_native_handle::<SenderKeyRecord>(
@@ -585,7 +585,7 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
@@ -595,7 +595,7 @@ impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
     async fn load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         _ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
         Ok(self.do_load_sender_key(sender, distribution_id)?)

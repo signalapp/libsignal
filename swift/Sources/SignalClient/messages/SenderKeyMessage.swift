@@ -13,22 +13,24 @@ public class SenderKeyMessage {
         failOnError(signal_sender_key_message_destroy(handle))
     }
 
-    public init<Bytes: ContiguousBytes>(distributionId: String,
+    public init<Bytes: ContiguousBytes>(distributionId: UUID,
                                         chainId: UInt32,
                                         iteration: UInt32,
                                         ciphertext: Bytes,
                                         privateKey: PrivateKey) throws {
-        handle = try ciphertext.withUnsafeBytes {
-            var result: OpaquePointer?
-            try checkError(signal_sender_key_message_new(&result,
-                                                         distributionId,
-                                                         chainId,
-                                                         iteration,
-                                                         $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                         $0.count,
-                                                         privateKey.nativeHandle))
-            return result
+        var result: OpaquePointer?
+        try ciphertext.withUnsafeBytes { ciphertextBytes in
+            try withUnsafePointer(to: distributionId.uuid) { distributionId in
+                try checkError(signal_sender_key_message_new(&result,
+                                                             distributionId,
+                                                             chainId,
+                                                             iteration,
+                                                             ciphertextBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                             ciphertextBytes.count,
+                                                             privateKey.nativeHandle))
+            }
         }
+        handle = result
     }
 
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
@@ -39,9 +41,9 @@ public class SenderKeyMessage {
         }
     }
 
-    public var distributionId: String {
+    public var distributionId: UUID {
         return failOnError {
-            try invokeFnReturningString {
+            try invokeFnReturningUuid {
                 signal_sender_key_message_get_distribution_id($0, handle)
             }
         }

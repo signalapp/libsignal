@@ -5,6 +5,8 @@
 
 // WARNING: this file was automatically generated
 
+type Uuid = Buffer;
+
 export abstract class IdentityKeyStore {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;
@@ -30,8 +32,8 @@ export abstract class SignedPreKeyStore {
 }
 
 export abstract class SenderKeyStore {
-  _saveSenderKey(sender: ProtocolAddress, distributionId: string, record: SenderKeyRecord): Promise<void>;
-  _getSenderKey(sender: ProtocolAddress, distributionId: string): Promise<SenderKeyRecord | null>;
+  _saveSenderKey(sender: ProtocolAddress, distributionId: Uuid, record: SenderKeyRecord): Promise<void>;
+  _getSenderKey(sender: ProtocolAddress, distributionId: Uuid): Promise<SenderKeyRecord | null>;
 }
 
 interface Wrapper<T> {

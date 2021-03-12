@@ -7,6 +7,8 @@ package org.whispersystems.libsignal.groups.state;
 
 import org.whispersystems.libsignal.SignalProtocolAddress;
 
+import java.util.UUID;
+
 public interface SenderKeyStore {
 
   /**
@@ -17,7 +19,7 @@ public interface SenderKeyStore {
    * @param distributionId An opaque identifier that uniquely identifies the group (but isn't the group ID).
    * @param record the current SenderKeyRecord for the specified (distributionId + senderName + deviceId) tuple.
    */
-  public void storeSenderKey(SignalProtocolAddress sender, String distributionId, SenderKeyRecord record);
+  public void storeSenderKey(SignalProtocolAddress sender, UUID distributionId, SenderKeyRecord record);
 
   /**
    * Returns a copy of the {@link org.whispersystems.libsignal.groups.state.SenderKeyRecord}
@@ -35,5 +37,5 @@ public interface SenderKeyStore {
    *         a new SenderKeyRecord if one does not currently exist.
    */
 
-  public SenderKeyRecord loadSenderKey(SignalProtocolAddress sender, String distributionId);
+  public SenderKeyRecord loadSenderKey(SignalProtocolAddress sender, UUID distributionId);
 }

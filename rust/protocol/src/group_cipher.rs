@@ -8,7 +8,7 @@ use crate::crypto;
 
 use crate::{
     Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage, SenderKeyMessage,
-    SenderKeyRecord, SenderKeyStore, SignalProtocolError,
+    SenderKeyRecord, SenderKeyStore, SignalProtocolError, Uuid,
 };
 
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
@@ -19,7 +19,7 @@ use std::convert::TryFrom;
 pub async fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_store: &mut dyn SenderKeyStore,
     sender: &ProtocolAddress,
-    distribution_id: &str,
+    distribution_id: Uuid,
     plaintext: &[u8],
     csprng: &mut R,
     ctx: Context,
@@ -39,7 +39,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let signing_key = sender_key_state.signing_key_private()?;
 
     let skm = SenderKeyMessage::new(
-        distribution_id.to_owned(),
+        distribution_id,
         sender_key_state.chain_id()?,
         sender_key.iteration()?,
         ciphertext.into_boxed_slice(),
@@ -130,7 +130,7 @@ pub async fn process_sender_key_distribution_message(
 ) -> Result<()> {
     let distribution_id = skdm.distribution_id()?;
     let mut sender_key_record = sender_key_store
-        .load_sender_key(sender, &distribution_id, ctx)
+        .load_sender_key(sender, distribution_id, ctx)
         .await?
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
@@ -142,14 +142,14 @@ pub async fn process_sender_key_distribution_message(
         None,
     )?;
     sender_key_store
-        .store_sender_key(sender, &distribution_id, &sender_key_record, ctx)
+        .store_sender_key(sender, distribution_id, &sender_key_record, ctx)
         .await?;
     Ok(())
 }
 
 pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     sender: &ProtocolAddress,
-    distribution_id: &str,
+    distribution_id: Uuid,
     sender_key_store: &mut dyn SenderKeyStore,
     csprng: &mut R,
     ctx: Context,
@@ -181,7 +181,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     let sender_chain_key = state.sender_chain_key()?;
 
     SenderKeyDistributionMessage::new(
-        distribution_id.to_string(),
+        distribution_id,
         state.chain_id()?,
         sender_chain_key.iteration()?,
         sender_chain_key.seed()?,

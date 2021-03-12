@@ -10,6 +10,8 @@ import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
 
+import java.util.UUID;
+
 /**
  * GroupSessionBuilder is responsible for setting up group SenderKey encrypted sessions.
  *
@@ -54,7 +56,7 @@ public class GroupSessionBuilder {
    * @param distributionId An opaque identifier that uniquely identifies the group (but isn't the group ID).
    * @return A SenderKeyDistributionMessage that is individually distributed to each member of the group.
    */
-  public SenderKeyDistributionMessage create(SignalProtocolAddress sender, String distributionId) {
+  public SenderKeyDistributionMessage create(SignalProtocolAddress sender, UUID distributionId) {
     return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(sender.nativeHandle(), distributionId, senderKeyStore, null));
   }
 }

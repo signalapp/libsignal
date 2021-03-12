@@ -19,7 +19,7 @@ fn group_no_send_session() -> Result<(), SignalProtocolError> {
     let mut csprng = OsRng;
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-    let distribution_id = "summer camp planning committee";
+    let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
     let mut alice_store = test_in_memory_protocol_store()?;
 
@@ -55,7 +55,7 @@ impl SenderKeyStore for ContextUsingSenderKeyStore {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         ctx: Context,
     ) -> Result<(), SignalProtocolError> {
@@ -68,7 +68,7 @@ impl SenderKeyStore for ContextUsingSenderKeyStore {
     async fn load_sender_key(
         &mut self,
         sender: &ProtocolAddress,
-        distribution_id: &str,
+        distribution_id: Uuid,
         ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
         assert_eq!(ctx, self.expected_context);
@@ -84,7 +84,7 @@ fn group_using_context_arg() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let x = Box::new(1);
 
@@ -111,7 +111,7 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -153,7 +153,7 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -206,7 +206,7 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -261,7 +261,7 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -350,7 +350,7 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -415,7 +415,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -485,7 +485,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -548,7 +548,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = "summer camp planning committee";
+        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;

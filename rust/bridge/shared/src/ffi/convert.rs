@@ -182,6 +182,13 @@ impl SizedArgTypeInfo for &mut [u8] {
     }
 }
 
+impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
+    type ArgType = *mut [u8; LEN];
+    fn convert_from(input: Self::ArgType) -> SignalFfiResult<Self> {
+        unsafe { input.as_mut() }.ok_or(SignalFfiError::NullPointer)
+    }
+}
+
 /// `u32::MAX` (`UINT_MAX`, `~0u`) is used to represent `None` here.
 impl SimpleArgTypeInfo for Option<u32> {
     type ArgType = u32;
@@ -226,6 +233,16 @@ impl SimpleArgTypeInfo for Context {
     type ArgType = *mut c_void;
     fn convert_from(foreign: *mut c_void) -> SignalFfiResult<Self> {
         Ok(Some(foreign))
+    }
+}
+
+impl SimpleArgTypeInfo for Uuid {
+    type ArgType = *const [u8; 16];
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        match unsafe { foreign.as_ref() } {
+            Some(array) => Ok(Uuid::from(*array)),
+            None => Err(SignalFfiError::NullPointer),
+        }
     }
 }
 
@@ -443,6 +460,7 @@ macro_rules! ffi_arg_type {
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
     (Context) => (*mut libc::c_void);
+    (Uuid) => (*const [u8; 16]);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);

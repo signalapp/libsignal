@@ -69,6 +69,9 @@ pub use crate::support::expect_ready;
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
 
+pub type JavaUUID<'a> = JObject<'a>;
+pub type JavaReturnUUID = jobject;
+
 /// Translates errors into Java exceptions.
 ///
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an

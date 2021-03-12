@@ -16,11 +16,12 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 
 public class GroupCipherTest extends TestCase {
 
   private static final SignalProtocolAddress SENDER_ADDRESS = new SignalProtocolAddress("+14150001111", 1);
-  private static final String DISTRIBUTION_ID = "nihilist history reading group";
+  private static final UUID DISTRIBUTION_ID = UUID.fromString("d1d1d1d1-7000-11eb-b32a-33b8a8a487a6");
 
   public void testNoSession() throws InvalidMessageException, LegacyMessageException, NoSessionException, DuplicateMessageException {
     InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();

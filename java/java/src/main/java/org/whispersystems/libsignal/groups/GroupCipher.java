@@ -16,6 +16,7 @@ import org.whispersystems.libsignal.groups.state.SenderKeyStore;
 
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
+import java.util.UUID;
 
 /**
  * The main entry point for Signal Protocol group encrypt/decrypt operations.
@@ -46,7 +47,7 @@ public class GroupCipher {
    * @return Ciphertext.
    * @throws NoSessionException
    */
-  public byte[] encrypt(String distributionId, byte[] paddedPlaintext) throws NoSessionException {
+  public byte[] encrypt(UUID distributionId, byte[] paddedPlaintext) throws NoSessionException {
     try {
       return Native.GroupCipher_EncryptMessage(this.sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
