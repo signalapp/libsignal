@@ -6,21 +6,21 @@
 # shellcheck shell=bash
 
 check_rust() {
-  if ! which rustup > /dev/null && [[ -d ~/.cargo/bin ]]; then
+  if ! command -v rustup > /dev/null && [[ -d ~/.cargo/bin ]]; then
     # Try to find rustup in its default per-user install location.
     # This will be important when running from inside Xcode,
     # which does not run in a login shell context.
     PATH=~/.cargo/bin:$PATH
   fi
 
-  if ! which rustup > /dev/null; then
-    if ! which cargo > /dev/null; then
+  if ! command -v rustup > /dev/null; then
+    if ! command -v cargo > /dev/null; then
       echo 'error: cargo not found in PATH; do you have Rust installed?' >&2
       echo 'note: we recommend installing Rust via rustup from https://rustup.rs/' >&2
       exit 1
     fi
 
-    echo 'warning: rustup not found in PATH; using cargo at' "$(which cargo)" >&2
+    echo 'warning: rustup not found in PATH; using cargo at' "$(command -v cargo)" >&2
     echo 'note: this project uses Rust toolchain' "'$(cat ./rust-toolchain)'" >&2
     return
   fi
