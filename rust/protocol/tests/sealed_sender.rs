@@ -5,8 +5,6 @@
 
 mod support;
 
-use std::convert::TryFrom;
-
 use futures::executor::block_on;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
@@ -357,7 +355,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )?;
 
-        let alice_distribution_message = create_sender_key_distribution_message(
+        let distribution_message = create_sender_key_distribution_message(
             &alice_uuid_address,
             distribution_id,
             &mut alice_store,
@@ -365,38 +363,10 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             None,
         )
         .await?;
-        let alice_distribution_usmc = UnidentifiedSenderMessageContent::new(
-            CiphertextMessageType::SenderKeyDistribution,
-            sender_cert.clone(),
-            alice_distribution_message.serialized().to_vec(),
-        )?;
-
-        let alice_distribution_ctext = sealed_sender_encrypt_from_usmc(
-            &bob_uuid_address,
-            &alice_distribution_usmc,
-            &mut alice_store.identity_store,
-            None,
-            &mut rng,
-        )
-        .await?;
-
-        let bob_distribution_usmc = sealed_sender_decrypt_to_usmc(
-            &alice_distribution_ctext,
-            &mut bob_store.identity_store,
-            None,
-        )
-        .await?;
-
-        assert!(matches!(
-            bob_distribution_usmc.msg_type()?,
-            CiphertextMessageType::SenderKeyDistribution,
-        ));
-        let bob_distribution_message =
-            SenderKeyDistributionMessage::try_from(bob_distribution_usmc.contents()?)?;
 
         process_sender_key_distribution_message(
             &alice_uuid_address,
-            &bob_distribution_message,
+            &distribution_message,
             &mut bob_store,
             None,
         )

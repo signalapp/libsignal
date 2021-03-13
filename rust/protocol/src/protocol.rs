@@ -20,15 +20,14 @@ pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
     PreKeySignalMessage(PreKeySignalMessage),
     SenderKeyMessage(SenderKeyMessage),
-    SenderKeyDistributionMessage(SenderKeyDistributionMessage),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum CiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
-    SenderKey = 4,
-    SenderKeyDistribution = 5,
+    // Further cases should line up with Envelope.Type (proto), even though old cases don't.
+    SenderKey = 7,
 }
 
 impl CiphertextMessage {
@@ -37,9 +36,6 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(_) => CiphertextMessageType::Whisper,
             CiphertextMessage::PreKeySignalMessage(_) => CiphertextMessageType::PreKey,
             CiphertextMessage::SenderKeyMessage(_) => CiphertextMessageType::SenderKey,
-            CiphertextMessage::SenderKeyDistributionMessage(_) => {
-                CiphertextMessageType::SenderKeyDistribution
-            }
         }
     }
 
@@ -48,7 +44,6 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(x) => x.serialized(),
             CiphertextMessage::PreKeySignalMessage(x) => x.serialized(),
             CiphertextMessage::SenderKeyMessage(x) => x.serialized(),
-            CiphertextMessage::SenderKeyDistributionMessage(x) => x.serialized(),
         }
     }
 }

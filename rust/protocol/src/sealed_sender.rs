@@ -332,7 +332,6 @@ impl From<ProtoMessageType> for CiphertextMessageType {
             ProtoMessageType::Message => Self::Whisper,
             ProtoMessageType::PrekeyMessage => Self::PreKey,
             ProtoMessageType::SenderkeyMessage => Self::SenderKey,
-            ProtoMessageType::SenderkeyDistribution => Self::SenderKeyDistribution,
         };
         // Keep raw values in sync from now on, for efficient codegen.
         assert!(result == Self::PreKey || message_type as i32 == result as i32);
@@ -346,7 +345,6 @@ impl From<CiphertextMessageType> for ProtoMessageType {
             CiphertextMessageType::PreKey => Self::PrekeyMessage,
             CiphertextMessageType::Whisper => Self::Message,
             CiphertextMessageType::SenderKey => Self::SenderkeyMessage,
-            CiphertextMessageType::SenderKeyDistribution => Self::SenderkeyDistribution,
         };
         // Keep raw values in sync from now on, for efficient codegen.
         assert!(result == Self::PrekeyMessage || message_type as i32 == result as i32);

@@ -18,8 +18,7 @@ export const { initLogger, LogLevel } = NativeImpl;
 export const enum CiphertextMessageType {
   Whisper = 2,
   PreKey = 3,
-  SenderKey = 4,
-  SenderKeyDistribution = 5,
+  SenderKey = 7,
 }
 
 export const enum Direction {

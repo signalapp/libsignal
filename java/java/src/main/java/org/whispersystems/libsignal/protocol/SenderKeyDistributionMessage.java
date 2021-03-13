@@ -14,7 +14,7 @@ import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 import java.util.UUID;
 
-public class SenderKeyDistributionMessage implements CiphertextMessage {
+public class SenderKeyDistributionMessage {
 
   private final long handle;
 
@@ -35,14 +35,8 @@ public class SenderKeyDistributionMessage implements CiphertextMessage {
     handle = Native.SenderKeyDistributionMessage_Deserialize(serialized);
   }
 
-  @Override
   public byte[] serialize() {
     return Native.SenderKeyDistributionMessage_GetSerialized(this.handle);
-  }
-
-  @Override
-  public int getType() {
-    return SENDERKEY_DISTRIBUTION_TYPE;
   }
 
   public UUID getDistributionId() {

@@ -37,9 +37,9 @@ message UnidentifiedSenderMessage {
         enum Type {
             PREKEY_MESSAGE         = 1;
             MESSAGE                = 2;
-            // 3 deliberately skipped to bring in line with non-wire enum CiphertextMessageType
-            SENDERKEY_MESSAGE      = 4;
-            SENDERKEY_DISTRIBUTION = 5;
+            // Further cases should line up with Envelope.Type, even though old cases don't.
+            reserved 3 to 6;
+            SENDERKEY_MESSAGE      = 7;
         }
 
         optional Type              type              = 1;

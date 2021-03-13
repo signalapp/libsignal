@@ -17,8 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 typedef enum {
   SignalCiphertextMessageType_Whisper = 2,
   SignalCiphertextMessageType_PreKey = 3,
-  SignalCiphertextMessageType_SenderKey = 4,
-  SignalCiphertextMessageType_SenderKeyDistribution = 5,
+  SignalCiphertextMessageType_SenderKey = 7,
 } SignalCiphertextMessageType;
 
 typedef enum {

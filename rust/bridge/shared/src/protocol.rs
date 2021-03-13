@@ -671,8 +671,7 @@ fn UnidentifiedSenderMessage_New(
 pub enum FfiCiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
-    SenderKey = 4,
-    SenderKeyDistribution = 5,
+    SenderKey = 7,
 }
 
 const_assert_eq!(
@@ -686,10 +685,6 @@ const_assert_eq!(
 const_assert_eq!(
     FfiCiphertextMessageType::SenderKey as u8,
     CiphertextMessageType::SenderKey as u8
-);
-const_assert_eq!(
-    FfiCiphertextMessageType::SenderKeyDistribution as u8,
-    CiphertextMessageType::SenderKeyDistribution as u8
 );
 
 #[bridge_fn(jni = false)]
