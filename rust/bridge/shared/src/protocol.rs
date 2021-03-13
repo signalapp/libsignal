@@ -853,7 +853,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     .await
 }
 
-#[bridge_fn(ffi = "encrypt_message", jni = false)]
+#[bridge_fn(ffi = "encrypt_message")]
 async fn SessionCipher_EncryptMessage(
     ptext: &[u8],
     protocol_address: &ProtocolAddress,

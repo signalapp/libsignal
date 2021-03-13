@@ -398,6 +398,32 @@ impl ResultTypeInfo for Uuid {
     }
 }
 
+/// A translation to a Java interface where the implementing class wraps the Rust handle.
+impl ResultTypeInfo for CiphertextMessage {
+    type ResultType = JavaReturnCiphertextMessage;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        let obj = match self {
+            CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/SignalMessage",
+                box_object::<SignalMessage>(Ok(m))?,
+            ),
+            CiphertextMessage::PreKeySignalMessage(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                box_object::<PreKeySignalMessage>(Ok(m))?,
+            ),
+            CiphertextMessage::SenderKeyMessage(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/SenderKeyMessage",
+                box_object::<SenderKeyMessage>(Ok(m))?,
+            ),
+        };
+
+        Ok(obj?.into_inner())
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -645,6 +671,9 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         jni::jbyteArray
+    };
+    (CiphertextMessage) => {
+        jni::JavaReturnCiphertextMessage
     };
     ( $typ:ty ) => {
         jni::ObjectHandle

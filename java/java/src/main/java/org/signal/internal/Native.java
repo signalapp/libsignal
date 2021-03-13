@@ -231,7 +231,7 @@ public final class Native {
 
   public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, Object ctx);
   public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
-  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
   public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);
   public static native long SessionRecord_Deserialize(byte[] data);

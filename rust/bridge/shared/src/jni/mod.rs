@@ -71,6 +71,7 @@ pub type ObjectHandle = jlong;
 
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
+pub type JavaReturnCiphertextMessage = jobject;
 
 /// Translates errors into Java exceptions.
 ///
