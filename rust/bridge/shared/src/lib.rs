@@ -24,7 +24,6 @@ pub mod node;
 #[macro_use]
 mod support;
 
-pub mod aes_gcm_siv;
 pub mod crypto;
 pub mod protocol;
 

@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use aes_gcm_siv::Error as AesGcmSivError;
 use device_transfer::Error as DeviceTransferError;
 use libc::{c_char, c_uchar, size_t};
 use libsignal_bridge::ffi::*;
@@ -101,7 +100,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
-            | SignalFfiError::AesGcmSiv(AesGcmSivError::InvalidKeySize)
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
                 SignalErrorCode::InvalidKey
             }
@@ -124,7 +122,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidCiphertext)
-            | SignalFfiError::AesGcmSiv(AesGcmSivError::InvalidTag)
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag) => {
                 SignalErrorCode::InvalidCiphertext
             }
@@ -159,7 +156,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
-            | SignalFfiError::AesGcmSiv(_)
             | SignalFfiError::SignalCrypto(_) => SignalErrorCode::InvalidArgument,
 
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {

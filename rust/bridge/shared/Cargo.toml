@@ -12,7 +12,6 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
-aes-gcm-siv = { path = "../../aes-gcm-siv" }
 signal-crypto = { path = "../../crypto" }
 device-transfer = { path = "../../device-transfer" }
 libsignal-bridge-macros = { path = "macros" }

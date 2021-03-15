@@ -262,13 +262,6 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     }
 }
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, aes_gcm_siv::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {

@@ -16,7 +16,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
-aes-gcm-siv = { path = "../../aes-gcm-siv" }
+signal-crypto = { path = "../../crypto" }
 libsignal-bridge = { path = "../shared", features = ["jni"] }
 async-trait = "0.1.41"
 jni = "0.19"

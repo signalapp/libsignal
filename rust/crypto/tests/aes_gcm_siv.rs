@@ -51,7 +51,7 @@ struct WycheproofTestSet {
     test_groups: Vec<WycheproofTestGroup>,
 }
 
-fn test_kat(kat: WycheproofTest) -> Result<(), aes_gcm_siv::Error> {
+fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
     let key = hex::decode(kat.key).expect("valid hex");
     let aad = hex::decode(kat.aad).expect("valid hex");
     let nonce = hex::decode(kat.nonce).expect("valid hex");
@@ -65,7 +65,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), aes_gcm_siv::Error> {
         wut => panic!("unknown result field {}", wut),
     };
 
-    let aes_gcm_siv = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
+    let aes_gcm_siv = signal_crypto::Aes256GcmSiv::new(&key)?;
 
     let mut buf = pt.clone();
     let generated_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &aad)?;
@@ -84,7 +84,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), aes_gcm_siv::Error> {
 
         assert_eq!(
             aes_gcm_siv.decrypt(&mut buf, &nonce, &aad, &tag),
-            Err(aes_gcm_siv::Error::InvalidTag)
+            Err(signal_crypto::Error::InvalidTag)
         );
     }
 
@@ -92,7 +92,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), aes_gcm_siv::Error> {
 }
 
 #[test]
-fn wycheproof_kats() -> Result<(), aes_gcm_siv::Error> {
+fn wycheproof_kats() -> Result<(), signal_crypto::Error> {
     let kat_data = include_bytes!("data/aes_gcm_siv_test.json");
     let kats: WycheproofTestSet = serde_json::from_slice(kat_data).expect("Valid JSON");
 
@@ -169,7 +169,7 @@ impl FromStr for BoringKat {
 }
 
 #[test]
-fn boringssl_tests() -> Result<(), aes_gcm_siv::Error> {
+fn boringssl_tests() -> Result<(), signal_crypto::Error> {
     let kat_data = include_bytes!("data/boringssl.txt");
     let kat_data = String::from_utf8(kat_data.to_vec()).expect("Valid UTF-8");
 
@@ -184,7 +184,7 @@ fn boringssl_tests() -> Result<(), aes_gcm_siv::Error> {
 // This test takes several minutes when compiled without optimizations.
 #[cfg(not(debug_assertions))]
 #[test]
-fn iterated_input_test() -> Result<(), aes_gcm_siv::Error> {
+fn iterated_input_test() -> Result<(), signal_crypto::Error> {
     /*
     A test which iteratively encrypts messages with lengths between 0
     and 128K bytes, with the nonce changing every invocation. Finally
@@ -197,7 +197,7 @@ fn iterated_input_test() -> Result<(), aes_gcm_siv::Error> {
 
     let key = hex::decode("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
         .expect("valid hex");
-    let aead = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
+    let aead = signal_crypto::Aes256GcmSiv::new(&key)?;
 
     let mut nonce = hex::decode("00112233445566778899aabb").expect("valid hex");
     let mut buf = vec![];
@@ -220,13 +220,13 @@ fn iterated_input_test() -> Result<(), aes_gcm_siv::Error> {
 // This test takes several minutes when compiled without optimizations.
 #[cfg(not(debug_assertions))]
 #[test]
-fn long_input_tests() -> Result<(), aes_gcm_siv::Error> {
+fn long_input_tests() -> Result<(), signal_crypto::Error> {
     /*
     128 megabyte input, then hashed down to 128 bits. Crosschecked by BoringSSL
      */
     let key = hex::decode("0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF")
         .expect("valid hex");
-    let aead = aes_gcm_siv::Aes256GcmSiv::new(&key)?;
+    let aead = signal_crypto::Aes256GcmSiv::new(&key)?;
 
     let nonce = hex::decode("00112233445566778899AABB").expect("valid hex");
     let mut buf = vec![0u8; 1024 * 1024 * 128];

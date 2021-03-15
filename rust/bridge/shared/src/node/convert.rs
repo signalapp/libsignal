@@ -575,17 +575,6 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
     }
 }
 
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        match self {
-            Ok(value) => value.convert_into(cx),
-            // FIXME: Use a dedicated Error type?
-            Err(err) => cx.throw_error(err.to_string()),
-        }
-    }
-}
-
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, device_transfer::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {

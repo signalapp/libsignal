@@ -1,3 +1,8 @@
+#
+# Copyright (C) 2021 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
 [package]
 name = "signal-crypto"
 version = "0.1.0"
@@ -5,12 +10,28 @@ authors = ["Jack Lloyd <jack@signal.org>"]
 edition = "2018"
 
 [dependencies]
-aes = "0.6"
-block-modes = "0.7"
-ctr = "0.6"
-hex = "0.4"
+aes-soft = "0.6"
+polyval = "0.4"
+subtle = "2.3"
+cipher = "0.2"
+generic-array = "0.14"
 hmac = "0.9.0"
 rand = "0.7.3"
 sha-1 = "0.9"
 sha2 = "0.9"
-subtle = "2.2.3"
+
+[target.'cfg(all(target_arch = "aarch64", any(target_os = "linux")))'.dependencies]
+libc = "0.2" # for getauxval
+
+[target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
+aesni = { version = "0.10", features = ["nocheck"] }
+
+[dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+hex = "0.4"
+criterion = "0.3"
+
+[[bench]]
+name = "aes_gcm_siv"
+harness = false
