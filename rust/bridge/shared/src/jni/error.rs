@@ -123,7 +123,7 @@ impl ThrownException {
             env,
             class_type,
             "getCanonicalName",
-            "()Ljava/lang/String;",
+            jni_signature!(() -> java.lang.String),
             &[],
         )?;
 
@@ -143,7 +143,7 @@ impl ThrownException {
             env,
             self.exception_ref.as_obj(),
             "getMessage",
-            "()Ljava/lang/String;",
+            jni_signature!(() -> java.lang.String),
             &[],
         )?;
         if let JValue::Object(message) = message {

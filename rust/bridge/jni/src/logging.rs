@@ -6,6 +6,7 @@
 use jni::objects::{GlobalRef, JClass, JObject, JValue};
 use jni::sys::jint;
 use jni::{JNIEnv, JavaVM};
+use libsignal_bridge::jni_signature;
 use std::any::Any;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::abort;
@@ -89,7 +90,7 @@ impl JniLogger {
         let result = env.call_static_method(
             &self.logger_class,
             "log",
-            "(ILjava/lang/String;Ljava/lang/String;)V",
+            jni_signature!((int, java.lang.String, java.lang.String) -> void),
             &args,
         );
 
