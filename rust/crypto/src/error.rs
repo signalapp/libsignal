@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Error {
     UnknownAlgorithm(&'static str, String),
     InvalidKeySize,
