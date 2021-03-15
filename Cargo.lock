@@ -27,23 +27,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aes-gcm-siv"
-version = "0.1.0"
-dependencies = [
- "aes-soft",
- "aesni",
- "cipher",
- "criterion",
- "generic-array",
- "hex",
- "libc",
- "polyval",
- "serde",
- "serde_json",
- "subtle",
-]
-
-[[package]]
 name = "aes-soft"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -765,7 +748,6 @@ checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 name = "libsignal-bridge"
 version = "0.1.0"
 dependencies = [
- "aes-gcm-siv",
  "async-trait",
  "device-transfer",
  "futures",
@@ -779,6 +761,7 @@ dependencies = [
  "paste",
  "rand 0.7.3",
  "scopeguard",
+ "signal-crypto",
  "signal-neon-futures",
  "static_assertions",
 ]
@@ -799,7 +782,6 @@ dependencies = [
 name = "libsignal-ffi"
 version = "0.3.1"
 dependencies = [
- "aes-gcm-siv",
  "async-trait",
  "device-transfer",
  "libc",
@@ -808,13 +790,13 @@ dependencies = [
  "log",
  "log-panics",
  "rand 0.7.3",
+ "signal-crypto",
 ]
 
 [[package]]
 name = "libsignal-jni"
 version = "0.3.4"
 dependencies = [
- "aes-gcm-siv",
  "async-trait",
  "jni",
  "libsignal-bridge",
@@ -822,6 +804,7 @@ dependencies = [
  "log",
  "log-panics",
  "rand 0.7.3",
+ "signal-crypto",
 ]
 
 [[package]]
@@ -1682,6 +1665,27 @@ dependencies = [
  "digest",
  "keccak",
  "opaque-debug",
+]
+
+[[package]]
+name = "signal-crypto"
+version = "0.1.0"
+dependencies = [
+ "aes-soft",
+ "aesni",
+ "cipher",
+ "criterion",
+ "generic-array",
+ "hex",
+ "hmac",
+ "libc",
+ "polyval",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "sha-1",
+ "sha2",
+ "subtle",
 ]
 
 [[package]]

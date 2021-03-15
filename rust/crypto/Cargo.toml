@@ -1,16 +1,13 @@
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
+# Copyright (C) 2021 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
 [package]
-name = "aes-gcm-siv"
+name = "signal-crypto"
 version = "0.1.0"
 authors = ["Jack Lloyd <jack@signal.org>"]
 edition = "2018"
-license = "AGPL-3.0-only"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 aes-soft = "0.6"
@@ -18,6 +15,10 @@ polyval = "0.4"
 subtle = "2.3"
 cipher = "0.2"
 generic-array = "0.14"
+hmac = "0.9.0"
+rand = "0.7.3"
+sha-1 = "0.9"
+sha2 = "0.9"
 
 [target.'cfg(all(target_arch = "aarch64", any(target_os = "linux")))'.dependencies]
 libc = "0.2" # for getauxval

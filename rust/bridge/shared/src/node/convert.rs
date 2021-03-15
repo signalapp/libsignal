@@ -575,7 +575,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
     }
 }
 
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Error> {
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, device_transfer::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {
@@ -586,7 +586,7 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, aes_gcm_siv::Er
     }
 }
 
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, device_transfer::Error> {
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, signal_crypto::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         match self {

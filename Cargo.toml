@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "rust/aes-gcm-siv",
+    "rust/crypto",
     "rust/device-transfer",
     "rust/poksho",
     "rust/protocol",
@@ -9,7 +9,7 @@ members = [
     "rust/bridge/node",
 ]
 default-members = [
-    "rust/aes-gcm-siv",
+    "rust/crypto",
     "rust/device-transfer",
     "rust/poksho",
     "rust/protocol",
