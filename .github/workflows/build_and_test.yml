@@ -148,6 +148,8 @@ jobs:
       env:
         ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk-bundle
 
+    - run: java/check_code_size.py
+
   node:
     name: Node
 
