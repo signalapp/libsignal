@@ -64,21 +64,14 @@ impl<'a> JniIdentityKeyStore<'a> {
 
     fn do_get_local_registration_id(&self) -> Result<u32, SignalJniError> {
         let callback_sig = jni_signature!(() -> int);
-
-        let rvalue = call_method_checked(
+        let i: jint = call_method_checked(
             self.env,
             self.store,
             "getLocalRegistrationId",
             callback_sig,
             &[],
         )?;
-        match rvalue {
-            JValue::Int(i) => jint_to_u32(i),
-            _ => Err(SignalJniError::UnexpectedJniResultType(
-                "getLocalRegistrationId",
-                rvalue.type_name(),
-            )),
-        }
+        jint_to_u32(i)
     }
 
     fn do_save_identity(
@@ -97,21 +90,14 @@ impl<'a> JniIdentityKeyStore<'a> {
             org.whispersystems.libsignal.IdentityKey
         ) -> boolean);
         let callback_args = [address_jobject.into(), key_jobject.into()];
-        let result = call_method_checked(
+        let result: jboolean = call_method_checked(
             self.env,
             self.store,
             "saveIdentity",
             callback_sig,
             &callback_args,
         )?;
-
-        match result {
-            JValue::Bool(b) => Ok(b != 0),
-            _ => Err(SignalJniError::UnexpectedJniResultType(
-                "saveIdentity",
-                result.type_name(),
-            )),
-        }
+        Ok(result != 0)
     }
 
     fn do_is_trusted_identity(
@@ -147,7 +133,7 @@ impl<'a> JniIdentityKeyStore<'a> {
             "Lorg/whispersystems/libsignal/state/IdentityKeyStore$Direction;",
         ) -> boolean);
         let callback_args = [address_jobject.into(), key_jobject.into(), field_value];
-        let result = call_method_checked(
+        let result: jboolean = call_method_checked(
             self.env,
             self.store,
             "isTrustedIdentity",
@@ -155,13 +141,7 @@ impl<'a> JniIdentityKeyStore<'a> {
             &callback_args,
         )?;
 
-        match result {
-            JValue::Bool(b) => Ok(b != 0),
-            _ => Err(SignalJniError::UnexpectedJniResultType(
-                "isTrustedIdentity",
-                result.type_name(),
-            )),
-        }
+        Ok(result != 0)
     }
 
     fn do_get_identity(
@@ -281,7 +261,7 @@ impl<'a> JniPreKeyStore<'a> {
             JValue::from(prekey_id.convert_into(self.env)?),
             jobject_record.into(),
         ];
-        call_method_checked(
+        let _: () = call_method_checked(
             self.env,
             self.store,
             "storePreKey",
@@ -294,7 +274,7 @@ impl<'a> JniPreKeyStore<'a> {
     fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
         let callback_sig = jni_signature!((int) -> void);
         let callback_args = [JValue::from(prekey_id.convert_into(self.env)?)];
-        call_method_checked(
+        let _: () = call_method_checked(
             self.env,
             self.store,
             "removePreKey",
@@ -388,7 +368,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
             JValue::from(prekey_id.convert_into(self.env)?),
             jobject_record.into(),
         ];
-        call_method_checked(
+        let _: () = call_method_checked(
             self.env,
             self.store,
             "storeSignedPreKey",
@@ -472,7 +452,7 @@ impl<'a> JniSessionStore<'a> {
             org.whispersystems.libsignal.state.SessionRecord,
         ) -> void);
         let callback_args = [address_jobject.into(), session_jobject.into()];
-        call_method_checked(
+        let _: () = call_method_checked(
             self.env,
             self.store,
             "storeSession",
@@ -544,7 +524,7 @@ impl<'a> JniSenderKeyStore<'a> {
             java.util.UUID,
             org.whispersystems.libsignal.groups.state.SenderKeyRecord,
         ) -> void);
-        call_method_checked(
+        let _: () = call_method_checked(
             self.env,
             self.store,
             "storeSenderKey",

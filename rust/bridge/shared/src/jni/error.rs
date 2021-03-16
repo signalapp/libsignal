@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{GlobalRef, JObject, JString, JThrowable, JValue};
+use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use std::fmt;
 
@@ -119,7 +119,7 @@ impl ThrownException {
 
     pub fn class_name(&self, env: &JNIEnv) -> Result<String, SignalJniError> {
         let class_type = env.get_object_class(self.exception_ref.as_obj())?;
-        let class_name = call_method_checked(
+        let class_name: JObject = call_method_checked(
             env,
             class_type,
             "getCanonicalName",
@@ -127,33 +127,18 @@ impl ThrownException {
             &[],
         )?;
 
-        if let JValue::Object(class_name) = class_name {
-            let class_name: String = env.get_string(JString::from(class_name))?.into();
-            Ok(class_name)
-        } else {
-            Err(SignalJniError::UnexpectedJniResultType(
-                "getCanonicalName",
-                class_name.type_name(),
-            ))
-        }
+        Ok(env.get_string(JString::from(class_name))?.into())
     }
 
     pub fn message(&self, env: &JNIEnv) -> Result<String, SignalJniError> {
-        let message = call_method_checked(
+        let message: JObject = call_method_checked(
             env,
             self.exception_ref.as_obj(),
             "getMessage",
             jni_signature!(() -> java.lang.String),
             &[],
         )?;
-        if let JValue::Object(message) = message {
-            Ok(env.get_string(JString::from(message))?.into())
-        } else {
-            Err(SignalJniError::UnexpectedJniResultType(
-                "getMessage",
-                message.type_name(),
-            ))
-        }
+        Ok(env.get_string(JString::from(message))?.into())
     }
 }
 

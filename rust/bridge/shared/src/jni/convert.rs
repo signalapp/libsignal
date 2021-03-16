@@ -193,24 +193,9 @@ impl<'a> SimpleArgTypeInfo<'a> for Uuid {
     type ArgType = JObject<'a>;
     fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
         check_jobject_type(env, foreign, "java/util/UUID")?;
-        let msb = match call_method_checked(env, foreign, "getMostSignificantBits", "()J", &[])? {
-            JValue::Long(value) => value,
-            anything_else => {
-                return Err(SignalJniError::UnexpectedJniResultType(
-                    "getMostSignificantBits",
-                    anything_else.type_name(),
-                ))
-            }
-        };
-        let lsb = match call_method_checked(env, foreign, "getLeastSignificantBits", "()J", &[])? {
-            JValue::Long(value) => value,
-            anything_else => {
-                return Err(SignalJniError::UnexpectedJniResultType(
-                    "getLeastSignificantBits",
-                    anything_else.type_name(),
-                ))
-            }
-        };
+        let sig = jni_signature!(() -> long);
+        let msb: jlong = call_method_checked(env, foreign, "getMostSignificantBits", sig, &[])?;
+        let lsb: jlong = call_method_checked(env, foreign, "getLeastSignificantBits", sig, &[])?;
 
         let mut bytes = [0u8; 16];
         bytes[..8].copy_from_slice(&msb.to_be_bytes());
