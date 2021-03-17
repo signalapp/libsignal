@@ -18,6 +18,7 @@ prefix_with_name = true
 
 [export]
 include = ["SignalErrorCode", "FfiDirection", "FfiCiphertextMessageType"]
+item_types = ["enums", "functions", "opaque", "structs", "typedefs"]
 prefix = "Signal"
 renaming_overrides_prefixing = true
 

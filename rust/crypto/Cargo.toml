@@ -35,3 +35,7 @@ criterion = "0.3"
 [[bench]]
 name = "aes_gcm_siv"
 harness = false
+
+[[bench]]
+name = "aes_gcm"
+harness = false

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Error, Result};
+use crate::{Error, Result};
 
 mod polyval_soft;
 
@@ -76,6 +76,16 @@ impl Polyval {
             #[cfg(target_arch = "aarch64")]
             Polyval::Pmul(polyval) => polyval.finalize(),
         }
+    }
+
+    // See RFC 8452 Appendix A
+    pub fn mulx(block: &[u8; 16]) -> [u8; 16] {
+        let mut v = u128::from_le_bytes(*block);
+        let carry = v >> 127;
+
+        v <<= 1;
+        v ^= carry ^ (carry << 127) ^ (carry << 126) ^ (carry << 121);
+        v.to_le_bytes()
     }
 }
 

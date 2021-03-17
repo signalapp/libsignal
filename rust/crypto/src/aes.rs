@@ -12,6 +12,7 @@ use cipher::block::{BlockCipher, NewBlockCipher};
 use generic_array::typenum::Unsigned;
 use generic_array::GenericArray;
 
+#[derive(Clone)]
 pub enum Aes256 {
     Soft(aes_soft::Aes256),
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

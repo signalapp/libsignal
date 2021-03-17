@@ -16,6 +16,7 @@ unsafe fn se_word(x: u32) -> u32 {
     vgetq_lane_u32(std::mem::transmute(sa), 0)
 }
 
+#[derive(Clone)]
 pub struct Aes256Aarch64 {
     ek: [u32; 60],
 }
