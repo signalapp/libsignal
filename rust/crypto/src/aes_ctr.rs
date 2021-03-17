@@ -9,7 +9,6 @@ use std::convert::TryInto;
 
 const AES_BLOCK_SIZE: usize = 16;
 const PAR_BLOCKS: usize = 8;
-const NONCE_SIZE: usize = AES_BLOCK_SIZE - 4;
 const PAD_SIZE: usize = PAR_BLOCKS * AES_BLOCK_SIZE;
 
 pub struct Aes256Ctr32 {
@@ -29,8 +28,10 @@ fn update_ctr(ctr: &mut [u8; PAD_SIZE], init_ctr: u32) {
 }
 
 impl Aes256Ctr32 {
+    pub const NONCE_SIZE: usize = AES_BLOCK_SIZE - 4;
+
     pub fn new(aes256: Aes256, nonce: &[u8], init_ctr: u32) -> Result<Self> {
-        if nonce.len() != NONCE_SIZE {
+        if nonce.len() != Self::NONCE_SIZE {
             return Err(Error::InvalidNonceSize);
         }
 
