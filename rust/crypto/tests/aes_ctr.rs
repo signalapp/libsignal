@@ -49,7 +49,7 @@ fn aes_ctr_long_test() -> Result<(), signal_crypto::Error> {
         let mut processed = 0;
         while processed != buf.len() {
             let remaining = buf.len() - processed;
-            let this_time = std::cmp::max(1, rng.gen::<usize>() % remaining);
+            let this_time = if remaining > 1 { rng.gen_range(1, remaining) } else { remaining };
             assert!(this_time > 0);
             aes_ctr.process(&mut buf[processed..processed + this_time])?;
             processed += this_time;

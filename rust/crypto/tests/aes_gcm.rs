@@ -95,7 +95,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
             let mut processed = 0;
             while processed != buf.len() {
                 let remaining = buf.len() - processed;
-                let this_time = std::cmp::max(1, rng.gen::<usize>() % remaining);
+                let this_time = if remaining > 1 { rng.gen_range(1, remaining) } else { remaining };
                 assert!(this_time > 0);
                 gcm_enc.encrypt(&mut enc_buf[processed..processed + this_time])?;
                 gcm_dec.decrypt(&mut dec_buf[processed..processed + this_time])?;
