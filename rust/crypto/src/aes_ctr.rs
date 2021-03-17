@@ -11,6 +11,7 @@ const AES_BLOCK_SIZE: usize = 16;
 const PAR_BLOCKS: usize = 8;
 const PAD_SIZE: usize = PAR_BLOCKS * AES_BLOCK_SIZE;
 
+#[derive(Clone)]
 pub struct Aes256Ctr32 {
     aes256: Aes256,
     ctr: [u8; PAD_SIZE],

@@ -11,6 +11,7 @@ use subtle::ConstantTimeEq;
 pub const TAG_SIZE: usize = 16;
 pub const NONCE_SIZE: usize = 12;
 
+#[derive(Clone)]
 struct GcmGhash {
     ghash: Ghash,
     ghash_pad: [u8; TAG_SIZE],
@@ -117,6 +118,7 @@ fn setup_gcm(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<(Aes256
     Ok((ctr, ghash))
 }
 
+#[derive(Clone)]
 pub struct Aes256GcmEncryption {
     ctr: Aes256Ctr32,
     ghash: GcmGhash,
@@ -142,6 +144,7 @@ impl Aes256GcmEncryption {
     }
 }
 
+#[derive(Clone)]
 pub struct Aes256GcmDecryption {
     ctr: Aes256Ctr32,
     ghash: GcmGhash,

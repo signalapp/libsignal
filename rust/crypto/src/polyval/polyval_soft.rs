@@ -6,6 +6,7 @@
 use crate::error::{Error, Result};
 use ::polyval::universal_hash::{NewUniversalHash, UniversalHash};
 
+#[derive(Clone)]
 pub struct PolyvalSoft {
     polyval: ::polyval::Polyval,
 }

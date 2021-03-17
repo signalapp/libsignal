@@ -10,9 +10,139 @@ use signal_crypto::*;
 use crate::support::*;
 use crate::*;
 
+#[derive(Clone)]
+pub struct Aes256GcmEncryption {
+    gcm: Option<signal_crypto::Aes256GcmEncryption>,
+}
+
+impl Aes256GcmEncryption {
+    pub fn new(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<Self> {
+        let gcm = signal_crypto::Aes256GcmEncryption::new(key, nonce, associated_data)?;
+        Ok(Self { gcm: Some(gcm) })
+    }
+
+    pub fn encrypt(&mut self, buf: &mut [u8]) -> Result<()> {
+        match &mut self.gcm {
+            Some(gcm) => gcm.encrypt(buf),
+            None => Err(Error::InvalidState),
+        }
+    }
+
+    pub fn compute_tag(&mut self) -> Result<Vec<u8>> {
+        if self.gcm.is_none() {
+            return Err(Error::InvalidState);
+        }
+
+        let gcm = self.gcm.take().expect("Validated to be Some");
+
+        Ok(gcm.compute_tag()?.to_vec())
+    }
+}
+
+#[derive(Clone)]
+pub struct Aes256GcmDecryption {
+    gcm: Option<signal_crypto::Aes256GcmDecryption>,
+}
+
+impl Aes256GcmDecryption {
+    pub fn new(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<Self> {
+        let gcm = signal_crypto::Aes256GcmDecryption::new(key, nonce, associated_data)?;
+        Ok(Self { gcm: Some(gcm) })
+    }
+
+    pub fn decrypt(&mut self, buf: &mut [u8]) -> Result<()> {
+        match &mut self.gcm {
+            Some(gcm) => gcm.decrypt(buf),
+            None => Err(Error::InvalidState),
+        }
+    }
+
+    pub fn verify_tag(&mut self, tag: &[u8]) -> Result<bool> {
+        if self.gcm.is_none() {
+            return Err(Error::InvalidState);
+        }
+
+        let gcm = self.gcm.take().expect("Validated to be Some");
+        match gcm.verify_tag(tag) {
+            Ok(()) => Ok(true),
+            Err(Error::InvalidTag) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 bridge_handle!(CryptographicHash, mut = true, ffi = false, node = false);
 bridge_handle!(CryptographicMac, mut = true, ffi = false, node = false);
 bridge_handle!(Aes256GcmSiv, clone = false);
+bridge_handle!(Aes256Ctr32, mut = true, node = false);
+bridge_handle!(Aes256GcmEncryption, mut = true, node = false);
+bridge_handle!(Aes256GcmDecryption, mut = true, node = false);
+
+#[bridge_fn(node = false)]
+fn Aes256Ctr32_New(key: &[u8], nonce: &[u8], initial_ctr: u32) -> Result<Aes256Ctr32> {
+    Aes256Ctr32::from_key(key, nonce, initial_ctr)
+}
+
+#[bridge_fn_buffer(node = false)]
+fn Aes256Ctr32_Process<T: Env>(env: T, ctr: &mut Aes256Ctr32, data: &[u8]) -> Result<T::Buffer> {
+    let mut buf = data.to_vec();
+    ctr.process(&mut buf)?;
+    Ok(env.buffer(buf))
+}
+
+#[bridge_fn(node = false)]
+fn Aes256GcmEncryption_New(
+    key: &[u8],
+    nonce: &[u8],
+    associated_data: &[u8],
+) -> Result<Aes256GcmEncryption> {
+    Aes256GcmEncryption::new(key, nonce, associated_data)
+}
+
+#[bridge_fn_buffer(node = false)]
+fn Aes256GcmEncryption_Update<T: Env>(
+    env: T,
+    gcm: &mut Aes256GcmEncryption,
+    data: &[u8],
+) -> Result<T::Buffer> {
+    let mut buf = data.to_vec();
+    gcm.encrypt(&mut buf)?;
+    Ok(env.buffer(buf))
+}
+
+#[bridge_fn_buffer(node = false)]
+fn Aes256GcmEncryption_ComputeTag<T: Env>(
+    env: T,
+    gcm: &mut Aes256GcmEncryption,
+) -> Result<T::Buffer> {
+    let tag = gcm.compute_tag()?;
+    Ok(env.buffer(tag))
+}
+
+#[bridge_fn(node = false)]
+fn Aes256GcmDecryption_New(
+    key: &[u8],
+    nonce: &[u8],
+    associated_data: &[u8],
+) -> Result<Aes256GcmDecryption> {
+    Aes256GcmDecryption::new(key, nonce, associated_data)
+}
+
+#[bridge_fn_buffer(node = false)]
+fn Aes256GcmDecryption_Update<T: Env>(
+    env: T,
+    gcm: &mut Aes256GcmDecryption,
+    data: &[u8],
+) -> Result<T::Buffer> {
+    let mut buf = data.to_vec();
+    gcm.decrypt(&mut buf)?;
+    Ok(env.buffer(buf))
+}
+
+#[bridge_fn(node = false)]
+fn Aes256GcmDecryption_VerifyTag(gcm: &mut Aes256GcmDecryption, tag: &[u8]) -> Result<bool> {
+    gcm.verify_tag(tag)
+}
 
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv> {
