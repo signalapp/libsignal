@@ -1,0 +1,36 @@
+#!/usr/bin/env bloaty -d crates -s vm -c
+# We use VM size because otherwise the debug sections are included.
+
+custom_data_source: {
+  name: "crates"
+  base_data_source: "inlines"
+
+  rewrite: {
+    pattern: "^(/rustc/|library/)"
+    replacement: "stdlib"
+  }
+  rewrite: {
+    pattern: "/\\.?cargo/registry/src/github.com-[^/]+/([^/]+)/"
+    replacement: "\\1"
+  }
+  rewrite: {
+    pattern: "/\\.?cargo/git/checkouts/([^/]+)/"
+    replacement: "\\1"
+  }
+  rewrite: {
+    pattern: "^(/?([^/]+/)*)src/"
+    replacement: "\\1"
+  }
+  rewrite: {
+    pattern: "/target/[^/]+/build/([^/]+)/"
+    replacement: "\\1 (generated)"
+  }
+  rewrite: {
+    pattern: "\\[section .debug.+\\]"
+    replacement: "[debug sections]"
+  }
+  rewrite: {
+    pattern: "\\[section .+\\]"
+    replacement: "[non-code sections]"
+  }
+}
