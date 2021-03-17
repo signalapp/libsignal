@@ -333,6 +333,7 @@ impl crate::support::Env for Env {
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false ) => {};
+    ( $typ:ty as false, clone = true ) => {};
     ( $typ:ty as $ffi_name:ident, clone = false ) => {
         impl ffi::SimpleArgTypeInfo for &$typ {
             type ArgType = *const $typ;

@@ -414,6 +414,7 @@ impl crate::support::Env for &'_ JNIEnv<'_> {
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
 macro_rules! jni_bridge_handle {
     ( $typ:ty as false ) => {};
+    ( $typ:ty as false, mut = true ) => {};
     ( $typ:ty as $jni_name:ident ) => {
         impl<'a> jni::SimpleArgTypeInfo<'a> for &$typ {
             type ArgType = jni::ObjectHandle;
