@@ -12,6 +12,7 @@ pub enum Error {
     InvalidNonceSize,
     InvalidInputSize,
     InvalidTag,
+    InvalidState,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -24,6 +25,7 @@ impl fmt::Display for Error {
             Error::InvalidNonceSize => write!(f, "invalid nonce size"),
             Error::InvalidInputSize => write!(f, "invalid input size"),
             Error::InvalidTag => write!(f, "invalid authentication tag"),
+            Error::InvalidState => write!(f, "invalid object state"),
         }
     }
 }

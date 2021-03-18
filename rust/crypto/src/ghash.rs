@@ -6,6 +6,7 @@
 use crate::polyval::Polyval;
 use crate::{Error, Result};
 
+#[derive(Clone)]
 pub struct Ghash {
     polyval: Polyval,
 }

@@ -136,6 +136,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState)
         | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
             "java/lang/IllegalStateException"
         }

@@ -13,6 +13,7 @@ mod polyval_clmul;
 #[cfg(target_arch = "aarch64")]
 mod polyval_pmul;
 
+#[derive(Clone)]
 pub enum Polyval {
     Soft(polyval_soft::PolyvalSoft),
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
