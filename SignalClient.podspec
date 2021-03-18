@@ -48,7 +48,7 @@ Pod::Spec.new do |s|
       :script => %q(
         test -e ${LIBSIGNAL_FFI_LIB_IF_NEEDED} && exit 0
         echo 'error: libsignal_ffi.a not built; run the following to build it:' >&2
-        echo "CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET} \"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh\"" >&2
+        echo "CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET} \"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh\" --release" >&2
         false
       ),
     }
@@ -56,8 +56,8 @@ Pod::Spec.new do |s|
 
   s.prepare_command = %q(
     set -euo pipefail
-    CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh
-    CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh
+    CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
+    CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh --release
   )
 
   s.test_spec 'Tests' do |test_spec|

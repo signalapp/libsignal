@@ -15,10 +15,11 @@ export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 
 usage() {
   cat >&2 <<END
-Usage: $(basename "$0") [-d]
+Usage: $(basename "$0") [-d|-r] [-v] [--generate-ffi|--verify-ffi]
 
 Options:
-	-d -- debug build (default is release)
+	-d -- debug build (default)
+	-r -- release build
 	-v -- verbose build
 
 	--generate-ffi -- regenerate ffi headers
@@ -40,7 +41,7 @@ check_cbindgen() {
 }
 
 
-RELEASE_BUILD=1
+RELEASE_BUILD=
 VERBOSE=
 SHOULD_CBINDGEN=
 CBINDGEN_VERIFY=
@@ -49,6 +50,9 @@ while [ "${1:-}" != "" ]; do
   case $1 in
     -d | --debug )
       RELEASE_BUILD=
+      ;;
+    -r | --release )
+      RELEASE_BUILD=1
       ;;
     -v | --verbose )
       VERBOSE=1
