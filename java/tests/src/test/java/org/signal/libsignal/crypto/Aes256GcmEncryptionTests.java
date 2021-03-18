@@ -46,5 +46,20 @@ public class Aes256GcmEncryptionTests extends TestCase {
    byte[] decrypted = gcmDec.decrypt(ciphertext);
    assertEquals(Hex.toHexString(decrypted), hex_plaintext);
    assertEquals(gcmDec.verifyTag(tag), true);
+
+   Aes256GcmEncryption gcmEnc2 = new Aes256GcmEncryption(key, nonce, ad);
+   byte[] ciphertext1 = gcmEnc2.encrypt(plaintext, 0, 1);
+   assertEquals(ciphertext1.length, 1);
+   byte[] ciphertext2 = gcmEnc2.encrypt(plaintext, 1, plaintext.length - 1);
+   assertEquals(ciphertext2.length, plaintext.length - 1);
+   byte[] tag2 = gcmEnc2.computeTag();
+   assertEquals(Hex.toHexString(ciphertext1) + Hex.toHexString(ciphertext2), hex_ciphertext);
+   assertEquals(Hex.toHexString(tag2), hex_tag);
+
+   Aes256GcmDecryption gcmDec2 = new Aes256GcmDecryption(key, nonce, ad);
+   byte[] decrypted1 = gcmDec2.decrypt(ciphertext, 0, 1);
+   byte[] decrypted2 = gcmDec2.decrypt(ciphertext, 1, ciphertext.length - 1);
+   assertEquals(Hex.toHexString(decrypted1) + Hex.toHexString(decrypted2), hex_plaintext);
+   assertEquals(gcmDec2.verifyTag(tag), true);
   }
 }

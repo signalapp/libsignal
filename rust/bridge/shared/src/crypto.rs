@@ -90,6 +90,21 @@ fn Aes256Ctr32_Process<T: Env>(env: T, ctr: &mut Aes256Ctr32, data: &[u8]) -> Re
     Ok(env.buffer(buf))
 }
 
+#[bridge_fn_buffer(node = false, ffi = false)]
+fn Aes256Ctr32_ProcessWithOffset<T: Env>(
+    env: T,
+    ctr: &mut Aes256Ctr32,
+    data: &[u8],
+    offset: u32,
+    length: u32,
+) -> Result<T::Buffer> {
+    let offset = offset as usize;
+    let length = length as usize;
+    let mut buf = data[offset..offset + length].to_vec();
+    ctr.process(&mut buf)?;
+    Ok(env.buffer(buf))
+}
+
 #[bridge_fn(node = false)]
 fn Aes256GcmEncryption_New(
     key: &[u8],
@@ -106,6 +121,21 @@ fn Aes256GcmEncryption_Update<T: Env>(
     data: &[u8],
 ) -> Result<T::Buffer> {
     let mut buf = data.to_vec();
+    gcm.encrypt(&mut buf)?;
+    Ok(env.buffer(buf))
+}
+
+#[bridge_fn_buffer(node = false, ffi = false)]
+fn Aes256GcmEncryption_UpdateWithOffset<T: Env>(
+    env: T,
+    gcm: &mut Aes256GcmEncryption,
+    data: &[u8],
+    offset: u32,
+    length: u32,
+) -> Result<T::Buffer> {
+    let offset = offset as usize;
+    let length = length as usize;
+    let mut buf = data[offset..offset + length].to_vec();
     gcm.encrypt(&mut buf)?;
     Ok(env.buffer(buf))
 }
@@ -135,6 +165,21 @@ fn Aes256GcmDecryption_Update<T: Env>(
     data: &[u8],
 ) -> Result<T::Buffer> {
     let mut buf = data.to_vec();
+    gcm.decrypt(&mut buf)?;
+    Ok(env.buffer(buf))
+}
+
+#[bridge_fn_buffer(node = false, ffi = false)]
+fn Aes256GcmDecryption_UpdateWithOffset<T: Env>(
+    env: T,
+    gcm: &mut Aes256GcmDecryption,
+    data: &[u8],
+    offset: u32,
+    length: u32,
+) -> Result<T::Buffer> {
+    let offset = offset as usize;
+    let length = length as usize;
+    let mut buf = data[offset..offset + length].to_vec();
     gcm.decrypt(&mut buf)?;
     Ok(env.buffer(buf))
 }

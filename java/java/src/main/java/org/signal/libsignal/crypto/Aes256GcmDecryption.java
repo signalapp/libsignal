@@ -24,6 +24,10 @@ class Aes256GcmDecryption {
     return Native.Aes256GcmDecryption_Update(this.handle, plaintext);
   }
 
+  byte[] decrypt(byte[] plaintext, int offset, int length) {
+    return Native.Aes256GcmDecryption_UpdateWithOffset(this.handle, plaintext, offset, length);
+  }
+
   boolean verifyTag(byte[] tag) {
     boolean tagOk = Native.Aes256GcmDecryption_VerifyTag(this.handle, tag);
     Native.Aes256GcmDecryption_Destroy(this.handle);
