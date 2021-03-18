@@ -34,6 +34,9 @@ If validating SignalClient locally, use the following invocation:
 
 You will also need to have [SignalCoreKit][] checked out; the above command assumes you have checked it out as a sibling directory to libsignal-client.
 
+When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
+`build_ffi.sh` invocation.
+
 [pc]: https://guides.cocoapods.org/syntax/podspec.html#prepare_command
 [SignalCoreKit]: https://github.com/signalapp/SignalCoreKit
 
@@ -43,6 +46,9 @@ You will also need to have [SignalCoreKit][] checked out; the above command assu
 1. Build the Rust library using `swift/build_ffi.sh`. The Swift Package.swift is configured to use the debug build of the Rust library.
 
 2. Use `swift build` and `swift test` as usual from within the `swift/` directory.
+
+When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
+`build_ffi.sh` invocation.
 
 
 ## Use as a Swift Package
