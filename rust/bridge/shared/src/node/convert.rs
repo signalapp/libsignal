@@ -715,8 +715,7 @@ impl<T: Send + Sync + 'static> Finalize for PersistentBoxedValue<T> {
 
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for Node.
 macro_rules! node_bridge_handle {
-    ( $typ:ty as false ) => {};
-    ( $typ:ty as false, mut = true ) => {};
+    ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $node_name:ident ) => {
         impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
         for &'storage $typ {
