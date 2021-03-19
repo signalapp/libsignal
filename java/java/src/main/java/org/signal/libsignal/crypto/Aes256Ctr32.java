@@ -8,7 +8,7 @@ package org.signal.libsignal.crypto;
 import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.InvalidKeyException;
 
-class Aes256Ctr32 {
+public class Aes256Ctr32 {
   private final long handle;
 
   public Aes256Ctr32(byte[] key, byte[] nonce, int initialCtr) throws InvalidKeyException {
@@ -20,11 +20,11 @@ class Aes256Ctr32 {
     Native.Aes256Ctr32_Destroy(this.handle);
   }
 
-  byte[] process(byte[] data) {
+  public byte[] process(byte[] data) {
     return Native.Aes256Ctr32_Process(this.handle, data, 0, data.length);
   }
 
-  byte[] process(byte[] data, int offset, int length) {
+  public byte[] process(byte[] data, int offset, int length) {
     return Native.Aes256Ctr32_Process(this.handle, data, offset, length);
   }
 

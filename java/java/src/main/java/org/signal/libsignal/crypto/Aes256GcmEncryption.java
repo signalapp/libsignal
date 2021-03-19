@@ -8,7 +8,7 @@ package org.signal.libsignal.crypto;
 import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.InvalidKeyException;
 
-class Aes256GcmEncryption {
+public class Aes256GcmEncryption {
   private long handle;
 
   public Aes256GcmEncryption(byte[] key, byte[] nonce, byte[] associatedData) throws InvalidKeyException {
@@ -20,15 +20,15 @@ class Aes256GcmEncryption {
     Native.Aes256GcmEncryption_Destroy(this.handle);
   }
 
-  byte[] encrypt(byte[] plaintext, int offset, int length) {
+  public byte[] encrypt(byte[] plaintext, int offset, int length) {
     return Native.Aes256GcmEncryption_Update(this.handle, plaintext, offset, length);
   }
 
-  byte[] encrypt(byte[] plaintext) {
+  public byte[] encrypt(byte[] plaintext) {
     return Native.Aes256GcmEncryption_Update(this.handle, plaintext, 0, plaintext.length);
   }
 
-  byte[] computeTag() {
+  public byte[] computeTag() {
     byte[] tag = Native.Aes256GcmEncryption_ComputeTag(this.handle);
     Native.Aes256GcmEncryption_Destroy(this.handle);
     this.handle = 0;
