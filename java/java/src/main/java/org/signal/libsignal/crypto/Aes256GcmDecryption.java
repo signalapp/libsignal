@@ -21,7 +21,7 @@ class Aes256GcmDecryption {
   }
 
   byte[] decrypt(byte[] plaintext) {
-    return Native.Aes256GcmDecryption_Update(this.handle, plaintext);
+    return Native.Aes256GcmDecryption_UpdateWithOffset(this.handle, plaintext, 0, plaintext.length);
   }
 
   byte[] decrypt(byte[] plaintext, int offset, int length) {

@@ -250,7 +250,9 @@ SignalFfiError *signal_aes256_ctr32_process(const unsigned char **out,
                                             size_t *out_len,
                                             SignalAes256Ctr32 *ctr,
                                             const unsigned char *data,
-                                            size_t data_len);
+                                            size_t data_len,
+                                            uint32_t offset,
+                                            uint32_t length);
 
 SignalFfiError *signal_aes256_gcm_encryption_new(SignalAes256GcmEncryption **out,
                                                  const unsigned char *key,
@@ -264,7 +266,9 @@ SignalFfiError *signal_aes256_gcm_encryption_update(const unsigned char **out,
                                                     size_t *out_len,
                                                     SignalAes256GcmEncryption *gcm,
                                                     const unsigned char *data,
-                                                    size_t data_len);
+                                                    size_t data_len,
+                                                    uint32_t offset,
+                                                    uint32_t length);
 
 SignalFfiError *signal_aes256_gcm_encryption_compute_tag(const unsigned char **out,
                                                          size_t *out_len,
@@ -282,7 +286,9 @@ SignalFfiError *signal_aes256_gcm_decryption_update(const unsigned char **out,
                                                     size_t *out_len,
                                                     SignalAes256GcmDecryption *gcm,
                                                     const unsigned char *data,
-                                                    size_t data_len);
+                                                    size_t data_len,
+                                                    uint32_t offset,
+                                                    uint32_t length);
 
 SignalFfiError *signal_aes256_gcm_decryption_verify_tag(bool *out,
                                                         SignalAes256GcmDecryption *gcm,

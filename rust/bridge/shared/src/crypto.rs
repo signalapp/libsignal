@@ -83,15 +83,9 @@ fn Aes256Ctr32_New(key: &[u8], nonce: &[u8], initial_ctr: u32) -> Result<Aes256C
     Aes256Ctr32::from_key(key, nonce, initial_ctr)
 }
 
+// This returns a new buffer but it would be better if it operated in-place
 #[bridge_fn_buffer(node = false)]
-fn Aes256Ctr32_Process<T: Env>(env: T, ctr: &mut Aes256Ctr32, data: &[u8]) -> Result<T::Buffer> {
-    let mut buf = data.to_vec();
-    ctr.process(&mut buf)?;
-    Ok(env.buffer(buf))
-}
-
-#[bridge_fn_buffer(node = false, ffi = false)]
-fn Aes256Ctr32_ProcessWithOffset<T: Env>(
+fn Aes256Ctr32_Process<T: Env>(
     env: T,
     ctr: &mut Aes256Ctr32,
     data: &[u8],
@@ -114,19 +108,9 @@ fn Aes256GcmEncryption_New(
     Aes256GcmEncryption::new(key, nonce, associated_data)
 }
 
+// This returns a new buffer but it would be better if it operated in-place
 #[bridge_fn_buffer(node = false)]
 fn Aes256GcmEncryption_Update<T: Env>(
-    env: T,
-    gcm: &mut Aes256GcmEncryption,
-    data: &[u8],
-) -> Result<T::Buffer> {
-    let mut buf = data.to_vec();
-    gcm.encrypt(&mut buf)?;
-    Ok(env.buffer(buf))
-}
-
-#[bridge_fn_buffer(node = false, ffi = false)]
-fn Aes256GcmEncryption_UpdateWithOffset<T: Env>(
     env: T,
     gcm: &mut Aes256GcmEncryption,
     data: &[u8],
@@ -158,19 +142,9 @@ fn Aes256GcmDecryption_New(
     Aes256GcmDecryption::new(key, nonce, associated_data)
 }
 
+// This returns a new buffer but it would be better if it operated in-place
 #[bridge_fn_buffer(node = false)]
 fn Aes256GcmDecryption_Update<T: Env>(
-    env: T,
-    gcm: &mut Aes256GcmDecryption,
-    data: &[u8],
-) -> Result<T::Buffer> {
-    let mut buf = data.to_vec();
-    gcm.decrypt(&mut buf)?;
-    Ok(env.buffer(buf))
-}
-
-#[bridge_fn_buffer(node = false, ffi = false)]
-fn Aes256GcmDecryption_UpdateWithOffset<T: Env>(
     env: T,
     gcm: &mut Aes256GcmDecryption,
     data: &[u8],

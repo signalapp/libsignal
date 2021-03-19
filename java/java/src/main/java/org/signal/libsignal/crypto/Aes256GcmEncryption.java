@@ -21,11 +21,11 @@ class Aes256GcmEncryption {
   }
 
   byte[] encrypt(byte[] plaintext, int offset, int length) {
-    return Native.Aes256GcmEncryption_UpdateWithOffset(this.handle, plaintext, offset, length);
+    return Native.Aes256GcmEncryption_Update(this.handle, plaintext, offset, length);
   }
 
   byte[] encrypt(byte[] plaintext) {
-    return Native.Aes256GcmEncryption_Update(this.handle, plaintext);
+    return Native.Aes256GcmEncryption_Update(this.handle, plaintext, 0, plaintext.length);
   }
 
   byte[] computeTag() {
