@@ -21,7 +21,11 @@ class Aes256Ctr32 {
   }
 
   byte[] process(byte[] data) {
-    return Native.Aes256Ctr32_Process(this.handle, data);
+    return Native.Aes256Ctr32_Process(this.handle, data, 0, data.length);
+  }
+
+  byte[] process(byte[] data, int offset, int length) {
+    return Native.Aes256Ctr32_Process(this.handle, data, offset, length);
   }
 
 }

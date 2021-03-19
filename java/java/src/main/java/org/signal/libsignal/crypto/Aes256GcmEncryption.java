@@ -20,8 +20,12 @@ class Aes256GcmEncryption {
     Native.Aes256GcmEncryption_Destroy(this.handle);
   }
 
+  byte[] encrypt(byte[] plaintext, int offset, int length) {
+    return Native.Aes256GcmEncryption_Update(this.handle, plaintext, offset, length);
+  }
+
   byte[] encrypt(byte[] plaintext) {
-    return Native.Aes256GcmEncryption_Update(this.handle, plaintext);
+    return Native.Aes256GcmEncryption_Update(this.handle, plaintext, 0, plaintext.length);
   }
 
   byte[] computeTag() {
