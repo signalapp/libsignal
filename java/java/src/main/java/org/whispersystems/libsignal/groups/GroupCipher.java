@@ -24,11 +24,11 @@ import java.security.NoSuchAlgorithmException;
  * distributed to each member of the group, this class can be used for all subsequent encrypt/decrypt
  * operations within that session (ie: until group membership changes).
  *
+ * This class is not thread-safe.
+ *
  * @author Moxie Marlinspike
  */
 public class GroupCipher {
-
-  static final Object LOCK = new Object();
 
   private final SenderKeyStore senderKeyStore;
   private final SenderKeyName senderKeyId;
@@ -46,12 +46,10 @@ public class GroupCipher {
    * @throws NoSessionException
    */
   public byte[] encrypt(byte[] paddedPlaintext) throws NoSessionException {
-    synchronized (LOCK) {
     try {
       return Native.GroupCipher_EncryptMessage(this.senderKeyId.nativeHandle(), paddedPlaintext, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
-    }
     }
   }
 
@@ -67,12 +65,10 @@ public class GroupCipher {
   public byte[] decrypt(byte[] senderKeyMessageBytes)
       throws LegacyMessageException, DuplicateMessageException, InvalidMessageException, NoSessionException
   {
-    synchronized (LOCK) {
-      try {
-        return Native.GroupCipher_DecryptMessage(this.senderKeyId.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
+    try {
+      return Native.GroupCipher_DecryptMessage(this.senderKeyId.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
-      }
     }
   }
 }

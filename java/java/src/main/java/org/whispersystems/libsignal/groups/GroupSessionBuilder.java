@@ -22,6 +22,8 @@ import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
  * are identified by their senderId, and each logical recipientId can have multiple physical
  * devices.
  *
+ * This class is not thread-safe.
+ *
  * @author Moxie Marlinspike
  */
 
@@ -39,11 +41,9 @@ public class GroupSessionBuilder {
    * @param senderKeyDistributionMessage A received SenderKeyDistributionMessage.
    */
   public void process(SenderKeyName senderKeyName, SenderKeyDistributionMessage senderKeyDistributionMessage) {
-    synchronized (GroupCipher.LOCK) {
-       Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(senderKeyName.nativeHandle(),
-                                                                      senderKeyDistributionMessage.nativeHandle(),
-                                                                      senderKeyStore, null);
-    }
+      Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(senderKeyName.nativeHandle(),
+                                                                    senderKeyDistributionMessage.nativeHandle(),
+                                                                    senderKeyStore, null);
   }
 
   /**
@@ -53,8 +53,6 @@ public class GroupSessionBuilder {
    * @return A SenderKeyDistributionMessage that is individually distributed to each member of the group.
    */
   public SenderKeyDistributionMessage create(SenderKeyName senderKeyName) {
-    synchronized (GroupCipher.LOCK) {
-      return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderKeyName.nativeHandle(), senderKeyStore, null));
-    }
+    return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderKeyName.nativeHandle(), senderKeyStore, null));
   }
 }
