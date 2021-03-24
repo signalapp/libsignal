@@ -260,43 +260,25 @@ where
     }
 }
 
-/// A wrapper around `Option` that implements [`neon::prelude::Finalize`].
-///
-/// [Can be removed once we upgrade to the next Neon release.][pr]
-///
-/// [pr]: https://github.com/neon-bindings/neon/pull/680
-pub struct FinalizableOption<T: Finalize>(Option<T>);
-
-impl<T: Finalize> Finalize for FinalizableOption<T> {
-    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
-        if let Some(value) = self.0 {
-            value.finalize(cx)
-        }
-    }
-}
-
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, T> AsyncArgTypeInfo<'storage> for Option<T>
 where
     T: AsyncArgTypeInfo<'storage>,
 {
     type ArgType = JsValue;
-    type StoredType = FinalizableOption<T::StoredType>;
+    type StoredType = Option<T::StoredType>;
     fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
         if foreign.downcast::<JsNull, _>(cx).is_ok() {
-            return Ok(FinalizableOption(None));
+            return Ok(None);
         }
         let non_optional_value = foreign.downcast_or_throw::<T::ArgType, _>(cx)?;
-        Ok(FinalizableOption(Some(T::save_async_arg(
-            cx,
-            non_optional_value,
-        )?)))
+        Ok(Some(T::save_async_arg(cx, non_optional_value)?))
     }
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
-        stored.0.as_mut().map(T::load_async_arg)
+        stored.as_mut().map(T::load_async_arg)
     }
 }
 

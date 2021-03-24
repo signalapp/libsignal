@@ -16,7 +16,7 @@ path = "tests/node.rs"
 harness = false
 
 [dependencies]
-neon = { version = "0.7.0", default-features = false, features = ["napi-4", "try-catch-api", "event-queue-api"] }
+neon = { version = "0.8", default-features = false, features = ["napi-4", "try-catch-api", "event-queue-api"] }
 futures = "0.3.7"
 
 [dev-dependencies]
