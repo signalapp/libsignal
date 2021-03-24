@@ -188,36 +188,25 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     }
 }
 
-/// A wrapper around [`jni::objects::AutoArray`] that also stores the array's length.
-pub struct AutoByteSlice<'a> {
-    jni_array: AutoArray<'a, 'a, jbyte>,
-    len: usize,
-}
-
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u8] {
     type ArgType = jbyteArray;
-    type StoredType = AutoByteSlice<'context>;
+    type StoredType = AutoArray<'context, 'context, jbyte>;
     fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
-        let len = env.get_array_length(foreign)?;
-        assert!(len >= 0);
-        Ok(AutoByteSlice {
-            jni_array: env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?,
-            len: len as usize,
-        })
+        Ok(env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?)
     }
     fn load_from(
         _env: &JNIEnv,
         stored: &'storage mut Self::StoredType,
     ) -> SignalJniResult<&'storage [u8]> {
         Ok(unsafe {
-            std::slice::from_raw_parts(stored.jni_array.as_ptr() as *const u8, stored.len)
+            std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize)
         })
     }
 }
 
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'storage [u8]> {
     type ArgType = jbyteArray;
-    type StoredType = Option<AutoByteSlice<'context>>;
+    type StoredType = Option<AutoArray<'context, 'context, jbyte>>;
     fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
         if foreign.is_null() {
             Ok(None)
