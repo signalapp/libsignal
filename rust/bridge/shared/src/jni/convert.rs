@@ -225,6 +225,22 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'
     }
 }
 
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage mut [u8] {
+    type ArgType = jbyteArray;
+    type StoredType = AutoArray<'context, 'context, jbyte>;
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+        Ok(env.get_byte_array_elements(foreign, ReleaseMode::CopyBack)?)
+    }
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> SignalJniResult<&'storage mut [u8]> {
+        Ok(unsafe {
+            std::slice::from_raw_parts_mut(stored.as_ptr() as *mut u8, stored.size()? as usize)
+        })
+    }
+}
+
 macro_rules! store {
     ($name:ident) => {
         paste! {
@@ -511,6 +527,9 @@ macro_rules! jni_arg_type {
         jni::jbyteArray
     };
     (Option<&[u8]>) => {
+        jni::jbyteArray
+    };
+    (&mut [u8]) => {
         jni::jbyteArray
     };
     (Context) => {

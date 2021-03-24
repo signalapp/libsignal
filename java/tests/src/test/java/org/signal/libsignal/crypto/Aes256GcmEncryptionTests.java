@@ -37,29 +37,31 @@ public class Aes256GcmEncryptionTests extends TestCase {
    byte[] ad = Hex.fromStringCondensed(hex_associated_data);
 
    Aes256GcmEncryption gcmEnc = new Aes256GcmEncryption(key, nonce, ad);
-   byte[] ciphertext = gcmEnc.encrypt(plaintext);
+   byte[] ciphertext = plaintext.clone();
+   gcmEnc.encrypt(ciphertext);
    byte[] tag = gcmEnc.computeTag();
    assertEquals(Hex.toHexString(ciphertext), hex_ciphertext);
    assertEquals(Hex.toHexString(tag), hex_tag);
 
    Aes256GcmDecryption gcmDec = new Aes256GcmDecryption(key, nonce, ad);
-   byte[] decrypted = gcmDec.decrypt(ciphertext);
+   byte[] decrypted = ciphertext.clone();
+   gcmDec.decrypt(decrypted);
    assertEquals(Hex.toHexString(decrypted), hex_plaintext);
    assertEquals(gcmDec.verifyTag(tag), true);
 
    Aes256GcmEncryption gcmEnc2 = new Aes256GcmEncryption(key, nonce, ad);
-   byte[] ciphertext1 = gcmEnc2.encrypt(plaintext, 0, 1);
-   assertEquals(ciphertext1.length, 1);
-   byte[] ciphertext2 = gcmEnc2.encrypt(plaintext, 1, plaintext.length - 1);
-   assertEquals(ciphertext2.length, plaintext.length - 1);
+   byte[] ciphertextSplit = plaintext.clone();
+   gcmEnc2.encrypt(ciphertextSplit, 0, 1);
+   gcmEnc2.encrypt(ciphertextSplit, 1, plaintext.length - 1);
    byte[] tag2 = gcmEnc2.computeTag();
-   assertEquals(Hex.toHexString(ciphertext1) + Hex.toHexString(ciphertext2), hex_ciphertext);
+   assertEquals(Hex.toHexString(ciphertextSplit), hex_ciphertext);
    assertEquals(Hex.toHexString(tag2), hex_tag);
 
    Aes256GcmDecryption gcmDec2 = new Aes256GcmDecryption(key, nonce, ad);
-   byte[] decrypted1 = gcmDec2.decrypt(ciphertext, 0, 1);
-   byte[] decrypted2 = gcmDec2.decrypt(ciphertext, 1, ciphertext.length - 1);
-   assertEquals(Hex.toHexString(decrypted1) + Hex.toHexString(decrypted2), hex_plaintext);
+   byte[] decryptedSplit = ciphertext.clone();
+   gcmDec2.decrypt(decryptedSplit, 0, 1);
+   gcmDec2.decrypt(decryptedSplit, 1, ciphertext.length - 1);
+   assertEquals(Hex.toHexString(decryptedSplit), hex_plaintext);
    assertEquals(gcmDec2.verifyTag(tag), true);
   }
 }

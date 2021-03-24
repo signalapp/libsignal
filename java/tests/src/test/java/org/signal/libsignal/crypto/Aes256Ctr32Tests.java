@@ -34,7 +34,8 @@ public class Aes256Ctr32Tests extends TestCase {
 
     Aes256Ctr32 ctr = new Aes256Ctr32(key, nonce, initialCtr);
 
-    byte[] ciphertext = ctr.process(plaintext);
+    byte[] ciphertext = plaintext.clone();
+    ctr.process(ciphertext);
     assertEquals(Hex.toHexString(ciphertext), hex_ciphertext);
   }
 }

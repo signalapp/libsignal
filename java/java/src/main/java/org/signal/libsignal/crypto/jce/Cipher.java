@@ -148,11 +148,9 @@ class Cipher {
     }
 
     if (this.gcmEnc != null) {
-      byte[] ctext = this.gcmEnc.encrypt(input, offset, len);
-      System.arraycopy(ctext, 0, input, offset, len);
+      this.gcmEnc.encrypt(input, offset, len);
     } else {
-      byte[] ptext = this.gcmDec.decrypt(input, offset, len);
-      System.arraycopy(ptext, 0, input, offset, len);
+      this.gcmDec.decrypt(input, offset, len);
     }
   }
 

@@ -20,12 +20,12 @@ public class Aes256Ctr32 {
     Native.Aes256Ctr32_Destroy(this.handle);
   }
 
-  public byte[] process(byte[] data) {
-    return Native.Aes256Ctr32_Process(this.handle, data, 0, data.length);
+  public void process(byte[] data) {
+    Native.Aes256Ctr32_Process(this.handle, data, 0, data.length);
   }
 
-  public byte[] process(byte[] data, int offset, int length) {
-    return Native.Aes256Ctr32_Process(this.handle, data, offset, length);
+  public void process(byte[] data, int offset, int length) {
+    Native.Aes256Ctr32_Process(this.handle, data, offset, length);
   }
 
 }

@@ -20,12 +20,12 @@ public class Aes256GcmDecryption {
     Native.Aes256GcmDecryption_Destroy(this.handle);
   }
 
-  public byte[] decrypt(byte[] plaintext) {
-    return Native.Aes256GcmDecryption_Update(this.handle, plaintext, 0, plaintext.length);
+  public void decrypt(byte[] plaintext) {
+    Native.Aes256GcmDecryption_Update(this.handle, plaintext, 0, plaintext.length);
   }
 
-  public byte[] decrypt(byte[] plaintext, int offset, int length) {
-    return Native.Aes256GcmDecryption_Update(this.handle, plaintext, offset, length);
+  public void decrypt(byte[] plaintext, int offset, int length) {
+    Native.Aes256GcmDecryption_Update(this.handle, plaintext, offset, length);
   }
 
   public boolean verifyTag(byte[] tag) {
