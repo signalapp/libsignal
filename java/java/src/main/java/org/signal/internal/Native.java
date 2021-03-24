@@ -71,17 +71,17 @@ public final class Native {
 
   public static native void Aes256Ctr32_Destroy(long handle);
   public static native long Aes256Ctr32_New(byte[] key, byte[] nonce, int initialCtr);
-  public static native byte[] Aes256Ctr32_Process(long ctr, byte[] data, int offset, int length);
+  public static native void Aes256Ctr32_Process(long ctr, byte[] data, int offset, int length);
 
   public static native void Aes256GcmDecryption_Destroy(long handle);
   public static native long Aes256GcmDecryption_New(byte[] key, byte[] nonce, byte[] associatedData);
-  public static native byte[] Aes256GcmDecryption_Update(long gcm, byte[] data, int offset, int length);
+  public static native void Aes256GcmDecryption_Update(long gcm, byte[] data, int offset, int length);
   public static native boolean Aes256GcmDecryption_VerifyTag(long gcm, byte[] tag);
 
   public static native byte[] Aes256GcmEncryption_ComputeTag(long gcm);
   public static native void Aes256GcmEncryption_Destroy(long handle);
   public static native long Aes256GcmEncryption_New(byte[] key, byte[] nonce, byte[] associatedData);
-  public static native byte[] Aes256GcmEncryption_Update(long gcm, byte[] data, int offset, int length);
+  public static native void Aes256GcmEncryption_Update(long gcm, byte[] data, int offset, int length);
 
   public static native byte[] Aes256GcmSiv_Decrypt(long aesGcmSiv, byte[] ctext, byte[] nonce, byte[] associatedData);
   public static native void Aes256GcmSiv_Destroy(long handle);
