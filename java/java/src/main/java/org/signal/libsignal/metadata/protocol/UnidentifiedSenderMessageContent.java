@@ -5,6 +5,7 @@ import org.signal.client.internal.Native;
 import org.signal.libsignal.metadata.InvalidMetadataMessageException;
 import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
 import org.signal.libsignal.metadata.certificate.SenderCertificate;
+import org.whispersystems.libsignal.protocol.CiphertextMessage;
 
 public class UnidentifiedSenderMessageContent {
   private final long handle;
@@ -18,6 +19,10 @@ public class UnidentifiedSenderMessageContent {
     this.handle = nativeHandle;
   }
 
+  public long nativeHandle() {
+    return this.handle;
+  }
+
   public UnidentifiedSenderMessageContent(byte[] serialized) throws InvalidMetadataMessageException, InvalidCertificateException {
     try {
       this.handle = Native.UnidentifiedSenderMessageContent_Deserialize(serialized);
@@ -26,8 +31,10 @@ public class UnidentifiedSenderMessageContent {
     }
   }
 
-  public UnidentifiedSenderMessageContent(int type, SenderCertificate senderCertificate, byte[] content) {
-    this.handle = Native.UnidentifiedSenderMessageContent_New(type, senderCertificate.nativeHandle(), content);
+  public UnidentifiedSenderMessageContent(CiphertextMessage message,
+                                          SenderCertificate senderCertificate) {
+    this.handle = Native.UnidentifiedSenderMessageContent_New(message,
+                                                              senderCertificate.nativeHandle());
   }
 
   public int getType() {

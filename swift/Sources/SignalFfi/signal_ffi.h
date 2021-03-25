@@ -807,6 +807,10 @@ SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(Signa
 SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t *out,
                                                                         const SignalUnidentifiedSenderMessageContent *m);
 
+SignalFfiError *signal_unidentified_sender_message_content_new(SignalUnidentifiedSenderMessageContent **out,
+                                                               const SignalCiphertextMessage *message,
+                                                               const SignalSenderCertificate *sender);
+
 SignalFfiError *signal_ciphertext_message_type(uint8_t *out, const SignalCiphertextMessage *msg);
 
 SignalFfiError *signal_ciphertext_message_serialize(const unsigned char **out,
@@ -866,12 +870,17 @@ SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **out,
 SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
                                                      size_t *out_len,
                                                      const SignalProtocolAddress *destination,
-                                                     const SignalSenderCertificate *sender_cert,
-                                                     const unsigned char *ptext,
-                                                     size_t ptext_len,
-                                                     const SignalSessionStore *session_store,
+                                                     const SignalUnidentifiedSenderMessageContent *content,
                                                      const SignalIdentityKeyStore *identity_key_store,
                                                      void *ctx);
+
+SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(const unsigned char **out,
+                                                             size_t *out_len,
+                                                             const SignalProtocolAddress *const *recipients,
+                                                             size_t recipients_len,
+                                                             const SignalUnidentifiedSenderMessageContent *content,
+                                                             const SignalIdentityKeyStore *identity_key_store,
+                                                             void *ctx);
 
 SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out,
                                                              const unsigned char *ctext,
@@ -890,8 +899,7 @@ SignalFfiError *signal_process_sender_key_distribution_message(const SignalProto
                                                                const SignalSenderKeyStore *store,
                                                                void *ctx);
 
-SignalFfiError *signal_group_encrypt_message(const unsigned char **out,
-                                             size_t *out_len,
+SignalFfiError *signal_group_encrypt_message(SignalCiphertextMessage **out,
                                              const SignalProtocolAddress *sender,
                                              const uint8_t (*distribution_id)[16],
                                              const unsigned char *message,

@@ -189,35 +189,30 @@ public class SenderCertificate: ClonableHandleOwner {
     }
 }
 
+@inlinable
 public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                         for address: ProtocolAddress,
                                                         from senderCert: SenderCertificate,
                                                         sessionStore: SessionStore,
                                                         identityStore: IdentityKeyStore,
                                                         context: StoreContext) throws -> [UInt8] {
-    return try message.withUnsafeBytes { messageBytes in
-        try context.withOpaquePointer { context in
-            try withSessionStore(sessionStore) { ffiSessionStore in
-                try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                    try invokeFnReturningArray {
-                        signal_sealed_session_cipher_encrypt($0, $1,
-                                                             address.nativeHandle, senderCert.nativeHandle,
-                                                             messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                             messageBytes.count,
-                                                             ffiSessionStore, ffiIdentityStore, context)
-                    }
-                }
-            }
-        }
-    }
+    let ciphertextMessage = try signalEncrypt(message: message,
+                                              for: address,
+                                              sessionStore: sessionStore,
+                                              identityStore: identityStore,
+                                              context: context)
+
+    let usmc = try UnidentifiedSenderMessageContent(ciphertextMessage, from: senderCert)
+
+    return try sealedSenderEncrypt(usmc, for: address, identityStore: identityStore, context: context)
 }
 
 public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
-    public init<Bytes: ContiguousBytes>(message: Bytes,
+    public init<Bytes: ContiguousBytes>(message sealedSenderMessage: Bytes,
                                         identityStore: IdentityKeyStore,
                                         context: StoreContext) throws {
         var result: OpaquePointer?
-        try message.withUnsafeBytes { messageBytes in
+        try sealedSenderMessage.withUnsafeBytes { messageBytes in
             try context.withOpaquePointer { context in
                 try withIdentityKeyStore(identityStore) { ffiIdentityStore in
                     try checkError(
@@ -230,6 +225,15 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
                 }
             }
         }
+        super.init(owned: result!)
+    }
+
+    public init(_ message: CiphertextMessage, from sender: SenderCertificate) throws {
+        var result: OpaquePointer?
+        try checkError(
+            signal_unidentified_sender_message_content_new(&result,
+                                                           message.nativeHandle,
+                                                           sender.nativeHandle))
         super.init(owned: result!)
     }
 
@@ -256,6 +260,39 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
         return failOnError {
             try invokeFnReturningArray {
                 signal_unidentified_sender_message_content_get_contents($0, $1, self.nativeHandle)
+            }
+        }
+    }
+}
+
+public func sealedSenderEncrypt(_ content: UnidentifiedSenderMessageContent,
+                                for recipient: ProtocolAddress,
+                                identityStore: IdentityKeyStore,
+                                context: StoreContext) throws -> [UInt8] {
+    return try context.withOpaquePointer { context in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+            try invokeFnReturningArray {
+                signal_sealed_session_cipher_encrypt($0, $1,
+                                                     recipient.nativeHandle,
+                                                     content.nativeHandle,
+                                                     ffiIdentityStore, context)
+            }
+        }
+    }
+}
+
+public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessageContent,
+                                              for recipients: [ProtocolAddress],
+                                              identityStore: IdentityKeyStore,
+                                              context: StoreContext) throws -> [UInt8] {
+    return try context.withOpaquePointer { context in
+        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+            try invokeFnReturningArray {
+                signal_sealed_sender_multi_recipient_encrypt($0, $1,
+                                                             recipients.map { $0.nativeHandle },
+                                                             recipients.count,
+                                                             content.nativeHandle,
+                                                             ffiIdentityStore, context)
             }
         }
     }

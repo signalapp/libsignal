@@ -11,8 +11,6 @@ edition = "2018"
 license = "AGPL-3.0-only"
 repository = "https://github.com/signalapp/libsignal-client"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 signal-crypto = { path = "../crypto" }
 aes = "0.6"
@@ -28,6 +26,7 @@ subtle = "2.2.3"
 x25519-dalek = "1.0"
 hex = "0.4"
 log = "0.4"
+num_enum = "0.5.1"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "alloc"]

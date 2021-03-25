@@ -22,7 +22,8 @@ pub enum CiphertextMessage {
     SenderKeyMessage(SenderKeyMessage),
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, num_enum::TryFromPrimitive)]
+#[repr(u8)]
 pub enum CiphertextMessageType {
     Whisper = 2,
     PreKey = 3,

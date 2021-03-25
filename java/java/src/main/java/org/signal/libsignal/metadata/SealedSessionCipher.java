@@ -17,14 +17,17 @@ import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SessionCipher;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.UntrustedIdentityException;
+import org.whispersystems.libsignal.groups.GroupCipher;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage;
+import org.whispersystems.libsignal.protocol.SenderKeyMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import org.signal.client.internal.Native;
 
+import java.util.List;
 import java.util.UUID;
 
 public class SealedSessionCipher {
@@ -50,13 +53,42 @@ public class SealedSessionCipher {
   public byte[] encrypt(SignalProtocolAddress destinationAddress, SenderCertificate senderCertificate, byte[] paddedPlaintext)
       throws InvalidKeyException, UntrustedIdentityException
   {
+    CiphertextMessage message = Native.SessionCipher_EncryptMessage(
+      paddedPlaintext,
+      destinationAddress.nativeHandle(),
+      this.signalProtocolStore,
+      this.signalProtocolStore,
+      null);
+    UnidentifiedSenderMessageContent content = new UnidentifiedSenderMessageContent(
+      message,
+      senderCertificate);
+    return encrypt(destinationAddress, content);
+  }
+
+  public byte[] encrypt(SignalProtocolAddress destinationAddress, UnidentifiedSenderMessageContent content)
+      throws InvalidKeyException, UntrustedIdentityException
+  {
     return Native.SealedSessionCipher_Encrypt(
-       destinationAddress.nativeHandle(),
-       senderCertificate.nativeHandle(),
-       paddedPlaintext,
-       this.signalProtocolStore,
-       this.signalProtocolStore,
-       null);
+      destinationAddress.nativeHandle(),
+      content.nativeHandle(),
+      this.signalProtocolStore,
+      null);
+  }
+
+  public byte[] multiRecipientEncrypt(List<SignalProtocolAddress> recipients, UnidentifiedSenderMessageContent content)
+      throws InvalidKeyException, UntrustedIdentityException
+  {
+    long[] recipientHandles = new long[recipients.size()];
+    int i = 0;
+    for (SignalProtocolAddress nextRecipient : recipients) {
+      recipientHandles[i] = nextRecipient.nativeHandle();
+      i++;
+    }
+    return Native.SealedSessionCipher_MultiRecipientEncrypt(
+      recipientHandles,
+      content.nativeHandle(),
+      this.signalProtocolStore,
+      null);
   }
 
   public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)
@@ -124,6 +156,7 @@ public class SealedSessionCipher {
     switch (message.getType()) {
       case CiphertextMessage.WHISPER_TYPE: return new SessionCipher(signalProtocolStore, sender).decrypt(new SignalMessage(message.getContent()));
       case CiphertextMessage.PREKEY_TYPE:  return new SessionCipher(signalProtocolStore, sender).decrypt(new PreKeySignalMessage(message.getContent()));
+      case CiphertextMessage.SENDERKEY_TYPE:  return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
       default:                             throw new InvalidMessageException("Unknown type: " + message.getType());
     }
   }

@@ -242,7 +242,7 @@ class PublicAPITests: TestCaseBase {
 
         let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
 
-        let a_ctext = try! groupEncrypt([1, 2, 3], from: sender, distributionId: distribution_id, store: a_store, context: NullContext())
+        let a_ctext = try! groupEncrypt([1, 2, 3], from: sender, distributionId: distribution_id, store: a_store, context: NullContext()).serialize()
 
         let b_store = InMemorySignalProtocolStore()
         try! processSenderKeyDistributionMessage(skdm_r,

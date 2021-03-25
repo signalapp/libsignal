@@ -70,7 +70,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             b.iter(|| {
                 let mut bob_store = bob_store.clone();
                 block_on(group_decrypt(
-                    &alice_ciphertext,
+                    alice_ciphertext.serialized(),
                     &mut bob_store,
                     &sender_address,
                     None,

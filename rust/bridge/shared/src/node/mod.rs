@@ -49,6 +49,12 @@ impl<T> Deref for DefaultFinalize<T> {
     }
 }
 
+impl<T> std::borrow::Borrow<T> for DefaultFinalize<T> {
+    fn borrow(&self) -> &T {
+        &self.0
+    }
+}
+
 pub type DefaultJsBox<T> = JsBox<DefaultFinalize<T>>;
 
 pub fn return_boxed_object<'a, T: 'static + Send>(

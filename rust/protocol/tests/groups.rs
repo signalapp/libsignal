@@ -138,8 +138,13 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await;
+        let bob_plaintext = group_decrypt(
+            alice_ciphertext.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await;
 
         assert!(bob_plaintext.is_err());
 
@@ -188,8 +193,13 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await?;
+        let bob_plaintext = group_decrypt(
+            alice_ciphertext.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await?;
 
         assert_eq!(
             String::from_utf8(bob_plaintext).expect("valid utf8"),
@@ -312,7 +322,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
         let alice_usmc = UnidentifiedSenderMessageContent::new(
             CiphertextMessageType::SenderKey,
             sender_cert.clone(),
-            alice_message,
+            alice_message.serialized().to_vec(),
         )?;
 
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
@@ -416,8 +426,13 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await?;
+        let bob_plaintext = group_decrypt(
+            alice_ciphertext.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await?;
 
         assert_eq!(bob_plaintext, large_message);
 
@@ -484,27 +499,48 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let bob_plaintext1 =
-            group_decrypt(&alice_ciphertext1, &mut bob_store, &sender_address, None).await?;
+        let bob_plaintext1 = group_decrypt(
+            alice_ciphertext1.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(bob_plaintext1).expect("valid utf8"),
             "swim camp"
         );
 
         assert!(matches!(
-            group_decrypt(&alice_ciphertext1, &mut bob_store, &sender_address, None).await,
+            group_decrypt(
+                alice_ciphertext1.serialized(),
+                &mut bob_store,
+                &sender_address,
+                None
+            )
+            .await,
             Err(SignalProtocolError::DuplicatedMessage(1, 0))
         ));
 
-        let bob_plaintext3 =
-            group_decrypt(&alice_ciphertext3, &mut bob_store, &sender_address, None).await?;
+        let bob_plaintext3 = group_decrypt(
+            alice_ciphertext3.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(bob_plaintext3).expect("valid utf8"),
             "ninja camp"
         );
 
-        let bob_plaintext2 =
-            group_decrypt(&alice_ciphertext2, &mut bob_store, &sender_address, None).await?;
+        let bob_plaintext2 = group_decrypt(
+            alice_ciphertext2.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(bob_plaintext2).expect("valid utf8"),
             "robot camp"
@@ -568,8 +604,13 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let bob_plaintext =
-            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None).await?;
+        let bob_plaintext = group_decrypt(
+            alice_ciphertext.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None,
+        )
+        .await?;
         assert_eq!(
             String::from_utf8(bob_plaintext).expect("valid utf8"),
             "welcome bob"
@@ -631,8 +672,15 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         let mut plaintexts = Vec::with_capacity(ciphertexts.len());
 
         for ciphertext in ciphertexts {
-            plaintexts
-                .push(group_decrypt(&ciphertext, &mut bob_store, &sender_address, None).await?);
+            plaintexts.push(
+                group_decrypt(
+                    &ciphertext.serialized(),
+                    &mut bob_store,
+                    &sender_address,
+                    None,
+                )
+                .await?,
+            );
         }
 
         plaintexts.sort();
@@ -702,11 +750,14 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        assert!(
-            group_decrypt(&alice_ciphertext, &mut bob_store, &sender_address, None)
-                .await
-                .is_err()
-        );
+        assert!(group_decrypt(
+            alice_ciphertext.serialized(),
+            &mut bob_store,
+            &sender_address,
+            None
+        )
+        .await
+        .is_err());
 
         Ok(())
     })
@@ -755,7 +806,9 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
                     &mut csprng,
                     None,
                 )
-                .await?,
+                .await?
+                .serialized()
+                .to_vec(),
             );
         }
 

@@ -411,7 +411,6 @@ impl UnidentifiedSenderMessageContent {
         let mut serialized = vec![];
         msg.encode(&mut serialized)?;
 
-        // serialize it
         Ok(Self {
             msg_type,
             sender,

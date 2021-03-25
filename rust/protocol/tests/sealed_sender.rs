@@ -384,7 +384,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let alice_usmc = UnidentifiedSenderMessageContent::new(
             CiphertextMessageType::SenderKey,
             sender_cert.clone(),
-            alice_message,
+            alice_message.serialized().to_vec(),
         )?;
 
         let alice_ctext = sealed_sender_encrypt_from_usmc(

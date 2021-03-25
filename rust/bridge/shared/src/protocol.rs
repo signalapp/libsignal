@@ -610,24 +610,33 @@ fn UnidentifiedSenderMessageContent_GetMsgType(m: &UnidentifiedSenderMessageCont
     Ok(m.msg_type()? as u8)
 }
 
-// For testing only
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(jni = false)]
 fn UnidentifiedSenderMessageContent_New(
-    msg_type: u32,
+    message: &CiphertextMessage,
     sender: &SenderCertificate,
-    contents: &[u8],
 ) -> Result<UnidentifiedSenderMessageContent> {
-    // This encoding is from the protobufs
-    let msg_type = match msg_type {
-        1 => Ok(CiphertextMessageType::PreKey),
-        2 => Ok(CiphertextMessageType::Whisper),
-        x => Err(SignalProtocolError::InvalidArgument(format!(
-            "invalid msg_type argument {}",
-            x
-        ))),
-    }?;
+    UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender.clone(),
+        message.serialize().to_owned(),
+    )
+}
 
-    UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents.to_owned())
+// Alternate version since CiphertextMessage isn't opaque in Java.
+#[bridge_fn(
+    ffi = false,
+    jni = "UnidentifiedSenderMessageContent_1New",
+    node = false
+)]
+fn UnidentifiedSenderMessageContent_New_Java(
+    message: jni::CiphertextMessageRef,
+    sender: &SenderCertificate,
+) -> Result<UnidentifiedSenderMessageContent> {
+    UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender.clone(),
+        message.serialize().to_owned(),
+    )
 }
 
 bridge_deserialize!(
@@ -919,22 +928,33 @@ async fn SessionCipher_DecryptPreKeySignalMessage<E: Env>(
     Ok(env.buffer(ptext))
 }
 
-#[bridge_fn_buffer(node = "SealedSender_EncryptMessage")]
+#[bridge_fn_buffer(node = "SealedSender_Encrypt")]
 async fn SealedSessionCipher_Encrypt<E: Env>(
     env: E,
     destination: &ProtocolAddress,
-    sender_cert: &SenderCertificate,
-    ptext: &[u8],
-    session_store: &mut dyn SessionStore,
+    content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
     let mut rng = rand::rngs::OsRng;
-    let ctext = sealed_sender_encrypt(
-        destination,
-        sender_cert,
-        ptext,
-        session_store,
+    let ctext =
+        sealed_sender_encrypt_from_usmc(destination, content, identity_key_store, ctx, &mut rng)
+            .await?;
+    Ok(env.buffer(ctext))
+}
+
+#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientEncrypt")]
+async fn SealedSender_MultiRecipientEncrypt<E: Env>(
+    env: E,
+    recipients: &[&ProtocolAddress],
+    content: &UnidentifiedSenderMessageContent,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer> {
+    let mut rng = rand::rngs::OsRng;
+    let ctext = sealed_sender_multi_recipient_encrypt(
+        recipients,
+        content,
         identity_key_store,
         ctx,
         &mut rng,
@@ -1013,18 +1033,17 @@ async fn SenderKeyDistributionMessage_Process(
         .await
 }
 
-#[bridge_fn_buffer(ffi = "group_encrypt_message")]
-async fn GroupCipher_EncryptMessage<E: Env>(
-    env: E,
+#[bridge_fn(ffi = "group_encrypt_message")]
+async fn GroupCipher_EncryptMessage(
     sender: &ProtocolAddress,
     distribution_id: Uuid,
     message: &[u8],
     store: &mut dyn SenderKeyStore,
     ctx: Context,
-) -> Result<E::Buffer> {
+) -> Result<CiphertextMessage> {
     let mut rng = rand::rngs::OsRng;
     let ctext = group_encrypt(store, sender, distribution_id, message, &mut rng, ctx).await?;
-    Ok(env.buffer(ctext))
+    Ok(CiphertextMessage::SenderKeyMessage(ctext))
 }
 
 #[bridge_fn_buffer(ffi = "group_decrypt_message")]

@@ -5,7 +5,9 @@
  */
 package org.whispersystems.libsignal.state;
 
+import org.whispersystems.libsignal.groups.state.SenderKeyStore;
+
 public interface SignalProtocolStore
-    extends IdentityKeyStore, PreKeyStore, SessionStore, SignedPreKeyStore
+    extends IdentityKeyStore, PreKeyStore, SessionStore, SignedPreKeyStore, SenderKeyStore
 {
 }

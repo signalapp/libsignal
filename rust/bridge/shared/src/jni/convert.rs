@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{AutoArray, JString, ReleaseMode};
+use jni::objects::JString;
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
@@ -301,6 +301,65 @@ store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
 
+/// A translation from a Java interface where the implementing class wraps the Rust handle.
+impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
+    type ArgType = JavaCiphertextMessage<'a>;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        fn native_handle_from_message<'a, T: 'static>(
+            env: &JNIEnv,
+            foreign: JavaCiphertextMessage<'a>,
+            class_name: &'static str,
+            make_result: fn(&'a T) -> CiphertextMessageRef<'a>,
+        ) -> SignalJniResult<Option<CiphertextMessageRef<'a>>> {
+            if env.is_instance_of(foreign, class_name)? {
+                let handle = call_method_checked(
+                    env,
+                    foreign,
+                    "nativeHandle",
+                    jni_signature!(() -> long),
+                    &[],
+                )?;
+                Ok(Some(make_result(unsafe { native_handle_cast(handle)? })))
+            } else {
+                Ok(None)
+            }
+        }
+
+        if foreign.is_null() {
+            return Err(SignalJniError::NullHandle);
+        }
+
+        None.or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/SignalMessage",
+                Self::SignalMessage,
+            )
+            .transpose()
+        })
+        .or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                Self::PreKeySignalMessage,
+            )
+            .transpose()
+        })
+        .or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/SenderKeyMessage",
+                Self::SenderKeyMessage,
+            )
+            .transpose()
+        })
+        .unwrap_or(Err(SignalJniError::BadJniParameter("CiphertextMessage")))
+    }
+}
+
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -511,6 +570,33 @@ macro_rules! jni_bridge_handle {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
+
+        impl<'storage, 'context: 'storage> jni::ArgTypeInfo<'storage, 'context>
+            for &'storage [&'storage $typ]
+        {
+            type ArgType = jni::jlongArray;
+            type StoredType = jni::AutoArray<'context, 'context, jni::jlong>;
+            fn borrow(
+                env: &'context jni::JNIEnv,
+                foreign: Self::ArgType,
+            ) -> jni::SignalJniResult<Self::StoredType> {
+                Ok(env.get_long_array_elements(foreign, jni::ReleaseMode::NoCopyBack)?)
+            }
+            fn load_from(
+                _env: &jni::JNIEnv,
+                stored: &'storage mut Self::StoredType,
+            ) -> jni::SignalJniResult<&'storage [&'storage $typ]> {
+                let len = stored.size()? as usize;
+                let slice_of_pointers = unsafe {
+                    std::slice::from_raw_parts(stored.as_ptr() as *const *const $typ, len)
+                };
+                if slice_of_pointers.contains(&std::ptr::null()) {
+                    return Err(jni::SignalJniError::NullHandle);
+                }
+
+                Ok(unsafe { std::slice::from_raw_parts(stored.as_ptr() as *const &$typ, len) })
+            }
+        }
         impl jni::ResultTypeInfo for $typ {
             type ResultType = jni::ObjectHandle;
             fn convert_into(self, _env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
@@ -597,6 +683,12 @@ macro_rules! jni_arg_type {
     };
     (Uuid) => {
         jni::JavaUUID
+    };
+    (jni::CiphertextMessageRef) => {
+        jni::JavaCiphertextMessage
+    };
+    (& [& $typ:ty]) => {
+        jni::jlongArray
     };
     (&mut dyn $typ:ty) => {
         paste!(jni::[<Java $typ>])

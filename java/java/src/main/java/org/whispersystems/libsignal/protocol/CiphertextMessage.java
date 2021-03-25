@@ -18,5 +18,5 @@ public interface CiphertextMessage {
 
   public byte[] serialize();
   public int getType();
-
+  public long nativeHandle();
 }
