@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -25,6 +25,7 @@ mod session_cipher;
 mod state;
 mod storage;
 mod utils;
+mod uuid;
 
 use error::Result;
 
@@ -52,7 +53,7 @@ pub use {
         SealedSenderDecryptionResult, SenderCertificate, ServerCertificate,
         UnidentifiedSenderMessage, UnidentifiedSenderMessageContent,
     },
-    sender_keys::{SenderKeyName, SenderKeyRecord},
+    sender_keys::SenderKeyRecord,
     session::{process_prekey, process_prekey_bundle},
     session_cipher::{
         message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
@@ -63,4 +64,5 @@ pub use {
         InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
         PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
     },
+    uuid::Uuid,
 };

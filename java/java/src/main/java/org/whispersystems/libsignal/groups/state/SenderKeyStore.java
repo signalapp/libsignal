@@ -5,33 +5,37 @@
  */
 package org.whispersystems.libsignal.groups.state;
 
-import org.whispersystems.libsignal.groups.SenderKeyName;
+import org.whispersystems.libsignal.SignalProtocolAddress;
+
+import java.util.UUID;
 
 public interface SenderKeyStore {
 
   /**
    * Commit to storage the {@link org.whispersystems.libsignal.groups.state.SenderKeyRecord} for a
-   * given (groupId + senderId + deviceId) tuple.
+   * given (distributionId + senderName + deviceId) tuple.
    *
-   * @param senderKeyName the (groupId + senderId + deviceId) tuple.
-   * @param record the current SenderKeyRecord for the specified senderKeyName.
+   * @param sender The address of the current client.
+   * @param distributionId An opaque identifier that uniquely identifies the group (but isn't the group ID).
+   * @param record the current SenderKeyRecord for the specified (distributionId + senderName + deviceId) tuple.
    */
-  public void storeSenderKey(SenderKeyName senderKeyName, SenderKeyRecord record);
+  public void storeSenderKey(SignalProtocolAddress sender, UUID distributionId, SenderKeyRecord record);
 
   /**
    * Returns a copy of the {@link org.whispersystems.libsignal.groups.state.SenderKeyRecord}
-   * corresponding to the (groupId + senderId + deviceId) tuple, or a new SenderKeyRecord if
-   * one does not currently exist.
-   * <p>
+   * corresponding to the (distributionId + senderName + deviceId) tuple, or `null` if one does not 
+   * exist.
+   * 
    * It is important that implementations return a copy of the current durable information.  The
    * returned SenderKeyRecord may be modified, but those changes should not have an effect on the
    * durable session state (what is returned by subsequent calls to this method) without the
    * store method being called here first.
    *
-   * @param senderKeyName The (groupId + senderId + deviceId) tuple.
-   * @return a copy of the SenderKeyRecord corresponding to the (groupId + senderId + deviceId tuple, or
+   * @param sender The address of the current client.
+   * @param distributionId An opaque identifier that uniquely identifies the group (but isn't the group ID).
+   * @return a copy of the SenderKeyRecord corresponding to the (id + senderName + deviceId tuple, or
    *         a new SenderKeyRecord if one does not currently exist.
    */
 
-  public SenderKeyRecord loadSenderKey(SenderKeyName senderKeyName);
+  public SenderKeyRecord loadSenderKey(SignalProtocolAddress sender, UUID distributionId);
 }

@@ -5,6 +5,8 @@
 
 // WARNING: this file was automatically generated
 
+type Uuid = Buffer;
+
 export abstract class IdentityKeyStore {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;
@@ -30,8 +32,8 @@ export abstract class SignedPreKeyStore {
 }
 
 export abstract class SenderKeyStore {
-  _saveSenderKey(name: SenderKeyName, record: SenderKeyRecord): Promise<void>;
-  _getSenderKey(name: SenderKeyName): Promise<SenderKeyRecord | null>;
+  _saveSenderKey(sender: ProtocolAddress, distributionId: Uuid, record: SenderKeyRecord): Promise<void>;
+  _getSenderKey(sender: ProtocolAddress, distributionId: Uuid): Promise<SenderKeyRecord | null>;
 }
 
 interface Wrapper<T> {
@@ -48,8 +50,8 @@ export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
 export function Fingerprint_DisplayString(obj: Wrapper<Fingerprint>): string;
 export function Fingerprint_New(iterations: number, version: number, localIdentifier: Buffer, localKey: Wrapper<PublicKey>, remoteIdentifier: Buffer, remoteKey: Wrapper<PublicKey>): Fingerprint;
 export function Fingerprint_ScannableEncoding(obj: Wrapper<Fingerprint>): Buffer;
-export function GroupCipher_DecryptMessage(senderKeyName: Wrapper<SenderKeyName>, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
-export function GroupCipher_EncryptMessage(senderKeyName: Wrapper<SenderKeyName>, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
+export function GroupCipher_DecryptMessage(sender: Wrapper<ProtocolAddress>, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
+export function GroupCipher_EncryptMessage(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
 export function HKDF_DeriveSecrets(outputLength: number, version: number, ikm: Buffer, label: Buffer, salt: Buffer | null): Buffer;
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Buffer;
 export function PreKeyBundle_GetDeviceId(obj: Wrapper<PreKeyBundle>): number;
@@ -108,25 +110,23 @@ export function SenderCertificate_GetServerCertificate(cert: Wrapper<SenderCerti
 export function SenderCertificate_GetSignature(obj: Wrapper<SenderCertificate>): Buffer;
 export function SenderCertificate_New(senderUuid: string, senderE164: string | null, senderDeviceId: number, senderKey: Wrapper<PublicKey>, expiration: number, signerCert: Wrapper<ServerCertificate>, signerKey: Wrapper<PrivateKey>): SenderCertificate;
 export function SenderCertificate_Validate(cert: Wrapper<SenderCertificate>, key: Wrapper<PublicKey>, time: number): boolean;
-export function SenderKeyDistributionMessage_Create(senderKeyName: Wrapper<SenderKeyName>, store: SenderKeyStore, ctx: null): Promise<SenderKeyDistributionMessage>;
+export function SenderKeyDistributionMessage_Create(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, store: SenderKeyStore, ctx: null): Promise<SenderKeyDistributionMessage>;
 export function SenderKeyDistributionMessage_Deserialize(buffer: Buffer): SenderKeyDistributionMessage;
+export function SenderKeyDistributionMessage_GetChainId(obj: Wrapper<SenderKeyDistributionMessage>): number;
 export function SenderKeyDistributionMessage_GetChainKey(obj: Wrapper<SenderKeyDistributionMessage>): Buffer;
-export function SenderKeyDistributionMessage_GetId(obj: Wrapper<SenderKeyDistributionMessage>): number;
+export function SenderKeyDistributionMessage_GetDistributionId(obj: Wrapper<SenderKeyDistributionMessage>): Uuid;
 export function SenderKeyDistributionMessage_GetIteration(obj: Wrapper<SenderKeyDistributionMessage>): number;
-export function SenderKeyDistributionMessage_New(keyId: number, iteration: number, chainkey: Buffer, pk: Wrapper<PublicKey>): SenderKeyDistributionMessage;
-export function SenderKeyDistributionMessage_Process(senderKeyName: Wrapper<SenderKeyName>, senderKeyDistributionMessage: Wrapper<SenderKeyDistributionMessage>, store: SenderKeyStore, ctx: null): Promise<void>;
+export function SenderKeyDistributionMessage_New(distributionId: Uuid, chainId: number, iteration: number, chainkey: Buffer, pk: Wrapper<PublicKey>): SenderKeyDistributionMessage;
+export function SenderKeyDistributionMessage_Process(sender: Wrapper<ProtocolAddress>, senderKeyDistributionMessage: Wrapper<SenderKeyDistributionMessage>, store: SenderKeyStore, ctx: null): Promise<void>;
 export function SenderKeyDistributionMessage_Serialize(obj: Wrapper<SenderKeyDistributionMessage>): Buffer;
 export function SenderKeyMessage_Deserialize(buffer: Buffer): SenderKeyMessage;
+export function SenderKeyMessage_GetChainId(obj: Wrapper<SenderKeyMessage>): number;
 export function SenderKeyMessage_GetCipherText(obj: Wrapper<SenderKeyMessage>): Buffer;
+export function SenderKeyMessage_GetDistributionId(obj: Wrapper<SenderKeyMessage>): Uuid;
 export function SenderKeyMessage_GetIteration(obj: Wrapper<SenderKeyMessage>): number;
-export function SenderKeyMessage_GetKeyId(obj: Wrapper<SenderKeyMessage>): number;
-export function SenderKeyMessage_New(keyId: number, iteration: number, ciphertext: Buffer, pk: Wrapper<PrivateKey>): SenderKeyMessage;
+export function SenderKeyMessage_New(distributionId: Uuid, chainId: number, iteration: number, ciphertext: Buffer, pk: Wrapper<PrivateKey>): SenderKeyMessage;
 export function SenderKeyMessage_Serialize(obj: Wrapper<SenderKeyMessage>): Buffer;
 export function SenderKeyMessage_VerifySignature(skm: Wrapper<SenderKeyMessage>, pubkey: Wrapper<PublicKey>): boolean;
-export function SenderKeyName_GetGroupId(obj: Wrapper<SenderKeyName>): string;
-export function SenderKeyName_GetSenderDeviceId(skn: Wrapper<SenderKeyName>): number;
-export function SenderKeyName_GetSenderName(obj: Wrapper<SenderKeyName>): string;
-export function SenderKeyName_New(groupId: string, senderName: string, senderDeviceId: number): SenderKeyName;
 export function SenderKeyRecord_Deserialize(buffer: Buffer): SenderKeyRecord;
 export function SenderKeyRecord_New(): SenderKeyRecord;
 export function SenderKeyRecord_Serialize(obj: Wrapper<SenderKeyRecord>): Buffer;
@@ -181,7 +181,6 @@ interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }
 interface SenderKeyDistributionMessage { readonly __type: unique symbol; }
 interface SenderKeyMessage { readonly __type: unique symbol; }
-interface SenderKeyName { readonly __type: unique symbol; }
 interface SenderKeyRecord { readonly __type: unique symbol; }
 interface ServerCertificate { readonly __type: unique symbol; }
 interface SessionRecord { readonly __type: unique symbol; }

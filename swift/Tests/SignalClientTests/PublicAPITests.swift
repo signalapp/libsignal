@@ -232,24 +232,24 @@ class PublicAPITests: TestCaseBase {
     func testGroupCipher() {
 
         let sender = try! ProtocolAddress(name: "+14159999111", deviceId: 4)
-        let group_id = try! SenderKeyName(groupName: "summer camp", sender: sender)
+        let distribution_id = UUID(uuidString: "d1d1d1d1-7000-11eb-b32a-33b8a8a487a6")!
 
         let a_store = InMemorySignalProtocolStore()
 
-        let skdm = try! SenderKeyDistributionMessage(name: group_id, store: a_store, context: NullContext())
+        let skdm = try! SenderKeyDistributionMessage(from: sender, distributionId: distribution_id, store: a_store, context: NullContext())
 
         let skdm_bits = skdm.serialize()
 
         let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
 
-        let a_ctext = try! groupEncrypt(groupId: group_id, message: [1, 2, 3], store: a_store, context: NullContext())
+        let a_ctext = try! groupEncrypt([1, 2, 3], from: sender, distributionId: distribution_id, store: a_store, context: NullContext())
 
         let b_store = InMemorySignalProtocolStore()
-        try! processSenderKeyDistributionMessage(sender: group_id,
-                                                 message: skdm_r,
+        try! processSenderKeyDistributionMessage(skdm_r,
+                                                 from: sender,
                                                  store: b_store,
                                                  context: NullContext())
-        let b_ptext = try! groupDecrypt(groupId: group_id, message: a_ctext, store: b_store, context: NullContext())
+        let b_ptext = try! groupDecrypt(a_ctext, from: sender, store: b_store, context: NullContext())
 
         XCTAssertEqual(b_ptext, [1, 2, 3])
     }

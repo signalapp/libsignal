@@ -4,6 +4,7 @@
 //
 
 import SignalFfi
+import Foundation
 
 internal func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
     var output: UnsafePointer<Int8>?
@@ -31,6 +32,12 @@ internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UIn
     let result = Array(UnsafeBufferPointer(start: output, count: output_len))
     signal_free_buffer(output, output_len)
     return result
+}
+
+internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> SignalFfiErrorRef?) throws -> UUID {
+    var output = UUID_NULL
+    try checkError(fn(&output))
+    return UUID(uuid: output)
 }
 
 internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
@@ -337,31 +344,35 @@ internal func withSessionStore<Result>(_ store: SessionStore, _ body: (UnsafePoi
 
 internal func withSenderKeyStore<Result>(_ store: SenderKeyStore, _ body: (UnsafePointer<SignalSenderKeyStore>) throws -> Result) rethrows -> Result {
     func ffiShimStoreSenderKey(store_ctx: UnsafeMutableRawPointer?,
-                               sender_name: OpaquePointer?,
+                               sender: OpaquePointer?,
+                               distributionId: UnsafePointer<uuid_t>?,
                                record: OpaquePointer?,
                                ctx: UnsafeMutableRawPointer?) -> Int32 {
         let storeContext = store_ctx!.assumingMemoryBound(to: ErrorHandlingContext<SenderKeyStore>.self)
         return storeContext.pointee.catchCallbackErrors { store in
             let context = ctx!.assumingMemoryBound(to: StoreContext.self).pointee
-            var sender_name = SenderKeyName(borrowing: sender_name)
-            defer { cloneOrForgetAsNeeded(&sender_name) }
+            var sender = ProtocolAddress(borrowing: sender)
+            let distributionId = UUID(uuid: distributionId!.pointee)
+            defer { cloneOrForgetAsNeeded(&sender) }
             var record = SenderKeyRecord(borrowing: record)
             defer { cloneOrForgetAsNeeded(&record) }
-            try store.storeSenderKey(name: sender_name, record: record, context: context)
+            try store.storeSenderKey(from: sender, distributionId: distributionId, record: record, context: context)
             return 0
         }
     }
 
     func ffiShimLoadSenderKey(store_ctx: UnsafeMutableRawPointer?,
                               recordp: UnsafeMutablePointer<OpaquePointer?>?,
-                              sender_name: OpaquePointer?,
+                              sender: OpaquePointer?,
+                              distributionId: UnsafePointer<uuid_t>?,
                               ctx: UnsafeMutableRawPointer?) -> Int32 {
         let storeContext = store_ctx!.assumingMemoryBound(to: ErrorHandlingContext<SenderKeyStore>.self)
         return storeContext.pointee.catchCallbackErrors { store in
             let context = ctx!.assumingMemoryBound(to: StoreContext.self).pointee
-            var sender_name = SenderKeyName(borrowing: sender_name)
-            defer { cloneOrForgetAsNeeded(&sender_name) }
-            if var record = try store.loadSenderKey(name: sender_name, context: context) {
+            var sender = ProtocolAddress(borrowing: sender)
+            let distributionId = UUID(uuid: distributionId!.pointee)
+            defer { cloneOrForgetAsNeeded(&sender) }
+            if var record = try store.loadSenderKey(from: sender, distributionId: distributionId, context: context) {
                 recordp!.pointee = try cloneOrTakeHandle(from: &record)
             } else {
                 recordp!.pointee = nil

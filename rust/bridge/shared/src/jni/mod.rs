@@ -11,7 +11,7 @@ use jni::sys::jobject;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 
 pub(crate) use jni::objects::{JClass, JObject, JString};
@@ -68,6 +68,9 @@ pub use crate::support::expect_ready;
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
+
+pub type JavaUUID<'a> = JObject<'a>;
+pub type JavaReturnUUID = jobject;
 
 /// Translates errors into Java exceptions.
 ///
@@ -172,8 +175,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeyId) => {
+        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
             "org/whispersystems/libsignal/InvalidKeyIdException"
         }
 
@@ -338,20 +340,25 @@ pub fn to_jbytearray<T: AsRef<[u8]>>(
 /// [`SignalProtocolError::ApplicationCallbackError`].
 ///
 /// Wraps [`JNIEnv::call_method`]; all arguments are the same.
-pub fn call_method_checked<'a>(
+/// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
+/// returned instead.
+pub fn call_method_checked<'a, O: Into<JObject<'a>>, R: TryFrom<JValue<'a>>>(
     env: &JNIEnv<'a>,
-    obj: impl Into<JObject<'a>>,
+    obj: O,
     fn_name: &'static str,
     sig: &'static str,
     args: &[JValue<'_>],
-) -> Result<JValue<'a>, SignalJniError> {
+) -> Result<R, SignalJniError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
     let result = env.call_method(obj, fn_name, sig, args);
 
     let throwable = env.exception_occurred()?;
     if **throwable == *JObject::null() {
-        Ok(result?)
+        let result = result?;
+        result
+            .try_into()
+            .map_err(|_| SignalJniError::UnexpectedJniResultType(fn_name, result.type_name()))
     } else {
         env.exception_clear()?;
 
@@ -421,36 +428,20 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
-    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
-
-    let obj = match rvalue {
-        JValue::Object(o) => *o,
-        _ => {
-            return Err(SignalJniError::UnexpectedJniResultType(
-                callback_fn,
-                rvalue.type_name(),
-            ))
-        }
-    };
-
+    let obj: JObject =
+        call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
     if obj.is_null() {
         return Ok(None);
     }
 
-    let handle = call_method_checked(env, obj, "nativeHandle", jni_signature!(() -> long), &[])?;
-    match handle {
-        JValue::Long(handle) => {
-            if handle == 0 {
-                return Ok(None);
-            }
-            let object = unsafe { native_handle_cast::<T>(handle)? };
-            Ok(Some(object.clone()))
-        }
-        _ => Err(SignalJniError::UnexpectedJniResultType(
-            "nativeHandle",
-            handle.type_name(),
-        )),
+    let handle: jlong =
+        call_method_checked(env, obj, "nativeHandle", jni_signature!(() -> long), &[])?;
+    if handle == 0 {
+        return Ok(None);
     }
+
+    let object = unsafe { native_handle_cast::<T>(handle)? };
+    Ok(Some(object.clone()))
 }
 
 /// Calls a method, then serializes the result.
@@ -463,31 +454,17 @@ pub fn get_object_with_serialization(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
-    let rvalue = call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
-
-    let obj = match rvalue {
-        JValue::Object(o) => *o,
-        _ => {
-            return Err(SignalJniError::UnexpectedJniResultType(
-                callback_fn,
-                rvalue.type_name(),
-            ))
-        }
-    };
+    let obj: JObject =
+        call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
 
     if obj.is_null() {
         return Ok(None);
     }
 
-    let bytes = call_method_checked(env, obj, "serialize", jni_signature!(() -> [byte]), &[])?;
+    let bytes: JObject =
+        call_method_checked(env, obj, "serialize", jni_signature!(() -> [byte]), &[])?;
 
-    match bytes {
-        JValue::Object(o) => Ok(Some(env.convert_byte_array(*o)?)),
-        _ => Err(SignalJniError::UnexpectedJniResultType(
-            "serialize",
-            bytes.type_name(),
-        )),
-    }
+    Ok(Some(env.convert_byte_array(*bytes)?))
 }
 
 /// Used by [`bridge_handle`](crate::support::bridge_handle).

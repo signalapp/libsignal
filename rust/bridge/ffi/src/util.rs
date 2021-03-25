@@ -83,8 +83,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidPreKeyId)
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeyId) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
                 SignalErrorCode::InvalidKeyIdentifier
             }
 

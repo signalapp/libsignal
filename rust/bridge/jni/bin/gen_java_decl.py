@@ -79,7 +79,9 @@ def translate_to_java(typ):
     if typ in type_map:
         return type_map[typ]
 
-    # Assume anything prefixed with Java refers to an object
+    # Assume anything prefixed with "Java" refers to an object
+    if typ.startswith('JavaReturn'):
+        return typ[10:]
     if typ.startswith('Java'):
         return typ[4:]
 

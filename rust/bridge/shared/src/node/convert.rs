@@ -238,6 +238,14 @@ impl SimpleArgTypeInfo for String {
     }
 }
 
+impl SimpleArgTypeInfo for Uuid {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        cx.borrow(&foreign, |buffer| Uuid::try_from(buffer.as_slice()))
+            .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where
@@ -514,6 +522,17 @@ impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Uuid {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let mut buffer = cx.buffer(16)?;
+        cx.borrow_mut(&mut buffer, |raw_buffer| {
+            raw_buffer.as_mut_slice().copy_from_slice(self.as_ref());
+        });
+        Ok(buffer)
     }
 }
 

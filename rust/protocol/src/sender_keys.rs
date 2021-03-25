@@ -6,39 +6,11 @@
 use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::proto::storage as storage_proto;
-use crate::{PrivateKey, ProtocolAddress, PublicKey, Result, SignalProtocolError, HKDF};
+use crate::{PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
 
 use prost::Message;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct SenderKeyName {
-    group_id: String,
-    sender: ProtocolAddress,
-}
-
-impl SenderKeyName {
-    pub fn new(group_id: String, sender: ProtocolAddress) -> Result<Self> {
-        Ok(Self { group_id, sender })
-    }
-
-    pub fn group_id(&self) -> Result<String> {
-        Ok(self.group_id.clone())
-    }
-
-    pub fn sender_name(&self) -> Result<String> {
-        Ok(self.sender.name().to_string())
-    }
-
-    pub fn sender_device_id(&self) -> Result<u32> {
-        Ok(self.sender.device_id())
-    }
-
-    pub fn sender(&self) -> Result<ProtocolAddress> {
-        Ok(self.sender.clone())
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct SenderMessageKey {
@@ -153,14 +125,14 @@ pub struct SenderKeyState {
 
 impl SenderKeyState {
     pub fn new(
-        id: u32,
+        chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
         signature_key: PublicKey,
         signature_private_key: Option<PrivateKey>,
     ) -> Result<SenderKeyState> {
         let state = storage_proto::SenderKeyStateStructure {
-            sender_key_id: id,
+            chain_id,
             sender_chain_key: Some(
                 SenderChainKey::new(iteration, chain_key.to_vec())?.as_protobuf()?,
             ),
@@ -194,8 +166,8 @@ impl SenderKeyState {
         Ok(buf)
     }
 
-    pub fn sender_key_id(&self) -> Result<u32> {
-        Ok(self.state.sender_key_id)
+    pub fn chain_id(&self) -> Result<u32> {
+        Ok(self.state.chain_id)
     }
 
     pub fn sender_chain_key(&self) -> Result<SenderChainKey> {
@@ -302,9 +274,9 @@ impl SenderKeyRecord {
         Err(SignalProtocolError::NoSenderKeyState)
     }
 
-    pub fn sender_key_state_for_keyid(&mut self, key_id: u32) -> Result<&mut SenderKeyState> {
+    pub fn sender_key_state_for_chain_id(&mut self, chain_id: u32) -> Result<&mut SenderKeyState> {
         for i in 0..self.states.len() {
-            if self.states[i].sender_key_id()? == key_id {
+            if self.states[i].chain_id()? == chain_id {
                 return Ok(&mut self.states[i]);
             }
         }
@@ -313,14 +285,14 @@ impl SenderKeyRecord {
 
     pub fn add_sender_key_state(
         &mut self,
-        id: u32,
+        chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
         signature_key: PublicKey,
         signature_private_key: Option<PrivateKey>,
     ) -> Result<()> {
         self.states.push_front(SenderKeyState::new(
-            id,
+            chain_id,
             iteration,
             chain_key,
             signature_key,
@@ -335,7 +307,7 @@ impl SenderKeyRecord {
 
     pub fn set_sender_key_state(
         &mut self,
-        id: u32,
+        chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
         signature_key: PublicKey,
@@ -343,7 +315,7 @@ impl SenderKeyRecord {
     ) -> Result<()> {
         self.states.clear();
         self.add_sender_key_state(
-            id,
+            chain_id,
             iteration,
             chain_key,
             signature_key,

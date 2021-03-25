@@ -14,10 +14,9 @@ import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 import java.text.ParseException;
+import java.util.UUID;
 
 public class SenderKeyMessage implements CiphertextMessage {
-
-
 
   private long handle;
 
@@ -30,12 +29,16 @@ public class SenderKeyMessage implements CiphertextMessage {
     handle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 
-  public SenderKeyMessage(int keyId, int iteration, byte[] ciphertext, ECPrivateKey signatureKey) {
-    handle = Native.SenderKeyMessage_New(keyId, iteration, ciphertext, signatureKey.nativeHandle());
+  public SenderKeyMessage(UUID distributionId, int chainId, int iteration, byte[] ciphertext, ECPrivateKey signatureKey) {
+    handle = Native.SenderKeyMessage_New(distributionId, chainId, iteration, ciphertext, signatureKey.nativeHandle());
   }
 
-  public int getKeyId() {
-    return Native.SenderKeyMessage_GetKeyId(this.handle);
+  public UUID getDistributionId() {
+    return Native.SenderKeyMessage_GetDistributionId(this.handle);
+  }
+
+  public int getChainId() {
+    return Native.SenderKeyMessage_GetChainId(this.handle);
   }
 
   public int getIteration() {

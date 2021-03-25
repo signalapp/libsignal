@@ -23,7 +23,6 @@ bridge_handle!(PublicKey, ffi = publickey, jni = ECPublicKey);
 bridge_handle!(SenderCertificate);
 bridge_handle!(SenderKeyDistributionMessage);
 bridge_handle!(SenderKeyMessage);
-bridge_handle!(SenderKeyName);
 bridge_handle!(SenderKeyRecord);
 bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
@@ -345,18 +344,34 @@ bridge_get_bytearray!(
     SenderKeyMessage::serialized as Serialize,
     jni = "SenderKeyMessage_1GetSerialized"
 );
-bridge_get!(SenderKeyMessage::key_id -> u32);
+bridge_get!(SenderKeyMessage::distribution_id -> Uuid, ffi = false);
+bridge_get!(SenderKeyMessage::chain_id -> u32);
 bridge_get!(SenderKeyMessage::iteration -> u32);
+
+// Alternate form that copies into an existing buffer.
+#[bridge_fn_void(jni = false, node = false)]
+fn SenderKeyMessageGetDistributionId(out: &mut [u8; 16], obj: &SenderKeyMessage) -> Result<()> {
+    *out = obj.distribution_id().into();
+    Ok(())
+}
 
 #[bridge_fn]
 fn SenderKeyMessage_New(
-    key_id: u32,
+    distribution_id: Uuid,
+    chain_id: u32,
     iteration: u32,
     ciphertext: &[u8],
     pk: &PrivateKey,
 ) -> Result<SenderKeyMessage> {
     let mut csprng = rand::rngs::OsRng;
-    SenderKeyMessage::new(key_id, iteration, &ciphertext, &mut csprng, pk)
+    SenderKeyMessage::new(
+        distribution_id,
+        chain_id,
+        iteration,
+        ciphertext.into(),
+        &mut csprng,
+        pk,
+    )
 }
 
 #[bridge_fn]
@@ -383,17 +398,29 @@ bridge_get_bytearray!(
     SenderKeyDistributionMessage::serialized as Serialize,
     jni = "SenderKeyDistributionMessage_1GetSerialized"
 );
-bridge_get!(SenderKeyDistributionMessage::id -> u32);
+bridge_get!(SenderKeyDistributionMessage::distribution_id -> Uuid, ffi = false);
+bridge_get!(SenderKeyDistributionMessage::chain_id -> u32);
 bridge_get!(SenderKeyDistributionMessage::iteration -> u32);
+
+// Alternate form that copies into an existing buffer.
+#[bridge_fn_void(jni = false, node = false)]
+fn SenderKeyDistributionMessageGetDistributionId(
+    out: &mut [u8; 16],
+    obj: &SenderKeyDistributionMessage,
+) -> Result<()> {
+    *out = obj.distribution_id()?.into();
+    Ok(())
+}
 
 #[bridge_fn]
 fn SenderKeyDistributionMessage_New(
-    key_id: u32,
+    distribution_id: Uuid,
+    chain_id: u32,
     iteration: u32,
     chainkey: &[u8],
     pk: &PublicKey,
 ) -> Result<SenderKeyDistributionMessage> {
-    SenderKeyDistributionMessage::new(key_id, iteration, &chainkey, *pk)
+    SenderKeyDistributionMessage::new(distribution_id, chain_id, iteration, chainkey.into(), *pk)
 }
 
 #[bridge_fn(jni = false, node = false)]
@@ -486,30 +513,6 @@ bridge_get!(PreKeyRecord::private_key -> PrivateKey);
 fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
     PreKeyRecord::new(id, &keypair)
-}
-
-bridge_get!(SenderKeyName::group_id -> String);
-
-#[bridge_fn]
-fn SenderKeyName_GetSenderName(obj: &SenderKeyName) -> Result<String> {
-    Ok(obj.sender()?.name().to_string())
-}
-
-#[bridge_fn]
-fn SenderKeyName_New(
-    group_id: String,
-    sender_name: String,
-    sender_device_id: u32,
-) -> Result<SenderKeyName> {
-    SenderKeyName::new(
-        group_id,
-        ProtocolAddress::new(sender_name, sender_device_id),
-    )
-}
-
-#[bridge_fn]
-fn SenderKeyName_GetSenderDeviceId(skn: &SenderKeyName) -> Result<u32> {
-    Ok(skn.sender()?.device_id())
 }
 
 bridge_deserialize!(SenderKeyRecord::deserialize);
@@ -992,12 +995,13 @@ async fn SealedSender_DecryptMessage(
 
 #[bridge_fn(jni = "GroupSessionBuilder_1CreateSenderKeyDistributionMessage")]
 async fn SenderKeyDistributionMessage_Create(
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
+    distribution_id: Uuid,
     store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<SenderKeyDistributionMessage> {
     let mut csprng = rand::rngs::OsRng;
-    create_sender_key_distribution_message(sender_key_name, store, &mut csprng, ctx).await
+    create_sender_key_distribution_message(sender, distribution_id, store, &mut csprng, ctx).await
 }
 
 #[bridge_fn_void(
@@ -1005,41 +1009,37 @@ async fn SenderKeyDistributionMessage_Create(
     jni = "GroupSessionBuilder_1ProcessSenderKeyDistributionMessage"
 )]
 async fn SenderKeyDistributionMessage_Process(
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
     sender_key_distribution_message: &SenderKeyDistributionMessage,
     store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<()> {
-    process_sender_key_distribution_message(
-        sender_key_name,
-        sender_key_distribution_message,
-        store,
-        ctx,
-    )
-    .await
+    process_sender_key_distribution_message(sender, sender_key_distribution_message, store, ctx)
+        .await
 }
 
 #[bridge_fn_buffer(ffi = "group_encrypt_message")]
 async fn GroupCipher_EncryptMessage<E: Env>(
     env: E,
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
+    distribution_id: Uuid,
     message: &[u8],
     store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
     let mut rng = rand::rngs::OsRng;
-    let ctext = group_encrypt(store, sender_key_name, message, &mut rng, ctx).await?;
+    let ctext = group_encrypt(store, sender, distribution_id, message, &mut rng, ctx).await?;
     Ok(env.buffer(ctext))
 }
 
 #[bridge_fn_buffer(ffi = "group_decrypt_message")]
 async fn GroupCipher_DecryptMessage<E: Env>(
     env: E,
-    sender_key_name: &SenderKeyName,
+    sender: &ProtocolAddress,
     message: &[u8],
     store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
-    let ptext = group_decrypt(message, store, sender_key_name, ctx).await?;
+    let ptext = group_decrypt(message, store, sender, ctx).await?;
     Ok(env.buffer(ptext))
 }

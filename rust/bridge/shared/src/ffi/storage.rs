@@ -392,12 +392,14 @@ impl SessionStore for &FfiSessionStoreStruct {
 type LoadSenderKey = extern "C" fn(
     store_ctx: *mut c_void,
     *mut *mut SenderKeyRecord,
-    *const SenderKeyName,
+    *const ProtocolAddress,
+    distribution_id: *const [u8; 16],
     ctx: *mut c_void,
 ) -> c_int;
 type StoreSenderKey = extern "C" fn(
     store_ctx: *mut c_void,
-    *const SenderKeyName,
+    *const ProtocolAddress,
+    distribution_id: *const [u8; 16],
     *const SenderKeyRecord,
     ctx: *mut c_void,
 ) -> c_int;
@@ -414,12 +416,14 @@ pub struct FfiSenderKeyStoreStruct {
 impl SenderKeyStore for &FfiSenderKeyStoreStruct {
     async fn store_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store_sender_key)(self.ctx, &*sender_key_name, &*record, ctx);
+        let result =
+            (self.store_sender_key)(self.ctx, &*sender, distribution_id.as_ref(), &*record, ctx);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -433,12 +437,19 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
 
     async fn load_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: Uuid,
         ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.load_sender_key)(self.ctx, &mut record, &*sender_key_name, ctx);
+        let result = (self.load_sender_key)(
+            self.ctx,
+            &mut record,
+            &*sender,
+            distribution_id.as_ref(),
+            ctx,
+        );
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(

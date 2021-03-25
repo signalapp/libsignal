@@ -572,13 +572,20 @@ impl NodeSenderKeyStore {
 
     async fn do_get_sender_key(
         &self,
-        name: SenderKeyName,
+        sender: ProtocolAddress,
+        distribution_id: Uuid,
     ) -> Result<Option<SenderKeyRecord>, String> {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_queue, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
-            let name: Handle<JsValue> = name.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_getSenderKey", vec![name])?;
+            let sender: Handle<JsValue> = sender.convert_into(cx)?;
+            let distribution_id: Handle<JsValue> = distribution_id.convert_into(cx)?.upcast();
+            let result = call_method(
+                cx,
+                store_object,
+                "_getSenderKey",
+                vec![sender, distribution_id],
+            )?;
             let result = result.downcast_or_throw(cx)?;
             store_object_shared.finalize(cx);
             Ok(result)
@@ -604,16 +611,23 @@ impl NodeSenderKeyStore {
 
     async fn do_save_sender_key(
         &self,
-        name: SenderKeyName,
+        sender: ProtocolAddress,
+        distribution_id: Uuid,
         record: SenderKeyRecord,
     ) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_queue, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
-            let name: Handle<JsValue> = name.convert_into(cx)?;
+            let sender: Handle<JsValue> = sender.convert_into(cx)?;
+            let distribution_id: Handle<JsValue> = distribution_id.convert_into(cx)?.upcast();
             let record: Handle<JsValue> = record.convert_into(cx)?;
-            let result = call_method(cx, store_object, "_saveSenderKey", vec![name, record])?
-                .downcast_or_throw(cx)?;
+            let result = call_method(
+                cx,
+                store_object,
+                "_saveSenderKey",
+                vec![sender, distribution_id, record],
+            )?
+            .downcast_or_throw(cx)?;
             store_object_shared.finalize(cx);
             Ok(result)
         })
@@ -641,21 +655,23 @@ impl Finalize for NodeSenderKeyStore {
 impl SenderKeyStore for NodeSenderKeyStore {
     async fn load_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: Uuid,
         _ctx: libsignal_protocol::Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        self.do_get_sender_key(sender_key_name.clone())
+        self.do_get_sender_key(sender.clone(), distribution_id)
             .await
             .map_err(|s| js_error_to_rust("getSenderKey", s))
     }
 
     async fn store_sender_key(
         &mut self,
-        sender_key_name: &SenderKeyName,
+        sender: &ProtocolAddress,
+        distribution_id: Uuid,
         record: &SenderKeyRecord,
         _ctx: libsignal_protocol::Context,
     ) -> Result<(), SignalProtocolError> {
-        self.do_save_sender_key(sender_key_name.clone(), record.clone())
+        self.do_save_sender_key(sender.clone(), distribution_id, record.clone())
             .await
             .map_err(|s| js_error_to_rust("saveSenderKey", s))
     }

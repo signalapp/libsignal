@@ -17,29 +17,40 @@ public class SenderKeyDistributionMessage {
         return handle
     }
 
-    public init(name: SenderKeyName, store: SenderKeyStore, context: StoreContext) throws {
+    public init(from sender: ProtocolAddress,
+                distributionId: UUID,
+                store: SenderKeyStore,
+                context: StoreContext) throws {
         try context.withOpaquePointer { context in
-            try withSenderKeyStore(store) {
-                try checkError(signal_sender_key_distribution_message_create(&handle, name.nativeHandle,
-                                                                             $0, context))
+            try withUnsafePointer(to: distributionId.uuid) { distributionId in
+                try withSenderKeyStore(store) {
+                    try checkError(signal_sender_key_distribution_message_create(&handle,
+                                                                                 sender.nativeHandle,
+                                                                                 distributionId,
+                                                                                 $0, context))
+                }
             }
         }
     }
 
-    public init<Bytes: ContiguousBytes>(keyId: UInt32,
+    public init<Bytes: ContiguousBytes>(distributionId: UUID,
+                                        chainId: UInt32,
                                         iteration: UInt32,
                                         chainKey: Bytes,
                                         publicKey: PublicKey) throws {
-        handle = try chainKey.withUnsafeBytes {
-            var result: OpaquePointer?
-            try checkError(signal_sender_key_distribution_message_new(&result,
-                                                                      keyId,
-                                                                      iteration,
-                                                                      $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                                      $0.count,
-                                                                      publicKey.nativeHandle))
-            return result
+        var result: OpaquePointer?
+        try chainKey.withUnsafeBytes { chainKeyBytes in
+            try withUnsafePointer(to: distributionId.uuid) { distributionId in
+                try checkError(signal_sender_key_distribution_message_new(&result,
+                                                                          distributionId,
+                                                                          chainId,
+                                                                          iteration,
+                                                                          chainKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                                          chainKeyBytes.count,
+                                                                          publicKey.nativeHandle))
+            }
         }
+        handle = result
     }
 
     public init(bytes: [UInt8]) throws {
@@ -54,10 +65,18 @@ public class SenderKeyDistributionMessage {
         }
     }
 
-    public var id: UInt32 {
+    public var distributionId: UUID {
+        return failOnError {
+            try invokeFnReturningUuid {
+                signal_sender_key_message_get_distribution_id($0, handle)
+            }
+        }
+    }
+
+    public var chainId: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_sender_key_distribution_message_get_id($0, handle)
+                signal_sender_key_distribution_message_get_chain_id($0, handle)
             }
         }
     }

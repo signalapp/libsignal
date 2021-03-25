@@ -20,14 +20,14 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let mut csprng = rand::rngs::OsRng;
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-    let group_sender =
-        SenderKeyName::new("summer camp planning committee".to_owned(), sender_address)?;
+    let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;
 
     let sent_distribution_message = block_on(create_sender_key_distribution_message(
-        &group_sender,
+        &sender_address,
+        distribution_id,
         &mut alice_store,
         &mut csprng,
         None,
@@ -37,7 +37,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
     block_on(process_sender_key_distribution_message(
-        &group_sender,
+        &sender_address,
         &recv_distribution_message,
         &mut bob_store,
         None,
@@ -49,7 +49,8 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         for i in 0..ratchets {
             block_on(group_encrypt(
                 &mut alice_store,
-                &group_sender,
+                &sender_address,
+                distribution_id,
                 format!("nefarious plotting {}", i).as_bytes(),
                 &mut csprng,
                 None,
@@ -58,7 +59,8 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
         let alice_ciphertext = block_on(group_encrypt(
             &mut alice_store,
-            &group_sender,
+            &sender_address,
+            distribution_id,
             "you got the plan?".as_bytes(),
             &mut csprng,
             None,
@@ -70,7 +72,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                 block_on(group_decrypt(
                     &alice_ciphertext,
                     &mut bob_store,
-                    &group_sender,
+                    &sender_address,
                     None,
                 ))
                 .expect("ok");
