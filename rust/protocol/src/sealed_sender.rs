@@ -595,76 +595,94 @@ impl UnidentifiedSenderMessage {
     }
 }
 
-struct EphemeralKeys {
-    derived_values: Box<[u8]>,
-}
+mod sealed_sender_v1 {
+    // Described at https://signal.org/blog/sealed-sender/
 
-impl EphemeralKeys {
-    pub fn calculate(
-        their_public: &PublicKey,
-        our_public: &PublicKey,
-        our_private: &PrivateKey,
-        sending: bool,
-    ) -> Result<Self> {
-        let mut ephemeral_salt = Vec::with_capacity(2 * 32 + 20);
-        ephemeral_salt.extend_from_slice("UnidentifiedDelivery".as_bytes());
+    // e_pub, e_priv                  = X25519.generateEphemeral()
+    // e_chain, e_cipherKey, e_macKey = HKDF(salt="UnidentifiedDelivery" || recipientIdentityPublic || e_pub, ikm=ECDH(recipientIdentityPublic, e_priv), info="")
+    // e_ciphertext                   = AES_CTR(key=e_cipherKey, input=senderIdentityPublic)
+    // e_mac                          = Hmac256(key=e_macKey, input=e_ciphertext)
+    //
+    // s_cipherKey, s_macKey = HKDF(salt=e_chain || e_ciphertext || e_mac, ikm=ECDH(recipientIdentityPublic, senderIdentityPrivate), info="")
+    // s_ciphertext          = AES_CTR(key=s_cipherKey, input=sender_certificate || message_ciphertext)
+    // s_mac                 = Hmac256(key=s_macKey, input=s_ciphertext)
+    //
+    // message_to_send = s_ciphertext || s_mac
 
-        if sending {
-            ephemeral_salt.extend_from_slice(&their_public.serialize());
+    use super::*;
+
+    pub(super) struct EphemeralKeys {
+        derived_values: Box<[u8]>,
+    }
+
+    impl EphemeralKeys {
+        pub fn calculate(
+            their_public: &PublicKey,
+            our_public: &PublicKey,
+            our_private: &PrivateKey,
+            sending: bool,
+        ) -> Result<Self> {
+            let mut ephemeral_salt = Vec::with_capacity(2 * 32 + 20);
+            ephemeral_salt.extend_from_slice("UnidentifiedDelivery".as_bytes());
+
+            if sending {
+                ephemeral_salt.extend_from_slice(&their_public.serialize());
+            }
+            ephemeral_salt.extend_from_slice(&our_public.serialize());
+            if !sending {
+                ephemeral_salt.extend_from_slice(&their_public.serialize());
+            }
+
+            let shared_secret = our_private.calculate_agreement(their_public)?;
+            let kdf = HKDF::new(3)?;
+            let derived_values =
+                kdf.derive_salted_secrets(&shared_secret, &ephemeral_salt, &[], 96)?;
+
+            Ok(Self { derived_values })
         }
-        ephemeral_salt.extend_from_slice(&our_public.serialize());
-        if !sending {
-            ephemeral_salt.extend_from_slice(&their_public.serialize());
+
+        pub fn chain_key(&self) -> Result<&[u8]> {
+            Ok(&self.derived_values[0..32])
         }
 
-        let shared_secret = our_private.calculate_agreement(their_public)?;
-        let kdf = HKDF::new(3)?;
-        let derived_values = kdf.derive_salted_secrets(&shared_secret, &ephemeral_salt, &[], 96)?;
+        pub fn cipher_key(&self) -> Result<&[u8]> {
+            Ok(&self.derived_values[32..64])
+        }
 
-        Ok(Self { derived_values })
+        pub fn mac_key(&self) -> Result<&[u8]> {
+            Ok(&self.derived_values[64..96])
+        }
     }
 
-    fn chain_key(&self) -> Result<&[u8]> {
-        Ok(&self.derived_values[0..32])
+    pub(super) struct StaticKeys {
+        derived_values: Box<[u8]>,
     }
+    impl StaticKeys {
+        pub fn calculate(
+            their_public: &PublicKey,
+            our_private: &PrivateKey,
+            chain_key: &[u8],
+            ctext: &[u8],
+        ) -> Result<Self> {
+            let mut salt = Vec::with_capacity(chain_key.len() + ctext.len());
+            salt.extend_from_slice(chain_key);
+            salt.extend_from_slice(ctext);
 
-    fn cipher_key(&self) -> Result<&[u8]> {
-        Ok(&self.derived_values[32..64])
-    }
+            let shared_secret = our_private.calculate_agreement(their_public)?;
+            let kdf = HKDF::new(3)?;
+            // 96 bytes are derived but the first 32 are discarded/unused
+            let derived_values = kdf.derive_salted_secrets(&shared_secret, &salt, &[], 96)?;
 
-    fn mac_key(&self) -> Result<&[u8]> {
-        Ok(&self.derived_values[64..96])
-    }
-}
+            Ok(Self { derived_values })
+        }
 
-struct StaticKeys {
-    derived_values: Box<[u8]>,
-}
-impl StaticKeys {
-    pub fn calculate(
-        their_public: &PublicKey,
-        our_private: &PrivateKey,
-        chain_key: &[u8],
-        ctext: &[u8],
-    ) -> Result<Self> {
-        let mut salt = Vec::with_capacity(chain_key.len() + ctext.len());
-        salt.extend_from_slice(chain_key);
-        salt.extend_from_slice(ctext);
+        pub fn cipher_key(&self) -> Result<&[u8]> {
+            Ok(&self.derived_values[32..64])
+        }
 
-        let shared_secret = our_private.calculate_agreement(their_public)?;
-        let kdf = HKDF::new(3)?;
-        // 96 bytes are derived but the first 32 are discarded/unused
-        let derived_values = kdf.derive_salted_secrets(&shared_secret, &salt, &[], 96)?;
-
-        Ok(Self { derived_values })
-    }
-
-    fn cipher_key(&self) -> Result<&[u8]> {
-        Ok(&self.derived_values[32..64])
-    }
-
-    fn mac_key(&self) -> Result<&[u8]> {
-        Ok(&self.derived_values[64..96])
+        pub fn mac_key(&self) -> Result<&[u8]> {
+            Ok(&self.derived_values[64..96])
+        }
     }
 }
 
@@ -703,7 +721,7 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
 
     let ephemeral = KeyPair::generate(rng);
 
-    let eph_keys = EphemeralKeys::calculate(
+    let eph_keys = sealed_sender_v1::EphemeralKeys::calculate(
         their_identity.public_key(),
         &ephemeral.public_key,
         &ephemeral.private_key,
@@ -716,7 +734,7 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         &eph_keys.mac_key()?,
     )?;
 
-    let static_keys = StaticKeys::calculate(
+    let static_keys = sealed_sender_v1::StaticKeys::calculate(
         their_identity.public_key(),
         our_identity.private_key(),
         eph_keys.chain_key()?,
@@ -785,18 +803,20 @@ mod sealed_sender_v2 {
         pub(super) k: Box<[u8]>,
     }
 
-    pub(super) fn derive_keys(m: &[u8]) -> DerivedKeys {
-        let kdf = HKDF::new(3).expect("valid KDF version");
-        let r = kdf
-            .derive_secrets(&m, LABEL_R, 64)
-            .expect("valid use of KDF");
-        let k = kdf
-            .derive_secrets(&m, LABEL_K, 32)
-            .expect("valid use of KDF");
-        let e_raw =
-            Scalar::from_bytes_mod_order_wide(r.as_ref().try_into().expect("64-byte slice"));
-        let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
-        DerivedKeys { e, k }
+    impl DerivedKeys {
+        pub(super) fn calculate(m: &[u8]) -> DerivedKeys {
+            let kdf = HKDF::new(3).expect("valid KDF version");
+            let r = kdf
+                .derive_secrets(&m, LABEL_R, 64)
+                .expect("valid use of KDF");
+            let k = kdf
+                .derive_secrets(&m, LABEL_K, 32)
+                .expect("valid use of KDF");
+            let e_raw =
+                Scalar::from_bytes_mod_order_wide(r.as_ref().try_into().expect("64-byte slice"));
+            let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
+            DerivedKeys { e, k }
+        }
     }
 
     pub(super) fn apply_agreement_xor(
@@ -864,7 +884,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     let m: [u8; 32] = rng.gen();
-    let keys = sealed_sender_v2::derive_keys(&m);
+    let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
     let e_pub = keys.e.public_key()?;
 
     let ciphertext = {
@@ -972,7 +992,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
             encrypted_static,
             encrypted_message,
         } => {
-            let eph_keys = EphemeralKeys::calculate(
+            let eph_keys = sealed_sender_v1::EphemeralKeys::calculate(
                 &ephemeral_public,
                 &our_identity.public_key(),
                 &our_identity.private_key(),
@@ -987,7 +1007,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
 
             let static_key = PublicKey::try_from(&message_key_bytes[..])?;
 
-            let static_keys = StaticKeys::calculate(
+            let static_keys = sealed_sender_v1::StaticKeys::calculate(
                 &static_key,
                 our_identity.private_key(),
                 eph_keys.chain_key()?,
@@ -1024,7 +1044,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 c,
             )?;
 
-            let keys = sealed_sender_v2::derive_keys(&m);
+            let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
             if keys.e.public_key()? != ephemeral_public {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "derived ephemeral key did not match key provided in message".to_string(),
