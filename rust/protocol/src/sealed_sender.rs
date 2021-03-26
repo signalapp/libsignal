@@ -750,17 +750,22 @@ mod sealed_sender_v2 {
     //     E = DeriveKeyPair(r)
     //     for i in num_recipients:
     //         C_i = KDF(label_DH, DH(E, R_i) || E.public || R_i.public, len=32) XOR M
+    //         AT_i = KDF(label_DH_s, DH(S, R_i) || E.public || C_i || S.public || R_i.public, len=16)
     //     ciphertext = AEAD_Encrypt(K, message)
-    //     return E.public, C_i, ciphertext
+    //     return E.public, C_i, AT_i, ciphertext
 
-    // DECRYPT(E.public, C, ciphertext):
+    // DECRYPT(E.public, C, AT, ciphertext):
     //     M = KDF(label_DH, DH(E, R) || E.public || R.public, len=32) xor C
     //     r = KDF(label_r, M, len=64)
     //     K = KDF(label_K, M, len=32)
     //     E' = DeriveKeyPair(r)
     //     if E.public != E'.public:
     //         return DecryptionError
-    //     return AEAD_Decrypt(K, ciphertext)
+    //     message = AEAD_Decrypt(K, ciphertext) // includes S.public
+    //     AT' = KDF(label_DH_s, DH(S, R) || E.public || C || S.public || R.public, len=16)
+    //     if AT != AT':
+    //         return DecryptionError
+    //     return message
 
     // This is a single-key multi-recipient KEM, defined in Manuel Barbosa's "Randomness Reuse:
     // Extensions and Improvements" [1]. It uses the "Generic Construction" in 4.1 of that paper,
@@ -773,8 +778,14 @@ mod sealed_sender_v2 {
     const LABEL_R: &[u8] = b"Sealed Sender v2: r";
     const LABEL_K: &[u8] = b"Sealed Sender v2: K";
     const LABEL_DH: &[u8] = b"Sealed Sender v2: DH";
+    const LABEL_DH_S: &[u8] = b"Sealed Sender v2: DH-sender";
 
-    pub(crate) fn derive_keys(m: &[u8]) -> (Box<[u8]>, PrivateKey) {
+    pub(super) struct DerivedKeys {
+        pub(super) e: PrivateKey,
+        pub(super) k: Box<[u8]>,
+    }
+
+    pub(super) fn derive_keys(m: &[u8]) -> DerivedKeys {
         let kdf = HKDF::new(3).expect("valid KDF version");
         let r = kdf
             .derive_secrets(&m, LABEL_R, 64)
@@ -785,15 +796,17 @@ mod sealed_sender_v2 {
         let e_raw =
             Scalar::from_bytes_mod_order_wide(r.as_ref().try_into().expect("64-byte slice"));
         let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
-        (k, e)
+        DerivedKeys { e, k }
     }
 
-    pub(crate) fn apply_agreement_xor(
+    pub(super) fn apply_agreement_xor(
         priv_key: &PrivateKey,
         pub_key: &PublicKey,
         direction: Direction,
         input: &[u8],
     ) -> Result<Box<[u8]>> {
+        assert!(input.len() == 32);
+
         let agreement = priv_key.calculate_agreement(&pub_key)?;
         let agreement_key_input = match direction {
             Direction::Sending => [
@@ -816,6 +829,31 @@ mod sealed_sender_v2 {
             .for_each(|(result_byte, input_byte)| *result_byte ^= input_byte);
         Ok(result)
     }
+
+    pub(super) fn compute_authentication_tag(
+        priv_key: &PrivateKey,
+        pub_key: &PublicKey,
+        direction: Direction,
+        ephemeral_pub_key: &PublicKey,
+        encrypted_message_key: &[u8],
+    ) -> Result<Box<[u8]>> {
+        let agreement = priv_key.calculate_agreement(&pub_key)?;
+        let mut agreement_key_input = agreement.into_vec();
+        agreement_key_input.extend_from_slice(&ephemeral_pub_key.serialize());
+        agreement_key_input.extend_from_slice(encrypted_message_key);
+        match direction {
+            Direction::Sending => {
+                agreement_key_input.extend_from_slice(&priv_key.public_key()?.serialize());
+                agreement_key_input.extend_from_slice(&pub_key.serialize());
+            }
+            Direction::Receiving => {
+                agreement_key_input.extend_from_slice(&pub_key.serialize());
+                agreement_key_input.extend_from_slice(&priv_key.public_key()?.serialize());
+            }
+        }
+
+        HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH_S, 16)
+    }
 }
 
 pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
@@ -826,12 +864,12 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     let m: [u8; 32] = rng.gen();
-    let (k, e) = sealed_sender_v2::derive_keys(&m);
-    let e_pub = e.public_key()?;
+    let keys = sealed_sender_v2::derive_keys(&m);
+    let e_pub = keys.e.public_key()?;
 
     let ciphertext = {
         let mut ciphertext = usmc.serialized()?.to_vec();
-        let tag_or_error = Aes256GcmSiv::new(&k).and_then(|aes_gcm_siv| {
+        let tag_or_error = Aes256GcmSiv::new(&keys.k).and_then(|aes_gcm_siv| {
             aes_gcm_siv.encrypt(
                 &mut ciphertext,
                 // There's no nonce because the key is already one-use.
@@ -855,6 +893,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     };
 
     let mut c: Vec<Vec<u8>> = Vec::with_capacity(destinations.len());
+    let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     for destination in destinations {
         let their_identity = identity_store
             .get_identity(destination, ctx)
@@ -862,12 +901,21 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", destination)))?;
 
         let c_i = sealed_sender_v2::apply_agreement_xor(
-            &e,
+            &keys.e,
             their_identity.public_key(),
             Direction::Sending,
             &m,
         )?;
-        c.push(c_i.into_vec())
+
+        let at_i = sealed_sender_v2::compute_authentication_tag(
+            our_identity.private_key(),
+            their_identity.public_key(),
+            Direction::Sending,
+            &e_pub,
+            &c_i,
+        )?;
+
+        c.push([c_i, at_i].concat())
     }
 
     let message = proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage {
@@ -967,22 +1015,24 @@ pub async fn sealed_sender_decrypt_to_usmc(
             encrypted_message_key,
             encrypted_message,
         } => {
+            let (c, at) = encrypted_message_key.split_at(32);
+
             let m = sealed_sender_v2::apply_agreement_xor(
                 our_identity.private_key(),
                 &ephemeral_public,
                 Direction::Receiving,
-                &encrypted_message_key,
+                c,
             )?;
 
-            let (k, e) = sealed_sender_v2::derive_keys(&m);
-            if e.public_key()? != ephemeral_public {
+            let keys = sealed_sender_v2::derive_keys(&m);
+            if keys.e.public_key()? != ephemeral_public {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "derived ephemeral key did not match key provided in message".to_string(),
                 ));
             }
 
             let mut message_bytes = encrypted_message.into_vec();
-            let result = Aes256GcmSiv::new(&k).and_then(|aes_gcm_siv| {
+            let result = Aes256GcmSiv::new(&keys.k).and_then(|aes_gcm_siv| {
                 aes_gcm_siv.decrypt_with_appended_tag(
                     &mut message_bytes,
                     // There's no nonce because the key is already one-use.
@@ -999,6 +1049,20 @@ pub async fn sealed_sender_decrypt_to_usmc(
             }
 
             let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
+
+            let at_derived = sealed_sender_v2::compute_authentication_tag(
+                our_identity.private_key(),
+                &usmc.sender()?.key()?,
+                Direction::Receiving,
+                &ephemeral_public,
+                &c,
+            )?;
+            if !bool::from(at_derived.ct_eq(at)) {
+                return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                    "sender certificate key does not match authentication tag".to_string(),
+                ));
+            }
+
             Ok(usmc)
         }
     }
