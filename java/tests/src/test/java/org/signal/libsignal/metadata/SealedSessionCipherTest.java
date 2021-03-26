@@ -50,15 +50,15 @@ public class SealedSessionCipherTest extends TestCase {
   public void testEncryptDecrypt() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMetadataMessageException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("+14152222222", 1);
 
-    initializeSessions(aliceStore, bobStore);
+    initializeSessions(aliceStore, bobStore, bobAddress);
 
     ECKeyPair           trustRoot         = Curve.generateKeyPair();
     SenderCertificate   senderCertificate = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
     SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
 
-    byte[] ciphertext = aliceCipher.encrypt(new SignalProtocolAddress("+14152222222", 1),
-                                            senderCertificate, "smert za smert".getBytes());
+    byte[] ciphertext = aliceCipher.encrypt(bobAddress, senderCertificate, "smert za smert".getBytes());
 
 
     SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
@@ -74,16 +74,16 @@ public class SealedSessionCipherTest extends TestCase {
   public void testEncryptDecryptUntrusted() throws Exception {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("+14152222222", 1);
 
-    initializeSessions(aliceStore, bobStore);
+    initializeSessions(aliceStore, bobStore, bobAddress);
 
     ECKeyPair           trustRoot         = Curve.generateKeyPair();
     ECKeyPair           falseTrustRoot    = Curve.generateKeyPair();
     SenderCertificate   senderCertificate = createCertificateFor(falseTrustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
     SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
 
-    byte[] ciphertext = aliceCipher.encrypt(new SignalProtocolAddress("+14152222222", 1),
-                                            senderCertificate, "\u0438 \u0432\u043E\u0442 \u044F".getBytes());
+    byte[] ciphertext = aliceCipher.encrypt(bobAddress, senderCertificate, "\u0438 \u0432\u043E\u0442 \u044F".getBytes());
 
     SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
@@ -98,15 +98,15 @@ public class SealedSessionCipherTest extends TestCase {
   public void testEncryptDecryptExpired() throws Exception {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("+14152222222", 1);
 
-    initializeSessions(aliceStore, bobStore);
+    initializeSessions(aliceStore, bobStore, bobAddress);
 
     ECKeyPair           trustRoot         = Curve.generateKeyPair();
     SenderCertificate   senderCertificate = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
     SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
 
-    byte[] ciphertext = aliceCipher.encrypt(new SignalProtocolAddress("+14152222222", 1),
-                                            senderCertificate, "\u0438 \u0432\u043E\u0442 \u044F".getBytes());
+    byte[] ciphertext = aliceCipher.encrypt(bobAddress, senderCertificate, "\u0438 \u0432\u043E\u0442 \u044F".getBytes());
 
     SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
 
@@ -121,16 +121,16 @@ public class SealedSessionCipherTest extends TestCase {
   public void testEncryptFromWrongIdentity() throws Exception {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("+14152222222", 1);
 
-    initializeSessions(aliceStore, bobStore);
+    initializeSessions(aliceStore, bobStore, bobAddress);
 
     ECKeyPair           trustRoot         = Curve.generateKeyPair();
     ECKeyPair           randomKeyPair     = Curve.generateKeyPair();
     SenderCertificate   senderCertificate = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, randomKeyPair.getPublicKey(), 31337);
     SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
 
-    byte[] ciphertext = aliceCipher.encrypt(new SignalProtocolAddress("+14152222222", 1),
-                                            senderCertificate, "smert za smert".getBytes());
+    byte[] ciphertext = aliceCipher.encrypt(bobAddress, senderCertificate, "smert za smert".getBytes());
 
 
     SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
@@ -145,8 +145,9 @@ public class SealedSessionCipherTest extends TestCase {
   public void testEncryptDecryptGroup() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
 
-    initializeSessions(aliceStore, bobStore);
+    initializeSessions(aliceStore, bobStore, bobAddress);
 
     ECKeyPair           trustRoot         = Curve.generateKeyPair();
     SenderCertificate   senderCertificate = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
@@ -171,11 +172,10 @@ public class SealedSessionCipherTest extends TestCase {
 
     UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.of(new byte[]{42}));
 
-    byte[] ciphertext = aliceCipher.multiRecipientEncrypt(
-      Arrays.asList(new SignalProtocolAddress("+14152222222", 1)),
-      usmcFromAlice);
+    byte[] aliceMessage = aliceCipher.multiRecipientEncrypt(Arrays.asList(bobAddress), usmcFromAlice);
+    byte[] bobMessage = SealedSessionCipher.multiRecipientMessageForSingleRecipient(aliceMessage);
 
-    DecryptionResult plaintext = bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
+    DecryptionResult plaintext = bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), bobMessage, 31335);
 
     assertEquals(new String(plaintext.getPaddedMessage()), "smert ze smert");
     assertEquals(plaintext.getSenderUuid(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
@@ -186,8 +186,9 @@ public class SealedSessionCipherTest extends TestCase {
   public void testProtocolException() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
 
-    initializeSessions(aliceStore, bobStore);
+    initializeSessions(aliceStore, bobStore, bobAddress);
 
     ECKeyPair           trustRoot         = Curve.generateKeyPair();
     SenderCertificate   senderCertificate = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
@@ -210,12 +211,11 @@ public class SealedSessionCipherTest extends TestCase {
 
     UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.of(new byte[]{42, 1}));
 
-    byte[] ciphertext = aliceCipher.multiRecipientEncrypt(
-      Arrays.asList(new SignalProtocolAddress("+14152222222", 1)),
-      usmcFromAlice);
+    byte[] aliceMessage = aliceCipher.multiRecipientEncrypt(Arrays.asList(bobAddress), usmcFromAlice);
+    byte[] bobMessage = SealedSessionCipher.multiRecipientMessageForSingleRecipient(aliceMessage);
 
     try {
-      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
+      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), bobMessage, 31335);
     } catch (ProtocolNoSessionException e) {
       assertEquals(e.getSender(), "+14151111111");
       assertEquals(e.getSenderDevice(), 1);
@@ -234,7 +234,7 @@ public class SealedSessionCipherTest extends TestCase {
                                                               serverCertificate.nativeHandle(), serverKey.getPrivateKey().nativeHandle()));
   }
 
-  private void initializeSessions(TestInMemorySignalProtocolStore aliceStore, TestInMemorySignalProtocolStore bobStore)
+  private void initializeSessions(TestInMemorySignalProtocolStore aliceStore, TestInMemorySignalProtocolStore bobStore, SignalProtocolAddress bobAddress)
       throws InvalidKeyException, UntrustedIdentityException
   {
     ECKeyPair          bobPreKey       = Curve.generateKeyPair();
@@ -242,7 +242,7 @@ public class SealedSessionCipherTest extends TestCase {
     SignedPreKeyRecord bobSignedPreKey = generateSignedPreKey(bobIdentityKey, 2);
 
     PreKeyBundle bobBundle             = new PreKeyBundle(1, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey());
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, new SignalProtocolAddress("+14152222222", 1));
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, bobAddress);
     aliceSessionBuilder.process(bobBundle);
 
     bobStore.storeSignedPreKey(2, bobSignedPreKey);

@@ -898,6 +898,11 @@ SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(const unsigned char
                                                              const SignalIdentityKeyStore *identity_key_store,
                                                              void *ctx);
 
+SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipient(const unsigned char **out,
+                                                                                  size_t *out_len,
+                                                                                  const unsigned char *encoded_multi_recipient_message,
+                                                                                  size_t encoded_multi_recipient_message_len);
+
 SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out,
                                                              const unsigned char *ctext,
                                                              size_t ctext_len,

@@ -4,11 +4,12 @@
 //
 
 mod support;
+use support::*;
 
 use futures::executor::block_on;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
-use support::*;
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 #[test]
@@ -504,8 +505,11 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
+        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
+            .expect("only one recipient");
+
         let bob_ptext = sealed_sender_decrypt(
-            &alice_ctext,
+            &bob_ctext,
             &trust_root.public_key,
             expires - 1,
             Some(bob_e164.clone()),
@@ -551,8 +555,11 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
+        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
+            .expect("only one recipient");
+
         let bob_ptext = sealed_sender_decrypt(
-            &alice_ctext,
+            &bob_ctext,
             &trust_root.public_key,
             expires + 11,
             Some(bob_e164.clone()),
@@ -606,8 +613,11 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 
         let wrong_trust_root = KeyPair::generate(&mut rng);
 
+        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
+            .expect("only one recipient");
+
         let bob_ptext = sealed_sender_decrypt(
-            &alice_ctext,
+            &bob_ctext,
             &wrong_trust_root.public_key,
             expires - 1,
             Some(bob_e164.clone()),

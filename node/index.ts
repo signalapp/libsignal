@@ -1321,6 +1321,15 @@ export function sealedSenderMultiRecipientEncrypt(
   );
 }
 
+// For testing only
+export function sealedSenderMultiRecipientMessageForSingleRecipient(
+  message: Buffer
+): Buffer {
+  return NativeImpl.SealedSender_MultiRecipientMessageForSingleRecipient(
+    message
+  );
+}
+
 export async function sealedSenderDecryptMessage(
   message: Buffer,
   trustRoot: PublicKey,

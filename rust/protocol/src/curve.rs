@@ -86,6 +86,15 @@ impl PublicKey {
         }
     }
 
+    pub fn from_djb_public_key_bytes(bytes: &[u8]) -> Result<Self> {
+        match <[u8; 32]>::try_from(bytes) {
+            Err(_) => Err(SignalProtocolError::BadKeyLength(KeyType::Djb, bytes.len())),
+            Ok(key) => Ok(PublicKey {
+                key: PublicKeyData::DjbPublicKey(key),
+            }),
+        }
+    }
+
     pub fn serialize(&self) -> Box<[u8]> {
         let value_len = match self.key {
             PublicKeyData::DjbPublicKey(v) => v.len(),

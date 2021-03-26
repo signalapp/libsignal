@@ -92,6 +92,11 @@ public class SealedSessionCipher {
       null);
   }
 
+  // For testing only.
+  static byte[] multiRecipientMessageForSingleRecipient(byte[] message) {
+    return Native.SealedSessionCipher_MultiRecipientMessageForSingleRecipient(message);
+  }
+
   public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)
       throws
       InvalidMetadataMessageException, InvalidMetadataVersionException,

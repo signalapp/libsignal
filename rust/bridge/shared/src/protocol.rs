@@ -989,6 +989,17 @@ async fn SealedSender_MultiRecipientEncrypt<E: Env>(
     Ok(env.buffer(ctext))
 }
 
+#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientMessageForSingleRecipient")]
+fn SealedSender_MultiRecipientMessageForSingleRecipient<E: Env>(
+    env: E,
+    encoded_multi_recipient_message: &[u8],
+) -> Result<E::Buffer> {
+    let messages = sealed_sender_multi_recipient_fan_out(encoded_multi_recipient_message)?;
+    let [single_message] = <[_; 1]>::try_from(messages)
+        .map_err(|_| SignalProtocolError::InvalidMessage("encoded for more than one recipient"))?;
+    Ok(env.buffer(single_message))
+}
+
 #[bridge_fn(node = "SealedSender_DecryptToUsmc")]
 async fn SealedSessionCipher_DecryptToUsmc(
     ctext: &[u8],

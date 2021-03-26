@@ -18,6 +18,7 @@ use rand::{CryptoRng, Rng};
 use signal_crypto::Aes256GcmSiv;
 use std::convert::{TryFrom, TryInto};
 use subtle::ConstantTimeEq;
+use uuid::Uuid;
 
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 
@@ -520,6 +521,7 @@ enum UnidentifiedSenderMessage {
     V2 {
         ephemeral_public: PublicKey,
         encrypted_message_key: Box<[u8]>,
+        authentication_tag: Box<[u8]>,
         encrypted_message: Box<[u8]>,
     },
 }
@@ -560,34 +562,20 @@ impl UnidentifiedSenderMessage {
                 })
             }
             SEALED_SENDER_MULTI_RECIPIENT_VERSION => {
-                let pb = proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage::decode(
-                    &data[1..],
-                )?;
-
-                let ephemeral_public = pb
-                    .ephemeral_public_key
-                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-                let encrypted_message = pb
-                    .encrypted_message
-                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
-                    .into_boxed_slice();
-
-                let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
-
-                if pb.encrypted_message_keys.len() != 1 {
+                // Uses a flat representation: C || AT || E.pub || ciphertext
+                let remaining = &data[1..];
+                if remaining.len() < 32 + 16 + 32 {
                     return Err(SignalProtocolError::InvalidProtobufEncoding);
                 }
-                let encrypted_message_key = pb
-                    .encrypted_message_keys
-                    .into_iter()
-                    .next()
-                    .expect("exactly one item")
-                    .into_boxed_slice();
+                let (encrypted_message_key, remaining) = remaining.split_at(32);
+                let (encrypted_authentication_tag, remaining) = remaining.split_at(16);
+                let (ephemeral_public, encrypted_message) = remaining.split_at(32);
 
                 Ok(Self::V2 {
-                    ephemeral_public,
-                    encrypted_message_key,
-                    encrypted_message,
+                    ephemeral_public: PublicKey::from_djb_public_key_bytes(ephemeral_public)?,
+                    encrypted_message_key: encrypted_message_key.into(),
+                    authentication_tag: encrypted_authentication_tag.into(),
+                    encrypted_message: encrypted_message.into(),
                 })
             }
             _ => Err(SignalProtocolError::UnknownSealedSenderVersion(version)),
@@ -887,9 +875,9 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
     let e_pub = keys.e.public_key()?;
 
-    let ciphertext = {
-        let mut ciphertext = usmc.serialized()?.to_vec();
-        let tag_or_error = Aes256GcmSiv::new(&keys.k).and_then(|aes_gcm_siv| {
+    let mut ciphertext = usmc.serialized()?.to_vec();
+    let tag = Aes256GcmSiv::new(&keys.k)
+        .and_then(|aes_gcm_siv| {
             aes_gcm_siv.encrypt(
                 &mut ciphertext,
                 // There's no nonce because the key is already one-use.
@@ -897,24 +885,28 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
                 // And there's no associated data.
                 &[],
             )
-        });
-        match tag_or_error {
-            Ok(tag) => {
-                ciphertext.extend_from_slice(&tag);
-            }
-            Err(err) => {
-                log::error!("failed to encrypt using AES-GCM-SIV: {}", err);
-                return Err(SignalProtocolError::InternalError(
-                    "failed to encrypt using AES-GCM-SIV",
-                ));
-            }
-        }
-        ciphertext
-    };
+        })
+        .map_err(|err| {
+            log::error!("failed to encrypt using AES-GCM-SIV: {}", err);
+            SignalProtocolError::InternalError("failed to encrypt using AES-GCM-SIV")
+        })?;
 
-    let mut c: Vec<Vec<u8>> = Vec::with_capacity(destinations.len());
+    // Uses a flat representation: count || UUID_i || deviceId_i || C_i || AT_i || ... || E.pub || ciphertext
+    let version = SEALED_SENDER_MULTI_RECIPIENT_VERSION;
+    let mut serialized: Vec<u8> = vec![(version | (version << 4))];
+
+    prost::encode_length_delimiter(destinations.len(), &mut serialized)
+        .expect("cannot fail encoding to Vec");
+
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     for destination in destinations {
+        let their_uuid = Uuid::parse_str(destination.name()).map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
+                "multi-recipient sealed sender requires UUID recipients (not {})",
+                destination.name()
+            ))
+        })?;
+
         let their_identity = identity_store
             .get_identity(destination, ctx)
             .await?
@@ -935,19 +927,16 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             &c_i,
         )?;
 
-        c.push([c_i, at_i].concat())
+        serialized.extend_from_slice(their_uuid.as_bytes());
+        prost::encode_length_delimiter(destination.device_id() as usize, &mut serialized)
+            .expect("cannot fail encoding to Vec");
+        serialized.extend_from_slice(&c_i);
+        serialized.extend_from_slice(&at_i);
     }
 
-    let message = proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage {
-        ephemeral_public_key: Some(e_pub.serialize().into_vec()),
-        encrypted_message_keys: c,
-        encrypted_message: Some(ciphertext),
-    };
-
-    let version = SEALED_SENDER_MULTI_RECIPIENT_VERSION;
-    let mut serialized = vec![];
-    serialized.push(version | (version << 4));
-    message.encode(&mut serialized)?;
+    serialized.extend_from_slice(&e_pub.public_key_bytes()?);
+    serialized.extend_from_slice(&ciphertext);
+    serialized.extend_from_slice(&tag);
 
     Ok(serialized)
 }
@@ -959,24 +948,46 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
         return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
     }
 
-    let message =
-        proto::sealed_sender::MultiRecipientUnidentifiedSenderMessage::decode(&data[1..])?;
-    let ephemeral_public = message.ephemeral_public_key;
-    let encrypted_message = message.encrypted_message;
-    message
-        .encrypted_message_keys
-        .into_iter()
-        .map(|encrypted_key| {
-            let recipient_message = proto::sealed_sender::UnidentifiedSenderMessage {
-                ephemeral_public: ephemeral_public.clone(),
-                encrypted_static: Some(encrypted_key),
-                encrypted_message: encrypted_message.clone(),
-            };
-            let mut result = vec![data[0]];
-            recipient_message.encode(&mut result)?;
-            Ok(result)
-        })
-        .collect()
+    fn advance<'a>(buf: &mut &'a [u8], n: usize) -> Result<&'a [u8]> {
+        if n > buf.len() {
+            return Err(SignalProtocolError::InvalidProtobufEncoding);
+        }
+        let (prefix, remaining) = buf.split_at(n);
+        *buf = remaining;
+        Ok(prefix)
+    }
+    fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
+        let result: usize = prost::decode_length_delimiter(*buf)?;
+        let _ = advance(buf, prost::length_delimiter_len(result))
+            .expect("just decoded that many bytes");
+        result
+            .try_into()
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)
+    }
+
+    let mut remaining = &data[1..];
+    let recipient_count = decode_varint(&mut remaining)?;
+
+    let mut messages: Vec<Vec<u8>> = Vec::new();
+    for _ in 0..recipient_count {
+        // Skip UUID.
+        let _ = advance(&mut remaining, 16)?;
+        // Skip device ID.
+        let _ = decode_varint(&mut remaining)?;
+        // Read C_i and AT_i.
+        let c_and_at = advance(&mut remaining, 32 + 16)?;
+
+        let mut next_message = vec![data[0]];
+        next_message.extend_from_slice(c_and_at);
+        messages.push(next_message);
+    }
+
+    // Remaining data is shared among all messages.
+    for message in messages.iter_mut() {
+        message.extend_from_slice(remaining)
+    }
+
+    Ok(messages)
 }
 
 pub async fn sealed_sender_decrypt_to_usmc(
@@ -1033,15 +1044,14 @@ pub async fn sealed_sender_decrypt_to_usmc(
         UnidentifiedSenderMessage::V2 {
             ephemeral_public,
             encrypted_message_key,
+            authentication_tag,
             encrypted_message,
         } => {
-            let (c, at) = encrypted_message_key.split_at(32);
-
             let m = sealed_sender_v2::apply_agreement_xor(
                 our_identity.private_key(),
                 &ephemeral_public,
                 Direction::Receiving,
-                c,
+                &encrypted_message_key,
             )?;
 
             let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
@@ -1070,14 +1080,14 @@ pub async fn sealed_sender_decrypt_to_usmc(
 
             let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
 
-            let at_derived = sealed_sender_v2::compute_authentication_tag(
+            let at = sealed_sender_v2::compute_authentication_tag(
                 our_identity.private_key(),
                 &usmc.sender()?.key()?,
                 Direction::Receiving,
                 &ephemeral_public,
-                &c,
+                &encrypted_message_key,
             )?;
-            if !bool::from(at_derived.ct_eq(at)) {
+            if !bool::from(authentication_tag.ct_eq(&at)) {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "sender certificate key does not match authentication tag".to_string(),
                 ));

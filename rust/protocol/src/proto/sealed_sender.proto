@@ -59,10 +59,3 @@ message UnidentifiedSenderMessage {
     optional bytes encryptedStatic  = 2;
     optional bytes encryptedMessage = 3;
 }
-
-message MultiRecipientUnidentifiedSenderMessage {
-    // These fields are deliberately designed to match UnidentifiedSenderMessage's fields.
-    optional bytes ephemeralPublicKey   = 1;
-    repeated bytes encryptedMessageKeys = 2;
-    optional bytes encryptedMessage     = 3; // decrypts to UnidentifiedSenderMessage.Message
-}

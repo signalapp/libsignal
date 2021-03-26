@@ -285,7 +285,9 @@ class SessionTests: TestCaseBase {
                                                              identityStore: alice_store,
                                                              context: NullContext())
 
-        let b_usmc = try! UnidentifiedSenderMessageContent(message: a_ctext,
+        let b_ctext = try! sealedSenderMultiRecipientMessageForSingleRecipient(a_ctext)
+
+        let b_usmc = try! UnidentifiedSenderMessageContent(message: b_ctext,
                                                            identityStore: bob_store,
                                                            context: NullContext())
 

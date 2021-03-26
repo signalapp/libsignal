@@ -982,8 +982,12 @@ describe('SignalClient', () => {
         aKeys
       );
 
+      const bSealedSenderMessage = SignalClient.sealedSenderMultiRecipientMessageForSingleRecipient(
+        aSealedSenderMessage
+      );
+
       const bUsmc = await SignalClient.sealedSenderDecryptToUsmc(
-        aSealedSenderMessage,
+        bSealedSenderMessage,
         bKeys
       );
 

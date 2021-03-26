@@ -164,6 +164,13 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
     }
 }
 
+// For testing only.
+internal func sealedSenderMultiRecipientMessageForSingleRecipient(_ message: [UInt8]) throws -> [UInt8] {
+    return try invokeFnReturningArray {
+        signal_sealed_sender_multi_recipient_message_for_single_recipient($0, $1, message, message.count)
+    }
+}
+
 public struct SealedSenderAddress: Hashable {
     public var e164: String?
     public var uuidString: String
