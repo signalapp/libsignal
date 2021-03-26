@@ -775,6 +775,7 @@ dependencies = [
  "signal-crypto",
  "signal-neon-futures",
  "static_assertions",
+ "uuid",
 ]
 
 [[package]]
@@ -854,6 +855,7 @@ dependencies = [
  "sha2",
  "signal-crypto",
  "subtle",
+ "uuid",
  "x25519-dalek",
 ]
 
@@ -1945,6 +1947,12 @@ name = "unzip3"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99c0ec316ab08201476c032feb2f94a5c8ece5b209765c1fbc4430dd6e931ad6"
+
+[[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "vcpkg"

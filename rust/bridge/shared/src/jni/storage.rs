@@ -5,6 +5,7 @@
 
 use super::*;
 use async_trait::async_trait;
+use uuid::Uuid;
 
 pub type JavaIdentityKeyStore<'a> = JObject<'a>;
 pub type JavaPreKeyStore<'a> = JObject<'a>;

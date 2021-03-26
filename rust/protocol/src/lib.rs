@@ -25,7 +25,6 @@ mod session_cipher;
 mod state;
 mod storage;
 mod utils;
-mod uuid;
 
 use error::Result;
 
@@ -65,5 +64,4 @@ pub use {
         InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
         PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
     },
-    uuid::Uuid,
 };

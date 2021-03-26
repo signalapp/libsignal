@@ -236,11 +236,11 @@ impl SimpleArgTypeInfo for Context {
     }
 }
 
-impl SimpleArgTypeInfo for Uuid {
+impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = *const [u8; 16];
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         match unsafe { foreign.as_ref() } {
-            Some(array) => Ok(Uuid::from(*array)),
+            Some(array) => Ok(uuid::Uuid::from_bytes(*array)),
             None => Err(SignalFfiError::NullPointer),
         }
     }

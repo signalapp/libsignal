@@ -13,13 +13,14 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::convert::TryFrom;
 use support::*;
+use uuid::Uuid;
 
 #[test]
 fn group_no_send_session() -> Result<(), SignalProtocolError> {
     let mut csprng = OsRng;
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-    let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+    let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
     let mut alice_store = test_in_memory_protocol_store()?;
 
@@ -84,7 +85,7 @@ fn group_using_context_arg() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let x = Box::new(1);
 
@@ -111,7 +112,7 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -158,7 +159,7 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -228,7 +229,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
         let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
         let carol_uuid_address = ProtocolAddress::new(carol_uuid.clone(), 1);
 
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store = support::test_in_memory_protocol_store()?;
@@ -390,7 +391,7 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -450,7 +451,7 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -560,7 +561,7 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -630,7 +631,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -707,7 +708,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;
@@ -773,7 +774,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let mut alice_store = test_in_memory_protocol_store()?;
         let mut bob_store = test_in_memory_protocol_store()?;

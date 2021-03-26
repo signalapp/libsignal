@@ -8,13 +8,14 @@ use crate::crypto;
 
 use crate::{
     Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage, SenderKeyMessage,
-    SenderKeyRecord, SenderKeyStore, SignalProtocolError, Uuid,
+    SenderKeyRecord, SenderKeyStore, SignalProtocolError,
 };
 
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_store: &mut dyn SenderKeyStore,

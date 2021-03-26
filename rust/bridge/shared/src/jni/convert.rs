@@ -189,7 +189,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     }
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for Uuid {
+impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JObject<'a>;
     fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
         check_jobject_type(env, foreign, "java/util/UUID")?;
@@ -200,7 +200,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Uuid {
         let mut bytes = [0u8; 16];
         bytes[..8].copy_from_slice(&msb.to_be_bytes());
         bytes[8..].copy_from_slice(&lsb.to_be_bytes());
-        Ok(bytes.into())
+        Ok(uuid::Uuid::from_bytes(bytes))
     }
 }
 
@@ -439,11 +439,11 @@ impl ResultTypeInfo for Option<&str> {
     }
 }
 
-impl ResultTypeInfo for Uuid {
+impl ResultTypeInfo for uuid::Uuid {
     type ResultType = jobject;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         let uuid_class = env.find_class("java/util/UUID")?;
-        let uuid_bytes: [u8; 16] = self.into();
+        let uuid_bytes: [u8; 16] = *self.as_bytes();
         let ctor_args = [
             JValue::from(jlong::from_be_bytes(
                 uuid_bytes[..8].try_into().expect("correct length"),

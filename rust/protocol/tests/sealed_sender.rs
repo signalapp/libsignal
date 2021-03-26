@@ -9,6 +9,7 @@ use futures::executor::block_on;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use support::*;
+use uuid::Uuid;
 
 #[test]
 fn test_server_cert() -> Result<(), SignalProtocolError> {
@@ -314,7 +315,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
         let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
 
-        let distribution_id = Uuid::from(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
         let alice_uuid_address = ProtocolAddress::new(alice_uuid.clone(), 1);
         let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);

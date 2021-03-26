@@ -238,10 +238,10 @@ impl SimpleArgTypeInfo for String {
     }
 }
 
-impl SimpleArgTypeInfo for Uuid {
+impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = JsBuffer;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
-        cx.borrow(&foreign, |buffer| Uuid::try_from(buffer.as_slice()))
+        cx.borrow(&foreign, |buffer| uuid::Uuid::from_slice(buffer.as_slice()))
             .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
     }
 }
@@ -525,12 +525,12 @@ impl<'a> ResultTypeInfo<'a> for &str {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Uuid {
+impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     type ResultType = JsBuffer;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let mut buffer = cx.buffer(16)?;
         cx.borrow_mut(&mut buffer, |raw_buffer| {
-            raw_buffer.as_mut_slice().copy_from_slice(self.as_ref());
+            raw_buffer.as_mut_slice().copy_from_slice(self.as_bytes());
         });
         Ok(buffer)
     }

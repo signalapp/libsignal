@@ -8,6 +8,7 @@ use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 use crate::support::*;
 use crate::*;
@@ -350,7 +351,7 @@ bridge_get!(SenderKeyMessage::iteration -> u32);
 // Alternate form that copies into an existing buffer.
 #[bridge_fn_void(jni = false, node = false)]
 fn SenderKeyMessageGetDistributionId(out: &mut [u8; 16], obj: &SenderKeyMessage) -> Result<()> {
-    *out = obj.distribution_id().into();
+    *out = *obj.distribution_id().as_bytes();
     Ok(())
 }
 
@@ -407,7 +408,7 @@ fn SenderKeyDistributionMessageGetDistributionId(
     out: &mut [u8; 16],
     obj: &SenderKeyDistributionMessage,
 ) -> Result<()> {
-    *out = obj.distribution_id()?.into();
+    *out = *obj.distribution_id()?.as_bytes();
     Ok(())
 }
 
