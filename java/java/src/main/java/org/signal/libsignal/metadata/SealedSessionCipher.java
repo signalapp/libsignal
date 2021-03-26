@@ -3,7 +3,6 @@ package org.signal.libsignal.metadata;
 import org.signal.libsignal.metadata.certificate.CertificateValidator;
 import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
 import org.signal.libsignal.metadata.certificate.SenderCertificate;
-import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessage;
 import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
 import org.whispersystems.libsignal.DuplicateMessageException;
 import org.whispersystems.libsignal.IdentityKeyPair;

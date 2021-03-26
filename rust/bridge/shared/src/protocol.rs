@@ -28,7 +28,6 @@ bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
-bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 
@@ -698,42 +697,6 @@ fn UnidentifiedSenderMessageContent_New_Java(
         message.serialize().to_owned(),
         ContentHint::from(content_hint),
         group_id.map(|g| g.to_owned()),
-    )
-}
-
-bridge_deserialize!(
-    UnidentifiedSenderMessage::deserialize,
-    ffi = false,
-    node = false
-);
-bridge_get_bytearray!(
-    UnidentifiedSenderMessage::serialized,
-    ffi = false,
-    node = false
-);
-bridge_get_bytearray!(
-    UnidentifiedSenderMessage::encrypted_message,
-    ffi = false,
-    node = false
-);
-bridge_get_bytearray!(
-    UnidentifiedSenderMessage::encrypted_message_key as GetEncryptedStatic,
-    ffi = false,
-    node = false
-);
-bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
-
-// For testing only
-#[bridge_fn(ffi = false, node = false)]
-fn UnidentifiedSenderMessage_New(
-    public_key: &PublicKey,
-    encrypted_static: &[u8],
-    encrypted_message: &[u8],
-) -> Result<UnidentifiedSenderMessage> {
-    UnidentifiedSenderMessage::new(
-        *public_key,
-        encrypted_static.to_owned(),
-        encrypted_message.to_owned(),
     )
 }
 

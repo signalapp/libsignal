@@ -511,7 +511,7 @@ impl UnidentifiedSenderMessageContent {
     }
 }
 
-pub struct UnidentifiedSenderMessage {
+struct UnidentifiedSenderMessage {
     version: u8,
     ephemeral_public: PublicKey,
     encrypted_message_key: Vec<u8>,
@@ -523,7 +523,7 @@ const SEALED_SENDER_VERSION: u8 = 1;
 const SEALED_SENDER_MULTI_RECIPIENT_VERSION: u8 = 2;
 
 impl UnidentifiedSenderMessage {
-    pub fn deserialize(data: &[u8]) -> Result<Self> {
+    fn deserialize(data: &[u8]) -> Result<Self> {
         if data.is_empty() {
             return Err(SignalProtocolError::InvalidSealedSenderMessage(
                 "Message was empty".to_owned(),
@@ -595,7 +595,7 @@ impl UnidentifiedSenderMessage {
         }
     }
 
-    pub fn new(
+    fn new(
         ephemeral_public: PublicKey,
         encrypted_static: Vec<u8>,
         encrypted_message: Vec<u8>,
@@ -619,23 +619,19 @@ impl UnidentifiedSenderMessage {
         })
     }
 
-    pub fn version(&self) -> Result<u8> {
-        Ok(self.version)
-    }
-
-    pub fn ephemeral_public(&self) -> Result<PublicKey> {
+    fn ephemeral_public(&self) -> Result<PublicKey> {
         Ok(self.ephemeral_public)
     }
 
-    pub fn encrypted_message_key(&self) -> Result<&[u8]> {
+    fn encrypted_message_key(&self) -> Result<&[u8]> {
         Ok(&self.encrypted_message_key)
     }
 
-    pub fn encrypted_message(&self) -> Result<&[u8]> {
+    fn encrypted_message(&self) -> Result<&[u8]> {
         Ok(&self.encrypted_message)
     }
 
-    pub fn serialized(&self) -> Result<&[u8]> {
+    fn serialized(&self) -> Result<&[u8]> {
         Ok(&self.serialized)
     }
 }
