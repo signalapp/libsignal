@@ -511,12 +511,17 @@ impl UnidentifiedSenderMessageContent {
     }
 }
 
-struct UnidentifiedSenderMessage {
-    version: u8,
-    ephemeral_public: PublicKey,
-    encrypted_message_key: Vec<u8>,
-    encrypted_message: Vec<u8>,
-    serialized: Vec<u8>,
+enum UnidentifiedSenderMessage {
+    V1 {
+        ephemeral_public: PublicKey,
+        encrypted_static: Vec<u8>,
+        encrypted_message: Vec<u8>,
+    },
+    V2 {
+        ephemeral_public: PublicKey,
+        encrypted_message_key: Box<[u8]>,
+        encrypted_message: Box<[u8]>,
+    },
 }
 
 const SEALED_SENDER_VERSION: u8 = 1;
@@ -548,14 +553,10 @@ impl UnidentifiedSenderMessage {
 
                 let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
 
-                let serialized = data.to_vec();
-
-                Ok(Self {
-                    version,
+                Ok(Self::V1 {
                     ephemeral_public,
-                    encrypted_message_key: encrypted_static,
+                    encrypted_static,
                     encrypted_message,
-                    serialized,
                 })
             }
             SEALED_SENDER_MULTI_RECIPIENT_VERSION => {
@@ -568,7 +569,8 @@ impl UnidentifiedSenderMessage {
                     .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
                 let encrypted_message = pb
                     .encrypted_message
-                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+                    .into_boxed_slice();
 
                 let ephemeral_public = PublicKey::try_from(&ephemeral_public[..])?;
 
@@ -579,60 +581,17 @@ impl UnidentifiedSenderMessage {
                     .encrypted_message_keys
                     .into_iter()
                     .next()
-                    .expect("exactly one item");
+                    .expect("exactly one item")
+                    .into_boxed_slice();
 
-                let serialized = data.to_vec();
-
-                Ok(Self {
-                    version,
+                Ok(Self::V2 {
                     ephemeral_public,
                     encrypted_message_key,
                     encrypted_message,
-                    serialized,
                 })
             }
             _ => Err(SignalProtocolError::UnknownSealedSenderVersion(version)),
         }
-    }
-
-    fn new(
-        ephemeral_public: PublicKey,
-        encrypted_static: Vec<u8>,
-        encrypted_message: Vec<u8>,
-    ) -> Result<Self> {
-        let version = SEALED_SENDER_VERSION;
-        let mut serialized = vec![];
-        serialized.push(version | (version << 4));
-        let pb = proto::sealed_sender::UnidentifiedSenderMessage {
-            ephemeral_public: Some(ephemeral_public.serialize().to_vec()),
-            encrypted_static: Some(encrypted_static.clone()),
-            encrypted_message: Some(encrypted_message.clone()),
-        };
-        pb.encode(&mut serialized)?; // appends to buffer
-
-        Ok(Self {
-            version,
-            ephemeral_public,
-            encrypted_message_key: encrypted_static,
-            encrypted_message,
-            serialized,
-        })
-    }
-
-    fn ephemeral_public(&self) -> Result<PublicKey> {
-        Ok(self.ephemeral_public)
-    }
-
-    fn encrypted_message_key(&self) -> Result<&[u8]> {
-        Ok(&self.encrypted_message_key)
-    }
-
-    fn encrypted_message(&self) -> Result<&[u8]> {
-        Ok(&self.encrypted_message)
-    }
-
-    fn serialized(&self) -> Result<&[u8]> {
-        Ok(&self.serialized)
     }
 }
 
@@ -770,11 +729,17 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         &static_keys.mac_key()?,
     )?;
 
-    Ok(
-        UnidentifiedSenderMessage::new(ephemeral.public_key, static_key_ctext, message_data)?
-            .serialized()?
-            .to_vec(),
-    )
+    let version = SEALED_SENDER_VERSION;
+    let mut serialized = vec![];
+    serialized.push(version | (version << 4));
+    let pb = proto::sealed_sender::UnidentifiedSenderMessage {
+        ephemeral_public: Some(ephemeral.public_key.serialize().to_vec()),
+        encrypted_static: Some(static_key_ctext),
+        encrypted_message: Some(message_data),
+    };
+    pb.encode(&mut serialized)?; // appends to buffer
+
+    Ok(serialized)
 }
 
 mod sealed_sender_v2 {
@@ -952,59 +917,71 @@ pub async fn sealed_sender_decrypt_to_usmc(
     ctx: Context,
 ) -> Result<UnidentifiedSenderMessageContent> {
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
-    let usm = UnidentifiedSenderMessage::deserialize(ciphertext)?;
-    let mut expected_cert_key: Option<Vec<u8>> = None;
 
-    let message_bytes = match usm.version {
-        0 | SEALED_SENDER_VERSION => {
+    match UnidentifiedSenderMessage::deserialize(ciphertext)? {
+        UnidentifiedSenderMessage::V1 {
+            ephemeral_public,
+            encrypted_static,
+            encrypted_message,
+        } => {
             let eph_keys = EphemeralKeys::calculate(
-                &usm.ephemeral_public()?,
+                &ephemeral_public,
                 &our_identity.public_key(),
                 &our_identity.private_key(),
                 false,
             )?;
 
             let message_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
-                usm.encrypted_message_key()?,
+                &encrypted_static,
                 &eph_keys.cipher_key()?,
                 &eph_keys.mac_key()?,
             )?;
 
             let static_key = PublicKey::try_from(&message_key_bytes[..])?;
-            expected_cert_key = Some(message_key_bytes);
 
             let static_keys = StaticKeys::calculate(
                 &static_key,
                 our_identity.private_key(),
                 eph_keys.chain_key()?,
-                usm.encrypted_message_key()?,
+                &encrypted_static,
             )?;
 
-            crypto::aes256_ctr_hmacsha256_decrypt(
-                usm.encrypted_message()?,
+            let message_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+                &encrypted_message,
                 &static_keys.cipher_key()?,
                 &static_keys.mac_key()?,
-            )?
-        }
-        SEALED_SENDER_MULTI_RECIPIENT_VERSION => {
-            let e_pub = usm.ephemeral_public()?;
-            let c = usm.encrypted_message_key()?;
+            )?;
 
+            let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
+
+            if !bool::from(message_key_bytes.ct_eq(&usmc.sender()?.key()?.serialize())) {
+                return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                    "sender certificate key does not match message key".to_string(),
+                ));
+            }
+
+            Ok(usmc)
+        }
+        UnidentifiedSenderMessage::V2 {
+            ephemeral_public,
+            encrypted_message_key,
+            encrypted_message,
+        } => {
             let m = sealed_sender_v2::apply_agreement_xor(
                 our_identity.private_key(),
-                &e_pub,
+                &ephemeral_public,
                 Direction::Receiving,
-                &c,
+                &encrypted_message_key,
             )?;
 
             let (k, e) = sealed_sender_v2::derive_keys(&m);
-            if e.public_key()? != e_pub {
+            if e.public_key()? != ephemeral_public {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "derived ephemeral key did not match key provided in message".to_string(),
                 ));
             }
 
-            let mut message_bytes = usm.encrypted_message()?.to_vec();
+            let mut message_bytes = encrypted_message.into_vec();
             let result = Aes256GcmSiv::new(&k).and_then(|aes_gcm_siv| {
                 aes_gcm_siv.decrypt_with_appended_tag(
                     &mut message_bytes,
@@ -1020,22 +997,11 @@ pub async fn sealed_sender_decrypt_to_usmc(
                     err
                 )));
             }
-            message_bytes
-        }
-        _ => return Err(SignalProtocolError::UnknownSealedSenderVersion(usm.version)),
-    };
 
-    let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
-
-    if let Some(expected_cert_key) = expected_cert_key {
-        if !bool::from(expected_cert_key.ct_eq(&usmc.sender()?.key()?.serialize())) {
-            return Err(SignalProtocolError::InvalidSealedSenderMessage(
-                "sender certificate key does not match message key".to_string(),
-            ));
+            let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
+            Ok(usmc)
         }
     }
-
-    Ok(usmc)
 }
 
 #[derive(Debug)]
