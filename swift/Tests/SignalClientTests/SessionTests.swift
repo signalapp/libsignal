@@ -190,6 +190,28 @@ class SessionTests: TestCaseBase {
 
         XCTAssertEqual(plaintext.message, message)
         XCTAssertEqual(plaintext.sender, sender_addr)
+
+        let innerMessage = try signalEncrypt(message: [],
+                                             for: bob_address,
+                                             sessionStore: alice_store,
+                                             identityStore: alice_store,
+                                             context: NullContext())
+
+        for hint in [UnidentifiedSenderMessageContent.ContentHint(rawValue: 200), .default, .supplementary, .retry] {
+            let content = try UnidentifiedSenderMessageContent(innerMessage,
+                                                               from: sender_cert,
+                                                               contentHint: hint,
+                                                               groupId: [])
+            let ciphertext = try sealedSenderEncrypt(content,
+                                                     for: bob_address,
+                                                     identityStore: alice_store,
+                                                     context: NullContext())
+
+            let decryptedContent = try UnidentifiedSenderMessageContent(message: ciphertext,
+                                                                        identityStore: bob_store,
+                                                                        context: NullContext())
+            XCTAssertEqual(decryptedContent.contentHint, hint)
+        }
     }
 
     func testArchiveSession() throws {
@@ -253,7 +275,10 @@ class SessionTests: TestCaseBase {
                                           store: alice_store,
                                           context: NullContext())
 
-        let a_usmc = try! UnidentifiedSenderMessageContent(a_message, from: sender_cert)
+        let a_usmc = try! UnidentifiedSenderMessageContent(a_message,
+                                                           from: sender_cert,
+                                                           contentHint: .default,
+                                                           groupId: [42])
 
         let a_ctext = try! sealedSenderMultiRecipientEncrypt(a_usmc,
                                                              for: [bob_address],
@@ -263,6 +288,8 @@ class SessionTests: TestCaseBase {
         let b_usmc = try! UnidentifiedSenderMessageContent(message: a_ctext,
                                                            identityStore: bob_store,
                                                            context: NullContext())
+
+        XCTAssertEqual(b_usmc.groupId, a_usmc.groupId)
 
         let b_ptext = try! groupDecrypt(b_usmc.contents,
                                         from: alice_address,

@@ -19,12 +19,36 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                               identityStore: identityStore,
                                               context: context)
 
-    let usmc = try UnidentifiedSenderMessageContent(ciphertextMessage, from: senderCert)
+    let usmc = try UnidentifiedSenderMessageContent(ciphertextMessage,
+                                                    from: senderCert,
+                                                    contentHint: .default,
+                                                    groupId: [])
 
     return try sealedSenderEncrypt(usmc, for: address, identityStore: identityStore, context: context)
 }
 
 public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
+    public struct ContentHint: RawRepresentable, Hashable {
+        public var rawValue: UInt32
+        public init(rawValue: UInt32) {
+            self.rawValue = rawValue
+        }
+
+        internal init(_ knownType: SignalContentHint) {
+            self.init(rawValue: UInt32(knownType.rawValue))
+        }
+
+        public static var `default`: Self {
+            return Self(SignalContentHint_Default)
+        }
+        public static var supplementary: Self {
+            return Self(SignalContentHint_Supplementary)
+        }
+        public static var retry: Self {
+            return Self(SignalContentHint_Retry)
+        }
+    }
+
     public init<Bytes: ContiguousBytes>(message sealedSenderMessage: Bytes,
                                         identityStore: IdentityKeyStore,
                                         context: StoreContext) throws {
@@ -45,12 +69,20 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
         super.init(owned: result!)
     }
 
-    public init(_ message: CiphertextMessage, from sender: SenderCertificate) throws {
+    public init<GroupIdBytes: ContiguousBytes>(_ message: CiphertextMessage,
+                                               from sender: SenderCertificate,
+                                               contentHint: ContentHint,
+                                               groupId: GroupIdBytes) throws {
         var result: OpaquePointer?
-        try checkError(
-            signal_unidentified_sender_message_content_new(&result,
-                                                           message.nativeHandle,
-                                                           sender.nativeHandle))
+        try groupId.withUnsafeBytes { groupIdBytes in
+            try checkError(
+                signal_unidentified_sender_message_content_new(&result,
+                                                               message.nativeHandle,
+                                                               sender.nativeHandle,
+                                                               contentHint.rawValue,
+                                                               groupIdBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                               groupIdBytes.count))
+        }
         super.init(owned: result!)
     }
 
@@ -79,6 +111,23 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
                 signal_unidentified_sender_message_content_get_contents($0, $1, self.nativeHandle)
             }
         }
+    }
+
+    public var groupId: [UInt8]? {
+        return failOnError {
+            try invokeFnReturningOptionalArray {
+                signal_unidentified_sender_message_content_get_group_id($0, $1, self.nativeHandle)
+            }
+        }
+    }
+
+    public var contentHint: ContentHint {
+        let rawHint = failOnError {
+            try invokeFnReturningInteger {
+                signal_unidentified_sender_message_content_get_content_hint($0, self.nativeHandle)
+            }
+        }
+        return .init(rawValue: rawHint)
     }
 }
 

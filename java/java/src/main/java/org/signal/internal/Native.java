@@ -274,11 +274,13 @@ public final class Native {
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
+  public static native int UnidentifiedSenderMessageContent_GetContentHint(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetContents(long obj);
+  public static native byte[] UnidentifiedSenderMessageContent_GetGroupId(long m);
   public static native int UnidentifiedSenderMessageContent_GetMsgType(long m);
   public static native long UnidentifiedSenderMessageContent_GetSenderCert(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long obj);
-  public static native long UnidentifiedSenderMessageContent_New(CiphertextMessage message, long sender);
+  public static native long UnidentifiedSenderMessageContent_New(CiphertextMessage message, long sender, int contentHint, byte[] groupId);
 
   public static native long UnidentifiedSenderMessage_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessage_Destroy(long handle);

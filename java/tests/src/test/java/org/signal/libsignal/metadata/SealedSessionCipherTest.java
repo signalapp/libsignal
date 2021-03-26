@@ -29,7 +29,9 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 
 import org.signal.client.internal.Native;
 
+import org.whispersystems.libsignal.util.Hex;
 import org.whispersystems.libsignal.util.Pair;
+import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -167,7 +169,7 @@ public class SealedSessionCipherTest extends TestCase {
 
     CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(distributionId, "smert ze smert".getBytes());
 
-    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate);
+    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.of(new byte[]{42}));
 
     byte[] ciphertext = aliceCipher.multiRecipientEncrypt(
       Arrays.asList(new SignalProtocolAddress("+14152222222", 1)),
@@ -181,6 +183,46 @@ public class SealedSessionCipherTest extends TestCase {
     assertEquals(plaintext.getDeviceId(), 1);
   }
 
+  public void testProtocolException() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
+    TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+    TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+
+    initializeSessions(aliceStore, bobStore);
+
+    ECKeyPair           trustRoot         = Curve.generateKeyPair();
+    SenderCertificate   senderCertificate = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
+    SealedSessionCipher aliceCipher       = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
+
+    SignalProtocolAddress senderAddress = new SignalProtocolAddress("9d0652a3-dcc3-4d11-975f-74d61598733f", 1);
+    UUID distributionId = UUID.fromString("d1d1d1d1-7000-11eb-b32a-33b8a8a487a6");
+
+    SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
+
+    GroupSessionBuilder aliceSessionBuilder = new GroupSessionBuilder(aliceStore);
+    GroupSessionBuilder bobSessionBuilder   = new GroupSessionBuilder(bobStore);
+
+    GroupCipher aliceGroupCipher = new GroupCipher(aliceStore, senderAddress);
+    GroupCipher bobGroupCipher   = new GroupCipher(bobStore, senderAddress);
+
+    // Send a group message without sending the distribution ID first.
+    aliceSessionBuilder.create(senderAddress, distributionId);
+    CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(distributionId, "smert ze smert".getBytes());
+
+    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.of(new byte[]{42, 1}));
+
+    byte[] ciphertext = aliceCipher.multiRecipientEncrypt(
+      Arrays.asList(new SignalProtocolAddress("+14152222222", 1)),
+      usmcFromAlice);
+
+    try {
+      bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), ciphertext, 31335);
+    } catch (ProtocolNoSessionException e) {
+      assertEquals(e.getSender(), "+14151111111");
+      assertEquals(e.getSenderDevice(), 1);
+      assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY);
+      assertEquals(Hex.toHexString(e.getGroupId().get()), Hex.toHexString(new byte[]{42, 1}));
+    }
+  }
 
   private SenderCertificate createCertificateFor(ECKeyPair trustRoot, UUID uuid, String e164, int deviceId, ECPublicKey identityKey, long expires)
       throws InvalidKeyException, InvalidCertificateException {

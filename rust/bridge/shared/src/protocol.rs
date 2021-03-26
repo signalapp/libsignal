@@ -605,24 +605,82 @@ fn UnidentifiedSenderMessageContent_GetSenderCert(
     Ok(m.sender()?.clone())
 }
 
+#[bridge_fn_buffer]
+fn UnidentifiedSenderMessageContent_GetGroupId<E: Env>(
+    env: E,
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<Option<E::Buffer>> {
+    Ok(m.group_id()?.map(|buf| env.buffer(buf)))
+}
+
 #[bridge_fn]
 fn UnidentifiedSenderMessageContent_GetMsgType(m: &UnidentifiedSenderMessageContent) -> Result<u8> {
     Ok(m.msg_type()? as u8)
 }
 
-#[bridge_fn(jni = false)]
+#[derive(Debug)]
+#[repr(C)]
+pub enum FfiContentHint {
+    Default = 0,
+    Supplementary = 1,
+    Retry = 2,
+}
+
+const_assert_eq!(
+    FfiContentHint::Default as u32,
+    ContentHint::Default.to_u32(),
+);
+const_assert_eq!(
+    FfiContentHint::Supplementary as u32,
+    ContentHint::Supplementary.to_u32(),
+);
+const_assert_eq!(FfiContentHint::Retry as u32, ContentHint::Retry.to_u32());
+
+#[bridge_fn]
+fn UnidentifiedSenderMessageContent_GetContentHint(
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<u32> {
+    Ok(m.content_hint()?.into())
+}
+
+#[bridge_fn(ffi = false, jni = false)]
 fn UnidentifiedSenderMessageContent_New(
     message: &CiphertextMessage,
     sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: Option<&[u8]>,
 ) -> Result<UnidentifiedSenderMessageContent> {
     UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender.clone(),
         message.serialize().to_owned(),
+        ContentHint::from(content_hint),
+        group_id.map(|g| g.to_owned()),
     )
 }
 
-// Alternate version since CiphertextMessage isn't opaque in Java.
+// Alternate version for FFI because FFI can't support optional slices.
+#[bridge_fn(jni = false, node = false)]
+fn UnidentifiedSenderMessageContentNew(
+    message: &CiphertextMessage,
+    sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: &[u8],
+) -> Result<UnidentifiedSenderMessageContent> {
+    UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender.clone(),
+        message.serialize().to_owned(),
+        ContentHint::from(content_hint),
+        if group_id.is_empty() {
+            None
+        } else {
+            Some(group_id.to_owned())
+        },
+    )
+}
+
+// Alternate version for Java since CiphertextMessage isn't opaque in Java.
 #[bridge_fn(
     ffi = false,
     jni = "UnidentifiedSenderMessageContent_1New",
@@ -631,11 +689,15 @@ fn UnidentifiedSenderMessageContent_New(
 fn UnidentifiedSenderMessageContent_New_Java(
     message: jni::CiphertextMessageRef,
     sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: Option<&[u8]>,
 ) -> Result<UnidentifiedSenderMessageContent> {
     UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender.clone(),
         message.serialize().to_owned(),
+        ContentHint::from(content_hint),
+        group_id.map(|g| g.to_owned()),
     )
 }
 

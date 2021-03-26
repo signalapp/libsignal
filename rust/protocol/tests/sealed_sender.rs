@@ -385,6 +385,8 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::SenderKey,
             sender_cert.clone(),
             alice_message.serialized().to_vec(),
+            ContentHint::Default,
+            None,
         )?;
 
         let alice_ctext = sealed_sender_encrypt_from_usmc(
@@ -488,6 +490,8 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             alice_message.message_type(),
             sender_cert.clone(),
             alice_message.serialize().to_vec(),
+            ContentHint::Default,
+            None,
         )?;
 
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
@@ -533,6 +537,8 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             alice_message.message_type(),
             sender_cert.clone(),
             alice_message.serialize().to_vec(),
+            ContentHint::Default,
+            None,
         )?;
 
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
@@ -584,6 +590,8 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             alice_message.message_type(),
             sender_cert.clone(),
             alice_message.serialize().to_vec(),
+            ContentHint::Default,
+            None,
         )?;
 
         let alice_ctext = sealed_sender_multi_recipient_encrypt(

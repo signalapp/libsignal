@@ -15,6 +15,7 @@ const NativeImpl = bindings(
 
 export const { initLogger, LogLevel } = NativeImpl;
 
+// These enums must be kept in sync with their Rust counterparts.
 export const enum CiphertextMessageType {
   Whisper = 2,
   PreKey = 3,
@@ -24,6 +25,13 @@ export const enum CiphertextMessageType {
 export const enum Direction {
   Sending,
   Receiving,
+}
+
+// This enum must be kept in sync with sealed_sender.proto.
+export const enum ContentHint {
+  Default = 0,
+  Supplementary = 1,
+  Retry = 2,
 }
 
 export type Uuid = string;
@@ -919,10 +927,17 @@ export class UnidentifiedSenderMessageContent {
 
   static new(
     message: CiphertextMessage,
-    sender: SenderCertificate
+    sender: SenderCertificate,
+    contentHint: number,
+    groupId: Buffer | null
   ): UnidentifiedSenderMessageContent {
     return new UnidentifiedSenderMessageContent(
-      NativeImpl.UnidentifiedSenderMessageContent_New(message, sender)
+      NativeImpl.UnidentifiedSenderMessageContent_New(
+        message,
+        sender,
+        contentHint,
+        groupId
+      )
     );
   }
 
@@ -948,6 +963,14 @@ export class UnidentifiedSenderMessageContent {
     return SenderCertificate._fromNativeHandle(
       NativeImpl.UnidentifiedSenderMessageContent_GetSenderCert(this)
     );
+  }
+
+  contentHint(): number {
+    return NativeImpl.UnidentifiedSenderMessageContent_GetContentHint(this);
+  }
+
+  groupId(): Buffer | null {
+    return NativeImpl.UnidentifiedSenderMessageContent_GetGroupId(this);
   }
 }
 
@@ -1268,7 +1291,12 @@ export async function sealedSenderEncryptMessage(
     sessionStore,
     identityStore
   );
-  const usmc = UnidentifiedSenderMessageContent.new(ciphertext, senderCert);
+  const usmc = UnidentifiedSenderMessageContent.new(
+    ciphertext,
+    senderCert,
+    ContentHint.Default,
+    null
+  );
   return await sealedSenderEncrypt(usmc, address, identityStore);
 }
 

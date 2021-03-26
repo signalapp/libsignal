@@ -42,9 +42,17 @@ message UnidentifiedSenderMessage {
             SENDERKEY_MESSAGE      = 7;
         }
 
+        enum ContentHint {
+            reserved 0; // A content hint of "default" should never be encoded.
+            SUPPLEMENTARY = 1;
+            RETRY         = 2;
+        }
+
         optional Type              type              = 1;
         optional SenderCertificate senderCertificate = 2;
         optional bytes             content           = 3;
+        optional ContentHint       contentHint       = 4;
+        optional bytes             groupId           = 5;
     }
 
     optional bytes ephemeralPublic  = 1;

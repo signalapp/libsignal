@@ -36,6 +36,16 @@ impl<T, E> TransformHelper<Result<T, E>> {
 }
 
 impl<T> TransformHelper<Option<T>> {
+    /// Transforms `TransformHelper<T>` into a `Option<TransformHelper<U>>`.
+    ///
+    /// If `T` is statically `Option` already, this pushes the TransformHelper
+    /// type inside the present case; if it is not, the existing value will be
+    /// wrapped in `Some`.
+    #[allow(dead_code)] // when added, only used by the FFI bridge
+    pub(crate) fn some_if_needed(self) -> Option<TransformHelper<T>> {
+        self.0.map(TransformHelper)
+    }
+
     /// Transforms `TransformHelper<Option<T>>` into a `TransformHelper<Option<U>>`
     /// and leaves other TransformHelper values unchanged.
     ///
@@ -57,6 +67,9 @@ impl<T> TransformHelper<Box<[T]>> {
 pub(crate) trait TransformHelperImpl: Sized {
     fn ok_if_needed(self) -> Result<Self, libsignal_protocol::SignalProtocolError> {
         Ok(self)
+    }
+    fn some_if_needed(self) -> Option<Self> {
+        Some(self)
     }
     fn option_map_into(self) -> Self {
         self

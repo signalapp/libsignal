@@ -21,6 +21,12 @@ typedef enum {
 } SignalCiphertextMessageType;
 
 typedef enum {
+  SignalContentHint_Default = 0,
+  SignalContentHint_Supplementary = 1,
+  SignalContentHint_Retry = 2,
+} SignalContentHint;
+
+typedef enum {
   SignalDirection_Sending = 0,
   SignalDirection_Receiving = 1,
 } SignalDirection;
@@ -804,12 +810,22 @@ SignalFfiError *signal_unidentified_sender_message_content_get_contents(const un
 SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(SignalSenderCertificate **out,
                                                                            const SignalUnidentifiedSenderMessageContent *m);
 
+SignalFfiError *signal_unidentified_sender_message_content_get_group_id(const unsigned char **out,
+                                                                        size_t *out_len,
+                                                                        const SignalUnidentifiedSenderMessageContent *m);
+
 SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t *out,
                                                                         const SignalUnidentifiedSenderMessageContent *m);
 
+SignalFfiError *signal_unidentified_sender_message_content_get_content_hint(uint32_t *out,
+                                                                            const SignalUnidentifiedSenderMessageContent *m);
+
 SignalFfiError *signal_unidentified_sender_message_content_new(SignalUnidentifiedSenderMessageContent **out,
                                                                const SignalCiphertextMessage *message,
-                                                               const SignalSenderCertificate *sender);
+                                                               const SignalSenderCertificate *sender,
+                                                               uint32_t content_hint,
+                                                               const unsigned char *group_id,
+                                                               size_t group_id_len);
 
 SignalFfiError *signal_ciphertext_message_type(uint8_t *out, const SignalCiphertextMessage *msg);
 

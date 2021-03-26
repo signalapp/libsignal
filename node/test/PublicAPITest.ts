@@ -824,6 +824,37 @@ describe('SignalClient', () => {
         assert.deepEqual(bPlaintext.senderUuid(), aUuid);
         assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
       }
+
+      const innerMessage = await SignalClient.signalEncrypt(
+        aPlaintext,
+        bAddress,
+        aSess,
+        aKeys
+      );
+
+      for (const hint of [
+        200,
+        SignalClient.ContentHint.Default,
+        SignalClient.ContentHint.Supplementary,
+        SignalClient.ContentHint.Retry,
+      ]) {
+        const content = SignalClient.UnidentifiedSenderMessageContent.new(
+          innerMessage,
+          senderCert,
+          hint,
+          null
+        );
+        const ciphertext = await SignalClient.sealedSenderEncrypt(
+          content,
+          bAddress,
+          aKeys
+        );
+        const decryptedContent = await SignalClient.sealedSenderDecryptToUsmc(
+          ciphertext,
+          bKeys
+        );
+        assert.deepEqual(decryptedContent.contentHint(), hint);
+      }
     });
 
     it('can encrypt/decrypt group messages', async () => {
@@ -940,7 +971,9 @@ describe('SignalClient', () => {
 
       const aUsmc = SignalClient.UnidentifiedSenderMessageContent.new(
         aCtext,
-        senderCert
+        senderCert,
+        SignalClient.ContentHint.Supplementary,
+        Buffer.from([42])
       );
 
       const aSealedSenderMessage = await SignalClient.sealedSenderMultiRecipientEncrypt(
@@ -957,6 +990,11 @@ describe('SignalClient', () => {
       assert.deepEqual(bUsmc.senderCertificate().senderE164(), aE164);
       assert.deepEqual(bUsmc.senderCertificate().senderUuid(), aUuid);
       assert.deepEqual(bUsmc.senderCertificate().senderDeviceId(), aDeviceId);
+      assert.deepEqual(
+        bUsmc.contentHint(),
+        SignalClient.ContentHint.Supplementary
+      );
+      assert.deepEqual(bUsmc.groupId(), Buffer.from([42]));
 
       const bPtext = await SignalClient.groupDecrypt(
         aAddress,

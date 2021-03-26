@@ -354,11 +354,59 @@ impl From<CiphertextMessageType> for ProtoMessageType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ContentHint {
+    Default,
+    Supplementary,
+    Retry,
+    Unknown(u32),
+}
+
+impl ContentHint {
+    fn to_proto(self) -> Option<i32> {
+        if self == ContentHint::Default {
+            None
+        } else {
+            Some(u32::from(self) as i32)
+        }
+    }
+
+    pub const fn to_u32(self) -> u32 {
+        use proto::sealed_sender::unidentified_sender_message::message::ContentHint as ProtoContentHint;
+        match self {
+            ContentHint::Default => 0,
+            ContentHint::Supplementary => ProtoContentHint::Supplementary as u32,
+            ContentHint::Retry => ProtoContentHint::Retry as u32,
+            ContentHint::Unknown(value) => value,
+        }
+    }
+}
+
+impl From<u32> for ContentHint {
+    fn from(raw_value: u32) -> Self {
+        use proto::sealed_sender::unidentified_sender_message::message::ContentHint as ProtoContentHint;
+        assert!(!ProtoContentHint::is_valid(0));
+        match ProtoContentHint::from_i32(raw_value as i32) {
+            None if raw_value == 0 => ContentHint::Default,
+            None => ContentHint::Unknown(raw_value),
+            Some(ProtoContentHint::Supplementary) => ContentHint::Supplementary,
+            Some(ProtoContentHint::Retry) => ContentHint::Retry,
+        }
+    }
+}
+
+impl From<ContentHint> for u32 {
+    fn from(hint: ContentHint) -> Self {
+        hint.to_u32()
+    }
+}
 pub struct UnidentifiedSenderMessageContent {
     serialized: Vec<u8>,
     contents: Vec<u8>,
     sender: SenderCertificate,
     msg_type: CiphertextMessageType,
+    content_hint: ContentHint,
+    group_id: Option<Vec<u8>>,
 }
 
 impl UnidentifiedSenderMessageContent {
@@ -376,6 +424,11 @@ impl UnidentifiedSenderMessageContent {
         let contents = pb
             .content
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let content_hint = pb
+            .content_hint
+            .map(|raw| ContentHint::from(raw as u32))
+            .unwrap_or(ContentHint::Default);
+        let group_id = pb.group_id;
 
         let sender = SenderCertificate::from_protobuf(&sender)?;
 
@@ -393,6 +446,8 @@ impl UnidentifiedSenderMessageContent {
             contents,
             sender,
             msg_type,
+            content_hint,
+            group_id,
         })
     }
 
@@ -400,22 +455,34 @@ impl UnidentifiedSenderMessageContent {
         msg_type: CiphertextMessageType,
         sender: SenderCertificate,
         contents: Vec<u8>,
+        content_hint: ContentHint,
+        group_id: Option<Vec<u8>>,
     ) -> Result<Self> {
         let proto_msg_type = ProtoMessageType::from(msg_type);
         let msg = proto::sealed_sender::unidentified_sender_message::Message {
             content: Some(contents.clone()),
             r#type: Some(proto_msg_type.into()),
             sender_certificate: Some(sender.to_protobuf()?),
+            content_hint: content_hint.to_proto(),
+            group_id: group_id.as_ref().and_then(|buf| {
+                if buf.is_empty() {
+                    None
+                } else {
+                    Some(buf.clone())
+                }
+            }),
         };
 
         let mut serialized = vec![];
         msg.encode(&mut serialized)?;
 
         Ok(Self {
+            serialized,
             msg_type,
             sender,
             contents,
-            serialized,
+            content_hint,
+            group_id,
         })
     }
 
@@ -429,6 +496,14 @@ impl UnidentifiedSenderMessageContent {
 
     pub fn contents(&self) -> Result<&[u8]> {
         Ok(&self.contents)
+    }
+
+    pub fn content_hint(&self) -> Result<ContentHint> {
+        Ok(self.content_hint)
+    }
+
+    pub fn group_id(&self) -> Result<Option<&[u8]>> {
+        Ok(self.group_id.as_deref())
     }
 
     pub fn serialized(&self) -> Result<&[u8]> {
@@ -652,6 +727,8 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
         message.message_type(),
         sender_cert.clone(),
         message.serialize().to_vec(),
+        ContentHint::Default,
+        None,
     )?;
     sealed_sender_encrypt_from_usmc(destination, &usmc, identity_store, ctx, rng).await
 }
