@@ -1,8 +1,30 @@
 # Overview
 
-libsignal-client is an implementation of the Signal client protocol in Rust.
+libsignal-client contains platform-agnostic APIs useful for Signal client apps, exposed as a Java,
+Swift, or TypeScript library. The underlying implementations are written in Rust:
 
-Work in progress.  Subject to change without notice, use outside Signal not yet recommended.
+- libsignal-protocol: Implements the Signal protocol, including the [Double Ratchet algorithm][]. A
+  replacement for [libsignal-protocol-java][] and [libsignal-metadata-java][].
+- signal-crypto: Cryptographic primitives such as AES-GCM-SIV. We use [RustCrypto][]'s where we can
+  but sometimes have differing needs.
+- device-transfer: Support logic for Signal's device-to-device transfer feature.
+- poksho: Utilities for implementing zero-knowledge proofs; stands for "proof-of-knowledge, stateful-hash-object". See [zkgroup][].
+
+This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]). Use
+outside of Signal is unsupported. In particular, the products of this repository are the Java,
+Swift, and TypeScript libraries that wrap the underlying Rust implementations. Those underlying
+implementations are subject to change without notice, as are the JNI, C, and Node add-on "bridge"
+layers.
+
+[Double Ratchet algorithm]: https://signal.org/docs/
+[libsignal-protocol-java]: https://github.com/signalapp/libsignal-protocol-java
+[libsignal-metadata-java]: https://github.com/signalapp/libsignal-metadata-java
+[RustCrypto]: https://github.com/RustCrypto
+[zkgroup]: https://github.com/signalapp/zkgroup
+[Android]: https://github.com/signalapp/Signal-Android
+[iOS]: https://github.com/signalapp/Signal-iOS
+[Desktop]: https://github.com/signalapp/Signal-Desktop
+
 
 # Building
 
@@ -43,9 +65,39 @@ $ cd java
 $ make java_test
 ```
 
+Local Java testing is also supported with `gradlew test` if none of the `ANDROID_*` environment
+variables are set.
+
+When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
+addition to rebuilding.
+
+
 ## Swift
 
 To learn about the Swift build process see [``swift/README.md``](swift/)
+
+
+## Node
+
+You'll need Node installed to build. If you have [nvm][], you can run `nvm use` to select an
+appropriate version automatically.
+
+We use [`yarn`](https://classic.yarnpkg.com/) as our package manager. The Rust library will automatically be built when you run `yarn install`.
+
+```shell
+$ nvm use
+$ yarn install
+$ yarn tsc
+$ yarn test
+```
+
+When testing changes locally, you can use `yarn build` to do an incremental rebuild of the Rust library.
+
+When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_ts_decl.py` in
+addition to rebuilding.
+
+[nvm]: https://github.com/nvm-sh/nvm
+
 
 # Contributions
 
@@ -53,6 +105,10 @@ Signal does accept external contributions to this project. However unless the ch
 simple and easily understood, for example fixing a bug or portability issue, adding a new
 test, or improving performance, first open an issue to discuss your intended change as not
 all changes can be accepted.
+
+Contributions that will not be used directly by one of Signal's official client apps may still be
+considered, but only if they do not pose an undue maintenance burden or conflict with the goals of
+the project.
 
 Signing a [CLA (Contributor License Agreement)](https://signal.org/cla/) is required for all contributions.
 
@@ -72,6 +128,6 @@ Administration Regulations, Section 740.13) for both object code and source code
 
 ## License
 
-Copyright 2020 Signal Messenger, LLC
+Copyright 2020-2021 Signal Messenger, LLC
 
 Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
