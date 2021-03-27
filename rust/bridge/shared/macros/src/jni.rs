@@ -50,22 +50,28 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
             ),
             FnArg::Typed(PatType {
                 attrs,
-                pat: box Pat::Ident(name),
+                pat,
                 colon_token,
                 ty,
-            }) => (
-                name.ident.clone(),
-                quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
-                quote! {
-                    let mut #name = <#ty as jni::ArgTypeInfo>::borrow(&env, #name)?;
-                    let #name = <#ty as jni::ArgTypeInfo>::load_from(&env, &mut #name)?
-                },
-            ),
-            FnArg::Typed(PatType { pat, .. }) => (
-                Ident::new("unexpected", pat.span()),
-                Error::new(pat.span(), "cannot use patterns in paramater").to_compile_error(),
-                quote!(),
-            ),
+            }) => {
+                if let Pat::Ident(name) = pat.as_ref() {
+                    (
+                        name.ident.clone(),
+                        quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
+                        quote! {
+                            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(&env, #name)?;
+                            let #name = <#ty as jni::ArgTypeInfo>::load_from(&env, &mut #name)?
+                        },
+                    )
+                } else {
+                    (
+                        Ident::new("unexpected", pat.span()),
+                        Error::new(pat.span(), "cannot use patterns in paramater")
+                            .to_compile_error(),
+                        quote!(),
+                    )
+                }
+            }
         })
         .unzip3();
 

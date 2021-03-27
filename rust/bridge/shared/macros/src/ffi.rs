@@ -61,46 +61,42 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
             ),
             FnArg::Typed(PatType {
                 attrs,
-                pat: box Pat::Ident(name),
+                pat,
                 colon_token,
-                ty:
-                    ty
-                    @
-                    box Type::Reference(TypeReference {
-                        elem: box Type::Slice(_),
-                        ..
-                    }),
+                ty
             }) => {
-                let size_arg = format_ident!("{}_len", name.ident);
-                (
-                    name.ident.clone(),
-                    quote!(
-                        #(#attrs)* #name #colon_token ffi_arg_type!(#ty),
-                        #size_arg: libc::size_t
-                    ),
-                    quote!(
-                        let #name = <#ty as ffi::SizedArgTypeInfo>::convert_from(#name, #size_arg)?
-                    ),
-                )
+                if let Pat::Ident(name) = pat.as_ref() {
+                    match ty.as_ref() {
+                        Type::Reference(TypeReference { elem, .. }) if matches!(elem.as_ref(), Type::Slice(_)) => {
+                            let size_arg = format_ident!("{}_len", name.ident);
+                            (
+                                name.ident.clone(),
+                                quote!(
+                                    #(#attrs)* #name #colon_token ffi_arg_type!(#ty),
+                                    #size_arg: libc::size_t
+                                ),
+                                quote!(
+                                    let #name = <#ty as ffi::SizedArgTypeInfo>::convert_from(#name, #size_arg)?
+                                ),
+                            )
+                        }
+                        _ => (
+                            name.ident.clone(),
+                            quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty)),
+                            quote! {
+                                let mut #name = <#ty as ffi::ArgTypeInfo>::borrow(#name)?;
+                                let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name)?
+                            },
+                        )
+                    }
+                } else {
+                    (
+                        Ident::new("unexpected", arg.span()),
+                        Error::new(arg.span(), "cannot use patterns in parameter").to_compile_error(),
+                        quote!(),
+                    )
+                }
             }
-            FnArg::Typed(PatType {
-                attrs,
-                pat: box Pat::Ident(name),
-                colon_token,
-                ty,
-            }) => (
-                name.ident.clone(),
-                quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty)),
-                quote! {
-                    let mut #name = <#ty as ffi::ArgTypeInfo>::borrow(#name)?;
-                    let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name)?
-                },
-            ),
-            FnArg::Typed(PatType { pat, .. }) => (
-                Ident::new("unexpected", pat.span()),
-                Error::new(pat.span(), "cannot use patterns in paramater").to_compile_error(),
-                quote!(),
-            ),
         })
         .unzip3();
 

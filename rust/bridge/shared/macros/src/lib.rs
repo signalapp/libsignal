@@ -141,8 +141,6 @@
 //! - There is no support for multiple return values, even though some of the FFI entry points
 //!   use multiple output parameters. These functions must be implemented manually.
 
-#![feature(box_patterns)]
-
 use proc_macro::TokenStream;
 use quote::*;
 use syn::punctuated::Punctuated;
