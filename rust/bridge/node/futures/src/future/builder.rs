@@ -8,18 +8,20 @@ use neon::prelude::*;
 use crate::future::*;
 use crate::PersistentException;
 
-/// A callback that can retrieve a JavaScript promise object. See [JsFuture::get_promise].
-pub trait GetPromiseCallback =
-    for<'a> FnOnce(&mut TaskContext<'a>) -> JsResult<'a, JsObject> + 'static + Send;
-
 /// Sets up a [JsFuture] using a builder pattern. See [JsFuture::get_promise].
-pub struct JsFutureBuilder<'a, F: GetPromiseCallback, T: 'static + Send> {
+pub struct JsFutureBuilder<'a, F, T: 'static + Send>
+where
+    F: for<'b> FnOnce(&mut TaskContext<'b>) -> JsResult<'b, JsObject> + 'static + Send,
+{
     pub(super) queue: &'a EventQueue,
     pub(super) get_promise: F,
     pub(super) result_type: PhantomData<fn() -> T>,
 }
 
-impl<F: GetPromiseCallback, T: 'static + Send> JsFutureBuilder<'_, F, T> {
+impl<F, T: 'static + Send> JsFutureBuilder<'_, F, T>
+where
+    F: for<'b> FnOnce(&mut TaskContext<'b>) -> JsResult<'b, JsObject> + 'static + Send,
+{
     /// Produces a future using the given result handler.
     ///
     /// Note that if there was a JavaScript exception during the creation of this JsFutureBuilder,
@@ -63,8 +65,9 @@ impl<F: GetPromiseCallback, T: 'static + Send> JsFutureBuilder<'_, F, T> {
     }
 }
 
-impl<F: GetPromiseCallback, T: 'static + Send>
-    JsFutureBuilder<'_, F, Result<T, PersistentException>>
+impl<F, T: 'static + Send> JsFutureBuilder<'_, F, Result<T, PersistentException>>
+where
+    F: for<'b> FnOnce(&mut TaskContext<'b>) -> JsResult<'b, JsObject> + 'static + Send,
 {
     /// Produces a future that records failures as PersistentExceptions.
     ///

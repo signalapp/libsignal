@@ -18,7 +18,6 @@
 //!
 //! [Neon]: https://neon-bindings.com/
 
-#![feature(trait_alias)]
 #![feature(wake_trait)]
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]

@@ -159,12 +159,15 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
             )),
             FnArg::Typed(PatType {
                 attrs: _,
-                pat: box Pat::Ident(name),
+                pat,
                 colon_token: _,
                 ty,
-            }) => Ok((&name.ident, &**ty)),
-            FnArg::Typed(PatType { pat, .. }) => {
-                Err(Error::new(pat.span(), "cannot use patterns in parameter"))
+            }) => {
+                if let Pat::Ident(name) = pat.as_ref() {
+                    Ok((&name.ident, &**ty))
+                } else {
+                    Err(Error::new(pat.span(), "cannot use patterns in parameter"))
+                }
             }
         })
         .collect();
