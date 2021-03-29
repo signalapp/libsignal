@@ -18,15 +18,14 @@ use crate::util::call_method;
 mod builder;
 pub use builder::JsFutureBuilder;
 
-/// A transformation to convert a scoped JavaScript result (fulfillment or rejection) to an unscoped Rust result.
-trait JsPromiseCallback<T> =
-    for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send;
-
 /// The possible states of a [JsFuture].
 enum JsFutureState<T> {
     /// The future is waiting to be settled.
+    #[allow(clippy::type_complexity)]
     Pending {
-        transform: Box<dyn JsPromiseCallback<T>>,
+        transform: Box<
+            dyn for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
+        >,
         waker: Option<Waker>,
     },
     /// The future has been settled (and transformed).
@@ -38,7 +37,10 @@ enum JsFutureState<T> {
 }
 
 impl<T> JsFutureState<T> {
-    fn new(transform: impl JsPromiseCallback<T>) -> Self {
+    fn new<F>(transform: F) -> Self
+    where
+        F: for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
+    {
         Self::Pending {
             transform: Box::new(transform),
             waker: None,
@@ -148,7 +150,10 @@ fn settle_promise<T: Send + 'static, R: JsPromiseResultConstructor>(
 }
 
 impl<T: 'static + Send> JsFuture<T> {
-    fn new(transform: impl JsPromiseCallback<T>) -> Self {
+    fn new<F>(transform: F) -> Self
+    where
+        F: for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
+    {
         Self {
             state: Arc::new(Mutex::new(JsFutureState::new(transform))),
         }
