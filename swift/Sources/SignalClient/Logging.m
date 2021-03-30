@@ -71,6 +71,8 @@ static void flush()
 
 __attribute__((constructor)) static void initLogging()
 {
-    SignalLogLevel logLevel = ShouldLogDebug() ? SignalLogLevel_Trace : SignalLogLevel_Info;
-    signal_init_logger(logLevel, (SignalFfiLogger) { .enabled = isEnabled, .log = logMessage, .flush = flush });
+    @autoreleasepool {
+        SignalLogLevel logLevel = ShouldLogDebug() ? SignalLogLevel_Trace : SignalLogLevel_Info;
+        signal_init_logger(logLevel, (SignalFfiLogger) { .enabled = isEnabled, .log = logMessage, .flush = flush });
+    }
 }
