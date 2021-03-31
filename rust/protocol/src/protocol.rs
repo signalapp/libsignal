@@ -193,15 +193,14 @@ impl TryFrom<&[u8]> for SignalMessage {
             return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
         }
         let message_version = value[0] >> 4;
-        let ciphertext_version = value[0] & 0x0F;
-        if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::LegacyCiphertextVersion(
-                ciphertext_version,
+                message_version,
             ));
         }
-        if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
-                ciphertext_version,
+                message_version,
             ));
         }
 
@@ -333,15 +332,14 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
         }
 
         let message_version = value[0] >> 4;
-        let ciphertext_version = value[0] & 0x0F;
-        if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::LegacyCiphertextVersion(
-                ciphertext_version,
+                message_version,
             ));
         }
-        if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
-                ciphertext_version,
+                message_version,
             ));
         }
 
@@ -474,15 +472,14 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
             return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
         }
         let message_version = value[0] >> 4;
-        let ciphertext_version = value[0] & 0x0F;
-        if ciphertext_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::LegacyCiphertextVersion(
-                ciphertext_version,
+                message_version,
             ));
         }
-        if ciphertext_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
-                ciphertext_version,
+                message_version,
             ));
         }
         let proto_structure =
