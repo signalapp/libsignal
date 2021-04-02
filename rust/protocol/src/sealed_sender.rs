@@ -111,6 +111,10 @@ impl ServerCertificate {
 
     pub fn validate(&self, trust_root: &PublicKey) -> Result<bool> {
         if REVOKED_SERVER_CERTIFICATE_KEY_IDS.contains(&self.key_id()?) {
+            log::error!(
+                "received server certificate with revoked ID {:x}",
+                self.key_id()?
+            );
             return Ok(false);
         }
         trust_root.verify_signature(&self.certificate, &self.signature)
@@ -258,6 +262,7 @@ impl SenderCertificate {
 
     pub fn validate(&self, trust_root: &PublicKey, validation_time: u64) -> Result<bool> {
         if !self.signer.validate(&trust_root)? {
+            log::error!("received server certificate not signed by trust root");
             return Ok(false);
         }
 
@@ -266,10 +271,16 @@ impl SenderCertificate {
             .public_key()?
             .verify_signature(&self.certificate, &self.signature)?
         {
+            log::error!("received sender certificate not signed by server");
             return Ok(false);
         }
 
         if validation_time > self.expiration {
+            log::error!(
+                "received expired sender certificate (expiration: {}, validation_time: {})",
+                self.expiration,
+                validation_time
+            );
             return Ok(false);
         }
 
@@ -343,6 +354,13 @@ impl UnidentifiedSenderMessageContent {
         let sender = SenderCertificate::from_protobuf(&sender)?;
 
         let serialized = data.to_vec();
+
+        log::info!(
+            "deserialized UnidentifiedSenderMessageContent from {}.{} with type {:?}",
+            sender.sender_uuid()?,
+            sender.sender_device_id()?,
+            msg_type,
+        );
 
         Ok(Self {
             serialized,
