@@ -526,8 +526,8 @@ enum UnidentifiedSenderMessage {
     },
 }
 
-const SEALED_SENDER_VERSION: u8 = 1;
-const SEALED_SENDER_MULTI_RECIPIENT_VERSION: u8 = 2;
+const SEALED_SENDER_V1_VERSION: u8 = 1;
+const SEALED_SENDER_V2_VERSION: u8 = 2;
 
 impl UnidentifiedSenderMessage {
     fn deserialize(data: &[u8]) -> Result<Self> {
@@ -539,7 +539,7 @@ impl UnidentifiedSenderMessage {
         let version = data[0] >> 4;
 
         match version {
-            0 | SEALED_SENDER_VERSION => {
+            0 | SEALED_SENDER_V1_VERSION => {
                 // XXX should we really be accepted version == 0 here?
                 let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])?;
 
@@ -561,7 +561,7 @@ impl UnidentifiedSenderMessage {
                     encrypted_message,
                 })
             }
-            SEALED_SENDER_MULTI_RECIPIENT_VERSION => {
+            SEALED_SENDER_V2_VERSION => {
                 // Uses a flat representation: C || AT || E.pub || ciphertext
                 let remaining = &data[1..];
                 if remaining.len() < 32 + 16 + 32 {
@@ -735,7 +735,7 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         &static_keys.mac_key()?,
     )?;
 
-    let version = SEALED_SENDER_VERSION;
+    let version = SEALED_SENDER_V1_VERSION;
     let mut serialized = vec![];
     serialized.push(version | (version << 4));
     let pb = proto::sealed_sender::UnidentifiedSenderMessage {
@@ -892,7 +892,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         })?;
 
     // Uses a flat representation: count || UUID_i || deviceId_i || C_i || AT_i || ... || E.pub || ciphertext
-    let version = SEALED_SENDER_MULTI_RECIPIENT_VERSION;
+    let version = SEALED_SENDER_V2_VERSION;
     let mut serialized: Vec<u8> = vec![(version | (version << 4))];
 
     prost::encode_length_delimiter(destinations.len(), &mut serialized)
@@ -944,7 +944,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
 // For testing
 pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>> {
     let version = data[0] >> 4;
-    if version != SEALED_SENDER_MULTI_RECIPIENT_VERSION {
+    if version != SEALED_SENDER_V2_VERSION {
         return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
     }
 
