@@ -1055,7 +1055,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
             )?;
 
             let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
-            if keys.e.public_key()? != ephemeral_public {
+            if !bool::from(keys.e.public_key()?.ct_eq(&ephemeral_public)) {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "derived ephemeral key did not match key provided in message".to_string(),
                 ));
