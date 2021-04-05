@@ -80,13 +80,13 @@ public func groupEncrypt<Bytes: ContiguousBytes>(_ message: Bytes,
                                                  from sender: ProtocolAddress,
                                                  distributionId: UUID,
                                                  store: SenderKeyStore,
-                                                 context: StoreContext) throws -> [UInt8] {
+                                                 context: StoreContext) throws -> CiphertextMessage {
     return try context.withOpaquePointer { context in
         try message.withUnsafeBytes { messageBytes in
             try withUnsafePointer(to: distributionId.uuid) { distributionId in
                 try withSenderKeyStore(store) { ffiStore in
-                    try invokeFnReturningArray {
-                        signal_group_encrypt_message($0, $1, sender.nativeHandle, distributionId, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
+                    try invokeFnReturningCiphertextMessage {
+                        signal_group_encrypt_message($0, sender.nativeHandle, distributionId, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
                     }
                 }
             }

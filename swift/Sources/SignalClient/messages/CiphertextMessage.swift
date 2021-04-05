@@ -1,12 +1,12 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import SignalFfi
 
 public class CiphertextMessage {
-    private var handle: OpaquePointer?
+    internal var nativeHandle: OpaquePointer?
 
     public struct MessageType: RawRepresentable, Hashable {
         public var rawValue: UInt8
@@ -27,23 +27,20 @@ public class CiphertextMessage {
         public static var senderKey: Self {
             return Self(SignalCiphertextMessageType_SenderKey)
         }
-        public static var senderKeyDistribution: Self {
-            return Self(SignalCiphertextMessageType_SenderKeyDistribution)
-        }
     }
 
     deinit {
-        failOnError(signal_ciphertext_message_destroy(handle))
+        failOnError(signal_ciphertext_message_destroy(nativeHandle))
     }
 
     internal init(owned rawPtr: OpaquePointer?) {
-        handle = rawPtr
+        nativeHandle = rawPtr
     }
 
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_ciphertext_message_serialize($0, $1, handle)
+                signal_ciphertext_message_serialize($0, $1, nativeHandle)
             }
         }
     }
@@ -51,7 +48,7 @@ public class CiphertextMessage {
     public var messageType: MessageType {
         let rawValue = failOnError {
             try invokeFnReturningInteger {
-                signal_ciphertext_message_type($0, handle)
+                signal_ciphertext_message_type($0, nativeHandle)
             }
         }
         return MessageType(rawValue: rawValue)

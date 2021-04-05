@@ -190,6 +190,28 @@ class SessionTests: TestCaseBase {
 
         XCTAssertEqual(plaintext.message, message)
         XCTAssertEqual(plaintext.sender, sender_addr)
+
+        let innerMessage = try signalEncrypt(message: [],
+                                             for: bob_address,
+                                             sessionStore: alice_store,
+                                             identityStore: alice_store,
+                                             context: NullContext())
+
+        for hint in [UnidentifiedSenderMessageContent.ContentHint(rawValue: 200), .default, .supplementary, .retry] {
+            let content = try UnidentifiedSenderMessageContent(innerMessage,
+                                                               from: sender_cert,
+                                                               contentHint: hint,
+                                                               groupId: [])
+            let ciphertext = try sealedSenderEncrypt(content,
+                                                     for: bob_address,
+                                                     identityStore: alice_store,
+                                                     context: NullContext())
+
+            let decryptedContent = try UnidentifiedSenderMessageContent(message: ciphertext,
+                                                                        identityStore: bob_store,
+                                                                        context: NullContext())
+            XCTAssertEqual(decryptedContent.contentHint, hint)
+        }
     }
 
     func testArchiveSession() throws {
@@ -210,12 +232,83 @@ class SessionTests: TestCaseBase {
         XCTAssertFalse(session.hasCurrentState)
     }
 
+    func testSealedSenderGroupCipher() throws {
+        let alice_address = try! ProtocolAddress(name: "9d0652a3-dcc3-4d11-975f-74d61598733f", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "6838237D-02F6-4098-B110-698253D15961", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore()
+
+        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+
+        let trust_root = IdentityKeyPair.generate()
+        let server_keys = IdentityKeyPair.generate()
+        let server_cert = try! ServerCertificate(keyId: 1, publicKey: server_keys.publicKey, trustRoot: trust_root.privateKey)
+        let sender_addr = try! SealedSenderAddress(e164: "+14151111111",
+                                                   uuidString: alice_address.name,
+                                                   deviceId: 1)
+        let sender_cert = try! SenderCertificate(sender: sender_addr,
+                                                 publicKey: alice_store.identityKeyPair(context: NullContext()).publicKey,
+                                                 expiration: 31337,
+                                                 signerCertificate: server_cert,
+                                                 signerKey: server_keys.privateKey)
+
+        let distribution_id = UUID(uuidString: "d1d1d1d1-7000-11eb-b32a-33b8a8a487a6")!
+
+        let skdm = try! SenderKeyDistributionMessage(from: alice_address,
+                                                     distributionId: distribution_id,
+                                                     store: alice_store,
+                                                     context: NullContext())
+
+        let skdm_bits = skdm.serialize()
+
+        let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
+
+        try! processSenderKeyDistributionMessage(skdm_r,
+                                                 from: alice_address,
+                                                 store: bob_store,
+                                                 context: NullContext())
+
+        let a_message = try! groupEncrypt([1, 2, 3],
+                                          from: alice_address,
+                                          distributionId: distribution_id,
+                                          store: alice_store,
+                                          context: NullContext())
+
+        let a_usmc = try! UnidentifiedSenderMessageContent(a_message,
+                                                           from: sender_cert,
+                                                           contentHint: .default,
+                                                           groupId: [42])
+
+        let a_ctext = try! sealedSenderMultiRecipientEncrypt(a_usmc,
+                                                             for: [bob_address],
+                                                             identityStore: alice_store,
+                                                             context: NullContext())
+
+        let b_ctext = try! sealedSenderMultiRecipientMessageForSingleRecipient(a_ctext)
+
+        let b_usmc = try! UnidentifiedSenderMessageContent(message: b_ctext,
+                                                           identityStore: bob_store,
+                                                           context: NullContext())
+
+        XCTAssertEqual(b_usmc.groupId, a_usmc.groupId)
+
+        let b_ptext = try! groupDecrypt(b_usmc.contents,
+                                        from: alice_address,
+                                        store: bob_store,
+                                        context: NullContext())
+
+        XCTAssertEqual(b_ptext, [1, 2, 3])
+
+    }
+
     static var allTests: [(String, (SessionTests) -> () throws -> Void)] {
         return [
             ("testSessionCipher", testSessionCipher),
             ("testSessionCipherWithBadStore", testSessionCipherWithBadStore),
             ("testSealedSenderSession", testSealedSenderSession),
             ("testArchiveSession", testArchiveSession),
+            ("testSealedSenderGroupCipher", testSealedSenderGroupCipher),
         ]
     }
 }

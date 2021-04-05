@@ -35,13 +35,24 @@ message UnidentifiedSenderMessage {
 
     message Message {
         enum Type {
-            PREKEY_MESSAGE = 1;
-            MESSAGE        = 2;
+            PREKEY_MESSAGE         = 1;
+            MESSAGE                = 2;
+            // Further cases should line up with Envelope.Type, even though old cases don't.
+            reserved 3 to 6;
+            SENDERKEY_MESSAGE      = 7;
+        }
+
+        enum ContentHint {
+            reserved 0; // A content hint of "default" should never be encoded.
+            SUPPLEMENTARY = 1;
+            RETRY         = 2;
         }
 
         optional Type              type              = 1;
         optional SenderCertificate senderCertificate = 2;
         optional bytes             content           = 3;
+        optional ContentHint       contentHint       = 4;
+        optional bytes             groupId           = 5;
     }
 
     optional bytes ephemeralPublic  = 1;

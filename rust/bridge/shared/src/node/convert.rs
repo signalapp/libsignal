@@ -238,10 +238,10 @@ impl SimpleArgTypeInfo for String {
     }
 }
 
-impl SimpleArgTypeInfo for Uuid {
+impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = JsBuffer;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
-        cx.borrow(&foreign, |buffer| Uuid::try_from(buffer.as_slice()))
+        cx.borrow(&foreign, |buffer| uuid::Uuid::from_slice(buffer.as_slice()))
             .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
     }
 }
@@ -525,12 +525,12 @@ impl<'a> ResultTypeInfo<'a> for &str {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Uuid {
+impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     type ResultType = JsBuffer;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let mut buffer = cx.buffer(16)?;
         cx.borrow_mut(&mut buffer, |raw_buffer| {
-            raw_buffer.as_mut_slice().copy_from_slice(self.as_ref());
+            raw_buffer.as_mut_slice().copy_from_slice(self.as_bytes());
         });
         Ok(buffer)
     }
@@ -714,6 +714,58 @@ impl<T: Send + Sync + 'static> Finalize for PersistentBoxedValue<T> {
     }
 }
 
+/// Safely persists an array of boxed Rust values by treating the array as a GC root.
+///
+/// The array must contain wrapper objects that refer to an underlying `JsBox<T>`.
+///
+/// A `PersistentArrayOfBoxedValues` **cannot be dropped**; instead, it must be explicitly
+/// finalized in a JavaScript context, as it contains a [`neon::handle::Root`].
+pub struct PersistentArrayOfBoxedValues<T: Send + Sync + 'static> {
+    owner: Root<JsArray>,
+    // We're unsafely assuming that `owner` will the boxed references in `value_refs` alive.
+    // `owner` can't be deallocated out from under us, but it could be mutated.
+    value_refs: Vec<&'static T>,
+}
+
+impl<T: Send + Sync + 'static> PersistentArrayOfBoxedValues<T> {
+    /// Persists `array`, assuming it does in fact contain an array of objects referencing a boxed
+    /// Rust value under the `_nativeHandle` property.
+    pub(crate) fn new<'a, U, C>(cx: &mut C, array: Handle<JsArray>) -> NeonResult<Self>
+    where
+        C: Context<'a>,
+        U: std::borrow::Borrow<T> + Send + Sync + 'static,
+    {
+        let len = array.len(cx);
+        let value_refs: NeonResult<Vec<&'static T>> = (0..len)
+            .map(|i| {
+                let element = array.get(cx, i)?;
+                let value_box: Handle<JsBox<U>> = element
+                    .downcast_or_throw::<JsObject, _>(cx)?
+                    .get(cx, NATIVE_HANDLE_PROPERTY)?
+                    .downcast_or_throw(cx)?;
+                Ok(unsafe {
+                    extend_lifetime::<'_, 'static, T>(std::borrow::Borrow::borrow(&**value_box))
+                })
+            })
+            .collect();
+        let value_refs = value_refs?;
+
+        // We must create the root after all failable operations.
+        let owner = array.root(cx);
+        Ok(Self { owner, value_refs })
+    }
+
+    pub(crate) fn value_refs(&self) -> &[&T] {
+        &self.value_refs
+    }
+}
+
+impl<T: Send + Sync + 'static> Finalize for PersistentArrayOfBoxedValues<T> {
+    fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
+        self.owner.finalize(cx)
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for Node.
 macro_rules! node_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -761,6 +813,26 @@ macro_rules! node_bridge_handle {
                 stored: &'storage mut Self::StoredType,
             ) -> Self {
                 &*stored
+            }
+        }
+
+        impl<'storage> node::AsyncArgTypeInfo<'storage>
+        for &'storage [&'storage $typ] {
+            type ArgType = node::JsArray;
+            type StoredType = node::PersistentArrayOfBoxedValues<$typ>;
+            fn save_async_arg(
+                cx: &mut node::FunctionContext,
+                foreign: node::Handle<Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                node::PersistentArrayOfBoxedValues::new::<node::DefaultFinalize<$typ>, _>(
+                    cx,
+                    foreign,
+                )
+            }
+            fn load_async_arg(
+                stored: &'storage mut Self::StoredType,
+            ) -> Self {
+                stored.value_refs()
             }
         }
     };

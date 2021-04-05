@@ -17,7 +17,7 @@ style = "type"
 prefix_with_name = true
 
 [export]
-include = ["SignalErrorCode", "FfiDirection", "FfiCiphertextMessageType"]
+include = ["SignalErrorCode", "FfiDirection", "FfiCiphertextMessageType", "FfiContentHint"]
 item_types = ["enums", "functions", "opaque", "structs", "typedefs"]
 prefix = "Signal"
 renaming_overrides_prefixing = true
@@ -30,6 +30,7 @@ renaming_overrides_prefixing = true
 "FfiSenderKeyStoreStruct" = "SignalSenderKeyStore"
 "FfiDirection" = "SignalDirection"
 "FfiCiphertextMessageType" = "SignalCiphertextMessageType"
+"FfiContentHint" = "SignalContentHint"
 
 # Avoid double-prefixing these
 "SignalFfiError" = "SignalFfiError"

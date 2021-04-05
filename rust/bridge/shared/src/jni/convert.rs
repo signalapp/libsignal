@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{AutoArray, JString, ReleaseMode};
+use jni::objects::JString;
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
@@ -189,7 +189,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     }
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for Uuid {
+impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JObject<'a>;
     fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
         check_jobject_type(env, foreign, "java/util/UUID")?;
@@ -200,7 +200,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Uuid {
         let mut bytes = [0u8; 16];
         bytes[..8].copy_from_slice(&msb.to_be_bytes());
         bytes[8..].copy_from_slice(&lsb.to_be_bytes());
-        Ok(bytes.into())
+        Ok(uuid::Uuid::from_bytes(bytes))
     }
 }
 
@@ -301,6 +301,65 @@ store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
 
+/// A translation from a Java interface where the implementing class wraps the Rust handle.
+impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
+    type ArgType = JavaCiphertextMessage<'a>;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        fn native_handle_from_message<'a, T: 'static>(
+            env: &JNIEnv,
+            foreign: JavaCiphertextMessage<'a>,
+            class_name: &'static str,
+            make_result: fn(&'a T) -> CiphertextMessageRef<'a>,
+        ) -> SignalJniResult<Option<CiphertextMessageRef<'a>>> {
+            if env.is_instance_of(foreign, class_name)? {
+                let handle = call_method_checked(
+                    env,
+                    foreign,
+                    "nativeHandle",
+                    jni_signature!(() -> long),
+                    &[],
+                )?;
+                Ok(Some(make_result(unsafe { native_handle_cast(handle)? })))
+            } else {
+                Ok(None)
+            }
+        }
+
+        if foreign.is_null() {
+            return Err(SignalJniError::NullHandle);
+        }
+
+        None.or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/SignalMessage",
+                Self::SignalMessage,
+            )
+            .transpose()
+        })
+        .or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                Self::PreKeySignalMessage,
+            )
+            .transpose()
+        })
+        .or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/SenderKeyMessage",
+                Self::SenderKeyMessage,
+            )
+            .transpose()
+        })
+        .unwrap_or(Err(SignalJniError::BadJniParameter("CiphertextMessage")))
+    }
+}
+
 impl ResultTypeInfo for bool {
     type ResultType = jboolean;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -380,11 +439,11 @@ impl ResultTypeInfo for Option<&str> {
     }
 }
 
-impl ResultTypeInfo for Uuid {
+impl ResultTypeInfo for uuid::Uuid {
     type ResultType = jobject;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         let uuid_class = env.find_class("java/util/UUID")?;
-        let uuid_bytes: [u8; 16] = self.into();
+        let uuid_bytes: [u8; 16] = *self.as_bytes();
         let ctor_args = [
             JValue::from(jlong::from_be_bytes(
                 uuid_bytes[..8].try_into().expect("correct length"),
@@ -395,6 +454,32 @@ impl ResultTypeInfo for Uuid {
         ];
 
         Ok(*env.new_object(uuid_class, "(JJ)V", &ctor_args)?)
+    }
+}
+
+/// A translation to a Java interface where the implementing class wraps the Rust handle.
+impl ResultTypeInfo for CiphertextMessage {
+    type ResultType = JavaReturnCiphertextMessage;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        let obj = match self {
+            CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/SignalMessage",
+                box_object::<SignalMessage>(Ok(m))?,
+            ),
+            CiphertextMessage::PreKeySignalMessage(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                box_object::<PreKeySignalMessage>(Ok(m))?,
+            ),
+            CiphertextMessage::SenderKeyMessage(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/SenderKeyMessage",
+                box_object::<SenderKeyMessage>(Ok(m))?,
+            ),
+        };
+
+        Ok(obj?.into_inner())
     }
 }
 
@@ -485,6 +570,33 @@ macro_rules! jni_bridge_handle {
                 Ok(unsafe { jni::native_handle_cast(foreign) }?)
             }
         }
+
+        impl<'storage, 'context: 'storage> jni::ArgTypeInfo<'storage, 'context>
+            for &'storage [&'storage $typ]
+        {
+            type ArgType = jni::jlongArray;
+            type StoredType = jni::AutoArray<'context, 'context, jni::jlong>;
+            fn borrow(
+                env: &'context jni::JNIEnv,
+                foreign: Self::ArgType,
+            ) -> jni::SignalJniResult<Self::StoredType> {
+                Ok(env.get_long_array_elements(foreign, jni::ReleaseMode::NoCopyBack)?)
+            }
+            fn load_from(
+                _env: &jni::JNIEnv,
+                stored: &'storage mut Self::StoredType,
+            ) -> jni::SignalJniResult<&'storage [&'storage $typ]> {
+                let len = stored.size()? as usize;
+                let slice_of_pointers = unsafe {
+                    std::slice::from_raw_parts(stored.as_ptr() as *const *const $typ, len)
+                };
+                if slice_of_pointers.contains(&std::ptr::null()) {
+                    return Err(jni::SignalJniError::NullHandle);
+                }
+
+                Ok(unsafe { std::slice::from_raw_parts(stored.as_ptr() as *const &$typ, len) })
+            }
+        }
         impl jni::ResultTypeInfo for $typ {
             type ResultType = jni::ObjectHandle;
             fn convert_into(self, _env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
@@ -572,6 +684,12 @@ macro_rules! jni_arg_type {
     (Uuid) => {
         jni::JavaUUID
     };
+    (jni::CiphertextMessageRef) => {
+        jni::JavaCiphertextMessage
+    };
+    (& [& $typ:ty]) => {
+        jni::jlongArray
+    };
     (&mut dyn $typ:ty) => {
         paste!(jni::[<Java $typ>])
     };
@@ -645,6 +763,9 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         jni::jbyteArray
+    };
+    (CiphertextMessage) => {
+        jni::JavaReturnCiphertextMessage
     };
     ( $typ:ty ) => {
         jni::ObjectHandle

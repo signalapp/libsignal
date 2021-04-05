@@ -13,6 +13,7 @@ import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;
+import org.whispersystems.libsignal.protocol.CiphertextMessage;
 
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -47,7 +48,7 @@ public class GroupCipher {
    * @return Ciphertext.
    * @throws NoSessionException
    */
-  public byte[] encrypt(UUID distributionId, byte[] paddedPlaintext) throws NoSessionException {
+  public CiphertextMessage encrypt(UUID distributionId, byte[] paddedPlaintext) throws NoSessionException {
     try {
       return Native.GroupCipher_EncryptMessage(this.sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore, null);
     } catch (IllegalStateException e) {

@@ -4,11 +4,12 @@
 //
 
 use async_trait::async_trait;
+use uuid::Uuid;
 
 use crate::state::{PreKeyId, SignedPreKeyId};
 use crate::{
     IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyRecord,
-    SessionRecord, SignedPreKeyRecord, Uuid,
+    SessionRecord, SignedPreKeyRecord,
 };
 
 pub type Context = Option<*mut std::ffi::c_void>;

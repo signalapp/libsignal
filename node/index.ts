@@ -15,16 +15,23 @@ const NativeImpl = bindings(
 
 export const { initLogger, LogLevel } = NativeImpl;
 
+// These enums must be kept in sync with their Rust counterparts.
 export const enum CiphertextMessageType {
   Whisper = 2,
   PreKey = 3,
-  SenderKey = 4,
-  SenderKeyDistribution = 5,
+  SenderKey = 7,
 }
 
 export const enum Direction {
   Sending,
   Receiving,
+}
+
+// This enum must be kept in sync with sealed_sender.proto.
+export const enum ContentHint {
+  Default = 0,
+  Supplementary = 1,
+  Retry = 2,
 }
 
 export type Uuid = string;
@@ -918,6 +925,22 @@ export class UnidentifiedSenderMessageContent {
     return new UnidentifiedSenderMessageContent(nativeHandle);
   }
 
+  static new(
+    message: CiphertextMessage,
+    sender: SenderCertificate,
+    contentHint: number,
+    groupId: Buffer | null
+  ): UnidentifiedSenderMessageContent {
+    return new UnidentifiedSenderMessageContent(
+      NativeImpl.UnidentifiedSenderMessageContent_New(
+        message,
+        sender,
+        contentHint,
+        groupId
+      )
+    );
+  }
+
   static deserialize(buffer: Buffer): UnidentifiedSenderMessageContent {
     return new UnidentifiedSenderMessageContent(
       NativeImpl.UnidentifiedSenderMessageContent_Deserialize(buffer)
@@ -940,6 +963,14 @@ export class UnidentifiedSenderMessageContent {
     return SenderCertificate._fromNativeHandle(
       NativeImpl.UnidentifiedSenderMessageContent_GetSenderCert(this)
     );
+  }
+
+  contentHint(): number {
+    return NativeImpl.UnidentifiedSenderMessageContent_GetContentHint(this);
+  }
+
+  groupId(): Buffer | null {
+    return NativeImpl.UnidentifiedSenderMessageContent_GetGroupId(this);
   }
 }
 
@@ -1109,13 +1140,15 @@ export async function groupEncrypt(
   distributionId: Uuid,
   store: SenderKeyStore,
   message: Buffer
-): Promise<Buffer> {
-  return NativeImpl.GroupCipher_EncryptMessage(
-    sender,
-    Buffer.from(uuid.parse(distributionId) as Uint8Array),
-    message,
-    store,
-    null
+): Promise<CiphertextMessage> {
+  return CiphertextMessage._fromNativeHandle(
+    await NativeImpl.GroupCipher_EncryptMessage(
+      sender,
+      Buffer.from(uuid.parse(distributionId) as Uint8Array),
+      message,
+      store,
+      null
+    )
   );
 }
 
@@ -1245,20 +1278,55 @@ export function signalDecryptPreKey(
   );
 }
 
-export function sealedSenderEncryptMessage(
+export async function sealedSenderEncryptMessage(
   message: Buffer,
   address: ProtocolAddress,
   senderCert: SenderCertificate,
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore
 ): Promise<Buffer> {
-  return NativeImpl.SealedSender_EncryptMessage(
-    address,
-    senderCert,
+  const ciphertext = await signalEncrypt(
     message,
+    address,
     sessionStore,
+    identityStore
+  );
+  const usmc = UnidentifiedSenderMessageContent.new(
+    ciphertext,
+    senderCert,
+    ContentHint.Default,
+    null
+  );
+  return await sealedSenderEncrypt(usmc, address, identityStore);
+}
+
+export function sealedSenderEncrypt(
+  content: UnidentifiedSenderMessageContent,
+  address: ProtocolAddress,
+  identityStore: IdentityKeyStore
+): Promise<Buffer> {
+  return NativeImpl.SealedSender_Encrypt(address, content, identityStore, null);
+}
+
+export function sealedSenderMultiRecipientEncrypt(
+  content: UnidentifiedSenderMessageContent,
+  recipients: ProtocolAddress[],
+  identityStore: IdentityKeyStore
+): Promise<Buffer> {
+  return NativeImpl.SealedSender_MultiRecipientEncrypt(
+    recipients,
+    content,
     identityStore,
     null
+  );
+}
+
+// For testing only
+export function sealedSenderMultiRecipientMessageForSingleRecipient(
+  message: Buffer
+): Buffer {
+  return NativeImpl.SealedSender_MultiRecipientMessageForSingleRecipient(
+    message
   );
 }
 

@@ -71,9 +71,10 @@ public class SessionCipher {
    */
   public CiphertextMessage encrypt(byte[] paddedMessage) throws UntrustedIdentityException {
      return Native.SessionCipher_EncryptMessage(paddedMessage,
-                           this.remoteAddress.nativeHandle(),
-                           sessionStore,
-                           identityKeyStore);
+                                                this.remoteAddress.nativeHandle(),
+                                                sessionStore,
+                                                identityKeyStore,
+                                                null);
   }
 
   /**

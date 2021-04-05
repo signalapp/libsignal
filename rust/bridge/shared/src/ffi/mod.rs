@@ -83,17 +83,22 @@ pub unsafe fn write_result_to<T: ResultTypeInfo>(
 pub unsafe fn write_bytearray_to<T: Into<Box<[u8]>>>(
     out: *mut *const c_uchar,
     out_len: *mut size_t,
-    value: T,
+    value: Option<T>,
 ) -> Result<(), SignalFfiError> {
     if out.is_null() || out_len.is_null() {
         return Err(SignalFfiError::NullPointer);
     }
 
-    let value: Box<[u8]> = value.into();
+    if let Some(value) = value {
+        let value: Box<[u8]> = value.into();
 
-    *out_len = value.len();
-    let mem = Box::into_raw(value);
-    *out = (*mem).as_ptr();
+        *out_len = value.len();
+        let mem = Box::into_raw(value);
+        *out = (*mem).as_ptr();
+    } else {
+        *out = std::ptr::null();
+        *out_len = 0;
+    }
 
     Ok(())
 }

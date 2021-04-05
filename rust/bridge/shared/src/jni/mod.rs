@@ -14,8 +14,8 @@ use signal_crypto::Error as SignalCryptoError;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 
-pub(crate) use jni::objects::{JClass, JObject, JString};
-pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jstring};
+pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
+pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jstring};
 pub(crate) use jni::JNIEnv;
 
 /// Converts a function signature to a JNI signature string.
@@ -71,6 +71,8 @@ pub type ObjectHandle = jlong;
 
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
+pub type JavaCiphertextMessage<'a> = JObject<'a>;
+pub type JavaReturnCiphertextMessage = jobject;
 
 /// Translates errors into Java exceptions.
 ///
@@ -465,6 +467,35 @@ pub fn get_object_with_serialization(
         call_method_checked(env, obj, "serialize", jni_signature!(() -> [byte]), &[])?;
 
     Ok(Some(env.convert_byte_array(*bytes)?))
+}
+
+/// Like [CiphertextMessage], but non-owning.
+///
+/// Java has an interface for CiphertextMessage instead of an opaque handle, so we need to do extra
+/// work to bridge it back to Rust.
+#[derive(Clone, Copy)]
+pub enum CiphertextMessageRef<'a> {
+    SignalMessage(&'a SignalMessage),
+    PreKeySignalMessage(&'a PreKeySignalMessage),
+    SenderKeyMessage(&'a SenderKeyMessage),
+}
+
+impl<'a> CiphertextMessageRef<'a> {
+    pub fn message_type(self) -> CiphertextMessageType {
+        match self {
+            CiphertextMessageRef::SignalMessage(_) => CiphertextMessageType::Whisper,
+            CiphertextMessageRef::PreKeySignalMessage(_) => CiphertextMessageType::PreKey,
+            CiphertextMessageRef::SenderKeyMessage(_) => CiphertextMessageType::SenderKey,
+        }
+    }
+
+    pub fn serialize(self) -> &'a [u8] {
+        match self {
+            CiphertextMessageRef::SignalMessage(x) => x.serialized(),
+            CiphertextMessageRef::PreKeySignalMessage(x) => x.serialized(),
+            CiphertextMessageRef::SenderKeyMessage(x) => x.serialized(),
+        }
+    }
 }
 
 /// Used by [`bridge_handle`](crate::support::bridge_handle).

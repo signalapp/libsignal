@@ -45,6 +45,10 @@ def translate_to_ts(typ):
     if typ.startswith('&mut'):
         return 'Wrapper<' + typ[4:] + '>'
 
+    if typ.startswith('&[&'):
+        assert(typ.endswith(']'))
+        return 'Wrapper<' + translate_to_ts(typ[3:-1]) + '>[]'
+
     if typ.startswith('&'):
         return 'Wrapper<' + typ[1:] + '>'
 

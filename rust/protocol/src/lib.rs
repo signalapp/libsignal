@@ -25,7 +25,6 @@ mod session_cipher;
 mod state;
 mod storage;
 mod utils;
-mod uuid;
 
 use error::Result;
 
@@ -50,8 +49,9 @@ pub use {
     },
     sealed_sender::{
         sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
-        SealedSenderDecryptionResult, SenderCertificate, ServerCertificate,
-        UnidentifiedSenderMessage, UnidentifiedSenderMessageContent,
+        sealed_sender_encrypt_from_usmc, sealed_sender_multi_recipient_encrypt,
+        sealed_sender_multi_recipient_fan_out, ContentHint, SealedSenderDecryptionResult,
+        SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent,
     },
     sender_keys::SenderKeyRecord,
     session::{process_prekey, process_prekey_bundle},
@@ -64,5 +64,4 @@ pub use {
         InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
         PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
     },
-    uuid::Uuid,
 };

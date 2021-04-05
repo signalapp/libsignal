@@ -31,7 +31,12 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
                 out_len: *mut libc::size_t, // note the trailing comma
             ),
             quote!(ffi::Env,), // note the trailing comma
-            quote!(ffi::write_bytearray_to(out, out_len, __result?)?),
+            quote! {
+                let __result = support::TransformHelper(__result?)
+                    .some_if_needed()
+                    .map(|helper| helper.0);
+                ffi::write_bytearray_to(out, out_len, __result)?
+            },
         ),
         (ResultKind::Buffer, ReturnType::Default) => {
             return Error::new(

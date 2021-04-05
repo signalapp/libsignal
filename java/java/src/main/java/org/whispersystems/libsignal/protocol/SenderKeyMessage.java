@@ -25,6 +25,14 @@ public class SenderKeyMessage implements CiphertextMessage {
      Native.SenderKeyMessage_Destroy(this.handle);
   }
 
+  public SenderKeyMessage(long handle) {
+    this.handle = handle;
+  }
+
+  public long nativeHandle() {
+    return handle;
+  }
+
   public SenderKeyMessage(byte[] serialized) throws InvalidMessageException, LegacyMessageException {
     handle = Native.SenderKeyMessage_Deserialize(serialized);
   }

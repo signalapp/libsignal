@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use signal_neon_futures::*;
 use std::cell::RefCell;
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct NodePreKeyStore {
     js_queue: EventQueue,

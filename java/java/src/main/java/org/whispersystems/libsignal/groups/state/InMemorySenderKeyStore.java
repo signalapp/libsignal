@@ -1,4 +1,4 @@
-package org.whispersystems.libsignal.groups;
+package org.whispersystems.libsignal.groups.state;
 
 import org.whispersystems.libsignal.groups.state.SenderKeyRecord;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;

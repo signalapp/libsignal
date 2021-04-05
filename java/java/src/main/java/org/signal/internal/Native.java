@@ -120,7 +120,7 @@ public final class Native {
   public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
   public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store, Object ctx);
-  public static native byte[] GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store, Object ctx);
+  public static native CiphertextMessage GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store, Object ctx);
 
   public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store, Object ctx);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store, Object ctx);
@@ -177,7 +177,9 @@ public final class Native {
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 
   public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore, Object ctx);
-  public static native byte[] SealedSessionCipher_Encrypt(long destination, long senderCert, byte[] ptext, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native byte[] SealedSessionCipher_Encrypt(long destination, long content, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long content, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage);
 
   public static native long SenderCertificate_Deserialize(byte[] data);
   public static native void SenderCertificate_Destroy(long handle);
@@ -231,7 +233,7 @@ public final class Native {
 
   public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, Object ctx);
   public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
-  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
   public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);
   public static native long SessionRecord_Deserialize(byte[] data);
@@ -273,17 +275,11 @@ public final class Native {
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
+  public static native int UnidentifiedSenderMessageContent_GetContentHint(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetContents(long obj);
+  public static native byte[] UnidentifiedSenderMessageContent_GetGroupId(long m);
   public static native int UnidentifiedSenderMessageContent_GetMsgType(long m);
   public static native long UnidentifiedSenderMessageContent_GetSenderCert(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long obj);
-  public static native long UnidentifiedSenderMessageContent_New(int msgType, long sender, byte[] contents);
-
-  public static native long UnidentifiedSenderMessage_Deserialize(byte[] data);
-  public static native void UnidentifiedSenderMessage_Destroy(long handle);
-  public static native byte[] UnidentifiedSenderMessage_GetEncryptedMessage(long obj);
-  public static native byte[] UnidentifiedSenderMessage_GetEncryptedStatic(long obj);
-  public static native long UnidentifiedSenderMessage_GetEphemeralPublic(long obj);
-  public static native byte[] UnidentifiedSenderMessage_GetSerialized(long obj);
-  public static native long UnidentifiedSenderMessage_New(long publicKey, byte[] encryptedStatic, byte[] encryptedMessage);
+  public static native long UnidentifiedSenderMessageContent_New(CiphertextMessage message, long sender, int contentHint, byte[] groupId);
 }

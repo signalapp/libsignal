@@ -8,13 +8,14 @@ use crate::crypto;
 
 use crate::{
     Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage, SenderKeyMessage,
-    SenderKeyRecord, SenderKeyStore, SignalProtocolError, Uuid,
+    SenderKeyRecord, SenderKeyStore, SignalProtocolError,
 };
 
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_store: &mut dyn SenderKeyStore,
@@ -23,7 +24,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     plaintext: &[u8],
     csprng: &mut R,
     ctx: Context,
-) -> Result<Vec<u8>> {
+) -> Result<SenderKeyMessage> {
     let mut record = sender_key_store
         .load_sender_key(sender, distribution_id, ctx)
         .await?
@@ -53,7 +54,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
         .store_sender_key(sender, distribution_id, &record, ctx)
         .await?;
 
-    Ok(skm.serialized().to_vec())
+    Ok(skm)
 }
 
 fn get_sender_key(state: &mut SenderKeyState, iteration: u32) -> Result<SenderMessageKey> {

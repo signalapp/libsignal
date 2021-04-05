@@ -5,7 +5,7 @@
 
 use crate::{
     IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyRecord,
-    SessionRecord, SignalProtocolError, SignedPreKeyRecord, Uuid,
+    SessionRecord, SignalProtocolError, SignedPreKeyRecord,
 };
 
 use crate::state::{PreKeyId, SignedPreKeyId};
@@ -15,6 +15,7 @@ use crate::storage::Context;
 use async_trait::async_trait;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct InMemIdentityKeyStore {

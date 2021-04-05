@@ -8,6 +8,7 @@ use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 use crate::support::*;
 use crate::*;
@@ -28,7 +29,6 @@ bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
-bridge_handle!(UnidentifiedSenderMessage, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 
@@ -351,7 +351,7 @@ bridge_get!(SenderKeyMessage::iteration -> u32);
 // Alternate form that copies into an existing buffer.
 #[bridge_fn_void(jni = false, node = false)]
 fn SenderKeyMessageGetDistributionId(out: &mut [u8; 16], obj: &SenderKeyMessage) -> Result<()> {
-    *out = obj.distribution_id().into();
+    *out = *obj.distribution_id().as_bytes();
     Ok(())
 }
 
@@ -408,7 +408,7 @@ fn SenderKeyDistributionMessageGetDistributionId(
     out: &mut [u8; 16],
     obj: &SenderKeyDistributionMessage,
 ) -> Result<()> {
-    *out = obj.distribution_id()?.into();
+    *out = *obj.distribution_id()?.as_bytes();
     Ok(())
 }
 
@@ -605,64 +605,99 @@ fn UnidentifiedSenderMessageContent_GetSenderCert(
     Ok(m.sender()?.clone())
 }
 
+#[bridge_fn_buffer]
+fn UnidentifiedSenderMessageContent_GetGroupId<E: Env>(
+    env: E,
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<Option<E::Buffer>> {
+    Ok(m.group_id()?.map(|buf| env.buffer(buf)))
+}
+
 #[bridge_fn]
 fn UnidentifiedSenderMessageContent_GetMsgType(m: &UnidentifiedSenderMessageContent) -> Result<u8> {
     Ok(m.msg_type()? as u8)
 }
 
-// For testing only
-#[bridge_fn(ffi = false, node = false)]
-fn UnidentifiedSenderMessageContent_New(
-    msg_type: u32,
-    sender: &SenderCertificate,
-    contents: &[u8],
-) -> Result<UnidentifiedSenderMessageContent> {
-    // This encoding is from the protobufs
-    let msg_type = match msg_type {
-        1 => Ok(CiphertextMessageType::PreKey),
-        2 => Ok(CiphertextMessageType::Whisper),
-        x => Err(SignalProtocolError::InvalidArgument(format!(
-            "invalid msg_type argument {}",
-            x
-        ))),
-    }?;
-
-    UnidentifiedSenderMessageContent::new(msg_type, sender.clone(), contents.to_owned())
+#[derive(Debug)]
+#[repr(C)]
+pub enum FfiContentHint {
+    Default = 0,
+    Supplementary = 1,
+    Retry = 2,
 }
 
-bridge_deserialize!(
-    UnidentifiedSenderMessage::deserialize,
-    ffi = false,
-    node = false
+const_assert_eq!(
+    FfiContentHint::Default as u32,
+    ContentHint::Default.to_u32(),
 );
-bridge_get_bytearray!(
-    UnidentifiedSenderMessage::serialized,
-    ffi = false,
-    node = false
+const_assert_eq!(
+    FfiContentHint::Supplementary as u32,
+    ContentHint::Supplementary.to_u32(),
 );
-bridge_get_bytearray!(
-    UnidentifiedSenderMessage::encrypted_message,
-    ffi = false,
-    node = false
-);
-bridge_get_bytearray!(
-    UnidentifiedSenderMessage::encrypted_static,
-    ffi = false,
-    node = false
-);
-bridge_get!(UnidentifiedSenderMessage::ephemeral_public -> PublicKey, ffi = false, node = false);
+const_assert_eq!(FfiContentHint::Retry as u32, ContentHint::Retry.to_u32());
 
-// For testing only
-#[bridge_fn(ffi = false, node = false)]
-fn UnidentifiedSenderMessage_New(
-    public_key: &PublicKey,
-    encrypted_static: &[u8],
-    encrypted_message: &[u8],
-) -> Result<UnidentifiedSenderMessage> {
-    UnidentifiedSenderMessage::new(
-        *public_key,
-        encrypted_static.to_owned(),
-        encrypted_message.to_owned(),
+#[bridge_fn]
+fn UnidentifiedSenderMessageContent_GetContentHint(
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<u32> {
+    Ok(m.content_hint()?.into())
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn UnidentifiedSenderMessageContent_New(
+    message: &CiphertextMessage,
+    sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: Option<&[u8]>,
+) -> Result<UnidentifiedSenderMessageContent> {
+    UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender.clone(),
+        message.serialize().to_owned(),
+        ContentHint::from(content_hint),
+        group_id.map(|g| g.to_owned()),
+    )
+}
+
+// Alternate version for FFI because FFI can't support optional slices.
+#[bridge_fn(jni = false, node = false)]
+fn UnidentifiedSenderMessageContentNew(
+    message: &CiphertextMessage,
+    sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: &[u8],
+) -> Result<UnidentifiedSenderMessageContent> {
+    UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender.clone(),
+        message.serialize().to_owned(),
+        ContentHint::from(content_hint),
+        if group_id.is_empty() {
+            None
+        } else {
+            Some(group_id.to_owned())
+        },
+    )
+}
+
+// Alternate version for Java since CiphertextMessage isn't opaque in Java.
+#[bridge_fn(
+    ffi = false,
+    jni = "UnidentifiedSenderMessageContent_1New",
+    node = false
+)]
+fn UnidentifiedSenderMessageContent_New_Java(
+    message: jni::CiphertextMessageRef,
+    sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: Option<&[u8]>,
+) -> Result<UnidentifiedSenderMessageContent> {
+    UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender.clone(),
+        message.serialize().to_owned(),
+        ContentHint::from(content_hint),
+        group_id.map(|g| g.to_owned()),
     )
 }
 
@@ -671,8 +706,7 @@ fn UnidentifiedSenderMessage_New(
 pub enum FfiCiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
-    SenderKey = 4,
-    SenderKeyDistribution = 5,
+    SenderKey = 7,
 }
 
 const_assert_eq!(
@@ -686,10 +720,6 @@ const_assert_eq!(
 const_assert_eq!(
     FfiCiphertextMessageType::SenderKey as u8,
     CiphertextMessageType::SenderKey as u8
-);
-const_assert_eq!(
-    FfiCiphertextMessageType::SenderKeyDistribution as u8,
-    CiphertextMessageType::SenderKeyDistribution as u8
 );
 
 #[bridge_fn(jni = false)]
@@ -858,7 +888,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     .await
 }
 
-#[bridge_fn(ffi = "encrypt_message", jni = false)]
+#[bridge_fn(ffi = "encrypt_message")]
 async fn SessionCipher_EncryptMessage(
     ptext: &[u8],
     protocol_address: &ProtocolAddress,
@@ -924,28 +954,50 @@ async fn SessionCipher_DecryptPreKeySignalMessage<E: Env>(
     Ok(env.buffer(ptext))
 }
 
-#[bridge_fn_buffer(node = "SealedSender_EncryptMessage")]
+#[bridge_fn_buffer(node = "SealedSender_Encrypt")]
 async fn SealedSessionCipher_Encrypt<E: Env>(
     env: E,
     destination: &ProtocolAddress,
-    sender_cert: &SenderCertificate,
-    ptext: &[u8],
-    session_store: &mut dyn SessionStore,
+    content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
     let mut rng = rand::rngs::OsRng;
-    let ctext = sealed_sender_encrypt(
-        destination,
-        sender_cert,
-        ptext,
-        session_store,
+    let ctext =
+        sealed_sender_encrypt_from_usmc(destination, content, identity_key_store, ctx, &mut rng)
+            .await?;
+    Ok(env.buffer(ctext))
+}
+
+#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientEncrypt")]
+async fn SealedSender_MultiRecipientEncrypt<E: Env>(
+    env: E,
+    recipients: &[&ProtocolAddress],
+    content: &UnidentifiedSenderMessageContent,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer> {
+    let mut rng = rand::rngs::OsRng;
+    let ctext = sealed_sender_multi_recipient_encrypt(
+        recipients,
+        content,
         identity_key_store,
         ctx,
         &mut rng,
     )
     .await?;
     Ok(env.buffer(ctext))
+}
+
+#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientMessageForSingleRecipient")]
+fn SealedSender_MultiRecipientMessageForSingleRecipient<E: Env>(
+    env: E,
+    encoded_multi_recipient_message: &[u8],
+) -> Result<E::Buffer> {
+    let messages = sealed_sender_multi_recipient_fan_out(encoded_multi_recipient_message)?;
+    let [single_message] = <[_; 1]>::try_from(messages)
+        .map_err(|_| SignalProtocolError::InvalidMessage("encoded for more than one recipient"))?;
+    Ok(env.buffer(single_message))
 }
 
 #[bridge_fn(node = "SealedSender_DecryptToUsmc")]
@@ -1018,18 +1070,17 @@ async fn SenderKeyDistributionMessage_Process(
         .await
 }
 
-#[bridge_fn_buffer(ffi = "group_encrypt_message")]
-async fn GroupCipher_EncryptMessage<E: Env>(
-    env: E,
+#[bridge_fn(ffi = "group_encrypt_message")]
+async fn GroupCipher_EncryptMessage(
     sender: &ProtocolAddress,
     distribution_id: Uuid,
     message: &[u8],
     store: &mut dyn SenderKeyStore,
     ctx: Context,
-) -> Result<E::Buffer> {
+) -> Result<CiphertextMessage> {
     let mut rng = rand::rngs::OsRng;
     let ctext = group_encrypt(store, sender, distribution_id, message, &mut rng, ctx).await?;
-    Ok(env.buffer(ctext))
+    Ok(CiphertextMessage::SenderKeyMessage(ctext))
 }
 
 #[bridge_fn_buffer(ffi = "group_decrypt_message")]

@@ -17,9 +17,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 typedef enum {
   SignalCiphertextMessageType_Whisper = 2,
   SignalCiphertextMessageType_PreKey = 3,
-  SignalCiphertextMessageType_SenderKey = 4,
-  SignalCiphertextMessageType_SenderKeyDistribution = 5,
+  SignalCiphertextMessageType_SenderKey = 7,
 } SignalCiphertextMessageType;
+
+typedef enum {
+  SignalContentHint_Default = 0,
+  SignalContentHint_Supplementary = 1,
+  SignalContentHint_Retry = 2,
+} SignalContentHint;
 
 typedef enum {
   SignalDirection_Sending = 0,
@@ -805,8 +810,22 @@ SignalFfiError *signal_unidentified_sender_message_content_get_contents(const un
 SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(SignalSenderCertificate **out,
                                                                            const SignalUnidentifiedSenderMessageContent *m);
 
+SignalFfiError *signal_unidentified_sender_message_content_get_group_id(const unsigned char **out,
+                                                                        size_t *out_len,
+                                                                        const SignalUnidentifiedSenderMessageContent *m);
+
 SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t *out,
                                                                         const SignalUnidentifiedSenderMessageContent *m);
+
+SignalFfiError *signal_unidentified_sender_message_content_get_content_hint(uint32_t *out,
+                                                                            const SignalUnidentifiedSenderMessageContent *m);
+
+SignalFfiError *signal_unidentified_sender_message_content_new(SignalUnidentifiedSenderMessageContent **out,
+                                                               const SignalCiphertextMessage *message,
+                                                               const SignalSenderCertificate *sender,
+                                                               uint32_t content_hint,
+                                                               const unsigned char *group_id,
+                                                               size_t group_id_len);
 
 SignalFfiError *signal_ciphertext_message_type(uint8_t *out, const SignalCiphertextMessage *msg);
 
@@ -867,12 +886,22 @@ SignalFfiError *signal_decrypt_pre_key_message(const unsigned char **out,
 SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
                                                      size_t *out_len,
                                                      const SignalProtocolAddress *destination,
-                                                     const SignalSenderCertificate *sender_cert,
-                                                     const unsigned char *ptext,
-                                                     size_t ptext_len,
-                                                     const SignalSessionStore *session_store,
+                                                     const SignalUnidentifiedSenderMessageContent *content,
                                                      const SignalIdentityKeyStore *identity_key_store,
                                                      void *ctx);
+
+SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(const unsigned char **out,
+                                                             size_t *out_len,
+                                                             const SignalProtocolAddress *const *recipients,
+                                                             size_t recipients_len,
+                                                             const SignalUnidentifiedSenderMessageContent *content,
+                                                             const SignalIdentityKeyStore *identity_key_store,
+                                                             void *ctx);
+
+SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipient(const unsigned char **out,
+                                                                                  size_t *out_len,
+                                                                                  const unsigned char *encoded_multi_recipient_message,
+                                                                                  size_t encoded_multi_recipient_message_len);
 
 SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out,
                                                              const unsigned char *ctext,
@@ -891,8 +920,7 @@ SignalFfiError *signal_process_sender_key_distribution_message(const SignalProto
                                                                const SignalSenderKeyStore *store,
                                                                void *ctx);
 
-SignalFfiError *signal_group_encrypt_message(const unsigned char **out,
-                                             size_t *out_len,
+SignalFfiError *signal_group_encrypt_message(SignalCiphertextMessage **out,
                                              const SignalProtocolAddress *sender,
                                              const uint8_t (*distribution_id)[16],
                                              const unsigned char *message,

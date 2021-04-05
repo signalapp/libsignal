@@ -6,6 +6,7 @@
 use super::*;
 use async_trait::async_trait;
 use libc::{c_int, c_uint, c_void};
+use uuid::Uuid;
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
@@ -422,8 +423,13 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
         ctx: Context,
     ) -> Result<(), SignalProtocolError> {
         let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result =
-            (self.store_sender_key)(self.ctx, &*sender, distribution_id.as_ref(), &*record, ctx);
+        let result = (self.store_sender_key)(
+            self.ctx,
+            &*sender,
+            distribution_id.as_bytes(),
+            &*record,
+            ctx,
+        );
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -447,7 +453,7 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
             self.ctx,
             &mut record,
             &*sender,
-            distribution_id.as_ref(),
+            distribution_id.as_bytes(),
             ctx,
         );
 

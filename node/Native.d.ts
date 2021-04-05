@@ -51,7 +51,7 @@ export function Fingerprint_DisplayString(obj: Wrapper<Fingerprint>): string;
 export function Fingerprint_New(iterations: number, version: number, localIdentifier: Buffer, localKey: Wrapper<PublicKey>, remoteIdentifier: Buffer, remoteKey: Wrapper<PublicKey>): Fingerprint;
 export function Fingerprint_ScannableEncoding(obj: Wrapper<Fingerprint>): Buffer;
 export function GroupCipher_DecryptMessage(sender: Wrapper<ProtocolAddress>, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
-export function GroupCipher_EncryptMessage(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
+export function GroupCipher_EncryptMessage(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, message: Buffer, store: SenderKeyStore, ctx: null): Promise<CiphertextMessage>;
 export function HKDF_DeriveSecrets(outputLength: number, version: number, ikm: Buffer, label: Buffer, salt: Buffer | null): Buffer;
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Buffer;
 export function PreKeyBundle_GetDeviceId(obj: Wrapper<PreKeyBundle>): number;
@@ -97,7 +97,9 @@ export function SealedSenderDecryptionResult_GetSenderUuid(obj: Wrapper<SealedSe
 export function SealedSenderDecryptionResult_Message(obj: Wrapper<SealedSenderDecryptionResult>): Buffer;
 export function SealedSender_DecryptMessage(message: Buffer, trustRoot: Wrapper<PublicKey>, timestamp: number, localE164: string | null, localUuid: string, localDeviceId: number, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore): Promise<SealedSenderDecryptionResult | null>;
 export function SealedSender_DecryptToUsmc(ctext: Buffer, identityStore: IdentityKeyStore, ctx: null): Promise<UnidentifiedSenderMessageContent>;
-export function SealedSender_EncryptMessage(destination: Wrapper<ProtocolAddress>, senderCert: Wrapper<SenderCertificate>, ptext: Buffer, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
+export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
+export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
+export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Buffer): Buffer;
 export function SenderCertificate_Deserialize(buffer: Buffer): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: Wrapper<SenderCertificate>): Buffer;
 export function SenderCertificate_GetDeviceId(obj: Wrapper<SenderCertificate>): number;
@@ -163,9 +165,12 @@ export function SignedPreKeyRecord_GetTimestamp(obj: Wrapper<SignedPreKeyRecord>
 export function SignedPreKeyRecord_New(id: number, timestamp: number, pubKey: Wrapper<PublicKey>, privKey: Wrapper<PrivateKey>, signature: Buffer): SignedPreKeyRecord;
 export function SignedPreKeyRecord_Serialize(obj: Wrapper<SignedPreKeyRecord>): Buffer;
 export function UnidentifiedSenderMessageContent_Deserialize(buffer: Buffer): UnidentifiedSenderMessageContent;
+export function UnidentifiedSenderMessageContent_GetContentHint(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetContents(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
+export function UnidentifiedSenderMessageContent_GetGroupId(m: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
 export function UnidentifiedSenderMessageContent_GetMsgType(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetSenderCert(m: Wrapper<UnidentifiedSenderMessageContent>): SenderCertificate;
+export function UnidentifiedSenderMessageContent_New(message: Wrapper<CiphertextMessage>, sender: Wrapper<SenderCertificate>, contentHint: number, groupId: Buffer | null): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_Serialize(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }

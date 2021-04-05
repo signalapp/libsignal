@@ -236,11 +236,11 @@ impl SimpleArgTypeInfo for Context {
     }
 }
 
-impl SimpleArgTypeInfo for Uuid {
+impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = *const [u8; 16];
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         match unsafe { foreign.as_ref() } {
-            Some(array) => Ok(Uuid::from(*array)),
+            Some(array) => Ok(uuid::Uuid::from_bytes(*array)),
             None => Err(SignalFfiError::NullPointer),
         }
     }
@@ -375,6 +375,28 @@ macro_rules! ffi_bridge_handle {
                 unsafe { ffi::native_handle_cast_mut(foreign) }
             }
         }
+        impl ffi::SizedArgTypeInfo for &[& $typ] {
+            type ArgType = *const *const $typ;
+            fn convert_from(input: Self::ArgType, input_len: usize) -> ffi::SignalFfiResult<Self> {
+                if input.is_null() {
+                    if input_len != 0 {
+                        return Err(ffi::SignalFfiError::NullPointer);
+                    }
+                    // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+                    return Ok(&[]);
+                }
+
+                let slice_of_pointers = unsafe { std::slice::from_raw_parts(input, input_len) };
+
+                if slice_of_pointers.contains(&std::ptr::null()) {
+                    return Err(ffi::SignalFfiError::NullPointer);
+                }
+
+                let base_ptr_for_slice_of_refs = input as *const & $typ;
+
+                unsafe { Ok(std::slice::from_raw_parts(base_ptr_for_slice_of_refs, input_len)) }
+            }
+        }
         impl ffi::ResultTypeInfo for $typ {
             type ResultType = *mut $typ;
             fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
@@ -461,6 +483,7 @@ macro_rules! ffi_arg_type {
     (Option<&str>) => (*const libc::c_char);
     (Context) => (*mut libc::c_void);
     (Uuid) => (*const [u8; 16]);
+    (&[& $typ:ty]) => (*const *const $typ);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);

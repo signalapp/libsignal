@@ -7,11 +7,7 @@ import SignalFfi
 import Foundation
 
 internal func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
-    var output: UnsafePointer<Int8>?
-    try checkError(fn(&output))
-    let result = String(cString: output!)
-    signal_free_string(output)
-    return result
+    try invokeFnReturningOptionalString(fn: fn)!
 }
 
 internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String? {
@@ -26,9 +22,16 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
 }
 
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
+    return try invokeFnReturningOptionalArray(fn: fn)!
+}
+
+internal func invokeFnReturningOptionalArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8]? {
     var output: UnsafePointer<UInt8>?
     var output_len = 0
     try checkError(fn(&output, &output_len))
+    if output == nil {
+        return nil
+    }
     let result = Array(UnsafeBufferPointer(start: output, count: output_len))
     signal_free_buffer(output, output_len)
     return result

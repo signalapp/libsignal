@@ -7,6 +7,8 @@ import org.whispersystems.libsignal.DuplicateMessageException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.NoSessionException;
+import org.whispersystems.libsignal.groups.state.InMemorySenderKeyStore;
+import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
 
 import java.security.NoSuchAlgorithmException;
@@ -38,9 +40,9 @@ public class GroupCipherTest extends TestCase {
 
 //    bobSessionBuilder.process(SENDER_ADDRESS, DISTRIBUTION_ID, receivedAliceDistributionMessage);
 
-    byte[] ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes());
+    CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes());
     try {
-      byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice);
+      byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice.serialize());
       throw new AssertionError("Should be no session!");
     } catch (NoSessionException e) {
       // good
@@ -63,8 +65,8 @@ public class GroupCipherTest extends TestCase {
     SenderKeyDistributionMessage receivedAliceDistributionMessage = new SenderKeyDistributionMessage(sentAliceDistributionMessage.serialize());
     bobSessionBuilder.process(SENDER_ADDRESS, receivedAliceDistributionMessage);
 
-    byte[] ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes());
-    byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice);
+    CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes());
+    byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice.serialize());
 
     assertTrue(new String(plaintextFromAlice).equals("smert ze smert"));
   }
@@ -86,8 +88,8 @@ public class GroupCipherTest extends TestCase {
     byte[] plaintext = new byte[1024 * 1024];
     new Random().nextBytes(plaintext);
 
-    byte[] ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, plaintext);
-    byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice);
+    CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, plaintext);
+    byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice.serialize());
 
     assertTrue(Arrays.equals(plaintext, plaintextFromAlice));
   }
@@ -111,9 +113,9 @@ public class GroupCipherTest extends TestCase {
 
     bobSessionBuilder.process(SENDER_ADDRESS, receivedAliceDistributionMessage);
 
-    byte[] ciphertextFromAlice  = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes());
-    byte[] ciphertextFromAlice2 = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert2".getBytes());
-    byte[] ciphertextFromAlice3 = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert3".getBytes());
+    byte[] ciphertextFromAlice  = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes()).serialize();
+    byte[] ciphertextFromAlice2 = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert2".getBytes()).serialize();
+    byte[] ciphertextFromAlice3 = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert3".getBytes()).serialize();
 
     byte[] plaintextFromAlice   = bobGroupCipher.decrypt(ciphertextFromAlice);
 
@@ -155,8 +157,8 @@ public class GroupCipherTest extends TestCase {
     SenderKeyDistributionMessage distributionMessageToBob = aliceSessionBuilder.create(SENDER_ADDRESS, DISTRIBUTION_ID);
     bobSessionBuilder.process(SENDER_ADDRESS, new SenderKeyDistributionMessage(distributionMessageToBob.serialize()));
 
-    byte[] ciphertext = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "welcome to the group".getBytes());
-    byte[] plaintext  = bobGroupCipher.decrypt(ciphertext);
+    CiphertextMessage ciphertext = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "welcome to the group".getBytes());
+    byte[] plaintext  = bobGroupCipher.decrypt(ciphertext.serialize());
 
     assertEquals(new String(plaintext), "welcome to the group");
   }
@@ -182,7 +184,7 @@ public class GroupCipherTest extends TestCase {
     ArrayList<byte[]> ciphertexts = new ArrayList<>(100);
 
     for (int i=0;i<100;i++) {
-      ciphertexts.add(aliceGroupCipher.encrypt(DISTRIBUTION_ID, "up the punks".getBytes()));
+      ciphertexts.add(aliceGroupCipher.encrypt(DISTRIBUTION_ID, "up the punks".getBytes()).serialize());
     }
 
     while (ciphertexts.size() > 0) {
@@ -224,7 +226,7 @@ public class GroupCipherTest extends TestCase {
       aliceGroupCipher.encrypt(DISTRIBUTION_ID, "up the punks".getBytes());
     }
 
-    byte[] tooFarCiphertext = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "notta gonna worka".getBytes());
+    byte[] tooFarCiphertext = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "notta gonna worka".getBytes()).serialize();
     try {
       bobGroupCipher.decrypt(tooFarCiphertext);
       throw new AssertionError("Should have failed!");
@@ -250,7 +252,7 @@ public class GroupCipherTest extends TestCase {
     List<byte[]> inflight = new LinkedList<>();
 
     for (int i=0;i<2010;i++) {
-      inflight.add(aliceGroupCipher.encrypt(DISTRIBUTION_ID, "up the punks".getBytes()));
+      inflight.add(aliceGroupCipher.encrypt(DISTRIBUTION_ID, "up the punks".getBytes()).serialize());
     }
 
     bobGroupCipher.decrypt(inflight.get(1000));

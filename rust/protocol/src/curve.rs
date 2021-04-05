@@ -86,6 +86,15 @@ impl PublicKey {
         }
     }
 
+    pub fn from_djb_public_key_bytes(bytes: &[u8]) -> Result<Self> {
+        match <[u8; 32]>::try_from(bytes) {
+            Err(_) => Err(SignalProtocolError::BadKeyLength(KeyType::Djb, bytes.len())),
+            Ok(key) => Ok(PublicKey {
+                key: PublicKeyData::DjbPublicKey(key),
+            }),
+        }
+    }
+
     pub fn serialize(&self) -> Box<[u8]> {
         let value_len = match self.key {
             PublicKeyData::DjbPublicKey(v) => v.len(),
@@ -140,9 +149,22 @@ impl TryFrom<&[u8]> for PublicKey {
     }
 }
 
+impl subtle::ConstantTimeEq for PublicKey {
+    /// A constant-time comparison as long as the two keys have a matching type.
+    ///
+    /// If the two keys have different types, the comparison short-circuits,
+    /// much like comparing two slices of different lengths.
+    fn ct_eq(&self, other: &PublicKey) -> subtle::Choice {
+        if self.key_type() != other.key_type() {
+            return 0.ct_eq(&1);
+        }
+        self.key_data().ct_eq(other.key_data())
+    }
+}
+
 impl PartialEq for PublicKey {
     fn eq(&self, other: &PublicKey) -> bool {
-        self.key_type() == other.key_type() && self.key_data().ct_eq(other.key_data()).into()
+        bool::from(self.ct_eq(other))
     }
 }
 
