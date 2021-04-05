@@ -537,6 +537,10 @@ impl UnidentifiedSenderMessage {
             ));
         }
         let version = data[0] >> 4;
+        log::info!(
+            "deserializing UnidentifiedSenderMessage with version {}",
+            version
+        );
 
         match version {
             0 | SEALED_SENDER_V1_VERSION => {
