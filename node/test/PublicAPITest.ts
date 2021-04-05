@@ -521,7 +521,7 @@ describe('SignalClient', () => {
     assert.deepEqual(skr, skrFromBytes);
   });
   it('SignalMessage and PreKeySignalMessage', () => {
-    const messageVersion = 2;
+    const messageVersion = 3;
     const macKey = Buffer.alloc(32, 0xab);
     const senderRatchetKey = SignalClient.PrivateKey.generate().getPublicKey();
     const counter = 9;
