@@ -5,12 +5,13 @@
   "main": "node/dist/index.js",
   "types": "node/dist/index.d.ts",
   "files": [
-    "node/dist/**",
+    "node/dist/*.js",
+    "node/dist/*.d.ts",
     "build/Release/*.node"
   ],
   "scripts": {
     "build": "node-gyp build",
-    "tsc": "tsc -b node",
+    "tsc": "tsc -b node && yarn cpy node/*.d.ts node/dist/",
     "clean": "rimraf node/dist build",
     "test": "electron-mocha --recursive node/dist/test --require source-map-support/register",
     "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
@@ -31,6 +32,7 @@
     "@typescript-eslint/parser": "^4.6.0",
     "chai": "4.2.0",
     "chai-as-promised": "^7.1.1",
+    "cpy-cli": "^3.0.0",
     "electron": "11.2.3",
     "electron-mocha": "8.1.1",
     "eslint": "^7.12.1",
