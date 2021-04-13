@@ -46,9 +46,13 @@ Pod::Spec.new do |s|
     { :name => 'Check libsignal-ffi',
       :execution_position => :before_compile,
       :script => %q(
-        test -e ${LIBSIGNAL_FFI_LIB_IF_NEEDED} && exit 0
-        echo 'error: libsignal_ffi.a not built; run the following to build it:' >&2
-        echo "CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET} \"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh\" --release" >&2
+        test -e "${LIBSIGNAL_FFI_LIB_IF_NEEDED}" && exit 0
+        if test -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh"; then
+          echo 'error: libsignal_ffi.a not built; run the following to build it:' >&2
+          echo "CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET} \"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh\" --release" >&2
+        else
+          echo 'error: libsignal_ffi.a not built; try re-running `pod install`' >&2
+        fi
         false
       ),
     }
