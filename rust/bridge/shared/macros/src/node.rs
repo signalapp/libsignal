@@ -47,7 +47,14 @@ fn bridge_fn_body(
         #(#input_borrowing)*
         #(#input_loading)*
         let __result = #orig_name(#env_arg #(#input_names),*);
-        Ok(node::ResultTypeInfo::convert_into(__result, &mut cx)?.upcast())
+        match TransformHelper(__result).ok_if_needed() {
+            Ok(TransformHelper(success)) =>
+                Ok(node::ResultTypeInfo::convert_into(success, &mut cx)?.upcast()),
+            Err(failure) => {
+                let module = cx.this();
+                node::SignalNodeError::throw(failure, &mut cx, module, stringify!(#orig_name))
+            }
+        }
     }
 }
 
@@ -109,8 +116,11 @@ fn bridge_fn_async_body(
         let cx = std::cell::RefCell::new(cx);
         #(#input_saving)*
         #(#input_unwrapping)*
+        let mut cx = cx.into_inner();
+        let __this = cx.this();
+        let __this = neon::object::Object::root(&*__this, &mut cx);
         Ok(signal_neon_futures::promise(
-            &mut cx.into_inner(),
+            &mut cx,
             std::panic::AssertUnwindSafe(async move {
                 #(#input_loading)*
                 let __result = #orig_name(#env_arg #(#input_names),*).await;
@@ -118,7 +128,18 @@ fn bridge_fn_async_body(
                     let mut cx = scopeguard::guard(cx, |cx| {
                         #(#input_finalization)*
                     });
-                    node::ResultTypeInfo::convert_into(__result, *cx)
+                    let __this = __this.into_inner(*cx);
+                    match __result {
+                        Ok(success) => Ok(
+                            node::ResultTypeInfo::convert_into(success, *cx)?.upcast(),
+                        ),
+                        Err(failure) => node::SignalNodeError::throw(
+                            failure,
+                            *cx,
+                            __this,
+                            stringify!(#orig_name),
+                        ),
+                    }
                 })
             })
         )?.upcast())

@@ -857,6 +857,127 @@ describe('SignalClient', () => {
       }
     });
 
+    it('rejects self-sent messages', async () => {
+      const sharedKeys = new InMemoryIdentityKeyStore();
+
+      const aSess = new InMemorySessionStore();
+      const bSess = new InMemorySessionStore();
+
+      const bPreK = new InMemoryPreKeyStore();
+      const bSPreK = new InMemorySignedPreKeyStore();
+
+      const bPreKey = SignalClient.PrivateKey.generate();
+      const bSPreKey = SignalClient.PrivateKey.generate();
+
+      const sharedIdentityKey = await sharedKeys.getIdentityKey();
+
+      const aE164 = '+14151111111';
+
+      const sharedDeviceId = 1;
+
+      const sharedUuid = '9d0652a3-dcc3-4d11-975f-74d61598733f';
+
+      const trustRoot = SignalClient.PrivateKey.generate();
+      const serverKey = SignalClient.PrivateKey.generate();
+
+      const serverCert = SignalClient.ServerCertificate.new(
+        1,
+        serverKey.getPublicKey(),
+        trustRoot
+      );
+
+      const expires = 1605722925;
+      const senderCert = SignalClient.SenderCertificate.new(
+        sharedUuid,
+        aE164,
+        sharedDeviceId,
+        sharedIdentityKey.getPublicKey(),
+        expires,
+        serverCert,
+        serverKey
+      );
+
+      const sharedRegistrationId = await sharedKeys.getLocalRegistrationId();
+      const bPreKeyId = 31337;
+      const bSignedPreKeyId = 22;
+
+      const bSignedPreKeySig = sharedIdentityKey.sign(
+        bSPreKey.getPublicKey().serialize()
+      );
+
+      const bPreKeyBundle = SignalClient.PreKeyBundle.new(
+        sharedRegistrationId,
+        sharedDeviceId,
+        bPreKeyId,
+        bPreKey.getPublicKey(),
+        bSignedPreKeyId,
+        bSPreKey.getPublicKey(),
+        bSignedPreKeySig,
+        sharedIdentityKey.getPublicKey()
+      );
+
+      const bPreKeyRecord = SignalClient.PreKeyRecord.new(
+        bPreKeyId,
+        bPreKey.getPublicKey(),
+        bPreKey
+      );
+      bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+
+      const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
+        bSignedPreKeyId,
+        42, // timestamp
+        bSPreKey.getPublicKey(),
+        bSPreKey,
+        bSignedPreKeySig
+      );
+      bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+      const sharedAddress = SignalClient.ProtocolAddress.new(
+        sharedUuid,
+        sharedDeviceId
+      );
+      await SignalClient.processPreKeyBundle(
+        bPreKeyBundle,
+        sharedAddress,
+        aSess,
+        sharedKeys
+      );
+
+      const aPlaintext = Buffer.from('hi there', 'utf8');
+
+      const aCiphertext = await SignalClient.sealedSenderEncryptMessage(
+        aPlaintext,
+        sharedAddress,
+        senderCert,
+        aSess,
+        sharedKeys
+      );
+
+      try {
+        await SignalClient.sealedSenderDecryptMessage(
+          aCiphertext,
+          trustRoot.getPublicKey(),
+          43, // timestamp,
+          null,
+          sharedUuid,
+          sharedDeviceId,
+          bSess,
+          sharedKeys,
+          bPreK,
+          bSPreK
+        );
+        assert.fail();
+      } catch (e) {
+        assert.instanceOf(e, Error);
+        assert.instanceOf(e, SignalClient.SignalClientErrorBase);
+        const err = e as SignalClient.SignalClientError;
+        assert.equal(err.name, 'SealedSenderSelfSend');
+        assert.equal(err.code, SignalClient.ErrorCode.SealedSenderSelfSend);
+        assert.equal(err.operation, 'SealedSender_DecryptMessage'); // the Rust entry point
+        assert.exists(err.stack); // Make sure we're still getting the benefits of Error.
+      }
+    });
+
     it('can encrypt/decrypt group messages', async () => {
       const aKeys = new InMemoryIdentityKeyStore();
       const bKeys = new InMemoryIdentityKeyStore();

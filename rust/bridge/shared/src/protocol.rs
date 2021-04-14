@@ -1022,8 +1022,8 @@ async fn SealedSender_DecryptMessage(
     identity_store: &mut dyn IdentityKeyStore,
     prekey_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
-) -> Result<Option<SealedSenderDecryptionResult>> {
-    let result = sealed_sender_decrypt(
+) -> Result<SealedSenderDecryptionResult> {
+    sealed_sender_decrypt(
         message,
         trust_root,
         timestamp,
@@ -1036,13 +1036,7 @@ async fn SealedSender_DecryptMessage(
         signed_prekey_store,
         None,
     )
-    .await;
-
-    match result {
-        Ok(r) => Ok(Some(r)),
-        Err(SignalProtocolError::SealedSenderSelfSend) => Ok(None),
-        Err(e) => Err(e),
-    }
+    .await
 }
 
 #[bridge_fn(jni = "GroupSessionBuilder_1CreateSenderKeyDistributionMessage")]

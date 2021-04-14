@@ -6,6 +6,9 @@
 import * as os from 'os';
 import * as uuid from 'uuid';
 
+import * as Errors from './Errors';
+export * from './Errors';
+
 import bindings = require('bindings'); // eslint-disable-line @typescript-eslint/no-require-imports
 import * as Native from './Native';
 
@@ -15,7 +18,10 @@ const NativeImpl = bindings(
 
 export const { initLogger, LogLevel } = NativeImpl;
 
+NativeImpl.registerErrors(Errors);
+
 // These enums must be kept in sync with their Rust counterparts.
+
 export const enum CiphertextMessageType {
   Whisper = 2,
   PreKey = 3,
@@ -1341,7 +1347,7 @@ export async function sealedSenderDecryptMessage(
   identityStore: IdentityKeyStore,
   prekeyStore: PreKeyStore,
   signedPrekeyStore: SignedPreKeyStore
-): Promise<SealedSenderDecryptionResult | null> {
+): Promise<SealedSenderDecryptionResult> {
   const ssdr = await NativeImpl.SealedSender_DecryptMessage(
     message,
     trustRoot,
@@ -1354,9 +1360,6 @@ export async function sealedSenderDecryptMessage(
     prekeyStore,
     signedPrekeyStore
   );
-  if (ssdr == null) {
-    return null;
-  }
   return SealedSenderDecryptionResult._fromNativeHandle(ssdr);
 }
 

@@ -10,6 +10,23 @@ use std::ops::Deref;
 pub(crate) use neon::context::Context;
 pub(crate) use neon::prelude::*;
 
+/// Used to keep track of all generated entry points.
+///
+/// Takes the *JavaScript* name `fooBar` of a function; the corresponding Rust function must be
+/// declared `node_fooBar`.
+// Declared early so it can be used in submodules.
+macro_rules! node_register {
+    ( $name:ident ) => {
+        paste! {
+            #[no_mangle] // necessary because we are linking as a cdylib
+            #[allow(non_upper_case_globals)]
+            #[linkme::distributed_slice(crate::node::LIBSIGNAL_FNS)]
+            static [<signal_register_node_ $name>]: (&str, crate::node::JsFn) =
+                (stringify!($name), [<node_ $name>]);
+        }
+    };
+}
+
 #[macro_use]
 mod convert;
 pub use convert::*;
@@ -113,21 +130,6 @@ pub(crate) fn with_buffer_contents<R>(
     f(slice)
 }
 
-/// Used in the implementation of `bridge_fn` to keep track of all generated entry points.
-///
-/// Not intended to be invoked directly.
-macro_rules! node_register {
-    ( $name:ident ) => {
-        paste! {
-            #[no_mangle] // necessary because we are linking as a cdylib
-            #[allow(non_upper_case_globals)]
-            #[linkme::distributed_slice(node::LIBSIGNAL_FNS)]
-            static [<signal_register_node_ $name>]: (&str, node::JsFn) =
-                (stringify!($name), [<node_ $name>]);
-        }
-    };
-}
-
 /// Implementation of [`bridge_deserialize`](crate::support::bridge_deserialize) for Node.
 macro_rules! node_bridge_deserialize {
     ( $typ:ident::$fn:path as false ) => {};
@@ -141,7 +143,17 @@ macro_rules! node_bridge_deserialize {
                 let buffer = cx.argument::<node::JsBuffer>(0)?;
                 let obj: Result<$typ> =
                     node::with_buffer_contents(&mut cx, buffer, |buf| $typ::$fn(buf));
-                node::ResultTypeInfo::convert_into(obj, &mut cx)
+                match obj {
+                    Ok(obj) => node::ResultTypeInfo::convert_into(obj, &mut cx),
+                    Err(err) => {
+                        let module = cx.this();
+                        node::SignalNodeError::throw(
+                            err,
+                            &mut cx,
+                            module,
+                            stringify!([<$node_name "_Deserialize">]))
+                    }
+                }
             }
 
             node_register!([<$node_name _Deserialize>]);

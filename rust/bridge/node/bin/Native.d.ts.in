@@ -40,3 +40,4 @@ interface Wrapper<T> {
   readonly _nativeHandle: T
 }
 
+export function registerErrors(errorsModule: Record<string, unknown>): void;
