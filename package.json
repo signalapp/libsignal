@@ -7,18 +7,19 @@
   "files": [
     "node/dist/*.js",
     "node/dist/*.d.ts",
-    "build/Release/*.node"
+    "prebuilds/*/*.node"
   ],
   "scripts": {
+    "install": "node-gyp-build",
     "build": "node-gyp build",
     "tsc": "tsc -b node && yarn cpy node/*.d.ts node/dist/",
-    "clean": "rimraf node/dist build",
+    "clean": "rimraf node/dist build prebuilds",
     "test": "electron-mocha --recursive node/dist/test --require source-map-support/register",
     "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
   },
   "dependencies": {
-    "bindings": "^1.5.0",
+    "node-gyp-build": "^4.2.3",
     "uuid": "^8.3.0"
   },
   "devDependencies": {
