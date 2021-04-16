@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -82,6 +82,9 @@ describe('native', () => {
     it('can fulfill promises', async () => {
       const result = await native.incrementPromise(Promise.resolve(5));
       assert.equal(result, 6);
+
+      const result2 = await native.incrementCallbackPromise(async () => 7);
+      assert.equal(result2, 8);
     });
 
     it('can handle rejection', async () => {

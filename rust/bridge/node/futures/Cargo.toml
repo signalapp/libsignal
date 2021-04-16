@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
+# Copyright 2020-2021 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -13,6 +13,11 @@ edition = "2018"
 [[test]]
 name = "signal-neon-futures-tests"
 path = "tests/node.rs"
+harness = false
+
+[[bench]]
+name = "signal-neon-futures-bench"
+path = "benches/node.rs"
 harness = false
 
 [dependencies]

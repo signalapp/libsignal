@@ -7,11 +7,14 @@
     "neon-cli": "^0.5.0"
   },
   "scripts": {
-    "test": "yarn install && mocha --recursive test"
+    "test": "yarn install && mocha --recursive test",
+    "bench": "yarn install && node bench.js"
   },
   "devDependencies": {
+    "benchmark": "^2.1.4",
     "chai": "4.2.0",
     "chai-as-promised": "^7.1.1",
+    "microtime": "^3.0.0",
     "mocha": "8.2.1"
   }
 }

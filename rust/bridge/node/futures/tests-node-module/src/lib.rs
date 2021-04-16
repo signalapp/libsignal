@@ -64,9 +64,33 @@ fn increment_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
     })
 }
 
+// function incrementCallbackPromise(promise: () -> Promise<number>): Promise<number>
+fn increment_callback_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
+    // Like increment_promise, but with a callback step to produce the promise.
+    // More closely mimics the store-like tests while still being lightweight.
+    let callback = cx.argument::<JsFunction>(0)?;
+    let undefined = cx.undefined();
+    let promise = callback
+        .call(&mut cx, undefined, std::iter::empty::<Handle<JsValue>>())?
+        .downcast_or_throw(&mut cx)?;
+    let future = JsFuture::from_promise(&mut cx, promise, move |cx, result| {
+        cx.try_catch(|cx| {
+            let value = result.or_else(|e| cx.throw(e))?;
+            Ok(value.downcast_or_throw::<JsNumber, _>(cx)?.value(cx))
+        })
+        .map_err(|e| PersistentException::new(cx, e))
+    })?;
+
+    signal_neon_futures::promise(&mut cx, async move {
+        let value = future.await?;
+        settle_promise(move |cx| Ok(cx.number(value + 1.0)))
+    })
+}
+
 register_module!(mut cx, {
     cx.export_function("incrementAsync", increment_async)?;
     cx.export_function("incrementPromise", increment_promise)?;
+    cx.export_function("incrementCallbackPromise", increment_callback_promise)?;
 
     cx.export_function("doubleNameFromStore", double_name_from_store)?;
     cx.export_function(
