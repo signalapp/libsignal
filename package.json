@@ -1,5 +1,5 @@
 {
-  "name": "signal-client",
+  "name": "@signalapp/signal-client",
   "version": "0.5.0",
   "license": "AGPL-3.0-only",
   "main": "node/dist/index.js",
