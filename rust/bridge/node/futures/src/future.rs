@@ -3,59 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use futures::channel::oneshot;
 use neon::prelude::*;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::mem;
-use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe, UnwindSafe};
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, Weak};
-use std::task::{Poll, Waker};
+use std::sync::{Arc, Mutex};
+use std::task::Poll;
 
 use crate::result::*;
 use crate::util::call_method;
 
 mod builder;
 pub use builder::JsFutureBuilder;
-
-/// The possible states of a [JsFuture].
-enum JsFutureState<T> {
-    /// The future is waiting to be settled.
-    #[allow(clippy::type_complexity)]
-    Pending {
-        transform: Box<
-            dyn for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
-        >,
-        waker: Option<Waker>,
-    },
-    /// The future has been settled (and transformed).
-    ///
-    /// If there was a panic during that transform, it will be caught and resumed at the `await` point.
-    Settled(std::thread::Result<T>),
-    /// The result has been returned from `poll`.
-    Consumed,
-}
-
-impl<T> JsFutureState<T> {
-    fn new<F>(transform: F) -> Self
-    where
-        F: for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
-    {
-        Self::Pending {
-            transform: Box::new(transform),
-            waker: None,
-        }
-    }
-
-    fn waiting_on(mut self, new_waker: Waker) -> Self {
-        if let Self::Pending { waker, .. } = &mut self {
-            *waker = Some(new_waker)
-        } else {
-            panic!("already completed")
-        }
-        self
-    }
-}
 
 /// A future representing the result of a JavaScript promise.
 ///
@@ -65,100 +26,106 @@ impl<T> JsFutureState<T> {
 ///
 /// Panics in the transformation function will be propagated to the `await`ing context.
 pub struct JsFuture<T: 'static + Send> {
-    // In practice there will only be one strong reference to one of these from Rust,
-    // and two weak ones from JavaScript (for `onFulfilled` and `onRejected`).
-    state: Arc<Mutex<JsFutureState<T>>>,
+    receiver: oneshot::Receiver<std::thread::Result<T>>,
 }
 
 impl<T: 'static + Send> Future for JsFuture<T> {
     type Output = T;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context) -> Poll<Self::Output> {
-        let mut state_guard = self.state.lock().expect("Lock can be taken");
-        let state = mem::replace(&mut *state_guard, JsFutureState::Consumed);
-        match state {
-            JsFutureState::Settled(Ok(result)) => return Poll::Ready(result),
-            JsFutureState::Settled(Err(panic)) => resume_unwind(panic),
-            JsFutureState::Consumed => panic!("already consumed"),
-            JsFutureState::Pending { .. } => {}
-        }
-        *state_guard = state.waiting_on(cx.waker().clone());
-        Poll::Pending
+        // See https://doc.rust-lang.org/std/pin/index.html#projections-and-structural-pinning.
+        let receiver = unsafe { self.map_unchecked_mut(|s| &mut s.receiver) };
+        receiver.poll(cx).map(|result| match result {
+            Ok(Ok(result)) => result,
+            Ok(Err(panic_info)) => resume_unwind(panic_info),
+            Err(_) => {
+                panic!("Future re-awaited, or JavaScript promise dropped without being settled")
+            }
+        })
     }
 }
 
-struct WeakFutureToken<T: Send + 'static>(Weak<Mutex<JsFutureState<T>>>);
+// A caught panic will never leave JsFuture in an invalid state;
+// either it's received the result already or it hasn't.
+impl<T: 'static + Send> UnwindSafe for JsFuture<T> {}
 
-impl<T: Send + 'static> WeakFutureToken<T> {
-    /// Creates a token referencing `future`.
-    fn new(future: &JsFuture<T>) -> Self {
-        Self(Arc::downgrade(&future.state))
+/// A type describing how to settle a [JsFuture].
+///
+/// Settling a future with the result of a JavaScript promise requires
+/// 1. running the given transform synchronously to convert from a JavaScript type to a Rust type
+/// 2. forwarding the result of that (or a panic) to the waiting Rust Future.
+struct FutureSettler<T: Send + 'static> {
+    sender: oneshot::Sender<std::thread::Result<T>>,
+
+    #[allow(clippy::type_complexity)]
+    transform: Box<
+        dyn for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
+    >,
+}
+
+/// Represents a shared reference to a [FutureSettler].
+///
+/// Exactly one callback (from JavaScript) will be able to actually settle the future.
+// FIXME: `Mutex<Option<X>>` is heavy for "a value that can atomically only be consumed once".
+type FutureSettlerRef<T> = Arc<Mutex<Option<FutureSettler<T>>>>;
+
+impl<T: Send + 'static> FutureSettler<T> {
+    fn new_shared<F>(
+        sender: oneshot::Sender<std::thread::Result<T>>,
+        transform: F,
+    ) -> FutureSettlerRef<T>
+    where
+        F: for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
+    {
+        Arc::new(Mutex::new(Some(Self {
+            sender,
+            transform: Box::new(transform),
+        })))
     }
 
     /// Produces a JavaScript function value representing [settle_promise]
-    /// with the first argument bound to this token, boxed.
+    /// with the first argument bound to the given sender.
     fn bind_settle_promise<'a, C: Context<'a>, R: JsPromiseResultConstructor>(
-        &self,
+        self_ref: FutureSettlerRef<T>,
         cx: &mut C,
     ) -> JsResult<'a, JsValue> {
         let settle = JsFunction::new(cx, settle_promise::<T, R>)?;
-        let bind_args = vec![cx.undefined().upcast(), cx.boxed(self.clone()).upcast()];
+        let bind_args = vec![cx.undefined().upcast(), cx.boxed(self_ref).upcast()];
         call_method(cx, settle, "bind", bind_args)
     }
 }
 
-impl<T: Send> Finalize for WeakFutureToken<T> {}
-
-impl<T: Send> Clone for WeakFutureToken<T> {
-    fn clone(&self) -> Self {
-        Self(Weak::clone(&self.0))
-    }
-}
+impl<T: Send> Finalize for FutureSettler<T> {}
 
 /// Registered as the callback for the `resolve` and `reject` parameters of [`Promise.then`][then].
 ///
-/// This callback assumes its first (bound) argument represents a boxed [WeakFutureToken].
-/// If the referenced [JsFutureState] is still alive, it is settled and the future awoken.
+/// This callback assumes its first (bound) argument represents a boxed [FutureSettlerRef].
+/// If the future has not already been settled, it is settled now and the future will be awoken.
 ///
 /// [then]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
 fn settle_promise<T: Send + 'static, R: JsPromiseResultConstructor>(
     mut cx: FunctionContext,
 ) -> JsResult<JsUndefined> {
-    let future_state = &cx.argument::<JsBox<WeakFutureToken<T>>>(0)?.0;
+    let shared_future_settler = cx.argument::<JsBox<FutureSettlerRef<T>>>(0)?;
     let js_result = cx.argument(1)?;
 
-    if let Some(future_state) = future_state.upgrade() {
-        let mut state_guard = future_state.lock().expect("Lock can be taken");
-        let previous_state = mem::replace(&mut *state_guard, JsFutureState::Consumed);
-
-        if let JsFutureState::Pending { transform, waker } = previous_state {
-            let cx = &mut cx;
-            let result = catch_unwind(AssertUnwindSafe(move || transform(cx, R::make(js_result))));
-            *state_guard = JsFutureState::Settled(result);
-            // Drop the lock before waking a waker.
-            mem::drop(state_guard);
-            if let Some(waker) = waker {
-                waker.wake()
-            }
-        } else {
-            *state_guard = previous_state;
-            cx.throw_error("promise settled twice")?;
-        }
+    if let Some(future_settler) = shared_future_settler
+        .lock()
+        .expect("Lock can be taken")
+        .take()
+    {
+        let cx = &mut cx;
+        let transform = future_settler.transform;
+        let result = catch_unwind(AssertUnwindSafe(move || transform(cx, R::make(js_result))));
+        let _ = future_settler.sender.send(result);
+    } else {
+        cx.throw_error("promise settled twice")?;
     }
 
     Ok(cx.undefined())
 }
 
 impl<T: 'static + Send> JsFuture<T> {
-    fn new<F>(transform: F) -> Self
-    where
-        F: for<'a> FnOnce(&mut FunctionContext<'a>, JsPromiseResult<'a>) -> T + 'static + Send,
-    {
-        Self {
-            state: Arc::new(Mutex::new(JsFutureState::new(transform))),
-        }
-    }
-
     /// Creates a new JsFuture by calling the JavaScript method [`then`][then] on `promise`.
     ///
     /// When settled, `transform` will be invoked in the new JavaScript context to produce the result of the Rust future.
@@ -172,15 +139,17 @@ impl<T: 'static + Send> JsFuture<T> {
     where
         F: for<'b> FnOnce(&mut FunctionContext<'b>, JsPromiseResult<'b>) -> T + 'static + Send,
     {
-        let future = JsFuture::new(transform);
-        let settle_token = WeakFutureToken::new(&future);
+        let (sender, receiver) = oneshot::channel();
+        let future_settler = FutureSettler::new_shared(sender, transform);
 
-        let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
-        let bound_reject = settle_token.bind_settle_promise::<_, JsRejectedResult>(cx)?;
+        let bound_fulfill =
+            FutureSettler::bind_settle_promise::<_, JsFulfilledResult>(future_settler.clone(), cx)?;
+        let bound_reject =
+            FutureSettler::bind_settle_promise::<_, JsRejectedResult>(future_settler, cx)?;
 
         call_method(cx, promise, "then", vec![bound_fulfill, bound_reject])?;
 
-        Ok(future)
+        Ok(JsFuture { receiver })
     }
 
     /// Creates a new JsFuture by calling the JavaScript method [`then`][then] on the result of `get_promise`.

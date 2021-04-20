@@ -31,17 +31,21 @@ where
     where
         XF: for<'b> FnOnce(&mut FunctionContext<'b>, JsPromiseResult<'b>) -> T + 'static + Send,
     {
-        let future = JsFuture::new(transform);
-        let settle_token = WeakFutureToken::new(&future);
+        let (sender, receiver) = oneshot::channel();
+        let future_settler = FutureSettler::new_shared(sender, transform);
         let get_promise = self.get_promise;
 
         self.queue.send(move |mut cx| {
             let mut maybe_bound_reject = None;
             let result = cx.try_catch(|cx| {
-                let bound_reject = settle_token.bind_settle_promise::<_, JsRejectedResult>(cx)?;
+                let bound_reject = FutureSettler::bind_settle_promise::<_, JsRejectedResult>(
+                    future_settler.clone(),
+                    cx,
+                )?;
                 maybe_bound_reject = Some(bound_reject);
 
-                let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
+                let bound_fulfill =
+                    FutureSettler::bind_settle_promise::<_, JsFulfilledResult>(future_settler, cx)?;
 
                 let promise = get_promise(cx)?;
                 call_method(cx, promise, "then", vec![bound_fulfill, bound_reject])?;
@@ -61,7 +65,7 @@ where
             Ok(())
         });
 
-        future
+        JsFuture { receiver }
     }
 }
 
