@@ -1,12 +1,16 @@
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
+# Copyright 2020-2021 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM ubuntu:18.04
+FROM debian:stretch
 
+COPY java/docker/ docker/
+COPY java/docker/apt.conf java/docker/sources.list /etc/apt/
+
+# Install tools
 RUN    apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && apt-get install -y \
                apt-transport-https \
                build-essential \
                git \
@@ -16,7 +20,9 @@ RUN    apt-get update \
                openssh-client \
                unzip
 
-RUN    apt-get install -y --no-install-recommends openjdk-8-jdk=8u272-b10-0ubuntu1~18.04
+# Install pinned dependencies
+RUN    apt-get install -y $(cat docker/dependencies.txt)
+RUN    docker/print-versions.sh docker/dependencies.txt
 
 ARG UID
 ARG GID
