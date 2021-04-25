@@ -21,7 +21,7 @@ sha-1 = "0.9"
 sha2 = "0.9"
 
 [target.'cfg(all(target_arch = "aarch64", any(target_os = "linux")))'.dependencies]
-libc = "0.2" # for getauxval
+libc = "0.2.93" # for getauxval
 
 [target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
 aesni = { version = "0.10", features = ["nocheck"] }
