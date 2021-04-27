@@ -56,7 +56,10 @@ pub enum SignalProtocolError {
     InvalidMessage(&'static str),
     InternalError(&'static str),
     FfiBindingError(String),
-    ApplicationCallbackError(&'static str, Box<dyn Error + Send + UnwindSafe + 'static>),
+    ApplicationCallbackError(
+        &'static str,
+        Box<dyn Error + Send + Sync + UnwindSafe + 'static>,
+    ),
 
     InvalidSealedSenderMessage(String),
     UnknownSealedSenderVersion(u8),
