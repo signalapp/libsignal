@@ -182,6 +182,7 @@ jobs:
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
+      if: matrix.os == 'ubuntu-latest'
 
     - run: yarn install
 

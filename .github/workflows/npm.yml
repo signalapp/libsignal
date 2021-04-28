@@ -1,0 +1,109 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref (tag)'
+        required: true
+      npm_tag:
+        description: 'NPM tag'
+        required: true
+        default: 'latest'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.inputs.ref }}
+
+    - name: Install nightly rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+
+    - name: Get Node version from .nvmrc
+      id: get-nvm-version
+      shell: bash
+      run: echo "::set-output name=node-version::$(cat .nvmrc)"
+
+    - uses: actions/setup-node@v2
+      with:
+        node-version: ${{ steps.get-nvm-version.outputs.node-version }}
+
+    - name: Verify that the Node bindings are up to date
+      run: rust/bridge/node/bin/gen_ts_decl.py --verify
+      if: matrix.os == 'ubuntu-latest'
+
+    - run: yarn install --ignore-scripts --frozen-lockfile
+
+    - run: npx prebuildify --napi
+
+    - name: Upload library
+      uses: actions/upload-artifact@v2
+      with:
+        name: libsignal_client (${{matrix.os}})
+        path: prebuilds/*
+
+  publish:
+    name: Publish
+
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.inputs.tag }}
+
+    - name: Get Node version from .nvmrc
+      id: get-nvm-version
+      shell: bash
+      run: echo "::set-output name=node-version::$(cat .nvmrc)"
+
+    - uses: actions/setup-node@v2
+      with:
+        node-version: ${{ steps.get-nvm-version.outputs.node-version }}
+
+    - name: Download built libraries
+      id: download
+      uses: actions/download-artifact@v2
+      with:
+        path: artifacts
+
+    - name: Copy libraries
+      run: mkdir prebuilds && mv ${{ steps.download.outputs.download-path }}/*/* prebuilds && find prebuilds
+
+    - run: yarn install --frozen-lockfile
+
+    - run: yarn tsc
+
+    - run: yarn lint
+
+    - run: yarn format -c
+
+    - name: Run yarn test
+      uses: GabrielBB/xvfb-action@v1.4
+      with:
+        # The tests use an Electron-based runner, so we need to set up a dummy display for them.
+        run: yarn test
+
+    - name: Publish to NPM
+      uses: JS-DevTools/npm-publish@v1
+      with:
+        token: ${{ secrets.NPM_TOKEN }}
+        tag: ${{ github.event.inputs.npm_tag }}
+        access: "public"

@@ -1,23 +1,25 @@
 {
-  "name": "signal-client",
+  "name": "@signalapp/signal-client",
   "version": "0.5.0",
   "license": "AGPL-3.0-only",
   "main": "node/dist/index.js",
   "types": "node/dist/index.d.ts",
   "files": [
-    "node/dist/**",
-    "build/Release/*.node"
+    "node/dist/*.js",
+    "node/dist/*.d.ts",
+    "prebuilds/*/*.node"
   ],
   "scripts": {
+    "install": "node-gyp-build",
     "build": "node-gyp build",
-    "tsc": "tsc -b node",
-    "clean": "rimraf node/dist build",
+    "tsc": "tsc -b node && yarn cpy node/*.d.ts node/dist/",
+    "clean": "rimraf node/dist build prebuilds",
     "test": "electron-mocha --recursive node/dist/test --require source-map-support/register",
     "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
   },
   "dependencies": {
-    "bindings": "^1.5.0",
+    "node-gyp-build": "^4.2.3",
     "uuid": "^8.3.0"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@typescript-eslint/parser": "^4.6.0",
     "chai": "4.2.0",
     "chai-as-promised": "^7.1.1",
+    "cpy-cli": "^3.0.0",
     "electron": "11.2.3",
     "electron-mocha": "8.1.1",
     "eslint": "^7.12.1",

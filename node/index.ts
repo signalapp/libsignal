@@ -3,17 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as os from 'os';
 import * as uuid from 'uuid';
 
 import * as Errors from './Errors';
 export * from './Errors';
 
-import bindings = require('bindings'); // eslint-disable-line @typescript-eslint/no-require-imports
 import * as Native from './Native';
-
-const NativeImpl = bindings(
-  'libsignal_client_' + os.platform() + '_' + process.arch
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+const NativeImpl = require('node-gyp-build')(
+  __dirname + '/../..'
 ) as typeof Native;
 
 export const { initLogger, LogLevel } = NativeImpl;
