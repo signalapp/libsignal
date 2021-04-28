@@ -3,9 +3,13 @@ name: Publish to NPM
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag'
+      ref:
+        description: 'Git ref (tag)'
         required: true
+      npm_tag:
+        description: 'NPM tag'
+        required: true
+        default: 'latest'
 
 env:
   CARGO_TERM_COLOR: always
@@ -23,7 +27,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: ${{ github.event.inputs.tag }}
+        ref: ${{ github.event.inputs.ref }}
 
     - name: Install nightly rust
       uses: actions-rs/toolchain@v1
@@ -101,4 +105,5 @@ jobs:
       uses: JS-DevTools/npm-publish@v1
       with:
         token: ${{ secrets.NPM_TOKEN }}
+        tag: ${{ github.event.inputs.npm_tag }}
         access: "public"
