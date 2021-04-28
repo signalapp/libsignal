@@ -142,7 +142,7 @@ class SessionTests: TestCaseBase {
                                                      context: NullContext()),
                              "should fail to decrypt") { error in
             guard case BadStore.Error.badness = error else {
-                XCTFail("wrong error thrown")
+                XCTFail("wrong error thrown: \(error)")
                 return
             }
         }
