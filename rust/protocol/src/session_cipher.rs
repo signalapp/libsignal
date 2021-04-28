@@ -181,7 +181,8 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         .await?
         .unwrap_or_else(SessionRecord::new_fresh);
 
-    let pre_key_id = session::process_prekey(
+    // Make sure we log the session state if we fail to process the pre-key.
+    let pre_key_id_or_err = session::process_prekey(
         ciphertext,
         &remote_address,
         &mut session_record,
@@ -190,7 +191,25 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         signed_pre_key_store,
         ctx,
     )
-    .await?;
+    .await;
+
+    let pre_key_id = match pre_key_id_or_err {
+        Ok(id) => id,
+        Err(e) => {
+            let errs = [e];
+            log::error!(
+                "{}",
+                create_decryption_failure_log(
+                    remote_address,
+                    &errs,
+                    &session_record,
+                    ciphertext.message()
+                )?
+            );
+            let [e] = errs;
+            return Err(e);
+        }
+    };
 
     let ptext = decrypt_message_with_record(
         &remote_address,
@@ -274,25 +293,37 @@ fn create_decryption_failure_log(
     let mut lines = vec![];
 
     lines.push(format!(
-        "Message from {}:{} failed to decrypt; sender ratchet public key {} message counter {}",
-        remote_address.name(),
-        remote_address.device_id(),
+        "Message from {} failed to decrypt; sender ratchet public key {} message counter {}",
+        remote_address,
         hex::encode(ciphertext.sender_ratchet_key().public_key_bytes()?),
         ciphertext.counter()
     ));
 
-    for (idx, (state, err)) in std::iter::once(record.session_state()?)
+    let current_session = record.session_state().ok();
+    for (idx, (state, err)) in current_session
+        .into_iter()
         .chain(record.previous_session_states()?)
-        .zip(errs)
+        .zip(errs.iter().map(Some).chain(std::iter::repeat(None)))
         .enumerate()
     {
         let chains = state.all_receiver_chain_logging_info()?;
-        lines.push(format!(
-            "Candidate session {} failed with '{}', had {} receiver chains",
-            idx,
-            err,
-            chains.len()
-        ));
+        match err {
+            Some(err) => {
+                lines.push(format!(
+                    "Candidate session {} failed with '{}', had {} receiver chains",
+                    idx,
+                    err,
+                    chains.len()
+                ));
+            }
+            None => {
+                lines.push(format!(
+                    "Candidate session {} had {} receiver chains",
+                    idx,
+                    chains.len()
+                ));
+            }
+        }
 
         for chain in chains {
             let chain_idx = match chain.1 {
