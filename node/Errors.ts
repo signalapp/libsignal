@@ -5,8 +5,10 @@
 
 export enum ErrorCode {
   Generic,
-  UntrustedIdentity,
+
+  DuplicatedMessage,
   SealedSenderSelfSend,
+  UntrustedIdentity,
 }
 
 export class SignalClientErrorBase extends Error {
@@ -45,16 +47,21 @@ export type GenericError = SignalClientErrorBase & {
   code: ErrorCode.Generic;
 };
 
-export type UntrustedIdentityError = SignalClientErrorBase & {
-  code: ErrorCode.UntrustedIdentity;
-  addr: string;
+export type DuplicatedMessageError = SignalClientErrorBase & {
+  code: ErrorCode.DuplicatedMessage;
 };
 
 export type SealedSenderSelfSendError = SignalClientErrorBase & {
   code: ErrorCode.SealedSenderSelfSend;
 };
 
+export type UntrustedIdentityError = SignalClientErrorBase & {
+  code: ErrorCode.UntrustedIdentity;
+  addr: string;
+};
+
 export type SignalClientError =
   | GenericError
-  | UntrustedIdentityError
-  | SealedSenderSelfSendError;
+  | DuplicatedMessageError
+  | SealedSenderSelfSendError
+  | UntrustedIdentityError;
