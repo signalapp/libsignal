@@ -81,7 +81,7 @@ where
     let callbacks_object_root = callbacks_object.root(cx);
     let queue = cx.queue();
 
-    cx.run_future_on_queue(async move {
+    cx.run_future(async move {
         let result: std::thread::Result<Result<F, PersistentException>> =
             future.catch_unwind().await;
 

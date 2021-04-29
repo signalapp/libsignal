@@ -20,11 +20,7 @@ pub trait EventQueueEx {
 impl EventQueueEx for EventQueue {
     fn send_future(&self, future: impl Future<Output = ()> + 'static + Send) {
         self.send(move |mut cx| {
-            let task = Arc::new(FutureTask {
-                queue: cx.queue(),
-                future: Mutex::new(Some(Box::pin(future))),
-            });
-            task.poll();
+            cx.run_future(future);
             Ok(())
         })
     }
@@ -43,12 +39,12 @@ impl<T: Future> Future for AssertSendSafe<T> {
     }
 }
 
-/// Adds support for executing closures and futures on the JavaScript main thread's microtask queue.
+/// Adds support for executing closures and futures on the JavaScript main thread's event queue.
 pub trait ContextEx<'a>: Context<'a> {
-    /// Schedules `f` to run on the microtask queue.
+    /// Schedules `f` to run on the JavaScript thread's event queue.
     ///
     /// Equivalent to `cx.queue().send(f)` except that `f` doesn't need to be `Send`.
-    fn run_on_queue(&mut self, f: impl FnOnce(TaskContext<'_>) -> NeonResult<()> + 'static) {
+    fn queue_task(&mut self, f: impl FnOnce(TaskContext<'_>) -> NeonResult<()> + 'static) {
         // Because we're currently in a JavaScript context,
         // and `f` will run on the event queue associated with the current context,
         // we can assert that it's safe to Send `f` to the queue.
@@ -56,15 +52,30 @@ pub trait ContextEx<'a>: Context<'a> {
         self.queue().send(move |cx| f.0(cx));
     }
 
-    /// Schedules `f` to run on the microtask queue.
+    /// Schedules `f` to run on the JavaScript thread's event queue.
     ///
     /// Equivalent to `cx.queue().send_future(f)` except that `f` doesn't need to be `Send`.
-    fn run_future_on_queue(&mut self, f: impl Future<Output = ()> + 'static) {
+    fn queue_future(&mut self, f: impl Future<Output = ()> + 'static) {
         // Because we're currently in a JavaScript context,
         // and `f` will run on the event queue associated with the current context,
         // we can assert that it's safe to Send `f` to the queue.
         let f = AssertSendSafe(f);
         self.queue().send_future(f);
+    }
+
+    /// Runs `f` on the JavaScript thread's event queue.
+    ///
+    /// Polls the future once synchronously, then schedules it to resume on the event queue.
+    fn run_future(&mut self, f: impl Future<Output = ()> + 'static) {
+        // Because we're currently in a JavaScript context,
+        // and `f` will run on the event queue associated with the current context,
+        // we can assert that it's safe to Send `f` to the queue.
+        let f = AssertSendSafe(f);
+        let task = Arc::new(FutureTask {
+            queue: self.queue(),
+            future: Mutex::new(Some(Box::pin(f))),
+        });
+        task.poll();
     }
 }
 

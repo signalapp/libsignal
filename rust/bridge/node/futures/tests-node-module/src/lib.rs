@@ -27,7 +27,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Err(err) => Err(err.to_string(cx).unwrap().value(cx)),
     })?;
 
-    cx.run_future_on_queue(async move {
+    cx.run_future(async move {
         let value_or_error = future.await;
         queue.send(move |mut cx| {
             let new_value = match value_or_error {
