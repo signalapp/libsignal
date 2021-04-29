@@ -14,25 +14,42 @@ use std::task::{Poll, Wake};
 /// [EventQueue]: https://docs.rs/neon/0.7.0-napi.3/neon/event/struct.EventQueue.html
 pub trait EventQueueEx {
     /// Schedules the future to run on the JavaScript main thread until complete.
-    fn send_future(&self, future: impl Future<Output = ()> + 'static + Send);
+    fn send_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send);
+    /// Polls the future synchronously, then schedules it to run on the JavaScript main thread from
+    /// then on.
+    fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send);
 }
 
 impl EventQueueEx for EventQueue {
-    fn send_future(&self, future: impl Future<Output = ()> + 'static + Send) {
-        self.send(move |mut cx| {
+    fn send_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
+        let self_for_task = self.clone();
+        self.send(move |_| {
             let task = Arc::new(FutureTask {
-                queue: cx.queue(),
+                queue: self_for_task,
                 future: Mutex::new(Some(Box::pin(future))),
             });
             task.poll();
             Ok(())
         })
     }
+
+    fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
+        let task = Arc::new(FutureTask {
+            queue: self,
+            future: Mutex::new(Some(Box::pin(future))),
+        });
+        task.poll();
+    }
 }
 
 /// Used to "send" a task from a thread to itself through a multi-threaded interface.
-struct AssertSendSafe<T>(T);
+pub(crate) struct AssertSendSafe<T>(T);
 unsafe impl<T> Send for AssertSendSafe<T> {}
+impl<T> AssertSendSafe<T> {
+    pub unsafe fn wrap(value: T) -> Self {
+        Self(value)
+    }
+}
 
 impl<T: Future> Future for AssertSendSafe<T> {
     type Output = T::Output;
@@ -43,33 +60,6 @@ impl<T: Future> Future for AssertSendSafe<T> {
     }
 }
 
-/// Adds support for executing closures and futures on the JavaScript main thread's microtask queue.
-pub trait ContextEx<'a>: Context<'a> {
-    /// Schedules `f` to run on the microtask queue.
-    ///
-    /// Equivalent to `cx.queue().send(f)` except that `f` doesn't need to be `Send`.
-    fn run_on_queue(&mut self, f: impl FnOnce(TaskContext<'_>) -> NeonResult<()> + 'static) {
-        // Because we're currently in a JavaScript context,
-        // and `f` will run on the event queue associated with the current context,
-        // we can assert that it's safe to Send `f` to the queue.
-        let f = AssertSendSafe(f);
-        self.queue().send(move |cx| f.0(cx));
-    }
-
-    /// Schedules `f` to run on the microtask queue.
-    ///
-    /// Equivalent to `cx.queue().send_future(f)` except that `f` doesn't need to be `Send`.
-    fn run_future_on_queue(&mut self, f: impl Future<Output = ()> + 'static) {
-        // Because we're currently in a JavaScript context,
-        // and `f` will run on the event queue associated with the current context,
-        // we can assert that it's safe to Send `f` to the queue.
-        let f = AssertSendSafe(f);
-        self.queue().send_future(f);
-    }
-}
-
-impl<'a, T: Context<'a>> ContextEx<'a> for T {}
-
 /// Implements waking for futures scheduled on the JavaScript microtask queue.
 ///
 /// When the task is awoken, it reschedules itself on the task queue to re-poll the top-level Future.
@@ -77,7 +67,7 @@ struct FutureTask<F>
 where
     F: Future<Output = ()> + 'static + Send,
 {
-    queue: EventQueue,
+    queue: Arc<EventQueue>,
     future: Mutex<Option<Pin<Box<F>>>>,
 }
 
@@ -88,7 +78,7 @@ where
     /// Polls the top-level future, while setting `self` up as the waker once more.
     ///
     /// When the future completes, it is replaced by `None` to avoid accidentally polling twice.
-    fn poll(self: Arc<Self>) {
+    fn poll(self: &Arc<Self>) {
         let future = &mut *self.future.lock().expect("Lock can be taken");
         if let Some(active_future) = future {
             match active_future
@@ -107,9 +97,9 @@ where
     F: Future<Output = ()> + 'static + Send,
 {
     fn wake(self: Arc<Self>) {
-        let self_for_closure = self.clone();
-        self.queue.send(move |_cx| {
-            self_for_closure.poll();
+        let queue = self.queue.clone();
+        queue.send(move |_cx| {
+            self.poll();
             Ok(())
         })
     }

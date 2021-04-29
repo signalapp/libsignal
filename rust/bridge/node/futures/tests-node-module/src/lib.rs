@@ -5,6 +5,7 @@
 
 use neon::prelude::*;
 use signal_neon_futures::*;
+use std::sync::Arc;
 
 mod panics_and_throws;
 use panics_and_throws::*;
@@ -17,7 +18,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // A complicated test that manually calls a callback at its conclusion.
     let promise = cx.argument::<JsObject>(0)?;
     let completion_callback = cx.argument::<JsFunction>(1)?.root(&mut cx);
-    let queue = cx.queue();
+    let queue = Arc::new(cx.queue());
 
     let future = JsFuture::from_promise(&mut cx, promise, |cx, result| match result {
         Ok(value) => Ok(value
@@ -27,7 +28,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Err(err) => Err(err.to_string(cx).unwrap().value(cx)),
     })?;
 
-    cx.run_future_on_queue(async move {
+    queue.clone().start_future(async move {
         let value_or_error = future.await;
         queue.send(move |mut cx| {
             let new_value = match value_or_error {

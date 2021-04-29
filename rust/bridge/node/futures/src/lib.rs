@@ -23,7 +23,7 @@
 #![warn(clippy::unwrap_used)]
 
 mod executor;
-pub use executor::{ContextEx, EventQueueEx};
+pub use executor::EventQueueEx;
 
 mod exception;
 pub use exception::PersistentException;
