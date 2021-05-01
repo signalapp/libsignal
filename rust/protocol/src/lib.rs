@@ -3,8 +3,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+//! Rust implementation of the **[Signal Protocol]** for asynchronous
+//! forward-secret public-key cryptography.
+//!
+//! In particular, this library implements operations conforming to the following specifications:
+//! - the **[X3DH]** key agreement protocol,
+//! - the **[Double Ratchet]** *(Axolotl)* messaging protocol,
+//!
+//! [Signal Protocol]: https://signal.org/
+//! [X3DH]: https://signal.org/docs/specifications/x3dh/
+//! [Double Ratchet]: https://signal.org/docs/specifications/doubleratchet/
+
 #![warn(clippy::unwrap_used)]
 #![deny(unsafe_code)]
+
+// TODO(https://github.com/signalapp/libsignal-client/issues/285): it should be an aspiration to
+// eventually warn and then error for public members without docstrings. Also see
+// https://doc.rust-lang.org/rustdoc/what-to-include.html for background.
+// #![warn(missing_docs)]
 
 mod address;
 mod consts;
@@ -29,7 +45,7 @@ mod utils;
 use error::Result;
 
 pub use {
-    address::ProtocolAddress,
+    address::{DeviceId, ProtocolAddress},
     curve::{KeyPair, PrivateKey, PublicKey},
     error::SignalProtocolError,
     fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint},
