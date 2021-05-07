@@ -7,8 +7,9 @@ use futures::FutureExt;
 use neon::prelude::*;
 use std::future::Future;
 use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
+use std::sync::Arc;
 
-use crate::executor::ContextEx;
+use crate::executor::{AssertSendSafe, EventQueueEx};
 use crate::util::describe_panic;
 use crate::*;
 
@@ -79,13 +80,14 @@ where
     let promise = promise_ctor.construct(cx, vec![bound_save_promise_callbacks])?;
 
     let callbacks_object_root = callbacks_object.root(cx);
-    let queue = cx.queue();
+    let queue = Arc::new(cx.queue());
+    let queue_for_future = queue.clone();
 
-    cx.run_future_on_queue(async move {
+    let future = async move {
         let result: std::thread::Result<Result<F, PersistentException>> =
             future.catch_unwind().await;
 
-        queue.send(move |mut cx| -> NeonResult<()> {
+        queue_for_future.send(move |mut cx| -> NeonResult<()> {
             let settled_result: std::thread::Result<Result<Handle<V>, Handle<JsValue>>> =
                 match result {
                     Ok(Ok(settle)) => {
@@ -126,7 +128,12 @@ where
 
             Ok(())
         });
-    });
+    };
+
+    // AssertSendSafe because `queue` is running on the same thread as the current context `cx`,
+    // so in practice we are always on the same thread.
+    let future = unsafe { AssertSendSafe::wrap(future) };
+    queue.start_future(future);
 
     Ok(promise)
 }
