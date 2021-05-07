@@ -16,6 +16,7 @@ use subtle::ConstantTimeEq;
 use uuid::Uuid;
 
 pub const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 3;
+pub const SENDERKEY_MESSAGE_CURRENT_VERSION: u8 = 3;
 
 pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
@@ -400,13 +401,13 @@ impl SenderKeyMessage {
         let proto_message_len = proto_message.encoded_len();
         let mut serialized = vec![0u8; 1 + proto_message_len + Self::SIGNATURE_LEN];
         serialized[0] =
-            ((CIPHERTEXT_MESSAGE_CURRENT_VERSION & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
+            ((SENDERKEY_MESSAGE_CURRENT_VERSION & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION;
         proto_message.encode(&mut &mut serialized[1..1 + proto_message_len])?;
         let signature =
             signature_key.calculate_signature(&serialized[..1 + proto_message_len], csprng)?;
         serialized[1 + proto_message_len..].copy_from_slice(&signature[..]);
         Ok(Self {
-            message_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION,
+            message_version: SENDERKEY_MESSAGE_CURRENT_VERSION,
             distribution_id,
             chain_id,
             iteration,
@@ -469,12 +470,12 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
             return Err(SignalProtocolError::CiphertextMessageTooShort(value.len()));
         }
         let message_version = value[0] >> 4;
-        if message_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version < SENDERKEY_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::LegacyCiphertextVersion(
                 message_version,
             ));
         }
-        if message_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version > SENDERKEY_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
                 message_version,
             ));
@@ -534,7 +535,7 @@ impl SenderKeyDistributionMessage {
             chain_key: Some(chain_key.clone()),
             signing_key: Some(signing_key.serialize().to_vec()),
         };
-        let message_version = CIPHERTEXT_MESSAGE_CURRENT_VERSION;
+        let message_version = SENDERKEY_MESSAGE_CURRENT_VERSION;
         let mut serialized = vec![0u8; 1 + proto_message.encoded_len()];
         serialized[0] = ((message_version & 0xF) << 4) | message_version;
         proto_message.encode(&mut &mut serialized[1..])?;
@@ -603,12 +604,12 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
 
         let message_version = value[0] >> 4;
 
-        if message_version < CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version < SENDERKEY_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::LegacyCiphertextVersion(
                 message_version,
             ));
         }
-        if message_version > CIPHERTEXT_MESSAGE_CURRENT_VERSION {
+        if message_version > SENDERKEY_MESSAGE_CURRENT_VERSION {
             return Err(SignalProtocolError::UnrecognizedCiphertextVersion(
                 message_version,
             ));

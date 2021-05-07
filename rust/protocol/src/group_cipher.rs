@@ -11,6 +11,7 @@ use crate::{
     SenderKeyRecord, SenderKeyStore, SignalProtocolError,
 };
 
+use crate::protocol::SENDERKEY_MESSAGE_CURRENT_VERSION;
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
 
 use rand::{CryptoRng, Rng};
@@ -103,6 +104,13 @@ pub async fn group_decrypt(
 
     let mut sender_key_state = record.sender_key_state_for_chain_id(skm.chain_id())?;
 
+    let message_version = skm.message_version() as u32;
+    if message_version != sender_key_state.message_version()? {
+        return Err(SignalProtocolError::UnrecognizedMessageVersion(
+            message_version,
+        ));
+    }
+
     let signing_key = sender_key_state.signing_key_public()?;
     if !skm.verify_signature(&signing_key)? {
         return Err(SignalProtocolError::SignatureValidationFailed);
@@ -136,6 +144,7 @@ pub async fn process_sender_key_distribution_message(
         .unwrap_or_else(SenderKeyRecord::new_empty);
 
     sender_key_record.add_sender_key_state(
+        skdm.message_version(),
         skdm.chain_id()?,
         skdm.iteration()?,
         skdm.chain_key()?,
@@ -167,6 +176,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
         let sender_key: [u8; 32] = csprng.gen();
         let signing_key = KeyPair::generate(csprng);
         sender_key_record.set_sender_key_state(
+            SENDERKEY_MESSAGE_CURRENT_VERSION,
             chain_id,
             iteration,
             &sender_key,

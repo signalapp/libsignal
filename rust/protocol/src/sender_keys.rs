@@ -125,6 +125,7 @@ pub struct SenderKeyState {
 
 impl SenderKeyState {
     pub fn new(
+        message_version: u8,
         chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
@@ -132,6 +133,7 @@ impl SenderKeyState {
         signature_private_key: Option<PrivateKey>,
     ) -> Result<SenderKeyState> {
         let state = storage_proto::SenderKeyStateStructure {
+            message_version: message_version as u32,
             chain_id,
             sender_chain_key: Some(
                 SenderChainKey::new(iteration, chain_key.to_vec())?.as_protobuf()?,
@@ -164,6 +166,13 @@ impl SenderKeyState {
         let mut buf = vec![];
         self.state.encode(&mut buf)?;
         Ok(buf)
+    }
+
+    pub fn message_version(&self) -> Result<u32> {
+        match self.state.message_version {
+            0 => Ok(3), // the first SenderKey version
+            v => Ok(v),
+        }
     }
 
     pub fn chain_id(&self) -> Result<u32> {
@@ -285,6 +294,7 @@ impl SenderKeyRecord {
 
     pub fn add_sender_key_state(
         &mut self,
+        message_version: u8,
         chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
@@ -292,6 +302,7 @@ impl SenderKeyRecord {
         signature_private_key: Option<PrivateKey>,
     ) -> Result<()> {
         self.states.push_front(SenderKeyState::new(
+            message_version,
             chain_id,
             iteration,
             chain_key,
@@ -307,6 +318,7 @@ impl SenderKeyRecord {
 
     pub fn set_sender_key_state(
         &mut self,
+        message_version: u8,
         chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
@@ -315,6 +327,7 @@ impl SenderKeyRecord {
     ) -> Result<()> {
         self.states.clear();
         self.add_sender_key_state(
+            message_version,
             chain_id,
             iteration,
             chain_key,
