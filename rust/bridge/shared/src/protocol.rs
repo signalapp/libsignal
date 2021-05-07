@@ -38,10 +38,11 @@ fn HKDF_DeriveSecrets<E: Env>(
     output_length: u32,
     version: u32,
     ikm: &[u8],
-    label: &[u8],
+    label: Option<&[u8]>,
     salt: Option<&[u8]>,
 ) -> Result<E::Buffer> {
     let kdf = HKDF::new(version)?;
+    let label = label.unwrap_or(&[]);
     let buffer = match salt {
         Some(salt) => kdf.derive_salted_secrets(ikm, salt, label, output_length as usize)?,
         None => kdf.derive_secrets(ikm, label, output_length as usize)?,
