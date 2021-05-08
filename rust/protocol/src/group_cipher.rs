@@ -41,6 +41,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let signing_key = sender_key_state.signing_key_private()?;
 
     let skm = SenderKeyMessage::new(
+        sender_key_state.message_version()? as u8,
         distribution_id,
         sender_key_state.chain_id()?,
         sender_key.iteration()?,
@@ -192,6 +193,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     let sender_chain_key = state.sender_chain_key()?;
 
     SenderKeyDistributionMessage::new(
+        state.message_version()? as u8,
         distribution_id,
         state.chain_id()?,
         sender_chain_key.iteration()?,

@@ -203,7 +203,7 @@ public final class Native {
   public static native int SenderKeyDistributionMessage_GetIteration(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSerialized(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSignatureKey(long m);
-  public static native long SenderKeyDistributionMessage_New(UUID distributionId, int chainId, int iteration, byte[] chainkey, long pk);
+  public static native long SenderKeyDistributionMessage_New(int messageVersion, UUID distributionId, int chainId, int iteration, byte[] chainkey, long pk);
 
   public static native long SenderKeyMessage_Deserialize(byte[] data);
   public static native void SenderKeyMessage_Destroy(long handle);
@@ -212,7 +212,7 @@ public final class Native {
   public static native UUID SenderKeyMessage_GetDistributionId(long obj);
   public static native int SenderKeyMessage_GetIteration(long obj);
   public static native byte[] SenderKeyMessage_GetSerialized(long obj);
-  public static native long SenderKeyMessage_New(UUID distributionId, int chainId, int iteration, byte[] ciphertext, long pk);
+  public static native long SenderKeyMessage_New(int messageVersion, UUID distributionId, int chainId, int iteration, byte[] ciphertext, long pk);
   public static native boolean SenderKeyMessage_VerifySignature(long skm, long pubkey);
 
   public static native long SenderKeyRecord_Deserialize(byte[] data);

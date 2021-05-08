@@ -324,6 +324,7 @@ describe('SignalClient', () => {
     const pk = SignalClient.PrivateKey.generate();
 
     const skm = SignalClient.SenderKeyMessage._new(
+      3,
       distributionId,
       chainId,
       iteration,
@@ -350,6 +351,7 @@ describe('SignalClient', () => {
     const pk = SignalClient.PrivateKey.generate();
 
     const skdm = SignalClient.SenderKeyDistributionMessage._new(
+      3,
       distributionId,
       chainId,
       iteration,

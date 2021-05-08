@@ -385,6 +385,7 @@ impl SenderKeyMessage {
     const SIGNATURE_LEN: usize = 64;
 
     pub fn new<R: CryptoRng + Rng>(
+        message_version: u8,
         distribution_id: Uuid,
         chain_id: u32,
         iteration: u32,
@@ -400,8 +401,7 @@ impl SenderKeyMessage {
         };
         let proto_message_len = proto_message.encoded_len();
         let mut serialized = vec![0u8; 1 + proto_message_len + Self::SIGNATURE_LEN];
-        serialized[0] =
-            ((SENDERKEY_MESSAGE_CURRENT_VERSION & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION;
+        serialized[0] = ((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION;
         proto_message.encode(&mut &mut serialized[1..1 + proto_message_len])?;
         let signature =
             signature_key.calculate_signature(&serialized[..1 + proto_message_len], csprng)?;
@@ -522,6 +522,7 @@ pub struct SenderKeyDistributionMessage {
 
 impl SenderKeyDistributionMessage {
     pub fn new(
+        message_version: u8,
         distribution_id: Uuid,
         chain_id: u32,
         iteration: u32,
@@ -535,9 +536,8 @@ impl SenderKeyDistributionMessage {
             chain_key: Some(chain_key.clone()),
             signing_key: Some(signing_key.serialize().to_vec()),
         };
-        let message_version = SENDERKEY_MESSAGE_CURRENT_VERSION;
         let mut serialized = vec![0u8; 1 + proto_message.encoded_len()];
-        serialized[0] = ((message_version & 0xF) << 4) | message_version;
+        serialized[0] = ((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION;
         proto_message.encode(&mut &mut serialized[1..])?;
 
         Ok(Self {
@@ -765,6 +765,7 @@ mod tests {
         let mut csprng = OsRng;
         let signature_key_pair = KeyPair::generate(&mut csprng);
         let sender_key_message = SenderKeyMessage::new(
+            SENDERKEY_MESSAGE_CURRENT_VERSION,
             Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6),
             42,
             7,

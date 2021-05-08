@@ -801,6 +801,7 @@ export class SenderKeyDistributionMessage {
   }
 
   static _new(
+    messageVersion: number,
     distributionId: Uuid,
     chainId: number,
     iteration: number,
@@ -809,6 +810,7 @@ export class SenderKeyDistributionMessage {
   ): SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(
       NativeImpl.SenderKeyDistributionMessage_New(
+        messageVersion,
         Buffer.from(uuid.parse(distributionId) as Uint8Array),
         chainId,
         iteration,
@@ -868,6 +870,7 @@ export class SenderKeyMessage {
   }
 
   static _new(
+    messageVersion: number,
     distributionId: Uuid,
     chainId: number,
     iteration: number,
@@ -876,6 +879,7 @@ export class SenderKeyMessage {
   ): SenderKeyMessage {
     return new SenderKeyMessage(
       NativeImpl.SenderKeyMessage_New(
+        messageVersion,
         Buffer.from(uuid.parse(distributionId) as Uint8Array),
         chainId,
         iteration,
