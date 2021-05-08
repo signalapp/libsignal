@@ -323,7 +323,7 @@ describe('SignalClient', () => {
     const ciphertext = Buffer.alloc(32, 0xfe);
     const pk = SignalClient.PrivateKey.generate();
 
-    const skm = SignalClient.SenderKeyMessage.new(
+    const skm = SignalClient.SenderKeyMessage._new(
       distributionId,
       chainId,
       iteration,
@@ -349,7 +349,7 @@ describe('SignalClient', () => {
     const chainKey = Buffer.alloc(32, 0xfe);
     const pk = SignalClient.PrivateKey.generate();
 
-    const skdm = SignalClient.SenderKeyDistributionMessage.new(
+    const skdm = SignalClient.SenderKeyDistributionMessage._new(
       distributionId,
       chainId,
       iteration,
@@ -530,7 +530,7 @@ describe('SignalClient', () => {
     const receiverIdentityKey = SignalClient.PrivateKey.generate().getPublicKey();
     const ciphertext = Buffer.from('01020304', 'hex');
 
-    const sm = SignalClient.SignalMessage.new(
+    const sm = SignalClient.SignalMessage._new(
       messageVersion,
       macKey,
       senderRatchetKey,
@@ -556,7 +556,7 @@ describe('SignalClient', () => {
     const baseKey = SignalClient.PrivateKey.generate().getPublicKey();
     const identityKey = SignalClient.PrivateKey.generate().getPublicKey();
 
-    const pkm = SignalClient.PreKeySignalMessage.new(
+    const pkm = SignalClient.PreKeySignalMessage._new(
       messageVersion,
       registrationId,
       preKeyId,

@@ -33,26 +33,6 @@ public class SenderKeyDistributionMessage {
         }
     }
 
-    public init<Bytes: ContiguousBytes>(distributionId: UUID,
-                                        chainId: UInt32,
-                                        iteration: UInt32,
-                                        chainKey: Bytes,
-                                        publicKey: PublicKey) throws {
-        var result: OpaquePointer?
-        try chainKey.withUnsafeBytes { chainKeyBytes in
-            try withUnsafePointer(to: distributionId.uuid) { distributionId in
-                try checkError(signal_sender_key_distribution_message_new(&result,
-                                                                          distributionId,
-                                                                          chainId,
-                                                                          iteration,
-                                                                          chainKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                                          chainKeyBytes.count,
-                                                                          publicKey.nativeHandle))
-            }
-        }
-        handle = result
-    }
-
     public init(bytes: [UInt8]) throws {
         try checkError(signal_sender_key_distribution_message_deserialize(&handle, bytes, bytes.count))
     }

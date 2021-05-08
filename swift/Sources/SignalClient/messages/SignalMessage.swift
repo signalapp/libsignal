@@ -25,34 +25,6 @@ public class SignalMessage {
         }
     }
 
-    public init<MacBytes, CiphertextBytes>(version: UInt8,
-                                           macKey: MacBytes,
-                                           senderRatchetKey: PublicKey,
-                                           counter: UInt32,
-                                           previousCounter: UInt32,
-                                           ciphertext: CiphertextBytes,
-                                           sender senderIdentityKey: PublicKey,
-                                           receiver receiverIdentityKey: PublicKey) throws
-    where MacBytes: ContiguousBytes, CiphertextBytes: ContiguousBytes {
-        handle = try macKey.withUnsafeBytes { macBytes in
-            try ciphertext.withUnsafeBytes { ciphertextBytes in
-                var result: OpaquePointer?
-                try checkError(signal_message_new(&result,
-                                                  version,
-                                                  macBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                  macBytes.count,
-                                                  senderRatchetKey.nativeHandle,
-                                                  counter,
-                                                  previousCounter,
-                                                  ciphertextBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                  ciphertextBytes.count,
-                                                  senderIdentityKey.nativeHandle,
-                                                  receiverIdentityKey.nativeHandle))
-                return result
-            }
-        }
-    }
-
     public var senderRatchetKey: PublicKey {
         return failOnError {
             try invokeFnReturningPublicKey {

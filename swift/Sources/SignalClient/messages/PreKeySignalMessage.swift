@@ -21,24 +21,6 @@ public class PreKeySignalMessage {
         }
     }
 
-    public init(version: UInt8,
-                registrationId: UInt32,
-                preKeyId: UInt32?,
-                signedPreKeyId: UInt32,
-                baseKey: PublicKey,
-                identityKey: PublicKey,
-                message: SignalMessage) throws {
-
-        try checkError(signal_pre_key_signal_message_new(&handle,
-                                                         version,
-                                                         registrationId,
-                                                         preKeyId ?? .max,
-                                                         signedPreKeyId,
-                                                         baseKey.nativeHandle,
-                                                         identityKey.nativeHandle,
-                                                         message.nativeHandle))
-    }
-
     public func serialize() throws -> [UInt8] {
         return try invokeFnReturningArray {
             signal_pre_key_signal_message_serialize($0, $1, handle)
