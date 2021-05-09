@@ -29,6 +29,7 @@ hex = "0.4"
 log = "0.4"
 num_enum = "0.5.1"
 uuid = "0.8"
+displaydoc = "0.2"
 
 [features]
 armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
