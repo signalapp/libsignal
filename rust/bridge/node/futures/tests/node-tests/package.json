@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "author": "Jordan Rose <jrose@signal.org>",
   "license": "AGPL-3.0-only",
-  "dependencies": {
-    "neon-cli": "^0.5.0"
-  },
+  "dependencies": {},
   "scripts": {
     "test": "yarn install && mocha --recursive test",
     "bench": "yarn install && node bench.js"
