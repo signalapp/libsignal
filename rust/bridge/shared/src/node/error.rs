@@ -106,6 +106,22 @@ impl SignalNodeError for SignalProtocolError {
     ) -> JsResult<'a, JsValue> {
         // Check for some dedicated error types first.
         let custom_error = match &self {
+            SignalProtocolError::DuplicatedMessage(..) => new_js_error(
+                cx,
+                module,
+                Some("DuplicatedMessage"),
+                &self.to_string(),
+                operation_name,
+                None,
+            ),
+            SignalProtocolError::SealedSenderSelfSend => new_js_error(
+                cx,
+                module,
+                Some("SealedSenderSelfSend"),
+                &self.to_string(),
+                operation_name,
+                None,
+            ),
             SignalProtocolError::UntrustedIdentity(addr) => {
                 let props = cx.empty_object();
                 let addr_string = cx.string(addr.name());
@@ -119,14 +135,6 @@ impl SignalNodeError for SignalProtocolError {
                     Some(props),
                 )
             }
-            SignalProtocolError::SealedSenderSelfSend => new_js_error(
-                cx,
-                module,
-                Some("SealedSenderSelfSend"),
-                &self.to_string(),
-                operation_name,
-                None,
-            ),
             _ => new_js_error(cx, module, None, &self.to_string(), operation_name, None),
         };
 
