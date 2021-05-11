@@ -356,8 +356,10 @@ fn SenderKeyMessageGetDistributionId(out: &mut [u8; 16], obj: &SenderKeyMessage)
     Ok(())
 }
 
+// For testing
 #[bridge_fn]
 fn SenderKeyMessage_New(
+    message_version: u8,
     distribution_id: Uuid,
     chain_id: u32,
     iteration: u32,
@@ -366,6 +368,7 @@ fn SenderKeyMessage_New(
 ) -> Result<SenderKeyMessage> {
     let mut csprng = rand::rngs::OsRng;
     SenderKeyMessage::new(
+        message_version,
         distribution_id,
         chain_id,
         iteration,
@@ -413,15 +416,24 @@ fn SenderKeyDistributionMessageGetDistributionId(
     Ok(())
 }
 
+// For testing
 #[bridge_fn]
 fn SenderKeyDistributionMessage_New(
+    message_version: u8,
     distribution_id: Uuid,
     chain_id: u32,
     iteration: u32,
     chainkey: &[u8],
     pk: &PublicKey,
 ) -> Result<SenderKeyDistributionMessage> {
-    SenderKeyDistributionMessage::new(distribution_id, chain_id, iteration, chainkey.into(), *pk)
+    SenderKeyDistributionMessage::new(
+        message_version,
+        distribution_id,
+        chain_id,
+        iteration,
+        chainkey.into(),
+        *pk,
+    )
 }
 
 #[bridge_fn(jni = false, node = false)]

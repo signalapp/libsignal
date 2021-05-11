@@ -13,26 +13,6 @@ public class SenderKeyMessage {
         failOnError(signal_sender_key_message_destroy(handle))
     }
 
-    public init<Bytes: ContiguousBytes>(distributionId: UUID,
-                                        chainId: UInt32,
-                                        iteration: UInt32,
-                                        ciphertext: Bytes,
-                                        privateKey: PrivateKey) throws {
-        var result: OpaquePointer?
-        try ciphertext.withUnsafeBytes { ciphertextBytes in
-            try withUnsafePointer(to: distributionId.uuid) { distributionId in
-                try checkError(signal_sender_key_message_new(&result,
-                                                             distributionId,
-                                                             chainId,
-                                                             iteration,
-                                                             ciphertextBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                             ciphertextBytes.count,
-                                                             privateKey.nativeHandle))
-            }
-        }
-        handle = result
-    }
-
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         handle = try bytes.withUnsafeBytes {
             var result: OpaquePointer?

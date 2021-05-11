@@ -119,7 +119,7 @@ export function SenderKeyDistributionMessage_GetChainId(obj: Wrapper<SenderKeyDi
 export function SenderKeyDistributionMessage_GetChainKey(obj: Wrapper<SenderKeyDistributionMessage>): Buffer;
 export function SenderKeyDistributionMessage_GetDistributionId(obj: Wrapper<SenderKeyDistributionMessage>): Uuid;
 export function SenderKeyDistributionMessage_GetIteration(obj: Wrapper<SenderKeyDistributionMessage>): number;
-export function SenderKeyDistributionMessage_New(distributionId: Uuid, chainId: number, iteration: number, chainkey: Buffer, pk: Wrapper<PublicKey>): SenderKeyDistributionMessage;
+export function SenderKeyDistributionMessage_New(messageVersion: number, distributionId: Uuid, chainId: number, iteration: number, chainkey: Buffer, pk: Wrapper<PublicKey>): SenderKeyDistributionMessage;
 export function SenderKeyDistributionMessage_Process(sender: Wrapper<ProtocolAddress>, senderKeyDistributionMessage: Wrapper<SenderKeyDistributionMessage>, store: SenderKeyStore, ctx: null): Promise<void>;
 export function SenderKeyDistributionMessage_Serialize(obj: Wrapper<SenderKeyDistributionMessage>): Buffer;
 export function SenderKeyMessage_Deserialize(buffer: Buffer): SenderKeyMessage;
@@ -127,7 +127,7 @@ export function SenderKeyMessage_GetChainId(obj: Wrapper<SenderKeyMessage>): num
 export function SenderKeyMessage_GetCipherText(obj: Wrapper<SenderKeyMessage>): Buffer;
 export function SenderKeyMessage_GetDistributionId(obj: Wrapper<SenderKeyMessage>): Uuid;
 export function SenderKeyMessage_GetIteration(obj: Wrapper<SenderKeyMessage>): number;
-export function SenderKeyMessage_New(distributionId: Uuid, chainId: number, iteration: number, ciphertext: Buffer, pk: Wrapper<PrivateKey>): SenderKeyMessage;
+export function SenderKeyMessage_New(messageVersion: number, distributionId: Uuid, chainId: number, iteration: number, ciphertext: Buffer, pk: Wrapper<PrivateKey>): SenderKeyMessage;
 export function SenderKeyMessage_Serialize(obj: Wrapper<SenderKeyMessage>): Buffer;
 export function SenderKeyMessage_VerifySignature(skm: Wrapper<SenderKeyMessage>, pubkey: Wrapper<PublicKey>): boolean;
 export function SenderKeyRecord_Deserialize(buffer: Buffer): SenderKeyRecord;

@@ -27,10 +27,6 @@ public class SenderKeyDistributionMessage {
     this.handle = handle;
   }
 
-  public SenderKeyDistributionMessage(UUID distributionId, int id, int iteration, byte[] chainKey, ECPublicKey signatureKey) {
-    handle = Native.SenderKeyDistributionMessage_New(distributionId, id, iteration, chainKey, signatureKey.nativeHandle());
-  }
-
   public SenderKeyDistributionMessage(byte[] serialized) throws LegacyMessageException, InvalidMessageException {
     handle = Native.SenderKeyDistributionMessage_Deserialize(serialized);
   }

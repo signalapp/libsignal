@@ -31,17 +31,6 @@ public class SignalMessage implements CiphertextMessage {
     this.handle = handle;
   }
 
-  public SignalMessage(int messageVersion, SecretKeySpec macKey, ECPublicKey senderRatchetKey,
-                       int counter, int previousCounter, byte[] ciphertext,
-                       IdentityKey senderIdentityKey,
-                       IdentityKey receiverIdentityKey)
-  {
-    handle = Native.SignalMessage_New(messageVersion, macKey.getEncoded(), senderRatchetKey.nativeHandle(),
-                 counter, previousCounter, ciphertext,
-                 senderIdentityKey.getPublicKey().nativeHandle(),
-                 receiverIdentityKey.getPublicKey().nativeHandle());
-  }
-
   public ECPublicKey getSenderRatchetKey()  {
     return new ECPublicKey(Native.SignalMessage_GetSenderRatchetKey(this.handle));
   }

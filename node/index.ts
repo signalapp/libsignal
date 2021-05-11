@@ -473,7 +473,7 @@ export class SignalMessage {
     this._nativeHandle = handle;
   }
 
-  static new(
+  static _new(
     messageVersion: number,
     macKey: Buffer,
     senderRatchetKey: PublicKey,
@@ -538,7 +538,7 @@ export class PreKeySignalMessage {
     this._nativeHandle = handle;
   }
 
-  static new(
+  static _new(
     messageVersion: number,
     registrationId: number,
     preKeyId: number | null,
@@ -800,7 +800,8 @@ export class SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(handle);
   }
 
-  static new(
+  static _new(
+    messageVersion: number,
     distributionId: Uuid,
     chainId: number,
     iteration: number,
@@ -809,6 +810,7 @@ export class SenderKeyDistributionMessage {
   ): SenderKeyDistributionMessage {
     return new SenderKeyDistributionMessage(
       NativeImpl.SenderKeyDistributionMessage_New(
+        messageVersion,
         Buffer.from(uuid.parse(distributionId) as Uint8Array),
         chainId,
         iteration,
@@ -867,7 +869,8 @@ export class SenderKeyMessage {
     this._nativeHandle = nativeHandle;
   }
 
-  static new(
+  static _new(
+    messageVersion: number,
     distributionId: Uuid,
     chainId: number,
     iteration: number,
@@ -876,6 +879,7 @@ export class SenderKeyMessage {
   ): SenderKeyMessage {
     return new SenderKeyMessage(
       NativeImpl.SenderKeyMessage_New(
+        messageVersion,
         Buffer.from(uuid.parse(distributionId) as Uint8Array),
         chainId,
         iteration,

@@ -37,10 +37,6 @@ public class SenderKeyMessage implements CiphertextMessage {
     handle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 
-  public SenderKeyMessage(UUID distributionId, int chainId, int iteration, byte[] ciphertext, ECPrivateKey signatureKey) {
-    handle = Native.SenderKeyMessage_New(distributionId, chainId, iteration, ciphertext, signatureKey.nativeHandle());
-  }
-
   public UUID getDistributionId() {
     return Native.SenderKeyMessage_GetDistributionId(this.handle);
   }
