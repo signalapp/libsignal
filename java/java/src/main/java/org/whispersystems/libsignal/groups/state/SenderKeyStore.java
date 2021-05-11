@@ -34,8 +34,7 @@ public interface SenderKeyStore {
    * @param sender The address of the current client.
    * @param distributionId An opaque identifier that uniquely identifies the group (but isn't the group ID).
    * @return a copy of the SenderKeyRecord corresponding to the (id + senderName + deviceId tuple, or
-   *         a new SenderKeyRecord if one does not currently exist.
+   *         `null` if one does not currently exist.
    */
-
   public SenderKeyRecord loadSenderKey(SignalProtocolAddress sender, UUID distributionId);
 }
