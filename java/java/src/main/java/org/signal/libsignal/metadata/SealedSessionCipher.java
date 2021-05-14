@@ -76,7 +76,7 @@ public class SealedSessionCipher {
       null);
   }
 
-  public byte[] multiRecipientEncrypt(List<SignalProtocolAddress> recipients, UnidentifiedSenderMessageContent content)
+  public byte[] multiRecipientEncrypt(List<SignalProtocolAddress> recipients, int[] recipientRegistrationIds, UnidentifiedSenderMessageContent content)
       throws InvalidKeyException, UntrustedIdentityException
   {
     long[] recipientHandles = new long[recipients.size()];
@@ -87,6 +87,7 @@ public class SealedSessionCipher {
     }
     return Native.SealedSessionCipher_MultiRecipientEncrypt(
       recipientHandles,
+      recipientRegistrationIds,
       content.nativeHandle(),
       this.signalProtocolStore,
       null);

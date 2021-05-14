@@ -330,6 +330,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
 
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
             &[&bob_uuid_address, &carol_uuid_address],
+            &[0x3FFD, 0x07E5],
             &alice_usmc,
             &mut alice_store.identity_store,
             None,

@@ -246,6 +246,29 @@ impl SimpleArgTypeInfo for uuid::Uuid {
     }
 }
 
+impl<'storage> AsyncArgTypeInfo<'storage> for &'storage [u16] {
+    type ArgType = JsArray;
+    type StoredType = Vec<u16>;
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let len = foreign.len(cx);
+        let mut result = Vec::with_capacity(len as usize);
+        for i in 0..len {
+            let next = foreign.get(cx, i)?.downcast_or_throw::<JsNumber, _>(cx)?;
+            let converted = u16::convert_from(cx, next)?;
+            result.push(converted)
+        }
+        Ok(result)
+    }
+
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        &stored[..]
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where
@@ -618,6 +641,7 @@ macro_rules! full_range_integer {
 }
 
 full_range_integer!(u8);
+full_range_integer!(u16);
 full_range_integer!(u32);
 full_range_integer!(i32);
 
