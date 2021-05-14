@@ -11,6 +11,7 @@ use crate::{PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
 use prost::Message;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct SenderMessageKey {
@@ -283,12 +284,25 @@ impl SenderKeyRecord {
         Err(SignalProtocolError::NoSenderKeyState)
     }
 
-    pub fn sender_key_state_for_chain_id(&mut self, chain_id: u32) -> Result<&mut SenderKeyState> {
+    pub fn sender_key_state_for_chain_id(
+        &mut self,
+        chain_id: u32,
+        distribution_id: Uuid,
+    ) -> Result<&mut SenderKeyState> {
         for i in 0..self.states.len() {
             if self.states[i].chain_id()? == chain_id {
                 return Ok(&mut self.states[i]);
             }
         }
+        log::error!(
+            "SenderKey distribution {} could not find chain ID {} (known chain IDs: {:?})",
+            distribution_id,
+            chain_id,
+            self.states
+                .iter()
+                .map(|state| state.chain_id().expect("accessed successfully above"))
+                .collect::<Vec<_>>()
+        );
         Err(SignalProtocolError::NoSenderKeyState)
     }
 
