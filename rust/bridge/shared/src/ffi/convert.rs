@@ -167,6 +167,21 @@ impl SizedArgTypeInfo for &[u8] {
     }
 }
 
+impl SizedArgTypeInfo for &[u16] {
+    type ArgType = *const u16;
+    fn convert_from(input: Self::ArgType, input_len: usize) -> SignalFfiResult<Self> {
+        if input.is_null() {
+            if input_len != 0 {
+                return Err(SignalFfiError::NullPointer);
+            }
+            // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+            return Ok(&[]);
+        }
+
+        unsafe { Ok(std::slice::from_raw_parts(input, input_len)) }
+    }
+}
+
 impl SizedArgTypeInfo for &mut [u8] {
     type ArgType = *mut c_uchar;
     fn convert_from(input: Self::ArgType, input_len: usize) -> SignalFfiResult<Self> {
@@ -455,6 +470,7 @@ macro_rules! trivial {
 
 trivial!(i32);
 trivial!(u8);
+trivial!(u16);
 trivial!(u32);
 trivial!(u64);
 trivial!(usize);
@@ -472,11 +488,13 @@ trivial!(bool);
 /// (For example, `(&[u8]) => (*const libc::c_uchar);`.)
 macro_rules! ffi_arg_type {
     (u8) => (u8);
+    (u16) => (u16);
     (u32) => (u32);
     (u64) => (u64);
     (Option<u32>) => (u32);
     (usize) => (libc::size_t);
     (&[u8]) => (*const libc::c_uchar);
+    (&[u16]) => (*const u16);
     (&mut [u8]) => (*mut libc::c_uchar);
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);

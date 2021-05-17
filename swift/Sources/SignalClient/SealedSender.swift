@@ -149,6 +149,7 @@ public func sealedSenderEncrypt(_ content: UnidentifiedSenderMessageContent,
 
 public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessageContent,
                                               for recipients: [ProtocolAddress],
+                                              registrationIds: [UInt16],
                                               identityStore: IdentityKeyStore,
                                               context: StoreContext) throws -> [UInt8] {
     return try context.withOpaquePointer { context in
@@ -157,6 +158,8 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
                 signal_sealed_sender_multi_recipient_encrypt($0, $1,
                                                              recipients.map { $0.nativeHandle },
                                                              recipients.count,
+                                                             registrationIds,
+                                                             registrationIds.count,
                                                              content.nativeHandle,
                                                              ffiIdentityStore, context)
             }

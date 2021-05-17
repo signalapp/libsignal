@@ -171,6 +171,15 @@ impl<'a> SimpleArgTypeInfo<'a> for u8 {
     }
 }
 
+/// Supports all valid u16 values `0..=65535`.
+impl<'a> SimpleArgTypeInfo<'a> for u16 {
+    type ArgType = jint;
+    fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
+        u16::try_from(foreign)
+            .map_err(|_| SignalJniError::IntegerOverflow(format!("{} to u16", foreign)))
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> SignalJniResult<Self> {
@@ -254,6 +263,28 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
         Ok(unsafe {
             std::slice::from_raw_parts_mut(stored.as_ptr() as *mut u8, stored.size()? as usize)
         })
+    }
+}
+
+/// Maps a Java `int[]` to a Rust `[u16]` to preserve the full range.
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u16] {
+    type ArgType = jintArray;
+    type StoredType = Vec<u16>;
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+        let java_array = env.get_int_array_elements(foreign, ReleaseMode::NoCopyBack)?;
+        let slice = unsafe {
+            std::slice::from_raw_parts(
+                java_array.as_ptr() as *const jint,
+                java_array.size()? as usize,
+            )
+        };
+        slice.iter().map(|v| u16::convert_from(env, *v)).collect()
+    }
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> SignalJniResult<&'storage [u16]> {
+        Ok(&stored[..])
     }
 }
 
@@ -677,6 +708,9 @@ macro_rules! jni_arg_type {
     };
     (&mut [u8]) => {
         jni::jbyteArray
+    };
+    (&[u16]) => {
+        jni::jintArray
     };
     (Context) => {
         jni::JObject
