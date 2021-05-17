@@ -870,18 +870,11 @@ mod sealed_sender_v2 {
 
 pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
-    destination_registration_ids: &[u16],
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &mut dyn IdentityKeyStore,
     ctx: Context,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
-    if destinations.len() != destination_registration_ids.len() {
-        return Err(SignalProtocolError::InvalidArgument(
-            "must have the same number of destination registration IDs as addresses".to_string(),
-        ));
-    }
-
     let m: [u8; 32] = rng.gen();
     let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
     let e_pub = keys.e.public_key()?;
@@ -902,7 +895,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             SignalProtocolError::InternalError("failed to encrypt using AES-GCM-SIV")
         })?;
 
-    // Uses a flat representation: count || UUID_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
+    // Uses a flat representation: count || UUID_i || deviceId_i || C_i || AT_i || ... || E.pub || ciphertext
     let version = SEALED_SENDER_V2_VERSION;
     let mut serialized: Vec<u8> = vec![(version | (version << 4))];
 
@@ -910,7 +903,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         .expect("cannot fail encoding to Vec");
 
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
-    for (destination, registration_id) in destinations.iter().zip(destination_registration_ids) {
+    for destination in destinations {
         let their_uuid = Uuid::parse_str(destination.name()).map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
                 "multi-recipient sealed sender requires UUID recipients (not {})",
@@ -941,7 +934,6 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         serialized.extend_from_slice(their_uuid.as_bytes());
         prost::encode_length_delimiter(destination.device_id() as usize, &mut serialized)
             .expect("cannot fail encoding to Vec");
-        serialized.extend_from_slice(&registration_id.to_be_bytes());
         serialized.extend_from_slice(&c_i);
         serialized.extend_from_slice(&at_i);
     }
@@ -986,8 +978,6 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
         let _ = advance(&mut remaining, 16)?;
         // Skip device ID.
         let _ = decode_varint(&mut remaining)?;
-        // Skip registration ID.
-        let _ = advance(&mut remaining, 2)?;
         // Read C_i and AT_i.
         let c_and_at = advance(&mut remaining, 32 + 16)?;
 

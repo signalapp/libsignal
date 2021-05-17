@@ -1251,7 +1251,6 @@ describe('SignalClient', () => {
       const aSealedSenderMessage = await SignalClient.sealedSenderMultiRecipientEncrypt(
         aUsmc,
         [bAddress],
-        [0x3ffd],
         aKeys
       );
 

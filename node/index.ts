@@ -1319,12 +1319,10 @@ export function sealedSenderEncrypt(
 export function sealedSenderMultiRecipientEncrypt(
   content: UnidentifiedSenderMessageContent,
   recipients: ProtocolAddress[],
-  recipientRegistrationIds: number[],
   identityStore: IdentityKeyStore
 ): Promise<Buffer> {
   return NativeImpl.SealedSender_MultiRecipientEncrypt(
     recipients,
-    recipientRegistrationIds,
     content,
     identityStore,
     null
