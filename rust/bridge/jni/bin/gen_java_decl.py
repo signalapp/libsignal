@@ -69,7 +69,6 @@ def translate_to_java(typ):
         "JObject": "Object",
         "JClass": "Class",
         "jbyteArray": "byte[]",
-        "jintArray": "int[]",
         "jlongArray": "long[]",
         "ObjectHandle": "long",
         "jint": "int",

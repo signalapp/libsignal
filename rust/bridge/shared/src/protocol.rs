@@ -986,7 +986,6 @@ async fn SealedSessionCipher_Encrypt<E: Env>(
 async fn SealedSender_MultiRecipientEncrypt<E: Env>(
     env: E,
     recipients: &[&ProtocolAddress],
-    recipient_registration_ids: &[u16],
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
     ctx: Context,
@@ -994,7 +993,6 @@ async fn SealedSender_MultiRecipientEncrypt<E: Env>(
     let mut rng = rand::rngs::OsRng;
     let ctext = sealed_sender_multi_recipient_encrypt(
         recipients,
-        recipient_registration_ids,
         content,
         identity_key_store,
         ctx,

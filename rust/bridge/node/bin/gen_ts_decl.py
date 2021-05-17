@@ -25,7 +25,6 @@ def translate_to_ts(typ):
     type_map = {
         "()": "void",
         "&[u8]": "Buffer",
-        "&[u16]": "number[]",
         "i32": "number",
         "u8": "number",
         "u32": "number",

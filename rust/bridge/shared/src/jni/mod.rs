@@ -15,7 +15,7 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 
 pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
-pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jintArray, jlong, jlongArray, jstring};
+pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jstring};
 pub(crate) use jni::JNIEnv;
 
 /// Converts a function signature to a JNI signature string.

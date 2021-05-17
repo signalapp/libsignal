@@ -178,7 +178,7 @@ public final class Native {
 
   public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore, Object ctx);
   public static native byte[] SealedSessionCipher_Encrypt(long destination, long content, IdentityKeyStore identityKeyStore, Object ctx);
-  public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, int[] recipientRegistrationIds, long content, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long content, IdentityKeyStore identityKeyStore, Object ctx);
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage);
 
   public static native long SenderCertificate_Deserialize(byte[] data);
