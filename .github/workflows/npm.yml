@@ -67,7 +67,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: ${{ github.event.inputs.tag }}
+        ref: ${{ github.event.inputs.ref }}
 
     - name: Get Node version from .nvmrc
       id: get-nvm-version

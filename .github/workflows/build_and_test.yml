@@ -68,6 +68,9 @@ jobs:
           ignored:
           - 'LICENSE'
           - 'README.md'
+          - 'SECURITY.md'
+          - '.github/FUNDING.yml'
+          - '.github/workflows/**'
           - '.gitignore'
 
     - name: Check pattern completeness
