@@ -87,6 +87,9 @@ typedef struct SignalPreKeySignalMessage SignalPreKeySignalMessage;
 
 typedef struct SignalPrivateKey SignalPrivateKey;
 
+/**
+ * Represents a unique Signal client instance as `(<user ID>, <device ID>)` pair.
+ */
 typedef struct SignalProtocolAddress SignalProtocolAddress;
 
 typedef struct SignalPublicKey SignalPublicKey;

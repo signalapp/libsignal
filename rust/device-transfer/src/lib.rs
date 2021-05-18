@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+//! Support logic for Signal's device-to-device transfer feature.
+
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 
 use chrono::{Datelike, Duration, Utc};
 use picky::key::PrivateKey;
@@ -12,9 +15,12 @@ use picky::x509::{certificate::CertificateBuilder, date::UTCDate};
 use picky::{hash::HashAlgorithm, signature::SignatureAlgorithm};
 use std::fmt;
 
+/// Error types for device transfer.
 #[derive(Copy, Clone, Debug)]
 pub enum Error {
+    /// Failure to decode some provided RSA private key.
     KeyDecodingFailed,
+    /// Internal error in device transfer.
     InternalError(&'static str),
 }
 
@@ -22,11 +28,12 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::KeyDecodingFailed => write!(f, "Decoding provided RSA private key failed"),
-            Error::InternalError(s) => write!(f, "Internal error in device tranfer ({})", s),
+            Error::InternalError(s) => write!(f, "Internal error in device transfer ({})", s),
         }
     }
 }
 
+/// Generate a private key of size `bits` and export to PKCS8 format.
 pub fn create_rsa_private_key(bits: usize) -> Result<Vec<u8>, Error> {
     let key = PrivateKey::generate_rsa(bits)
         .map_err(|_| Error::InternalError("RSA key generation failed"))?;
@@ -35,6 +42,9 @@ pub fn create_rsa_private_key(bits: usize) -> Result<Vec<u8>, Error> {
         .map_err(|_| Error::InternalError("Exporting to PKCS8 failed"))?)
 }
 
+/// Generate a self-signed certificate of name `name`, expiring in `days_to_expire`.
+///
+/// `rsa_key_pkcs8` should be the output of [create_rsa_private_key].
 pub fn create_self_signed_cert(
     rsa_key_pkcs8: &[u8],
     name: &str,
