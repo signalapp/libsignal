@@ -895,7 +895,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             SignalProtocolError::InternalError("failed to encrypt using AES-GCM-SIV")
         })?;
 
-    // Uses a flat representation: count || UUID_i || deviceId_i || C_i || AT_i || ... || E.pub || ciphertext
+    // Uses a flat representation: count || UUID_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
     let version = SEALED_SENDER_V2_VERSION;
     let mut serialized: Vec<u8> = vec![(version | (version << 4))];
 
@@ -934,6 +934,8 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         serialized.extend_from_slice(their_uuid.as_bytes());
         prost::encode_length_delimiter(destination.device_id() as usize, &mut serialized)
             .expect("cannot fail encoding to Vec");
+        // Provide a placeholder registration ID for now.
+        serialized.extend_from_slice(&0u16.to_be_bytes());
         serialized.extend_from_slice(&c_i);
         serialized.extend_from_slice(&at_i);
     }
@@ -978,6 +980,8 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
         let _ = advance(&mut remaining, 16)?;
         // Skip device ID.
         let _ = decode_varint(&mut remaining)?;
+        // Skip registration ID.
+        let _ = advance(&mut remaining, 2)?;
         // Read C_i and AT_i.
         let c_and_at = advance(&mut remaining, 32 + 16)?;
 
