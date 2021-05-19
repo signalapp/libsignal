@@ -150,13 +150,17 @@ public func sealedSenderEncrypt(_ content: UnidentifiedSenderMessageContent,
 public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessageContent,
                                               for recipients: [ProtocolAddress],
                                               identityStore: IdentityKeyStore,
+                                              sessionStore: SessionStore,
                                               context: StoreContext) throws -> [UInt8] {
+    let sessions = try sessionStore.loadExistingSessions(for: recipients, context: context)
     return try context.withOpaquePointer { context in
         try withIdentityKeyStore(identityStore) { ffiIdentityStore in
             try invokeFnReturningArray {
                 signal_sealed_sender_multi_recipient_encrypt($0, $1,
                                                              recipients.map { $0.nativeHandle },
                                                              recipients.count,
+                                                             sessions.map { $0.nativeHandle },
+                                                             sessions.count,
                                                              content.nativeHandle,
                                                              ffiIdentityStore, context)
             }

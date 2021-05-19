@@ -283,6 +283,7 @@ class SessionTests: TestCaseBase {
         let a_ctext = try! sealedSenderMultiRecipientEncrypt(a_usmc,
                                                              for: [bob_address],
                                                              identityStore: alice_store,
+                                                             sessionStore: alice_store,
                                                              context: NullContext())
 
         let b_ctext = try! sealedSenderMultiRecipientMessageForSingleRecipient(a_ctext)

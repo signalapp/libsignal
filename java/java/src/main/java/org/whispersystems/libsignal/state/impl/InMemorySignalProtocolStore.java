@@ -9,6 +9,7 @@ import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.IdentityKeyPair;
 import org.whispersystems.libsignal.InvalidKeyIdException;
+import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.groups.state.InMemorySenderKeyStore;
 import org.whispersystems.libsignal.groups.state.SenderKeyRecord;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
@@ -80,6 +81,11 @@ public class InMemorySignalProtocolStore implements SignalProtocolStore {
   @Override
   public SessionRecord loadSession(SignalProtocolAddress address) {
     return sessionStore.loadSession(address);
+  }
+
+  @Override
+  public List<SessionRecord> loadExistingSessions(List<SignalProtocolAddress> addresses) throws NoSessionException {
+    return sessionStore.loadExistingSessions(addresses);
   }
 
   @Override

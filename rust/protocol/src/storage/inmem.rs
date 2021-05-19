@@ -195,6 +195,23 @@ impl InMemSessionStore {
             sessions: HashMap::new(),
         }
     }
+
+    /// Bulk version of [SessionStore::load_session]
+    ///
+    /// Useful for [crate::sealed_sender_multi_recipient_encrypt].
+    pub fn load_existing_sessions(
+        &self,
+        addresses: &[&ProtocolAddress],
+    ) -> Result<Vec<&SessionRecord>> {
+        addresses
+            .iter()
+            .map(|address| {
+                self.sessions
+                    .get(address)
+                    .ok_or_else(|| SignalProtocolError::SessionNotFound(address.to_string()))
+            })
+            .collect()
+    }
 }
 
 impl Default for InMemSessionStore {
