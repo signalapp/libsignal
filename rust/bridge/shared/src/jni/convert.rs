@@ -575,26 +575,28 @@ macro_rules! jni_bridge_handle {
             for &'storage [&'storage $typ]
         {
             type ArgType = jni::jlongArray;
-            type StoredType = jni::AutoArray<'context, 'context, jni::jlong>;
+            type StoredType = Vec<&'storage $typ>;
             fn borrow(
                 env: &'context jni::JNIEnv,
                 foreign: Self::ArgType,
             ) -> jni::SignalJniResult<Self::StoredType> {
-                Ok(env.get_long_array_elements(foreign, jni::ReleaseMode::NoCopyBack)?)
+                let array = env.get_long_array_elements(foreign, jni::ReleaseMode::NoCopyBack)?;
+                let len = array.size()? as usize;
+                let slice = unsafe { std::slice::from_raw_parts(array.as_ptr(), len) };
+                slice
+                    .iter()
+                    .map(|&raw_handle| unsafe {
+                        (raw_handle as *const $typ)
+                            .as_ref()
+                            .ok_or(jni::SignalJniError::NullHandle)
+                    })
+                    .collect()
             }
             fn load_from(
                 _env: &jni::JNIEnv,
                 stored: &'storage mut Self::StoredType,
             ) -> jni::SignalJniResult<&'storage [&'storage $typ]> {
-                let len = stored.size()? as usize;
-                let slice_of_pointers = unsafe {
-                    std::slice::from_raw_parts(stored.as_ptr() as *const *const $typ, len)
-                };
-                if slice_of_pointers.contains(&std::ptr::null()) {
-                    return Err(jni::SignalJniError::NullHandle);
-                }
-
-                Ok(unsafe { std::slice::from_raw_parts(stored.as_ptr() as *const &$typ, len) })
+                Ok(&*stored)
             }
         }
         impl jni::ResultTypeInfo for $typ {
