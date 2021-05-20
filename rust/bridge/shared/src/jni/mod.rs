@@ -133,6 +133,49 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             return;
         }
 
+        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
+            let throwable = env.new_object(
+                "org/signal/libsignal/metadata/SelfSendException",
+                jni_signature!(() -> void),
+                &[],
+            );
+
+            match throwable {
+                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
+                Ok(throwable) => {
+                    let result = env.throw(JThrowable::from(throwable));
+                    if let Err(e) = result {
+                        log::error!("failed to throw exception for {}: {}", error, e);
+                    }
+                }
+            }
+            return;
+        }
+
+        SignalJniError::UnexpectedPanic(_)
+        | SignalJniError::BadJniParameter(_)
+        | SignalJniError::UnexpectedJniResultType(_, _) => {
+            // java.lang.AssertionError has a slightly different signature.
+            let throwable = env.new_string(error.to_string()).and_then(|message| {
+                env.new_object(
+                    "java/lang/AssertionError",
+                    jni_signature!((java.lang.Object) -> void),
+                    &[JValue::from(message)],
+                )
+            });
+
+            match throwable {
+                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
+                Ok(throwable) => {
+                    let result = env.throw(JThrowable::from(throwable));
+                    if let Err(e) = result {
+                        log::error!("failed to throw exception for {}: {}", error, e);
+                    }
+                }
+            }
+            return;
+        }
+
         e => e,
     };
 
@@ -152,10 +195,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize) => {
             "java/lang/IllegalArgumentException"
         }
-
-        SignalJniError::UnexpectedPanic(_)
-        | SignalJniError::BadJniParameter(_)
-        | SignalJniError::UnexpectedJniResultType(_, _) => "java/lang/AssertionError",
 
         SignalJniError::IntegerOverflow(_)
         | SignalJniError::Jni(_)
@@ -213,18 +252,18 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/whispersystems/libsignal/LegacyMessageException"
         }
 
-        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
-            "org/signal/libsignal/metadata/SelfSendException"
-        }
-
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
-        | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _)) => {
-            unreachable!("already handled in prior match")
-        }
-
         SignalJniError::Signal(SignalProtocolError::FingerprintIdentifierMismatch)
         | SignalJniError::Signal(SignalProtocolError::FingerprintParsingError) => {
             "org/whispersystems/libsignal/fingerprint/FingerprintParsingException"
+        }
+
+        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend)
+        | SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
+        | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _))
+        | SignalJniError::UnexpectedPanic(_)
+        | SignalJniError::BadJniParameter(_)
+        | SignalJniError::UnexpectedJniResultType(_, _) => {
+            unreachable!("already handled in prior match")
         }
     };
 
