@@ -26,7 +26,7 @@ uuid = "0.8"
 
 libc = { version = "0.2", optional = true }
 jni_crate = { version = "0.19", package = "jni", optional = true }
-neon = { version = "0.8", optional = true, default-features = false, features = ["napi-4"] }
+neon = { version = "0.8", optional = true, default-features = false, features = ["napi-6"] }
 linkme = { version = "0.2.4", optional = true }
 signal-neon-futures = { path = "../node/futures", optional = true }
 

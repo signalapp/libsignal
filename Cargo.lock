@@ -792,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "async-trait",
  "device-transfer",
@@ -807,7 +807,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "async-trait",
  "jni",
@@ -821,7 +821,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "async-trait",
  "libsignal-bridge",
@@ -942,9 +942,8 @@ checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
 
 [[package]]
 name = "neon"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcdbfbcfbb5ae2ffc7281dfe0b118374bd696369096afc252f26c0b8e7a02e91"
+version = "0.8.2"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
 dependencies = [
  "cslice",
  "neon-build",
@@ -956,15 +955,13 @@ dependencies = [
 
 [[package]]
 name = "neon-build"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a529aacddb4b04e9c0a0d5e67478d9aad331c748cbbf6d1657f6d167b3fac37a"
+version = "0.8.2"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
 
 [[package]]
 name = "neon-macros"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cfecd558575c3997790d574be135680e5cd8d75dcd3e82fe4e71fb6fa4c1b71"
+version = "0.8.2"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
 dependencies = [
  "quote",
  "syn",
@@ -972,9 +969,8 @@ dependencies = [
 
 [[package]]
 name = "neon-runtime"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dbec080794ea0939cbd4fa262e749068fd36b18bbb65b6b810e72ae98fea789"
+version = "0.8.2"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
 dependencies = [
  "cfg-if 1.0.0",
  "libloading",

@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-node"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Jordan Rose <jrose@signal.org>", "Jack Lloyd <jack@signal.org>"]
 license = "AGPL-3.0-only"
 edition = "2018"
@@ -18,7 +18,7 @@ crate-type = ["cdylib"]
 libsignal-protocol = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node"] }
 signal-neon-futures = { path = "futures" }
-neon = { version = "0.8", default-features = false, features = ["napi-4", "event-queue-api"] }
+neon = { version = "0.8", default-features = false, features = ["napi-6", "event-queue-api"] }
 rand = "0.7.3"
 log = "0.4"
 log-panics = { version = "2.0.0", features = ["with-backtrace"] }
