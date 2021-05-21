@@ -792,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "device-transfer",
@@ -807,7 +807,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "jni",
@@ -821,7 +821,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "libsignal-bridge",
