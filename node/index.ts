@@ -1008,6 +1008,9 @@ export abstract class SessionStore implements Native.SessionStore {
     record: SessionRecord
   ): Promise<void>;
   abstract getSession(name: ProtocolAddress): Promise<SessionRecord | null>;
+  abstract getExistingSessions(
+    addresses: ProtocolAddress[]
+  ): Promise<SessionRecord[]>;
 }
 
 export abstract class IdentityKeyStore implements Native.IdentityKeyStore {
@@ -1316,13 +1319,16 @@ export function sealedSenderEncrypt(
   return NativeImpl.SealedSender_Encrypt(address, content, identityStore, null);
 }
 
-export function sealedSenderMultiRecipientEncrypt(
+export async function sealedSenderMultiRecipientEncrypt(
   content: UnidentifiedSenderMessageContent,
   recipients: ProtocolAddress[],
-  identityStore: IdentityKeyStore
+  identityStore: IdentityKeyStore,
+  sessionStore: SessionStore
 ): Promise<Buffer> {
-  return NativeImpl.SealedSender_MultiRecipientEncrypt(
+  const recipientSessions = await sessionStore.getExistingSessions(recipients);
+  return await NativeImpl.SealedSender_MultiRecipientEncrypt(
     recipients,
+    recipientSessions,
     content,
     identityStore,
     null

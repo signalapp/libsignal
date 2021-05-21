@@ -94,6 +94,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         return sessionMap[address]
     }
 
+    public func loadExistingSessions(for addresses: [ProtocolAddress], context: StoreContext) throws -> [SessionRecord] {
+        return try addresses.map { address in
+            if let session = sessionMap[address] {
+                return session
+            }
+            throw SignalError.sessionNotFound("\(address)")
+        }
+    }
+
     public func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: StoreContext) throws {
         sessionMap[address] = record
     }

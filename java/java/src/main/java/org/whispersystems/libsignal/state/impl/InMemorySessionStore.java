@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal.state.impl;
 
+import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SessionStore;
@@ -32,6 +33,23 @@ public class InMemorySessionStore implements SessionStore {
     } catch (IOException e) {
       throw new AssertionError(e);
     }
+  }
+
+  @Override
+  public synchronized List<SessionRecord> loadExistingSessions(List<SignalProtocolAddress> addresses) throws NoSessionException {
+    List<SessionRecord> resultSessions = new LinkedList<>();
+    for (SignalProtocolAddress remoteAddress : addresses) {
+      byte[] serialized = sessions.get(remoteAddress);
+      if (serialized == null) {
+        throw new NoSessionException("no session for " + remoteAddress);
+      }
+      try {
+        resultSessions.add(new SessionRecord(serialized));
+      } catch (IOException e) {
+        throw new AssertionError(e);
+      }
+    }
+    return resultSessions;
   }
 
   @Override

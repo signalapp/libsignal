@@ -982,10 +982,11 @@ async fn SealedSessionCipher_Encrypt<E: Env>(
     Ok(env.buffer(ctext))
 }
 
-#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientEncrypt")]
+#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientEncrypt", node = false)]
 async fn SealedSender_MultiRecipientEncrypt<E: Env>(
     env: E,
     recipients: &[&ProtocolAddress],
+    recipient_sessions: &[&SessionRecord],
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
     ctx: Context,
@@ -993,6 +994,30 @@ async fn SealedSender_MultiRecipientEncrypt<E: Env>(
     let mut rng = rand::rngs::OsRng;
     let ctext = sealed_sender_multi_recipient_encrypt(
         recipients,
+        recipient_sessions,
+        content,
+        identity_key_store,
+        ctx,
+        &mut rng,
+    )
+    .await?;
+    Ok(env.buffer(ctext))
+}
+
+// Node can't support the `&[&Foo]` type, so we clone the sessions instead.
+#[bridge_fn_buffer(ffi = false, jni = false, node = "SealedSender_MultiRecipientEncrypt")]
+async fn SealedSender_MultiRecipientEncryptNode<E: Env>(
+    env: E,
+    recipients: &[&ProtocolAddress],
+    recipient_sessions: &[SessionRecord],
+    content: &UnidentifiedSenderMessageContent,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    ctx: Context,
+) -> Result<E::Buffer> {
+    let mut rng = rand::rngs::OsRng;
+    let ctext = sealed_sender_multi_recipient_encrypt(
+        recipients,
+        &recipient_sessions.iter().collect::<Vec<&SessionRecord>>(),
         content,
         identity_key_store,
         ctx,

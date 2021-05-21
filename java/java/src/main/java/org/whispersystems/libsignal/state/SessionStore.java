@@ -5,6 +5,7 @@
  */
 package org.whispersystems.libsignal.state;
 
+import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 
 import java.util.List;
@@ -31,6 +32,15 @@ public interface SessionStore {
    *         a new SessionRecord if one does not currently exist.
    */
   public SessionRecord loadSession(SignalProtocolAddress address);
+
+  /**
+   * Returns the {@link SessionRecord}s corresponding to the given addresses.
+   *
+   * @param addresses The name and device ID of each remote client.
+   * @return the SessionRecords corresponding to each recipientId + deviceId tuple.
+   * @throws NoSessionException if any address does not have an active session.
+   */
+  public List<SessionRecord> loadExistingSessions(List<SignalProtocolAddress> addresses) throws NoSessionException;
 
   /**
    * Returns all known devices with active sessions for a recipient

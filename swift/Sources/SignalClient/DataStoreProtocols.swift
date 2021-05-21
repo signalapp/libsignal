@@ -37,6 +37,7 @@ public protocol SignedPreKeyStore: AnyObject {
 
 public protocol SessionStore: AnyObject {
     func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord?
+    func loadExistingSessions(for addresses: [ProtocolAddress], context: StoreContext) throws -> [SessionRecord]
     func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: StoreContext) throws
 }
 

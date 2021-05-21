@@ -21,6 +21,7 @@ import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage;
 import org.whispersystems.libsignal.protocol.SenderKeyMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
+import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.util.guava.Optional;
 
@@ -77,16 +78,28 @@ public class SealedSessionCipher {
   }
 
   public byte[] multiRecipientEncrypt(List<SignalProtocolAddress> recipients, UnidentifiedSenderMessageContent content)
-      throws InvalidKeyException, UntrustedIdentityException
+      throws InvalidKeyException, NoSessionException, UntrustedIdentityException
   {
-    long[] recipientHandles = new long[recipients.size()];
+    List<SessionRecord> recipientSessions =
+      this.signalProtocolStore.loadExistingSessions(recipients);
+
+    long[] recipientSessionHandles = new long[recipientSessions.size()];
     int i = 0;
+    for (SessionRecord nextSession : recipientSessions) {
+      recipientSessionHandles[i] = nextSession.nativeHandle();
+      i++;
+    }
+
+    long[] recipientHandles = new long[recipients.size()];
+    i = 0;
     for (SignalProtocolAddress nextRecipient : recipients) {
       recipientHandles[i] = nextRecipient.nativeHandle();
       i++;
     }
+
     return Native.SealedSessionCipher_MultiRecipientEncrypt(
       recipientHandles,
+      recipientSessionHandles,
       content.nativeHandle(),
       this.signalProtocolStore,
       null);

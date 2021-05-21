@@ -874,6 +874,42 @@ macro_rules! node_bridge_handle {
                 }
             }
         }
+
+        // FIXME: This is necessarily a cloning API.
+        // We should try to avoid cloning data when possible.
+        impl<'storage> node::AsyncArgTypeInfo<'storage>
+        for &'storage [$typ] {
+            type ArgType = node::JsArray;
+            type StoredType = node::DefaultFinalize<Vec<$typ>>;
+            fn save_async_arg(
+                cx: &mut node::FunctionContext,
+                array: node::Handle<Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                let len = array.len(cx);
+                let result = (0..len)
+                    .map(|i| {
+                        let element = neon::object::Object::get(*array, cx, i)?;
+                        let wrapper = element.downcast_or_throw::<node::JsObject, _>(cx)?;
+                        let value_box = neon::object::Object::get(
+                            *wrapper,
+                            cx,
+                            node::NATIVE_HANDLE_PROPERTY
+                        )?;
+                        let value_box: node::Handle<node::DefaultJsBox<std::cell::RefCell<$typ>>> =
+                            value_box.downcast_or_throw(cx)?;
+                        let cell: &std::cell::RefCell<_> = &***value_box;
+                        let result = cell.borrow().clone();
+                        Ok(result)
+                    })
+                    .collect::<node::NeonResult<_>>()?;
+                Ok(node::DefaultFinalize(result))
+            }
+            fn load_async_arg(
+                stored: &'storage mut Self::StoredType,
+            ) -> Self {
+                &stored.0
+            }
+        }
     };
     ( $typ:ty $(, mut = $_:tt)?) => {
         paste! {

@@ -145,7 +145,7 @@ public class SessionRecord {
             theirBaseKey.nativeHandle()));
   }
 
-  long nativeHandle() {
+  public long nativeHandle() {
     return this.handle;
   }
 }

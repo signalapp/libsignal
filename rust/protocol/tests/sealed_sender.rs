@@ -496,8 +496,12 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             None,
         )?;
 
+        let recipients = [&bob_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
-            &[&bob_uuid_address],
+            &recipients,
+            &alice_store
+                .session_store
+                .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
             None,
@@ -546,8 +550,12 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             None,
         )?;
 
+        let recipients = [&bob_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
-            &[&bob_uuid_address],
+            &recipients,
+            &alice_store
+                .session_store
+                .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
             None,
@@ -602,8 +610,12 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             None,
         )?;
 
+        let recipients = [&bob_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
-            &[&bob_uuid_address],
+            &recipients,
+            &alice_store
+                .session_store
+                .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
             None,
