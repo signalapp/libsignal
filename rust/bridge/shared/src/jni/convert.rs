@@ -477,6 +477,7 @@ impl ResultTypeInfo for CiphertextMessage {
                 "org/whispersystems/libsignal/protocol/SenderKeyMessage",
                 box_object::<SenderKeyMessage>(Ok(m))?,
             ),
+            CiphertextMessage::PlaintextContent(_) => todo!(),
         };
 
         Ok(obj?.into_inner())

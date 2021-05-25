@@ -22,6 +22,7 @@ pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
     PreKeySignalMessage(PreKeySignalMessage),
     SenderKeyMessage(SenderKeyMessage),
+    PlaintextContent(PlaintextContent),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, num_enum::TryFromPrimitive)]
@@ -30,6 +31,7 @@ pub enum CiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
     SenderKey = 7,
+    Plaintext = 8,
 }
 
 impl CiphertextMessage {
@@ -38,6 +40,7 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(_) => CiphertextMessageType::Whisper,
             CiphertextMessage::PreKeySignalMessage(_) => CiphertextMessageType::PreKey,
             CiphertextMessage::SenderKeyMessage(_) => CiphertextMessageType::SenderKey,
+            CiphertextMessage::PlaintextContent(_) => CiphertextMessageType::Plaintext,
         }
     }
 
@@ -46,6 +49,7 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(x) => x.serialized(),
             CiphertextMessage::PreKeySignalMessage(x) => x.serialized(),
             CiphertextMessage::SenderKeyMessage(x) => x.serialized(),
+            CiphertextMessage::PlaintextContent(x) => x.serialized(),
         }
     }
 }
@@ -652,6 +656,71 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
 }
 
 #[derive(Debug, Clone)]
+pub struct PlaintextContent {
+    serialized: Box<[u8]>,
+}
+
+impl PlaintextContent {
+    /// Identifies a serialized PlaintextContent.
+    ///
+    /// This ensures someone doesn't try to serialize an arbitrary Content message as
+    /// PlaintextContent; only messages that are okay to send as plaintext should be allowed.
+    const PLAINTEXT_CONTEXT_IDENTIFIER_BYTE: u8 = 0xC0;
+
+    /// Marks the end of a message and the start of any padding.
+    ///
+    /// Usually messages are padded to avoid exposing patterns,
+    /// but PlaintextContent messages are all fixed-length anyway, so there won't be any padding.
+    const PADDING_BOUNDARY_BYTE: u8 = 0x80;
+
+    #[inline]
+    pub fn body(&self) -> &[u8] {
+        &self.serialized[1..]
+    }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &self.serialized
+    }
+}
+
+impl From<DecryptionErrorMessage> for PlaintextContent {
+    fn from(message: DecryptionErrorMessage) -> Self {
+        let proto_structure = proto::service::Content {
+            decryption_error_message: Some(message.serialized().to_vec()),
+            ..Default::default()
+        };
+        let mut serialized = Vec::new();
+        serialized.push(Self::PLAINTEXT_CONTEXT_IDENTIFIER_BYTE);
+        proto_structure
+            .encode(&mut serialized)
+            .expect("can always encode to a Vec");
+        serialized.push(Self::PADDING_BOUNDARY_BYTE);
+        Self {
+            serialized: Box::from(serialized),
+        }
+    }
+}
+
+impl TryFrom<&[u8]> for PlaintextContent {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
+        if value.is_empty() {
+            return Err(SignalProtocolError::CiphertextMessageTooShort(0));
+        }
+        if value[0] != Self::PLAINTEXT_CONTEXT_IDENTIFIER_BYTE {
+            return Err(SignalProtocolError::UnrecognizedMessageVersion(
+                value[0] as u32,
+            ));
+        }
+        Ok(Self {
+            serialized: Box::from(value),
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct DecryptionErrorMessage {
     ratchet_key: Option<PublicKey>,
     timestamp: u64,
@@ -674,6 +743,11 @@ impl DecryptionErrorMessage {
                     .sender_ratchet_key(),
             ),
             CiphertextMessageType::SenderKey => None,
+            CiphertextMessageType::Plaintext => {
+                return Err(SignalProtocolError::InvalidArgument(
+                    "cannot create a DecryptionErrorMessage for plaintext content; it is not encrypted".to_string()
+                ));
+            }
         };
 
         let proto_message = proto::service::DecryptionErrorMessage {
@@ -724,6 +798,25 @@ impl TryFrom<&[u8]> for DecryptionErrorMessage {
             serialized: Box::from(value),
         })
     }
+}
+
+/// For testing
+pub fn extract_decryption_error_message_from_serialized_content(
+    bytes: &[u8],
+) -> Result<DecryptionErrorMessage> {
+    if bytes.last() != Some(&PlaintextContent::PADDING_BOUNDARY_BYTE) {
+        return Err(SignalProtocolError::InvalidProtobufEncoding);
+    }
+    let content = proto::service::Content::decode(bytes.split_last().expect("checked above").1)?;
+    content
+        .decryption_error_message
+        .as_deref()
+        .ok_or_else(|| {
+            SignalProtocolError::InvalidArgument(
+                "Content does not contain DecryptionErrorMessage".to_owned(),
+            )
+        })
+        .and_then(DecryptionErrorMessage::try_from)
 }
 
 #[cfg(test)]
@@ -940,5 +1033,13 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_decryption_error_message_for_plaintext() {
+        assert!(matches!(
+            DecryptionErrorMessage::for_original(&[], CiphertextMessageType::Plaintext, 5,),
+            Err(SignalProtocolError::InvalidArgument(_))
+        ));
     }
 }

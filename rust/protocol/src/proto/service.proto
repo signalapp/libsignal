@@ -6,6 +6,17 @@
 syntax = "proto2";
 package signalservice;
 
+message Content {
+    optional bytes /* DataMessage */ data_message = 1;
+    optional bytes /* SyncMessage */ sync_message = 2;
+    optional bytes /* CallMessage */ call_message = 3;
+    optional bytes /* NullMessage */ null_message = 4;
+    optional bytes /* ReceiptMessage */ receipt_message = 5;
+    optional bytes /* TypingMessage */ typing_message = 6;
+    optional bytes /* SenderKeyDistributionMessage */ sender_key_distribution_message = 7;
+    optional bytes /* DecryptionErrorMessage */ decryption_error_message = 8;
+}
+
 message DecryptionErrorMessage {
     optional bytes ratchet_key = 1;  // set to the public ratchet key from the SignalMessage if a 1-1 payload fails to decrypt
     optional uint64 timestamp = 2;
