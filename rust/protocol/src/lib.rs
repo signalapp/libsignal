@@ -56,8 +56,8 @@ pub use {
     identity_key::{IdentityKey, IdentityKeyPair},
     kdf::HKDF,
     protocol::{
-        CiphertextMessage, CiphertextMessageType, DecryptionErrorMessage, PreKeySignalMessage,
-        SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
+        CiphertextMessage, CiphertextMessageType, DecryptionErrorMessage, PlaintextContent,
+        PreKeySignalMessage, SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
     },
     ratchet::{
         initialize_alice_session_record, initialize_bob_session_record,

@@ -656,3 +656,139 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         Ok(())
     })
 }
+
+#[test]
+fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
+    block_on(async {
+        let mut rng = OsRng;
+
+        let alice_device_id = 23;
+        let bob_device_id = 42;
+
+        let alice_e164 = "+14151111111".to_owned();
+
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+
+        let alice_uuid_address = ProtocolAddress::new(alice_uuid.clone(), 1);
+        let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
+
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
+
+        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+
+        let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut rng).await?;
+
+        process_prekey_bundle(
+            &alice_uuid_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            &mut rng,
+            None,
+        )
+        .await?;
+
+        // Send one message to establish a session.
+
+        let bob_first_message = message_encrypt(
+            b"swim camp",
+            &alice_uuid_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            None,
+        )
+        .await?;
+
+        message_decrypt(
+            &bob_first_message,
+            &bob_uuid_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &mut alice_store.pre_key_store,
+            &mut alice_store.signed_pre_key_store,
+            &mut rng,
+            None,
+        )
+        .await?;
+
+        // Pretend the second message fails to decrypt.
+
+        let bob_message = message_encrypt(
+            b"space camp",
+            &alice_uuid_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            None,
+        )
+        .await?;
+
+        let original_ratchet_key = match bob_message {
+            CiphertextMessage::PreKeySignalMessage(ref m) => m.message().sender_ratchet_key(),
+            _ => panic!("without ACKs, every message should be a PreKeySignalMessage"),
+        };
+
+        // Skip over the part where Bob sends this to Alice and Alice fails to decrypt it,
+        // for whatever reason.
+
+        let trust_root = KeyPair::generate(&mut rng);
+        let server_key = KeyPair::generate(&mut rng);
+
+        let server_cert =
+            ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+
+        let expires = 1605722925;
+
+        let sender_cert = SenderCertificate::new(
+            alice_uuid.clone(),
+            Some(alice_e164.clone()),
+            alice_pubkey,
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut rng,
+        )?;
+
+        let error_message = DecryptionErrorMessage::for_original(
+            bob_message.serialize(),
+            bob_message.message_type(),
+            408,
+        )?;
+        let error_message_content = PlaintextContent::from(error_message);
+        let error_message_usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::Plaintext,
+            sender_cert.clone(),
+            error_message_content.serialized().to_vec(),
+            ContentHint::Default,
+            None,
+        )?;
+
+        let alice_ctext = sealed_sender_encrypt_from_usmc(
+            &bob_uuid_address,
+            &error_message_usmc,
+            &mut alice_store.identity_store,
+            None,
+            &mut rng,
+        )
+        .await?;
+
+        let bob_usmc =
+            sealed_sender_decrypt_to_usmc(&alice_ctext, &mut bob_store.identity_store, None)
+                .await?;
+
+        assert!(matches!(
+            bob_usmc.msg_type()?,
+            CiphertextMessageType::Plaintext,
+        ));
+
+        let bob_plaintext = PlaintextContent::try_from(bob_usmc.contents()?)?;
+        let bob_error_message = bob_plaintext.decryption_error_message().expect("present");
+
+        assert_eq!(bob_error_message.ratchet_key(), Some(original_ratchet_key));
+        assert_eq!(bob_error_message.timestamp(), 408);
+
+        Ok(())
+    })
+}

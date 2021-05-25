@@ -22,6 +22,7 @@ pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
     PreKeySignalMessage(PreKeySignalMessage),
     SenderKeyMessage(SenderKeyMessage),
+    PlaintextContent(PlaintextContent),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, num_enum::TryFromPrimitive)]
@@ -30,6 +31,7 @@ pub enum CiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
     SenderKey = 7,
+    Plaintext = 8,
 }
 
 impl CiphertextMessage {
@@ -38,6 +40,7 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(_) => CiphertextMessageType::Whisper,
             CiphertextMessage::PreKeySignalMessage(_) => CiphertextMessageType::PreKey,
             CiphertextMessage::SenderKeyMessage(_) => CiphertextMessageType::SenderKey,
+            CiphertextMessage::PlaintextContent(_) => CiphertextMessageType::Plaintext,
         }
     }
 
@@ -46,6 +49,7 @@ impl CiphertextMessage {
             CiphertextMessage::SignalMessage(x) => x.serialized(),
             CiphertextMessage::PreKeySignalMessage(x) => x.serialized(),
             CiphertextMessage::SenderKeyMessage(x) => x.serialized(),
+            CiphertextMessage::PlaintextContent(x) => x.serialized(),
         }
     }
 }
@@ -652,6 +656,56 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
 }
 
 #[derive(Debug, Clone)]
+pub struct PlaintextContent {
+    decryption_error_message: Option<DecryptionErrorMessage>,
+    serialized: Box<[u8]>,
+}
+
+impl PlaintextContent {
+    #[inline]
+    pub fn decryption_error_message(&self) -> Option<&DecryptionErrorMessage> {
+        self.decryption_error_message.as_ref()
+    }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &self.serialized
+    }
+}
+
+impl From<DecryptionErrorMessage> for PlaintextContent {
+    fn from(message: DecryptionErrorMessage) -> Self {
+        let proto_structure = proto::service::PlaintextContent {
+            decryption_error_message: Some(message.serialized().to_vec()),
+        };
+        let mut serialized = Vec::new();
+        proto_structure
+            .encode(&mut serialized)
+            .expect("can always encode to a Vec");
+        Self {
+            decryption_error_message: Some(message),
+            serialized: Box::from(serialized),
+        }
+    }
+}
+
+impl TryFrom<&[u8]> for PlaintextContent {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
+        let proto_structure = proto::service::PlaintextContent::decode(value)?;
+        let decryption_error_message = proto_structure
+            .decryption_error_message
+            .map(|m| DecryptionErrorMessage::try_from(&m[..]))
+            .transpose()?;
+        Ok(Self {
+            decryption_error_message,
+            serialized: Box::from(value),
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct DecryptionErrorMessage {
     ratchet_key: Option<PublicKey>,
     timestamp: u64,
@@ -674,6 +728,11 @@ impl DecryptionErrorMessage {
                     .sender_ratchet_key(),
             ),
             CiphertextMessageType::SenderKey => None,
+            CiphertextMessageType::Plaintext => {
+                return Err(SignalProtocolError::InvalidArgument(
+                    "cannot create a DecryptionErrorMessage for plaintext content; it is not encrypted".to_string()
+                ));
+            }
         };
 
         let proto_message = proto::service::DecryptionErrorMessage {
@@ -940,5 +999,13 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_decryption_error_message_for_plaintext() {
+        assert!(matches!(
+            DecryptionErrorMessage::for_original(&[], CiphertextMessageType::Plaintext, 5,),
+            Err(SignalProtocolError::InvalidArgument(_))
+        ));
     }
 }
