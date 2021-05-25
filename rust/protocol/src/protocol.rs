@@ -29,7 +29,6 @@ pub enum CiphertextMessage {
 pub enum CiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
-    // Further cases should line up with Envelope.Type (proto), even though old cases don't.
     SenderKey = 7,
 }
 
@@ -652,6 +651,81 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct DecryptionErrorMessage {
+    ratchet_key: Option<PublicKey>,
+    timestamp: u64,
+    serialized: Box<[u8]>,
+}
+
+impl DecryptionErrorMessage {
+    pub fn for_original(
+        original_bytes: &[u8],
+        original_type: CiphertextMessageType,
+        original_timestamp: u64,
+    ) -> Result<Self> {
+        let ratchet_key = match original_type {
+            CiphertextMessageType::Whisper => {
+                Some(*SignalMessage::try_from(original_bytes)?.sender_ratchet_key())
+            }
+            CiphertextMessageType::PreKey => Some(
+                *PreKeySignalMessage::try_from(original_bytes)?
+                    .message()
+                    .sender_ratchet_key(),
+            ),
+            CiphertextMessageType::SenderKey => None,
+        };
+
+        let proto_message = proto::service::DecryptionErrorMessage {
+            timestamp: Some(original_timestamp),
+            ratchet_key: ratchet_key.map(|k| k.serialize().into()),
+        };
+        let mut serialized = Vec::new();
+        proto_message.encode(&mut serialized)?;
+
+        Ok(Self {
+            ratchet_key,
+            timestamp: original_timestamp,
+            serialized: serialized.into_boxed_slice(),
+        })
+    }
+
+    #[inline]
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    #[inline]
+    pub fn ratchet_key(&self) -> Option<&PublicKey> {
+        self.ratchet_key.as_ref()
+    }
+
+    #[inline]
+    pub fn serialized(&self) -> &[u8] {
+        &self.serialized
+    }
+}
+
+impl TryFrom<&[u8]> for DecryptionErrorMessage {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
+        let proto_structure = proto::service::DecryptionErrorMessage::decode(value)?;
+        let timestamp = proto_structure
+            .timestamp
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+        let ratchet_key = proto_structure
+            .ratchet_key
+            .map(|k| PublicKey::deserialize(&k))
+            .transpose()?;
+        Ok(Self {
+            timestamp,
+            ratchet_key,
+            serialized: Box::from(value),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -795,6 +869,76 @@ mod tests {
             sender_key_message.serialized,
             deser_sender_key_message.serialized
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_decryption_error_message() -> Result<()> {
+        let mut csprng = OsRng;
+        let identity_key_pair = KeyPair::generate(&mut csprng);
+        let base_key_pair = KeyPair::generate(&mut csprng);
+        let message = create_signal_message(&mut csprng)?;
+        let timestamp = 0x2_0000_0001;
+
+        {
+            let error_message = DecryptionErrorMessage::for_original(
+                message.serialized(),
+                CiphertextMessageType::Whisper,
+                timestamp,
+            )?;
+            let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
+            assert_eq!(
+                error_message.ratchet_key(),
+                Some(message.sender_ratchet_key())
+            );
+            assert_eq!(error_message.timestamp(), timestamp);
+        }
+
+        let pre_key_signal_message = PreKeySignalMessage::new(
+            3,
+            365,
+            None,
+            97,
+            base_key_pair.public_key,
+            identity_key_pair.public_key.into(),
+            message,
+        )?;
+
+        {
+            let error_message = DecryptionErrorMessage::for_original(
+                pre_key_signal_message.serialized(),
+                CiphertextMessageType::PreKey,
+                timestamp,
+            )?;
+            let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
+            assert_eq!(
+                error_message.ratchet_key(),
+                Some(pre_key_signal_message.message().sender_ratchet_key())
+            );
+            assert_eq!(error_message.timestamp(), timestamp);
+        }
+
+        let sender_key_message = SenderKeyMessage::new(
+            3,
+            Uuid::nil(),
+            1,
+            2,
+            Box::from(b"test".to_owned()),
+            &mut csprng,
+            &base_key_pair.private_key,
+        )?;
+
+        {
+            let error_message = DecryptionErrorMessage::for_original(
+                sender_key_message.serialized(),
+                CiphertextMessageType::SenderKey,
+                timestamp,
+            )?;
+            let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
+            assert_eq!(error_message.ratchet_key(), None);
+            assert_eq!(error_message.timestamp(), timestamp);
+        }
+
         Ok(())
     }
 }
