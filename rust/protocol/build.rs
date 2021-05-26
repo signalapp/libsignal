@@ -6,8 +6,9 @@
 fn main() {
     let protos = [
         "src/proto/fingerprint.proto",
-        "src/proto/storage.proto",
         "src/proto/sealed_sender.proto",
+        "src/proto/service.proto",
+        "src/proto/storage.proto",
         "src/proto/wire.proto",
     ];
     prost_build::compile_protos(&protos, &["src"]).expect("Protobufs in src are valid");

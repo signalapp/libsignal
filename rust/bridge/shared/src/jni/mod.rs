@@ -517,6 +517,7 @@ pub enum CiphertextMessageRef<'a> {
     SignalMessage(&'a SignalMessage),
     PreKeySignalMessage(&'a PreKeySignalMessage),
     SenderKeyMessage(&'a SenderKeyMessage),
+    PlaintextContent(&'a PlaintextContent),
 }
 
 impl<'a> CiphertextMessageRef<'a> {
@@ -525,6 +526,7 @@ impl<'a> CiphertextMessageRef<'a> {
             CiphertextMessageRef::SignalMessage(_) => CiphertextMessageType::Whisper,
             CiphertextMessageRef::PreKeySignalMessage(_) => CiphertextMessageType::PreKey,
             CiphertextMessageRef::SenderKeyMessage(_) => CiphertextMessageType::SenderKey,
+            CiphertextMessageRef::PlaintextContent(_) => CiphertextMessageType::Plaintext,
         }
     }
 
@@ -533,6 +535,7 @@ impl<'a> CiphertextMessageRef<'a> {
             CiphertextMessageRef::SignalMessage(x) => x.serialized(),
             CiphertextMessageRef::PreKeySignalMessage(x) => x.serialized(),
             CiphertextMessageRef::SenderKeyMessage(x) => x.serialized(),
+            CiphertextMessageRef::PlaintextContent(x) => x.serialized(),
         }
     }
 }

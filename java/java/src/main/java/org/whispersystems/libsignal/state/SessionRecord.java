@@ -90,6 +90,10 @@ public class SessionRecord {
     return Native.SessionRecord_HasSenderChain(this.handle);
   }
 
+  public boolean currentRatchetKeyMatches(ECPublicKey key) {
+    return Native.SessionRecord_CurrentRatchetKeyMatches(this.handle, key.nativeHandle());
+  }
+
   /** @return a serialized version of the current SessionRecord. */
   public byte[] serialize() {
     return Native.SessionRecord_Serialize(this.handle);

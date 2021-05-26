@@ -51,4 +51,10 @@ public class SessionRecord: ClonableHandleOwner {
             signal_session_record_get_remote_registration_id($0, nativeHandle)
         }
     }
+
+    public func currentRatchetKeyMatches(_ key: PublicKey) throws -> Bool {
+        var result: Bool = false
+        try checkError(signal_session_record_current_ratchet_key_matches(&result, nativeHandle, key.nativeHandle))
+        return result
+    }
 }

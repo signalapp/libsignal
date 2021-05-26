@@ -56,7 +56,8 @@ pub use {
     identity_key::{IdentityKey, IdentityKeyPair},
     kdf::HKDF,
     protocol::{
-        CiphertextMessage, CiphertextMessageType, PreKeySignalMessage,
+        extract_decryption_error_message_from_serialized_content, CiphertextMessage,
+        CiphertextMessageType, DecryptionErrorMessage, PlaintextContent, PreKeySignalMessage,
         SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
     },
     ratchet::{

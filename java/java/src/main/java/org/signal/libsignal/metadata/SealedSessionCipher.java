@@ -18,6 +18,7 @@ import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.UntrustedIdentityException;
 import org.whispersystems.libsignal.groups.GroupCipher;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
+import org.whispersystems.libsignal.protocol.PlaintextContent;
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage;
 import org.whispersystems.libsignal.protocol.SenderKeyMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
@@ -173,10 +174,16 @@ public class SealedSessionCipher {
     SignalProtocolAddress sender = new SignalProtocolAddress(message.getSenderCertificate().getSenderUuid(), message.getSenderCertificate().getSenderDeviceId());
 
     switch (message.getType()) {
-      case CiphertextMessage.WHISPER_TYPE: return new SessionCipher(signalProtocolStore, sender).decrypt(new SignalMessage(message.getContent()));
-      case CiphertextMessage.PREKEY_TYPE:  return new SessionCipher(signalProtocolStore, sender).decrypt(new PreKeySignalMessage(message.getContent()));
-      case CiphertextMessage.SENDERKEY_TYPE:  return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
-      default:                             throw new InvalidMessageException("Unknown type: " + message.getType());
+      case CiphertextMessage.WHISPER_TYPE:
+        return new SessionCipher(signalProtocolStore, sender).decrypt(new SignalMessage(message.getContent()));
+      case CiphertextMessage.PREKEY_TYPE: 
+        return new SessionCipher(signalProtocolStore, sender).decrypt(new PreKeySignalMessage(message.getContent()));
+      case CiphertextMessage.SENDERKEY_TYPE:
+        return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
+      case CiphertextMessage.PLAINTEXT_CONTENT_TYPE:
+        return Native.PlaintextContent_DeserializeAndGetContent(message.getContent());
+      default:
+        throw new InvalidMessageException("Unknown type: " + message.getType());
     }
   }
 

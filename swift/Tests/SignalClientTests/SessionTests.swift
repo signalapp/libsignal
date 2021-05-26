@@ -225,8 +225,10 @@ class SessionTests: TestCaseBase {
         let session: SessionRecord! = try! alice_store.loadSession(for: bob_address, context: NullContext())
         XCTAssertNotNil(session)
         XCTAssertTrue(session.hasCurrentState)
+        XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey))
         session.archiveCurrentState()
         XCTAssertFalse(session.hasCurrentState)
+        XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey))
         // A redundant archive shouldn't break anything.
         session.archiveCurrentState()
         XCTAssertFalse(session.hasCurrentState)
@@ -303,6 +305,72 @@ class SessionTests: TestCaseBase {
 
     }
 
+    func testDecryptionErrorMessage() throws {
+        let alice_address = try! ProtocolAddress(name: "9d0652a3-dcc3-4d11-975f-74d61598733f", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "6838237D-02F6-4098-B110-698253D15961", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore()
+
+        // Notice the reverse initialization. Bob will send the first message to Alice in this example.
+        initializeSessions(alice_store: bob_store, bob_store: alice_store, bob_address: alice_address)
+
+        let bob_first_message = try signalEncrypt(message: Array("swim camp".utf8),
+                                                  for: alice_address,
+                                                  sessionStore: bob_store,
+                                                  identityStore: bob_store,
+                                                  context: NullContext()).serialize()
+        _ = try signalDecryptPreKey(message: PreKeySignalMessage(bytes: bob_first_message),
+                                    from: bob_address,
+                                    sessionStore: alice_store,
+                                    identityStore: alice_store,
+                                    preKeyStore: alice_store,
+                                    signedPreKeyStore: alice_store,
+                                    context: NullContext())
+
+        let bob_message = try signalEncrypt(message: Array("space camp".utf8),
+                                            for: alice_address,
+                                            sessionStore: bob_store,
+                                            identityStore: bob_store,
+                                            context: NullContext())
+        let error_message = try DecryptionErrorMessage(originalMessageBytes: bob_message.serialize(),
+                                                       type: bob_message.messageType,
+                                                       timestamp: 408)
+
+        let trust_root = IdentityKeyPair.generate()
+        let server_keys = IdentityKeyPair.generate()
+        let server_cert = try! ServerCertificate(keyId: 1, publicKey: server_keys.publicKey, trustRoot: trust_root.privateKey)
+        let sender_addr = try! SealedSenderAddress(e164: "+14151111111",
+                                                   uuidString: alice_address.name,
+                                                   deviceId: 1)
+        let sender_cert = try! SenderCertificate(sender: sender_addr,
+                                                 publicKey: alice_store.identityKeyPair(context: NullContext()).publicKey,
+                                                 expiration: 31337,
+                                                 signerCertificate: server_cert,
+                                                 signerKey: server_keys.privateKey)
+
+        let error_message_usmc = try UnidentifiedSenderMessageContent(
+            CiphertextMessage(PlaintextContent(error_message)),
+            from: sender_cert,
+            contentHint: .supplementary,
+            groupId: [])
+        let ciphertext = try sealedSenderEncrypt(error_message_usmc,
+                                                 for: bob_address,
+                                                 identityStore: alice_store,
+                                                 context: NullContext())
+
+        let bob_usmc = try UnidentifiedSenderMessageContent(message: ciphertext,
+                                                            identityStore: bob_store,
+                                                            context: NullContext())
+        XCTAssertEqual(bob_usmc.messageType, .plaintext)
+        let bob_content = try PlaintextContent(bytes: bob_usmc.contents)
+        let bob_error_message = try DecryptionErrorMessage.extractFromSerializedContent(bob_content.body)
+        XCTAssertEqual(bob_error_message.timestamp, 408)
+
+        let bob_session_with_alice = try XCTUnwrap(bob_store.loadSession(for: alice_address, context: NullContext()))
+        XCTAssert(try bob_session_with_alice.currentRatchetKeyMatches(XCTUnwrap(bob_error_message.ratchetKey)))
+    }
+
     static var allTests: [(String, (SessionTests) -> () throws -> Void)] {
         return [
             ("testSessionCipher", testSessionCipher),
@@ -310,6 +378,7 @@ class SessionTests: TestCaseBase {
             ("testSealedSenderSession", testSealedSenderSession),
             ("testArchiveSession", testArchiveSession),
             ("testSealedSenderGroupCipher", testSealedSenderGroupCipher),
+            ("testDecryptionErrorMessage", testDecryptionErrorMessage)
         ]
     }
 }
