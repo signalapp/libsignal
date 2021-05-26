@@ -249,6 +249,7 @@ public final class Native {
   public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
   public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);
+  public static native boolean SessionRecord_CurrentRatchetKeyMatches(long s, long key);
   public static native long SessionRecord_Deserialize(byte[] data);
   public static native void SessionRecord_Destroy(long handle);
   public static native long SessionRecord_FromSingleSessionState(byte[] sessionState);

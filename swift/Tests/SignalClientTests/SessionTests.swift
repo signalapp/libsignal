@@ -225,8 +225,10 @@ class SessionTests: TestCaseBase {
         let session: SessionRecord! = try! alice_store.loadSession(for: bob_address, context: NullContext())
         XCTAssertNotNil(session)
         XCTAssertTrue(session.hasCurrentState)
+        _ = try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey); // very unlikely but not impossible
         session.archiveCurrentState()
         XCTAssertFalse(session.hasCurrentState)
+        XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey));
         // A redundant archive shouldn't break anything.
         session.archiveCurrentState()
         XCTAssertFalse(session.hasCurrentState)
@@ -363,8 +365,10 @@ class SessionTests: TestCaseBase {
         XCTAssertEqual(bob_usmc.messageType, .plaintext)
         let bob_content = try PlaintextContent(bytes: bob_usmc.contents)
         let bob_error_message = try XCTUnwrap(bob_content.decryptionErrorMessage)
-        XCTAssertNotNil(bob_error_message.ratchetKey)
         XCTAssertEqual(bob_error_message.timestamp, 408)
+
+        let bob_session_with_alice = try XCTUnwrap(bob_store.loadSession(for: alice_address, context: NullContext()));
+        XCTAssert(try bob_session_with_alice.currentRatchetKeyMatches(XCTUnwrap(bob_error_message.ratchetKey)));
     }
 
     static var allTests: [(String, (SessionTests) -> () throws -> Void)] {

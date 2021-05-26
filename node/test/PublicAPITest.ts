@@ -715,8 +715,20 @@ describe('SignalClient', () => {
       assert.deepEqual(session.localRegistrationId(), 5);
       assert.deepEqual(session.remoteRegistrationId(), 5);
       assert(session.hasCurrentState());
+      // Very unlikely but possible.
+      session.currentRatchetKeyMatches(
+        SignalClient.PrivateKey.generate().getPublicKey()
+      );
+
       session.archiveCurrentState();
       assert(!session.hasCurrentState());
+      assert(
+        !session.currentRatchetKeyMatches(
+          SignalClient.PrivateKey.generate().getPublicKey()
+        )
+      );
+    } else {
+      assert.fail('no session found');
     }
   });
   it('handles duplicated messages', async () => {
@@ -1447,7 +1459,14 @@ describe('SignalClient', () => {
       bErrorUSMC.contents()
     );
     assert.equal(bErrorContent.decryptionErrorMessage()?.timestamp(), 45);
-    assert(!!bErrorContent.decryptionErrorMessage()?.ratchetKey());
+
+    const bSessionWithA = await bSess.getSession(aAddress);
+    assert(
+      bSessionWithA?.currentRatchetKeyMatches(
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        bErrorContent.decryptionErrorMessage()!.ratchetKey()!
+      )
+    );
   });
 
   it('AES-GCM-SIV test vector', () => {
