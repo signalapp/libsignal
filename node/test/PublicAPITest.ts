@@ -1436,7 +1436,7 @@ describe('SignalClient', () => {
     const errorUSMC = SignalClient.UnidentifiedSenderMessageContent.new(
       SignalClient.CiphertextMessage.from(errorContent),
       senderCert,
-      SignalClient.ContentHint.Supplementary,
+      SignalClient.ContentHint.Implicit,
       null // group ID
     );
     const errorSealedSenderMessage = await SignalClient.sealedSenderEncrypt(
