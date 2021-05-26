@@ -24,6 +24,7 @@ export const enum CiphertextMessageType {
   Whisper = 2,
   PreKey = 3,
   SenderKey = 7,
+  Plaintext = 8,
 }
 
 export const enum Direction {
@@ -1201,6 +1202,10 @@ export class SealedSenderDecryptionResult {
   }
 }
 
+interface CiphertextMessageConvertible {
+  asCiphertextMessage(): CiphertextMessage;
+}
+
 export class CiphertextMessage {
   readonly _nativeHandle: Native.CiphertextMessage;
 
@@ -1214,12 +1219,108 @@ export class CiphertextMessage {
     return new CiphertextMessage(nativeHandle);
   }
 
+  static from(message: CiphertextMessageConvertible): CiphertextMessage {
+    return message.asCiphertextMessage();
+  }
+
   serialize(): Buffer {
     return NativeImpl.CiphertextMessage_Serialize(this);
   }
 
   type(): number {
     return NativeImpl.CiphertextMessage_Type(this);
+  }
+}
+
+export class PlaintextContent implements CiphertextMessageConvertible {
+  readonly _nativeHandle: Native.PlaintextContent;
+
+  private constructor(nativeHandle: Native.PlaintextContent) {
+    this._nativeHandle = nativeHandle;
+  }
+
+  static deserialize(buffer: Buffer): PlaintextContent {
+    return new PlaintextContent(
+      NativeImpl.PlaintextContent_Deserialize(buffer)
+    );
+  }
+
+  static from(message: DecryptionErrorMessage): PlaintextContent {
+    return new PlaintextContent(
+      NativeImpl.PlaintextContent_FromDecryptionErrorMessage(message)
+    );
+  }
+
+  decryptionErrorMessage(): DecryptionErrorMessage | undefined {
+    const resultHandle = NativeImpl.PlaintextContent_GetDecryptionErrorMessage(
+      this
+    );
+    if (resultHandle) {
+      return DecryptionErrorMessage._fromNativeHandle(resultHandle);
+    } else {
+      return undefined;
+    }
+  }
+
+  serialize(): Buffer {
+    return NativeImpl.PlaintextContent_Serialize(this);
+  }
+
+  asCiphertextMessage(): CiphertextMessage {
+    return CiphertextMessage._fromNativeHandle(
+      NativeImpl.CiphertextMessage_FromPlaintextContent(this)
+    );
+  }
+}
+
+export class DecryptionErrorMessage {
+  readonly _nativeHandle: Native.DecryptionErrorMessage;
+
+  private constructor(nativeHandle: Native.DecryptionErrorMessage) {
+    this._nativeHandle = nativeHandle;
+  }
+
+  static _fromNativeHandle(
+    nativeHandle: Native.DecryptionErrorMessage
+  ): DecryptionErrorMessage {
+    return new DecryptionErrorMessage(nativeHandle);
+  }
+
+  static forOriginal(
+    bytes: Buffer,
+    type: CiphertextMessageType,
+    timestamp: number
+  ): DecryptionErrorMessage {
+    return new DecryptionErrorMessage(
+      NativeImpl.DecryptionErrorMessage_ForOriginalMessage(
+        bytes,
+        type,
+        timestamp
+      )
+    );
+  }
+
+  static deserialize(buffer: Buffer): DecryptionErrorMessage {
+    return new DecryptionErrorMessage(
+      NativeImpl.DecryptionErrorMessage_Deserialize(buffer)
+    );
+  }
+
+  serialize(): Buffer {
+    return NativeImpl.DecryptionErrorMessage_Serialize(this);
+  }
+
+  timestamp(): number {
+    return NativeImpl.DecryptionErrorMessage_GetTimestamp(this);
+  }
+
+  ratchetKey(): PublicKey | undefined {
+    const keyHandle = NativeImpl.DecryptionErrorMessage_GetRatchetKey(this);
+    if (keyHandle) {
+      return PublicKey._fromNativeHandle(keyHandle);
+    } else {
+      return undefined;
+    }
   }
 }
 

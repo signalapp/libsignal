@@ -18,6 +18,7 @@ typedef enum {
   SignalCiphertextMessageType_Whisper = 2,
   SignalCiphertextMessageType_PreKey = 3,
   SignalCiphertextMessageType_SenderKey = 7,
+  SignalCiphertextMessageType_Plaintext = 8,
 } SignalCiphertextMessageType;
 
 typedef enum {
@@ -77,7 +78,11 @@ typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
+typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
+
 typedef struct SignalFingerprint SignalFingerprint;
+
+typedef struct SignalPlaintextContent SignalPlaintextContent;
 
 typedef struct SignalPreKeyBundle SignalPreKeyBundle;
 
@@ -321,9 +326,19 @@ SignalFfiError *signal_aes256_gcm_siv_decrypt(const unsigned char **out,
 
 SignalFfiError *signal_ciphertext_message_destroy(SignalCiphertextMessage *p);
 
+SignalFfiError *signal_decryption_error_message_destroy(SignalDecryptionErrorMessage *p);
+
+SignalFfiError *signal_decryption_error_message_clone(SignalDecryptionErrorMessage **new_obj,
+                                                      const SignalDecryptionErrorMessage *obj);
+
 SignalFfiError *signal_fingerprint_destroy(SignalFingerprint *p);
 
 SignalFfiError *signal_fingerprint_clone(SignalFingerprint **new_obj, const SignalFingerprint *obj);
+
+SignalFfiError *signal_plaintext_content_destroy(SignalPlaintextContent *p);
+
+SignalFfiError *signal_plaintext_content_clone(SignalPlaintextContent **new_obj,
+                                               const SignalPlaintextContent *obj);
 
 SignalFfiError *signal_pre_key_bundle_destroy(SignalPreKeyBundle *p);
 
@@ -628,6 +643,40 @@ SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistri
 SignalFfiError *signal_sender_key_distribution_message_get_signature_key(SignalPublicKey **out,
                                                                          const SignalSenderKeyDistributionMessage *m);
 
+SignalFfiError *signal_decryption_error_message_deserialize(SignalDecryptionErrorMessage **p,
+                                                            const unsigned char *data,
+                                                            size_t data_len);
+
+SignalFfiError *signal_decryption_error_message_get_timestamp(uint64_t *out,
+                                                              const SignalDecryptionErrorMessage *obj);
+
+SignalFfiError *signal_decryption_error_message_serialize(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          const SignalDecryptionErrorMessage *obj);
+
+SignalFfiError *signal_decryption_error_message_get_ratchet_key(SignalPublicKey **out,
+                                                                const SignalDecryptionErrorMessage *m);
+
+SignalFfiError *signal_decryption_error_message_for_original_message(SignalDecryptionErrorMessage **out,
+                                                                     const unsigned char *original_bytes,
+                                                                     size_t original_bytes_len,
+                                                                     uint8_t original_type,
+                                                                     uint64_t original_timestamp);
+
+SignalFfiError *signal_plaintext_content_deserialize(SignalPlaintextContent **p,
+                                                     const unsigned char *data,
+                                                     size_t data_len);
+
+SignalFfiError *signal_plaintext_content_serialize(const unsigned char **out,
+                                                   size_t *out_len,
+                                                   const SignalPlaintextContent *obj);
+
+SignalFfiError *signal_plaintext_content_get_decryption_error_message(SignalDecryptionErrorMessage **out,
+                                                                      const SignalPlaintextContent *m);
+
+SignalFfiError *signal_plaintext_content_from_decryption_error_message(SignalPlaintextContent **out,
+                                                                       const SignalDecryptionErrorMessage *m);
+
 SignalFfiError *signal_pre_key_bundle_new(SignalPreKeyBundle **out,
                                           uint32_t registration_id,
                                           uint32_t device_id,
@@ -837,6 +886,9 @@ SignalFfiError *signal_ciphertext_message_type(uint8_t *out, const SignalCiphert
 SignalFfiError *signal_ciphertext_message_serialize(const unsigned char **out,
                                                     size_t *out_len,
                                                     const SignalCiphertextMessage *obj);
+
+SignalFfiError *signal_ciphertext_message_from_plaintext_content(SignalCiphertextMessage **out,
+                                                                 const SignalPlaintextContent *m);
 
 SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
 

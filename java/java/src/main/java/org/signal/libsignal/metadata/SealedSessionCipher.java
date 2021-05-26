@@ -18,6 +18,7 @@ import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.UntrustedIdentityException;
 import org.whispersystems.libsignal.groups.GroupCipher;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
+import org.whispersystems.libsignal.protocol.PlaintextContent;
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage;
 import org.whispersystems.libsignal.protocol.SenderKeyMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
@@ -136,6 +137,12 @@ public class SealedSessionCipher {
     }
 
     try {
+      if (content.getType() == CiphertextMessage.PLAINTEXT_CONTENT_TYPE) {
+        return new DecryptionResult(content.getSenderCertificate().getSenderUuid(),
+                                    content.getSenderCertificate().getSenderE164(),
+                                    content.getSenderCertificate().getSenderDeviceId(),
+                                    new PlaintextContent(content.getContent()));
+      }
       return new DecryptionResult(content.getSenderCertificate().getSenderUuid(),
                                   content.getSenderCertificate().getSenderE164(),
                                   content.getSenderCertificate().getSenderDeviceId(),
@@ -181,16 +188,26 @@ public class SealedSessionCipher {
   }
 
   public static class DecryptionResult {
-    private final String           senderUuid;
-    private final Optional<String> senderE164;
-    private final int              deviceId;
-    private final byte[]           paddedMessage;
+    private final String                     senderUuid;
+    private final Optional<String>           senderE164;
+    private final int                        deviceId;
+    private final Optional<byte[]>           paddedMessage;
+    private final Optional<PlaintextContent> plaintextContent;
 
     private DecryptionResult(String senderUuid, Optional<String> senderE164, int deviceId, byte[] paddedMessage) {
-      this.senderUuid    = senderUuid;
-      this.senderE164    = senderE164;
-      this.deviceId      = deviceId;
-      this.paddedMessage = paddedMessage;
+      this.senderUuid       = senderUuid;
+      this.senderE164       = senderE164;
+      this.deviceId         = deviceId;
+      this.paddedMessage    = Optional.of(paddedMessage);
+      this.plaintextContent = Optional.absent();
+    }
+
+    private DecryptionResult(String senderUuid, Optional<String> senderE164, int deviceId, PlaintextContent content) {
+      this.senderUuid       = senderUuid;
+      this.senderE164       = senderE164;
+      this.deviceId         = deviceId;
+      this.paddedMessage    = Optional.absent();
+      this.plaintextContent = Optional.of(content);
     }
 
     public String getSenderUuid() {
@@ -205,8 +222,12 @@ public class SealedSessionCipher {
       return deviceId;
     }
 
-    public byte[] getPaddedMessage() {
+    public Optional<byte[]> getPaddedMessage() {
       return paddedMessage;
+    }
+
+    public Optional<PlaintextContent> getPlaintextContent() {
+      return plaintextContent;
     }
   }
 }

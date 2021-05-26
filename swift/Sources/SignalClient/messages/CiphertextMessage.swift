@@ -27,6 +27,9 @@ public class CiphertextMessage {
         public static var senderKey: Self {
             return Self(SignalCiphertextMessageType_SenderKey)
         }
+        public static var plaintext: Self {
+            return Self(SignalCiphertextMessageType_Plaintext)
+        }
     }
 
     deinit {
@@ -35,6 +38,12 @@ public class CiphertextMessage {
 
     internal init(owned rawPtr: OpaquePointer?) {
         nativeHandle = rawPtr
+    }
+
+    public init(_ plaintextContent: PlaintextContent) {
+        var result: OpaquePointer?
+        failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContent.nativeHandle))
+        nativeHandle = result!
     }
 
     public func serialize() -> [UInt8] {
