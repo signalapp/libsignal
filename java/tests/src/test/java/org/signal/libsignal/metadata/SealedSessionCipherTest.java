@@ -254,7 +254,7 @@ public class SealedSessionCipherTest extends TestCase {
 
     DecryptionErrorMessage errorMessage = DecryptionErrorMessage.forOriginalMessage(bobMessage.serialize(), bobMessage.getType(), 408);
     PlaintextContent errorMessageContent = new PlaintextContent(errorMessage);
-    UnidentifiedSenderMessageContent errorMessageUsmc = new UnidentifiedSenderMessageContent(errorMessageContent, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.<byte[]>absent());
+    UnidentifiedSenderMessageContent errorMessageUsmc = new UnidentifiedSenderMessageContent(errorMessageContent, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_IMPLICIT, Optional.<byte[]>absent());
     byte[] errorMessageCiphertext = aliceCipher.encrypt(bobAddress, errorMessageUsmc);
 
     DecryptionResult result = bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335);

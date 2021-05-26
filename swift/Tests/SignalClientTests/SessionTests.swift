@@ -352,7 +352,7 @@ class SessionTests: TestCaseBase {
         let error_message_usmc = try UnidentifiedSenderMessageContent(
             CiphertextMessage(PlaintextContent(error_message)),
             from: sender_cert,
-            contentHint: .supplementary,
+            contentHint: .implicit,
             groupId: [])
         let ciphertext = try sealedSenderEncrypt(error_message_usmc,
                                                  for: bob_address,
