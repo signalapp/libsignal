@@ -999,8 +999,8 @@ describe('SignalClient', () => {
       for (const hint of [
         200,
         SignalClient.ContentHint.Default,
-        SignalClient.ContentHint.Supplementary,
-        SignalClient.ContentHint.Retry,
+        SignalClient.ContentHint.Resendable,
+        SignalClient.ContentHint.Implicit,
       ]) {
         const content = SignalClient.UnidentifiedSenderMessageContent.new(
           innerMessage,
@@ -1257,7 +1257,7 @@ describe('SignalClient', () => {
       const aUsmc = SignalClient.UnidentifiedSenderMessageContent.new(
         aCtext,
         senderCert,
-        SignalClient.ContentHint.Supplementary,
+        SignalClient.ContentHint.Implicit,
         Buffer.from([42])
       );
 
@@ -1280,10 +1280,7 @@ describe('SignalClient', () => {
       assert.deepEqual(bUsmc.senderCertificate().senderE164(), aE164);
       assert.deepEqual(bUsmc.senderCertificate().senderUuid(), aUuid);
       assert.deepEqual(bUsmc.senderCertificate().senderDeviceId(), aDeviceId);
-      assert.deepEqual(
-        bUsmc.contentHint(),
-        SignalClient.ContentHint.Supplementary
-      );
+      assert.deepEqual(bUsmc.contentHint(), SignalClient.ContentHint.Implicit);
       assert.deepEqual(bUsmc.groupId(), Buffer.from([42]));
 
       const bPtext = await SignalClient.groupDecrypt(

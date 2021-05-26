@@ -43,9 +43,9 @@ message UnidentifiedSenderMessage {
         }
 
         enum ContentHint {
-            reserved 0; // A content hint of "default" should never be encoded.
-            SUPPLEMENTARY = 1;
-            RETRY         = 2;
+            reserved     0; // Default: sender will not resend; an error should be shown immediately
+            RESENDABLE = 1; // Sender will try to resend; delay any error UI if possible
+            IMPLICIT   = 2; // Don't show any error UI at all; this is something sent implicitly like a typing message or a receipt
         }
 
         optional Type              type              = 1;

@@ -34,8 +34,8 @@ export const enum Direction {
 // This enum must be kept in sync with sealed_sender.proto.
 export const enum ContentHint {
   Default = 0,
-  Supplementary = 1,
-  Retry = 2,
+  Resendable = 1,
+  Implicit = 2,
 }
 
 export type Uuid = string;

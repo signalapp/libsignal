@@ -22,8 +22,8 @@ typedef enum {
 
 typedef enum {
   SignalContentHint_Default = 0,
-  SignalContentHint_Supplementary = 1,
-  SignalContentHint_Retry = 2,
+  SignalContentHint_Resendable = 1,
+  SignalContentHint_Implicit = 2,
 } SignalContentHint;
 
 typedef enum {

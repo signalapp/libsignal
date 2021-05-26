@@ -197,7 +197,7 @@ class SessionTests: TestCaseBase {
                                              identityStore: alice_store,
                                              context: NullContext())
 
-        for hint in [UnidentifiedSenderMessageContent.ContentHint(rawValue: 200), .default, .supplementary, .retry] {
+        for hint in [UnidentifiedSenderMessageContent.ContentHint(rawValue: 200), .default, .resendable, .implicit] {
             let content = try UnidentifiedSenderMessageContent(innerMessage,
                                                                from: sender_cert,
                                                                contentHint: hint,

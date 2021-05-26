@@ -41,11 +41,11 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
         public static var `default`: Self {
             return Self(SignalContentHint_Default)
         }
-        public static var supplementary: Self {
-            return Self(SignalContentHint_Supplementary)
+        public static var resendable: Self {
+            return Self(SignalContentHint_Resendable)
         }
-        public static var retry: Self {
-            return Self(SignalContentHint_Retry)
+        public static var implicit: Self {
+            return Self(SignalContentHint_Implicit)
         }
     }
 

@@ -10,9 +10,9 @@ import org.whispersystems.libsignal.util.guava.Optional;
 
 public class UnidentifiedSenderMessageContent {
   // Must be kept in sync with sealed_sender.proto.
-  public static final int CONTENT_HINT_DEFAULT       = 0;
-  public static final int CONTENT_HINT_SUPPLEMENTARY = 1;
-  public static final int CONTENT_HINT_RETRY         = 2;
+  public static final int CONTENT_HINT_DEFAULT    = 0;
+  public static final int CONTENT_HINT_RESENDABLE = 1;
+  public static final int CONTENT_HINT_IMPLICIT   = 2;
 
   private final long handle;
 

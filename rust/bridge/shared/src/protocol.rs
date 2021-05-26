@@ -635,8 +635,8 @@ fn UnidentifiedSenderMessageContent_GetMsgType(m: &UnidentifiedSenderMessageCont
 #[repr(C)]
 pub enum FfiContentHint {
     Default = 0,
-    Supplementary = 1,
-    Retry = 2,
+    Resendable = 1,
+    Implicit = 2,
 }
 
 const_assert_eq!(
@@ -644,10 +644,13 @@ const_assert_eq!(
     ContentHint::Default.to_u32(),
 );
 const_assert_eq!(
-    FfiContentHint::Supplementary as u32,
-    ContentHint::Supplementary.to_u32(),
+    FfiContentHint::Resendable as u32,
+    ContentHint::Resendable.to_u32(),
 );
-const_assert_eq!(FfiContentHint::Retry as u32, ContentHint::Retry.to_u32());
+const_assert_eq!(
+    FfiContentHint::Implicit as u32,
+    ContentHint::Implicit.to_u32()
+);
 
 #[bridge_fn]
 fn UnidentifiedSenderMessageContent_GetContentHint(
