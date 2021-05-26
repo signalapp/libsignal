@@ -715,9 +715,10 @@ describe('SignalClient', () => {
       assert.deepEqual(session.localRegistrationId(), 5);
       assert.deepEqual(session.remoteRegistrationId(), 5);
       assert(session.hasCurrentState());
-      // Very unlikely but possible.
-      session.currentRatchetKeyMatches(
-        SignalClient.PrivateKey.generate().getPublicKey()
+      assert(
+        !session.currentRatchetKeyMatches(
+          SignalClient.PrivateKey.generate().getPublicKey()
+        )
       );
 
       session.archiveCurrentState();

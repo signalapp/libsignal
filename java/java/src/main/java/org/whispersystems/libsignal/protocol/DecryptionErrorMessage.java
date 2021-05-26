@@ -11,9 +11,9 @@ import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.util.guava.Optional;
 
-public class DecryptionErrorMessage {
+public final class DecryptionErrorMessage {
 
-  long handle;
+  final long handle;
 
   @Override
   protected void finalize() {

@@ -10,9 +10,9 @@ import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.util.guava.Optional;
 
-public class PlaintextContent implements CiphertextMessage {
+public final class PlaintextContent implements CiphertextMessage {
 
-  private long handle;
+  private final long handle;
 
   @Override
   protected void finalize() {
@@ -24,6 +24,7 @@ public class PlaintextContent implements CiphertextMessage {
   }
 
   // Used by Rust.
+  @SuppressWarnings("unused")
   private PlaintextContent(long handle) {
     this.handle = handle;
   }

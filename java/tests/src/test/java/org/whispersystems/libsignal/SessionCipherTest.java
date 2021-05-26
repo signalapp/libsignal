@@ -95,7 +95,7 @@ public class SessionCipherTest extends TestCase {
     CiphertextMessage message2 = aliceCipher.encrypt(alicePlaintext);
 
     SessionRecord bobSession = bobStore.loadSession(aliceAddress);
-    bobSession.currentRatchetKeyMatches(Curve.generateKeyPair().getPublicKey()); // very unlikely but possible
+    assertFalse(bobSession.currentRatchetKeyMatches(Curve.generateKeyPair().getPublicKey()));
     bobSession.archiveCurrentState();
     assertFalse(bobSession.currentRatchetKeyMatches(Curve.generateKeyPair().getPublicKey()));
     bobStore.storeSession(aliceAddress, bobSession);
