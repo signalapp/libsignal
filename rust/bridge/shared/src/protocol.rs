@@ -14,7 +14,9 @@ use crate::support::*;
 use crate::*;
 
 bridge_handle!(CiphertextMessage, clone = false, jni = false);
+bridge_handle!(DecryptionErrorMessage);
 bridge_handle!(Fingerprint, jni = NumericFingerprintGenerator);
+bridge_handle!(PlaintextContent);
 bridge_handle!(PreKeyBundle);
 bridge_handle!(PreKeyRecord);
 bridge_handle!(PreKeySignalMessage);
@@ -443,6 +445,61 @@ fn SenderKeyDistributionMessage_GetSignatureKey(
     Ok(*m.signing_key()?)
 }
 
+bridge_deserialize!(DecryptionErrorMessage::try_from);
+bridge_get!(DecryptionErrorMessage::timestamp -> u64);
+bridge_get_bytearray!(
+    DecryptionErrorMessage::serialized as Serialize,
+    jni = "DecryptionErrorMessage_1GetSerialized"
+);
+
+#[bridge_fn]
+fn DecryptionErrorMessage_GetRatchetKey(m: &DecryptionErrorMessage) -> Option<PublicKey> {
+    m.ratchet_key().cloned()
+}
+
+#[bridge_fn]
+fn DecryptionErrorMessage_ForOriginalMessage(
+    original_bytes: &[u8],
+    original_type: u8,
+    original_timestamp: u64,
+) -> Result<DecryptionErrorMessage> {
+    let original_type = CiphertextMessageType::try_from(original_type).map_err(|_| {
+        SignalProtocolError::InvalidArgument(format!("unknown message type {}", original_type))
+    })?;
+    Ok(DecryptionErrorMessage::for_original(
+        original_bytes,
+        original_type,
+        original_timestamp,
+    )?)
+}
+
+#[bridge_fn]
+fn DecryptionErrorMessage_ExtractFromSerializedContent(
+    bytes: &[u8],
+) -> Result<DecryptionErrorMessage> {
+    extract_decryption_error_message_from_serialized_content(bytes)
+}
+
+bridge_deserialize!(PlaintextContent::try_from);
+bridge_get_bytearray!(
+    PlaintextContent::serialized as Serialize,
+    jni = "PlaintextContent_1GetSerialized"
+);
+bridge_get_bytearray!(PlaintextContent::body);
+
+#[bridge_fn]
+fn PlaintextContent_FromDecryptionErrorMessage(m: &DecryptionErrorMessage) -> PlaintextContent {
+    PlaintextContent::from(m.clone())
+}
+
+/// Save an allocation by decrypting all in one go.
+///
+/// Only useful for APIs that *do* decrypt all in one go, which is currently just Java.
+#[bridge_fn_buffer(ffi = false, node = false)]
+fn PlaintextContent_DeserializeAndGetContent<E: Env>(env: E, bytes: &[u8]) -> Result<E::Buffer> {
+    Ok(env.buffer(PlaintextContent::try_from(bytes)?.body()))
+}
+
 #[bridge_fn]
 fn PreKeyBundle_New(
     registration_id: u32,
@@ -720,6 +777,7 @@ pub enum FfiCiphertextMessageType {
     Whisper = 2,
     PreKey = 3,
     SenderKey = 7,
+    Plaintext = 8,
 }
 
 const_assert_eq!(
@@ -734,6 +792,10 @@ const_assert_eq!(
     FfiCiphertextMessageType::SenderKey as u8,
     CiphertextMessageType::SenderKey as u8
 );
+const_assert_eq!(
+    FfiCiphertextMessageType::Plaintext as u8,
+    CiphertextMessageType::Plaintext as u8
+);
 
 #[bridge_fn(jni = false)]
 fn CiphertextMessage_Type(msg: &CiphertextMessage) -> u8 {
@@ -741,6 +803,11 @@ fn CiphertextMessage_Type(msg: &CiphertextMessage) -> u8 {
 }
 
 bridge_get_bytearray!(CiphertextMessage::serialize as Serialize, jni = false);
+
+#[bridge_fn(jni = false)]
+fn CiphertextMessage_FromPlaintextContent(m: &PlaintextContent) -> CiphertextMessage {
+    CiphertextMessage::PlaintextContent(m.clone())
+}
 
 #[bridge_fn(ffi = false, node = false)]
 fn SessionRecord_NewFresh() -> SessionRecord {

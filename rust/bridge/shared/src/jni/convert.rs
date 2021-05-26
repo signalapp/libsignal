@@ -356,6 +356,15 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             )
             .transpose()
         })
+        .or_else(|| {
+            native_handle_from_message(
+                env,
+                foreign,
+                "org/whispersystems/libsignal/protocol/PlaintextContent",
+                Self::PlaintextContent,
+            )
+            .transpose()
+        })
         .unwrap_or(Err(SignalJniError::BadJniParameter("CiphertextMessage")))
     }
 }
@@ -477,7 +486,11 @@ impl ResultTypeInfo for CiphertextMessage {
                 "org/whispersystems/libsignal/protocol/SenderKeyMessage",
                 box_object::<SenderKeyMessage>(Ok(m))?,
             ),
-            CiphertextMessage::PlaintextContent(_) => todo!(),
+            CiphertextMessage::PlaintextContent(m) => jobject_from_native_handle(
+                &env,
+                "org/whispersystems/libsignal/protocol/PlaintextContent",
+                box_object::<PlaintextContent>(Ok(m))?,
+            ),
         };
 
         Ok(obj?.into_inner())

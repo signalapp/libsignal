@@ -14,6 +14,7 @@ import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SessionBuilder;
+import org.whispersystems.libsignal.SessionCipher;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.UntrustedIdentityException;
 import org.whispersystems.libsignal.ecc.Curve;
@@ -22,6 +23,8 @@ import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.groups.GroupCipher;
 import org.whispersystems.libsignal.groups.GroupSessionBuilder;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
+import org.whispersystems.libsignal.protocol.DecryptionErrorMessage;
+import org.whispersystems.libsignal.protocol.PlaintextContent;
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
 import org.whispersystems.libsignal.state.PreKeyBundle;
 import org.whispersystems.libsignal.state.PreKeyRecord;
@@ -222,6 +225,41 @@ public class SealedSessionCipherTest extends TestCase {
       assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY);
       assertEquals(Hex.toHexString(e.getGroupId().get()), Hex.toHexString(new byte[]{42, 1}));
     }
+  }
+
+  public void testDecryptionErrorMessage() throws InvalidCertificateException, InvalidKeyException, InvalidMessageException, InvalidMetadataMessageException, InvalidMetadataVersionException, ProtocolDuplicateMessageException, ProtocolInvalidKeyException, ProtocolInvalidKeyIdException, ProtocolInvalidMessageException, ProtocolInvalidVersionException, ProtocolLegacyMessageException, ProtocolNoSessionException, ProtocolUntrustedIdentityException, SelfSendException, UntrustedIdentityException {
+    TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+    TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress           = new SignalProtocolAddress("+14152222222", 1);
+
+    initializeSessions(aliceStore, bobStore, bobAddress);
+
+    ECKeyPair            trustRoot            = Curve.generateKeyPair();
+    CertificateValidator certificateValidator = new CertificateValidator(trustRoot.getPublicKey());
+    SenderCertificate    senderCertificate    = createCertificateFor(trustRoot, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1, aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(), 31337);
+    SealedSessionCipher  aliceCipher          = new SealedSessionCipher(aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
+
+    // Send a message from Alice to Bob to set up the session.
+    byte[] ciphertext = aliceCipher.encrypt(bobAddress, senderCertificate, "smert za smert".getBytes());
+
+    SealedSessionCipher bobCipher = new SealedSessionCipher(bobStore, UUID.fromString("e80f7bbe-5b94-471e-bd8c-2173654ea3d1"), "+14152222222", 1);
+
+    bobCipher.decrypt(certificateValidator, ciphertext, 31335);
+
+    // Pretend Bob's reply fails to decrypt.
+    SignalProtocolAddress aliceAddress = new SignalProtocolAddress("9d0652a3-dcc3-4d11-975f-74d61598733f", 1);
+    SessionCipher bobUnsealedCipher = new SessionCipher(bobStore, aliceAddress);
+    CiphertextMessage bobMessage = bobUnsealedCipher.encrypt("reply".getBytes());
+
+    DecryptionErrorMessage errorMessage = DecryptionErrorMessage.forOriginalMessage(bobMessage.serialize(), bobMessage.getType(), 408);
+    PlaintextContent errorMessageContent = new PlaintextContent(errorMessage);
+    UnidentifiedSenderMessageContent errorMessageUsmc = new UnidentifiedSenderMessageContent(errorMessageContent, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.<byte[]>absent());
+    byte[] errorMessageCiphertext = aliceCipher.encrypt(bobAddress, errorMessageUsmc);
+
+    DecryptionResult result = bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335);
+    DecryptionErrorMessage bobErrorMessage = DecryptionErrorMessage.extractFromSerializedContent(result.getPaddedMessage());
+    assert(bobErrorMessage.getRatchetKey().isPresent());
+    assertEquals(bobErrorMessage.getTimestamp(), 408);
   }
 
   private SenderCertificate createCertificateFor(ECKeyPair trustRoot, UUID uuid, String e164, int deviceId, ECPublicKey identityKey, long expires)
