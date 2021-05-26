@@ -28,6 +28,7 @@ import org.whispersystems.libsignal.protocol.PlaintextContent;
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
 import org.whispersystems.libsignal.state.PreKeyBundle;
 import org.whispersystems.libsignal.state.PreKeyRecord;
+import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 
 import org.signal.client.internal.Native;
@@ -258,8 +259,10 @@ public class SealedSessionCipherTest extends TestCase {
 
     DecryptionResult result = bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335);
     DecryptionErrorMessage bobErrorMessage = DecryptionErrorMessage.extractFromSerializedContent(result.getPaddedMessage());
-    assert(bobErrorMessage.getRatchetKey().isPresent());
     assertEquals(bobErrorMessage.getTimestamp(), 408);
+
+    SessionRecord bobSessionWithAlice = bobStore.loadSession(aliceAddress);
+    assert(bobSessionWithAlice.currentRatchetKeyMatches(bobErrorMessage.getRatchetKey().get()));
   }
 
   private SenderCertificate createCertificateFor(ECKeyPair trustRoot, UUID uuid, String e164, int deviceId, ECPublicKey identityKey, long expires)

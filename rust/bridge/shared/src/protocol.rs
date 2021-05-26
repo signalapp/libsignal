@@ -834,6 +834,11 @@ fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Resu
     session_record.archive_current_state()
 }
 
+#[bridge_fn]
+fn SessionRecord_CurrentRatchetKeyMatches(s: &SessionRecord, key: &PublicKey) -> Result<bool> {
+    s.current_ratchet_key_matches(key)
+}
+
 bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false);
 
 bridge_deserialize!(SessionRecord::deserialize);

@@ -636,4 +636,11 @@ impl SessionRecord {
     pub fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {
         self.session_state()?.get_sender_chain_key_bytes()
     }
+
+    pub fn current_ratchet_key_matches(&self, key: &PublicKey) -> Result<bool> {
+        match &self.current_session {
+            Some(session) => Ok(&session.sender_ratchet_key()? == key),
+            None => Ok(false),
+        }
+    }
 }

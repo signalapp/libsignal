@@ -622,6 +622,10 @@ export class SessionRecord {
   hasCurrentState(): boolean {
     return NativeImpl.SessionRecord_HasCurrentState(this);
   }
+
+  currentRatchetKeyMatches(key: PublicKey): boolean {
+    return NativeImpl.SessionRecord_CurrentRatchetKeyMatches(this, key);
+  }
 }
 
 export class ServerCertificate {
