@@ -358,8 +358,8 @@ impl From<CiphertextMessageType> for ProtoMessageType {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ContentHint {
     Default,
-    Supplementary,
-    Retry,
+    Resendable,
+    Implicit,
     Unknown(u32),
 }
 
@@ -376,8 +376,8 @@ impl ContentHint {
         use proto::sealed_sender::unidentified_sender_message::message::ContentHint as ProtoContentHint;
         match self {
             ContentHint::Default => 0,
-            ContentHint::Supplementary => ProtoContentHint::Supplementary as u32,
-            ContentHint::Retry => ProtoContentHint::Retry as u32,
+            ContentHint::Resendable => ProtoContentHint::Resendable as u32,
+            ContentHint::Implicit => ProtoContentHint::Implicit as u32,
             ContentHint::Unknown(value) => value,
         }
     }
@@ -390,8 +390,8 @@ impl From<u32> for ContentHint {
         match ProtoContentHint::from_i32(raw_value as i32) {
             None if raw_value == 0 => ContentHint::Default,
             None => ContentHint::Unknown(raw_value),
-            Some(ProtoContentHint::Supplementary) => ContentHint::Supplementary,
-            Some(ProtoContentHint::Retry) => ContentHint::Retry,
+            Some(ProtoContentHint::Resendable) => ContentHint::Resendable,
+            Some(ProtoContentHint::Implicit) => ContentHint::Implicit,
         }
     }
 }

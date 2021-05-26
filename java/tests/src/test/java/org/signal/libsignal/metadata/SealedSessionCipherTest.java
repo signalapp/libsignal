@@ -170,7 +170,7 @@ public class SealedSessionCipherTest extends TestCase {
 
     CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(distributionId, "smert ze smert".getBytes());
 
-    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.of(new byte[]{42}));
+    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_IMPLICIT, Optional.of(new byte[]{42}));
 
     byte[] aliceMessage = aliceCipher.multiRecipientEncrypt(Arrays.asList(bobAddress), usmcFromAlice);
     byte[] bobMessage = SealedSessionCipher.multiRecipientMessageForSingleRecipient(aliceMessage);
@@ -209,7 +209,7 @@ public class SealedSessionCipherTest extends TestCase {
     aliceSessionBuilder.create(senderAddress, distributionId);
     CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(distributionId, "smert ze smert".getBytes());
 
-    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY, Optional.of(new byte[]{42, 1}));
+    UnidentifiedSenderMessageContent usmcFromAlice = new UnidentifiedSenderMessageContent(ciphertextFromAlice, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_RESENDABLE, Optional.of(new byte[]{42, 1}));
 
     byte[] aliceMessage = aliceCipher.multiRecipientEncrypt(Arrays.asList(bobAddress), usmcFromAlice);
     byte[] bobMessage = SealedSessionCipher.multiRecipientMessageForSingleRecipient(aliceMessage);
@@ -219,7 +219,7 @@ public class SealedSessionCipherTest extends TestCase {
     } catch (ProtocolNoSessionException e) {
       assertEquals(e.getSender(), "+14151111111");
       assertEquals(e.getSenderDevice(), 1);
-      assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_SUPPLEMENTARY);
+      assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_RESENDABLE);
       assertEquals(Hex.toHexString(e.getGroupId().get()), Hex.toHexString(new byte[]{42, 1}));
     }
   }
