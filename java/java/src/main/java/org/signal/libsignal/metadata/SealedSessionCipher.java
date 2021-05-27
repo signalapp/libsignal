@@ -142,21 +142,21 @@ public class SealedSessionCipher {
                                   content.getSenderCertificate().getSenderDeviceId(),
                                   decrypt(content));
     } catch (InvalidMessageException e) {
-      throw new ProtocolInvalidMessageException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolInvalidMessageException(e, content);
     } catch (InvalidKeyException e) {
-      throw new ProtocolInvalidKeyException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolInvalidKeyException(e, content);
     } catch (NoSessionException e) {
-      throw new ProtocolNoSessionException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolNoSessionException(e, content);
     } catch (LegacyMessageException e) {
-      throw new ProtocolLegacyMessageException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolLegacyMessageException(e, content);
     } catch (InvalidVersionException e) {
-      throw new ProtocolInvalidVersionException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolInvalidVersionException(e, content);
     } catch (DuplicateMessageException e) {
-      throw new ProtocolDuplicateMessageException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolDuplicateMessageException(e, content);
     } catch (InvalidKeyIdException e) {
-      throw new ProtocolInvalidKeyIdException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolInvalidKeyIdException(e, content);
     } catch (UntrustedIdentityException e) {
-      throw new ProtocolUntrustedIdentityException(e, content.getSenderCertificate().getSender(), content.getSenderCertificate().getSenderDeviceId(), content.getContentHint(), content.getGroupId());
+      throw new ProtocolUntrustedIdentityException(e, content);
     }
   }
 

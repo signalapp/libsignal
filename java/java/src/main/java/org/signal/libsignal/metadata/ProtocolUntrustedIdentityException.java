@@ -1,6 +1,6 @@
 package org.signal.libsignal.metadata;
 
-
+import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
 import org.whispersystems.libsignal.UntrustedIdentityException;
 import org.whispersystems.libsignal.util.guava.Optional;
 
@@ -9,7 +9,7 @@ public class ProtocolUntrustedIdentityException extends ProtocolException {
     super(e, sender, senderDevice);
   }
 
-  public ProtocolUntrustedIdentityException(UntrustedIdentityException e, String sender, int senderDevice, int contentHint, Optional<byte[]> groupId) {
-    super(e, sender, senderDevice, contentHint, groupId);
+  ProtocolUntrustedIdentityException(UntrustedIdentityException e, UnidentifiedSenderMessageContent content) {
+    super(e, content);
   }
 }

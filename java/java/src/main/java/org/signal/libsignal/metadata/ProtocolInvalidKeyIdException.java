@@ -1,5 +1,6 @@
 package org.signal.libsignal.metadata;
 
+import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 public class ProtocolInvalidKeyIdException extends ProtocolException {
@@ -7,7 +8,7 @@ public class ProtocolInvalidKeyIdException extends ProtocolException {
     super(e, sender, senderDevice);
   }
 
-  public ProtocolInvalidKeyIdException(Exception e, String sender, int senderDevice, int contentHint, Optional<byte[]> groupId) {
-    super(e, sender, senderDevice, contentHint, groupId);
+  ProtocolInvalidKeyIdException(Exception e, UnidentifiedSenderMessageContent content) {
+    super(e, content);
   }
 }
