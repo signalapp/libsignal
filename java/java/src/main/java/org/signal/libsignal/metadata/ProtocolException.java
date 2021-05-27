@@ -5,20 +5,24 @@ import org.whispersystems.libsignal.util.guava.Optional;
 
 public abstract class ProtocolException extends Exception {
 
+  private final Optional<UnidentifiedSenderMessageContent> content;
   private final String sender;
   private final int senderDevice;
-  private final int contentHint;
-  private final Optional<byte[]> groupId;
 
   public ProtocolException(Exception e, String sender, int senderDevice) {
-    this(e, sender, senderDevice, UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT, Optional.<byte[]>absent());
-  }
-
-  public ProtocolException(Exception e, String sender, int senderDevice, int contentHint, Optional<byte[]> groupId) {
+    this.content      = Optional.absent();
     this.sender       = sender;
     this.senderDevice = senderDevice;
-    this.contentHint  = contentHint;
-    this.groupId      = groupId;
+  }
+
+  ProtocolException(Exception e, UnidentifiedSenderMessageContent content) {
+    this.content      = Optional.of(content);
+    this.sender       = content.getSenderCertificate().getSender();
+    this.senderDevice = content.getSenderCertificate().getSenderDeviceId();
+  }
+
+  public Optional<UnidentifiedSenderMessageContent> getUnidentifiedSenderMessageContent() {
+    return content;
   }
 
   public String getSender() {
@@ -30,10 +34,16 @@ public abstract class ProtocolException extends Exception {
   }
 
   public int getContentHint() {
-    return contentHint;
+    if (content.isPresent()) {
+      return content.get().getContentHint();
+    }
+    return UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT;
   }
 
   public Optional<byte[]> getGroupId() {
-    return groupId;
+    if (content.isPresent()) {
+      return content.get().getGroupId();
+    }
+    return Optional.<byte[]>absent();
   }
 }

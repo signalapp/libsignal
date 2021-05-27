@@ -1,6 +1,6 @@
 package org.signal.libsignal.metadata;
 
-
+import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.util.guava.Optional;
 
@@ -9,7 +9,7 @@ public class ProtocolLegacyMessageException extends ProtocolException {
     super(e, sender, senderDeviceId);
   }
 
-  public ProtocolLegacyMessageException(LegacyMessageException e, String sender, int senderDeviceId, int contentHint, Optional<byte[]> groupId) {
-    super(e, sender, senderDeviceId, contentHint, groupId);
+  ProtocolLegacyMessageException(LegacyMessageException e, UnidentifiedSenderMessageContent content) {
+    super(e, content);
   }
 }
