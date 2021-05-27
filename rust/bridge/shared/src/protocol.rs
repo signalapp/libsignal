@@ -447,6 +447,7 @@ fn SenderKeyDistributionMessage_GetSignatureKey(
 
 bridge_deserialize!(DecryptionErrorMessage::try_from);
 bridge_get!(DecryptionErrorMessage::timestamp -> u64);
+bridge_get!(DecryptionErrorMessage::device_id -> u32);
 bridge_get_bytearray!(
     DecryptionErrorMessage::serialized as Serialize,
     jni = "DecryptionErrorMessage_1GetSerialized"
@@ -462,6 +463,7 @@ fn DecryptionErrorMessage_ForOriginalMessage(
     original_bytes: &[u8],
     original_type: u8,
     original_timestamp: u64,
+    original_sender_device_id: u32,
 ) -> Result<DecryptionErrorMessage> {
     let original_type = CiphertextMessageType::try_from(original_type).map_err(|_| {
         SignalProtocolError::InvalidArgument(format!("unknown message type {}", original_type))
@@ -470,6 +472,7 @@ fn DecryptionErrorMessage_ForOriginalMessage(
         original_bytes,
         original_type,
         original_timestamp,
+        original_sender_device_id,
     )?)
 }
 

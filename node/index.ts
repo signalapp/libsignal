@@ -1286,13 +1286,15 @@ export class DecryptionErrorMessage {
   static forOriginal(
     bytes: Buffer,
     type: CiphertextMessageType,
-    timestamp: number
+    timestamp: number,
+    originalSenderDeviceId: number
   ): DecryptionErrorMessage {
     return new DecryptionErrorMessage(
       NativeImpl.DecryptionErrorMessage_ForOriginalMessage(
         bytes,
         type,
-        timestamp
+        timestamp,
+        originalSenderDeviceId
       )
     );
   }
@@ -1315,6 +1317,10 @@ export class DecryptionErrorMessage {
 
   timestamp(): number {
     return NativeImpl.DecryptionErrorMessage_GetTimestamp(this);
+  }
+
+  deviceId(): number {
+    return NativeImpl.DecryptionErrorMessage_GetDeviceId(this);
   }
 
   ratchetKey(): PublicKey | undefined {

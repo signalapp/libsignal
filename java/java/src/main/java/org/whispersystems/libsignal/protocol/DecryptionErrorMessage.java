@@ -28,9 +28,9 @@ public final class DecryptionErrorMessage {
     handle = Native.DecryptionErrorMessage_Deserialize(serialized);
   }
 
-  public static DecryptionErrorMessage forOriginalMessage(byte[] originalBytes, int messageType, long timestamp) {
+  public static DecryptionErrorMessage forOriginalMessage(byte[] originalBytes, int messageType, long timestamp, int originalSenderDeviceId) {
     return new DecryptionErrorMessage(
-      Native.DecryptionErrorMessage_ForOriginalMessage(originalBytes, messageType, timestamp));
+      Native.DecryptionErrorMessage_ForOriginalMessage(originalBytes, messageType, timestamp, originalSenderDeviceId));
   }
 
   public byte[] serialize() {
@@ -48,6 +48,10 @@ public final class DecryptionErrorMessage {
 
   public long getTimestamp() {
     return Native.DecryptionErrorMessage_GetTimestamp(this.handle);
+  }
+
+  public int getDeviceId() {
+    return Native.DecryptionErrorMessage_GetDeviceId(this.handle);
   }
 
   /// For testing only

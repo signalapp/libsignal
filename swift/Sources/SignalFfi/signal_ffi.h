@@ -650,6 +650,9 @@ SignalFfiError *signal_decryption_error_message_deserialize(SignalDecryptionErro
 SignalFfiError *signal_decryption_error_message_get_timestamp(uint64_t *out,
                                                               const SignalDecryptionErrorMessage *obj);
 
+SignalFfiError *signal_decryption_error_message_get_device_id(uint32_t *out,
+                                                              const SignalDecryptionErrorMessage *obj);
+
 SignalFfiError *signal_decryption_error_message_serialize(const unsigned char **out,
                                                           size_t *out_len,
                                                           const SignalDecryptionErrorMessage *obj);
@@ -661,7 +664,8 @@ SignalFfiError *signal_decryption_error_message_for_original_message(SignalDecry
                                                                      const unsigned char *original_bytes,
                                                                      size_t original_bytes_len,
                                                                      uint8_t original_type,
-                                                                     uint64_t original_timestamp);
+                                                                     uint64_t original_timestamp,
+                                                                     uint32_t original_sender_device_id);
 
 SignalFfiError *signal_decryption_error_message_extract_from_serialized_content(SignalDecryptionErrorMessage **out,
                                                                                 const unsigned char *bytes,

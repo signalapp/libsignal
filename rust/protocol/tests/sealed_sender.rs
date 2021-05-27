@@ -755,6 +755,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             bob_message.serialize(),
             bob_message.message_type(),
             408,
+            5,
         )?;
         let error_message_content = PlaintextContent::from(error_message);
         let error_message_usmc = UnidentifiedSenderMessageContent::new(
@@ -790,6 +791,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
 
         assert_eq!(bob_error_message.ratchet_key(), Some(original_ratchet_key));
         assert_eq!(bob_error_message.timestamp(), 408);
+        assert_eq!(bob_error_message.device_id(), 5);
 
         Ok(())
     })
