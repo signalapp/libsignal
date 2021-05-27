@@ -724,6 +724,7 @@ impl TryFrom<&[u8]> for PlaintextContent {
 pub struct DecryptionErrorMessage {
     ratchet_key: Option<PublicKey>,
     timestamp: u64,
+    device_id: u32,
     serialized: Box<[u8]>,
 }
 
@@ -732,6 +733,7 @@ impl DecryptionErrorMessage {
         original_bytes: &[u8],
         original_type: CiphertextMessageType,
         original_timestamp: u64,
+        original_sender_device_id: u32,
     ) -> Result<Self> {
         let ratchet_key = match original_type {
             CiphertextMessageType::Whisper => {
@@ -753,6 +755,7 @@ impl DecryptionErrorMessage {
         let proto_message = proto::service::DecryptionErrorMessage {
             timestamp: Some(original_timestamp),
             ratchet_key: ratchet_key.map(|k| k.serialize().into()),
+            device_id: Some(original_sender_device_id),
         };
         let mut serialized = Vec::new();
         proto_message.encode(&mut serialized)?;
@@ -760,6 +763,7 @@ impl DecryptionErrorMessage {
         Ok(Self {
             ratchet_key,
             timestamp: original_timestamp,
+            device_id: original_sender_device_id,
             serialized: serialized.into_boxed_slice(),
         })
     }
@@ -772,6 +776,11 @@ impl DecryptionErrorMessage {
     #[inline]
     pub fn ratchet_key(&self) -> Option<&PublicKey> {
         self.ratchet_key.as_ref()
+    }
+
+    #[inline]
+    pub fn device_id(&self) -> u32 {
+        self.device_id
     }
 
     #[inline]
@@ -792,9 +801,11 @@ impl TryFrom<&[u8]> for DecryptionErrorMessage {
             .ratchet_key
             .map(|k| PublicKey::deserialize(&k))
             .transpose()?;
+        let device_id = proto_structure.device_id.unwrap_or_default();
         Ok(Self {
             timestamp,
             ratchet_key,
+            device_id,
             serialized: Box::from(value),
         })
     }
@@ -972,12 +983,14 @@ mod tests {
         let base_key_pair = KeyPair::generate(&mut csprng);
         let message = create_signal_message(&mut csprng)?;
         let timestamp = 0x2_0000_0001;
+        let device_id = 0x8086_2021;
 
         {
             let error_message = DecryptionErrorMessage::for_original(
                 message.serialized(),
                 CiphertextMessageType::Whisper,
                 timestamp,
+                device_id,
             )?;
             let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
             assert_eq!(
@@ -985,6 +998,7 @@ mod tests {
                 Some(message.sender_ratchet_key())
             );
             assert_eq!(error_message.timestamp(), timestamp);
+            assert_eq!(error_message.device_id(), device_id);
         }
 
         let pre_key_signal_message = PreKeySignalMessage::new(
@@ -1002,6 +1016,7 @@ mod tests {
                 pre_key_signal_message.serialized(),
                 CiphertextMessageType::PreKey,
                 timestamp,
+                device_id,
             )?;
             let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
             assert_eq!(
@@ -1009,6 +1024,7 @@ mod tests {
                 Some(pre_key_signal_message.message().sender_ratchet_key())
             );
             assert_eq!(error_message.timestamp(), timestamp);
+            assert_eq!(error_message.device_id(), device_id);
         }
 
         let sender_key_message = SenderKeyMessage::new(
@@ -1026,10 +1042,12 @@ mod tests {
                 sender_key_message.serialized(),
                 CiphertextMessageType::SenderKey,
                 timestamp,
+                device_id,
             )?;
             let error_message = DecryptionErrorMessage::try_from(error_message.serialized())?;
             assert_eq!(error_message.ratchet_key(), None);
             assert_eq!(error_message.timestamp(), timestamp);
+            assert_eq!(error_message.device_id(), device_id);
         }
 
         Ok(())
@@ -1038,7 +1056,7 @@ mod tests {
     #[test]
     fn test_decryption_error_message_for_plaintext() {
         assert!(matches!(
-            DecryptionErrorMessage::for_original(&[], CiphertextMessageType::Plaintext, 5,),
+            DecryptionErrorMessage::for_original(&[], CiphertextMessageType::Plaintext, 5, 7),
             Err(SignalProtocolError::InvalidArgument(_))
         ));
     }

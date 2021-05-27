@@ -335,7 +335,8 @@ class SessionTests: TestCaseBase {
                                             context: NullContext())
         let error_message = try DecryptionErrorMessage(originalMessageBytes: bob_message.serialize(),
                                                        type: bob_message.messageType,
-                                                       timestamp: 408)
+                                                       timestamp: 408,
+                                                       originalSenderDeviceId: bob_address.deviceId)
 
         let trust_root = IdentityKeyPair.generate()
         let server_keys = IdentityKeyPair.generate()
@@ -366,6 +367,7 @@ class SessionTests: TestCaseBase {
         let bob_content = try PlaintextContent(bytes: bob_usmc.contents)
         let bob_error_message = try DecryptionErrorMessage.extractFromSerializedContent(bob_content.body)
         XCTAssertEqual(bob_error_message.timestamp, 408)
+        XCTAssertEqual(bob_error_message.deviceId, bob_address.deviceId)
 
         let bob_session_with_alice = try XCTUnwrap(bob_store.loadSession(for: alice_address, context: NullContext()))
         XCTAssert(try bob_session_with_alice.currentRatchetKeyMatches(XCTUnwrap(bob_error_message.ratchetKey)))

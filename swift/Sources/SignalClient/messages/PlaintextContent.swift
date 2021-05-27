@@ -63,10 +63,10 @@ public class DecryptionErrorMessage {
         }!
     }
 
-    public init<Bytes: ContiguousBytes>(originalMessageBytes bytes: Bytes, type: CiphertextMessage.MessageType, timestamp: UInt64) throws {
+    public init<Bytes: ContiguousBytes>(originalMessageBytes bytes: Bytes, type: CiphertextMessage.MessageType, timestamp: UInt64, originalSenderDeviceId: UInt32) throws {
         nativeHandle = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
-            try checkError(signal_decryption_error_message_for_original_message(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count, type.rawValue, timestamp))
+            try checkError(signal_decryption_error_message_for_original_message(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count, type.rawValue, timestamp, originalSenderDeviceId))
             return result
         }!
     }
@@ -100,6 +100,14 @@ public class DecryptionErrorMessage {
         return failOnError {
             try invokeFnReturningInteger {
                 signal_decryption_error_message_get_timestamp($0, nativeHandle)
+            }
+        }
+    }
+
+    public var deviceId: UInt32 {
+        return failOnError {
+            try invokeFnReturningInteger {
+                signal_decryption_error_message_get_device_id($0, nativeHandle)
             }
         }
     }

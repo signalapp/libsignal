@@ -1430,7 +1430,8 @@ describe('SignalClient', () => {
     const errorMessage = SignalClient.DecryptionErrorMessage.forOriginal(
       bCiphertext.serialize(),
       bCiphertext.type(),
-      45 // timestamp
+      45, // timestamp
+      bAddress.deviceId()
     );
     const errorContent = SignalClient.PlaintextContent.from(errorMessage);
     const errorUSMC = SignalClient.UnidentifiedSenderMessageContent.new(
@@ -1460,6 +1461,7 @@ describe('SignalClient', () => {
       bErrorContent.body()
     );
     assert.equal(bErrorMessage.timestamp(), 45);
+    assert.equal(bErrorMessage.deviceId(), bAddress.deviceId());
 
     const bSessionWithA = await bSess.getSession(aAddress);
     assert(

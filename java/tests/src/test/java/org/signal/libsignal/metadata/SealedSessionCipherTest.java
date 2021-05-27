@@ -252,7 +252,7 @@ public class SealedSessionCipherTest extends TestCase {
     SessionCipher bobUnsealedCipher = new SessionCipher(bobStore, aliceAddress);
     CiphertextMessage bobMessage = bobUnsealedCipher.encrypt("reply".getBytes());
 
-    DecryptionErrorMessage errorMessage = DecryptionErrorMessage.forOriginalMessage(bobMessage.serialize(), bobMessage.getType(), 408);
+    DecryptionErrorMessage errorMessage = DecryptionErrorMessage.forOriginalMessage(bobMessage.serialize(), bobMessage.getType(), 408, bobAddress.getDeviceId());
     PlaintextContent errorMessageContent = new PlaintextContent(errorMessage);
     UnidentifiedSenderMessageContent errorMessageUsmc = new UnidentifiedSenderMessageContent(errorMessageContent, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_IMPLICIT, Optional.<byte[]>absent());
     byte[] errorMessageCiphertext = aliceCipher.encrypt(bobAddress, errorMessageUsmc);
@@ -260,6 +260,7 @@ public class SealedSessionCipherTest extends TestCase {
     DecryptionResult result = bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335);
     DecryptionErrorMessage bobErrorMessage = DecryptionErrorMessage.extractFromSerializedContent(result.getPaddedMessage());
     assertEquals(bobErrorMessage.getTimestamp(), 408);
+    assertEquals(bobErrorMessage.getDeviceId(), bobAddress.getDeviceId());
 
     SessionRecord bobSessionWithAlice = bobStore.loadSession(aliceAddress);
     assert(bobSessionWithAlice.currentRatchetKeyMatches(bobErrorMessage.getRatchetKey().get()));

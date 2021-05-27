@@ -51,7 +51,8 @@ export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Bu
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
 export function DecryptionErrorMessage_Deserialize(buffer: Buffer): DecryptionErrorMessage;
 export function DecryptionErrorMessage_ExtractFromSerializedContent(bytes: Buffer): DecryptionErrorMessage;
-export function DecryptionErrorMessage_ForOriginalMessage(originalBytes: Buffer, originalType: number, originalTimestamp: number): DecryptionErrorMessage;
+export function DecryptionErrorMessage_ForOriginalMessage(originalBytes: Buffer, originalType: number, originalTimestamp: number, originalSenderDeviceId: number): DecryptionErrorMessage;
+export function DecryptionErrorMessage_GetDeviceId(obj: Wrapper<DecryptionErrorMessage>): number;
 export function DecryptionErrorMessage_GetRatchetKey(m: Wrapper<DecryptionErrorMessage>): PublicKey | null;
 export function DecryptionErrorMessage_GetTimestamp(obj: Wrapper<DecryptionErrorMessage>): number;
 export function DecryptionErrorMessage_Serialize(obj: Wrapper<DecryptionErrorMessage>): Buffer;

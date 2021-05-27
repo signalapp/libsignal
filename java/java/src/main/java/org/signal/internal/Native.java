@@ -104,7 +104,8 @@ public final class Native {
   public static native long DecryptionErrorMessage_Deserialize(byte[] data);
   public static native void DecryptionErrorMessage_Destroy(long handle);
   public static native long DecryptionErrorMessage_ExtractFromSerializedContent(byte[] bytes);
-  public static native long DecryptionErrorMessage_ForOriginalMessage(byte[] originalBytes, int originalType, long originalTimestamp);
+  public static native long DecryptionErrorMessage_ForOriginalMessage(byte[] originalBytes, int originalType, long originalTimestamp, int originalSenderDeviceId);
+  public static native int DecryptionErrorMessage_GetDeviceId(long obj);
   public static native long DecryptionErrorMessage_GetRatchetKey(long m);
   public static native byte[] DecryptionErrorMessage_GetSerialized(long obj);
   public static native long DecryptionErrorMessage_GetTimestamp(long obj);
