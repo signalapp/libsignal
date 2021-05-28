@@ -196,9 +196,11 @@ impl InMemSessionStore {
         }
     }
 
-    /// Bulk version of [SessionStore::load_session]
+    /// Bulk version of [`SessionStore::load_session`].
     ///
     /// Useful for [crate::sealed_sender_multi_recipient_encrypt].
+    ///
+    /// [`SessionStore::load_session`]: crate::SessionStore::load_session
     pub fn load_existing_sessions(
         &self,
         addresses: &[&ProtocolAddress],
