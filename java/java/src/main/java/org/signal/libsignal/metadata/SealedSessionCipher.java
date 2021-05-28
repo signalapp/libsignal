@@ -140,6 +140,7 @@ public class SealedSessionCipher {
       return new DecryptionResult(content.getSenderCertificate().getSenderUuid(),
                                   content.getSenderCertificate().getSenderE164(),
                                   content.getSenderCertificate().getSenderDeviceId(),
+                                  content.getGroupId(),
                                   decrypt(content));
     } catch (InvalidMessageException e) {
       throw new ProtocolInvalidMessageException(e, content);
@@ -191,12 +192,14 @@ public class SealedSessionCipher {
     private final String           senderUuid;
     private final Optional<String> senderE164;
     private final int              deviceId;
+    private final Optional<byte[]> groupId;
     private final byte[]           paddedMessage;
 
-    private DecryptionResult(String senderUuid, Optional<String> senderE164, int deviceId, byte[] paddedMessage) {
+    private DecryptionResult(String senderUuid, Optional<String> senderE164, int deviceId, Optional<byte[]> groupId, byte[] paddedMessage) {
       this.senderUuid    = senderUuid;
       this.senderE164    = senderE164;
       this.deviceId      = deviceId;
+      this.groupId       = groupId;
       this.paddedMessage = paddedMessage;
     }
 
@@ -214,6 +217,10 @@ public class SealedSessionCipher {
 
     public byte[] getPaddedMessage() {
       return paddedMessage;
+    }
+
+    public Optional<byte[]> getGroupId() {
+      return groupId;
     }
   }
 }
