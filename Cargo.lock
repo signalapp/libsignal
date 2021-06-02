@@ -942,8 +942,8 @@ checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
 
 [[package]]
 name = "neon"
-version = "0.8.2"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
+version = "0.8.3"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
 dependencies = [
  "cslice",
  "neon-build",
@@ -955,13 +955,13 @@ dependencies = [
 
 [[package]]
 name = "neon-build"
-version = "0.8.2"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
+version = "0.8.3"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
 
 [[package]]
 name = "neon-macros"
-version = "0.8.2"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
+version = "0.8.3"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
 dependencies = [
  "quote",
  "syn",
@@ -969,8 +969,8 @@ dependencies = [
 
 [[package]]
 name = "neon-runtime"
-version = "0.8.2"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-05-19#b30d2919fba913b35d0866712327ace5b7fff6b1"
+version = "0.8.3"
+source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
 dependencies = [
  "cfg-if 1.0.0",
  "libloading",
