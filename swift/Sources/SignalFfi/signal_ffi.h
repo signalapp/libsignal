@@ -14,6 +14,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdint.h>
 #include <stdlib.h>
 
+#define SignalAes256GcmEncryption_GCM_ENCRYPTION_TAG_SIZE SignalTAG_SIZE
+
+#define SignalAes256GcmEncryption_GCM_ENCRYPTION_NONCE_SIZE SignalNONCE_SIZE
+
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
@@ -204,6 +208,13 @@ typedef struct SignalPreKeyRecord SignalPreKeyRecord;
 
 typedef struct SignalPreKeySignalMessage SignalPreKeySignalMessage;
 
+/**
+ * Private key half of a [`KeyPair`].
+ *
+ * Analogously to [`PublicKey`], uses [`Self::ct_eq`] and `constant_time_cmp` to implement
+ * equality and ordering without leaking too much information about the contents of the data
+ * being compared.
+ */
 typedef struct SignalPrivateKey SignalPrivateKey;
 
 /**
@@ -211,6 +222,12 @@ typedef struct SignalPrivateKey SignalPrivateKey;
  */
 typedef struct SignalProtocolAddress SignalProtocolAddress;
 
+/**
+ * Public key half of a [`KeyPair`].
+ *
+ * Uses [`Self::ct_eq`] and `constant_time_cmp` to implement equality and ordering without
+ * leaking too much information about the contents of the data being compared.
+ */
 typedef struct SignalPublicKey SignalPublicKey;
 
 typedef struct SignalSenderCertificate SignalSenderCertificate;

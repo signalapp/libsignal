@@ -1,7 +1,18 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
+//! Implementation of [X25519] and [Ed25519].
+//!
+//! The underlying elliptic curve operations are performed by the [`curve25519_dalek`] and
+//! [`x25519_dalek`] crates.
+//!
+//! We rely on [`ConstantTimeEq`] in multiple operations to make them more
+//! resistant to timing attacks.
+//!
+//! [X25519]: https://en.wikipedia.org/wiki/Curve25519
+//! [Ed25519]: https://en.wikipedia.org/wiki/EdDSA#Ed25519
 
 use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::edwards::EdwardsPoint;
@@ -12,17 +23,34 @@ use sha2::{Digest, Sha512};
 use subtle::ConstantTimeEq;
 use x25519_dalek::{PublicKey, StaticSecret};
 
-const AGREEMENT_LENGTH: usize = 32;
+use std::fmt;
+
+/// Length of an agreed-upon key after a DH exchange.
+pub const AGREEMENT_LENGTH: usize = 32;
+/// Length of a private key.
 pub const PRIVATE_KEY_LENGTH: usize = 32;
+/// Length of a public key.
 pub const PUBLIC_KEY_LENGTH: usize = 32;
+/// Length of a signature.
 pub const SIGNATURE_LENGTH: usize = 64;
 
+/// A flexible key pair type wrapping [`PublicKey`] and [`StaticSecret`].
+///
+/// Operations here are simple enough to *not* produce fallible [`Result`]s. Instead we use static
+/// slice lengths to avoid having to handle any error cases.
 #[derive(Clone)]
 pub struct PrivateKey {
     secret: StaticSecret,
 }
 
+impl fmt::Debug for PrivateKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PrivateKey {{ secret: {:?} }}", self.secret.to_bytes())
+    }
+}
+
 impl PrivateKey {
+    /// Generate a [`StaticSecret`] and then a [`PublicKey`] from a [`CryptoRng`].
     pub fn new<R>(csprng: &mut R) -> Self
     where
         R: CryptoRng + Rng,
@@ -31,6 +59,9 @@ impl PrivateKey {
         PrivateKey { secret }
     }
 
+    /// Do a [DH] key exchange to produce a slice that can be reproduced by another keypair.
+    ///
+    /// [DH]: https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
     pub fn calculate_agreement(
         &self,
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
@@ -43,7 +74,7 @@ impl PrivateKey {
 
     /// Calculates an XEdDSA signature using the X25519 private key directly.
     ///
-    /// Refer to https://signal.org/docs/specifications/xeddsa/#curve25519 for more details.
+    /// Refer to <https://signal.org/docs/specifications/xeddsa/#curve25519> for more details.
     ///
     /// Note that this implementation varies slightly from that paper in that the sign bit is not
     /// fixed to 0, but rather passed back in the most significant bit of the signature which would
@@ -100,6 +131,8 @@ impl PrivateKey {
         result
     }
 
+    /// Verify a signature from [`Self::calculate_signature`] against another key pair's public key.
+    ///
     pub fn verify_signature(
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
         message: &[&[u8]],
@@ -140,10 +173,13 @@ impl PrivateKey {
         bool::from(cap_r_check.as_bytes().ct_eq(&cap_r))
     }
 
+    /// Return the bytes of a [`PublicKey`] that another party can use to validate against
+    /// [`Self::verify_signature`].
     pub fn derive_public_key_bytes(&self) -> [u8; PUBLIC_KEY_LENGTH] {
         *PublicKey::from(&self.secret).as_bytes()
     }
 
+    /// Return a serialization of this private key.
     pub fn private_key_bytes(&self) -> [u8; PRIVATE_KEY_LENGTH] {
         self.secret.to_bytes()
     }

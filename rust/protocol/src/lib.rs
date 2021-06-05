@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -25,7 +25,7 @@
 mod address;
 mod consts;
 mod crypto;
-mod curve;
+pub mod curve;
 pub mod error;
 mod fingerprint;
 mod group_cipher;
@@ -44,7 +44,7 @@ mod utils;
 use error::Result;
 
 pub use address::{DeviceId, ProtocolAddress};
-pub use curve::{KeyPair, PrivateKey, PublicKey};
+pub use curve::{KeyPair, KeyType, Keyed, PrivateKey, PublicKey};
 pub use error::SignalProtocolError;
 pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
 pub use group_cipher::{
@@ -72,9 +72,7 @@ pub use session::{process_prekey, process_prekey_bundle};
 pub use session_cipher::{
     message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
 };
-pub use state::{
-    PreKeyBundle, PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
-};
+pub use state::{PreKeyBundle, PreKeyRecord, SessionRecord, SignedPreKeyRecord};
 pub use storage::{
     Context, Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemPreKeyStore,
     InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
