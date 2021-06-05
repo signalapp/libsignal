@@ -10,11 +10,12 @@ use prost::Message;
 use subtle::ConstantTimeEq;
 
 use crate::ratchet::{ChainKey, MessageKeys, RootKey};
-use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
+use crate::{
+    IdentityKey, KeyPair, PreKeyId, PrivateKey, PublicKey, SignalProtocolError, SignedPreKeyId,
+};
 
-use crate::consts;
+use crate::consts::limits::{ARCHIVED_STATES_MAX_LENGTH, MAX_MESSAGE_KEYS, MAX_RECEIVER_CHAINS};
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
-use crate::state::{PreKeyId, SignedPreKeyId};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]
@@ -235,7 +236,7 @@ impl SessionState {
 
         self.session.receiver_chains.push(chain);
 
-        if self.session.receiver_chains.len() > consts::MAX_RECEIVER_CHAINS {
+        if self.session.receiver_chains.len() > MAX_RECEIVER_CHAINS {
             log::info!(
                 "Trimming excessive receiver_chain for session with base key {}, chain count: {}",
                 self.sender_ratchet_key_for_logging()
@@ -366,7 +367,7 @@ impl SessionState {
         let mut updated_chain = chain_and_index.0;
         updated_chain.message_keys.insert(0, new_keys);
 
-        if updated_chain.message_keys.len() > consts::MAX_MESSAGE_KEYS {
+        if updated_chain.message_keys.len() > MAX_MESSAGE_KEYS {
             updated_chain.message_keys.pop();
         }
 
@@ -578,7 +579,7 @@ impl SessionRecord {
     // A non-fallible version of archive_current_state.
     fn archive_current_state_inner(&mut self) {
         if let Some(current_session) = self.current_session.take() {
-            if self.previous_sessions.len() >= consts::ARCHIVED_STATES_MAX_LENGTH {
+            if self.previous_sessions.len() >= ARCHIVED_STATES_MAX_LENGTH {
                 self.previous_sessions.pop();
             }
             self.previous_sessions

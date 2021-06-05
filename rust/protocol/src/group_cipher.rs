@@ -1,20 +1,20 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{consts, crypto};
-
-use crate::{
-    CiphertextMessageType, Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage,
-    SenderKeyMessage, SenderKeyRecord, SenderKeyStore, SignalProtocolError,
-};
-
+use crate::consts::limits::MAX_FORWARD_JUMPS;
 use crate::protocol::SENDERKEY_MESSAGE_CURRENT_VERSION;
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
+use crate::{
+    crypto, CiphertextMessageType, Context, KeyPair, ProtocolAddress, Result,
+    SenderKeyDistributionMessage, SenderKeyMessage, SenderKeyRecord, SenderKeyStore,
+    SignalProtocolError,
+};
+
+use std::convert::TryFrom;
 
 use rand::{CryptoRng, Rng};
-use std::convert::TryFrom;
 use uuid::Uuid;
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(
@@ -100,11 +100,11 @@ fn get_sender_key(
     }
 
     let jump = (iteration - current_iteration) as usize;
-    if jump > consts::MAX_FORWARD_JUMPS {
+    if jump > MAX_FORWARD_JUMPS {
         log::error!(
             "SenderKey distribution {} Exceeded future message limit: {}, current iteration: {})",
             distribution_id,
-            consts::MAX_FORWARD_JUMPS,
+            MAX_FORWARD_JUMPS,
             current_iteration
         );
         return Err(SignalProtocolError::InvalidMessage(
