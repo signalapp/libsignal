@@ -176,6 +176,7 @@ impl From<IdentityKeyPair> for KeyPair {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Keyed;
 
     use rand::rngs::OsRng;
 

@@ -160,7 +160,7 @@ fn ECPrivateKey_Sign(key: &PrivateKey, message: &[u8]) -> Result<Vec<u8>> {
 
 #[bridge_fn_buffer(ffi = "privatekey_agree", node = "PrivateKey_Agree")]
 fn ECPrivateKey_Agree(private_key: &PrivateKey, public_key: &PublicKey) -> Result<Vec<u8>> {
-    Ok(private_key.calculate_agreement(public_key)?.into_vec())
+    Ok(private_key.calculate_agreement(public_key)?.to_vec())
 }
 
 #[bridge_fn_buffer(ffi = "identitykeypair_serialize")]

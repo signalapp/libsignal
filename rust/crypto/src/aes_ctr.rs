@@ -11,7 +11,9 @@ use aes::{Aes256, NewBlockCipher};
 pub struct Aes256Ctr32(aes::Aes256Ctr);
 
 impl Aes256Ctr32 {
-    pub const NONCE_SIZE: usize = aes::BLOCK_SIZE - 4;
+    pub const CTR_NONCE_SIZE: usize = aes::BLOCK_SIZE - 4;
+
+    const NONCE_SIZE: usize = Self::CTR_NONCE_SIZE;
 
     pub fn new(aes256: Aes256, nonce: &[u8], init_ctr: u32) -> Result<Self> {
         if nonce.len() != Self::NONCE_SIZE {
