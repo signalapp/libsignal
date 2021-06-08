@@ -707,12 +707,11 @@ mod sealed_sender_v1 {
         )?;
 
         // Encrypt the sender's public key with AES-256 CTR and a MAC.
-        let sender_static_key_ctext = crypto::aes256_ctr_hmacsha256_encrypt(
+        let sender_static_key_ctext = crypto::ctr::aes_256_ctr_hmac_encrypt(
             &sender_identity.public_key().serialize(),
             &sender_eph_keys.cipher_key,
-            &sender_eph_keys.mac_key,
-        )
-        .expect("just generated these keys, they should be correct");
+            array_ref![&sender_eph_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
+        );
 
         // Generate another cipher and MAC key.
         let sender_static_keys = StaticKeys::calculate(
@@ -723,12 +722,11 @@ mod sealed_sender_v1 {
         )?;
 
         let sender_message_contents = b"this is a binary message";
-        let sender_message_data = crypto::aes256_ctr_hmacsha256_encrypt(
+        let sender_message_data = crypto::ctr::aes_256_ctr_hmac_encrypt(
             sender_message_contents,
             &sender_static_keys.cipher_key,
-            &sender_static_keys.mac_key,
-        )
-        .expect("just generated these keys, they should be correct");
+            array_ref![&sender_static_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
+        );
 
         // The message recipient calculates the ephemeral key and the sender's public key.
         let recipient_eph_keys = EphemeralKeys::calculate(
@@ -738,10 +736,10 @@ mod sealed_sender_v1 {
         )?;
         assert_eq!(sender_eph_keys, recipient_eph_keys);
 
-        let recipient_message_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+        let recipient_message_key_bytes = crypto::ctr::aes_256_ctr_hmac_decrypt(
             &sender_static_key_ctext,
             &recipient_eph_keys.cipher_key,
-            &recipient_eph_keys.mac_key,
+            array_ref![&recipient_eph_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
         )
         .expect("should decrypt successfully");
         let sender_public_key: PublicKey = PublicKey::try_from(&recipient_message_key_bytes[..])?;
@@ -754,10 +752,14 @@ mod sealed_sender_v1 {
             &sender_static_key_ctext,
         )?;
 
-        let recipient_message_contents = crypto::aes256_ctr_hmacsha256_decrypt(
+        let recipient_message_contents = crypto::ctr::aes_256_ctr_hmac_decrypt(
             &sender_message_data,
             &recipient_static_keys.cipher_key,
-            &recipient_static_keys.mac_key,
+            array_ref![
+                &recipient_static_keys.mac_key,
+                0,
+                crypto::ctr::MAC_KEY_LENGTH
+            ],
         )
         .expect("should decrypt successfully");
         assert_eq!(recipient_message_contents, sender_message_contents);
@@ -863,12 +865,11 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         Direction::Sending,
     )?;
 
-    let static_key_ctext = crypto::aes256_ctr_hmacsha256_encrypt(
+    let static_key_ctext = crypto::ctr::aes_256_ctr_hmac_encrypt(
         &our_identity.public_key().serialize(),
         &eph_keys.cipher_key,
-        &eph_keys.mac_key,
-    )
-    .expect("just generated these keys, they should be correct");
+        array_ref![&eph_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
+    );
 
     let static_keys = sealed_sender_v1::StaticKeys::calculate(
         &our_identity,
@@ -877,12 +878,11 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         &static_key_ctext,
     )?;
 
-    let message_data = crypto::aes256_ctr_hmacsha256_encrypt(
+    let message_data = crypto::ctr::aes_256_ctr_hmac_encrypt(
         usmc.serialized()?,
         &static_keys.cipher_key,
-        &static_keys.mac_key,
-    )
-    .expect("just generated these keys, they should be correct");
+        array_ref![&static_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
+    );
 
     let version = SEALED_SENDER_V1_VERSION;
     let mut serialized = vec![version | (version << 4)];
@@ -1436,16 +1436,13 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 Direction::Receiving,
             )?;
 
-            let message_key_bytes = match crypto::aes256_ctr_hmacsha256_decrypt(
+            let message_key_bytes = match crypto::ctr::aes_256_ctr_hmac_decrypt(
                 &encrypted_static,
                 &eph_keys.cipher_key,
-                &eph_keys.mac_key,
+                array_ref![&eph_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
             ) {
                 Ok(plaintext) => plaintext,
-                Err(crypto::DecryptionError::BadKeyOrIv) => {
-                    unreachable!("just derived these keys; they should be valid");
-                }
-                Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+                Err(crypto::DecryptionError(msg)) => {
                     log::error!("failed to decrypt sealed sender v1 message key: {}", msg);
                     return Err(SignalProtocolError::InvalidSealedSenderMessage(
                         "failed to decrypt sealed sender v1 message key".to_owned(),
@@ -1462,16 +1459,13 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 &encrypted_static,
             )?;
 
-            let message_bytes = match crypto::aes256_ctr_hmacsha256_decrypt(
+            let message_bytes = match crypto::ctr::aes_256_ctr_hmac_decrypt(
                 &encrypted_message,
                 &static_keys.cipher_key,
-                &static_keys.mac_key,
+                array_ref![&static_keys.mac_key, 0, crypto::ctr::MAC_KEY_LENGTH],
             ) {
                 Ok(plaintext) => plaintext,
-                Err(crypto::DecryptionError::BadKeyOrIv) => {
-                    unreachable!("just derived these keys; they should be valid");
-                }
-                Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+                Err(crypto::DecryptionError(msg)) => {
                     log::error!(
                         "failed to decrypt sealed sender v1 message contents: {}",
                         msg

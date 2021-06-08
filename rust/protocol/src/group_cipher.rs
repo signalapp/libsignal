@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -14,7 +14,7 @@ use crate::protocol::SENDERKEY_MESSAGE_CURRENT_VERSION;
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
 
 use rand::{CryptoRng, Rng};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use uuid::Uuid;
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(
@@ -40,15 +40,22 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
 
     let message_keys = sender_chain_key.sender_message_key();
 
-    let ciphertext =
-        crypto::aes_256_cbc_encrypt(plaintext, message_keys.cipher_key(), message_keys.iv())
-            .map_err(|_| {
-                log::error!(
-                    "outgoing sender key state corrupt for distribution ID {}",
-                    distribution_id,
-                );
-                SignalProtocolError::InvalidSenderKeySession { distribution_id }
-            })?;
+    let cipher_key: [u8; crypto::AES_256_KEY_SIZE] =
+        message_keys.cipher_key().try_into().map_err(|_| {
+            log::error!(
+                "outgoing sender key state corrupt for distribution ID {}",
+                distribution_id,
+            );
+            SignalProtocolError::InvalidSenderKeySession { distribution_id }
+        })?;
+    let iv: [u8; crypto::AES_NONCE_SIZE] = message_keys.iv().try_into().map_err(|_| {
+        log::error!(
+            "outgoing sender key state corrupt for distribution ID {}",
+            distribution_id,
+        );
+        SignalProtocolError::InvalidSenderKeySession { distribution_id }
+    })?;
+    let ciphertext = crypto::cbc::aes_256_cbc_encrypt(plaintext, &cipher_key, &iv);
 
     let signing_key = sender_key_state
         .signing_key_private()
@@ -169,22 +176,25 @@ pub async fn group_decrypt(
 
     let sender_key = get_sender_key(sender_key_state, skm.iteration(), distribution_id)?;
 
-    let plaintext = match crypto::aes_256_cbc_decrypt(
-        skm.ciphertext(),
-        sender_key.cipher_key(),
-        sender_key.iv(),
-    ) {
-        Ok(plaintext) => plaintext,
-        Err(crypto::DecryptionError::BadKeyOrIv) => {
+    let cipher_key: [u8; crypto::AES_256_KEY_SIZE] =
+        sender_key.cipher_key().try_into().map_err(|_| {
             log::error!(
-                "incoming sender key state corrupt for {}, distribution ID {}, chain ID {}",
-                sender,
+                "outgoing sender key state corrupt for distribution ID {}",
                 distribution_id,
-                chain_id,
             );
-            return Err(SignalProtocolError::InvalidSenderKeySession { distribution_id });
-        }
-        Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+            SignalProtocolError::InvalidSenderKeySession { distribution_id }
+        })?;
+    let iv: [u8; crypto::AES_NONCE_SIZE] = sender_key.iv().try_into().map_err(|_| {
+        log::error!(
+            "outgoing sender key state corrupt for distribution ID {}",
+            distribution_id,
+        );
+        SignalProtocolError::InvalidSenderKeySession { distribution_id }
+    })?;
+
+    let plaintext = match crypto::cbc::aes_256_cbc_decrypt(skm.ciphertext(), &cipher_key, &iv) {
+        Ok(plaintext) => plaintext,
+        Err(crypto::DecryptionError(msg)) => {
             log::error!("sender key decryption failed: {}", msg);
             return Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::SenderKey,

@@ -47,11 +47,8 @@ pub async fn message_encrypt(
         )
     })?;
 
-    let ctext = crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
-        .map_err(|_| {
-            log::error!("session state corrupt for {}", remote_address);
-            SignalProtocolError::InvalidSessionStructure("invalid sender chain message keys")
-        })?;
+    let ctext =
+        crypto::cbc::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv());
 
     let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
         let local_registration_id = session_state.local_registration_id();
@@ -425,7 +422,6 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     if let Some(current_state) = record.session_state() {
         let mut current_state = current_state.clone();
         let result = decrypt_message_with_state(
-            CurrentOrPrevious::Current,
             &mut current_state,
             ciphertext,
             original_message_type,
@@ -463,7 +459,6 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         let mut previous = previous?;
 
         let result = decrypt_message_with_state(
-            CurrentOrPrevious::Previous,
             &mut previous,
             ciphertext,
             original_message_type,
@@ -526,23 +521,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     }
 }
 
-#[derive(Clone, Copy)]
-enum CurrentOrPrevious {
-    Current,
-    Previous,
-}
-
-impl std::fmt::Display for CurrentOrPrevious {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Current => write!(f, "current"),
-            Self::Previous => write!(f, "previous"),
-        }
-    }
-}
-
 fn decrypt_message_with_state<R: Rng + CryptoRng>(
-    current_or_previous: CurrentOrPrevious,
     state: &mut SessionState,
     ciphertext: &SignalMessage,
     original_message_type: CiphertextMessageType,
@@ -595,23 +574,13 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         ));
     }
 
-    let ptext = match crypto::aes_256_cbc_decrypt(
+    let ptext = match crypto::cbc::aes_256_cbc_decrypt(
         ciphertext.body(),
         message_keys.cipher_key(),
         message_keys.iv(),
     ) {
         Ok(ptext) => ptext,
-        Err(crypto::DecryptionError::BadKeyOrIv) => {
-            log::warn!(
-                "{} session state corrupt for {}",
-                current_or_previous,
-                remote_address,
-            );
-            return Err(SignalProtocolError::InvalidSessionStructure(
-                "invalid receiver chain message keys",
-            ));
-        }
-        Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+        Err(crypto::DecryptionError(msg)) => {
             log::warn!("failed to decrypt 1:1 message: {}", msg);
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,

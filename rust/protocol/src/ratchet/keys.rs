@@ -40,17 +40,17 @@ impl MessageKeys {
     }
 
     #[inline]
-    pub(crate) fn cipher_key(&self) -> &[u8; 32] {
+    pub(crate) fn cipher_key(&self) -> &[u8; crypto::AES_256_KEY_SIZE] {
         &self.cipher_key
     }
 
     #[inline]
-    pub(crate) fn mac_key(&self) -> &[u8; 32] {
+    pub(crate) fn mac_key(&self) -> &[u8; crypto::AES_256_KEY_SIZE] {
         &self.mac_key
     }
 
     #[inline]
-    pub(crate) fn iv(&self) -> &[u8; 16] {
+    pub(crate) fn iv(&self) -> &[u8; crypto::AES_NONCE_SIZE] {
         &self.iv
     }
 
