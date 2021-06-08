@@ -1,7 +1,11 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
+//! Wrappers over cryptographic primitives from [`crate::curve`] to represent a user.
+
+#![warn(missing_docs)]
 
 use crate::proto;
 use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
@@ -15,31 +19,42 @@ use prost::Message;
 const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_1: &[u8] = &[0xFF; 32];
 const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_2: &[u8] = b"Signal_PNI_Signature";
 
+/// A public key that represents the identity of a user.
+///
+/// Wrapper for [`PublicKey`].
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
 pub struct IdentityKey {
     public_key: PublicKey,
 }
 
 impl IdentityKey {
+    /// Initialize a public-facing identity from a public key.
     pub fn new(public_key: PublicKey) -> Self {
         Self { public_key }
     }
 
+    /// Return the public key representing this identity.
     #[inline]
     pub fn public_key(&self) -> &PublicKey {
         &self.public_key
     }
 
+    /// Return an owned byte slice which can be deserialized with [`Self::decode`].
     #[inline]
     pub fn serialize(&self) -> Box<[u8]> {
         self.public_key.serialize()
     }
 
+    /// Deserialize a public identity from a byte slice.
     pub fn decode(value: &[u8]) -> Result<Self> {
         let pk = PublicKey::try_from(value)?;
         Ok(Self { public_key: pk })
     }
 
+    /// Given a trusted identity `self`, verify that `other` represents an alternate identity for
+    /// this user.
+    ///
+    /// `signature` must be calculated from [`IdentityKeyPair::sign_alternate_identity`].
     pub fn verify_alternate_identity(&self, other: &IdentityKey, signature: &[u8]) -> Result<bool> {
         self.public_key.verify_signature_for_multipart_message(
             &[
@@ -72,6 +87,9 @@ impl From<IdentityKey> for PublicKey {
     }
 }
 
+/// The private identity of a user.
+///
+/// Can be converted to and from [`KeyPair`].
 #[derive(Copy, Clone)]
 pub struct IdentityKeyPair {
     identity_key: IdentityKey,
@@ -79,6 +97,7 @@ pub struct IdentityKeyPair {
 }
 
 impl IdentityKeyPair {
+    /// Create a key pair from a public `identity_key` and a private `private_key`.
     pub fn new(identity_key: IdentityKey, private_key: PrivateKey) -> Self {
         Self {
             identity_key,
@@ -86,6 +105,7 @@ impl IdentityKeyPair {
         }
     }
 
+    /// Generate a random new identity from randomness in `csprng`.
     pub fn generate<R: CryptoRng + Rng>(csprng: &mut R) -> Self {
         let keypair = KeyPair::generate(csprng);
 
@@ -95,21 +115,25 @@ impl IdentityKeyPair {
         }
     }
 
+    /// Return the public identity of this user.
     #[inline]
     pub fn identity_key(&self) -> &IdentityKey {
         &self.identity_key
     }
 
+    /// Return the public key that defines this identity.
     #[inline]
     pub fn public_key(&self) -> &PublicKey {
         self.identity_key.public_key()
     }
 
+    /// Return the private key that defines this identity.
     #[inline]
     pub fn private_key(&self) -> &PrivateKey {
         &self.private_key
     }
 
+    /// Return a byte slice which can later be deserialized with [`Self::try_from`].
     pub fn serialize(&self) -> Box<[u8]> {
         let structure = proto::storage::IdentityKeyPairStructure {
             public_key: self.identity_key.serialize().to_vec(),
@@ -120,6 +144,7 @@ impl IdentityKeyPair {
         result.into_boxed_slice()
     }
 
+    /// Generate a signature claiming that `other` represents the same user as `self`.
     pub fn sign_alternate_identity<R: Rng + CryptoRng>(
         &self,
         other: &IdentityKey,
