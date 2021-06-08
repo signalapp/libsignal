@@ -466,7 +466,7 @@ impl From<&SessionState> for SessionStructure {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SessionRecord {
     current_session: Option<SessionState>,
     previous_sessions: Vec<Vec<u8>>,
