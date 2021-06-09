@@ -21,7 +21,7 @@
                 {
                     'action_name': 'node/build_node_bridge.py',
                     'action': [
-                        'python',
+                        'python3',
                         'node/build_node_bridge.py',
                         '--out-dir', '<(PRODUCT_DIR)/',
                         '--os-name', '<(NODE_OS_NAME)',
