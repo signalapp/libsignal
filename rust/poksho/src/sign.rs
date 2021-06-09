@@ -25,7 +25,7 @@ pub fn sign(
     let mut point_args = PointArgs::new();
     point_args.add("public_key", public_key);
 
-    st.prove(&scalar_args, &point_args, &message, randomness)
+    st.prove(&scalar_args, &point_args, message, randomness)
 }
 
 pub fn verify_signature(
@@ -39,7 +39,7 @@ pub fn verify_signature(
     let mut point_args = PointArgs::new();
     point_args.add("public_key", public_key);
 
-    st.verify_proof(signature, &point_args, &message)
+    st.verify_proof(signature, &point_args, message)
 }
 
 #[cfg(test)]

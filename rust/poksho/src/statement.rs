@@ -331,8 +331,7 @@ impl Statement {
                 && self.scalar_map.len() <= 256
                 && self.point_map.len() <= 256
         );
-        let mut v = Vec::<u8>::new();
-        v.push(self.equations.len() as u8);
+        let mut v = vec![self.equations.len() as u8];
         for Equation { lhs, rhs } in &self.equations {
             assert!(*lhs as usize <= self.point_map.len());
             assert!(rhs.len() <= 255);
@@ -414,8 +413,7 @@ impl Statement {
         if point_args.0.len() != self.point_vec.len() - 1 {
             return Err(BadArgsWrongNumberOfPointArgs);
         }
-        let mut all_points = Vec::<RistrettoPoint>::new();
-        all_points.push(RISTRETTO_BASEPOINT_POINT);
+        let mut all_points = vec![RISTRETTO_BASEPOINT_POINT];
         for point_name in &self.point_vec[1..] {
             all_points.push(*point_args.0.get(point_name).ok_or(BadArgsMissingPointArg)?);
         }

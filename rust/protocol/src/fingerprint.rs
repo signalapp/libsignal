@@ -371,18 +371,18 @@ mod test {
             version,
             iterations,
             ALICE_STABLE_ID.as_bytes(),
-            &a_key,
+            a_key,
             BOB_STABLE_ID.as_bytes(),
-            &b_key,
+            b_key,
         )?;
 
         let b_fprint = Fingerprint::new(
             version,
             iterations,
             BOB_STABLE_ID.as_bytes(),
-            &b_key,
+            b_key,
             ALICE_STABLE_ID.as_bytes(),
-            &a_key,
+            a_key,
         )?;
 
         assert_eq!(
@@ -391,32 +391,20 @@ mod test {
         );
         assert_eq!(format!("{}", a_fprint.display).len(), 60);
 
-        assert_eq!(
-            a_fprint
-                .scannable
-                .compare(&b_fprint.scannable.serialize()?)?,
-            true
-        );
-        assert_eq!(
-            b_fprint
-                .scannable
-                .compare(&a_fprint.scannable.serialize()?)?,
-            true
-        );
+        assert!(a_fprint
+            .scannable
+            .compare(&b_fprint.scannable.serialize()?)?);
+        assert!(b_fprint
+            .scannable
+            .compare(&a_fprint.scannable.serialize()?)?);
 
         // Java is missing this test
-        assert_eq!(
-            a_fprint
-                .scannable
-                .compare(&a_fprint.scannable.serialize()?)?,
-            false
-        );
-        assert_eq!(
-            b_fprint
-                .scannable
-                .compare(&b_fprint.scannable.serialize()?)?,
-            false
-        );
+        assert!(!a_fprint
+            .scannable
+            .compare(&a_fprint.scannable.serialize()?)?);
+        assert!(!b_fprint
+            .scannable
+            .compare(&b_fprint.scannable.serialize()?)?);
 
         Ok(())
     }
@@ -441,18 +429,18 @@ mod test {
             version,
             iterations,
             ALICE_STABLE_ID.as_bytes(),
-            &a_key,
+            a_key,
             BOB_STABLE_ID.as_bytes(),
-            &m_key,
+            m_key,
         )?;
 
         let b_fprint = Fingerprint::new(
             version,
             iterations,
             BOB_STABLE_ID.as_bytes(),
-            &b_key,
+            b_key,
             ALICE_STABLE_ID.as_bytes(),
-            &a_key,
+            a_key,
         )?;
 
         assert_ne!(
@@ -460,18 +448,12 @@ mod test {
             format!("{}", b_fprint.display)
         );
 
-        assert_eq!(
-            a_fprint
-                .scannable
-                .compare(&b_fprint.scannable.serialize()?)?,
-            false
-        );
-        assert_eq!(
-            b_fprint
-                .scannable
-                .compare(&a_fprint.scannable.serialize()?)?,
-            false
-        );
+        assert!(!a_fprint
+            .scannable
+            .compare(&b_fprint.scannable.serialize()?)?);
+        assert!(!b_fprint
+            .scannable
+            .compare(&a_fprint.scannable.serialize()?)?);
 
         Ok(())
     }
@@ -494,18 +476,18 @@ mod test {
             version,
             iterations,
             "+141512222222".as_bytes(),
-            &a_key,
+            a_key,
             BOB_STABLE_ID.as_bytes(),
-            &b_key,
+            b_key,
         )?;
 
         let b_fprint = Fingerprint::new(
             version,
             iterations,
             BOB_STABLE_ID.as_bytes(),
-            &b_key,
+            b_key,
             ALICE_STABLE_ID.as_bytes(),
-            &a_key,
+            a_key,
         )?;
 
         assert_ne!(
@@ -513,18 +495,12 @@ mod test {
             format!("{}", b_fprint.display)
         );
 
-        assert_eq!(
-            a_fprint
-                .scannable
-                .compare(&b_fprint.scannable.serialize()?)?,
-            false
-        );
-        assert_eq!(
-            b_fprint
-                .scannable
-                .compare(&a_fprint.scannable.serialize()?)?,
-            false
-        );
+        assert!(!a_fprint
+            .scannable
+            .compare(&b_fprint.scannable.serialize()?)?);
+        assert!(!b_fprint
+            .scannable
+            .compare(&a_fprint.scannable.serialize()?)?);
 
         Ok(())
     }

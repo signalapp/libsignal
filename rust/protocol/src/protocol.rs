@@ -82,7 +82,7 @@ impl SignalMessage {
             ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
             counter: Some(counter),
             previous_counter: Some(previous_counter),
-            ciphertext: Some(Vec::<u8>::from(&ciphertext[..])),
+            ciphertext: Some(Vec::<u8>::from(ciphertext)),
         };
         let mut serialized = vec![0u8; 1 + message.encoded_len() + Self::MAC_LENGTH];
         serialized[0] = ((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
@@ -690,8 +690,7 @@ impl From<DecryptionErrorMessage> for PlaintextContent {
             decryption_error_message: Some(message.serialized().to_vec()),
             ..Default::default()
         };
-        let mut serialized = Vec::new();
-        serialized.push(Self::PLAINTEXT_CONTEXT_IDENTIFIER_BYTE);
+        let mut serialized = vec![Self::PLAINTEXT_CONTEXT_IDENTIFIER_BYTE];
         proto_structure
             .encode(&mut serialized)
             .expect("can always encode to a Vec");

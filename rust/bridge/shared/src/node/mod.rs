@@ -100,7 +100,7 @@ pub fn return_binary_data<'a, T: AsRef<[u8]>>(
             };
             let mut buffer = cx.buffer(bytes_len)?;
             cx.borrow_mut(&mut buffer, |raw_buffer| {
-                raw_buffer.as_mut_slice().copy_from_slice(&bytes);
+                raw_buffer.as_mut_slice().copy_from_slice(bytes);
             });
             Ok(buffer.upcast())
         }

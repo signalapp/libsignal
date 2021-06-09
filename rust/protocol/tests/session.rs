@@ -205,7 +205,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             SignalProtocolError::UntrustedIdentity(a) if a == alice_address
         ));
 
-        assert_eq!(
+        assert!(
             bob_store
                 .save_identity(
                     &alice_address,
@@ -215,8 +215,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
                         .identity_key(),
                     None,
                 )
-                .await?,
-            true
+                .await?
         );
 
         let decrypted = decrypt(&mut bob_store, &alice_address, &outgoing_message).await?;
@@ -1173,9 +1172,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::PreKey
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let alice_plaintext = decrypt(
@@ -1221,9 +1219,8 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             3
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you").await?;
@@ -1244,10 +1241,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             "nice to see you"
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?);
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "you as well").await?;
 
@@ -1264,10 +1258,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
             "you as well"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
 
         Ok(())
     })
@@ -1319,9 +1310,8 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::PreKey
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let bob_plaintext = decrypt(
@@ -1371,10 +1361,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             "nice to see you"
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?);
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "you as well").await?;
 
@@ -1391,10 +1378,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
             "you as well"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
 
         Ok(())
     })
@@ -1446,9 +1430,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::PreKey
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let alice_plaintext = decrypt(
@@ -1494,9 +1477,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             3
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you").await?;
@@ -1506,9 +1488,8 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             CiphertextMessageType::Whisper
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "you as well").await?;
@@ -1526,10 +1507,7 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
             "you as well"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
 
         Ok(())
     })
@@ -1582,9 +1560,9 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 CiphertextMessageType::PreKey
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
 
             let alice_plaintext = decrypt(
@@ -1630,9 +1608,9 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 3
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
         }
 
@@ -1649,9 +1627,9 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 CiphertextMessageType::Whisper
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
 
             let alice_plaintext = decrypt(
@@ -1697,9 +1675,9 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                 3
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
         }
 
@@ -1710,9 +1688,8 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
             CiphertextMessageType::Whisper
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "you as well").await?;
@@ -1730,10 +1707,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
             "you as well"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
 
         Ok(())
     })
@@ -1800,9 +1774,9 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 CiphertextMessageType::PreKey
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
 
             let alice_plaintext = decrypt(
@@ -1848,9 +1822,9 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 3
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
         }
 
@@ -1867,9 +1841,9 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 CiphertextMessageType::Whisper
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
 
             let alice_plaintext = decrypt(
@@ -1915,9 +1889,9 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                 3
             );
 
-            assert_eq!(
-                is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-                false
+            assert!(
+                !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address)
+                    .await?
             );
         }
 
@@ -1928,9 +1902,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             CiphertextMessageType::Whisper
         );
 
-        assert_eq!(
-            is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&alice_store, &alice_address, &bob_store, &bob_address).await?
         );
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "you as well").await?;
@@ -1948,10 +1921,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             "you as well"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
 
         let blast_from_the_past = decrypt(
             &mut bob_store,
@@ -1966,9 +1936,8 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             "it was so long ago"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            false
+        assert!(
+            !is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?
         );
 
         let bob_response = encrypt(&mut bob_store, &alice_address, "so it was").await?;
@@ -1986,10 +1955,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
             "so it was"
         );
 
-        assert_eq!(
-            is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?,
-            true
-        );
+        assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
 
         Ok(())
     })

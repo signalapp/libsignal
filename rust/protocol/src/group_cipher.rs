@@ -104,7 +104,7 @@ fn get_sender_key(
     }
 
     state.set_sender_chain_key(sender_chain_key.next()?)?;
-    Ok(sender_chain_key.sender_message_key()?)
+    sender_chain_key.sender_message_key()
 }
 
 pub async fn group_decrypt(

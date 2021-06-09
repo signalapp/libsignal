@@ -13,6 +13,7 @@ pub const BLOCK_LEN: usize = 64;
 pub const HASH_LEN: usize = 32;
 
 #[derive(Clone)]
+#[allow(clippy::upper_case_acronyms)]
 enum Mode {
     ABSORBING,
     RATCHETED,

@@ -37,9 +37,8 @@ impl fmt::Display for Error {
 pub fn create_rsa_private_key(bits: usize) -> Result<Vec<u8>, Error> {
     let key = PrivateKey::generate_rsa(bits)
         .map_err(|_| Error::InternalError("RSA key generation failed"))?;
-    Ok(key
-        .to_pkcs8()
-        .map_err(|_| Error::InternalError("Exporting to PKCS8 failed"))?)
+    key.to_pkcs8()
+        .map_err(|_| Error::InternalError("Exporting to PKCS8 failed"))
 }
 
 /// Generate a self-signed certificate of name `name`, expiring in `days_to_expire`.
@@ -77,7 +76,6 @@ pub fn create_self_signed_cert(
         .build()
         .map_err(|_| Error::InternalError("Creating certificate failed"))?;
 
-    Ok(cert
-        .to_der()
-        .map_err(|_| Error::InternalError("Converting cert to DER failed"))?)
+    cert.to_der()
+        .map_err(|_| Error::InternalError("Converting cert to DER failed"))
 }

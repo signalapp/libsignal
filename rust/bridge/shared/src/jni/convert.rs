@@ -472,22 +472,22 @@ impl ResultTypeInfo for CiphertextMessage {
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         let obj = match self {
             CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
-                &env,
+                env,
                 "org/whispersystems/libsignal/protocol/SignalMessage",
                 box_object::<SignalMessage>(Ok(m))?,
             ),
             CiphertextMessage::PreKeySignalMessage(m) => jobject_from_native_handle(
-                &env,
+                env,
                 "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
                 box_object::<PreKeySignalMessage>(Ok(m))?,
             ),
             CiphertextMessage::SenderKeyMessage(m) => jobject_from_native_handle(
-                &env,
+                env,
                 "org/whispersystems/libsignal/protocol/SenderKeyMessage",
                 box_object::<SenderKeyMessage>(Ok(m))?,
             ),
             CiphertextMessage::PlaintextContent(m) => jobject_from_native_handle(
-                &env,
+                env,
                 "org/whispersystems/libsignal/protocol/PlaintextContent",
                 box_object::<PlaintextContent>(Ok(m))?,
             ),
@@ -545,7 +545,7 @@ impl ResultTypeInfo for Option<jobject> {
 impl crate::support::Env for &'_ JNIEnv<'_> {
     type Buffer = SignalJniResult<jbyteArray>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
-        to_jbytearray(&self, Ok(input.into()))
+        to_jbytearray(self, Ok(input.into()))
     }
 }
 
@@ -581,7 +581,7 @@ macro_rules! jni_bridge_handle {
                 _env: &jni::JNIEnv,
                 foreign: Self::ArgType,
             ) -> jni::SignalJniResult<Self> {
-                Ok(unsafe { jni::native_handle_cast(foreign) }?)
+                unsafe { jni::native_handle_cast(foreign) }
             }
         }
 

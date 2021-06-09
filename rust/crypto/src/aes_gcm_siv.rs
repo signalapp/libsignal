@@ -172,7 +172,7 @@ impl Aes256GcmSiv {
         }
         let keys = self.derive_keys(nonce)?;
         let aes256 = Aes256::new(&keys.0)?;
-        Self::ctr32(buffer, &tag, &aes256)?;
+        Self::ctr32(buffer, tag, &aes256)?;
         let gtag = Self::compute_tag(buffer, associated_data, nonce, &keys.1, &aes256)?;
 
         let tag_ok = tag.ct_eq(&gtag);

@@ -24,6 +24,6 @@ fn DeviceTransfer_GenerateCertificate<T: Env>(
     name: String,
     days_to_expire: u32,
 ) -> Result<T::Buffer, device_transfer::Error> {
-    let buf = device_transfer::create_self_signed_cert(&private_key, &name, days_to_expire)?;
+    let buf = device_transfer::create_self_signed_cert(private_key, &name, days_to_expire)?;
     Ok(env.buffer(buf))
 }

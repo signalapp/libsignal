@@ -683,7 +683,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         for ciphertext in ciphertexts {
             plaintexts.push(
                 group_decrypt(
-                    &ciphertext.serialized(),
+                    ciphertext.serialized(),
                     &mut bob_store,
                     &sender_address,
                     None,

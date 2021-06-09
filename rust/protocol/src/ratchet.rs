@@ -146,7 +146,7 @@ pub(crate) fn initialize_bob_session(
 
     let mut session = SessionState::new(session);
 
-    session.set_sender_chain(&parameters.our_ratchet_key_pair(), &chain_key)?;
+    session.set_sender_chain(parameters.our_ratchet_key_pair(), &chain_key)?;
 
     Ok(session)
 }

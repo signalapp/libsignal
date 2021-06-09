@@ -157,10 +157,7 @@ impl SessionState {
         for chain in self.session.receiver_chains.iter() {
             let sender_ratchet_public = chain.sender_ratchet_key.clone();
 
-            let chain_key_idx = match &chain.chain_key {
-                Some(chain_key) => Some(chain_key.index),
-                None => None,
-            };
+            let chain_key_idx = chain.chain_key.as_ref().map(|chain_key| chain_key.index);
 
             results.push((sender_ratchet_public, chain_key_idx))
         }
