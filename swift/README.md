@@ -54,3 +54,12 @@ When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag 
 ## Use as a Swift Package
 
 ...is not supported. In theory we could make this work through the use of a custom pkg-config file and requiring clients to set `PKG_CONFIG_PATH` (or install the Rust build products), but since Signal itself does not use this configuration it's considered extra maintenance burden. Development as a package is supported as a lightweight convenience (as well as a cross-platform one), but the CocoaPods build is considered the canonical one.
+
+# M1 Simulator and Catalyst
+
+Rust targets for both the M1 Simulator and Catalyst are still in tier 3 support, so we use `xargo` to build the standard library. 
+
+In order to compile for these platforms you will need to:
+* Install Xargo with `cargo install xargo`
+* Install the standard library component with `rustup component add rust-src`
+* If not using Cocoapods, add the `--use-xargo` flag to your `build_ffi.sh` invocation

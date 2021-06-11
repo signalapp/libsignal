@@ -156,7 +156,7 @@ fn Aes256GcmDecryption_VerifyTag(gcm: &mut Aes256GcmDecryption, tag: &[u8]) -> R
 
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv> {
-    Aes256GcmSiv::new(&key)
+    Aes256GcmSiv::new(key)
 }
 
 #[bridge_fn_buffer]
@@ -170,7 +170,7 @@ fn Aes256GcmSiv_Encrypt<T: Env>(
     let mut buf = Vec::with_capacity(ptext.len() + 16);
     buf.extend_from_slice(ptext);
 
-    let gcm_tag = aes_gcm_siv.encrypt(&mut buf, &nonce, &associated_data)?;
+    let gcm_tag = aes_gcm_siv.encrypt(&mut buf, nonce, associated_data)?;
     buf.extend_from_slice(&gcm_tag);
 
     Ok(env.buffer(buf))
@@ -185,13 +185,13 @@ fn Aes256GcmSiv_Decrypt<T: Env>(
     associated_data: &[u8],
 ) -> Result<T::Buffer> {
     let mut buf = ctext.to_vec();
-    aes_gcm_siv.decrypt_with_appended_tag(&mut buf, &nonce, &associated_data)?;
+    aes_gcm_siv.decrypt_with_appended_tag(&mut buf, nonce, associated_data)?;
     Ok(env.buffer(buf))
 }
 
 #[bridge_fn(ffi = false, node = false)]
 fn CryptographicHash_New(algo: String) -> Result<CryptographicHash> {
-    Ok(CryptographicHash::new(&algo)?)
+    CryptographicHash::new(&algo)
 }
 
 #[bridge_fn_void(ffi = false, node = false)]
@@ -219,7 +219,7 @@ fn CryptographicHash_Finalize<T: Env>(env: T, hash: &mut CryptographicHash) -> R
 
 #[bridge_fn(ffi = false, node = false)]
 fn CryptographicMac_New(algo: String, key: &[u8]) -> Result<CryptographicMac> {
-    Ok(CryptographicMac::new(&algo, key)?)
+    CryptographicMac::new(&algo, key)
 }
 
 #[bridge_fn_void(ffi = false, node = false)]

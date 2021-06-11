@@ -25,7 +25,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
 
     let recovered = ServerCertificate::deserialize(&serialized)?;
 
-    assert_eq!(recovered.validate(&trust_root.public_key)?, true);
+    assert!(recovered.validate(&trust_root.public_key)?);
 
     let mut cert_data = serialized;
     let cert_bits = cert_data.len() * 8;
@@ -37,7 +37,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
 
         match cert {
             Ok(cert) => {
-                assert_eq!(cert.validate(&trust_root.public_key)?, false);
+                assert!(!cert.validate(&trust_root.public_key)?);
             }
             Err(e) => match e {
                 SignalProtocolError::InvalidProtobufEncoding
@@ -74,7 +74,7 @@ fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
 
     let recovered = ServerCertificate::deserialize(&serialized)?;
 
-    assert_eq!(recovered.validate(&trust_root.public_key)?, false);
+    assert!(!recovered.validate(&trust_root.public_key)?);
 
     Ok(())
 }
@@ -103,11 +103,8 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
         &mut rng,
     )?;
 
-    assert_eq!(sender_cert.validate(&trust_root.public_key, expires)?, true);
-    assert_eq!(
-        sender_cert.validate(&trust_root.public_key, expires + 1)?,
-        false
-    ); // expired
+    assert!(sender_cert.validate(&trust_root.public_key, expires)?);
+    assert!(!sender_cert.validate(&trust_root.public_key, expires + 1)?); // expired
 
     let mut sender_cert_data = sender_cert.serialized()?.to_vec();
     let sender_cert_bits = sender_cert_data.len() * 8;
@@ -119,7 +116,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
 
         match cert {
             Ok(cert) => {
-                assert_eq!(cert.validate(&trust_root.public_key, expires)?, false);
+                assert!(!cert.validate(&trust_root.public_key, expires)?);
             }
             Err(e) => match e {
                 SignalProtocolError::InvalidProtobufEncoding

@@ -81,7 +81,7 @@ impl IdentityKeyPair {
 
     #[inline]
     pub fn public_key(&self) -> &PublicKey {
-        &self.identity_key.public_key()
+        self.identity_key.public_key()
     }
 
     #[inline]

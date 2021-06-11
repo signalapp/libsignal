@@ -39,7 +39,7 @@ impl PolyvalPmul {
 
     #[target_feature(enable = "crypto")]
     unsafe fn process_block(&mut self, chunk: *const u8) {
-        let poly: poly64_t = cast(0xc200000000000000u64);
+        let poly: u64 = cast(0xc200000000000000u64);
 
         let h = self.h;
 

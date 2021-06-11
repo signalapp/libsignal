@@ -29,7 +29,7 @@ fn test_generate_and_parse() -> Result<(), Error> {
         .unwrap();
     assert_eq!(sig_len, bit_size / 8);
 
-    assert!(openssl_rsa.check_key().unwrap(), true);
+    assert!(openssl_rsa.check_key().unwrap());
 
     let openssl_cert = X509::from_der(&cert).expect("OpenSSL can parse our certificate");
     let pubkey = openssl_cert.public_key().expect("Can extract public key");

@@ -34,7 +34,7 @@ pub fn aes_256_ctr_decrypt(ctext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 
 pub fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
     match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
-        Ok(mode) => Ok(mode.encrypt_vec(&ptext)),
+        Ok(mode) => Ok(mode.encrypt_vec(ptext)),
         Err(block_modes::InvalidKeyIvLength) => Err(
             SignalProtocolError::InvalidCipherCryptographicParameters(key.len(), iv.len()),
         ),
@@ -56,9 +56,8 @@ pub fn aes_256_cbc_decrypt(ctext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8
         }
     };
 
-    Ok(mode
-        .decrypt_vec(ctext)
-        .map_err(|_| SignalProtocolError::InvalidCiphertext)?)
+    mode.decrypt_vec(ctext)
+        .map_err(|_| SignalProtocolError::InvalidCiphertext)
 }
 
 pub fn hmac_sha256(key: &[u8], input: &[u8]) -> Result<[u8; 32]> {

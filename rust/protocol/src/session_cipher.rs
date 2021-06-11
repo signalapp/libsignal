@@ -25,7 +25,7 @@ pub async fn message_encrypt(
     ctx: Context,
 ) -> Result<CiphertextMessage> {
     let mut session_record = session_store
-        .load_session(&remote_address, ctx)
+        .load_session(remote_address, ctx)
         .await?
         .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", remote_address)))?;
     let session_state = session_record.session_state_mut()?;
@@ -93,12 +93,7 @@ pub async fn message_encrypt(
 
     // XXX why is this check after everything else?!!
     if !identity_store
-        .is_trusted_identity(
-            &remote_address,
-            &their_identity_key,
-            Direction::Sending,
-            ctx,
-        )
+        .is_trusted_identity(remote_address, &their_identity_key, Direction::Sending, ctx)
         .await?
     {
         log::warn!(
@@ -116,11 +111,11 @@ pub async fn message_encrypt(
 
     // XXX this could be combined with the above call to the identity store (in a new API)
     identity_store
-        .save_identity(&remote_address, &their_identity_key, ctx)
+        .save_identity(remote_address, &their_identity_key, ctx)
         .await?;
 
     session_store
-        .store_session(&remote_address, &session_record, ctx)
+        .store_session(remote_address, &session_record, ctx)
         .await?;
     Ok(message)
 }
@@ -177,14 +172,14 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
-        .load_session(&remote_address, ctx)
+        .load_session(remote_address, ctx)
         .await?
         .unwrap_or_else(SessionRecord::new_fresh);
 
     // Make sure we log the session state if we fail to process the pre-key.
     let pre_key_id_or_err = session::process_prekey(
         ciphertext,
-        &remote_address,
+        remote_address,
         &mut session_record,
         identity_store,
         pre_key_store,
@@ -212,14 +207,14 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     };
 
     let ptext = decrypt_message_with_record(
-        &remote_address,
+        remote_address,
         &mut session_record,
         ciphertext.message(),
         csprng,
     )?;
 
     session_store
-        .store_session(&remote_address, &session_record, ctx)
+        .store_session(remote_address, &session_record, ctx)
         .await?;
 
     if let Some(pre_key_id) = pre_key_id {
@@ -238,12 +233,12 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut session_record = session_store
-        .load_session(&remote_address, ctx)
+        .load_session(remote_address, ctx)
         .await?
         .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", remote_address)))?;
 
     let ptext =
-        decrypt_message_with_record(&remote_address, &mut session_record, ciphertext, csprng)?;
+        decrypt_message_with_record(remote_address, &mut session_record, ciphertext, csprng)?;
 
     // Why are we performing this check after decryption instead of before?
     let their_identity_key = session_record
@@ -253,7 +248,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
 
     if !identity_store
         .is_trusted_identity(
-            &remote_address,
+            remote_address,
             &their_identity_key,
             Direction::Receiving,
             ctx,
@@ -274,11 +269,11 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     }
 
     identity_store
-        .save_identity(&remote_address, &their_identity_key, ctx)
+        .save_identity(remote_address, &their_identity_key, ctx)
         .await?;
 
     session_store
-        .store_session(&remote_address, &session_record, ctx)
+        .store_session(remote_address, &session_record, ctx)
         .await?;
 
     Ok(ptext)
@@ -421,7 +416,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                 return result;
             }
             Err(e) => {
-                log_decryption_failure(&previous, &e);
+                log_decryption_failure(previous, &e);
                 errs.push(e);
             }
         }
@@ -608,5 +603,5 @@ fn get_or_create_message_key(
     }
 
     state.set_receiver_chain_key(their_ephemeral, &chain_key.next_chain_key()?)?;
-    Ok(chain_key.message_keys()?)
+    chain_key.message_keys()
 }

@@ -36,7 +36,7 @@ pub struct JniIdentityKeyStore<'a> {
 impl<'a> JniIdentityKeyStore<'a> {
     pub fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
-            &env,
+            env,
             store,
             "org/whispersystems/libsignal/state/IdentityKeyStore",
         )?;
@@ -218,11 +218,7 @@ pub struct JniPreKeyStore<'a> {
 
 impl<'a> JniPreKeyStore<'a> {
     pub fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
-        check_jobject_type(
-            &env,
-            store,
-            "org/whispersystems/libsignal/state/PreKeyStore",
-        )?;
+        check_jobject_type(env, store, "org/whispersystems/libsignal/state/PreKeyStore")?;
         Ok(Self { env, store })
     }
 }
@@ -322,7 +318,7 @@ pub struct JniSignedPreKeyStore<'a> {
 impl<'a> JniSignedPreKeyStore<'a> {
     pub fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
-            &env,
+            env,
             store,
             "org/whispersystems/libsignal/state/SignedPreKeyStore",
         )?;
@@ -408,7 +404,7 @@ pub struct JniSessionStore<'a> {
 impl<'a> JniSessionStore<'a> {
     pub fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
-            &env,
+            env,
             store,
             "org/whispersystems/libsignal/state/SessionStore",
         )?;
@@ -492,7 +488,7 @@ pub struct JniSenderKeyStore<'a> {
 impl<'a> JniSenderKeyStore<'a> {
     pub fn new(env: &'a JNIEnv, store: JObject<'a>) -> Result<Self, SignalJniError> {
         check_jobject_type(
-            &env,
+            env,
             store,
             "org/whispersystems/libsignal/groups/state/SenderKeyStore",
         )?;

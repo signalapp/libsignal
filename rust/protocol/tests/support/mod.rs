@@ -39,7 +39,7 @@ pub async fn decrypt(
     let mut csprng = OsRng;
     message_decrypt(
         msg,
-        &remote_address,
+        remote_address,
         &mut store.session_store,
         &mut store.identity_store,
         &mut store.pre_key_store,

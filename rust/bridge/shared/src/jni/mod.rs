@@ -88,9 +88,9 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             // The usual way to write this code would be to match on the result of Error::downcast.
             // However, the "failure" result, which is intended to return the original type back,
             // only supports Send and Sync as additional traits. For anything else, we have to test first.
-            if Error::is::<ThrownException>(&*exception) {
+            if <dyn Error>::is::<ThrownException>(&*exception) {
                 let exception =
-                    Error::downcast::<ThrownException>(exception).expect("just checked");
+                    <dyn Error>::downcast::<ThrownException>(exception).expect("just checked");
                 if let Err(e) = env.throw(exception.as_obj()) {
                     log::error!("failed to rethrow exception from {}: {}", callback, e);
                 }
@@ -470,7 +470,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
     let obj: JObject =
-        call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
+        call_method_checked(env, store_obj, callback_fn, callback_sig, callback_args)?;
     if obj.is_null() {
         return Ok(None);
     }
@@ -496,7 +496,7 @@ pub fn get_object_with_serialization(
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
     let obj: JObject =
-        call_method_checked(env, store_obj, callback_fn, callback_sig, &callback_args)?;
+        call_method_checked(env, store_obj, callback_fn, callback_sig, callback_args)?;
 
     if obj.is_null() {
         return Ok(None);
