@@ -7,6 +7,9 @@ use ::signal_crypto;
 use libsignal_bridge_macros::*;
 use signal_crypto::*;
 
+use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
+use aes_gcm_siv::aead::{AeadCore, AeadInPlace, NewAead};
+
 use crate::support::*;
 use crate::*;
 
@@ -70,6 +73,9 @@ impl Aes256GcmDecryption {
         }
     }
 }
+
+// Explicit wrapper for cbindgen purposes.
+pub struct Aes256GcmSiv(aes_gcm_siv::Aes256GcmSiv);
 
 bridge_handle!(CryptographicHash, mut = true, ffi = false, node = false);
 bridge_handle!(CryptographicMac, mut = true, ffi = false, node = false);
@@ -156,22 +162,32 @@ fn Aes256GcmDecryption_VerifyTag(gcm: &mut Aes256GcmDecryption, tag: &[u8]) -> R
 
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv> {
-    Aes256GcmSiv::new(key)
+    Ok(Aes256GcmSiv(
+        aes_gcm_siv::Aes256GcmSiv::new_from_slice(key).map_err(|_| Error::InvalidKeySize)?,
+    ))
 }
 
 #[bridge_fn_buffer]
 fn Aes256GcmSiv_Encrypt<T: Env>(
     env: T,
-    aes_gcm_siv: &Aes256GcmSiv,
+    aes_gcm_siv_obj: &Aes256GcmSiv,
     ptext: &[u8],
     nonce: &[u8],
     associated_data: &[u8],
 ) -> Result<T::Buffer> {
-    let mut buf = Vec::with_capacity(ptext.len() + 16);
+    if nonce.len() != <aes_gcm_siv::Aes256GcmSiv as AeadCore>::NonceSize::USIZE {
+        return Err(Error::InvalidNonceSize);
+    }
+    let nonce: &aes_gcm_siv::Nonce = nonce.into();
+
+    let mut buf =
+        Vec::with_capacity(ptext.len() + <aes_gcm_siv::Aes256GcmSiv as AeadCore>::TagSize::USIZE);
     buf.extend_from_slice(ptext);
 
-    let gcm_tag = aes_gcm_siv.encrypt(&mut buf, nonce, associated_data)?;
-    buf.extend_from_slice(&gcm_tag);
+    aes_gcm_siv_obj
+        .0
+        .encrypt_in_place(nonce, associated_data, &mut buf)
+        .expect("cannot run out of capacity in a Vec");
 
     Ok(env.buffer(buf))
 }
@@ -184,8 +200,16 @@ fn Aes256GcmSiv_Decrypt<T: Env>(
     nonce: &[u8],
     associated_data: &[u8],
 ) -> Result<T::Buffer> {
+    if nonce.len() != <aes_gcm_siv::Aes256GcmSiv as AeadCore>::NonceSize::USIZE {
+        return Err(Error::InvalidNonceSize);
+    }
+    let nonce: &aes_gcm_siv::Nonce = nonce.into();
+
     let mut buf = ctext.to_vec();
-    aes_gcm_siv.decrypt_with_appended_tag(&mut buf, nonce, associated_data)?;
+    aes_gcm_siv
+        .0
+        .decrypt_in_place(nonce, associated_data, &mut buf)
+        .map_err(|_| Error::InvalidTag)?;
     Ok(env.buffer(buf))
 }
 

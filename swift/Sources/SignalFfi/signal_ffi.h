@@ -306,7 +306,7 @@ SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
 
 SignalFfiError *signal_aes256_gcm_siv_encrypt(const unsigned char **out,
                                               size_t *out_len,
-                                              const SignalAes256GcmSiv *aes_gcm_siv,
+                                              const SignalAes256GcmSiv *aes_gcm_siv_obj,
                                               const unsigned char *ptext,
                                               size_t ptext_len,
                                               const unsigned char *nonce,
