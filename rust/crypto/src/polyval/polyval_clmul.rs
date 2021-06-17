@@ -77,20 +77,6 @@ impl PolyvalClmul {
         Ok(())
     }
 
-    pub fn update_padded(&mut self, data: &[u8]) -> Result<()> {
-        let full_blocks = data.len() / 16;
-        let remainder = data.len() % 16;
-
-        self.update(&data[0..full_blocks * 16])?;
-
-        if remainder > 0 {
-            let mut rembytes = [0u8; 16];
-            rembytes[0..remainder].copy_from_slice(&data[full_blocks * 16..]);
-            self.update(&rembytes)?;
-        }
-        Ok(())
-    }
-
     pub fn finalize(self) -> Result<[u8; 16]> {
         Ok(unsafe { std::mem::transmute(self.s) })
     }

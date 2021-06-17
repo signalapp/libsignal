@@ -28,11 +28,6 @@ impl PolyvalSoft {
         Ok(())
     }
 
-    pub fn update_padded(&mut self, data: &[u8]) -> Result<()> {
-        self.polyval.update_padded(data);
-        Ok(())
-    }
-
     pub fn finalize(self) -> Result<[u8; 16]> {
         Ok(self.polyval.finalize().into_bytes().into())
     }

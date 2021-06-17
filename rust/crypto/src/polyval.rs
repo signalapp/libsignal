@@ -59,16 +59,6 @@ impl Polyval {
         }
     }
 
-    pub fn update_padded(&mut self, data: &[u8]) -> Result<()> {
-        match self {
-            Polyval::Soft(polyval) => polyval.update_padded(data),
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            Polyval::Clmul(polyval) => polyval.update_padded(data),
-            #[cfg(target_arch = "aarch64")]
-            Polyval::Pmul(polyval) => polyval.update_padded(data),
-        }
-    }
-
     pub fn finalize(self) -> Result<[u8; 16]> {
         match self {
             Polyval::Soft(polyval) => polyval.finalize(),

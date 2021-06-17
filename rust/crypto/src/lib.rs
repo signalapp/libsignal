@@ -13,7 +13,6 @@ mod hash;
 mod aes;
 mod aes_ctr;
 mod aes_gcm;
-mod aes_gcm_siv;
 mod cpuid;
 mod ghash;
 mod polyval;
@@ -21,7 +20,6 @@ mod polyval;
 pub use {
     aes_ctr::Aes256Ctr32,
     aes_gcm::{Aes256GcmDecryption, Aes256GcmEncryption},
-    aes_gcm_siv::Aes256GcmSiv,
     error::{Error, Result},
     hash::{CryptographicHash, CryptographicMac},
 };
