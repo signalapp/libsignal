@@ -12,10 +12,11 @@ use crate::{
 use crate::crypto;
 use crate::proto;
 use crate::session_cipher;
+use aes_gcm_siv::aead::{AeadInPlace, NewAead};
+use aes_gcm_siv::Aes256GcmSiv;
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand::{CryptoRng, Rng};
-use signal_crypto::Aes256GcmSiv;
 use std::convert::{TryFrom, TryInto};
 use subtle::ConstantTimeEq;
 use uuid::Uuid;
@@ -888,14 +889,14 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     let e_pub = keys.e.public_key()?;
 
     let mut ciphertext = usmc.serialized()?.to_vec();
-    let tag = Aes256GcmSiv::new(&keys.k)
+    let tag = Aes256GcmSiv::new_from_slice(&keys.k)
         .and_then(|aes_gcm_siv| {
-            aes_gcm_siv.encrypt(
-                &mut ciphertext,
+            aes_gcm_siv.encrypt_in_place_detached(
                 // There's no nonce because the key is already one-use.
-                &[0; Aes256GcmSiv::NONCE_SIZE],
+                &aes_gcm_siv::Nonce::default(),
                 // And there's no associated data.
                 &[],
+                &mut ciphertext,
             )
         })
         .map_err(|err| {
@@ -1088,13 +1089,13 @@ pub async fn sealed_sender_decrypt_to_usmc(
             }
 
             let mut message_bytes = encrypted_message.into_vec();
-            let result = Aes256GcmSiv::new(&keys.k).and_then(|aes_gcm_siv| {
-                aes_gcm_siv.decrypt_with_appended_tag(
-                    &mut message_bytes,
+            let result = Aes256GcmSiv::new_from_slice(&keys.k).and_then(|aes_gcm_siv| {
+                aes_gcm_siv.decrypt_in_place(
                     // There's no nonce because the key is already one-use.
-                    &[0; Aes256GcmSiv::NONCE_SIZE],
+                    &aes_gcm_siv::Nonce::default(),
                     // And there's no associated data.
                     &[],
+                    &mut message_bytes,
                 )
             });
             if let Err(err) = result {
