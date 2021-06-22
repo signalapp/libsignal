@@ -68,6 +68,9 @@ typedef enum {
   SignalErrorCode_CallbackError = 100,
 } SignalErrorCode;
 
+/**
+ * A wrapper around [`aes::Aes256Ctr`] that uses a smaller nonce and supports an initial counter.
+ */
 typedef struct SignalAes256Ctr32 SignalAes256Ctr32;
 
 typedef struct SignalAes256GcmDecryption SignalAes256GcmDecryption;

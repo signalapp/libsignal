@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::aes::Aes256;
 use crate::ghash::Ghash;
 use crate::{Aes256Ctr32, Error, Result};
+use aes::{Aes256, BlockEncrypt, NewBlockCipher};
+use generic_array::GenericArray;
 use subtle::ConstantTimeEq;
 
 pub const TAG_SIZE: usize = 16;
@@ -105,9 +106,9 @@ fn setup_gcm(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<(Aes256
         return Err(Error::InvalidNonceSize);
     }
 
-    let aes256 = Aes256::new(key)?;
+    let aes256 = Aes256::new_from_slice(key).map_err(|_| Error::InvalidKeySize)?;
     let mut h = [0u8; TAG_SIZE];
-    aes256.encrypt(&mut h)?;
+    aes256.encrypt_block(GenericArray::from_mut_slice(&mut h));
 
     let mut ctr = Aes256Ctr32::new(aes256, nonce, 1)?;
 
@@ -118,7 +119,6 @@ fn setup_gcm(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<(Aes256
     Ok((ctr, ghash))
 }
 
-#[derive(Clone)]
 pub struct Aes256GcmEncryption {
     ctr: Aes256Ctr32,
     ghash: GcmGhash,
@@ -144,7 +144,6 @@ impl Aes256GcmEncryption {
     }
 }
 
-#[derive(Clone)]
 pub struct Aes256GcmDecryption {
     ctr: Aes256Ctr32,
     ghash: GcmGhash,

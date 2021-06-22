@@ -10,7 +10,6 @@
 mod error;
 mod hash;
 
-mod aes;
 mod aes_ctr;
 mod aes_gcm;
 mod cpuid;
