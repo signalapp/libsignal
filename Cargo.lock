@@ -630,6 +630,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghash"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bbd60caa311237d508927dbba7594b483db3ef05faa55172fcf89b1bcda7853"
+dependencies = [
+ "opaque-debug",
+ "polyval 0.5.1",
+]
+
+[[package]]
 name = "gimli"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1755,9 +1765,9 @@ dependencies = [
  "cipher 0.2.5",
  "criterion",
  "generic-array",
+ "ghash",
  "hex",
  "hmac",
- "libc",
  "polyval 0.4.2",
  "rand 0.7.3",
  "serde",

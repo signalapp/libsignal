@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::ghash::Ghash;
 use crate::{Aes256Ctr32, Error, Result};
 use aes::{Aes256, BlockEncrypt, NewBlockCipher};
 use generic_array::GenericArray;
+use ghash::universal_hash::{NewUniversalHash, UniversalHash};
+use ghash::GHash;
 use subtle::ConstantTimeEq;
 
 pub const TAG_SIZE: usize = 16;
@@ -14,7 +15,7 @@ pub const NONCE_SIZE: usize = 12;
 
 #[derive(Clone)]
 struct GcmGhash {
-    ghash: Ghash,
+    ghash: GHash,
     ghash_pad: [u8; TAG_SIZE],
     msg_buf: [u8; TAG_SIZE],
     msg_buf_offset: usize,
@@ -24,9 +25,9 @@ struct GcmGhash {
 
 impl GcmGhash {
     fn new(h: &[u8; TAG_SIZE], ghash_pad: [u8; TAG_SIZE], associated_data: &[u8]) -> Result<Self> {
-        let mut ghash = Ghash::new(h)?;
+        let mut ghash = GHash::new(h.into());
 
-        ghash.update_padded(associated_data)?;
+        ghash.update_padded(associated_data);
 
         Ok(Self {
             ghash,
@@ -49,7 +50,7 @@ impl GcmGhash {
             self.msg_len += taking;
 
             if self.msg_buf_offset == TAG_SIZE {
-                self.ghash.update(&self.msg_buf)?;
+                self.ghash.update(&self.msg_buf.into());
                 self.msg_buf_offset = 0;
                 return self.update(&msg[taking..]);
             } else {
@@ -64,7 +65,9 @@ impl GcmGhash {
         let leftover = msg.len() - 16 * full_blocks;
         assert!(leftover < TAG_SIZE);
         if full_blocks > 0 {
-            self.ghash.update(&msg[..full_blocks * 16])?;
+            for block in msg[..full_blocks * 16].chunks_exact(16) {
+                self.ghash.update(block.into());
+            }
         }
 
         self.msg_buf[0..leftover].copy_from_slice(&msg[full_blocks * 16..]);
@@ -76,24 +79,22 @@ impl GcmGhash {
 
     fn finalize(mut self) -> Result<[u8; TAG_SIZE]> {
         if self.msg_buf_offset > 0 {
-            for i in self.msg_buf_offset..TAG_SIZE {
-                self.msg_buf[i] = 0;
-            }
-            self.ghash.update(&self.msg_buf)?;
+            self.ghash
+                .update_padded(&self.msg_buf[..self.msg_buf_offset]);
         }
 
         let mut final_block = [0u8; 16];
         final_block[..8].copy_from_slice(&(8 * self.ad_len).to_be_bytes());
         final_block[8..].copy_from_slice(&(8 * self.msg_len).to_be_bytes());
 
-        self.ghash.update(&final_block)?;
-        let mut hash = self.ghash.finalize()?;
+        self.ghash.update(&final_block.into());
+        let mut hash = self.ghash.finalize().into_bytes();
 
         for (i, b) in hash.iter_mut().enumerate() {
             *b ^= self.ghash_pad[i];
         }
 
-        Ok(hash)
+        Ok(hash.into())
     }
 }
 
