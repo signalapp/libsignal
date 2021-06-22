@@ -237,18 +237,9 @@ SignalFfiError *signal_aes256_gcm_siv_destroy(SignalAes256GcmSiv *p);
 
 SignalFfiError *signal_aes256_ctr32_destroy(SignalAes256Ctr32 *p);
 
-SignalFfiError *signal_aes256_ctr32_clone(SignalAes256Ctr32 **new_obj,
-                                          const SignalAes256Ctr32 *obj);
-
 SignalFfiError *signal_aes256_gcm_encryption_destroy(SignalAes256GcmEncryption *p);
 
-SignalFfiError *signal_aes256_gcm_encryption_clone(SignalAes256GcmEncryption **new_obj,
-                                                   const SignalAes256GcmEncryption *obj);
-
 SignalFfiError *signal_aes256_gcm_decryption_destroy(SignalAes256GcmDecryption *p);
-
-SignalFfiError *signal_aes256_gcm_decryption_clone(SignalAes256GcmDecryption **new_obj,
-                                                   const SignalAes256GcmDecryption *obj);
 
 SignalFfiError *signal_aes256_ctr32_new(SignalAes256Ctr32 **out,
                                         const unsigned char *key,

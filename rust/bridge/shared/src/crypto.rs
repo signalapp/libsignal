@@ -13,7 +13,6 @@ use aes_gcm_siv::aead::{AeadCore, AeadInPlace, NewAead};
 use crate::support::*;
 use crate::*;
 
-#[derive(Clone)]
 pub struct Aes256GcmEncryption {
     gcm: Option<signal_crypto::Aes256GcmEncryption>,
 }
@@ -42,7 +41,6 @@ impl Aes256GcmEncryption {
     }
 }
 
-#[derive(Clone)]
 pub struct Aes256GcmDecryption {
     gcm: Option<signal_crypto::Aes256GcmDecryption>,
 }
@@ -80,9 +78,9 @@ pub struct Aes256GcmSiv(aes_gcm_siv::Aes256GcmSiv);
 bridge_handle!(CryptographicHash, mut = true, ffi = false, node = false);
 bridge_handle!(CryptographicMac, mut = true, ffi = false, node = false);
 bridge_handle!(Aes256GcmSiv, clone = false);
-bridge_handle!(Aes256Ctr32, mut = true, node = false);
-bridge_handle!(Aes256GcmEncryption, mut = true, node = false);
-bridge_handle!(Aes256GcmDecryption, mut = true, node = false);
+bridge_handle!(Aes256Ctr32, clone = false, mut = true, node = false);
+bridge_handle!(Aes256GcmEncryption, clone = false, mut = true, node = false);
+bridge_handle!(Aes256GcmDecryption, clone = false, mut = true, node = false);
 
 #[bridge_fn(node = false)]
 fn Aes256Ctr32_New(key: &[u8], nonce: &[u8], initial_ctr: u32) -> Result<Aes256Ctr32> {
