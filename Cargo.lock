@@ -269,9 +269,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed00c67cb5d0a7d64a44f6ad2668db7e7530311dd53ea79bcd4fb022c64911c8"
+checksum = "66c99696f6c9dd7f35d486b9d04d7e6e202aa3e8c40d553f2fdf5e7e0c6a71ef"
 dependencies = [
  "libc",
 ]
@@ -762,9 +762,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.94"
+version = "0.2.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
+checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
 
 [[package]]
 name = "libloading"
@@ -823,6 +823,7 @@ name = "libsignal-ffi"
 version = "0.8.2"
 dependencies = [
  "async-trait",
+ "cpufeatures",
  "device-transfer",
  "libc",
  "libsignal-bridge",
