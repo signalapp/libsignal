@@ -60,7 +60,7 @@ RUN    echo y | ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "p
 
 # Rust setup...
 
-COPY ../rust-toolchain rust-toolchain
+COPY rust-toolchain rust-toolchain
 ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
 ARG CARGO_NDK_VERSION=1.0.0
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
