@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-jni"
-version = "0.8.1"
+version = "0.8.2"
 authors = ["Jack Lloyd <jack@signal.org>"]
 edition = "2018"
 license = "AGPL-3.0-only"
