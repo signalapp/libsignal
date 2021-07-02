@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
+# Copyright (C) 2020-2021 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -12,12 +12,11 @@ license = "AGPL-3.0-only"
 repository = "https://github.com/signalapp/libsignal-client"
 
 [dependencies]
-signal-crypto = { path = "../crypto" }
-aes = "0.6"
-ctr = "0.6"
+aes = { version = "0.7.4", features = ["armv8", "ctr"] }
+aes-gcm-siv = { version = "0.10.1", features = ["armv8"] }
 arrayref = "0.3.6"
 async-trait = "0.1.41"
-block-modes = "0.7"
+block-modes = "0.8"
 hmac = "0.9.0"
 prost = "0.7"
 rand = "0.7.3"

@@ -68,6 +68,9 @@ typedef enum {
   SignalErrorCode_CallbackError = 100,
 } SignalErrorCode;
 
+/**
+ * A wrapper around [`aes::Aes256Ctr`] that uses a smaller nonce and supports an initial counter.
+ */
 typedef struct SignalAes256Ctr32 SignalAes256Ctr32;
 
 typedef struct SignalAes256GcmDecryption SignalAes256GcmDecryption;
@@ -237,18 +240,9 @@ SignalFfiError *signal_aes256_gcm_siv_destroy(SignalAes256GcmSiv *p);
 
 SignalFfiError *signal_aes256_ctr32_destroy(SignalAes256Ctr32 *p);
 
-SignalFfiError *signal_aes256_ctr32_clone(SignalAes256Ctr32 **new_obj,
-                                          const SignalAes256Ctr32 *obj);
-
 SignalFfiError *signal_aes256_gcm_encryption_destroy(SignalAes256GcmEncryption *p);
 
-SignalFfiError *signal_aes256_gcm_encryption_clone(SignalAes256GcmEncryption **new_obj,
-                                                   const SignalAes256GcmEncryption *obj);
-
 SignalFfiError *signal_aes256_gcm_decryption_destroy(SignalAes256GcmDecryption *p);
-
-SignalFfiError *signal_aes256_gcm_decryption_clone(SignalAes256GcmDecryption **new_obj,
-                                                   const SignalAes256GcmDecryption *obj);
 
 SignalFfiError *signal_aes256_ctr32_new(SignalAes256Ctr32 **out,
                                         const unsigned char *key,
@@ -306,7 +300,7 @@ SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
 
 SignalFfiError *signal_aes256_gcm_siv_encrypt(const unsigned char **out,
                                               size_t *out_len,
-                                              const SignalAes256GcmSiv *aes_gcm_siv,
+                                              const SignalAes256GcmSiv *aes_gcm_siv_obj,
                                               const unsigned char *ptext,
                                               size_t ptext_len,
                                               const unsigned char *nonce,

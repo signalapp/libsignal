@@ -5,10 +5,10 @@
 
 use crate::{error::Result, SignalProtocolError};
 
-use aes::cipher::stream::{NewStreamCipher, SyncStreamCipher};
-use aes::Aes256;
-use block_modes::{block_padding::Pkcs7, BlockMode, Cbc};
-use ctr::Ctr128;
+use aes::cipher::{NewCipher, StreamCipher};
+use aes::{Aes256, Aes256Ctr};
+use block_modes::block_padding::Pkcs7;
+use block_modes::{BlockMode, Cbc};
 use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
@@ -21,7 +21,7 @@ pub fn aes_256_ctr_encrypt(ptext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
     }
 
     let zero_nonce = [0u8; 16];
-    let mut cipher = Ctr128::<Aes256>::new(key.into(), (&zero_nonce).into());
+    let mut cipher = Aes256Ctr::new(key.into(), (&zero_nonce).into());
 
     let mut ctext = ptext.to_vec();
     cipher.apply_keystream(&mut ctext);
@@ -33,7 +33,7 @@ pub fn aes_256_ctr_decrypt(ctext: &[u8], key: &[u8]) -> Result<Vec<u8>> {
 }
 
 pub fn aes_256_cbc_encrypt(ptext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
-    match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
+    match Cbc::<Aes256, Pkcs7>::new_from_slices(key, iv) {
         Ok(mode) => Ok(mode.encrypt_vec(ptext)),
         Err(block_modes::InvalidKeyIvLength) => Err(
             SignalProtocolError::InvalidCipherCryptographicParameters(key.len(), iv.len()),
@@ -46,7 +46,7 @@ pub fn aes_256_cbc_decrypt(ctext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8
         return Err(SignalProtocolError::InvalidCiphertext);
     }
 
-    let mode = match Cbc::<Aes256, Pkcs7>::new_var(key, iv) {
+    let mode = match Cbc::<Aes256, Pkcs7>::new_from_slices(key, iv) {
         Ok(mode) => mode,
         Err(block_modes::InvalidKeyIvLength) => {
             return Err(SignalProtocolError::InvalidCipherCryptographicParameters(

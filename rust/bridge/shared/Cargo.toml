@@ -15,6 +15,7 @@ libsignal-protocol = { path = "../../protocol" }
 signal-crypto = { path = "../../crypto" }
 device-transfer = { path = "../../device-transfer" }
 libsignal-bridge-macros = { path = "macros" }
+aes-gcm-siv = { version = "0.10.1", features = ["armv8"] }
 futures = "0.3.7"
 log = "0.4"
 paste = "1.0"

@@ -10,31 +10,20 @@ authors = ["Jack Lloyd <jack@signal.org>"]
 edition = "2018"
 
 [dependencies]
-aes-soft = "0.6"
-polyval = "0.4"
+aes = { version = "0.7.4", features = ["armv8", "ctr"] }
 subtle = "2.3"
-cipher = "0.2"
 generic-array = "0.14"
+ghash = { version = "0.4.2", features = ["armv8"] }
 hmac = "0.9.0"
-rand = "0.7.3"
 sha-1 = "0.9"
 sha2 = "0.9"
 
-[target.'cfg(all(target_arch = "aarch64", any(target_os = "linux")))'.dependencies]
-libc = "0.2.93" # for getauxval
-
-[target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
-aesni = { version = "0.10", features = ["nocheck"] }
-
 [dev-dependencies]
+rand = "0.7.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 hex = "0.4"
 criterion = "0.3"
-
-[[bench]]
-name = "aes_gcm_siv"
-harness = false
 
 [[bench]]
 name = "aes_gcm"

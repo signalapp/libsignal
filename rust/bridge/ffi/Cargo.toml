@@ -20,6 +20,7 @@ device-transfer = { path = "../../device-transfer" }
 signal-crypto = { path = "../../crypto" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
+cpufeatures = "0.1.5" # Make sure iOS gets optimized crypto.
 libc = "0.2"
 rand = "0.7.3"
 log = "0.4"
