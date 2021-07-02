@@ -82,8 +82,8 @@ impl GcmGhash {
         }
 
         let mut final_block = [0u8; 16];
-        final_block[..8].copy_from_slice(&(8 * self.ad_len).to_be_bytes());
-        final_block[8..].copy_from_slice(&(8 * self.msg_len).to_be_bytes());
+        final_block[..8].copy_from_slice(&(8 * self.ad_len as u64).to_be_bytes());
+        final_block[8..].copy_from_slice(&(8 * self.msg_len as u64).to_be_bytes());
 
         self.ghash.update(&final_block)?;
         let mut hash = self.ghash.finalize()?;

@@ -9,6 +9,8 @@ import org.signal.client.internal.Native;
 import org.whispersystems.libsignal.InvalidKeyException;
 
 public class Aes256GcmDecryption {
+  public static final int TAG_SIZE_IN_BYTES = 16;
+
   private long handle;
 
   public Aes256GcmDecryption(byte[] key, byte[] nonce, byte[] associatedData) throws InvalidKeyException {
