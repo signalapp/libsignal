@@ -89,11 +89,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - run: sudo apt install gcc-multilib
+
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
         components: rustfmt, clippy
+        target: i686-unknown-linux-gnu
 
     - name: Check for duplicate dependencies
       run: |
@@ -112,6 +115,11 @@ jobs:
 
     - name: Run tests
       run: cargo test --all --verbose -- -Z unstable-options --include-ignored
+
+    - name: Run tests (32-bit)
+      # Exclude device-transfer because OpenSSL, used for reference results,
+      # doesn't support the --target option.
+      run: cargo test --all --verbose --target i686-unknown-linux-gnu --exclude device-transfer -- -Z unstable-options --include-ignored
 
     - name: Build benches
       run: cargo build --benches --verbose
