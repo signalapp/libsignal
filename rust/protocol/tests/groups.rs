@@ -6,7 +6,7 @@
 mod support;
 
 use async_trait::async_trait;
-use futures::executor::block_on;
+use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
@@ -24,14 +24,16 @@ fn group_no_send_session() -> Result<(), SignalProtocolError> {
 
     let mut alice_store = test_in_memory_protocol_store()?;
 
-    assert!(block_on(group_encrypt(
+    assert!(group_encrypt(
         &mut alice_store,
         &sender_address,
         distribution_id,
         "space camp?".as_bytes(),
         &mut csprng,
         None,
-    ))
+    )
+    .now_or_never()
+    .expect("sync")
     .is_err());
 
     Ok(())
@@ -81,7 +83,7 @@ impl SenderKeyStore for ContextUsingSenderKeyStore {
 
 #[test]
 fn group_using_context_arg() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -103,12 +105,14 @@ fn group_using_context_arg() -> Result<(), SignalProtocolError> {
         .await?;
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_no_recv_session() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -150,12 +154,14 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
         assert!(bob_plaintext.is_err());
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -208,12 +214,14 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
         );
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_sealed_sender() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let alice_device_id = 23;
@@ -386,12 +394,14 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
         );
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_large_messages() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -446,12 +456,14 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
         assert_eq!(bob_plaintext, large_message);
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -556,12 +568,14 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
         );
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_late_join() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -626,12 +640,14 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
         );
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_out_of_order() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -702,13 +718,15 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         }
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 #[ignore = "slow to run locally"]
 fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -769,12 +787,14 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
         .is_err());
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn group_message_key_limit() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut csprng = OsRng;
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
@@ -848,5 +868,7 @@ fn group_message_key_limit() -> Result<(), SignalProtocolError> {
         );
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }

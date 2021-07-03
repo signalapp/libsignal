@@ -22,7 +22,7 @@ harness = false
 
 [dependencies]
 neon = { version = "0.8", default-features = false, features = ["napi-4", "try-catch-api", "event-queue-api"] }
-futures = "0.3.7"
+futures-util = "0.3.7"
 
 [dev-dependencies]
 signal-neon-futures-tests = { path = "tests-node-module" }

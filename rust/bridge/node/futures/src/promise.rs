@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures::FutureExt;
+use futures_util::FutureExt;
 use neon::prelude::*;
 use std::future::Future;
 use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};

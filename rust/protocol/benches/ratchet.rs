@@ -4,7 +4,7 @@
 //
 
 use criterion::{criterion_group, criterion_main, Criterion, SamplingMode};
-use futures::executor::block_on;
+use futures_util::FutureExt;
 use libsignal_protocol::*;
 use std::convert::TryFrom;
 use uuid::Uuid;
@@ -26,56 +26,66 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;
 
-    let sent_distribution_message = block_on(create_sender_key_distribution_message(
+    let sent_distribution_message = create_sender_key_distribution_message(
         &sender_address,
         distribution_id,
         &mut alice_store,
         &mut csprng,
         None,
-    ))?;
+    )
+    .now_or_never()
+    .expect("sync")?;
 
     let recv_distribution_message =
         SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?;
 
-    block_on(process_sender_key_distribution_message(
+    process_sender_key_distribution_message(
         &sender_address,
         &recv_distribution_message,
         &mut bob_store,
         None,
-    ))?;
+    )
+    .now_or_never()
+    .expect("sync")?;
 
     for ratchets in [100, 1000].iter() {
         let ratchets = *ratchets;
 
         for i in 0..ratchets {
-            block_on(group_encrypt(
+            group_encrypt(
                 &mut alice_store,
                 &sender_address,
                 distribution_id,
                 format!("nefarious plotting {}", i).as_bytes(),
                 &mut csprng,
                 None,
-            ))?;
+            )
+            .now_or_never()
+            .expect("sync")?;
         }
 
-        let alice_ciphertext = block_on(group_encrypt(
+        let alice_ciphertext = group_encrypt(
             &mut alice_store,
             &sender_address,
             distribution_id,
             "you got the plan?".as_bytes(),
             &mut csprng,
             None,
-        ))?;
+        )
+        .now_or_never()
+        .expect("sync")?;
 
         group.bench_function(format!("ratchet {}", ratchets), |b| {
             b.iter(|| {
                 let mut bob_store = bob_store.clone();
-                block_on(group_decrypt(
+                group_decrypt(
                     alice_ciphertext.serialized(),
                     &mut bob_store,
                     &sender_address,
                     None,
-                ))
+                )
+                .now_or_never()
+                .expect("sync")
                 .expect("ok");
             })
         });

@@ -10,6 +10,10 @@ use static_assertions::const_assert_eq;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
+// Will be unused when building for Node only.
+#[allow(unused_imports)]
+use futures_util::FutureExt;
+
 use crate::support::*;
 use crate::*;
 

@@ -6,7 +6,7 @@
 mod support;
 use support::*;
 
-use futures::executor::block_on;
+use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use std::convert::TryFrom;
@@ -136,7 +136,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_sealed_sender() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut rng = OsRng;
 
         let alice_device_id = 23;
@@ -297,12 +297,14 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         }
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut rng = OsRng;
 
         let alice_device_id = 23;
@@ -420,12 +422,14 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
         );
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut rng = OsRng;
 
         let alice_device_id = 23;
@@ -651,12 +655,14 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         }
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
 
 #[test]
 fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
-    block_on(async {
+    async {
         let mut rng = OsRng;
 
         let alice_device_id = 23;
@@ -791,5 +797,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
         assert_eq!(bob_error_message.device_id(), 5);
 
         Ok(())
-    })
+    }
+    .now_or_never()
+    .expect("sync")
 }
