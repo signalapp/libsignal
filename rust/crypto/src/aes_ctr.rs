@@ -22,7 +22,7 @@ impl Aes256Ctr32 {
         nonce_block[0..Self::NONCE_SIZE].copy_from_slice(nonce);
 
         let mut ctr = aes::Aes256Ctr::from_block_cipher(aes256, &nonce_block.into());
-        ctr.seek(aes::BLOCK_SIZE * (init_ctr as usize));
+        ctr.seek((aes::BLOCK_SIZE as u64) * (init_ctr as u64));
 
         Ok(Self(ctr))
     }
