@@ -64,8 +64,6 @@ pub use error::*;
 mod storage;
 pub use storage::*;
 
-pub use crate::support::expect_ready;
-
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
 

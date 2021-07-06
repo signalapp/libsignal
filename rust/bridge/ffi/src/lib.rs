@@ -6,6 +6,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![warn(clippy::unwrap_used)]
 
+use futures_util::FutureExt;
 use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
@@ -123,7 +124,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         let local_e164 = Option::convert_from(local_e164)?;
         let local_uuid = Option::convert_from(local_uuid)?.ok_or(SignalFfiError::NullPointer)?;
 
-        let decrypted = expect_ready(sealed_sender_decrypt(
+        let decrypted = sealed_sender_decrypt(
             ctext,
             trust_root,
             timestamp,
@@ -135,7 +136,9 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
             &mut prekey_store,
             &mut signed_prekey_store,
             Some(ctx),
-        ))?;
+        )
+        .now_or_never()
+        .expect("synchronous")?;
 
         write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
         write_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;

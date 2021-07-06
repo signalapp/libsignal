@@ -3,27 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures::pin_mut;
-use futures::task::noop_waker_ref;
 use std::borrow::Cow;
-use std::future::Future;
-use std::task::{self, Poll};
 
 pub(crate) use paste::paste;
 
 mod transform_helper;
 pub(crate) use transform_helper::*;
-
-/// Polls a future once; panics if it is not Ready.
-#[allow(dead_code)] // not used in Node-only builds
-#[track_caller]
-pub fn expect_ready<F: Future>(future: F) -> F::Output {
-    pin_mut!(future);
-    match future.poll(&mut task::Context::from_waker(noop_waker_ref())) {
-        Poll::Ready(result) => result,
-        Poll::Pending => panic!("future was not ready"),
-    }
-}
 
 /// Used for returning newly-allocated buffers as efficiently as possible.
 ///

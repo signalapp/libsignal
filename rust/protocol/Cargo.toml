@@ -43,7 +43,7 @@ nightly = ["curve25519-dalek/nightly"]
 
 [dev-dependencies]
 criterion = "0.3"
-futures = "0.3.7"
+futures-util = "0.3.7"
 
 [build-dependencies]
 prost-build = "0.7"

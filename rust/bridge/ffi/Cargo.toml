@@ -21,6 +21,7 @@ signal-crypto = { path = "../../crypto" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 cpufeatures = "0.1.5" # Make sure iOS gets optimized crypto.
+futures-util = "0.3"
 libc = "0.2"
 rand = "0.7.3"
 log = "0.4"

@@ -49,7 +49,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
 
     let await_if_needed = sig.asyncness.map(|_| {
         quote! {
-            let __result = expect_ready(__result);
+            let __result = __result.now_or_never().unwrap();
         }
     });
 
