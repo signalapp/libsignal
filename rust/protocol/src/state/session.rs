@@ -585,14 +585,11 @@ impl SessionRecord {
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
-        let mut buf = vec![];
-
         let record = RecordStructure {
             current_session: self.current_session.as_ref().map(|s| s.into()),
             previous_sessions: self.previous_sessions.iter().map(|s| s.into()).collect(),
         };
-        record.encode(&mut buf)?;
-        Ok(buf)
+        Ok(record.encode_to_vec())
     }
 
     pub fn remote_registration_id(&self) -> Result<u32> {

@@ -50,8 +50,6 @@ impl PreKeyRecord {
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
-        let mut buf = vec![];
-        self.pre_key.encode(&mut buf)?;
-        Ok(buf)
+        Ok(self.pre_key.encode_to_vec())
     }
 }

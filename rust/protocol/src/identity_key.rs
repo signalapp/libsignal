@@ -94,11 +94,8 @@ impl IdentityKeyPair {
             public_key: self.identity_key.serialize().to_vec(),
             private_key: self.private_key.serialize().to_vec(),
         };
-        let mut result = Vec::new();
 
-        // prost documents the only possible encoding error is if there is insufficient
-        // space, which is not a problem when it is allowed to encode into a Vec
-        structure.encode(&mut result).expect("No encoding error");
+        let result = structure.encode_to_vec();
         result.into_boxed_slice()
     }
 }

@@ -110,9 +110,7 @@ impl ScannableFingerprint {
             }),
         };
 
-        let mut buf = Vec::new();
-        combined_fingerprints.encode(&mut buf)?;
-        Ok(buf)
+        Ok(combined_fingerprints.encode_to_vec())
     }
 
     pub fn compare(&self, combined: &[u8]) -> Result<bool> {
