@@ -161,9 +161,7 @@ impl SenderKeyState {
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
-        let mut buf = vec![];
-        self.state.encode(&mut buf)?;
-        Ok(buf)
+        Ok(self.state.encode_to_vec())
     }
 
     pub fn message_version(&self) -> Result<u32> {
@@ -359,8 +357,6 @@ impl SenderKeyRecord {
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
-        let mut buf = vec![];
-        self.as_protobuf()?.encode(&mut buf)?;
-        Ok(buf)
+        Ok(self.as_protobuf()?.encode_to_vec())
     }
 }

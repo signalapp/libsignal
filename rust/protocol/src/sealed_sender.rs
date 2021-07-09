@@ -87,17 +87,15 @@ impl ServerCertificate {
             key: Some(key.serialize().to_vec()),
         };
 
-        let mut certificate = vec![];
-        certificate_pb.encode(&mut certificate)?;
+        let certificate = certificate_pb.encode_to_vec();
 
         let signature = trust_root.calculate_signature(&certificate, rng)?.to_vec();
 
-        let mut serialized = vec![];
-        let pb = proto::sealed_sender::ServerCertificate {
+        let serialized = proto::sealed_sender::ServerCertificate {
             certificate: Some(certificate.clone()),
             signature: Some(signature.clone()),
-        };
-        pb.encode(&mut serialized)?;
+        }
+        .encode_to_vec();
 
         Ok(Self {
             serialized,
@@ -192,8 +190,7 @@ impl SenderCertificate {
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?[..],
         )?;
 
-        let mut signer_bits = vec![];
-        signer_pb.encode(&mut signer_bits)?;
+        let signer_bits = signer_pb.encode_to_vec();
         let signer = ServerCertificate::deserialize(&signer_bits)?;
 
         Ok(Self {
@@ -228,17 +225,15 @@ impl SenderCertificate {
             signer: Some(signer.to_protobuf()?),
         };
 
-        let mut certificate = vec![];
-        certificate_pb.encode(&mut certificate)?;
+        let certificate = certificate_pb.encode_to_vec();
 
         let signature = signer_key.calculate_signature(&certificate, rng)?.to_vec();
 
-        let pb = proto::sealed_sender::SenderCertificate {
+        let serialized = proto::sealed_sender::SenderCertificate {
             certificate: Some(certificate.clone()),
             signature: Some(signature.clone()),
-        };
-        let mut serialized = vec![];
-        pb.encode(&mut serialized)?;
+        }
+        .encode_to_vec();
 
         Ok(Self {
             signer,
@@ -477,8 +472,7 @@ impl UnidentifiedSenderMessageContent {
             }),
         };
 
-        let mut serialized = vec![];
-        msg.encode(&mut serialized)?;
+        let serialized = msg.encode_to_vec();
 
         Ok(Self {
             serialized,
@@ -1273,8 +1267,7 @@ fn test_lossless_round_trip() -> Result<()> {
     // };
     //
     // eprintln!("<SNIP>");
-    // let mut serialized_certificate_data = vec![];
-    // sender_cert.encode(&mut serialized_certificate_data).expect("can't fail encoding to Vec");
+    // let serialized_certificate_data = sender_cert.encode_to_vec();
     // let certificate_data_encoded = hex::encode(&serialized_certificate_data);
     // eprintln!("let certificate_data_encoded = \"{}\";", certificate_data_encoded);
     //
