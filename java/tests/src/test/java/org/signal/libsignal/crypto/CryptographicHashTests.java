@@ -18,18 +18,18 @@ public class CryptographicHashTests extends TestCase {
      hash.update(input);
      byte[] digestAllInOne = hash.finish();
 
-     assertEquals(Hex.toHexString(digestAllInOne), hexExpectedOutput);
+     assertEquals(Hex.toStringCondensed(digestAllInOne), hexExpectedOutput);
 
      if(input.length > 1) {
        hash.update(input, 0, 1);
        hash.update(input, 1, input.length - 1);
        byte[] digestSplit = hash.finish();
-       assertEquals(Hex.toHexString(digestSplit), hexExpectedOutput);
+       assertEquals(Hex.toStringCondensed(digestSplit), hexExpectedOutput);
 
        hash.update(input, 0, input.length - 1);
        hash.update(input, input.length - 1, 1);
        byte[] digestSplit2 = hash.finish();
-       assertEquals(Hex.toHexString(digestSplit2), hexExpectedOutput);
+       assertEquals(Hex.toStringCondensed(digestSplit2), hexExpectedOutput);
      }
    }
 

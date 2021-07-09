@@ -61,10 +61,10 @@ public class Aes256GcmSivTests extends TestCase {
       Aes256GcmSiv gcm_siv = new Aes256GcmSiv(key);
 
       byte[] ciphertext = gcm_siv.encrypt(plaintext, nonce, ad);
-      assertEquals(Hex.toHexString(ciphertext), hex_ciphertext);
+      assertEquals(Hex.toStringCondensed(ciphertext), hex_ciphertext);
 
       byte[] recovered = gcm_siv.decrypt(ciphertext, nonce, ad);
-      assertEquals(Hex.toHexString(recovered), hex_plaintext);
+      assertEquals(Hex.toStringCondensed(recovered), hex_plaintext);
 
       try {
         ciphertext[0] ^= 1;
