@@ -36,6 +36,6 @@ public class Aes256Ctr32Tests extends TestCase {
 
     byte[] ciphertext = plaintext.clone();
     ctr.process(ciphertext);
-    assertEquals(Hex.toHexString(ciphertext), hex_ciphertext);
+    assertEquals(Hex.toStringCondensed(ciphertext), hex_ciphertext);
   }
 }

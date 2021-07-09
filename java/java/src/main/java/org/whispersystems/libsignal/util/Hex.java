@@ -32,14 +32,6 @@ public class Hex {
   public static String toStringCondensed(byte[] bytes) {
     StringBuffer buf = new StringBuffer();
     for (int i=0;i<bytes.length;i++) {
-      appendHexCharWithPrefix(buf, bytes[i]);
-    }
-    return buf.toString();
-  }
-
-  public static String toHexString(byte[] bytes) {
-    StringBuffer buf = new StringBuffer();
-    for (int i=0;i<bytes.length;i++) {
       appendHexChar(buf, bytes[i]);
     }
     return buf.toString();

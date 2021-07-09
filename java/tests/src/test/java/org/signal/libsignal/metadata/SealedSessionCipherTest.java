@@ -225,7 +225,7 @@ public class SealedSessionCipherTest extends TestCase {
       assertEquals(e.getSender(), "+14151111111");
       assertEquals(e.getSenderDevice(), 1);
       assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_RESENDABLE);
-      assertEquals(Hex.toHexString(e.getGroupId().get()), Hex.toHexString(new byte[]{42, 1}));
+      assertEquals(Hex.toStringCondensed(e.getGroupId().get()), Hex.toStringCondensed(new byte[]{42, 1}));
     }
   }
 

@@ -17,18 +17,18 @@ public class CryptographicMacTests extends TestCase {
 
      hmac.update(input);
      byte[] macAllInOne = hmac.finish();
-     assertEquals(Hex.toHexString(macAllInOne), hexExpectedOutput);
+     assertEquals(Hex.toStringCondensed(macAllInOne), hexExpectedOutput);
 
      if(input.length > 1) {
        hmac.update(input, 0, 1);
        hmac.update(input, 1, input.length - 1);
        byte[] macSplit = hmac.finish();
-       assertEquals(Hex.toHexString(macSplit), hexExpectedOutput);
+       assertEquals(Hex.toStringCondensed(macSplit), hexExpectedOutput);
 
        hmac.update(input, 0, input.length - 1);
        hmac.update(input, input.length - 1, 1);
        byte[] macSplit2 = hmac.finish();
-       assertEquals(Hex.toHexString(macSplit2), hexExpectedOutput);
+       assertEquals(Hex.toStringCondensed(macSplit2), hexExpectedOutput);
      }
    }
 

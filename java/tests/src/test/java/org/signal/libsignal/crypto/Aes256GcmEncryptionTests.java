@@ -40,13 +40,13 @@ public class Aes256GcmEncryptionTests extends TestCase {
    byte[] ciphertext = plaintext.clone();
    gcmEnc.encrypt(ciphertext);
    byte[] tag = gcmEnc.computeTag();
-   assertEquals(Hex.toHexString(ciphertext), hex_ciphertext);
-   assertEquals(Hex.toHexString(tag), hex_tag);
+   assertEquals(Hex.toStringCondensed(ciphertext), hex_ciphertext);
+   assertEquals(Hex.toStringCondensed(tag), hex_tag);
 
    Aes256GcmDecryption gcmDec = new Aes256GcmDecryption(key, nonce, ad);
    byte[] decrypted = ciphertext.clone();
    gcmDec.decrypt(decrypted);
-   assertEquals(Hex.toHexString(decrypted), hex_plaintext);
+   assertEquals(Hex.toStringCondensed(decrypted), hex_plaintext);
    assertEquals(gcmDec.verifyTag(tag), true);
 
    Aes256GcmEncryption gcmEnc2 = new Aes256GcmEncryption(key, nonce, ad);
@@ -54,14 +54,14 @@ public class Aes256GcmEncryptionTests extends TestCase {
    gcmEnc2.encrypt(ciphertextSplit, 0, 1);
    gcmEnc2.encrypt(ciphertextSplit, 1, plaintext.length - 1);
    byte[] tag2 = gcmEnc2.computeTag();
-   assertEquals(Hex.toHexString(ciphertextSplit), hex_ciphertext);
-   assertEquals(Hex.toHexString(tag2), hex_tag);
+   assertEquals(Hex.toStringCondensed(ciphertextSplit), hex_ciphertext);
+   assertEquals(Hex.toStringCondensed(tag2), hex_tag);
 
    Aes256GcmDecryption gcmDec2 = new Aes256GcmDecryption(key, nonce, ad);
    byte[] decryptedSplit = ciphertext.clone();
    gcmDec2.decrypt(decryptedSplit, 0, 1);
    gcmDec2.decrypt(decryptedSplit, 1, ciphertext.length - 1);
-   assertEquals(Hex.toHexString(decryptedSplit), hex_plaintext);
+   assertEquals(Hex.toStringCondensed(decryptedSplit), hex_plaintext);
    assertEquals(gcmDec2.verifyTag(tag), true);
   }
 }
