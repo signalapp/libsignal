@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#
+# Copyright 2021 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+# For now, these dependencies have conflicting requirements.
+# You can use the `cargo tree` command below to see where they come from,
+# and then document them here.
+#
+# getrandom + rand_core:
+#   curve25519-dalek + x25519-dalek use rand_core 0.5, snow uses rand_core 0.6
+# serde:
+#   num_enum_derive indirectly uses serde in a proc-macro;
+#   unfortunately that shows up as a repeat here
+EXPECTED="\
+getrandom v0.1.16
+
+getrandom v0.2.2
+
+rand_core v0.5.1
+
+rand_core v0.6.2
+
+serde v1.0.123
+
+serde v1.0.123"
+
+if [[ $(cargo tree -d -e normal --workspace --depth 0) != "${EXPECTED}" ]]; then
+    cargo tree -d -e normal --workspace
+fi
