@@ -2,6 +2,7 @@
 members = [
     "rust/crypto",
     "rust/device-transfer",
+    "rust/hsm-enclave",
     "rust/poksho",
     "rust/protocol",
     "rust/bridge/ffi",
@@ -14,6 +15,7 @@ default-members = [
     "rust/poksho",
     "rust/protocol",
 ]
+resolver = "2" # so that our dev-dependency features don't leak into products
 
 [patch.crates-io]
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', branch = '3.0.0-lizard2' }

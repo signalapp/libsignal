@@ -131,10 +131,7 @@ jobs:
         target: i686-unknown-linux-gnu
 
     - name: Check for duplicate dependencies
-      run: |
-        DUPS="$(cargo tree -d -e normal --workspace)"
-        echo "$DUPS"
-        test -z "$DUPS"
+      run: ./bin/verify_duplicate_crates
 
     - name: Rustfmt check
       run: cargo fmt --all -- --check
