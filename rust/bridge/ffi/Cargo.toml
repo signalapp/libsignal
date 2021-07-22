@@ -14,6 +14,9 @@ license = "AGPL-3.0-only"
 name = "signal_ffi"
 crate-type = ["staticlib"]
 
+[features]
+armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
+
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 device-transfer = { path = "../../device-transfer" }

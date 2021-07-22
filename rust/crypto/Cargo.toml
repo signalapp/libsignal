@@ -25,6 +25,9 @@ serde_json = "1.0"
 hex = "0.4"
 criterion = "0.3"
 
+[features]
+armv8 = ["aes/armv8"]
+
 [[bench]]
 name = "aes_gcm"
 harness = false
