@@ -15,6 +15,7 @@ name = "signal_ffi"
 crate-type = ["staticlib"]
 
 [features]
+default = ["armv8"]
 armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
 
 [dependencies]

@@ -15,6 +15,7 @@ name = "signal_node"
 crate-type = ["cdylib"]
 
 [features]
+default = ["armv8"]
 armv8 = ["libsignal-protocol/armv8", "libsignal-bridge/armv8"]
 
 [dependencies]

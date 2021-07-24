@@ -15,6 +15,7 @@ name = "signal_jni"
 crate-type = ["cdylib"]
 
 [features]
+default = ["armv8"]
 armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
 
 [dependencies]
