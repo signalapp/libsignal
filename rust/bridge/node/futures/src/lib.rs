@@ -22,7 +22,7 @@
 #![warn(clippy::unwrap_used)]
 
 mod executor;
-pub use executor::EventQueueEx;
+pub use executor::ChannelEx;
 
 mod exception;
 pub use exception::PersistentException;

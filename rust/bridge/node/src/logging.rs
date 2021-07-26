@@ -49,14 +49,14 @@ impl From<LogLevel> for u32 {
 }
 
 struct NodeLogger {
-    queue: EventQueue,
+    channel: Channel,
 }
 
 impl NodeLogger {
     fn new(cx: &mut FunctionContext) -> Self {
-        let mut queue = cx.queue();
-        queue.unref(cx);
-        Self { queue }
+        let mut channel = cx.channel();
+        channel.unref(cx);
+        Self { channel }
     }
 }
 
@@ -73,7 +73,7 @@ impl log::Log for NodeLogger {
         let line = record.line();
         let message = record.args().to_string();
         let level = record.level();
-        self.queue
+        self.channel
             .try_send(move |mut cx| {
                 let level_arg: Handle<JsValue> =
                     cx.number(u32::from(LogLevel::from(level))).upcast();

@@ -23,7 +23,7 @@ enum PersistentExceptionValue {
 /// or [into_inner][PersistentException::into_inner], like Root.
 /// This is because it must be unregistered with the JavaScript garbage collector.
 ///
-/// [root]: https://docs.rs/neon/0.7.0-napi.3/neon/handle/struct.Root.html
+/// [root]: https://docs.rs/neon/0.9.0/neon/handle/struct.Root.html
 pub struct PersistentException {
     wrapped: PersistentExceptionValue,
 }

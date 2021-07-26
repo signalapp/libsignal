@@ -12,21 +12,21 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct NodePreKeyStore {
-    js_queue: EventQueue,
+    js_channel: Channel,
     store_object: Arc<Root<JsObject>>,
 }
 
 impl NodePreKeyStore {
     pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
-            js_queue: cx.queue(),
+            js_channel: cx.channel(),
             store_object: Arc::new(store.root(cx)),
         }
     }
 
     async fn do_get_pre_key(&self, id: u32) -> Result<PreKeyRecord, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let id = id.convert_into(cx)?;
             let result = call_method(cx, store_object, "_getPreKey", vec![id.upcast()])?;
@@ -49,7 +49,7 @@ impl NodePreKeyStore {
 
     async fn do_save_pre_key(&self, id: u32, record: PreKeyRecord) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let id: Handle<JsNumber> = id.convert_into(cx)?;
             let record: Handle<JsValue> = record.convert_into(cx)?;
@@ -73,7 +73,7 @@ impl NodePreKeyStore {
 
     async fn do_remove_pre_key(&self, id: u32) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let id: Handle<JsNumber> = id.convert_into(cx)?;
             let result = call_method(cx, store_object, "_removePreKey", vec![id.upcast()])?
@@ -136,21 +136,21 @@ impl PreKeyStore for NodePreKeyStore {
 }
 
 pub struct NodeSignedPreKeyStore {
-    js_queue: EventQueue,
+    js_channel: Channel,
     store_object: Arc<Root<JsObject>>,
 }
 
 impl NodeSignedPreKeyStore {
     pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
-            js_queue: cx.queue(),
+            js_channel: cx.channel(),
             store_object: Arc::new(store.root(cx)),
         }
     }
 
     async fn do_get_signed_pre_key(&self, id: u32) -> Result<SignedPreKeyRecord, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let id = id.convert_into(cx)?;
             let result = call_method(cx, store_object, "_getSignedPreKey", vec![id.upcast()])?;
@@ -177,7 +177,7 @@ impl NodeSignedPreKeyStore {
         record: SignedPreKeyRecord,
     ) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let id: Handle<JsNumber> = id.convert_into(cx)?;
             let record: Handle<JsValue> = record.convert_into(cx)?;
@@ -236,21 +236,21 @@ impl SignedPreKeyStore for NodeSignedPreKeyStore {
 }
 
 pub struct NodeSessionStore {
-    js_queue: EventQueue,
+    js_channel: Channel,
     store_object: Arc<Root<JsObject>>,
 }
 
 impl NodeSessionStore {
     pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
-            js_queue: cx.queue(),
+            js_channel: cx.channel(),
             store_object: Arc::new(store.root(cx)),
         }
     }
 
     async fn do_get_session(&self, name: ProtocolAddress) -> Result<Option<SessionRecord>, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let name: Handle<JsValue> = name.convert_into(cx)?;
             let result = call_method(cx, store_object, "_getSession", vec![name])?;
@@ -283,7 +283,7 @@ impl NodeSessionStore {
         record: SessionRecord,
     ) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let name = name.convert_into(cx)?;
             let record = record.convert_into(cx)?;
@@ -342,21 +342,21 @@ impl SessionStore for NodeSessionStore {
 }
 
 pub struct NodeIdentityKeyStore {
-    js_queue: EventQueue,
+    js_channel: Channel,
     store_object: Arc<Root<JsObject>>,
 }
 
 impl NodeIdentityKeyStore {
     pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
-            js_queue: cx.queue(),
+            js_channel: cx.channel(),
             store_object: Arc::new(store.root(cx)),
         }
     }
 
     async fn do_get_identity_key(&self) -> Result<PrivateKey, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let result = call_method(cx, store_object, "_getIdentityKey", vec![])?;
             let result = result.downcast_or_throw(cx)?;
@@ -378,7 +378,7 @@ impl NodeIdentityKeyStore {
 
     async fn do_get_local_registration_id(&self) -> Result<u32, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let result = call_method(cx, store_object, "_getLocalRegistrationId", vec![])?
                 .downcast_or_throw(cx)?;
@@ -400,7 +400,7 @@ impl NodeIdentityKeyStore {
 
     async fn do_get_identity(&self, name: ProtocolAddress) -> Result<Option<PublicKey>, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let name: Handle<JsValue> = name.convert_into(cx)?;
             let result = call_method(cx, store_object, "_getIdentity", vec![name])?;
@@ -433,7 +433,7 @@ impl NodeIdentityKeyStore {
         key: PublicKey,
     ) -> Result<bool, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let name: Handle<JsValue> = name.convert_into(cx)?;
             let key: Handle<JsValue> = key.convert_into(cx)?;
@@ -462,7 +462,7 @@ impl NodeIdentityKeyStore {
         direction: Direction,
     ) -> Result<bool, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let name: Handle<JsValue> = name.convert_into(cx)?;
             let key: Handle<JsValue> = key.convert_into(cx)?;
@@ -559,14 +559,14 @@ impl IdentityKeyStore for NodeIdentityKeyStore {
 }
 
 pub struct NodeSenderKeyStore {
-    js_queue: EventQueue,
+    js_channel: Channel,
     store_object: Arc<Root<JsObject>>,
 }
 
 impl NodeSenderKeyStore {
     pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
         Self {
-            js_queue: cx.queue(),
+            js_channel: cx.channel(),
             store_object: Arc::new(store.root(cx)),
         }
     }
@@ -577,7 +577,7 @@ impl NodeSenderKeyStore {
         distribution_id: Uuid,
     ) -> Result<Option<SenderKeyRecord>, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let sender: Handle<JsValue> = sender.convert_into(cx)?;
             let distribution_id: Handle<JsValue> = distribution_id.convert_into(cx)?.upcast();
@@ -617,7 +617,7 @@ impl NodeSenderKeyStore {
         record: SenderKeyRecord,
     ) -> Result<(), String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let sender: Handle<JsValue> = sender.convert_into(cx)?;
             let distribution_id: Handle<JsValue> = distribution_id.convert_into(cx)?.upcast();

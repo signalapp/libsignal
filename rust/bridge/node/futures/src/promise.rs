@@ -9,7 +9,7 @@ use std::future::Future;
 use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
 use std::sync::Arc;
 
-use crate::executor::{AssertSendSafe, EventQueueEx};
+use crate::executor::{AssertSendSafe, ChannelEx};
 use crate::util::describe_panic;
 use crate::*;
 
@@ -46,13 +46,13 @@ fn save_promise_callbacks(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 /// #
 /// # struct TraitImpl;
 /// # impl TraitImpl {
-/// #   fn new(queue: EventQueue, info: Root<JsObject>) -> Self { Self }
+/// #   fn new(channel: Channel, info: Root<JsObject>) -> Self { Self }
 /// # }
 /// # async fn compute_result(t: TraitImpl) -> Result<String, PersistentException> { Ok("abc".into()) }
 /// #
 /// fn js_compute_result(mut cx: FunctionContext) -> JsResult<JsObject> {
 ///     let js_info = cx.argument::<JsObject>(0)?;
-///     let trait_impl = TraitImpl::new(cx.queue(), js_info.root(&mut cx));
+///     let trait_impl = TraitImpl::new(cx.channel(), js_info.root(&mut cx));
 ///     promise(&mut cx, async move {
 ///         let result = compute_result(trait_impl).await?;
 ///         settle_promise(move |cx| Ok(cx.string(result)))
@@ -80,14 +80,14 @@ where
     let promise = promise_ctor.construct(cx, vec![bound_save_promise_callbacks])?;
 
     let callbacks_object_root = callbacks_object.root(cx);
-    let queue = Arc::new(cx.queue());
-    let queue_for_future = queue.clone();
+    let channel = Arc::new(cx.channel());
+    let channel_for_future = channel.clone();
 
     let future = async move {
         let result: std::thread::Result<Result<F, PersistentException>> =
             future.catch_unwind().await;
 
-        queue_for_future.send(move |mut cx| -> NeonResult<()> {
+        channel_for_future.send(move |mut cx| -> NeonResult<()> {
             let settled_result: std::thread::Result<Result<Handle<V>, Handle<JsValue>>> =
                 match result {
                     Ok(Ok(settle)) => {
@@ -130,10 +130,10 @@ where
         });
     };
 
-    // AssertSendSafe because `queue` is running on the same thread as the current context `cx`,
+    // AssertSendSafe because `channel` is running on the same thread as the current context `cx`,
     // so in practice we are always on the same thread.
     let future = unsafe { AssertSendSafe::wrap(future) };
-    queue.start_future(future);
+    channel.start_future(future);
 
     Ok(promise)
 }

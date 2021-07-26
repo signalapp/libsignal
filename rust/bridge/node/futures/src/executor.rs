@@ -9,10 +9,10 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Poll, Wake};
 
-/// Adds support for executing futures on a Neon [EventQueue][].
+/// Adds support for executing futures on a Neon [Channel][].
 ///
-/// [EventQueue]: https://docs.rs/neon/0.7.0-napi.3/neon/event/struct.EventQueue.html
-pub trait EventQueueEx {
+/// [Channel]: https://docs.rs/neon/0.9.0/neon/event/struct.Channel.html
+pub trait ChannelEx {
     /// Schedules the future to run on the JavaScript main thread until complete.
     fn send_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send);
     /// Polls the future synchronously, then schedules it to run on the JavaScript main thread from
@@ -20,12 +20,12 @@ pub trait EventQueueEx {
     fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send);
 }
 
-impl EventQueueEx for EventQueue {
+impl ChannelEx for Channel {
     fn send_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
         let self_for_task = self.clone();
         self.send(move |_| {
             let task = Arc::new(FutureTask {
-                queue: self_for_task,
+                channel: self_for_task,
                 future: Mutex::new(Some(Box::pin(future))),
             });
             task.poll();
@@ -35,7 +35,7 @@ impl EventQueueEx for EventQueue {
 
     fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
         let task = Arc::new(FutureTask {
-            queue: self,
+            channel: self,
             future: Mutex::new(Some(Box::pin(future))),
         });
         task.poll();
@@ -62,12 +62,12 @@ impl<T: Future> Future for AssertSendSafe<T> {
 
 /// Implements waking for futures scheduled on the JavaScript microtask queue.
 ///
-/// When the task is awoken, it reschedules itself on the task queue to re-poll the top-level Future.
+/// When the task is awoken, it reschedules itself on the channel to re-poll the top-level Future.
 struct FutureTask<F>
 where
     F: Future<Output = ()> + 'static + Send,
 {
-    queue: Arc<EventQueue>,
+    channel: Arc<Channel>,
     future: Mutex<Option<Pin<Box<F>>>>,
 }
 
@@ -97,8 +97,8 @@ where
     F: Future<Output = ()> + 'static + Send,
 {
     fn wake(self: Arc<Self>) {
-        let queue = self.queue.clone();
-        queue.send(move |_cx| {
+        let channel = self.channel.clone();
+        channel.send(move |_cx| {
             self.poll();
             Ok(())
         })

@@ -18,7 +18,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     // A complicated test that manually calls a callback at its conclusion.
     let promise = cx.argument::<JsObject>(0)?;
     let completion_callback = cx.argument::<JsFunction>(1)?.root(&mut cx);
-    let queue = Arc::new(cx.queue());
+    let channel = Arc::new(cx.channel());
 
     let future = JsFuture::from_promise(&mut cx, promise, |cx, result| match result {
         Ok(value) => Ok(value
@@ -28,9 +28,9 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
         Err(err) => Err(err.to_string(cx).unwrap().value(cx)),
     })?;
 
-    queue.clone().start_future(async move {
+    channel.clone().start_future(async move {
         let value_or_error = future.await;
-        queue.send(move |mut cx| {
+        channel.send(move |mut cx| {
             let new_value = match value_or_error {
                 Ok(value) => cx.number(value + 1.0).upcast::<JsValue>(),
                 Err(ref message) => cx.string(format!("error: {}", message)).upcast::<JsValue>(),
