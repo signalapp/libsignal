@@ -13,7 +13,7 @@ pub struct JsFutureBuilder<'a, F, T: 'static + Send>
 where
     F: for<'b> FnOnce(&mut TaskContext<'b>) -> JsResult<'b, JsObject> + 'static + Send,
 {
-    pub(super) queue: &'a EventQueue,
+    pub(super) channel: &'a Channel,
     pub(super) get_promise: F,
     pub(super) result_type: PhantomData<fn() -> T>,
 }
@@ -35,7 +35,7 @@ where
         let settle_token = WeakFutureToken::new(&future);
         let get_promise = self.get_promise;
 
-        self.queue.send(move |mut cx| {
+        self.channel.send(move |mut cx| {
             let mut maybe_bound_reject = None;
             let result = cx.try_catch(|cx| {
                 let bound_reject = settle_token.bind_settle_promise::<_, JsRejectedResult>(cx)?;

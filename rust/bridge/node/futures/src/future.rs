@@ -185,16 +185,16 @@ impl<T: 'static + Send> JsFuture<T> {
 
     /// Creates a new JsFuture by calling the JavaScript method [`then`][then] on the result of `get_promise`.
     ///
-    /// `get_promise` will be run on the given EventQueue.
+    /// `get_promise` will be run on the given Channel.
     /// The future will not be ready until it is given a result `transform`. See [JsFutureBuilder].
     ///
     /// [then]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-    pub fn get_promise<F>(queue: &EventQueue, get_promise: F) -> JsFutureBuilder<F, T>
+    pub fn get_promise<F>(channel: &Channel, get_promise: F) -> JsFutureBuilder<F, T>
     where
         F: for<'a> FnOnce(&mut TaskContext<'a>) -> JsResult<'a, JsObject> + Send + 'static,
     {
         JsFutureBuilder {
-            queue,
+            channel,
             get_promise,
             result_type: PhantomData,
         }

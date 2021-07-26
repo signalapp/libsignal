@@ -919,8 +919,9 @@ checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
 
 [[package]]
 name = "neon"
-version = "0.8.3"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "158d44fdd9cc93d5051c15e970727e94e4440c3c585c77b2f482df397a661fcf"
 dependencies = [
  "cslice",
  "neon-build",
@@ -932,13 +933,15 @@ dependencies = [
 
 [[package]]
 name = "neon-build"
-version = "0.8.3"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "067f30e1bb8bec9a0f2be115fd54430dd66472872c7c1491473618a405c1daac"
 
 [[package]]
 name = "neon-macros"
-version = "0.8.3"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72adff7fd8a79dc3a18e565086179fa7608c555dd0e553e4eafebf9033b6a01c"
 dependencies = [
  "quote",
  "syn",
@@ -946,8 +949,9 @@ dependencies = [
 
 [[package]]
 name = "neon-runtime"
-version = "0.8.3"
-source = "git+https://github.com/signalapp/neon?tag=signal-2021-06-02#6d0dbd13286e5b3f9d95d8e16499cba95c8e5885"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be066c504047007b93709dc164c42f9f19c2ff365e7bf71240c8f88c92f2e687"
 dependencies = [
  "cfg-if 1.0.0",
  "libloading",

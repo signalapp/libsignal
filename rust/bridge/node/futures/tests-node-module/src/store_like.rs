@@ -11,21 +11,21 @@ use std::sync::Arc;
 use signal_neon_futures::*;
 
 struct NameStore {
-    js_queue: EventQueue,
+    js_channel: Channel,
     store_object: Arc<Root<JsObject>>,
 }
 
 impl NameStore {
     fn new<'a>(cx: &mut FunctionContext<'a>, store: Handle<'a, JsObject>) -> Self {
         Self {
-            js_queue: cx.queue(),
+            js_channel: cx.channel(),
             store_object: Arc::new(store.root(cx)),
         }
     }
 
     async fn get_name(&self) -> Result<String, String> {
         let store_object_shared = self.store_object.clone();
-        JsFuture::get_promise(&self.js_queue, move |cx| {
+        JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
             let result = call_method(cx, store_object, "getName", std::iter::empty())?
                 .downcast_or_throw(cx)?;
