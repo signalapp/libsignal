@@ -77,8 +77,40 @@ jobs:
       run: echo "::error file=.github/workflows/build_and_test.yml::File not included in any filter" && false
       if: ${{ !contains(steps.filter.outputs.*, 'true') }}
 
-  rust:
-    name: Rust
+  rust-stable:
+    name: Rust stable
+
+    runs-on: ubuntu-latest
+
+    needs: changes
+
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - run: sudo apt-get install gcc-multilib
+
+    - name: Install Rust
+      run: rustup +stable target add i686-unknown-linux-gnu
+
+    - name: Build
+      run: cargo +stable build --verbose
+
+    - name: Run tests
+      run: cargo +stable test --workspace --verbose -- --include-ignored
+
+    - name: Run tests (32-bit)
+      # Exclude device-transfer because OpenSSL, used for reference results,
+      # doesn't support the --target option.
+      # Exclude signal-neon-futures because those tests run Node
+      run: cargo +stable test --workspace --verbose --target i686-unknown-linux-gnu --exclude device-transfer --exclude signal-neon-futures -- --include-ignored
+
+    - name: Build benches
+      run: cargo +stable build --workspace --benches --verbose
+
+  rust-nightly:
+    name: Rust nightly
 
     runs-on: ubuntu-latest
 
