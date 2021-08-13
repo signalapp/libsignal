@@ -344,7 +344,8 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
     let log_decryption_failure = |state: &SessionState, error: &SignalProtocolError| {
-        log::error!(
+        // A warning rather than an error because we try multiple sessions.
+        log::warn!(
             "Failed to decrypt whisper message with ratchet key: {} and counter: {}. \
              Session loaded for {}. Local session has base key: {} and counter: {}. {}",
             ciphertext
@@ -372,11 +373,9 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             Ok(ptext) => {
                 log::debug!(
                     "successfully decrypted with current session state (base key {})",
-                    hex::encode(
-                        current_state
-                            .sender_ratchet_key_for_logging()
-                            .expect("successful decrypt always has a valid base key")
-                    ),
+                    current_state
+                        .sender_ratchet_key_for_logging()
+                        .expect("successful decrypt always has a valid base key"),
                 );
                 record.set_session_state(current_state)?; // update the state
                 return Ok(ptext);
@@ -403,11 +402,9 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             Ok(ptext) => {
                 log::info!(
                     "successfully decrypted with PREVIOUS session state (base key {})",
-                    hex::encode(
-                        previous
-                            .sender_ratchet_key_for_logging()
-                            .expect("successful decrypt always has a valid base key")
-                    ),
+                    previous
+                        .sender_ratchet_key_for_logging()
+                        .expect("successful decrypt always has a valid base key"),
                 );
                 updated_session = Some((ptext, idx, updated));
                 break;

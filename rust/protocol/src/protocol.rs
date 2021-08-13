@@ -146,7 +146,8 @@ impl SignalMessage {
         let their_mac = &self.serialized[self.serialized.len() - Self::MAC_LENGTH..];
         let result: bool = our_mac.ct_eq(their_mac).into();
         if !result {
-            log::error!(
+            // A warning instead of an error because we try multiple sessions.
+            log::warn!(
                 "Bad Mac! Their Mac: {} Our Mac: {}",
                 hex::encode(their_mac),
                 hex::encode(our_mac)
