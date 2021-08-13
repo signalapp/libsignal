@@ -160,6 +160,12 @@ jobs:
     - name: Clippy
       run: cargo clippy --workspace --all-targets -- -D warnings
 
+    - name: Clippy (protocol fuzzing)
+      run: cargo clippy --all-targets -- -D warnings
+      working-directory: rust/protocol/fuzz
+      env:
+        RUSTFLAGS: --cfg fuzzing
+
   java:
     name: Java
 
