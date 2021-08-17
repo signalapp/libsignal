@@ -918,6 +918,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         .expect("cannot fail encoding to Vec");
 
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
+    let mut previous_their_identity = None;
     for (destination, session) in destinations.iter().zip(destination_sessions) {
         let their_uuid = Uuid::parse_str(destination.name()).map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
@@ -953,27 +954,43 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             )
         })?;
 
-        let c_i = sealed_sender_v2::apply_agreement_xor(
-            &keys.e,
-            their_identity.public_key(),
-            Direction::Sending,
-            &m,
-        )?;
-
-        let at_i = sealed_sender_v2::compute_authentication_tag(
-            our_identity.private_key(),
-            their_identity.public_key(),
-            Direction::Sending,
-            &e_pub,
-            &c_i,
-        )?;
+        let end_of_previous_recipient_data = serialized.len();
 
         serialized.extend_from_slice(their_uuid.as_bytes());
         prost::encode_length_delimiter(destination.device_id() as usize, &mut serialized)
             .expect("cannot fail encoding to Vec");
         serialized.extend_from_slice(&their_registration_id.to_be_bytes());
-        serialized.extend_from_slice(&c_i);
-        serialized.extend_from_slice(&at_i);
+
+        if Some(their_identity) == previous_their_identity {
+            // We often send to the same user multiple times, once per device.
+            // Since the encoding of the message key and attachment tag only depends
+            // on the identity key, we can reuse the work from the previous destination.
+            let start_of_previous_recipient_c_and_at = end_of_previous_recipient_data
+                - sealed_sender_v2::MESSAGE_KEY_LEN
+                - sealed_sender_v2::AUTH_TAG_LEN;
+            serialized.extend_from_within(
+                start_of_previous_recipient_c_and_at..end_of_previous_recipient_data,
+            )
+        } else {
+            let c_i = sealed_sender_v2::apply_agreement_xor(
+                &keys.e,
+                their_identity.public_key(),
+                Direction::Sending,
+                &m,
+            )?;
+            serialized.extend_from_slice(&c_i);
+
+            let at_i = sealed_sender_v2::compute_authentication_tag(
+                our_identity.private_key(),
+                their_identity.public_key(),
+                Direction::Sending,
+                &e_pub,
+                &c_i,
+            )?;
+            serialized.extend_from_slice(&at_i);
+        }
+
+        previous_their_identity = Some(their_identity);
     }
 
     serialized.extend_from_slice(e_pub.public_key_bytes()?);
