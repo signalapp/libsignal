@@ -10,6 +10,7 @@ use crate::{
 };
 
 use crate::crypto;
+use crate::curve;
 use crate::proto;
 use crate::session_cipher;
 use aes_gcm_siv::aead::{AeadInPlace, NewAead};
@@ -565,12 +566,19 @@ impl UnidentifiedSenderMessage {
             SEALED_SENDER_V2_VERSION => {
                 // Uses a flat representation: C || AT || E.pub || ciphertext
                 let remaining = &data[1..];
-                if remaining.len() < 32 + 16 + 32 {
+                if remaining.len()
+                    < sealed_sender_v2::MESSAGE_KEY_LEN
+                        + sealed_sender_v2::AUTH_TAG_LEN
+                        + curve::curve25519::PUBLIC_KEY_LENGTH
+                {
                     return Err(SignalProtocolError::InvalidProtobufEncoding);
                 }
-                let (encrypted_message_key, remaining) = remaining.split_at(32);
-                let (encrypted_authentication_tag, remaining) = remaining.split_at(16);
-                let (ephemeral_public, encrypted_message) = remaining.split_at(32);
+                let (encrypted_message_key, remaining) =
+                    remaining.split_at(sealed_sender_v2::MESSAGE_KEY_LEN);
+                let (encrypted_authentication_tag, remaining) =
+                    remaining.split_at(sealed_sender_v2::AUTH_TAG_LEN);
+                let (ephemeral_public, encrypted_message) =
+                    remaining.split_at(curve::curve25519::PUBLIC_KEY_LENGTH);
 
                 Ok(Self::V2 {
                     ephemeral_public: PublicKey::from_djb_public_key_bytes(ephemeral_public)?,
@@ -786,6 +794,9 @@ mod sealed_sender_v2 {
     const LABEL_DH: &[u8] = b"Sealed Sender v2: DH";
     const LABEL_DH_S: &[u8] = b"Sealed Sender v2: DH-sender";
 
+    pub const MESSAGE_KEY_LEN: usize = 32;
+    pub const AUTH_TAG_LEN: usize = 16;
+
     pub(super) struct DerivedKeys {
         pub(super) e: PrivateKey,
         pub(super) k: Box<[u8]>,
@@ -813,7 +824,7 @@ mod sealed_sender_v2 {
         direction: Direction,
         input: &[u8],
     ) -> Result<Box<[u8]>> {
-        assert!(input.len() == 32);
+        assert!(input.len() == MESSAGE_KEY_LEN);
 
         let agreement = priv_key.calculate_agreement(pub_key)?;
         let agreement_key_input = match direction {
@@ -830,7 +841,8 @@ mod sealed_sender_v2 {
         }
         .concat();
 
-        let mut result = HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH, 32)?;
+        let mut result =
+            HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH, MESSAGE_KEY_LEN)?;
         result
             .iter_mut()
             .zip(input)
@@ -860,7 +872,7 @@ mod sealed_sender_v2 {
             }
         }
 
-        HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH_S, 16)
+        HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH_S, AUTH_TAG_LEN)
     }
 }
 
@@ -878,7 +890,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         ));
     }
 
-    let m: [u8; 32] = rng.gen();
+    let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.gen();
     let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
     let e_pub = keys.e.public_key()?;
 
@@ -1007,7 +1019,10 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
         // Skip registration ID.
         let _ = advance(&mut remaining, 2)?;
         // Read C_i and AT_i.
-        let c_and_at = advance(&mut remaining, 32 + 16)?;
+        let c_and_at = advance(
+            &mut remaining,
+            sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN,
+        )?;
 
         let mut next_message = vec![data[0]];
         next_message.extend_from_slice(c_and_at);
