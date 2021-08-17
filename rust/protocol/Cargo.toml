@@ -56,3 +56,7 @@ harness = false
 [[bench]]
 name = "ratchet"
 harness = false
+
+[[bench]]
+name = "sealed_sender"
+harness = false
