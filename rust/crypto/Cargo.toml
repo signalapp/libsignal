@@ -10,10 +10,10 @@ authors = ["Jack Lloyd <jack@signal.org>"]
 edition = "2018"
 
 [dependencies]
-aes = { version = "0.7.4", features = ["armv8", "ctr"] }
+aes = { version = "0.7.4", features = ["ctr"] }
 subtle = "2.3"
 generic-array = "0.14"
-ghash = { version = "0.4.2", features = ["armv8"] }
+ghash = "0.4.2"
 hmac = "0.9.0"
 sha-1 = "0.9"
 sha2 = "0.9"
@@ -26,7 +26,7 @@ hex = "0.4"
 criterion = "0.3"
 
 [features]
-armv8 = ["aes/armv8"]
+armv8 = ["aes/armv8", "ghash/armv8"]
 
 [[bench]]
 name = "aes_gcm"
