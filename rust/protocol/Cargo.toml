@@ -17,6 +17,7 @@ aes-gcm-siv = "0.10.1"
 arrayref = "0.3.6"
 async-trait = "0.1.41"
 block-modes = "0.8"
+curve25519-dalek = { version = "3.0", features = ["serde"] }
 hmac = "0.9.0"
 itertools = "0.10.1"
 prost = "0.8"
@@ -29,18 +30,7 @@ log = "0.4"
 num_enum = "0.5.1"
 uuid = "0.8"
 
-[dependencies.curve25519-dalek]
-features = ["serde", "alloc"]
-version = "3.0.0"
-git = "https://github.com/signalapp/curve25519-dalek.git"
-branch = "3.0.0-lizard2"
-
 [features]
-default = ["u64_backend"]
-u32_backend = ["curve25519-dalek/u32_backend"]
-u64_backend = ["curve25519-dalek/u64_backend"]
-simd_backend = ["curve25519-dalek/simd_backend"]
-nightly = ["curve25519-dalek/nightly"]
 armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
 
 [dev-dependencies]

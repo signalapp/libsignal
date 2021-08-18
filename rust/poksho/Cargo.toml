@@ -11,21 +11,9 @@ edition = "2018"
 license = "AGPL-3.0-only"
 
 [dependencies]
+curve25519-dalek = { version = "3.0", features = ["serde"] }
 sha2 = "0.9"
 hmac = "0.9.0"
 
 [dev-dependencies]
 hex = "0.4"
-
-[dependencies.curve25519-dalek]
-features = ["serde", "alloc"]
-version = "3.0.0"
-git = "https://github.com/signalapp/curve25519-dalek.git"
-branch = "3.0.0-lizard2"
-
-[features]
-default = ["u64_backend"]
-u32_backend = ["curve25519-dalek/u32_backend"]
-u64_backend = ["curve25519-dalek/u64_backend"]
-simd_backend = ["curve25519-dalek/simd_backend"]
-nightly = ["curve25519-dalek/nightly"]
