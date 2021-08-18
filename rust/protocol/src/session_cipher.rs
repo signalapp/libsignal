@@ -371,8 +371,9 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
 
         match result {
             Ok(ptext) => {
-                log::debug!(
-                    "successfully decrypted with current session state (base key {})",
+                log::info!(
+                    "decrypted message from {} with current session state (base key {})",
+                    remote_address,
                     current_state
                         .sender_ratchet_key_for_logging()
                         .expect("successful decrypt always has a valid base key"),
@@ -401,7 +402,8 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         match result {
             Ok(ptext) => {
                 log::info!(
-                    "successfully decrypted with PREVIOUS session state (base key {})",
+                    "decrypted message from {} with PREVIOUS session state (base key {})",
+                    remote_address,
                     previous
                         .sender_ratchet_key_for_logging()
                         .expect("successful decrypt always has a valid base key"),

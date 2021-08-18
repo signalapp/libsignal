@@ -535,7 +535,7 @@ impl UnidentifiedSenderMessage {
             ));
         }
         let version = data[0] >> 4;
-        log::info!(
+        log::debug!(
             "deserializing UnidentifiedSenderMessage with version {}",
             version
         );
