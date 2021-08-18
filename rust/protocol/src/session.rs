@@ -49,6 +49,7 @@ pub async fn process_prekey(
 
     let unsigned_pre_key_id = process_prekey_v3(
         message,
+        remote_address,
         session_record,
         signed_prekey_store,
         pre_key_store,
@@ -66,6 +67,7 @@ pub async fn process_prekey(
 
 async fn process_prekey_v3(
     message: &PreKeySignalMessage,
+    remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
@@ -86,6 +88,7 @@ async fn process_prekey_v3(
         .key_pair()?;
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
+        log::info!("processing PreKey message from {}", remote_address);
         Some(
             pre_key_store
                 .get_pre_key(pre_key_id, ctx)
@@ -93,7 +96,10 @@ async fn process_prekey_v3(
                 .key_pair()?,
         )
     } else {
-        log::warn!("Processing PreKey message which had no one-time prekey");
+        log::warn!(
+            "processing PreKey message from {} which had no one-time prekey",
+            remote_address
+        );
         None
     };
 
