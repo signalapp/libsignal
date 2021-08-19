@@ -230,6 +230,10 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             "org/whispersystems/libsignal/NoSessionException"
         }
 
+        SignalJniError::Signal(SignalProtocolError::IdentityNotFound(_)) => {
+            "org/whispersystems/libsignal/NoIdentityException"
+        }
+
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidCiphertext)

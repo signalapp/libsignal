@@ -5,7 +5,7 @@ import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
 import org.signal.libsignal.metadata.certificate.SenderCertificate;
 import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
 import org.whispersystems.libsignal.DuplicateMessageException;
-import org.whispersystems.libsignal.IdentityKeyPair;
+import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidKeyIdException;
 import org.whispersystems.libsignal.InvalidMacException;
@@ -91,6 +91,16 @@ public class SealedSessionCipher {
       i++;
     }
 
+    List<IdentityKey> recipientIdentities =
+      this.signalProtocolStore.loadIdentities(recipients);
+
+    long[] recipientIdentitiesHandles = new long[recipients.size()];
+    i = 0;
+    for (IdentityKey nextIdentity : recipientIdentities) {
+      recipientHandles[i] = nextIdentity.nativeHandle();
+      i++;
+    }
+
     long[] recipientHandles = new long[recipients.size()];
     i = 0;
     for (SignalProtocolAddress nextRecipient : recipients) {
@@ -100,6 +110,7 @@ public class SealedSessionCipher {
 
     return Native.SealedSessionCipher_MultiRecipientEncrypt(
       recipientHandles,
+      recipientIdentities,
       recipientSessionHandles,
       content.nativeHandle(),
       this.signalProtocolStore,

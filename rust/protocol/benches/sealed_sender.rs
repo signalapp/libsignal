@@ -164,15 +164,24 @@ pub fn v2(c: &mut Criterion) {
     .expect("valid");
 
     let mut encrypt_it = || {
+        let alice_identity = alice_store
+            .get_identity_key_pair(None)
+            .now_or_never()
+            .expect("sync")
+            .expect("valid");
+        let recipients = [&bob_address];
         sealed_sender_multi_recipient_encrypt(
-            &[&bob_address],
+            &alice_identity,
+            &recipients,
+            &alice_store
+                .identity_store
+                .get_identities(&recipients)
+                .expect("present"),
             &alice_store
                 .session_store
                 .load_existing_sessions(&[&bob_address])
                 .expect("present"),
             &usmc,
-            &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .now_or_never()
@@ -231,17 +240,25 @@ pub fn v2(c: &mut Criterion) {
             BenchmarkId::from_parameter(recipient_count),
             &recipient_count,
             |b, &recipient_count| {
+                let alice_identity = alice_store
+                    .get_identity_key_pair(None)
+                    .now_or_never()
+                    .expect("sync")
+                    .expect("valid");
                 let recipients: Vec<_> = recipients.iter().take(recipient_count).collect();
                 b.iter(|| {
                     sealed_sender_multi_recipient_encrypt(
+                        &alice_identity,
                         &recipients,
+                        &alice_store
+                            .identity_store
+                            .get_identities(&recipients)
+                            .expect("present"),
                         &alice_store
                             .session_store
                             .load_existing_sessions(&recipients)
                             .expect("present"),
                         &usmc,
-                        &mut alice_store.identity_store,
-                        None,
                         &mut rng,
                     )
                     .now_or_never()
@@ -259,17 +276,25 @@ pub fn v2(c: &mut Criterion) {
             BenchmarkId::from_parameter(device_count),
             &device_count,
             |b, &device_count| {
+                let alice_identity = alice_store
+                    .get_identity_key_pair(None)
+                    .now_or_never()
+                    .expect("sync")
+                    .expect("valid");
                 let recipients: Vec<_> = vec![&bob_address; device_count];
                 b.iter(|| {
                     sealed_sender_multi_recipient_encrypt(
+                        &alice_identity,
                         &recipients,
+                        &alice_store
+                            .identity_store
+                            .get_identities(&recipients)
+                            .expect("present"),
                         &alice_store
                             .session_store
                             .load_existing_sessions(&recipients)
                             .expect("present"),
                         &usmc,
-                        &mut alice_store.identity_store,
-                        None,
                         &mut rng,
                     )
                     .now_or_never()

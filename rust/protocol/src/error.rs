@@ -36,6 +36,7 @@ pub enum SignalProtocolError {
     SignatureValidationFailed,
 
     UntrustedIdentity(crate::ProtocolAddress),
+    IdentityNotFound(String),
 
     InvalidPreKeyId,
     InvalidSignedPreKeyId,
@@ -155,6 +156,9 @@ impl fmt::Display for SignalProtocolError {
             }
             SignalProtocolError::UntrustedIdentity(addr) => {
                 write!(f, "untrusted identity for address {}", addr)
+            }
+            SignalProtocolError::IdentityNotFound(who) => {
+                write!(f, "identity with '{}' not found", who)
             }
             SignalProtocolError::SignatureValidationFailed => {
                 write!(f, "invalid signature detected")

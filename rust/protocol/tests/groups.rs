@@ -336,15 +336,19 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
             Some([42].to_vec()),
         )?;
 
+        let alice_identity = alice_store
+            .identity_store
+            .get_identity_key_pair(None)
+            .await?;
         let recipients = [&bob_uuid_address, &carol_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
+            &alice_identity,
             &recipients,
+            &alice_store.identity_store.get_identities(&recipients)?,
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
-            &mut alice_store.identity_store,
-            None,
             &mut csprng,
         )
         .await?;

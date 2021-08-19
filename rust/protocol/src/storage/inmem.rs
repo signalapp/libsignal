@@ -4,8 +4,8 @@
 //
 
 use crate::{
-    IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, Result, SenderKeyRecord,
-    SessionRecord, SignalProtocolError, SignedPreKeyRecord,
+    IdentityKey, IdentityKeyPair, PreKeyRecord, ProtocolAddress, PublicKey, Result,
+    SenderKeyRecord, SessionRecord, SignalProtocolError, SignedPreKeyRecord,
 };
 
 use crate::state::{PreKeyId, SignedPreKeyId};
@@ -31,6 +31,23 @@ impl InMemIdentityKeyStore {
             id,
             known_keys: HashMap::new(),
         }
+    }
+
+    /// Bulk version of [`IdentityKeyStore::get_identity`].
+    ///
+    /// Useful for [crate::sealed_sender_multi_recipient_encrypt].
+    ///
+    /// [`IdentityKeyStore::get_identity`]: crate::IdentityKeyStore::get_identity
+    pub fn get_identities(&self, addresses: &[&ProtocolAddress]) -> Result<Vec<&PublicKey>> {
+        addresses
+            .iter()
+            .map(|address| {
+                self.known_keys
+                    .get(address)
+                    .map(|key| key.public_key())
+                    .ok_or_else(|| SignalProtocolError::IdentityNotFound(address.to_string()))
+            })
+            .collect()
     }
 }
 

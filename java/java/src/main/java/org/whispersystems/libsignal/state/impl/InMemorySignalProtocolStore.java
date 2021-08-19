@@ -59,6 +59,11 @@ public class InMemorySignalProtocolStore implements SignalProtocolStore {
   }
 
   @Override
+  public List<IdentityKey> getIdentities(List<SignalProtocolAddress> addresses) {
+    return identityKeyStore.getIdentities(address);
+  }
+
+  @Override
   public PreKeyRecord loadPreKey(int preKeyId) throws InvalidKeyIdException {
     return preKeyStore.loadPreKey(preKeyId);
   }

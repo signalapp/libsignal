@@ -62,6 +62,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         return publicKeys[address]
     }
 
+    public func identities(for addresses: [ProtocolAddress], context: StoreContext) throws -> [IdentityKey] {
+        return try addresses.map { address in
+            if let publicKey = publicKeys[address] {
+                return publicKey
+            }
+            throw SignalError.identityNotFound("\(address)")
+        }
+    }
+
     public func loadPreKey(id: UInt32, context: StoreContext) throws -> PreKeyRecord {
         if let record = prekeyMap[id] {
             return record

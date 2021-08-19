@@ -153,17 +153,19 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
                                               sessionStore: SessionStore,
                                               context: StoreContext) throws -> [UInt8] {
     let sessions = try sessionStore.loadExistingSessions(for: recipients, context: context)
+    let identities = try identityStore.identities(for: recipients, context: context)
     return try context.withOpaquePointer { context in
-        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-            try invokeFnReturningArray {
-                signal_sealed_sender_multi_recipient_encrypt($0, $1,
-                                                             recipients.map { $0.nativeHandle },
-                                                             recipients.count,
-                                                             sessions.map { $0.nativeHandle },
-                                                             sessions.count,
-                                                             content.nativeHandle,
-                                                             ffiIdentityStore, context)
-            }
+        let our_identity = identityStore.identityKeyPair(context);
+        try invokeFnReturningArray {
+            signal_sealed_sender_multi_recipient_encrypt($0, $1,
+                                                         our_identity.nativeHandle,
+                                                         recipients.map { $0.nativeHandle },
+                                                         recipients.count,
+                                                         identities.map { $0.nativeHandle },
+                                                         identities.count,
+                                                         sessions.map { $0.nativeHandle },
+                                                         sessions.count,
+                                                         content.nativeHandle)
         }
     }
 }

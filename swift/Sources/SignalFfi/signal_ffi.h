@@ -62,6 +62,7 @@ typedef enum {
   SignalErrorCode_FingerprintVersionMismatch = 51,
   SignalErrorCode_FingerprintParsingError = 52,
   SignalErrorCode_UntrustedIdentity = 60,
+  SignalErrorCode_IdentityNotFound = 61,
   SignalErrorCode_InvalidKeyIdentifier = 70,
   SignalErrorCode_SessionNotFound = 80,
   SignalErrorCode_DuplicatedMessage = 90,
@@ -956,13 +957,14 @@ SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
 
 SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(const unsigned char **out,
                                                              size_t *out_len,
+                                                             SignalPrivateKey *our_identity,
                                                              const SignalProtocolAddress *const *recipients,
                                                              size_t recipients_len,
+                                                             const SignalPublicKey *const *recipient_identities,
+                                                             size_t recipients_identities_len,
                                                              const SignalSessionRecord *const *recipient_sessions,
                                                              size_t recipient_sessions_len,
-                                                             const SignalUnidentifiedSenderMessageContent *content,
-                                                             const SignalIdentityKeyStore *identity_key_store,
-                                                             void *ctx);
+                                                             const SignalUnidentifiedSenderMessageContent *content);
 
 SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipient(const unsigned char **out,
                                                                                   size_t *out_len,

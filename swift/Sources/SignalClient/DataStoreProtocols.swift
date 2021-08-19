@@ -22,6 +22,7 @@ public protocol IdentityKeyStore: AnyObject {
     func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool
     func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: StoreContext) throws -> Bool
     func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey?
+    func identities(for addresses: [ProtocolAddress], context: StoreContext) throws -> [IdentityKey]
 }
 
 public protocol PreKeyStore: AnyObject {

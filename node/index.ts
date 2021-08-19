@@ -1060,6 +1060,18 @@ export abstract class IdentityKeyStore implements Native.IdentityKeyStore {
     }
   }
 
+  async getIdentities(
+    names: ReadonlyArray<ProtocolAddress>
+  ): Promise<Array<PublicKey>> {
+    return Promise.all(names.map(async (name) => {
+      const key = await this.getIdentity(name);
+      if (!key) {
+        throw new Error('Identity not found for: ' + name);
+      }
+      return key;
+    }));
+  }
+
   abstract getIdentityKey(): Promise<PrivateKey>;
   abstract getLocalRegistrationId(): Promise<number>;
   abstract saveIdentity(
@@ -1435,9 +1447,16 @@ export async function sealedSenderMultiRecipientEncrypt(
   identityStore: IdentityKeyStore,
   sessionStore: SessionStore
 ): Promise<Buffer> {
-  const recipientSessions = await sessionStore.getExistingSessions(recipients);
+  const [
+    recipientSessions,
+    recipientIdentities,
+  ] = await Promise.all([
+    sessionStore.getExistingSessions(recipients),
+    identityStore.getIdentities(recipients),
+  ]);
   return await NativeImpl.SealedSender_MultiRecipientEncrypt(
     recipients,
+    recipientIdentities,
     recipientSessions,
     content,
     identityStore,

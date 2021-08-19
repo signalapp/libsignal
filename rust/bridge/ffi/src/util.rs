@@ -40,6 +40,7 @@ pub enum SignalErrorCode {
     FingerprintParsingError = 52,
 
     UntrustedIdentity = 60,
+    IdentityNotFound = 61,
 
     InvalidKeyIdentifier = 70,
 

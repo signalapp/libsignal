@@ -497,15 +497,19 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             None,
         )?;
 
+        let alice_identity = alice_store
+            .identity_store
+            .get_identity_key_pair(None)
+            .await?;
         let recipients = [&bob_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
+            &alice_identity,
             &recipients,
+            &alice_store.identity_store.get_identities(&recipients)?,
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
-            &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -551,15 +555,19 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             None,
         )?;
 
+        let alice_identity = alice_store
+            .identity_store
+            .get_identity_key_pair(None)
+            .await?;
         let recipients = [&bob_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
+            &alice_identity,
             &recipients,
+            &alice_store.identity_store.get_identities(&recipients)?,
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
-            &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -611,15 +619,19 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             None,
         )?;
 
+        let alice_identity = alice_store
+            .identity_store
+            .get_identity_key_pair(None)
+            .await?;
         let recipients = [&bob_uuid_address];
         let alice_ctext = sealed_sender_multi_recipient_encrypt(
+            &alice_identity,
             &recipients,
+            &alice_store.identity_store.get_identities(&recipients)?,
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
-            &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -736,13 +748,15 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             .load_session(&bob_uuid_address, None)
             .await?
             .expect("present");
+        let alice_identity = alice_store.get_identity_key_pair(None).await?;
+        let bob_pubkey = *bob_store.get_identity_key_pair(None).await?.public_key();
         session.archive_current_state()?;
         match sealed_sender_multi_recipient_encrypt(
+            &alice_identity,
             &recipients,
+            &[&bob_pubkey],
             &[&session],
             &alice_usmc,
-            &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await

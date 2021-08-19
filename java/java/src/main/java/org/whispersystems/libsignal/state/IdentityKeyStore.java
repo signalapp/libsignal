@@ -7,7 +7,10 @@ package org.whispersystems.libsignal.state;
 
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.IdentityKeyPair;
+import org.whispersystems.libsignal.NoIdentityException;
 import org.whispersystems.libsignal.SignalProtocolAddress;
+
+import java.util.List;
 
 /**
  * Provides an interface to identity information.
@@ -79,4 +82,12 @@ public interface IdentityKeyStore {
    */
   public IdentityKey getIdentity(SignalProtocolAddress address);
 
+
+  /**
+   * Return the saved public identity key for a remote client
+   *
+   * @param address The address of the remote client
+   * @return The public identity key, or null if absent
+   */
+  public List<IdentityKey> getIdentities(List<SignalProtocolAddress> addresses) throws NoIdentityException;
 }

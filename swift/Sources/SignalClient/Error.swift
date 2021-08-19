@@ -22,6 +22,7 @@ public enum SignalError: Error {
     case legacyCiphertextVersion(String)
     case unknownCiphertextVersion(String)
     case unrecognizedMessageVersion(String)
+    case identityNotFound(String)
     case invalidMessage(String)
     case invalidKey(String)
     case invalidSignature(String)
@@ -80,6 +81,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.fingerprintParsingError(errStr)
     case SignalErrorCode_SealedSenderSelfSend:
         throw SignalError.sealedSenderSelfSend(errStr)
+    case SignalErrorCode_IdentityNotFound:
+        throw SignalError.identityNotFound(errStr)
     case SignalErrorCode_InvalidKey:
         throw SignalError.invalidKey(errStr)
     case SignalErrorCode_InvalidSignature:

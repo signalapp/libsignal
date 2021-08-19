@@ -4,8 +4,8 @@
 //
 
 use crate::{
-    message_encrypt, CiphertextMessageType, Context, Direction, IdentityKeyStore, KeyPair,
-    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result,
+    message_encrypt, CiphertextMessageType, Context, Direction, IdentityKeyPair, IdentityKeyStore,
+    KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result,
     SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, HKDF,
 };
 
@@ -877,11 +877,11 @@ mod sealed_sender_v2 {
 }
 
 pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
+    our_identity: &IdentityKeyPair,
     destinations: &[&ProtocolAddress],
+    destination_keys: &[&PublicKey],
     destination_sessions: &[&SessionRecord],
     usmc: &UnidentifiedSenderMessageContent,
-    identity_store: &mut dyn IdentityKeyStore,
-    ctx: Context,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     if destinations.len() != destination_sessions.len() {
@@ -917,20 +917,18 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     prost::encode_length_delimiter(destinations.len(), &mut serialized)
         .expect("cannot fail encoding to Vec");
 
-    let our_identity = identity_store.get_identity_key_pair(ctx).await?;
-    let mut previous_their_identity = None;
-    for (destination, session) in destinations.iter().zip(destination_sessions) {
+    let mut previous_their_key = None;
+    for ((destination, session), their_key) in destinations
+        .iter()
+        .zip(destination_sessions)
+        .zip(destination_keys)
+    {
         let their_uuid = Uuid::parse_str(destination.name()).map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
                 "multi-recipient sealed sender requires UUID recipients (not {})",
                 destination.name()
             ))
         })?;
-
-        let their_identity = identity_store
-            .get_identity(destination, ctx)
-            .await?
-            .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", destination)))?;
 
         let their_registration_id = session.remote_registration_id().map_err(|_| {
             SignalProtocolError::InvalidState(
@@ -961,7 +959,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             .expect("cannot fail encoding to Vec");
         serialized.extend_from_slice(&their_registration_id.to_be_bytes());
 
-        if Some(their_identity) == previous_their_identity {
+        if Some(their_key) == previous_their_key {
             // We often send to the same user multiple times, once per device.
             // Since the encoding of the message key and attachment tag only depends
             // on the identity key, we can reuse the work from the previous destination.
@@ -972,17 +970,13 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
                 start_of_previous_recipient_c_and_at..end_of_previous_recipient_data,
             )
         } else {
-            let c_i = sealed_sender_v2::apply_agreement_xor(
-                &keys.e,
-                their_identity.public_key(),
-                Direction::Sending,
-                &m,
-            )?;
+            let c_i =
+                sealed_sender_v2::apply_agreement_xor(&keys.e, their_key, Direction::Sending, &m)?;
             serialized.extend_from_slice(&c_i);
 
             let at_i = sealed_sender_v2::compute_authentication_tag(
                 our_identity.private_key(),
-                their_identity.public_key(),
+                their_key,
                 Direction::Sending,
                 &e_pub,
                 &c_i,
@@ -990,7 +984,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             serialized.extend_from_slice(&at_i);
         }
 
-        previous_their_identity = Some(their_identity);
+        previous_their_key = Some(their_key);
     }
 
     serialized.extend_from_slice(e_pub.public_key_bytes()?);

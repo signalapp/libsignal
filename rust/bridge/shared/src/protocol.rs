@@ -1068,18 +1068,20 @@ async fn SealedSessionCipher_Encrypt<E: Env>(
 async fn SealedSender_MultiRecipientEncrypt<E: Env>(
     env: E,
     recipients: &[&ProtocolAddress],
+    recipient_identities: &[&PublicKey],
     recipient_sessions: &[&SessionRecord],
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
     let mut rng = rand::rngs::OsRng;
+    let identity_key_pair = identity_key_store.get_identity_key_pair(ctx).await?;
     let ctext = sealed_sender_multi_recipient_encrypt(
+        &identity_key_pair,
         recipients,
+        recipient_identities,
         recipient_sessions,
         content,
-        identity_key_store,
-        ctx,
         &mut rng,
     )
     .await?;
@@ -1091,18 +1093,20 @@ async fn SealedSender_MultiRecipientEncrypt<E: Env>(
 async fn SealedSender_MultiRecipientEncryptNode<E: Env>(
     env: E,
     recipients: &[&ProtocolAddress],
+    recipient_identities: &[&PublicKey],
     recipient_sessions: &[SessionRecord],
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
     ctx: Context,
 ) -> Result<E::Buffer> {
     let mut rng = rand::rngs::OsRng;
+    let identity_key_pair = identity_key_store.get_identity_key_pair(ctx).await?;
     let ctext = sealed_sender_multi_recipient_encrypt(
+        &identity_key_pair,
         recipients,
+        &recipient_identities,
         &recipient_sessions.iter().collect::<Vec<&SessionRecord>>(),
         content,
-        identity_key_store,
-        ctx,
         &mut rng,
     )
     .await?;
