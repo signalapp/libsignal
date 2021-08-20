@@ -961,7 +961,7 @@ SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(const unsigned char
                                                              const SignalProtocolAddress *const *recipients,
                                                              size_t recipients_len,
                                                              const SignalPublicKey *const *recipient_identities,
-                                                             size_t recipients_identities_len,
+                                                             size_t recipient_identities_len,
                                                              const SignalSessionRecord *const *recipient_sessions,
                                                              size_t recipient_sessions_len,
                                                              const SignalUnidentifiedSenderMessageContent *content);
