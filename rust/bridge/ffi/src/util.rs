@@ -149,6 +149,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UntrustedIdentity
             }
 
+            SignalFfiError::Signal(SignalProtocolError::IdentityNotFound(_)) => {
+                SignalErrorCode::IdentityNotFound
+            }
+
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
             | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure) => {
