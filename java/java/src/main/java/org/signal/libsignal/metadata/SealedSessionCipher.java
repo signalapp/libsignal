@@ -94,10 +94,10 @@ public class SealedSessionCipher {
     List<IdentityKey> recipientIdentities =
       this.signalProtocolStore.getIdentities(recipients);
 
-    long[] recipientIdentitiesHandles = new long[recipients.size()];
+    long[] recipientIdentityHandles = new long[recipients.size()];
     i = 0;
     for (IdentityKey nextIdentity : recipientIdentities) {
-      recipientHandles[i] = nextIdentity.nativeHandle();
+      recipientIdentityHandles[i] = nextIdentity.nativeHandle();
       i++;
     }
 
@@ -110,7 +110,7 @@ public class SealedSessionCipher {
 
     return Native.SealedSessionCipher_MultiRecipientEncrypt(
       recipientHandles,
-      recipientIdentities,
+      recipientIdentityHandles,
       recipientSessionHandles,
       content.nativeHandle(),
       this.signalProtocolStore,

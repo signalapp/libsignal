@@ -60,7 +60,7 @@ public class InMemorySignalProtocolStore implements SignalProtocolStore {
 
   @Override
   public List<IdentityKey> getIdentities(List<SignalProtocolAddress> addresses) {
-    return identityKeyStore.getIdentities(address);
+    return identityKeyStore.getIdentities(addresses);
   }
 
   @Override
