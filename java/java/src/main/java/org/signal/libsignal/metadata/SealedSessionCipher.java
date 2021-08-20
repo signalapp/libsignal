@@ -92,7 +92,7 @@ public class SealedSessionCipher {
     }
 
     List<IdentityKey> recipientIdentities =
-      this.signalProtocolStore.loadIdentities(recipients);
+      this.signalProtocolStore.getIdentities(recipients);
 
     long[] recipientIdentitiesHandles = new long[recipients.size()];
     i = 0;
