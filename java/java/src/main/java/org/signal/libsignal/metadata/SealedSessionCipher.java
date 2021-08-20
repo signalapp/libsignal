@@ -12,6 +12,7 @@ import org.whispersystems.libsignal.InvalidMacException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.libsignal.LegacyMessageException;
+import org.whispersystems.libsignal.NoIdentityException;
 import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SessionCipher;
 import org.whispersystems.libsignal.SignalProtocolAddress;
@@ -79,7 +80,7 @@ public class SealedSessionCipher {
   }
 
   public byte[] multiRecipientEncrypt(List<SignalProtocolAddress> recipients, UnidentifiedSenderMessageContent content)
-      throws InvalidKeyException, NoSessionException, UntrustedIdentityException
+      throws InvalidKeyException, NoSessionException, NoIdentityException, UntrustedIdentityException
   {
     List<SessionRecord> recipientSessions =
       this.signalProtocolStore.loadExistingSessions(recipients);
