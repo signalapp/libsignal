@@ -12,6 +12,7 @@ import org.whispersystems.libsignal.IdentityKeyPair;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.LegacyMessageException;
+import org.whispersystems.libsignal.NoIdentityException;
 import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SessionBuilder;
 import org.whispersystems.libsignal.SessionCipher;
@@ -146,7 +147,7 @@ public class SealedSessionCipherTest extends TestCase {
     }
   }
 
-  public void testEncryptDecryptGroup() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
+  public void testEncryptDecryptGroup() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoIdentityException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
     SignalProtocolAddress bobAddress           = new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
@@ -188,7 +189,7 @@ public class SealedSessionCipherTest extends TestCase {
     assertTrue(Arrays.equals(plaintext.getGroupId().get(), new byte[]{42, 43}));
   }
 
-  public void testProtocolException() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
+  public void testProtocolException() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMessageException, InvalidMetadataMessageException, LegacyMessageException, NoIdentityException, NoSessionException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
     TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
     TestInMemorySignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
     SignalProtocolAddress bobAddress           = new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
