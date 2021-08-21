@@ -1104,7 +1104,7 @@ async fn SealedSender_MultiRecipientEncryptNode<E: Env>(
     let ctext = sealed_sender_multi_recipient_encrypt(
         &identity_key_pair,
         recipients,
-        &recipient_identities,
+        recipient_identities,
         &recipient_sessions.iter().collect::<Vec<&SessionRecord>>(),
         content,
         &mut rng,
