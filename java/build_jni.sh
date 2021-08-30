@@ -15,7 +15,6 @@ cd "${SCRIPT_DIR}"/..
 ANDROID_LIB_DIR=java/android/src/main/jniLibs
 DESKTOP_LIB_DIR=java/java/src/main/resources
 
-export RUSTFLAGS="-C link-args=-s"
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 # On Linux, cdylibs don't include public symbols from their dependencies,
 # even if those symbols have been re-exported in the Rust source.
