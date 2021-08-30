@@ -20,7 +20,8 @@ def warn(message):
 our_abs_dir = os.path.dirname(os.path.realpath(__file__))
 
 lib_size = os.path.getsize(os.path.join(
-    our_abs_dir, 'android', 'src', 'main', 'jniLibs', 'arm64-v8a', 'libsignal_jni.so'))
+    our_abs_dir, 'android', 'build', 'intermediates', 'stripped_native_libs', 'release', 'out',
+    'lib', 'arm64-v8a', 'libsignal_jni.so'))
 
 with open(os.path.join(our_abs_dir, 'code_size.json')) as old_sizes_file:
     old_sizes = json.load(old_sizes_file)
