@@ -13,21 +13,6 @@ pub type JavaSignedPreKeyStore<'a> = JObject<'a>;
 pub type JavaSessionStore<'a> = JObject<'a>;
 pub type JavaSenderKeyStore<'a> = JObject<'a>;
 
-fn protocol_address_to_jobject<'a>(
-    env: &'a JNIEnv,
-    address: &ProtocolAddress,
-) -> Result<JObject<'a>, SignalJniError> {
-    let address_class = env.find_class("org/whispersystems/libsignal/SignalProtocolAddress")?;
-    let address_ctor_args = [
-        JObject::from(env.new_string(address.name())?).into(),
-        JValue::from(address.device_id().convert_into(env)?),
-    ];
-
-    let address_ctor_sig = jni_signature!((java.lang.String, int) -> void);
-    let address_jobject = env.new_object(address_class, address_ctor_sig, &address_ctor_args)?;
-    Ok(address_jobject)
-}
-
 pub struct JniIdentityKeyStore<'a> {
     env: &'a JNIEnv<'a>,
     store: JObject<'a>,

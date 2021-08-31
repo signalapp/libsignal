@@ -766,6 +766,103 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
 }
 
 #[test]
+fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
+) -> Result<(), SignalProtocolError> {
+    async {
+        let mut rng = OsRng;
+
+        let alice_device_id = 23;
+        let bob_device_id = 42;
+
+        let alice_e164 = "+14151111111".to_owned();
+
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+
+        let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
+
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store =
+            InMemSignalProtocolStore::new(IdentityKeyPair::generate(&mut rng), 0x4000)?;
+
+        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+
+        let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
+
+        process_prekey_bundle(
+            &bob_uuid_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            &mut rng,
+            None,
+        )
+        .await?;
+
+        let trust_root = KeyPair::generate(&mut rng);
+        let server_key = KeyPair::generate(&mut rng);
+
+        let server_cert =
+            ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+
+        let expires = 1605722925;
+
+        let sender_cert = SenderCertificate::new(
+            alice_uuid.clone(),
+            Some(alice_e164.clone()),
+            alice_pubkey,
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut rng,
+        )?;
+
+        let alice_ptext = vec![1, 2, 3, 23, 99];
+        let alice_message = message_encrypt(
+            &alice_ptext,
+            &bob_uuid_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            None,
+        )
+        .await?;
+
+        let alice_usmc = UnidentifiedSenderMessageContent::new(
+            alice_message.message_type(),
+            sender_cert.clone(),
+            alice_message.serialize().to_vec(),
+            ContentHint::Default,
+            None,
+        )?;
+
+        let recipients = [&bob_uuid_address];
+        match sealed_sender_multi_recipient_encrypt(
+            &recipients,
+            &alice_store
+                .session_store
+                .load_existing_sessions(&recipients)?,
+            &alice_usmc,
+            &mut alice_store.identity_store,
+            None,
+            &mut rng,
+        )
+        .await
+        {
+            Ok(_) => panic!("should have failed"),
+            Err(SignalProtocolError::InvalidRegistrationId(address, _id)) => {
+                assert_eq!(address, bob_uuid_address);
+            }
+            Err(e) => panic!("wrong error: {}", e),
+        }
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
 fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
         let mut rng = OsRng;

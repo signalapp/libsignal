@@ -32,6 +32,7 @@ public enum SignalError: Error {
     case untrustedIdentity(String)
     case invalidKeyIdentifier(String)
     case sessionNotFound(String)
+    case invalidRegistrationId(address: ProtocolAddress, message: String)
     case duplicatedMessage(String)
     case callbackError(String)
     case unknown(UInt32, String)
@@ -47,7 +48,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     let errStr = try! invokeFnReturningString {
         signal_error_get_message(error, $0)
     }
-    signal_error_free(error)
+    defer { signal_error_free(error) }
 
     switch SignalErrorCode(errType) {
     case SignalErrorCode_InvalidState:
@@ -94,6 +95,11 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidKeyIdentifier(errStr)
     case SignalErrorCode_SessionNotFound:
         throw SignalError.sessionNotFound(errStr)
+    case SignalErrorCode_InvalidRegistrationId:
+        let address = try invokeFnReturningProtocolAddress {
+            signal_error_get_address(error, $0)
+        }
+        throw SignalError.invalidRegistrationId(address: address, message: errStr)
     case SignalErrorCode_DuplicatedMessage:
         throw SignalError.duplicatedMessage(errStr)
     case SignalErrorCode_CallbackError:

@@ -125,11 +125,24 @@ impl SignalNodeError for SignalProtocolError {
             SignalProtocolError::UntrustedIdentity(addr) => {
                 let props = cx.empty_object();
                 let addr_string = cx.string(addr.name());
-                props.set(cx, "addr", addr_string)?;
+                props.set(cx, "_addr", addr_string)?;
                 new_js_error(
                     cx,
                     module,
                     Some("UntrustedIdentity"),
+                    &self.to_string(),
+                    operation_name,
+                    Some(props),
+                )
+            }
+            SignalProtocolError::InvalidRegistrationId(addr, _value) => {
+                let props = cx.empty_object();
+                let addr = addr.clone().convert_into(cx)?;
+                props.set(cx, "_addr", addr)?;
+                new_js_error(
+                    cx,
+                    module,
+                    Some("InvalidRegistrationId"),
                     &self.to_string(),
                     operation_name,
                     Some(props),

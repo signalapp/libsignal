@@ -12,6 +12,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use std::convert::TryFrom;
 use std::ffi::{c_void, CString};
+use std::panic::AssertUnwindSafe;
 
 pub mod logging;
 mod util;
@@ -56,6 +57,31 @@ pub unsafe extern "C" fn signal_error_get_message(
         Ok(()) => std::ptr::null_mut(),
         Err(e) => Box::into_raw(Box::new(e)),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_error_get_address(
+    err: *const SignalFfiError,
+    out: *mut *mut ProtocolAddress,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(SignalFfiError::NullPointer)?;
+        match err {
+            SignalFfiError::Signal(SignalProtocolError::InvalidRegistrationId(addr, _value)) => {
+                box_object(out, Ok(addr.clone()))?;
+            }
+            _ => {
+                return Err(SignalFfiError::Signal(
+                    SignalProtocolError::InvalidArgument(format!(
+                        "cannot get address from error ({})",
+                        err
+                    )),
+                ));
+            }
+        }
+        Ok(())
+    })
 }
 
 #[no_mangle]

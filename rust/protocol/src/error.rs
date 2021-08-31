@@ -51,6 +51,7 @@ pub enum SignalProtocolError {
 
     SessionNotFound(String),
     InvalidSessionStructure,
+    InvalidRegistrationId(crate::ProtocolAddress, u32),
 
     DuplicatedMessage(u32, u32),
     InvalidMessage(&'static str),
@@ -164,6 +165,13 @@ impl fmt::Display for SignalProtocolError {
                 write!(f, "session with '{}' not found", who)
             }
             SignalProtocolError::InvalidSessionStructure => write!(f, "invalid session structure"),
+            SignalProtocolError::InvalidRegistrationId(addr, value) => {
+                write!(
+                    f,
+                    "session for {} has invalid registration ID {:X}",
+                    addr, value
+                )
+            }
             SignalProtocolError::DuplicatedMessage(i, c) => {
                 write!(f, "message with old counter {} / {}", i, c)
             }
