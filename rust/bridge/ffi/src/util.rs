@@ -44,6 +44,7 @@ pub enum SignalErrorCode {
     InvalidKeyIdentifier = 70,
 
     SessionNotFound = 80,
+    InvalidRegistrationId = 81,
 
     DuplicatedMessage = 90,
 
@@ -105,6 +106,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_)) => {
                 SignalErrorCode::SessionNotFound
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::InvalidRegistrationId(..)) => {
+                SignalErrorCode::InvalidRegistrationId
             }
 
             SignalFfiError::Signal(SignalProtocolError::FingerprintIdentifierMismatch) => {

@@ -18,7 +18,7 @@ private struct SenderKeyName: Hashable {
 public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, SessionStore, SenderKeyStore {
     private var publicKeys: [ProtocolAddress: IdentityKey] = [:]
     private var privateKey: IdentityKeyPair
-    private var deviceId: UInt32
+    private var registrationId: UInt32
     private var prekeyMap: [UInt32: PreKeyRecord] = [:]
     private var signedPrekeyMap: [UInt32: SignedPreKeyRecord] = [:]
     private var sessionMap: [ProtocolAddress: SessionRecord] = [:]
@@ -26,12 +26,12 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
 
     public init() {
         privateKey = IdentityKeyPair.generate()
-        deviceId = UInt32.random(in: 0...65535)
+        registrationId = UInt32.random(in: 0...0x3FFF)
     }
 
-    public init(identity: IdentityKeyPair, deviceId: UInt32) {
+    public init(identity: IdentityKeyPair, registrationId: UInt32) {
         self.privateKey = identity
-        self.deviceId = deviceId
+        self.registrationId = registrationId
     }
 
     public func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair {
@@ -39,7 +39,7 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
     }
 
     public func localRegistrationId(context: StoreContext) throws -> UInt32 {
-        return deviceId
+        return registrationId
     }
 
     public func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {

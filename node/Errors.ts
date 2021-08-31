@@ -3,17 +3,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { ProtocolAddress } from './Address';
+import * as Native from './Native';
+
 export enum ErrorCode {
   Generic,
 
   DuplicatedMessage,
   SealedSenderSelfSend,
   UntrustedIdentity,
+  InvalidRegistrationId,
 }
 
 export class SignalClientErrorBase extends Error {
   public readonly code: ErrorCode;
   public readonly operation: string;
+  readonly _addr?: string | Native.ProtocolAddress;
 
   constructor(
     message: string,
@@ -41,27 +46,48 @@ export class SignalClientErrorBase extends Error {
       Error.captureStackTrace(this);
     }
   }
+
+  public get addr(): ProtocolAddress | string {
+    switch (this.code) {
+      case ErrorCode.UntrustedIdentity:
+        return this._addr as string;
+      case ErrorCode.InvalidRegistrationId:
+        return ProtocolAddress._fromNativeHandle(
+          this._addr as Native.ProtocolAddress
+        );
+      default:
+        throw new TypeError(`cannot get address from this error (${this})`);
+    }
+  }
 }
 
-export type GenericError = SignalClientErrorBase & {
+export type SignalClientErrorCommon = Omit<SignalClientErrorBase, 'addr'>;
+
+export type GenericError = SignalClientErrorCommon & {
   code: ErrorCode.Generic;
 };
 
-export type DuplicatedMessageError = SignalClientErrorBase & {
+export type DuplicatedMessageError = SignalClientErrorCommon & {
   code: ErrorCode.DuplicatedMessage;
 };
 
-export type SealedSenderSelfSendError = SignalClientErrorBase & {
+export type SealedSenderSelfSendError = SignalClientErrorCommon & {
   code: ErrorCode.SealedSenderSelfSend;
 };
 
-export type UntrustedIdentityError = SignalClientErrorBase & {
+export type UntrustedIdentityError = SignalClientErrorCommon & {
   code: ErrorCode.UntrustedIdentity;
   addr: string;
+};
+
+export type InvalidRegistrationIdError = SignalClientErrorCommon & {
+  code: ErrorCode.InvalidRegistrationId;
+  addr: ProtocolAddress;
 };
 
 export type SignalClientError =
   | GenericError
   | DuplicatedMessageError
   | SealedSenderSelfSendError
-  | UntrustedIdentityError;
+  | UntrustedIdentityError
+  | InvalidRegistrationIdError;

@@ -112,6 +112,34 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             return;
         }
 
+        SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(ref addr, _value)) => {
+            let throwable = protocol_address_to_jobject(env, addr)
+                .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
+                .and_then(|(addr_object, message)| {
+                    Ok(env.new_object(
+                        "org/whispersystems/libsignal/InvalidRegistrationIdException",
+                        jni_signature!(
+                            (
+                                org.whispersystems.libsignal.SignalProtocolAddress,
+                                java.lang.String,
+                            ) -> void
+                        ),
+                        &[JValue::from(addr_object), JValue::from(message)],
+                    )?)
+                });
+
+            match throwable {
+                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
+                Ok(throwable) => {
+                    let result = env.throw(JThrowable::from(throwable));
+                    if let Err(e) = result {
+                        log::error!("failed to throw exception for {}: {}", error, e);
+                    }
+                }
+            }
+            return;
+        }
+
         SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
             let throwable = env.new_object(
                 "org/whispersystems/libsignal/fingerprint/FingerprintVersionMismatchException",
@@ -258,6 +286,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend)
         | SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
         | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _))
+        | SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(..))
         | SignalJniError::UnexpectedPanic(_)
         | SignalJniError::BadJniParameter(_)
         | SignalJniError::UnexpectedJniResultType(_, _) => {
@@ -435,6 +464,22 @@ pub fn jobject_from_serialized<'a>(
     let ctor_sig = jni_signature!(([byte]) -> void);
     let ctor_args = [JValue::from(to_jbytearray(env, Ok(serialized))?)];
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
+}
+
+/// Constructs a Java SignalProtocolAddress from a ProtocolAddress value.
+fn protocol_address_to_jobject<'a>(
+    env: &'a JNIEnv,
+    address: &ProtocolAddress,
+) -> Result<JObject<'a>, SignalJniError> {
+    let address_class = env.find_class("org/whispersystems/libsignal/SignalProtocolAddress")?;
+    let address_ctor_args = [
+        JObject::from(env.new_string(address.name())?).into(),
+        JValue::from(address.device_id().convert_into(env)?),
+    ];
+
+    let address_ctor_sig = jni_signature!((java.lang.String, int) -> void);
+    let address_jobject = env.new_object(address_class, address_ctor_sig, &address_ctor_args)?;
+    Ok(address_jobject)
 }
 
 /// Verifies that a Java object is a non-`null` instance of the given class.

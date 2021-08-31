@@ -10,12 +10,14 @@ public abstract class ProtocolException extends Exception {
   private final int senderDevice;
 
   public ProtocolException(Exception e, String sender, int senderDevice) {
+    super(e);
     this.content      = Optional.absent();
     this.sender       = sender;
     this.senderDevice = senderDevice;
   }
 
   ProtocolException(Exception e, UnidentifiedSenderMessageContent content) {
+    super(e);
     this.content      = Optional.of(content);
     this.sender       = content.getSenderCertificate().getSender();
     this.senderDevice = content.getSenderCertificate().getSenderDeviceId();

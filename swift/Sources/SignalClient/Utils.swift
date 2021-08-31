@@ -73,6 +73,12 @@ internal func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<Opaqu
     return CiphertextMessage(owned: handle)
 }
 
+internal func invokeFnReturningProtocolAddress(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> ProtocolAddress {
+    var handle: OpaquePointer?
+    try checkError(fn(&handle))
+    return ProtocolAddress(owned: handle!)
+}
+
 extension StoreContext {
     internal func withOpaquePointer<Result>(_ body: (UnsafeMutablePointer<StoreContext>) throws -> Result) rethrows -> Result {
         var selfAsPointer: StoreContext = self

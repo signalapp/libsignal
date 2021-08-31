@@ -302,7 +302,57 @@ class SessionTests: TestCaseBase {
                                         context: NullContext())
 
         XCTAssertEqual(b_ptext, [1, 2, 3])
+    }
 
+    func testSealedSenderGroupCipherWithBadRegistrationId() throws {
+        let alice_address = try! ProtocolAddress(name: "9d0652a3-dcc3-4d11-975f-74d61598733f", deviceId: 1)
+        let bob_address = try! ProtocolAddress(name: "6838237D-02F6-4098-B110-698253D15961", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = InMemorySignalProtocolStore(identity: IdentityKeyPair.generate(), registrationId: 0x4000)
+
+        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+
+        let trust_root = IdentityKeyPair.generate()
+        let server_keys = IdentityKeyPair.generate()
+        let server_cert = try! ServerCertificate(keyId: 1, publicKey: server_keys.publicKey, trustRoot: trust_root.privateKey)
+        let sender_addr = try! SealedSenderAddress(e164: "+14151111111",
+                                                   uuidString: alice_address.name,
+                                                   deviceId: 1)
+        let sender_cert = try! SenderCertificate(sender: sender_addr,
+                                                 publicKey: alice_store.identityKeyPair(context: NullContext()).publicKey,
+                                                 expiration: 31337,
+                                                 signerCertificate: server_cert,
+                                                 signerKey: server_keys.privateKey)
+
+        let distribution_id = UUID(uuidString: "d1d1d1d1-7000-11eb-b32a-33b8a8a487a6")!
+
+        _ = try! SenderKeyDistributionMessage(from: alice_address,
+                                              distributionId: distribution_id,
+                                              store: alice_store,
+                                              context: NullContext())
+
+        let a_message = try! groupEncrypt([1, 2, 3],
+                                          from: alice_address,
+                                          distributionId: distribution_id,
+                                          store: alice_store,
+                                          context: NullContext())
+
+        let a_usmc = try! UnidentifiedSenderMessageContent(a_message,
+                                                           from: sender_cert,
+                                                           contentHint: .default,
+                                                           groupId: [42])
+
+        do {
+            _ = try sealedSenderMultiRecipientEncrypt(a_usmc,
+                                                      for: [bob_address],
+                                                      identityStore: alice_store,
+                                                      sessionStore: alice_store,
+                                                      context: NullContext())
+            XCTFail("should have thrown")
+        } catch SignalError.invalidRegistrationId(address: let address, message: _) {
+            XCTAssertEqual(address, bob_address)
+        }
     }
 
     func testDecryptionErrorMessage() throws {
@@ -380,6 +430,7 @@ class SessionTests: TestCaseBase {
             ("testSealedSenderSession", testSealedSenderSession),
             ("testArchiveSession", testArchiveSession),
             ("testSealedSenderGroupCipher", testSealedSenderGroupCipher),
+            ("testSealedSenderGroupCipherWithBadRegistrationId", testSealedSenderGroupCipherWithBadRegistrationId),
             ("testDecryptionErrorMessage", testDecryptionErrorMessage)
         ]
     }

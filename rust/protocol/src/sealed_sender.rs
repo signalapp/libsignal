@@ -919,7 +919,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
 
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     let mut previous_their_identity = None;
-    for (destination, session) in destinations.iter().zip(destination_sessions) {
+    for (&destination, session) in destinations.iter().zip(destination_sessions) {
         let their_uuid = Uuid::parse_str(destination.name()).map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
                 "multi-recipient sealed sender requires UUID recipients (not {})",
@@ -944,15 +944,16 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
                 ),
             )
         })?;
-        let their_registration_id = u16::try_from(their_registration_id).map_err(|_| {
-            SignalProtocolError::InvalidState(
-                "remote_registration_id",
-                format!(
-                    "{} has too-high registration ID {:#X}",
-                    destination, their_registration_id
-                ),
-            )
-        })?;
+        // Valid registration IDs fit in 14 bits.
+        // TODO: move this into a RegistrationId strong type.
+        if their_registration_id & 0x3FFF != their_registration_id {
+            return Err(SignalProtocolError::InvalidRegistrationId(
+                destination.clone(),
+                their_registration_id,
+            ));
+        }
+        let their_registration_id =
+            u16::try_from(their_registration_id).expect("just checked range");
 
         let end_of_previous_recipient_data = serialized.len();
 
