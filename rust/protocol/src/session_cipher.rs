@@ -281,10 +281,63 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
 
 fn create_decryption_failure_log(
     remote_address: &ProtocolAddress,
-    errs: &[SignalProtocolError],
+    mut errs: &[SignalProtocolError],
     record: &SessionRecord,
     ciphertext: &SignalMessage,
 ) -> Result<String> {
+    fn append_session_summary(
+        lines: &mut Vec<String>,
+        idx: usize,
+        state: Result<&SessionState>,
+        err: Option<&SignalProtocolError>,
+    ) {
+        let chains = state.and_then(|state| state.all_receiver_chain_logging_info());
+        match (err, &chains) {
+            (Some(err), Ok(chains)) => {
+                lines.push(format!(
+                    "Candidate session {} failed with '{}', had {} receiver chains",
+                    idx,
+                    err,
+                    chains.len()
+                ));
+            }
+            (Some(err), Err(state_err)) => {
+                lines.push(format!(
+                    "Candidate session {} failed with '{}'; cannot get receiver chain info ({})",
+                    idx, err, state_err,
+                ));
+            }
+            (None, Ok(chains)) => {
+                lines.push(format!(
+                    "Candidate session {} had {} receiver chains",
+                    idx,
+                    chains.len()
+                ));
+            }
+            (None, Err(state_err)) => {
+                lines.push(format!(
+                    "Candidate session {}: cannot get receiver chain info ({})",
+                    idx, state_err,
+                ));
+            }
+        }
+
+        if let Ok(chains) = chains {
+            for chain in chains {
+                let chain_idx = match chain.1 {
+                    Some(i) => i.to_string(),
+                    None => "missing in protobuf".to_string(),
+                };
+
+                lines.push(format!(
+                    "Receiver chain with sender ratchet public key {} chain key index {}",
+                    hex::encode(chain.0),
+                    chain_idx
+                ));
+            }
+        }
+    }
+
     let mut lines = vec![];
 
     lines.push(format!(
@@ -294,44 +347,26 @@ fn create_decryption_failure_log(
         ciphertext.counter()
     ));
 
-    let current_session = record.session_state().ok();
-    for (idx, (state, err)) in current_session
-        .into_iter()
-        .chain(record.previous_session_states()?)
+    if let Ok(current_session) = record.session_state() {
+        let err = errs.first();
+        if err.is_some() {
+            errs = &errs[1..];
+        }
+        append_session_summary(&mut lines, 0, Ok(current_session), err);
+    } else {
+        lines.push("No current session".to_string());
+    }
+
+    for (idx, (state, err)) in record
+        .previous_session_states()
         .zip(errs.iter().map(Some).chain(std::iter::repeat(None)))
         .enumerate()
     {
-        let chains = state.all_receiver_chain_logging_info()?;
-        match err {
-            Some(err) => {
-                lines.push(format!(
-                    "Candidate session {} failed with '{}', had {} receiver chains",
-                    idx,
-                    err,
-                    chains.len()
-                ));
-            }
-            None => {
-                lines.push(format!(
-                    "Candidate session {} had {} receiver chains",
-                    idx,
-                    chains.len()
-                ));
-            }
-        }
-
-        for chain in chains {
-            let chain_idx = match chain.1 {
-                Some(i) => format!("{}", i),
-                None => "missing in protobuf".to_string(),
-            };
-
-            lines.push(format!(
-                "Receiver chain with sender ratchet public key {} chain key index {}",
-                hex::encode(chain.0),
-                chain_idx
-            ));
-        }
+        let state = match state {
+            Ok(ref state) => Ok(state),
+            Err(err) => Err(err),
+        };
+        append_session_summary(&mut lines, idx + 1, state, err);
     }
 
     Ok(lines.join("\n"))
@@ -394,10 +429,10 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     // Try some old sessions:
     let mut updated_session = None;
 
-    for (idx, previous) in record.previous_session_states()?.enumerate() {
-        let mut updated = previous.clone();
+    for (idx, previous) in record.previous_session_states().enumerate() {
+        let mut previous = previous?;
 
-        let result = decrypt_message_with_state(&mut updated, ciphertext, remote_address, csprng);
+        let result = decrypt_message_with_state(&mut previous, ciphertext, remote_address, csprng);
 
         match result {
             Ok(ptext) => {
@@ -408,14 +443,14 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                         .sender_ratchet_key_for_logging()
                         .expect("successful decrypt always has a valid base key"),
                 );
-                updated_session = Some((ptext, idx, updated));
+                updated_session = Some((ptext, idx, previous));
                 break;
             }
             Err(SignalProtocolError::DuplicatedMessage(_, _)) => {
                 return result;
             }
             Err(e) => {
-                log_decryption_failure(previous, &e);
+                log_decryption_failure(&previous, &e);
                 errs.push(e);
             }
         }
@@ -425,12 +460,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         record.promote_old_session(idx, updated_session)?;
         Ok(ptext)
     } else {
-        let previous_state_count = || {
-            record.previous_session_states().map_or_else(
-                |e| format!("<error: {}>", e),
-                |states| states.count().to_string(),
-            )
-        };
+        let previous_state_count = || record.previous_session_states().len();
 
         if let Ok(current_state) = record.session_state() {
             log::error!(

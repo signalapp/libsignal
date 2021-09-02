@@ -56,9 +56,9 @@ message SessionStructure {
 }
 
 message RecordStructure {
-  SessionStructure          current_session   = 1;
+  SessionStructure current_session = 1;
   // The order is significant; sessions at the end are "older" and will get trimmed.
-  repeated SessionStructure previous_sessions = 2;
+  repeated /*SessionStructure*/ bytes previous_sessions = 2;
 }
 
 message PreKeyRecordStructure {
