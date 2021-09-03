@@ -211,10 +211,10 @@ impl InMemSessionStore {
     ) -> Result<Vec<&SessionRecord>> {
         addresses
             .iter()
-            .map(|address| {
+            .map(|&address| {
                 self.sessions
                     .get(address)
-                    .ok_or_else(|| SignalProtocolError::SessionNotFound(address.to_string()))
+                    .ok_or_else(|| SignalProtocolError::SessionNotFound(address.clone()))
             })
             .collect()
     }

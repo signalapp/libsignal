@@ -65,8 +65,8 @@ pub enum SignalProtocolError {
     /// no sender key state
     NoSenderKeyState,
 
-    /// session with '{0}' not found
-    SessionNotFound(String),
+    /// session with {0} not found
+    SessionNotFound(crate::ProtocolAddress),
     /// invalid session structure
     InvalidSessionStructure,
     /// session for {0} has invalid registration ID {1:X}

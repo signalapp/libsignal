@@ -27,7 +27,7 @@ pub async fn message_encrypt(
     let mut session_record = session_store
         .load_session(remote_address, ctx)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", remote_address)))?;
+        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
     let session_state = session_record.session_state_mut()?;
 
     let chain_key = session_state.get_sender_chain_key()?;
@@ -240,7 +240,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     let mut session_record = session_store
         .load_session(remote_address, ctx)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", remote_address)))?;
+        .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
 
     let ptext =
         decrypt_message_with_record(remote_address, &mut session_record, ciphertext, csprng)?;

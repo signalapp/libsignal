@@ -849,7 +849,7 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     let their_identity = identity_store
         .get_identity(destination, ctx)
         .await?
-        .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", destination)))?;
+        .ok_or_else(|| SignalProtocolError::SessionNotFound(destination.clone()))?;
 
     let ephemeral = KeyPair::generate(rng);
 
@@ -1270,7 +1270,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         let their_identity = identity_store
             .get_identity(destination, ctx)
             .await?
-            .ok_or_else(|| SignalProtocolError::SessionNotFound(format!("{}", destination)))?;
+            .ok_or_else(|| SignalProtocolError::SessionNotFound(destination.clone()))?;
 
         let their_registration_id = session.remote_registration_id().map_err(|_| {
             SignalProtocolError::InvalidState(
