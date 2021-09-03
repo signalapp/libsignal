@@ -508,7 +508,6 @@ mod sender_key_record_add_sender_key_state_tests {
         context.add_sender_key_state_record(record_key, &chain_key);
 
         context.assert_number_of_states(1);
-
         context.assert_records_chain_key(record_key, &chain_key);
     }
 
