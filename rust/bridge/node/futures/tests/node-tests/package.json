@@ -10,9 +10,9 @@
   },
   "devDependencies": {
     "benchmark": "^2.1.4",
-    "chai": "4.2.0",
+    "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "microtime": "^3.0.0",
-    "mocha": "8.2.1"
+    "mocha": "^8.4"
   }
 }
