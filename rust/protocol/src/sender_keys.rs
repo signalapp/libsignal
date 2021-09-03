@@ -531,7 +531,7 @@ mod sender_key_record_add_sender_key_state_tests {
     }
 
     #[test]
-    fn oldest_is_ejected() {
+    fn when_exceed_maximum_states_then_oldest_is_ejected() {
         assert_eq!(
             5,
             consts::MAX_SENDER_KEY_STATES,
@@ -573,7 +573,7 @@ mod sender_key_record_add_sender_key_state_tests {
     }
 
     #[test]
-    fn when_second_state_with_same_public_key_and_chain_id_it_keeps_first_data() {
+    fn when_second_state_with_same_public_key_and_chain_id_added_then_it_keeps_first_data() {
         let mut context = TestContext::new();
 
         let chain_id = 1;
@@ -589,7 +589,7 @@ mod sender_key_record_add_sender_key_state_tests {
     }
 
     #[test]
-    fn when_second_state_with_different_public_key_but_same_chain_id_it_gets_replaced() {
+    fn when_second_state_with_different_public_key_but_same_chain_id_added_then_it_gets_replaced() {
         let mut context = TestContext::new();
 
         let chain_id = 1;
@@ -606,8 +606,7 @@ mod sender_key_record_add_sender_key_state_tests {
     }
 
     #[test]
-    fn add_second_sender_key_state_with_same_public_key_and_chain_id_then_it_becomes_the_most_recent(
-    ) {
+    fn when_second_state_with_same_public_key_and_chain_id_added_then_it_becomes_the_most_recent() {
         let mut context = TestContext::new();
 
         let chain_id_1 = 1;
