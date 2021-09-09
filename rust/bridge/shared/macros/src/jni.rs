@@ -15,13 +15,17 @@ use crate::ResultKind;
 pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
     let name = format_ident!("Java_org_signal_client_internal_Native_{}", name);
 
-    let (env_arg, output) = match (result_kind, &sig.output) {
-        (ResultKind::Regular, ReturnType::Default) => (quote!(), quote!()),
+    let (env_arg, output, output_type) = match (result_kind, &sig.output) {
+        (ResultKind::Regular, ReturnType::Default) => (quote!(), quote!(), quote!(())),
         (ResultKind::Regular, ReturnType::Type(_, ref ty)) => {
-            (quote!(), quote!(-> jni_result_type!(#ty)))
+            (quote!(), quote!(-> jni_result_type!(#ty)), quote!(#ty))
         }
-        (ResultKind::Void, _) => (quote!(), quote!()),
-        (ResultKind::Buffer, ReturnType::Type(_, _)) => (quote!(&env,), quote!(-> jni::jbyteArray)),
+        (ResultKind::Void, _) => (quote!(), quote!(), quote!(())),
+        (ResultKind::Buffer, ReturnType::Type(_, _)) => (
+            quote!(&env,),
+            quote!(-> jni::jbyteArray),
+            quote!(jni::jbyteArray),
+        ),
         (ResultKind::Buffer, ReturnType::Default) => {
             return Error::new(
                 sig.paren_token.span,
@@ -86,9 +90,12 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
         ) #output {
             jni::run_ffi_safe(&env, || {
                 #(#input_processing);*;
+                env.push_local_frame(8192)?;
                 let __result = #orig_name(#env_arg #(#input_names),*);
                 #await_if_needed;
-                jni::ResultTypeInfo::convert_into(__result, &env)
+                let __retval = jni::ResultTypeInfo::convert_into(__result, &env);
+                env.pop_local_frame(<#output_type as jni::ResultTypeInfo>::convert_into_jobject(&__retval))?;
+                __retval
             })
         }
     }

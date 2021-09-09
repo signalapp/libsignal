@@ -67,6 +67,7 @@ pub use storage::*;
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
 
+pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;

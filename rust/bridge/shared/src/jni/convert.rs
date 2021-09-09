@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::JString;
+use jni::objects::{JObject, JString};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
@@ -107,14 +107,16 @@ where
 /// ```no_run
 /// # use libsignal_bridge::jni::*;
 /// # use jni_crate::JNIEnv;
+/// # use jni_crate::objects::JObject;
 /// # struct Foo;
 /// # impl ResultTypeInfo for Foo {
 /// #     type ResultType = isize;
 /// #     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<isize> { Ok(1) }
+/// #     fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject { JObject::null() }
 /// # }
 /// # fn test<'a>(env: &JNIEnv<'a>) -> SignalJniResult<()> {
 /// #     let rust_result = Foo;
-/// let jni_result = rust_result.convert_into(env)?;
+/// #     let jni_result = rust_result.convert_into(env)?;
 /// #     Ok(())
 /// # }
 /// ```
@@ -125,6 +127,9 @@ pub trait ResultTypeInfo: Sized {
     type ResultType;
     /// Converts the data in `self` to the JNI type, similar to `try_into()`.
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType>;
+    /// Converts the data in `self` into a JObject type for preserving while popping the local
+    /// frame.
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject;
 }
 
 /// Supports values `0..=Integer.MAX_VALUE`.
@@ -374,6 +379,9 @@ impl ResultTypeInfo for bool {
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
     }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
+    }
 }
 
 /// Supports all valid byte values `0..=255`.
@@ -381,6 +389,9 @@ impl ResultTypeInfo for u8 {
     type ResultType = jint;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(self as jint)
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
     }
 }
 
@@ -393,6 +404,9 @@ impl ResultTypeInfo for u32 {
         // Note that we don't check bounds here.
         Ok(self as jint)
     }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
+    }
 }
 
 /// Reinterprets the bits of the `u32` as a Java `int`. Returns `-1` for `None`.
@@ -403,6 +417,9 @@ impl ResultTypeInfo for Option<u32> {
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
         Ok(self.unwrap_or(u32::MAX) as jint)
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
     }
 }
 
@@ -415,12 +432,20 @@ impl ResultTypeInfo for u64 {
         // Note that we don't check bounds here.
         Ok(self as jlong)
     }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
+    }
 }
 
 impl ResultTypeInfo for String {
     type ResultType = jstring;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         self.deref().convert_into(env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -429,12 +454,22 @@ impl ResultTypeInfo for Option<String> {
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         self.as_deref().convert_into(env)
     }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
 }
 
 impl ResultTypeInfo for &str {
     type ResultType = jstring;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(env.new_string(self)?.into_inner())
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -445,6 +480,11 @@ impl ResultTypeInfo for Option<&str> {
             Some(s) => s.convert_into(env),
             None => Ok(std::ptr::null_mut()),
         }
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -463,6 +503,11 @@ impl ResultTypeInfo for uuid::Uuid {
         ];
 
         Ok(*env.new_object(uuid_class, "(JJ)V", &ctor_args)?)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -495,12 +540,20 @@ impl ResultTypeInfo for CiphertextMessage {
 
         Ok(obj?.into_inner())
     }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
     }
 }
 
@@ -509,6 +562,9 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
     }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
@@ -516,12 +572,18 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
     }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for SignalJniResult<T> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
     }
 }
 
@@ -533,12 +595,20 @@ where
     fn convert_into(self, env: &jni::JNIEnv) -> SignalJniResult<Self::ResultType> {
         self.transpose()?.convert_into(env)
     }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <Option<T> as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
 }
 
 impl ResultTypeInfo for Option<jobject> {
     type ResultType = jobject;
     fn convert_into(self, _env: &jni::JNIEnv) -> SignalJniResult<Self::ResultType> {
         Ok(self.unwrap_or(std::ptr::null_mut()))
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -618,6 +688,11 @@ macro_rules! jni_bridge_handle {
             fn convert_into(self, _env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
                 jni::box_object(Ok(self))
             }
+            fn convert_into_jobject(
+                _signal_jni_result: &jni::SignalJniResult<Self::ResultType>,
+            ) -> jni::JavaObject {
+                jni::JavaObject::null()
+            }
         }
         impl jni::ResultTypeInfo for Option<$typ> {
             type ResultType = jni::ObjectHandle;
@@ -626,6 +701,11 @@ macro_rules! jni_bridge_handle {
                     Some(obj) => obj.convert_into(env),
                     None => Ok(0),
                 }
+            }
+            fn convert_into_jobject(
+                _signal_jni_result: &jni::SignalJniResult<Self::ResultType>,
+            ) -> jni::JavaObject {
+                jni::JavaObject::null()
             }
         }
         jni_bridge_destroy!($typ as $jni_name);
@@ -650,12 +730,41 @@ macro_rules! trivial {
             fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self> {
                 Ok(self)
             }
+            fn convert_into_jobject(
+                _signal_jni_result: &SignalJniResult<Self::ResultType>,
+            ) -> JObject {
+                JObject::null()
+            }
+        }
+    };
+}
+
+macro_rules! trivial_jobject {
+    ($typ:ty) => {
+        impl<'a> SimpleArgTypeInfo<'a> for $typ {
+            type ArgType = Self;
+            fn convert_from(_env: &JNIEnv, foreign: Self) -> SignalJniResult<Self> {
+                Ok(foreign)
+            }
+        }
+        impl ResultTypeInfo for $typ {
+            type ResultType = Self;
+            fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self> {
+                Ok(self)
+            }
+            fn convert_into_jobject(
+                signal_jni_result: &SignalJniResult<Self::ResultType>,
+            ) -> JObject {
+                signal_jni_result
+                    .as_ref()
+                    .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+            }
         }
     };
 }
 
 trivial!(i32);
-trivial!(jbyteArray);
+trivial_jobject!(jbyteArray);
 trivial!(());
 
 /// Syntactically translates `bridge_fn` argument types to JNI types for `cbindgen` and
