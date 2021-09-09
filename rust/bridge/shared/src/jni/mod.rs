@@ -62,7 +62,6 @@ mod error;
 pub use error::*;
 
 mod storage;
-use self::jni::objects::AutoLocal;
 pub use storage::*;
 
 /// The type of boxed Rust values, as surfaced in JavaScript.

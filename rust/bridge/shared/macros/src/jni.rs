@@ -15,7 +15,7 @@ use crate::ResultKind;
 pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
     let name = format_ident!("Java_org_signal_client_internal_Native_{}", name);
 
-    let (env_arg, output, output_type) = match (result_kind, &sig.output) {
+    let (env_arg, output, _output_type) = match (result_kind, &sig.output) {
         (ResultKind::Regular, ReturnType::Default) => (quote!(), quote!(), quote!(())),
         (ResultKind::Regular, ReturnType::Type(_, ref ty)) => {
             (quote!(), quote!(-> jni_result_type!(#ty)), quote!(#ty))
