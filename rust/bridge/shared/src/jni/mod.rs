@@ -62,6 +62,7 @@ mod error;
 pub use error::*;
 
 mod storage;
+use self::jni::objects::AutoLocal;
 pub use storage::*;
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
@@ -513,14 +514,24 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
-    let obj: JObject =
-        call_method_checked(env, store_obj, callback_fn, callback_sig, callback_args)?;
-    if obj.is_null() {
+    let obj = env.auto_local(call_method_checked::<_, JObject>(
+        env,
+        store_obj,
+        callback_fn,
+        callback_sig,
+        callback_args,
+    )?);
+    if obj.as_obj().is_null() {
         return Ok(None);
     }
 
-    let handle: jlong =
-        call_method_checked(env, obj, "nativeHandle", jni_signature!(() -> long), &[])?;
+    let handle: jlong = call_method_checked(
+        env,
+        obj.as_obj(),
+        "nativeHandle",
+        jni_signature!(() -> long),
+        &[],
+    )?;
     if handle == 0 {
         return Ok(None);
     }
@@ -539,17 +550,27 @@ pub fn get_object_with_serialization(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
-    let obj: JObject =
-        call_method_checked(env, store_obj, callback_fn, callback_sig, callback_args)?;
+    let obj = env.auto_local(call_method_checked::<_, JObject>(
+        env,
+        store_obj,
+        callback_fn,
+        callback_sig,
+        callback_args,
+    )?);
 
-    if obj.is_null() {
+    if obj.as_obj().is_null() {
         return Ok(None);
     }
 
-    let bytes: JObject =
-        call_method_checked(env, obj, "serialize", jni_signature!(() -> [byte]), &[])?;
+    let bytes = env.auto_local(call_method_checked::<_, JObject>(
+        env,
+        obj.as_obj(),
+        "serialize",
+        jni_signature!(() -> [byte]),
+        &[],
+    )?);
 
-    Ok(Some(env.convert_byte_array(*bytes)?))
+    Ok(Some(env.convert_byte_array(*bytes.as_obj())?))
 }
 
 /// Like [CiphertextMessage], but non-owning.

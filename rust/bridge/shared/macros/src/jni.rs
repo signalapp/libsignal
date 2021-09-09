@@ -90,12 +90,9 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
         ) #output {
             jni::run_ffi_safe(&env, || {
                 #(#input_processing);*;
-                env.push_local_frame(8192)?;
                 let __result = #orig_name(#env_arg #(#input_names),*);
                 #await_if_needed;
-                let __retval = jni::ResultTypeInfo::convert_into(__result, &env);
-                env.pop_local_frame(<#output_type as jni::ResultTypeInfo>::convert_into_jobject(&__retval))?;
-                __retval
+                jni::ResultTypeInfo::convert_into(__result, &env)
             })
         }
     }
