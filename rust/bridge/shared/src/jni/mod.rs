@@ -405,6 +405,39 @@ pub fn to_jbytearray<T: AsRef<[u8]>>(
     Ok(env.byte_array_from_slice(data)?)
 }
 
+/// Calls a passed in function with a local frame of capacity that's passed in. Basically just
+/// the jni with_local_frame except with the result type changed to use SignalJniError instead.
+pub fn with_local_frame<'a, F>(env: &'a JNIEnv, capacity: i32, f: F) -> SignalJniResult<JObject<'a>>
+where
+    F: FnOnce() -> SignalJniResult<JObject<'a>>,
+{
+    env.push_local_frame(capacity)?;
+    let res = f();
+    match res {
+        Ok(obj) => Ok(env.pop_local_frame(obj)?),
+        Err(e) => {
+            env.pop_local_frame(JObject::null())?;
+            Err(e)
+        }
+    }
+}
+
+/// Calls a passed in function with a local frame of capacity that's passed in. Basically just
+/// the jni with_local_frame except with the result type changed to use SignalJniError instead.
+pub fn with_local_frame_no_jobject_result<F, T>(
+    env: &JNIEnv,
+    capacity: i32,
+    f: F,
+) -> SignalJniResult<T>
+where
+    F: FnOnce() -> SignalJniResult<T>,
+{
+    env.push_local_frame(capacity)?;
+    let res = f();
+    env.pop_local_frame(JObject::null())?;
+    res
+}
+
 /// Calls a method and translates any thrown exceptions to
 /// [`SignalProtocolError::ApplicationCallbackError`].
 ///
@@ -513,30 +546,27 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
-    let obj = env.auto_local(call_method_checked::<_, JObject>(
-        env,
-        store_obj,
-        callback_fn,
-        callback_sig,
-        callback_args,
-    )?);
-    if obj.as_obj().is_null() {
-        return Ok(None);
-    }
+    with_local_frame_no_jobject_result(env, 64, || -> SignalJniResult<Option<T>> {
+        let obj = call_method_checked::<_, JObject>(
+            env,
+            store_obj,
+            callback_fn,
+            callback_sig,
+            callback_args,
+        )?;
+        if obj.is_null() {
+            return Ok(None);
+        }
 
-    let handle: jlong = call_method_checked(
-        env,
-        obj.as_obj(),
-        "nativeHandle",
-        jni_signature!(() -> long),
-        &[],
-    )?;
-    if handle == 0 {
-        return Ok(None);
-    }
+        let handle: jlong =
+            call_method_checked(env, obj, "nativeHandle", jni_signature!(() -> long), &[])?;
+        if handle == 0 {
+            return Ok(None);
+        }
 
-    let object = unsafe { native_handle_cast::<T>(handle)? };
-    Ok(Some(object.clone()))
+        let object = unsafe { native_handle_cast::<T>(handle)? };
+        Ok(Some(object.clone()))
+    })
 }
 
 /// Calls a method, then serializes the result.
@@ -549,27 +579,29 @@ pub fn get_object_with_serialization(
     callback_sig: &'static str,
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
-    let obj = env.auto_local(call_method_checked::<_, JObject>(
-        env,
-        store_obj,
-        callback_fn,
-        callback_sig,
-        callback_args,
-    )?);
+    with_local_frame_no_jobject_result(env, 64, || -> SignalJniResult<Option<Vec<u8>>> {
+        let obj = call_method_checked::<_, JObject>(
+            env,
+            store_obj,
+            callback_fn,
+            callback_sig,
+            callback_args,
+        )?;
 
-    if obj.as_obj().is_null() {
-        return Ok(None);
-    }
+        if obj.is_null() {
+            return Ok(None);
+        }
 
-    let bytes = env.auto_local(call_method_checked::<_, JObject>(
-        env,
-        obj.as_obj(),
-        "serialize",
-        jni_signature!(() -> [byte]),
-        &[],
-    )?);
+        let bytes = call_method_checked::<_, JObject>(
+            env,
+            obj,
+            "serialize",
+            jni_signature!(() -> [byte]),
+            &[],
+        )?;
 
-    Ok(Some(env.convert_byte_array(*bytes.as_obj())?))
+        Ok(Some(env.convert_byte_array(*bytes)?))
+    })
 }
 
 /// Like [CiphertextMessage], but non-owning.
