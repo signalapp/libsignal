@@ -41,5 +41,5 @@ task makeAll() {
   group 'Rust'
   description 'Build the native libraries'
 
-  dependsOn 'makeDesktop', 'makeAndroid'
+  dependsOn 'makeJniLibrariesDesktop', 'makeJniLibrariesAndroid'
 }
