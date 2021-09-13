@@ -178,6 +178,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Install NDK 21.0.6113669
+      run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;21.0.6113669"
+
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
