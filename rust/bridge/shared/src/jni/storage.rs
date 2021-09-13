@@ -134,24 +134,30 @@ impl<'a> JniIdentityKeyStore<'a> {
         &self,
         address: &ProtocolAddress,
     ) -> Result<Option<IdentityKey>, SignalJniError> {
-        let address_jobject = protocol_address_to_jobject(self.env, address)?;
-        let callback_sig = jni_signature!((
-            org.whispersystems.libsignal.SignalProtocolAddress
-        ) -> org.whispersystems.libsignal.IdentityKey);
-        let callback_args = [address_jobject.into()];
-
-        let bits = get_object_with_serialization(
+        with_local_frame_no_jobject_result(
             self.env,
-            self.store,
-            &callback_args,
-            callback_sig,
-            "getIdentity",
-        )?;
+            64,
+            || -> SignalJniResult<Option<IdentityKey>> {
+                let address_jobject = protocol_address_to_jobject(self.env, address)?;
+                let callback_sig = jni_signature!(
+                    (org.whispersystems.libsignal.SignalProtocolAddress)
+                    -> org.whispersystems.libsignal.IdentityKey);
+                let callback_args = [address_jobject.into()];
 
-        match bits {
-            None => Ok(None),
-            Some(k) => Ok(Some(IdentityKey::decode(&k)?)),
-        }
+                let bits = get_object_with_serialization(
+                    self.env,
+                    self.store,
+                    &callback_args,
+                    callback_sig,
+                    "getIdentity",
+                )?;
+
+                match bits {
+                    None => Ok(None),
+                    Some(k) => Ok(Some(IdentityKey::decode(&k)?)),
+                }
+            },
+        )
     }
 }
 
