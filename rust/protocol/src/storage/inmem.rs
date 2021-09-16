@@ -32,6 +32,10 @@ impl InMemIdentityKeyStore {
             known_keys: HashMap::new(),
         }
     }
+
+    pub fn reset(&mut self) {
+        self.known_keys.clear();
+    }
 }
 
 #[async_trait(?Send)]
