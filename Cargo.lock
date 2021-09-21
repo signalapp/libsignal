@@ -695,6 +695,7 @@ name = "hsm-enclave"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "log",
  "rand_core 0.6.2",
  "sha2",
  "snow",

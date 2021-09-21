@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-//! Support logic for Signal's device-to-device transfer feature.
+//! Support logic for connecting to an HSM-backed enclave.
 
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+use log::*;
 use std::convert::From;
 use std::fmt;
 
@@ -101,6 +102,10 @@ impl ClientConnectionEstablishment {
             return Err(Error::TrustedCodeError);
         }
         let transport = self.hs.into_transport_mode()?;
+        log::info!(
+            "Successfully completed HSM-enclave connection to codehash {:x?}",
+            received_hash
+        );
         Ok(ClientConnection { transport })
     }
 }
