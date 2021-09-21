@@ -13,14 +13,23 @@ use std::fmt;
 
 mod snow_resolver;
 
-/// Error types for device transfer.
+/// Error types for HSM enclave.
 #[derive(Debug)]
 pub enum Error {
     /// Failure to connect to a trusted HSM.
     HSMCommunicationError(snow::Error),
     /// Failure to connect to trusted code on the given HSM.
     TrustedCodeError,
+    /// Invalid public key provided (used in bridging)
+    InvalidPublicKeyError,
+    /// Invalid code hash provided (used in bridging)
+    InvalidCodeHashError,
+    /// Invalid state of wrapper (used in bridging)
+    InvalidBridgeStateError,
 }
+
+/// Result type for HSM enclave.
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -28,6 +37,19 @@ impl fmt::Display for Error {
             Error::HSMCommunicationError(n) => write!(f, "Error in Noise protocol ({})", n),
             Error::TrustedCodeError => {
                 write!(f, "Trusted HSM process does not match trusted code hash")
+            }
+            Error::InvalidPublicKeyError => {
+                write!(f, "Invalid public key, must be {} bytes", PUB_KEY_SIZE)
+            }
+            Error::InvalidCodeHashError => {
+                write!(
+                    f,
+                    "Invalid code hashes, must be >0 hashes, each exactly {} bytes",
+                    CODE_HASH_SIZE
+                )
+            }
+            Error::InvalidBridgeStateError => {
+                write!(f, "Invalid bridge state")
             }
         }
     }
@@ -67,7 +89,7 @@ impl ClientConnectionEstablishment {
     pub fn new(
         trusted_public_key: [u8; PUB_KEY_SIZE],
         trusted_code_hashes: Vec<[u8; CODE_HASH_SIZE]>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let mut hs = snow::Builder::with_resolver(
             NOISE_PATTERN.parse().expect("valid"),
             Box::new(snow_resolver::Resolver),
@@ -91,7 +113,7 @@ impl ClientConnectionEstablishment {
     }
 
     /// Completes client connection initiation, returns a valid client connection.
-    pub fn complete(mut self, initial_received: &[u8]) -> Result<ClientConnection, Error> {
+    pub fn complete(mut self, initial_received: &[u8]) -> Result<ClientConnection> {
         let mut received_hash = [0u8; CODE_HASH_SIZE];
         let size = self.hs.read_message(initial_received, &mut received_hash)?;
         if size != received_hash.len() {
@@ -130,7 +152,7 @@ const NOISE_TRANSPORT_PER_PAYLOAD_MAX: usize =
 
 impl ClientConnection {
     /// Wrap a plaintext message to be sent, returning the ciphertext.
-    pub fn send(&mut self, plaintext_to_send: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn send(&mut self, plaintext_to_send: &[u8]) -> Result<Vec<u8>> {
         let max_ciphertext_size = plaintext_to_send.len()
             + (1 + plaintext_to_send.len() / NOISE_TRANSPORT_PER_PAYLOAD_MAX)
                 * NOISE_HANDSHAKE_OVERHEAD;
@@ -146,7 +168,7 @@ impl ClientConnection {
     }
 
     /// Unwrap a ciphertext message that's been received, returning the plaintext.
-    pub fn recv(&mut self, received_ciphertext: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn recv(&mut self, received_ciphertext: &[u8]) -> Result<Vec<u8>> {
         let mut received_plaintext: Vec<u8> = vec![0u8; received_ciphertext.len()];
         let mut total_size = 0;
         for chunk in received_ciphertext.chunks(NOISE_TRANSPORT_PER_PACKET_MAX) {

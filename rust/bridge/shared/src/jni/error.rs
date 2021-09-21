@@ -8,6 +8,7 @@ use jni::{JNIEnv, JavaVM};
 use std::fmt;
 
 use device_transfer::Error as DeviceTransferError;
+use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 
@@ -24,6 +25,7 @@ pub enum SignalJniError {
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
+    HsmEnclave(HsmEnclaveError),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
@@ -42,6 +44,9 @@ impl fmt::Display for SignalJniError {
             SignalJniError::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
             }
+            SignalJniError::HsmEnclave(e) => {
+                write!(f, "{}", e)
+            }
             SignalJniError::UnexpectedPanic(e) => match e.downcast_ref::<&'static str>() {
                 Some(s) => write!(f, "unexpected panic: {}", s),
                 None => write!(f, "unknown unexpected panic"),
@@ -59,6 +64,12 @@ impl From<SignalProtocolError> for SignalJniError {
 impl From<DeviceTransferError> for SignalJniError {
     fn from(e: DeviceTransferError) -> SignalJniError {
         SignalJniError::DeviceTransfer(e)
+    }
+}
+
+impl From<HsmEnclaveError> for SignalJniError {
+    fn from(e: HsmEnclaveError) -> SignalJniError {
+        SignalJniError::HsmEnclave(e)
     }
 }
 

@@ -136,6 +136,13 @@ public final class Native {
 
   public static native byte[] HKDF_DeriveSecrets(int outputLength, int version, byte[] ikm, byte[] label, byte[] salt);
 
+  public static native void HsmEnclaveClient_CompleteHandshake(long cli, byte[] handshakeReceived);
+  public static native void HsmEnclaveClient_Destroy(long handle);
+  public static native byte[] HsmEnclaveClient_EstablishedRecv(long cli, byte[] receivedCiphertext);
+  public static native byte[] HsmEnclaveClient_EstablishedSend(long cli, byte[] plaintextToSend);
+  public static native byte[] HsmEnclaveClient_InitialRequest(long cli);
+  public static native long HsmEnclaveClient_New(byte[] trustedPublicKey, byte[] trustedCodeHashes);
+
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
   public static native byte[] IdentityKeyPair_Serialize(long publicKey, long privateKey);
 

@@ -30,3 +30,6 @@ pub mod protocol;
 // Desktop does not make use of device transfer certificates
 #[cfg(any(feature = "jni", feature = "ffi"))]
 pub mod device_transfer;
+
+#[cfg(any(feature = "jni"))]
+pub mod hsm_enclave;

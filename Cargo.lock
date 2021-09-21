@@ -809,6 +809,7 @@ dependencies = [
  "async-trait",
  "device-transfer",
  "futures-util",
+ "hsm-enclave",
  "jni",
  "libc",
  "libsignal-bridge-macros",
