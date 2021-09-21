@@ -48,7 +48,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 
 // function incrementPromise(promise: Promise<number>): Promise<number>
-fn increment_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
+fn increment_promise(mut cx: FunctionContext) -> JsResult<JsPromise> {
     // A much simpler variant that uses the higher abstractions provided by promise.
     let promise = cx.argument::<JsObject>(0)?;
     let future = JsFuture::from_promise(&mut cx, promise, move |cx, result| {
@@ -66,7 +66,7 @@ fn increment_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
 }
 
 // function incrementCallbackPromise(promise: () -> Promise<number>): Promise<number>
-fn increment_callback_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
+fn increment_callback_promise(mut cx: FunctionContext) -> JsResult<JsPromise> {
     // Like increment_promise, but with a callback step to produce the promise.
     // More closely mimics the store-like tests while still being lightweight.
     let callback = cx.argument::<JsFunction>(0)?;
@@ -88,7 +88,8 @@ fn increment_callback_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
     })
 }
 
-register_module!(mut cx, {
+#[neon::main]
+fn register(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("incrementAsync", increment_async)?;
     cx.export_function("incrementPromise", increment_promise)?;
     cx.export_function("incrementCallbackPromise", increment_callback_promise)?;
@@ -110,4 +111,4 @@ register_module!(mut cx, {
     cx.export_function("throwDuringSettle", throw_during_settle)?;
 
     Ok(())
-});
+}
