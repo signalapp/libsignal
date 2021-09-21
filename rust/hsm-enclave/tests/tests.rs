@@ -7,7 +7,7 @@ use hsm_enclave::*;
 const NOISE_PATTERN: &str = "Noise_NK_25519_AESGCM_SHA256";
 
 #[test]
-fn test_hsm_enclave_happy_path() -> Result<(), Error> {
+fn test_hsm_enclave_happy_path() -> Result<()> {
     // Spin up a handshake for the server-side.
     let keypair = snow::Builder::new(NOISE_PATTERN.parse()?).generate_keypair()?;
     let mut server_hs = snow::Builder::new(NOISE_PATTERN.parse()?)
@@ -53,7 +53,7 @@ fn test_hsm_enclave_happy_path() -> Result<(), Error> {
 }
 
 #[test]
-fn test_hsm_enclave_codehash_mismatch() -> Result<(), Error> {
+fn test_hsm_enclave_codehash_mismatch() -> Result<()> {
     // Spin up a handshake for the server-side.
     let keypair = snow::Builder::new(NOISE_PATTERN.parse()?).generate_keypair()?;
     let mut server_hs = snow::Builder::new(NOISE_PATTERN.parse()?)

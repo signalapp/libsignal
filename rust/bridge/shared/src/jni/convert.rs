@@ -567,6 +567,16 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, hsm_enclave::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
+}
+
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {

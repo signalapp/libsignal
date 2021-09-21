@@ -9,6 +9,7 @@ use jni::objects::{JThrowable, JValue};
 use jni::sys::jobject;
 
 use device_transfer::Error as DeviceTransferError;
+use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::convert::{TryFrom, TryInto};
@@ -292,6 +293,20 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::BadJniParameter(_)
         | SignalJniError::UnexpectedJniResultType(_, _) => {
             unreachable!("already handled in prior match")
+        }
+
+        SignalJniError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
+            "org/signal/libsignal/hsmenclave/EnclaveCommunicationFailureException"
+        }
+        SignalJniError::HsmEnclave(HsmEnclaveError::TrustedCodeError) => {
+            "org/signal/libsignal/hsmenclave/TrustedCodeMismatchException"
+        }
+        SignalJniError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
+        | SignalJniError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError) => {
+            "java/lang/IllegalArgumentException"
+        }
+        SignalJniError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
+            "java/lang/IllegalStateException"
         }
     };
 

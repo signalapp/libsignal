@@ -14,6 +14,7 @@ license = "AGPL-3.0-only"
 libsignal-protocol = { path = "../../protocol" }
 signal-crypto = { path = "../../crypto" }
 device-transfer = { path = "../../device-transfer" }
+hsm-enclave = { path = "../../hsm-enclave" }
 libsignal-bridge-macros = { path = "macros" }
 aes-gcm-siv = "0.10.1"
 futures-util = "0.3.7"
