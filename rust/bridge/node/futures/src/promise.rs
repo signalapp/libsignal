@@ -76,7 +76,7 @@ where
         vec![callbacks_object.upcast()],
     )?;
 
-    let promise_ctor: Handle<JsFunction> = cx.global().get(cx, "Promise")?.downcast_or_throw(cx)?;
+    let promise_ctor: Handle<JsFunction> = cx.global().get(cx, "Promise")?;
     let promise = promise_ctor.construct(cx, vec![bound_save_promise_callbacks])?;
 
     let callbacks_object_root = callbacks_object.root(cx);

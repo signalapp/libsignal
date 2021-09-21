@@ -72,7 +72,7 @@ fn increment_callback_promise(mut cx: FunctionContext) -> JsResult<JsObject> {
     let callback = cx.argument::<JsFunction>(0)?;
     let undefined = cx.undefined();
     let promise = callback
-        .call(&mut cx, undefined, std::iter::empty::<Handle<JsValue>>())?
+        .call(&mut cx, undefined, [])?
         .downcast_or_throw(&mut cx)?;
     let future = JsFuture::from_promise(&mut cx, promise, move |cx, result| {
         cx.try_catch(|cx| {

@@ -30,7 +30,7 @@ impl ChannelEx for Channel {
             });
             task.poll();
             Ok(())
-        })
+        });
     }
 
     fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
@@ -101,6 +101,6 @@ where
         channel.send(move |_cx| {
             self.poll();
             Ok(())
-        })
+        });
     }
 }

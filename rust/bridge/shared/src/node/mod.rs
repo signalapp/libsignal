@@ -9,6 +9,7 @@ use std::ops::Deref;
 
 pub(crate) use neon::context::Context;
 pub(crate) use neon::prelude::*;
+pub(crate) use neon::types::buffer::TypedArray;
 
 /// Used to keep track of all generated entry points.
 ///

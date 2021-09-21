@@ -29,12 +29,8 @@ fn new_js_error<'a>(
     extra_props: Option<Handle<'a, JsObject>>,
 ) -> Option<Handle<'a, JsObject>> {
     let result = cx.try_catch(|cx| {
-        let errors_module: Handle<JsObject> = module
-            .get(cx, ERRORS_PROPERTY_NAME)?
-            .downcast_or_throw(cx)?;
-        let error_class: Handle<JsFunction> = errors_module
-            .get(cx, ERROR_CLASS_NAME)?
-            .downcast_or_throw(cx)?;
+        let errors_module: Handle<JsObject> = module.get(cx, ERRORS_PROPERTY_NAME)?;
+        let error_class: Handle<JsFunction> = errors_module.get(cx, ERROR_CLASS_NAME)?;
         let name_arg = match name {
             Some(name) => cx.string(name).upcast(),
             None => cx.undefined().upcast(),

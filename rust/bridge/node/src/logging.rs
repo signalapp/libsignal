@@ -73,37 +73,31 @@ impl log::Log for NodeLogger {
         let line = record.line();
         let message = record.args().to_string();
         let level = record.level();
-        self.channel
-            .try_send(move |mut cx| {
-                let level_arg: Handle<JsValue> =
-                    cx.number(u32::from(LogLevel::from(level))).upcast();
-                let target_arg: Handle<JsValue> = cx.string(target).upcast();
-                let file_arg: Handle<JsValue> = match file {
-                    Some(file) => cx.string(file).upcast(),
-                    None => cx.null().upcast(),
-                };
-                let line_arg: Handle<JsValue> = match line {
-                    Some(line) => cx.number(line as f64).upcast(),
-                    None => cx.null().upcast(),
-                };
-                let message_arg: Handle<JsValue> = cx.string(message).upcast();
+        // Drop any error; it's not like we can log it!
+        // Most likely the Node event loop has already shut down.
+        let _ = self.channel.try_send(move |mut cx| {
+            let level_arg: Handle<JsValue> = cx.number(u32::from(LogLevel::from(level))).upcast();
+            let target_arg: Handle<JsValue> = cx.string(target).upcast();
+            let file_arg: Handle<JsValue> = match file {
+                Some(file) => cx.string(file).upcast(),
+                None => cx.null().upcast(),
+            };
+            let line_arg: Handle<JsValue> = match line {
+                Some(line) => cx.number(line as f64).upcast(),
+                None => cx.null().upcast(),
+            };
+            let message_arg: Handle<JsValue> = cx.string(message).upcast();
 
-                let global_obj = cx.global();
-                let log_fn = global_obj
-                    .get(&mut cx, GLOBAL_LOG_FN_KEY)?
-                    .downcast_or_throw::<JsFunction, _>(&mut cx)?;
-                let undef = cx.undefined();
-                log_fn.call(
-                    &mut cx,
-                    undef,
-                    vec![level_arg, target_arg, file_arg, line_arg, message_arg],
-                )?;
-                Ok(())
-            })
-            .unwrap_or_else(|_| {
-                // Drop the error; it's not like we can log it!
-                // Most likely the Node event loop has already shut down.
-            });
+            let global_obj = cx.global();
+            let log_fn: Handle<JsFunction> = global_obj.get(&mut cx, GLOBAL_LOG_FN_KEY)?;
+            let undef = cx.undefined();
+            log_fn.call(
+                &mut cx,
+                undef,
+                vec![level_arg, target_arg, file_arg, line_arg, message_arg],
+            )?;
+            Ok(())
+        });
     }
 
     fn flush(&self) {}

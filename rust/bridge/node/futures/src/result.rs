@@ -9,7 +9,7 @@ use neon::prelude::*;
 pub type JsPromiseResult<'a> = Result<Handle<'a, JsValue>, Handle<'a, JsValue>>;
 
 /// A trait to lift the cases of Result into types, to be used as generic arguments.
-pub(crate) trait JsPromiseResultConstructor {
+pub(crate) trait JsPromiseResultConstructor: 'static {
     fn make(value: Handle<JsValue>) -> JsPromiseResult;
 }
 

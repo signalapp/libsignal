@@ -24,8 +24,8 @@ pub fn call_method<'a>(
     cx: &mut impl Context<'a>,
     this: Handle<'a, impl Object>,
     method_name: &str,
-    args: impl IntoIterator<Item = Handle<'a, JsValue>>,
+    args: impl AsRef<[Handle<'a, JsValue>]>,
 ) -> JsResult<'a, JsValue> {
-    let method: Handle<JsFunction> = this.get(cx, method_name)?.downcast_or_throw(cx)?;
+    let method: Handle<JsFunction> = this.get(cx, method_name)?;
     method.call(cx, this, args)
 }

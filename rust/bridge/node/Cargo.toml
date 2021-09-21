@@ -22,7 +22,7 @@ armv8 = ["libsignal-protocol/armv8", "libsignal-bridge/armv8"]
 libsignal-protocol = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node"] }
 signal-neon-futures = { path = "futures" }
-neon = { version = "0.9", default-features = false, features = ["napi-6", "channel-api"] }
+neon = { version = "0.10.0", default-features = false, features = ["napi-6", "channel-api"] }
 rand = "0.7.3"
 log = "0.4"
 log-panics = { version = "2.0.0", features = ["with-backtrace"] }
