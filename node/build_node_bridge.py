@@ -50,22 +50,16 @@ def main(args=None):
     if node_os_name is None:
         print('ERROR: --os-name is required')
         return 1
-    if node_os_name.startswith('..\\'):
-        node_os_name = node_os_name[3:]
 
     cargo_target = options.cargo_target
     if cargo_target is None:
         print('ERROR: --cargo-target is required')
         return 1
-    if cargo_target.startswith('..\\'):
-        cargo_target = cargo_target[3:]
 
     node_arch = options.node_arch
     if node_arch is None:
         print('ERROR: --node_arch is required')
         return 1
-    if node_arch.startswith('..\\'):
-        node_arch = node_arch[3:]
 
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 

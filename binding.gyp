@@ -23,12 +23,13 @@
                     'action': [
                         'python3',
                         'node/build_node_bridge.py',
+                        # Use separated arguments for paths, joined arguments for non-paths.
                         '--out-dir', '<(PRODUCT_DIR)/',
-                        '--os-name', '<(NODE_OS_NAME)',
-                        '--configuration', '<(CONFIGURATION_NAME)',
+                        '--os-name=<(NODE_OS_NAME)',
+                        '--configuration=<(CONFIGURATION_NAME)',
                         '--cargo-build-dir', '<(INTERMEDIATE_DIR)/rust',
-                        '--cargo-target', '<(CARGO_ARCH)-<(CARGO_TARGET_SUFFIX)',
-                        '--node-arch', '<(target_arch)'
+                        '--cargo-target=<(CARGO_ARCH)-<(CARGO_TARGET_SUFFIX)',
+                        '--node-arch=<(target_arch)'
                         ],
                     'inputs': [],
                     'outputs': [
