@@ -14,14 +14,14 @@ use std::task::{Poll, Wake};
 /// [Channel]: https://docs.rs/neon/0.9.0/neon/event/struct.Channel.html
 pub trait ChannelEx {
     /// Schedules the future to run on the JavaScript main thread until complete.
-    fn send_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send);
+    fn send_future(&self, future: impl Future<Output = ()> + 'static + Send);
     /// Polls the future synchronously, then schedules it to run on the JavaScript main thread from
     /// then on.
-    fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send);
+    fn start_future(&self, future: impl Future<Output = ()> + 'static + Send);
 }
 
 impl ChannelEx for Channel {
-    fn send_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
+    fn send_future(&self, future: impl Future<Output = ()> + 'static + Send) {
         let self_for_task = self.clone();
         self.send(move |_| {
             let task = Arc::new(FutureTask {
@@ -33,9 +33,9 @@ impl ChannelEx for Channel {
         });
     }
 
-    fn start_future(self: Arc<Self>, future: impl Future<Output = ()> + 'static + Send) {
+    fn start_future(&self, future: impl Future<Output = ()> + 'static + Send) {
         let task = Arc::new(FutureTask {
-            channel: self,
+            channel: self.clone(),
             future: Mutex::new(Some(Box::pin(future))),
         });
         task.poll();
@@ -67,7 +67,7 @@ struct FutureTask<F>
 where
     F: Future<Output = ()> + 'static + Send,
 {
-    channel: Arc<Channel>,
+    channel: Channel,
     future: Mutex<Option<Pin<Box<F>>>>,
 }
 
