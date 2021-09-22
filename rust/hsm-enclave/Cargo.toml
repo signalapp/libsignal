@@ -6,11 +6,11 @@ edition = "2018"
 
 [dependencies]
 snow = { version = "0.8.0", default-features = false }
-aes-gcm = "0.9"
 rand_core = { version = "0.6", features = ["getrandom"] }
 sha2 = "0.9"
 x25519-dalek = "1.1"
 log = "0.4"
+chacha20poly1305 = "0.8.2"
 
 [dev-dependencies]
 snow = { version = "0.8.0", features = ["default-resolver"] }
