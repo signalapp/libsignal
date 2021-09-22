@@ -113,7 +113,7 @@ impl PublicKey {
                 if signature.len() != curve25519::SIGNATURE_LENGTH {
                     return Ok(false);
                 }
-                Ok(curve25519::KeyPair::verify_signature(
+                Ok(curve25519::PrivateKey::verify_signature(
                     &pub_key,
                     message,
                     array_ref![signature, 0, curve25519::SIGNATURE_LENGTH],
@@ -231,7 +231,8 @@ impl PrivateKey {
     pub fn public_key(&self) -> Result<PublicKey> {
         match self.key {
             PrivateKeyData::DjbPrivateKey(private_key) => {
-                let public_key = curve25519::derive_public_key(&private_key);
+                let public_key =
+                    curve25519::PrivateKey::from(private_key).derive_public_key_bytes();
                 Ok(PublicKey::new(PublicKeyData::DjbPublicKey(public_key)))
             }
         }
@@ -250,8 +251,8 @@ impl PrivateKey {
     ) -> Result<Box<[u8]>> {
         match self.key {
             PrivateKeyData::DjbPrivateKey(k) => {
-                let kp = curve25519::KeyPair::from(k);
-                Ok(Box::new(kp.calculate_signature(csprng, message)))
+                let private_key = curve25519::PrivateKey::from(k);
+                Ok(Box::new(private_key.calculate_signature(csprng, message)))
             }
         }
     }
@@ -259,8 +260,8 @@ impl PrivateKey {
     pub fn calculate_agreement(&self, their_key: &PublicKey) -> Result<Box<[u8]>> {
         match (self.key, their_key.key) {
             (PrivateKeyData::DjbPrivateKey(priv_key), PublicKeyData::DjbPublicKey(pub_key)) => {
-                let kp = curve25519::KeyPair::from(priv_key);
-                Ok(Box::new(kp.calculate_agreement(&pub_key)))
+                let private_key = curve25519::PrivateKey::from(priv_key);
+                Ok(Box::new(private_key.calculate_agreement(&pub_key)))
             }
         }
     }
@@ -288,10 +289,14 @@ pub struct KeyPair {
 
 impl KeyPair {
     pub fn generate<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
-        let keypair = curve25519::KeyPair::new(csprng);
+        let private_key = curve25519::PrivateKey::new(csprng);
 
-        let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(*keypair.public_key()));
-        let private_key = PrivateKey::from(PrivateKeyData::DjbPrivateKey(*keypair.private_key()));
+        let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(
+            private_key.derive_public_key_bytes(),
+        ));
+        let private_key = PrivateKey::from(PrivateKeyData::DjbPrivateKey(
+            private_key.private_key_bytes(),
+        ));
 
         Self {
             public_key,
