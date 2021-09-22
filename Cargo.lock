@@ -687,7 +687,7 @@ dependencies = [
 name = "hsm-enclave"
 version = "0.1.0"
 dependencies = [
- "aes-gcm",
+ "chacha20poly1305",
  "log",
  "rand_core 0.6.2",
  "sha2",

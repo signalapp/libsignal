@@ -4,7 +4,7 @@
 //
 
 use hsm_enclave::*;
-const NOISE_PATTERN: &str = "Noise_NK_25519_AESGCM_SHA256";
+const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";
 
 #[test]
 fn test_hsm_enclave_happy_path() -> Result<()> {

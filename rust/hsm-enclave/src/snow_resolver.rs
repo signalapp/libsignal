@@ -5,14 +5,16 @@
 
 use std::convert::TryInto;
 
-use aes_gcm::aead::generic_array::typenum::Unsigned;
-use aes_gcm::{AeadCore, AeadInPlace, NewAead};
+use chacha20poly1305::aead::{AeadInPlace, NewAead};
+use chacha20poly1305::ChaCha20Poly1305;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use snow::params::{CipherChoice, DHChoice, HashChoice};
 use snow::resolvers::CryptoResolver;
 use snow::types::{Cipher, Dh, Hash, Random};
 use x25519_dalek as x25519;
+
+const TAGLEN: usize = 16;
 
 struct Rng<T>(T);
 impl<T: RngCore> RngCore for Rng<T> {
@@ -114,35 +116,38 @@ impl Hash for HashSHA256 {
 
 // Based on snow's resolvers/default.rs
 #[derive(Default)]
-struct CipherAesGcm {
+struct CipherChaChaPoly {
     key: [u8; 32],
 }
 
-impl Cipher for CipherAesGcm {
+macro_rules! copy_slices {
+    ($inslice:expr, $outslice:expr) => {
+        $outslice[..$inslice.len()].copy_from_slice(&$inslice[..])
+    };
+}
+
+impl Cipher for CipherChaChaPoly {
     fn name(&self) -> &'static str {
-        "AESGCM"
+        "ChaChaPoly"
     }
 
     fn set(&mut self, key: &[u8]) {
-        self.key.copy_from_slice(key);
+        copy_slices!(key, &mut self.key);
     }
 
     fn encrypt(&self, nonce: u64, authtext: &[u8], plaintext: &[u8], out: &mut [u8]) -> usize {
-        let aead = aes_gcm::Aes256Gcm::new(&self.key.into());
-
         let mut nonce_bytes = [0u8; 12];
-        nonce_bytes[4..].copy_from_slice(&nonce.to_be_bytes());
+        copy_slices!(&nonce.to_le_bytes(), &mut nonce_bytes[4..]);
 
-        let (ciphertext, rest_of_out) = out.split_at_mut(plaintext.len());
-        ciphertext.copy_from_slice(plaintext);
+        copy_slices!(plaintext, out);
 
-        let tag = aead
-            .encrypt_in_place_detached(&nonce_bytes.into(), authtext, ciphertext)
-            .expect("Encryption failed!");
+        let tag = ChaCha20Poly1305::new(&self.key.into())
+            .encrypt_in_place_detached(&nonce_bytes.into(), authtext, &mut out[0..plaintext.len()])
+            .unwrap();
 
-        rest_of_out[..tag.len()].copy_from_slice(&tag);
+        copy_slices!(tag, &mut out[plaintext.len()..]);
 
-        plaintext.len() + <aes_gcm::Aes256Gcm as AeadCore>::TagSize::USIZE
+        plaintext.len() + tag.len()
     }
 
     fn decrypt(
@@ -152,20 +157,24 @@ impl Cipher for CipherAesGcm {
         ciphertext: &[u8],
         out: &mut [u8],
     ) -> Result<usize, ()> {
-        let aead = aes_gcm::Aes256Gcm::new(&self.key.into());
-
         let mut nonce_bytes = [0u8; 12];
-        nonce_bytes[4..].copy_from_slice(&nonce.to_be_bytes());
+        copy_slices!(&nonce.to_le_bytes(), &mut nonce_bytes[4..]);
 
-        let (ciphertext, tag) = ciphertext
-            .split_at(ciphertext.len() - <aes_gcm::Aes256Gcm as AeadCore>::TagSize::USIZE);
+        let message_len = ciphertext.len() - TAGLEN;
 
-        let plaintext = &mut out[..ciphertext.len()];
-        plaintext.copy_from_slice(ciphertext);
+        copy_slices!(ciphertext[..message_len], out);
 
-        aead.decrypt_in_place_detached(&nonce_bytes.into(), authtext, plaintext, tag.into())
-            .map(|_| plaintext.len())
-            .map_err(|_| ())
+        let result = ChaCha20Poly1305::new(&self.key.into()).decrypt_in_place_detached(
+            &nonce_bytes.into(),
+            authtext,
+            &mut out[..message_len],
+            ciphertext[message_len..].into(),
+        );
+
+        match result {
+            Ok(_) => Ok(message_len),
+            Err(_) => Err(()),
+        }
     }
 }
 
@@ -192,7 +201,7 @@ impl CryptoResolver for Resolver {
 
     fn resolve_cipher(&self, choice: &CipherChoice) -> Option<Box<dyn Cipher>> {
         match choice {
-            CipherChoice::AESGCM => Some(Box::new(CipherAesGcm::default())),
+            CipherChoice::ChaChaPoly => Some(Box::new(CipherChaChaPoly::default())),
             _ => panic!("{:?} not supported", choice),
         }
     }

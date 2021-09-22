@@ -77,7 +77,7 @@ pub struct ClientConnectionEstablishment {
     trusted_code_hashes: Vec<[u8; CODE_HASH_SIZE]>,
 }
 
-const NOISE_PATTERN: &str = "Noise_NK_25519_AESGCM_SHA256";
+const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";
 const NOISE_HANDSHAKE_OVERHEAD: usize = 64; // TODO: this could be more exact
 
 /// The size in bytes of a code hash.
