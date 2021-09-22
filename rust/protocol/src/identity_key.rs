@@ -51,6 +51,12 @@ impl From<PublicKey> for IdentityKey {
     }
 }
 
+impl From<IdentityKey> for PublicKey {
+    fn from(value: IdentityKey) -> Self {
+        value.public_key
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct IdentityKeyPair {
     identity_key: IdentityKey,
@@ -127,6 +133,12 @@ impl From<KeyPair> for IdentityKeyPair {
             identity_key: value.public_key.into(),
             private_key: value.private_key,
         }
+    }
+}
+
+impl From<IdentityKeyPair> for KeyPair {
+    fn from(value: IdentityKeyPair) -> Self {
+        Self::new(value.identity_key.into(), value.private_key)
     }
 }
 

@@ -328,6 +328,15 @@ impl KeyPair {
     }
 }
 
+impl TryFrom<PrivateKey> for KeyPair {
+    type Error = SignalProtocolError;
+
+    fn try_from(value: PrivateKey) -> Result<Self> {
+        let public_key = value.public_key()?;
+        Ok(Self::new(public_key, value))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;

@@ -4,9 +4,10 @@
 //
 
 use crate::{
-    message_encrypt, CiphertextMessageType, Context, Direction, IdentityKeyStore, KeyPair,
-    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result,
-    SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, HKDF,
+    message_encrypt, CiphertextMessageType, Context, Direction, IdentityKey, IdentityKeyPair,
+    IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress,
+    PublicKey, Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError,
+    SignedPreKeyStore, HKDF,
 };
 
 use crate::crypto;
@@ -798,8 +799,8 @@ mod sealed_sender_v2 {
     pub const AUTH_TAG_LEN: usize = 16;
 
     pub(super) struct DerivedKeys {
-        pub(super) e: PrivateKey,
-        pub(super) k: Box<[u8]>,
+        pub(super) e: KeyPair,
+        pub(super) k: [u8; MESSAGE_KEY_LEN],
     }
 
     impl DerivedKeys {
@@ -809,34 +810,36 @@ mod sealed_sender_v2 {
                 .derive_secrets(m, LABEL_R, 64)
                 .expect("valid use of KDF");
             let k = kdf
-                .derive_secrets(m, LABEL_K, 32)
+                .derive_secrets(m, LABEL_K, MESSAGE_KEY_LEN)
                 .expect("valid use of KDF");
+            let k = <[u8; MESSAGE_KEY_LEN]>::try_from(&k[..]).expect("correct length");
             let e_raw =
                 Scalar::from_bytes_mod_order_wide(r.as_ref().try_into().expect("64-byte slice"));
             let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
+            let e = KeyPair::try_from(e).expect("can derive public key");
             DerivedKeys { e, k }
         }
     }
 
     pub(super) fn apply_agreement_xor(
-        priv_key: &PrivateKey,
-        pub_key: &PublicKey,
+        our_keys: &KeyPair,
+        their_key: &PublicKey,
         direction: Direction,
         input: &[u8],
     ) -> Result<Box<[u8]>> {
         assert!(input.len() == MESSAGE_KEY_LEN);
 
-        let agreement = priv_key.calculate_agreement(pub_key)?;
+        let agreement = our_keys.calculate_agreement(their_key)?;
         let agreement_key_input = match direction {
             Direction::Sending => [
                 agreement,
-                priv_key.public_key()?.serialize(),
-                pub_key.serialize(),
+                our_keys.public_key.serialize(),
+                their_key.serialize(),
             ],
             Direction::Receiving => [
                 agreement,
-                pub_key.serialize(),
-                priv_key.public_key()?.serialize(),
+                their_key.serialize(),
+                our_keys.public_key.serialize(),
             ],
         }
         .concat();
@@ -851,24 +854,26 @@ mod sealed_sender_v2 {
     }
 
     pub(super) fn compute_authentication_tag(
-        priv_key: &PrivateKey,
-        pub_key: &PublicKey,
+        our_keys: &IdentityKeyPair,
+        their_key: &IdentityKey,
         direction: Direction,
         ephemeral_pub_key: &PublicKey,
         encrypted_message_key: &[u8],
     ) -> Result<Box<[u8]>> {
-        let agreement = priv_key.calculate_agreement(pub_key)?;
+        let agreement = our_keys
+            .private_key()
+            .calculate_agreement(their_key.public_key())?;
         let mut agreement_key_input = agreement.into_vec();
         agreement_key_input.extend_from_slice(&ephemeral_pub_key.serialize());
         agreement_key_input.extend_from_slice(encrypted_message_key);
         match direction {
             Direction::Sending => {
-                agreement_key_input.extend_from_slice(&priv_key.public_key()?.serialize());
-                agreement_key_input.extend_from_slice(&pub_key.serialize());
+                agreement_key_input.extend_from_slice(&our_keys.public_key().serialize());
+                agreement_key_input.extend_from_slice(&their_key.serialize());
             }
             Direction::Receiving => {
-                agreement_key_input.extend_from_slice(&pub_key.serialize());
-                agreement_key_input.extend_from_slice(&priv_key.public_key()?.serialize());
+                agreement_key_input.extend_from_slice(&their_key.serialize());
+                agreement_key_input.extend_from_slice(&our_keys.public_key().serialize());
             }
         }
 
@@ -892,7 +897,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
 
     let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.gen();
     let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
-    let e_pub = keys.e.public_key()?;
+    let e_pub = &keys.e.public_key;
 
     let mut ciphertext = usmc.serialized()?.to_vec();
     let tag = Aes256GcmSiv::new_from_slice(&keys.k)
@@ -982,10 +987,10 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
             serialized.extend_from_slice(&c_i);
 
             let at_i = sealed_sender_v2::compute_authentication_tag(
-                our_identity.private_key(),
-                their_identity.public_key(),
+                &our_identity,
+                &their_identity,
                 Direction::Sending,
-                &e_pub,
+                e_pub,
                 &c_i,
             )?;
             serialized.extend_from_slice(&at_i);
@@ -1113,14 +1118,14 @@ pub async fn sealed_sender_decrypt_to_usmc(
             encrypted_message,
         } => {
             let m = sealed_sender_v2::apply_agreement_xor(
-                our_identity.private_key(),
+                &our_identity.into(),
                 &ephemeral_public,
                 Direction::Receiving,
                 &encrypted_message_key,
             )?;
 
             let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
-            if !bool::from(keys.e.public_key()?.ct_eq(&ephemeral_public)) {
+            if !bool::from(keys.e.public_key.ct_eq(&ephemeral_public)) {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "derived ephemeral key did not match key provided in message".to_string(),
                 ));
@@ -1146,8 +1151,8 @@ pub async fn sealed_sender_decrypt_to_usmc(
             let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
 
             let at = sealed_sender_v2::compute_authentication_tag(
-                our_identity.private_key(),
-                &usmc.sender()?.key()?,
+                &our_identity,
+                &usmc.sender()?.key()?.into(),
                 Direction::Receiving,
                 &ephemeral_public,
                 &encrypted_message_key,
