@@ -17,30 +17,26 @@ pub const PRIVATE_KEY_LENGTH: usize = 32;
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 pub const SIGNATURE_LENGTH: usize = 64;
 
-#[derive(Debug, Clone)]
-pub struct KeyPair {
-    public_key: [u8; PUBLIC_KEY_LENGTH],
-    private_key: [u8; PRIVATE_KEY_LENGTH],
+#[derive(Clone)]
+pub struct PrivateKey {
+    secret: StaticSecret,
 }
 
-impl KeyPair {
+impl PrivateKey {
     pub fn new<R>(csprng: &mut R) -> Self
     where
         R: CryptoRng + Rng,
     {
         let secret = StaticSecret::new(csprng);
-        let public = PublicKey::from(&secret);
-        KeyPair {
-            public_key: *public.as_bytes(),
-            private_key: secret.to_bytes(),
-        }
+        PrivateKey { secret }
     }
 
     pub fn calculate_agreement(
         &self,
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
     ) -> [u8; AGREEMENT_LENGTH] {
-        *StaticSecret::from(self.private_key)
+        *self
+            .secret
             .diffie_hellman(&PublicKey::from(*their_public_key))
             .as_bytes()
     }
@@ -60,7 +56,8 @@ impl KeyPair {
         let mut random_bytes = [0u8; 64];
         csprng.fill_bytes(&mut random_bytes);
 
-        let a = Scalar::from_bits(self.private_key);
+        let key_data = self.secret.to_bytes();
+        let a = Scalar::from_bits(key_data);
         let ed_public_key_point = &a * &ED25519_BASEPOINT_TABLE;
         let ed_public_key = ed_public_key_point.compress();
         let sign_bit = ed_public_key.as_bytes()[31] & 0b1000_0000_u8;
@@ -72,7 +69,7 @@ impl KeyPair {
             0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
         ];
         hash1.update(&hash_prefix);
-        hash1.update(&self.private_key);
+        hash1.update(&key_data);
         hash1.update(&message);
         hash1.update(&random_bytes[..]);
 
@@ -133,28 +130,19 @@ impl KeyPair {
         bool::from(cap_r_check.as_bytes().ct_eq(&cap_r))
     }
 
-    pub fn public_key(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
-        &self.public_key
+    pub fn derive_public_key_bytes(&self) -> [u8; PUBLIC_KEY_LENGTH] {
+        *PublicKey::from(&self.secret).as_bytes()
     }
 
-    pub fn private_key(&self) -> &[u8; PRIVATE_KEY_LENGTH] {
-        &self.private_key
+    pub fn private_key_bytes(&self) -> [u8; PRIVATE_KEY_LENGTH] {
+        self.secret.to_bytes()
     }
 }
 
-pub fn derive_public_key(private_key: &[u8; 32]) -> [u8; 32] {
-    *PublicKey::from(&StaticSecret::from(*private_key)).as_bytes()
-}
-
-impl From<[u8; PRIVATE_KEY_LENGTH]> for KeyPair {
+impl From<[u8; PRIVATE_KEY_LENGTH]> for PrivateKey {
     fn from(private_key: [u8; 32]) -> Self {
-        let private_key = StaticSecret::from(private_key);
-        let public_key = PublicKey::from(&private_key);
-
-        KeyPair {
-            private_key: private_key.to_bytes(),
-            public_key: *public_key.as_bytes(),
-        }
+        let secret = StaticSecret::from(private_key);
+        PrivateKey { secret }
     }
 }
 
@@ -193,14 +181,14 @@ mod tests {
             0xc4, 0x77, 0xe6, 0x29,
         ];
 
-        let alice_key_pair = KeyPair::from(alice_private);
-        let bob_key_pair = KeyPair::from(bob_private);
+        let alice_key = PrivateKey::from(alice_private);
+        let bob_key = PrivateKey::from(bob_private);
 
-        assert_eq!(alice_public, *alice_key_pair.public_key());
-        assert_eq!(bob_public, *bob_key_pair.public_key());
+        assert_eq!(alice_public, alice_key.derive_public_key_bytes());
+        assert_eq!(bob_public, bob_key.derive_public_key_bytes());
 
-        let alice_computed_secret = alice_key_pair.calculate_agreement(&bob_public);
-        let bob_computed_secret = bob_key_pair.calculate_agreement(&alice_public);
+        let alice_computed_secret = alice_key.calculate_agreement(&bob_public);
+        let bob_computed_secret = bob_key.calculate_agreement(&alice_public);
 
         assert_eq!(shared, alice_computed_secret);
         assert_eq!(shared, bob_computed_secret);
@@ -210,12 +198,13 @@ mod tests {
     fn test_random_agreements() {
         let mut csprng = OsRng;
         for _ in 0..50 {
-            let alice_key_pair = KeyPair::new(&mut csprng);
-            let bob_key_pair = KeyPair::new(&mut csprng);
+            let alice_key = PrivateKey::new(&mut csprng);
+            let bob_key = PrivateKey::new(&mut csprng);
 
             let alice_computed_secret =
-                alice_key_pair.calculate_agreement(bob_key_pair.public_key());
-            let bob_computed_secret = bob_key_pair.calculate_agreement(alice_key_pair.public_key());
+                alice_key.calculate_agreement(&bob_key.derive_public_key_bytes());
+            let bob_computed_secret =
+                bob_key.calculate_agreement(&alice_key.derive_public_key_bytes());
 
             assert_eq!(alice_computed_secret, bob_computed_secret);
         }
@@ -246,12 +235,15 @@ mod tests {
             0xce, 0xf0, 0x47, 0xbd, 0x60, 0xb8, 0x6e, 0x88,
         ];
 
-        let alice_identity_key_pair = KeyPair::from(alice_identity_private);
+        let alice_identity_key = PrivateKey::from(alice_identity_private);
 
-        assert_eq!(alice_identity_public, *alice_identity_key_pair.public_key());
+        assert_eq!(
+            alice_identity_public,
+            alice_identity_key.derive_public_key_bytes()
+        );
 
         assert!(
-            KeyPair::verify_signature(
+            PrivateKey::verify_signature(
                 &alice_identity_public,
                 &alice_ephemeral_public,
                 &alice_signature
@@ -265,7 +257,7 @@ mod tests {
             alice_signature_copy[i] ^= 0x01u8;
 
             assert!(
-                !KeyPair::verify_signature(
+                !PrivateKey::verify_signature(
                     &alice_identity_public,
                     &alice_ephemeral_public,
                     &alice_signature_copy
@@ -281,10 +273,10 @@ mod tests {
         for _ in 0..50 {
             let mut message = [0u8; 64];
             csprng.fill_bytes(&mut message);
-            let key_pair = KeyPair::new(&mut csprng);
-            let signature = key_pair.calculate_signature(&mut csprng, &message);
+            let key = PrivateKey::new(&mut csprng);
+            let signature = key.calculate_signature(&mut csprng, &message);
             assert!(
-                KeyPair::verify_signature(key_pair.public_key(), &message, &signature),
+                PrivateKey::verify_signature(&key.derive_public_key_bytes(), &message, &signature),
                 "signature check failed"
             );
         }
