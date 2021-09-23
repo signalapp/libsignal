@@ -67,8 +67,7 @@ jobs:
           - 'SignalClient.podspec'
           ignored:
           - 'LICENSE'
-          - 'README.md'
-          - 'SECURITY.md'
+          - '*.md'
           - '.github/FUNDING.yml'
           - '.github/workflows/**'
           - '.gitignore'
