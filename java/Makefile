@@ -18,12 +18,12 @@ java_build: DOCKER_EXTRA=$(shell [ -L build ] && P=$$(readlink build) && echo -v
 java_build: docker_image
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew clean build"
+		sh -c "cd src/java; ./gradlew build"
 
 java_test: java_build
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew clean test"
+		sh -c "cd src/java; ./gradlew test"
 
 SONATYPE_USERNAME     ?=
 SONATYPE_PASSWORD     ?=

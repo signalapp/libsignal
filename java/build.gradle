@@ -25,6 +25,11 @@ task makeJniLibrariesDesktop(type:Exec) {
   commandLine './build_jni.sh', 'desktop'
 }
 
+task cargoClean(type:Exec) {
+  group 'Rust'
+  commandLine 'cargo', 'clean'
+}
+
 task clean(type: Delete) {
   description 'Clean JNI libs'
   delete fileTree('./android/src/main/jniLibs') {
@@ -36,6 +41,7 @@ task clean(type: Delete) {
     include '**/*.dll'
   }
 }
+clean.dependsOn(cargoClean)
 
 task makeAll() {
   group 'Rust'
