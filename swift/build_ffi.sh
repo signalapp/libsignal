@@ -99,6 +99,13 @@ if [[ -n "${USE_XARGO:-}" ]]; then
     printf "\n\t%s\n\n" "cargo install xargo" >&2
     exit 1
   fi
+  RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN:-$(cat ./rust-toolchain)}
+  if ! rustup "+${RUSTUP_TOOLCHAIN}" component list --installed | grep -q rust-src; then
+    echo 'error: rust-src component not installed' >&2
+    echo 'note: get it by running' >&2
+    printf "\n\t%s\n\n" "rustup +${RUSTUP_TOOLCHAIN} component add rust-src" >&2
+    exit 1
+  fi
   BUILD_CMD=xargo
 fi
 
