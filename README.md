@@ -56,6 +56,7 @@ To build the Java/Android ``jar`` and ``aar``, and run the tests:
 ```shell
 $ cd java
 $ ./gradlew test
+$ ./gradlew build # if you need AAR outputs
 ```
 
 Alternately, a build system using Docker is available:
@@ -64,9 +65,6 @@ Alternately, a build system using Docker is available:
 $ cd java
 $ make java_test
 ```
-
-Local Java testing is also supported with `gradlew test` if none of the `ANDROID_*` environment
-variables are set.
 
 When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
 addition to rebuilding.
