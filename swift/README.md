@@ -7,11 +7,12 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
 
 1. Make sure you are using `use_frameworks!` in your Podfile. SignalClient is a Swift pod and as such cannot be compiled as a plain library.
 
-2. Add 'SignalClient' as a dependency in your Podfile:
+2. Add 'SignalClient' and 'SignalCoreKit' as dependencies in your Podfile:
 
         pod 'SignalClient', git: 'https://github.com/signalapp/libsignal-client.git'
+        pod 'SignalCoreKit', git: 'https://github.com/signalapp/SignalCoreKit.git'
 
-3. Use `pod install` or `pod update` to build the Rust library for both iOS simulator and iOS device
+3. Use `pod install` or `pod update` to build the Rust library for all targets. You may be prompted to install Rust dependencies (`cbindgen`, `rust-src`, `xargo`).
 
 4. Build as usual. The Rust library will automatically be linked into the built SignalClient.framework.
 
