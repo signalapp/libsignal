@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -8,6 +8,9 @@ use crate::{Result, SignalProtocolError};
 use hmac::{Hmac, Mac, NewMac};
 use sha2::Sha256;
 
+/// Implement the HMAC-based key derivation function from [RFC 5489].
+///
+/// [RFC 5489]: https://datatracker.ietf.org/doc/html/rfc5869
 #[derive(Clone, Copy, Debug)]
 pub struct HKDF {
     iteration_start_offset: u8,
