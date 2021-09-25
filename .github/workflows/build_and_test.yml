@@ -130,6 +130,8 @@ jobs:
         components: rustfmt, clippy
         target: i686-unknown-linux-gnu
 
+    # This should be done before anything else
+    # because it also checks that the lockfile is up to date.
     - name: Check for duplicate dependencies
       run: ./bin/verify_duplicate_crates
 
@@ -234,7 +236,7 @@ jobs:
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
       if: matrix.os == 'ubuntu-latest'
 
-    - run: yarn install
+    - run: yarn install --frozen-lockfile
 
     - run: yarn tsc
 
