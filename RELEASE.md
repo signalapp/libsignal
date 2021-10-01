@@ -10,19 +10,8 @@ The first version component should always be 0, to indicate that Signal does not
 
 If the changes will require updates in Signal-Android, Signal-iOS, or Signal-Desktop, increase the second version component and reset the third to 0. Otherwise, increase the third version component.
 
-There are six files that have version numbers:
-
-- rust/bridge/jni/Cargo.toml
-- rust/bridge/ffi/Cargo.toml
-- rust/bridge/node/Cargo.toml
-- java/build.gradle
-- SignalClient.podspec
-- package.json
-
-Once you've done this, run the following commands (with the appropriate version number):
-
 ```
-bin/verify_crate_versions.py # make sure you updated correctly
+bin/update_versions.py 0.x.y
 cargo check --workspace # make sure Cargo.lock is updated
 ```
 
