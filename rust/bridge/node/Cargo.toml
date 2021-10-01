@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-node"
-version = "0.9.5"
+version = "0.9.6"
 authors = ["Jordan Rose <jrose@signal.org>", "Jack Lloyd <jack@signal.org>"]
 license = "AGPL-3.0-only"
 edition = "2018"
