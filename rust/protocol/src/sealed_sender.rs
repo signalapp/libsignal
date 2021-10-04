@@ -754,8 +754,7 @@ mod sealed_sender_v1 {
             &recipient_eph_keys.cipher_key,
             &recipient_eph_keys.mac_key,
         )?;
-        let sender_public_key: PublicKey =
-            PublicKey::try_from(recipient_message_key_bytes.as_ref())?;
+        let sender_public_key: PublicKey = PublicKey::try_from(&recipient_message_key_bytes[..])?;
         assert_eq!(sender_identity.public_key(), &sender_public_key);
 
         let recipient_static_keys = StaticKeys::calculate(
@@ -970,11 +969,11 @@ mod sealed_sender_v2 {
         }
         .concat();
 
-        let boxed_result =
-            HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH, MESSAGE_KEY_LEN)?;
-        let mut result: [u8; MESSAGE_KEY_LEN] = boxed_result.as_ref().try_into().map_err(|_| {
-            SignalProtocolError::BadKeyLength(curve::KeyType::Djb, boxed_result.len())
-        })?;
+        let mut result: [u8; MESSAGE_KEY_LEN] = HKDF::new(3)?
+            .derive_secrets(&agreement_key_input, LABEL_DH, MESSAGE_KEY_LEN)?
+            .as_ref()
+            .try_into()
+            .expect("requested correct key size from HKDF");
 
         result
             .iter_mut()
@@ -1015,12 +1014,11 @@ mod sealed_sender_v2 {
             }
         }
 
-        let boxed_result =
-            HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH_S, AUTH_TAG_LEN)?;
-        boxed_result
+        Ok(HKDF::new(3)?
+            .derive_secrets(&agreement_key_input, LABEL_DH_S, AUTH_TAG_LEN)?
             .as_ref()
             .try_into()
-            .map_err(|_| SignalProtocolError::BadKeyLength(curve::KeyType::Djb, boxed_result.len()))
+            .expect("requested correct key size from HKDF"))
     }
 
     #[test]
