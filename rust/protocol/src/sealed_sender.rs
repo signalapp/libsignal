@@ -14,16 +14,19 @@ use crate::crypto;
 use crate::curve;
 use crate::proto;
 use crate::session_cipher;
+
 use aes_gcm_siv::aead::{AeadInPlace, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;
+use arrayref::array_ref;
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand::{CryptoRng, Rng};
-use std::convert::{TryFrom, TryInto};
 use subtle::ConstantTimeEq;
 use uuid::Uuid;
 
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
+
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug, Clone)]
 pub struct ServerCertificate {
@@ -594,96 +597,190 @@ impl UnidentifiedSenderMessage {
 }
 
 mod sealed_sender_v1 {
-    // Described at https://signal.org/blog/sealed-sender/
-
-    // e_pub, e_priv                  = X25519.generateEphemeral()
-    // e_chain, e_cipherKey, e_macKey = HKDF(salt="UnidentifiedDelivery" || recipientIdentityPublic || e_pub, ikm=ECDH(recipientIdentityPublic, e_priv), info="")
-    // e_ciphertext                   = AES_CTR(key=e_cipherKey, input=senderIdentityPublic)
-    // e_mac                          = Hmac256(key=e_macKey, input=e_ciphertext)
-    //
-    // s_cipherKey, s_macKey = HKDF(salt=e_chain || e_ciphertext || e_mac, ikm=ECDH(recipientIdentityPublic, senderIdentityPrivate), info="")
-    // s_ciphertext          = AES_CTR(key=s_cipherKey, input=sender_certificate || message_ciphertext)
-    // s_mac                 = Hmac256(key=s_macKey, input=s_ciphertext)
-    //
-    // message_to_send = s_ciphertext || s_mac
-
     use super::*;
 
+    #[cfg(test)]
+    use std::fmt;
+
+    /// A symmetric cipher key and a MAC key, along with a "chain key" consumed in
+    /// [`StaticKeys::calculate`].
     pub(super) struct EphemeralKeys {
-        derived_values: Box<[u8]>,
+        pub(super) chain_key: [u8; 32],
+        pub(super) cipher_key: [u8; 32],
+        pub(super) mac_key: [u8; 32],
     }
+
+    const SALT_PREFIX: &[u8] = b"UnidentifiedDelivery";
+    const EPHEMERAL_KEYS_KDF_LEN: usize = 96;
 
     impl EphemeralKeys {
-        pub fn calculate(
+        /// Derive a set of symmetric keys from the key agreement between the sender and
+        /// recipient's identities.
+        pub(super) fn calculate(
+            our_keys: &KeyPair,
             their_public: &PublicKey,
-            our_public: &PublicKey,
-            our_private: &PrivateKey,
-            sending: bool,
+            direction: Direction,
         ) -> Result<Self> {
-            let mut ephemeral_salt = Vec::with_capacity(2 * 32 + 20);
-            ephemeral_salt.extend_from_slice("UnidentifiedDelivery".as_bytes());
-
-            if sending {
-                ephemeral_salt.extend_from_slice(&their_public.serialize());
+            let our_pub_key = our_keys.public_key.serialize();
+            let their_pub_key = their_public.serialize();
+            let ephemeral_salt = match direction {
+                Direction::Sending => [SALT_PREFIX, &their_pub_key, &our_pub_key],
+                Direction::Receiving => [SALT_PREFIX, &our_pub_key, &their_pub_key],
             }
-            ephemeral_salt.extend_from_slice(&our_public.serialize());
-            if !sending {
-                ephemeral_salt.extend_from_slice(&their_public.serialize());
-            }
+            .concat();
 
-            let shared_secret = our_private.calculate_agreement(their_public)?;
-            let kdf = HKDF::new(3)?;
-            let derived_values =
-                kdf.derive_salted_secrets(&shared_secret, &ephemeral_salt, &[], 96)?;
+            let agreement = our_keys.calculate_agreement(their_public)?;
+            let derived_values = HKDF::new(3)?.derive_salted_secrets(
+                &agreement,
+                &ephemeral_salt,
+                &[],
+                EPHEMERAL_KEYS_KDF_LEN,
+            )?;
 
-            Ok(Self { derived_values })
-        }
-
-        pub fn chain_key(&self) -> Result<&[u8]> {
-            Ok(&self.derived_values[0..32])
-        }
-
-        pub fn cipher_key(&self) -> Result<&[u8]> {
-            Ok(&self.derived_values[32..64])
-        }
-
-        pub fn mac_key(&self) -> Result<&[u8]> {
-            Ok(&self.derived_values[64..96])
+            Ok(Self {
+                chain_key: *array_ref![&derived_values, 0, 32],
+                cipher_key: *array_ref![&derived_values, 32, 32],
+                mac_key: *array_ref![&derived_values, 64, 32],
+            })
         }
     }
 
+    #[cfg(test)]
+    impl PartialEq for EphemeralKeys {
+        fn eq(&self, other: &Self) -> bool {
+            self.chain_key == other.chain_key
+                && self.cipher_key == other.cipher_key
+                && self.mac_key == other.mac_key
+        }
+    }
+
+    #[cfg(test)]
+    impl Eq for EphemeralKeys {}
+
+    #[cfg(test)]
+    impl fmt::Debug for EphemeralKeys {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(
+                f,
+                "EphemeralKeys {{ chain_key: {:?}, cipher_key: {:?}, mac_key: {:?} }}",
+                self.chain_key, self.cipher_key, self.mac_key
+            )
+        }
+    }
+
+    /// A symmetric cipher key and a MAC key.
     pub(super) struct StaticKeys {
-        derived_values: Box<[u8]>,
+        pub(super) cipher_key: [u8; 32],
+        pub(super) mac_key: [u8; 32],
     }
+
     impl StaticKeys {
-        pub fn calculate(
-            their_public: &PublicKey,
-            our_private: &PrivateKey,
-            chain_key: &[u8],
+        /// Derive a set of symmetric keys from the agreement between the sender and
+        /// recipient's identities, as well as [`EphemeralKeys::chain_key`].
+        pub(super) fn calculate(
+            our_keys: &IdentityKeyPair,
+            their_key: &PublicKey,
+            chain_key: &[u8; 32],
             ctext: &[u8],
         ) -> Result<Self> {
-            let mut salt = Vec::with_capacity(chain_key.len() + ctext.len());
-            salt.extend_from_slice(chain_key);
-            salt.extend_from_slice(ctext);
+            let salt = [chain_key, ctext].concat();
 
-            let shared_secret = our_private.calculate_agreement(their_public)?;
-            let kdf = HKDF::new(3)?;
-            // 96 bytes are derived but the first 32 are discarded/unused
-            let derived_values = kdf.derive_salted_secrets(&shared_secret, &salt, &[], 96)?;
+            let shared_secret = our_keys.private_key().calculate_agreement(their_key)?;
+            // 96 bytes are derived, but the first 32 are discarded/unused. This is intended to
+            // mirror the way the EphemeralKeys are derived, even though StaticKeys does not end up
+            // requiring a third "chain key".
+            let derived_values = HKDF::new(3)?.derive_salted_secrets(
+                &shared_secret,
+                &salt,
+                &[],
+                EPHEMERAL_KEYS_KDF_LEN,
+            )?;
 
-            Ok(Self { derived_values })
+            Ok(Self {
+                cipher_key: *array_ref![&derived_values, 32, 32],
+                mac_key: *array_ref![&derived_values, 64, 32],
+            })
         }
+    }
 
-        pub fn cipher_key(&self) -> Result<&[u8]> {
-            Ok(&self.derived_values[32..64])
-        }
+    #[test]
+    fn test_agreement_and_authentication() -> Result<()> {
+        // The sender and recipient each have a long-term identity key pair.
+        let sender_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+        let recipient_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
 
-        pub fn mac_key(&self) -> Result<&[u8]> {
-            Ok(&self.derived_values[64..96])
-        }
+        // Generate an ephemeral key pair.
+        let sender_ephemeral = KeyPair::generate(&mut rand::thread_rng());
+        let ephemeral_public = sender_ephemeral.public_key;
+        // Generate ephemeral cipher, chain, and MAC keys.
+        let sender_eph_keys = EphemeralKeys::calculate(
+            &sender_ephemeral,
+            recipient_identity.public_key(),
+            Direction::Sending,
+        )?;
+
+        // Encrypt the sender's public key with AES-256 CTR and a MAC.
+        let sender_static_key_ctext = crypto::aes256_ctr_hmacsha256_encrypt(
+            &sender_identity.public_key().serialize(),
+            &sender_eph_keys.cipher_key,
+            &sender_eph_keys.mac_key,
+        )?;
+
+        // Generate another cipher and MAC key.
+        let sender_static_keys = StaticKeys::calculate(
+            &sender_identity,
+            recipient_identity.public_key(),
+            &sender_eph_keys.chain_key,
+            &sender_static_key_ctext,
+        )?;
+
+        let sender_message_contents = b"this is a binary message";
+        let sender_message_data = crypto::aes256_ctr_hmacsha256_encrypt(
+            sender_message_contents,
+            &sender_static_keys.cipher_key,
+            &sender_static_keys.mac_key,
+        )?;
+
+        // The message recipient calculates the ephemeral key and the sender's public key.
+        let recipient_eph_keys = EphemeralKeys::calculate(
+            &recipient_identity.into(),
+            &ephemeral_public,
+            Direction::Receiving,
+        )?;
+        assert_eq!(sender_eph_keys, recipient_eph_keys);
+
+        let recipient_message_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+            &sender_static_key_ctext,
+            &recipient_eph_keys.cipher_key,
+            &recipient_eph_keys.mac_key,
+        )?;
+        let sender_public_key: PublicKey = PublicKey::try_from(&recipient_message_key_bytes[..])?;
+        assert_eq!(sender_identity.public_key(), &sender_public_key);
+
+        let recipient_static_keys = StaticKeys::calculate(
+            &recipient_identity,
+            &sender_public_key,
+            &recipient_eph_keys.chain_key,
+            &sender_static_key_ctext,
+        )?;
+
+        let recipient_message_contents = crypto::aes256_ctr_hmacsha256_decrypt(
+            &sender_message_data,
+            &recipient_static_keys.cipher_key,
+            &recipient_static_keys.mac_key,
+        )?;
+        assert_eq!(recipient_message_contents, sender_message_contents);
+
+        Ok(())
     }
 }
 
+/// Encrypt the plaintext message `ptext`, generate an [`UnidentifiedSenderMessageContent`], then
+/// pass the result to [`sealed_sender_encrypt_from_usmc`].
+///
+/// This is a simple way to encrypt a message in a 1:1 using [Sealed Sender v1].
+///
+/// [Sealed Sender v1]: sealed_sender_encrypt_from_usmc
 pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     destination: &ProtocolAddress,
     sender_cert: &SenderCertificate,
@@ -704,6 +801,56 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     sealed_sender_encrypt_from_usmc(destination, &usmc, identity_store, ctx, rng).await
 }
 
+/// This method implements the single-key single-recipient [KEM] described in [this Signal blog
+/// post], a.k.a. Sealed Sender v1.
+///
+/// [KEM]: https://en.wikipedia.org/wiki/Key_encapsulation
+/// [this Signal blog post]: https://signal.org/blog/sealed-sender/
+///
+/// [`sealed_sender_decrypt`] is used in the client to decrypt the Sealed Sender message produced by
+/// this method.
+///
+/// # Contrast with Sealed Sender v2
+/// The *single-recipient* KEM scheme implemented by this method partially derives the encryption
+/// key from the recipient's identity key, which would then require re-encrypting the same message
+/// multiple times to send to multiple recipients. In contrast,
+/// [Sealed Sender v2](sealed_sender_multi_recipient_encrypt) uses a *multi-recipient* KEM scheme
+/// which avoids this repeated work, but makes a few additional design tradeoffs.
+///
+/// # High-level algorithmic overview
+/// The KEM scheme implemented by this method is described in [this Signal blog post]. The
+/// high-level steps of this process are listed below:
+/// 1. Generate a random key pair.
+/// 2. Derive a symmetric chain key, cipher key, and MAC key from the recipient's public key and the
+///    sender's public/private key pair.
+/// 3. Symmetrically encrypt the sender's public key using the cipher key and MAC key from (2) with
+///    AES-256 in CTR mode.
+/// 4. Derive a second symmetric cipher key and MAC key from the sender's private key, the
+///    recipient's public key, and the chain key from (2).
+/// 5. Symmetrically encrypt the underlying [`UnidentifiedSenderMessageContent`] using the cipher key
+///    and MAC key from (4) with AES-256 in CTR mode.
+/// 6. Send the ephemeral public key from (1) and the encrypted public key from (3) to the
+///    recipient, along with the encrypted message (5).
+///
+/// ## Pseudocode
+///```text
+/// e_pub, e_priv                  = X25519.generateEphemeral()
+/// e_chain, e_cipherKey, e_macKey = HKDF(salt="UnidentifiedDelivery" || recipientIdentityPublic || e_pub, ikm=ECDH(recipientIdentityPublic, e_priv), info="")
+/// e_ciphertext                   = AES_CTR(key=e_cipherKey, input=senderIdentityPublic)
+/// e_mac                          = Hmac256(key=e_macKey, input=e_ciphertext)
+///
+/// s_cipherKey, s_macKey = HKDF(salt=e_chain || e_ciphertext || e_mac, ikm=ECDH(recipientIdentityPublic, senderIdentityPrivate), info="")
+/// s_ciphertext          = AES_CTR(key=s_cipherKey, input=sender_certificate || message_ciphertext)
+/// s_mac                 = Hmac256(key=s_macKey, input=s_ciphertext)
+///
+/// message_to_send = s_ciphertext || s_mac
+///```
+///
+/// # Wire Format
+/// The output of this method is encoded as an `UnidentifiedSenderMessage.Message` from
+/// `sealed_sender.proto`, prepended with an additional byte to indicate the version of Sealed
+/// Sender in use (see [further documentation on the version
+/// byte](sealed_sender_multi_recipient_encrypt#the-version-byte)).
 pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     destination: &ProtocolAddress,
     usmc: &UnidentifiedSenderMessageContent,
@@ -720,29 +867,28 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     let ephemeral = KeyPair::generate(rng);
 
     let eph_keys = sealed_sender_v1::EphemeralKeys::calculate(
+        &ephemeral,
         their_identity.public_key(),
-        &ephemeral.public_key,
-        &ephemeral.private_key,
-        true,
+        Direction::Sending,
     )?;
 
     let static_key_ctext = crypto::aes256_ctr_hmacsha256_encrypt(
         &our_identity.public_key().serialize(),
-        eph_keys.cipher_key()?,
-        eph_keys.mac_key()?,
+        &eph_keys.cipher_key,
+        &eph_keys.mac_key,
     )?;
 
     let static_keys = sealed_sender_v1::StaticKeys::calculate(
+        &our_identity,
         their_identity.public_key(),
-        our_identity.private_key(),
-        eph_keys.chain_key()?,
+        &eph_keys.chain_key,
         &static_key_ctext,
     )?;
 
     let message_data = crypto::aes256_ctr_hmacsha256_encrypt(
         usmc.serialized()?,
-        static_keys.cipher_key()?,
-        static_keys.mac_key()?,
+        &static_keys.cipher_key,
+        &static_keys.mac_key,
     )?;
 
     let version = SEALED_SENDER_V1_VERSION;
@@ -758,38 +904,9 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
 }
 
 mod sealed_sender_v2 {
-    // ENCRYPT(message, R_i):
-    //     M = Random(32)
-    //     r = KDF(label_r, M, len=64)
-    //     K = KDF(label_K, M, len=32)
-    //     E = DeriveKeyPair(r)
-    //     for i in num_recipients:
-    //         C_i = KDF(label_DH, DH(E, R_i) || E.public || R_i.public, len=32) XOR M
-    //         AT_i = KDF(label_DH_s, DH(S, R_i) || E.public || C_i || S.public || R_i.public, len=16)
-    //     ciphertext = AEAD_Encrypt(K, message)
-    //     return E.public, C_i, AT_i, ciphertext
-
-    // DECRYPT(E.public, C, AT, ciphertext):
-    //     M = KDF(label_DH, DH(E, R) || E.public || R.public, len=32) xor C
-    //     r = KDF(label_r, M, len=64)
-    //     K = KDF(label_K, M, len=32)
-    //     E' = DeriveKeyPair(r)
-    //     if E.public != E'.public:
-    //         return DecryptionError
-    //     message = AEAD_Decrypt(K, ciphertext) // includes S.public
-    //     AT' = KDF(label_DH_s, DH(S, R) || E.public || C || S.public || R.public, len=16)
-    //     if AT != AT':
-    //         return DecryptionError
-    //     return message
-
-    // This is a single-key multi-recipient KEM, defined in Manuel Barbosa's "Randomness Reuse:
-    // Extensions and Improvements" [1]. It uses the "Generic Construction" in 4.1 of that paper,
-    // instantiated with ElGamal encryption.
-    //
-    // [1]: https://haslab.uminho.pt/mbb/files/reuse.pdf
-
     use super::*;
 
+    // Static byte strings used as part of a MAC in HKDF.
     const LABEL_R: &[u8] = b"Sealed Sender v2: r";
     const LABEL_K: &[u8] = b"Sealed Sender v2: K";
     const LABEL_DH: &[u8] = b"Sealed Sender v2: DH";
@@ -798,12 +915,16 @@ mod sealed_sender_v2 {
     pub const MESSAGE_KEY_LEN: usize = 32;
     pub const AUTH_TAG_LEN: usize = 16;
 
+    /// An asymmetric and a symmetric cipher key.
     pub(super) struct DerivedKeys {
+        /// Asymmetric key pair.
         pub(super) e: KeyPair,
+        /// Symmetric key used to instantiate [`Aes256GcmSiv::new_from_slice`].
         pub(super) k: [u8; MESSAGE_KEY_LEN],
     }
 
     impl DerivedKeys {
+        /// Derive a set of ephemeral keys from a slice of random bytes `m`.
         pub(super) fn calculate(m: &[u8]) -> DerivedKeys {
             let kdf = HKDF::new(3).expect("valid KDF version");
             let r = kdf
@@ -821,14 +942,18 @@ mod sealed_sender_v2 {
         }
     }
 
+    /// Encrypt or decrypt a slice of random bytes `input` using a shared secret derived from
+    /// `our_keys` and `their_key`.
+    ///
+    /// The output of this method when called with [`Direction::Sending`] can be inverted to produce
+    /// the original `input` bytes if called with [`Direction::Receiving`] with `our_keys` and
+    /// `their_key` swapped.
     pub(super) fn apply_agreement_xor(
         our_keys: &KeyPair,
         their_key: &PublicKey,
         direction: Direction,
-        input: &[u8],
-    ) -> Result<Box<[u8]>> {
-        assert!(input.len() == MESSAGE_KEY_LEN);
-
+        input: &[u8; MESSAGE_KEY_LEN],
+    ) -> Result<[u8; MESSAGE_KEY_LEN]> {
         let agreement = our_keys.calculate_agreement(their_key)?;
         let agreement_key_input = match direction {
             Direction::Sending => [
@@ -844,8 +969,12 @@ mod sealed_sender_v2 {
         }
         .concat();
 
-        let mut result =
-            HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH, MESSAGE_KEY_LEN)?;
+        let mut result: [u8; MESSAGE_KEY_LEN] = HKDF::new(3)?
+            .derive_secrets(&agreement_key_input, LABEL_DH, MESSAGE_KEY_LEN)?
+            .as_ref()
+            .try_into()
+            .expect("requested correct key size from HKDF");
+
         result
             .iter_mut()
             .zip(input)
@@ -853,13 +982,21 @@ mod sealed_sender_v2 {
         Ok(result)
     }
 
+    /// Compute an [authentication tag] for the bytes `encrypted_message_key` using a shared secret
+    /// derived from `our_keys` and `their_key`.
+    ///
+    /// [authentication tag]: https://en.wikipedia.org/wiki/Message_authentication_code
+    ///
+    /// The output of this method with [`Direction::Sending`] should be the same bytes produced by
+    /// calling this method with [`Direction::Receiving`] with `our_keys` and `their_key`
+    /// swapped, if `ephemeral_pub_key` and `encrypted_message_key` are the same.
     pub(super) fn compute_authentication_tag(
         our_keys: &IdentityKeyPair,
         their_key: &IdentityKey,
         direction: Direction,
         ephemeral_pub_key: &PublicKey,
-        encrypted_message_key: &[u8],
-    ) -> Result<Box<[u8]>> {
+        encrypted_message_key: &[u8; MESSAGE_KEY_LEN],
+    ) -> Result<[u8; AUTH_TAG_LEN]> {
         let agreement = our_keys
             .private_key()
             .calculate_agreement(their_key.public_key())?;
@@ -877,10 +1014,218 @@ mod sealed_sender_v2 {
             }
         }
 
-        HKDF::new(3)?.derive_secrets(&agreement_key_input, LABEL_DH_S, AUTH_TAG_LEN)
+        Ok(HKDF::new(3)?
+            .derive_secrets(&agreement_key_input, LABEL_DH_S, AUTH_TAG_LEN)?
+            .as_ref()
+            .try_into()
+            .expect("requested correct key size from HKDF"))
+    }
+
+    #[test]
+    fn test_agreement_and_authentication() -> Result<()> {
+        // The sender and recipient each have a long-term identity key pair.
+        let sender_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+        let recipient_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+
+        // Generate random bytes used for our multi-recipient encoding scheme.
+        let m: [u8; MESSAGE_KEY_LEN] = rand::thread_rng().gen();
+        // Derive an ephemeral key pair from those random bytes.
+        let ephemeral_keys = DerivedKeys::calculate(&m);
+        let ephemeral_public_key = ephemeral_keys.e.public_key;
+
+        // Encrypt the ephemeral key pair.
+        let sender_c_0: [u8; MESSAGE_KEY_LEN] = apply_agreement_xor(
+            &ephemeral_keys.e,
+            recipient_identity.public_key(),
+            Direction::Sending,
+            &m,
+        )?;
+        // Compute an authentication tag for the encrypted key pair.
+        let sender_at_0 = compute_authentication_tag(
+            &sender_identity,
+            recipient_identity.identity_key(),
+            Direction::Sending,
+            &ephemeral_public_key,
+            &sender_c_0,
+        )?;
+
+        // The message recipient calculates the original random bytes and authenticates the result.
+        let recv_m = apply_agreement_xor(
+            &recipient_identity.into(),
+            &ephemeral_public_key,
+            Direction::Receiving,
+            &sender_c_0,
+        )?;
+        assert_eq!(&recv_m, &m);
+
+        let recv_at_0 = compute_authentication_tag(
+            &recipient_identity,
+            sender_identity.identity_key(),
+            Direction::Receiving,
+            &ephemeral_public_key,
+            &sender_c_0,
+        )?;
+        assert_eq!(&recv_at_0, &sender_at_0);
+
+        Ok(())
     }
 }
 
+/// This method implements a single-key multi-recipient [KEM] as defined in Manuel Barbosa's
+/// ["Randomness Reuse: Extensions and Improvements"], a.k.a. Sealed Sender v2.
+///
+/// [KEM]: https://en.wikipedia.org/wiki/Key_encapsulation
+/// ["Randomness Reuse: Extensions and Improvements"]: https://haslab.uminho.pt/mbb/files/reuse.pdf
+///
+/// # Contrast with Sealed Sender v1
+/// The KEM scheme implemented by this method uses the "Generic Construction" in `4.1` of [Barbosa's
+/// paper]["Randomness Reuse: Extensions and Improvements"], instantiated with [ElGamal
+/// encryption]. This technique enables reusing a single sequence of random bytes across multiple
+/// messages with the same content, which reduces computation time for clients sending the same
+/// message to multiple recipients (without compromising the message security).
+///
+/// There are a few additional design tradeoffs this method makes vs [Sealed Sender v1]
+/// which may make it comparatively unwieldy for certain scenarios:
+/// 1. it requires a [`SessionRecord`] to exist already for the recipient, i.e. that a Double
+///    Ratchet message chain has previously been established in the [`SessionStore`] via
+///    [`process_prekey_bundle`][crate::process_prekey_bundle] after an initial
+///    [`PreKeySignalMessage`][crate::PreKeySignalMessage] is received.
+/// 2. it ferries a lot of additional information in its encoding which makes the resulting message
+///    bulkier than the message produced by [Sealed Sender v1]. For sending, this will generally
+///    still be more compact than sending the same message N times, but on the receiver side the
+///    message is slightly larger.
+/// 3. unlike other message types sent over the wire, the encoded message returned by this method
+///    does not use protobuf, in order to avoid inefficiencies produced by protobuf's packing (see
+///    **[Wire Format]**).
+///
+/// [ElGamal encryption]: https://en.wikipedia.org/wiki/ElGamal_encryption
+/// [Sealed Sender v1]: sealed_sender_encrypt_from_usmc
+/// [Wire Format]: #wire-format
+///
+/// # High-level algorithmic overview
+/// The high-level steps of this process are summarized below:
+/// 1. Generate a series of random bytes.
+/// 2. Derive an ephemeral key pair from (1).
+/// 3. *Once per recipient:* Encrypt (1) using a shared secret derived from the private ephemeral
+///    key (2) and the recipient's public identity key.
+/// 4. *Once per recipient:* Add an authentication tag for (3) using a secret derived from the
+///    sender's private identity key and the recipient's public identity key.
+/// 5. Generate a symmetric key from (1) and use it to symmetrically encrypt the underlying
+///    [`UnidentifiedSenderMessageContent`] via [AEAD encryption]. *This step is only performed once
+///    per message, regardless of the number of recipients.*
+/// 6. Send the public ephemeral key (2) to the server, along with the sequence of encrypted random
+///    bytes (3) and authentication tags (4), and the single encrypted message (5).
+///
+/// [AEAD encryption]: https://en.wikipedia.org/wiki/Authenticated_encryption#Authenticated_encryption_with_associated_data_(AEAD)
+///
+/// ## Pseudocode
+///```text
+/// ENCRYPT(message, R_i):
+///     M = Random(32)
+///     r = KDF(label_r, M, len=64)
+///     K = KDF(label_K, M, len=32)
+///     E = DeriveKeyPair(r)
+///     for i in num_recipients:
+///         C_i = KDF(label_DH, DH(E, R_i) || E.public || R_i.public, len=32) XOR M
+///         AT_i = KDF(label_DH_s, DH(S, R_i) || E.public || C_i || S.public || R_i.public, len=16)
+///     ciphertext = AEAD_Encrypt(K, message)
+///     return E.public, C_i, AT_i, ciphertext
+///
+/// DECRYPT(E.public, C, AT, ciphertext):
+///     M = KDF(label_DH, DH(E, R) || E.public || R.public, len=32) xor C
+///     r = KDF(label_r, M, len=64)
+///     K = KDF(label_K, M, len=32)
+///     E' = DeriveKeyPair(r)
+///     if E.public != E'.public:
+///         return DecryptionError
+///     message = AEAD_Decrypt(K, ciphertext) // includes S.public
+///     AT' = KDF(label_DH_s, DH(S, R) || E.public || C || S.public || R.public, len=16)
+///     if AT != AT':
+///         return DecryptionError
+///     return message
+///```
+///
+/// # Routing messages to recipients
+///
+/// The server will split up the set of messages and securely route each individual [received
+/// message][receiving] to its intended recipient.
+///
+/// For testing purposes, [`sealed_sender_multi_recipient_fan_out`] can be used to convert such
+/// a bulk message produced by Sealed Sender v2 into a sequence of [received messages][receiving];
+/// however, in doing so it will drop all of the metadata necessary to identify the message's
+/// intended recipients.
+///
+/// # Wire Format
+/// Multi-recipient sealed-sender does not use protobufs for its payload format. Instead, it uses
+/// a flat format marked with a [version byte](#the-version-byte). The format is different for
+/// [sending] and [receiving]. The decrypted content is
+/// a protobuf-encoded `UnidentifiedSenderMessage.Message` from `sealed_sender.proto`.
+///
+/// The public key used in Sealed Sender v2 is always a Curve25519 DJB key.
+///
+/// [sending]: #sent-messages
+/// [receiving]: #received-messages
+///
+/// ## The version byte
+///
+/// Sealed sender messages (v1 and v2) in serialized form begin with a version [byte][u8].
+/// This byte has the form:
+///
+/// ```text
+/// (requiredVersion << 4) | currentVersion
+/// ```
+///
+/// v1 messages thus have a version byte of `0x11`. v2 messages have a version byte
+/// of `0x22`. A hypothetical version byte `0x34` would indicate a message encoded
+/// as Sealed Sender v4, but decodable by any client that supports Sealed Sender v3.
+///
+/// ## Received messages
+///
+/// ```text
+/// ReceivedMessage {
+///     version_byte: u8,
+///     c: [u8; 32],
+///     at: [u8; 16],
+///     e_pub: [u8; 32],
+///     message: [u8] // remaining bytes
+/// }
+/// ```
+///
+/// Each individual Sealed Sender message received from the server is decoded in the Signal
+/// client by calling [`sealed_sender_decrypt`].
+///
+/// ## Sent messages
+///
+/// ```text
+/// PerRecipientData {
+///     uuid: [u8; 16],
+///     device_id: varint,
+///     registration_id: u16,
+///     c: [u8; 32],
+///     at: [u8; 16],
+/// }
+///
+/// SentMessage {
+///     version_byte: u8,
+///     count: varint,
+///     recipients: [PerRecipientData; count],
+///     e_pub: [u8; 32],
+///     message: [u8] // remaining bytes
+/// }
+/// ```
+///
+/// The varint encoding used is the same as [protobuf's][varint]. Values are unsigned. UUIDs are
+/// encoded per [RFC 4122], with the first eight bytes considered "most significant". [^1]
+/// Fixed-width integers are unaligned and in network byte order (big-endian).
+///
+/// [varint]: https://developers.google.com/protocol-buffers/docs/encoding#varints
+/// [RFC 4122]: https://tools.ietf.org/html/rfc4122#section-4.1.2
+///
+/// [^1]: RFC 4122 guarantees the encoding order of the fields in a
+/// UUID, but the representation of each field may vary based on the UUID's
+/// "variant". For Sealed Sender's purposes, this is not important except for
+/// debug-printing, since UUIDs are always treated as opaque identifiers matched
+/// byte-for-byte.
 pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
@@ -899,21 +1244,27 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     let keys = sealed_sender_v2::DerivedKeys::calculate(&m);
     let e_pub = &keys.e.public_key;
 
-    let mut ciphertext = usmc.serialized()?.to_vec();
-    let tag = Aes256GcmSiv::new_from_slice(&keys.k)
-        .and_then(|aes_gcm_siv| {
-            aes_gcm_siv.encrypt_in_place_detached(
-                // There's no nonce because the key is already one-use.
-                &aes_gcm_siv::Nonce::default(),
-                // And there's no associated data.
-                &[],
-                &mut ciphertext,
-            )
-        })
-        .map_err(|err| {
-            log::error!("failed to encrypt using AES-GCM-SIV: {}", err);
-            SignalProtocolError::InternalError("failed to encrypt using AES-GCM-SIV")
-        })?;
+    let ciphertext = {
+        let mut ciphertext = usmc.serialized()?.to_vec();
+        let symmetric_authentication_tag = Aes256GcmSiv::new_from_slice(&keys.k)
+            .and_then(|aes_gcm_siv| {
+                aes_gcm_siv.encrypt_in_place_detached(
+                    // There's no nonce because the key is already one-use.
+                    &aes_gcm_siv::Nonce::default(),
+                    // And there's no associated data.
+                    &[],
+                    &mut ciphertext,
+                )
+            })
+            .map_err(|err| {
+                log::error!("failed to encrypt using AES-GCM-SIV: {}", err);
+                SignalProtocolError::InternalError("failed to encrypt using AES-GCM-SIV")
+            })?;
+        // AES-GCM-SIV expects the authentication tag to be at the end of the ciphertext
+        // when decrypting.
+        ciphertext.extend_from_slice(&symmetric_authentication_tag);
+        ciphertext
+    };
 
     // Uses a flat representation: count || UUID_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
     let version = SEALED_SENDER_V2_VERSION;
@@ -1001,12 +1352,21 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
 
     serialized.extend_from_slice(e_pub.public_key_bytes()?);
     serialized.extend_from_slice(&ciphertext);
-    serialized.extend_from_slice(&tag);
 
     Ok(serialized)
 }
 
-// For testing
+/// Split out the encoded message from [`sealed_sender_multi_recipient_encrypt`] into a sequence of
+/// individual encrypted [`UnidentifiedSenderMessageContent`]s. **Note: this method is only used in
+/// testing.**
+///
+/// This method strips recipients' metadata and splits a bulk v2 sealed-sender message into byte
+/// strings which can be processed by [`sealed_sender_decrypt_to_usmc`]. For the Signal app, this
+/// process of splitting out a v2 sealed-sender message into individual messages and using the
+/// metadata to correctly route the result to recipients is performed by the Signal server (see
+/// **[Routing messages to recipients]**).
+///
+/// [Routing messages to recipients]: sealed_sender_multi_recipient_encrypt#routing-messages-to-recipients
 pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>> {
     let version = data[0] >> 4;
     if version != SEALED_SENDER_V2_VERSION {
@@ -1060,6 +1420,10 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
     Ok(messages)
 }
 
+/// Decrypt the payload of a sealed-sender message in either the v1 or v2 format.
+///
+/// [`sealed_sender_decrypt`] consumes the output of this method to validate the sender's identity
+/// before decrypting the underlying message.
 pub async fn sealed_sender_decrypt_to_usmc(
     ciphertext: &[u8],
     identity_store: &mut dyn IdentityKeyStore,
@@ -1074,31 +1438,30 @@ pub async fn sealed_sender_decrypt_to_usmc(
             encrypted_message,
         } => {
             let eph_keys = sealed_sender_v1::EphemeralKeys::calculate(
+                &our_identity.into(),
                 &ephemeral_public,
-                our_identity.public_key(),
-                our_identity.private_key(),
-                false,
+                Direction::Receiving,
             )?;
 
             let message_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
                 &encrypted_static,
-                eph_keys.cipher_key()?,
-                eph_keys.mac_key()?,
+                &eph_keys.cipher_key,
+                &eph_keys.mac_key,
             )?;
 
             let static_key = PublicKey::try_from(&message_key_bytes[..])?;
 
             let static_keys = sealed_sender_v1::StaticKeys::calculate(
+                &our_identity,
                 &static_key,
-                our_identity.private_key(),
-                eph_keys.chain_key()?,
+                &eph_keys.chain_key,
                 &encrypted_static,
             )?;
 
             let message_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
                 &encrypted_message,
-                static_keys.cipher_key()?,
-                static_keys.mac_key()?,
+                &static_keys.cipher_key,
+                &static_keys.mac_key,
             )?;
 
             let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
@@ -1117,6 +1480,14 @@ pub async fn sealed_sender_decrypt_to_usmc(
             authentication_tag,
             encrypted_message,
         } => {
+            let encrypted_message_key: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] =
+                encrypted_message_key.as_ref().try_into().map_err(|_| {
+                    SignalProtocolError::InvalidSealedSenderMessage(format!(
+                        "encrypted message key had incorrect length {} (should be {})",
+                        encrypted_message_key.len(),
+                        sealed_sender_v2::MESSAGE_KEY_LEN
+                    ))
+                })?;
             let m = sealed_sender_v2::apply_agreement_xor(
                 &our_identity.into(),
                 &ephemeral_public,
@@ -1132,21 +1503,22 @@ pub async fn sealed_sender_decrypt_to_usmc(
             }
 
             let mut message_bytes = encrypted_message.into_vec();
-            let result = Aes256GcmSiv::new_from_slice(&keys.k).and_then(|aes_gcm_siv| {
-                aes_gcm_siv.decrypt_in_place(
-                    // There's no nonce because the key is already one-use.
-                    &aes_gcm_siv::Nonce::default(),
-                    // And there's no associated data.
-                    &[],
-                    &mut message_bytes,
-                )
-            });
-            if let Err(err) = result {
-                return Err(SignalProtocolError::InvalidSealedSenderMessage(format!(
-                    "failed to decrypt inner message: {}",
-                    err
-                )));
-            }
+            Aes256GcmSiv::new_from_slice(&keys.k)
+                .and_then(|aes_gcm_siv| {
+                    aes_gcm_siv.decrypt_in_place(
+                        // There's no nonce because the key is already one-use.
+                        &aes_gcm_siv::Nonce::default(),
+                        // And there's no associated data.
+                        &[],
+                        &mut message_bytes,
+                    )
+                })
+                .map_err(|err| {
+                    SignalProtocolError::InvalidSealedSenderMessage(format!(
+                        "failed to decrypt inner message: {}",
+                        err
+                    ))
+                })?;
 
             let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
 
@@ -1194,6 +1566,13 @@ impl SealedSenderDecryptionResult {
     }
 }
 
+/// Decrypt a Sealed Sender message `ciphertext` in either the v1 or v2 format, validate its sender
+/// certificate, and then decrypt the inner message payload.
+///
+/// This method calls [`sealed_sender_decrypt_to_usmc`] to extract the sender information, including
+/// the embedded [`SenderCertificate`]. The sender certificate (signed by the [`ServerCertificate`])
+/// is then validated against the `trust_root` baked into the client to ensure that the sender's
+/// identity was not forged.
 #[allow(clippy::too_many_arguments)]
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],
