@@ -9,23 +9,31 @@
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
-# getrandom + rand_core:
-#   curve25519-dalek + x25519-dalek use rand_core 0.5, snow uses rand_core 0.6
+# getrandom + rand*:
+#   curve25519-dalek + x25519-dalek use rand_core 0.5, snow and picky use rand_core 0.6
 # serde:
 #   num_enum_derive indirectly uses serde in a proc-macro;
 #   unfortunately that shows up as a repeat here
 EXPECTED="\
 getrandom v0.1.16
 
-getrandom v0.2.2
+getrandom v0.2.3
+
+rand v0.7.3
+
+rand v0.8.4
+
+rand_chacha v0.2.2
+
+rand_chacha v0.3.1
 
 rand_core v0.5.1
 
-rand_core v0.6.2
+rand_core v0.6.3
 
-serde v1.0.123
+serde v1.0.130
 
-serde v1.0.123"
+serde v1.0.130"
 
 if [[ $(cargo tree -d -e normal --workspace --locked --depth 0) != "${EXPECTED}" ]]; then
     cargo tree -d -e normal --workspace --locked
