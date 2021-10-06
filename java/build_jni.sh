@@ -20,7 +20,8 @@ export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 # even if those symbols have been re-exported in the Rust source.
 # Using LTO works around this at the cost of a slightly slower build.
 # https://github.com/rust-lang/rfcs/issues/2771
-export CARGO_PROFILE_RELEASE_LTO=thin 
+export CARGO_PROFILE_RELEASE_LTO=thin
+export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 
 if [ "$1" = 'desktop' ];
 then
