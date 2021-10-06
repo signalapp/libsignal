@@ -16,7 +16,7 @@ export CARGO_PROFILE_RELEASE_LTO=fat # use fat LTO to reduce binary size
 
 usage() {
   cat >&2 <<END
-Usage: $(basename "$0") [-d|-r] [-v] [--generate-ffi|--verify-ffi|--use-xargo]
+Usage: $(basename "$0") [-d|-r] [-v] [--generate-ffi|--verify-ffi|--build-std]
 
 Options:
   -d -- debug build (default)
@@ -25,7 +25,7 @@ Options:
 
   --generate-ffi -- regenerate ffi headers
   --verify-ffi   -- verify that ffi headers are up to date
-  --use-xargo    -- use xargo to compile for a tier 3 target
+  --build-std    -- use Cargo's -Zbuild-std to compile for a tier 3 target
 
 Use CARGO_BUILD_TARGET for cross-compilation (such as for iOS).
 END
@@ -47,7 +47,7 @@ RELEASE_BUILD=
 VERBOSE=
 SHOULD_CBINDGEN=
 CBINDGEN_VERIFY=
-USE_XARGO=
+BUILD_STD=
 
 while [ "${1:-}" != "" ]; do
   case $1 in
@@ -67,8 +67,8 @@ while [ "${1:-}" != "" ]; do
       SHOULD_CBINDGEN=1
       CBINDGEN_VERIFY=1
       ;;
-    --use-xargo)
-      USE_XARGO=1
+    --build-std)
+      BUILD_STD=1
       ;;
     -h | --help )
       usage
@@ -91,14 +91,7 @@ if [[ -n "${DEVELOPER_SDK_DIR:-}" ]]; then
   export LIBRARY_PATH="${DEVELOPER_SDK_DIR}/MacOSX.sdk/usr/lib:${LIBRARY_PATH:-}"
 fi
 
-BUILD_CMD=cargo
-if [[ -n "${USE_XARGO:-}" ]]; then
-  if ! command -v xargo &> /dev/null; then
-    echo "error: xargo not installed" >&2
-    echo 'note: get it by running' >&2
-    printf "\n\t%s\n\n" "cargo install xargo" >&2
-    exit 1
-  fi
+if [[ -n "${BUILD_STD:-}" ]]; then
   RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN:-$(cat ./rust-toolchain)}
   if ! rustup "+${RUSTUP_TOOLCHAIN}" component list --installed | grep -q rust-src; then
     echo 'error: rust-src component not installed' >&2
@@ -106,10 +99,9 @@ if [[ -n "${USE_XARGO:-}" ]]; then
     printf "\n\t%s\n\n" "rustup +${RUSTUP_TOOLCHAIN} component add rust-src" >&2
     exit 1
   fi
-  BUILD_CMD=xargo
 fi
 
-echo_then_run ${BUILD_CMD} build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET}
+echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${BUILD_STD:+-Zbuild-std}
 
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 

@@ -10,11 +10,11 @@ custom_data_source: {
     replacement: "stdlib"
   }
   rewrite: {
-    pattern: "/\\.?cargo/registry/src/github.com-[^/]+/([^/]+)/"
+    pattern: "/\\.?cargo/registry/src/github.com-[^/]+/([^/]+)-\\d[^/]*/"
     replacement: "\\1"
   }
   rewrite: {
-    pattern: "/\\.?cargo/git/checkouts/([^/]+)/"
+    pattern: "/\\.?cargo/git/checkouts/([^/]+)-[0-9a-f]+/"
     replacement: "\\1"
   }
   rewrite: {
@@ -22,8 +22,8 @@ custom_data_source: {
     replacement: "\\1"
   }
   rewrite: {
-    pattern: "/target/[^/]+/build/([^/]+)/"
-    replacement: "\\1 (generated)"
+    pattern: "/target/[^/]+/([^/]+/)?build/([^/]+)-[0-9a-f]+/"
+    replacement: "\\2 (generated)"
   }
   rewrite: {
     pattern: "\\[section .debug.+\\]"

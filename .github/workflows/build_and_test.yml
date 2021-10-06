@@ -315,15 +315,10 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          components: rust-src
 
       - name: Add iOS targets
-        run: rustup target add x86_64-apple-ios aarch64-apple-ios
-
-      - name: Install Xargo
-        run: cargo install xargo
-
-      - name: Add rust-src component
-        run: rustup component add rust-src
+        run: rustup target add x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).

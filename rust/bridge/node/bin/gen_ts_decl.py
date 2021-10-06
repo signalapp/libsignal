@@ -95,8 +95,7 @@ def collect_decls(crate_dir, features=''):
         '--features', features,
         '--message-format=short',
         '--',
-        '-Zunstable-options',
-        '--pretty=expanded']
+        '-Zunpretty=expanded']
     rustc = subprocess.Popen(args, cwd=crate_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     (stdout, stderr) = rustc.communicate()
