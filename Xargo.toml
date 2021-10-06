@@ -3,6 +3,3 @@ features = ["panic_unwind"]
 
 [target.aarch64-apple-ios-macabi.dependencies.std]
 features = ["panic_unwind"]
-
-[target.aarch64-apple-ios-sim.dependencies.std]
-features = ["panic_unwind"]

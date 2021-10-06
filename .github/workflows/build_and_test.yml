@@ -317,7 +317,7 @@ jobs:
           profile: minimal
 
       - name: Add iOS targets
-        run: rustup target add x86_64-apple-ios aarch64-apple-ios
+        run: rustup target add x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
 
       - name: Install Xargo
         run: cargo install xargo
