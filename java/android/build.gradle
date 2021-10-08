@@ -56,7 +56,8 @@ repositories {
 }
 
 dependencies {
-    androidTestImplementation 'junit:junit:3.8.2'
+    androidTestImplementation 'com.android.support:support-annotations:24.0.0'
+    androidTestImplementation 'com.android.support.test:runner:0.5'
     api project(':java')
 }
 
