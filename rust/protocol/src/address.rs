@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -16,7 +16,26 @@ use std::fmt;
 /// represents some user.
 ///
 /// Used in [ProtocolAddress].
-pub type DeviceId = u32;
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
+pub struct DeviceId(u32);
+
+impl From<u32> for DeviceId {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<DeviceId> for u32 {
+    fn from(value: DeviceId) -> Self {
+        value.0
+    }
+}
+
+impl fmt::Display for DeviceId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// Represents a unique Signal client instance as `(<user ID>, <device ID>)` pair.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]

@@ -14,8 +14,8 @@ mod support;
 pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolError> {
     let (alice_session_record, bob_session_record) = support::initialize_sessions_v3()?;
 
-    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
-    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
+    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1.into());
+    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1.into());
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;
@@ -98,9 +98,9 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             .get_local_registration_id(None)
             .now_or_never()
             .expect("sync")?,
-        1,                 // device id
-        None,              // pre key
-        signed_pre_key_id, // signed pre key id
+        1.into(),                 // device id
+        None,                     // pre key
+        signed_pre_key_id.into(), // signed pre key id
         bob_signed_pre_key_pair.public_key,
         bob_signed_pre_key_signature.to_vec(),
         *bob_store
@@ -112,9 +112,9 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     bob_store
         .save_signed_pre_key(
-            signed_pre_key_id,
+            signed_pre_key_id.into(),
             &SignedPreKeyRecord::new(
-                signed_pre_key_id,
+                signed_pre_key_id.into(),
                 /*timestamp*/ 42,
                 &bob_signed_pre_key_pair,
                 &bob_signed_pre_key_signature,
@@ -183,8 +183,8 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolError> {
     let (alice_session_record, bob_session_record) = support::initialize_sessions_v3()?;
 
-    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1);
-    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1);
+    let alice_address = ProtocolAddress::new("+14159999999".to_owned(), 1.into());
+    let bob_address = ProtocolAddress::new("+14158888888".to_owned(), 1.into());
 
     let mut alice_store = support::test_in_memory_protocol_store()?;
     let mut bob_store = support::test_in_memory_protocol_store()?;

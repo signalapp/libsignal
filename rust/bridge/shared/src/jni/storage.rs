@@ -253,27 +253,27 @@ impl<'a> JniPreKeyStore<'a> {
 impl<'a> PreKeyStore for JniPreKeyStore<'a> {
     async fn get_pre_key(
         &self,
-        prekey_id: u32,
+        prekey_id: PreKeyId,
         _ctx: Context,
     ) -> Result<PreKeyRecord, SignalProtocolError> {
-        Ok(self.do_get_pre_key(prekey_id)?)
+        Ok(self.do_get_pre_key(prekey_id.into())?)
     }
 
     async fn save_pre_key(
         &mut self,
-        prekey_id: u32,
+        prekey_id: PreKeyId,
         record: &PreKeyRecord,
         _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_save_pre_key(prekey_id, record)?)
+        Ok(self.do_save_pre_key(prekey_id.into(), record)?)
     }
 
     async fn remove_pre_key(
         &mut self,
-        prekey_id: u32,
+        prekey_id: PreKeyId,
         _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_remove_pre_key(prekey_id)?)
+        Ok(self.do_remove_pre_key(prekey_id.into())?)
     }
 }
 
@@ -331,19 +331,19 @@ impl<'a> JniSignedPreKeyStore<'a> {
 impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
     async fn get_signed_pre_key(
         &self,
-        prekey_id: u32,
+        prekey_id: SignedPreKeyId,
         _ctx: Context,
     ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
-        Ok(self.do_get_signed_pre_key(prekey_id)?)
+        Ok(self.do_get_signed_pre_key(prekey_id.into())?)
     }
 
     async fn save_signed_pre_key(
         &mut self,
-        prekey_id: u32,
+        prekey_id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
         _ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_save_signed_pre_key(prekey_id, record)?)
+        Ok(self.do_save_signed_pre_key(prekey_id.into(), record)?)
     }
 }
 

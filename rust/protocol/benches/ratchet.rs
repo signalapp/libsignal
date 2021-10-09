@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -20,7 +20,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     let mut csprng = rand::rngs::OsRng;
 
-    let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1);
+    let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
     let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
 
     let mut alice_store = support::test_in_memory_protocol_store()?;

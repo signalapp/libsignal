@@ -1,13 +1,13 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use crate::{
-    message_encrypt, CiphertextMessageType, Context, Direction, IdentityKey, IdentityKeyPair,
-    IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress,
-    PublicKey, Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError,
-    SignedPreKeyStore,
+    message_encrypt, CiphertextMessageType, Context, DeviceId, Direction, IdentityKey,
+    IdentityKeyPair, IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey,
+    ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
+    SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::crypto;
@@ -156,7 +156,7 @@ impl ServerCertificate {
 pub struct SenderCertificate {
     signer: ServerCertificate,
     key: PublicKey,
-    sender_device_id: u32,
+    sender_device_id: DeviceId,
     sender_uuid: String,
     sender_e164: Option<String>,
     expiration: u64,
@@ -179,9 +179,10 @@ impl SenderCertificate {
             proto::sealed_sender::sender_certificate::Certificate::decode(certificate.as_ref())
                 .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
-        let sender_device_id = certificate_data
+        let sender_device_id: DeviceId = certificate_data
             .sender_device
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+            .into();
         let expiration = certificate_data
             .expires
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -219,7 +220,7 @@ impl SenderCertificate {
         sender_uuid: String,
         sender_e164: Option<String>,
         key: PublicKey,
-        sender_device_id: u32,
+        sender_device_id: DeviceId,
         expiration: u64,
         signer: ServerCertificate,
         signer_key: &PrivateKey,
@@ -228,7 +229,7 @@ impl SenderCertificate {
         let certificate_pb = proto::sealed_sender::sender_certificate::Certificate {
             sender_uuid: Some(sender_uuid.clone()),
             sender_e164: sender_e164.clone(),
-            sender_device: Some(sender_device_id),
+            sender_device: Some(sender_device_id.into()),
             expires: Some(expiration),
             identity_key: Some(key.serialize().to_vec()),
             signer: Some(signer.to_protobuf()?),
@@ -292,7 +293,7 @@ impl SenderCertificate {
         Ok(self.key)
     }
 
-    pub fn sender_device_id(&self) -> Result<u32> {
+    pub fn sender_device_id(&self) -> Result<DeviceId> {
         Ok(self.sender_device_id)
     }
 
@@ -1307,7 +1308,8 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         let end_of_previous_recipient_data = serialized.len();
 
         serialized.extend_from_slice(their_uuid.as_bytes());
-        prost::encode_length_delimiter(destination.device_id() as usize, &mut serialized)
+        let device_id: u32 = destination.device_id().into();
+        prost::encode_length_delimiter(device_id as usize, &mut serialized)
             .expect("cannot fail encoding to Vec");
         serialized.extend_from_slice(&their_registration_id.to_be_bytes());
 
@@ -1563,7 +1565,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
 pub struct SealedSenderDecryptionResult {
     pub sender_uuid: String,
     pub sender_e164: Option<String>,
-    pub device_id: u32,
+    pub device_id: DeviceId,
     pub message: Vec<u8>,
 }
 
@@ -1576,7 +1578,7 @@ impl SealedSenderDecryptionResult {
         Ok(self.sender_e164.as_deref())
     }
 
-    pub fn device_id(&self) -> Result<u32> {
+    pub fn device_id(&self) -> Result<DeviceId> {
         Ok(self.device_id)
     }
 
@@ -1599,7 +1601,7 @@ pub async fn sealed_sender_decrypt(
     timestamp: u64,
     local_e164: Option<String>,
     local_uuid: String,
-    local_device_id: u32,
+    local_device_id: DeviceId,
     identity_store: &mut dyn IdentityKeyStore,
     session_store: &mut dyn SessionStore,
     pre_key_store: &mut dyn PreKeyStore,
