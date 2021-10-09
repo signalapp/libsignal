@@ -42,32 +42,28 @@ bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 fn HKDF_DeriveSecrets<E: Env>(
     env: E,
     output_length: u32,
-    version: u32,
     ikm: &[u8],
     label: Option<&[u8]>,
     salt: Option<&[u8]>,
 ) -> Result<E::Buffer> {
-    let kdf = HKDF::new(version)?;
     let label = label.unwrap_or(&[]);
-    let buffer = match salt {
-        Some(salt) => kdf.derive_salted_secrets(ikm, salt, label, output_length as usize)?,
-        None => kdf.derive_secrets(ikm, label, output_length as usize)?,
-    };
-    Ok(env.buffer(buffer.into_vec()))
+    let mut buffer = vec![0; output_length as usize];
+    hkdf::Hkdf::<sha2::Sha256>::new(salt, ikm)
+        .expand(label, &mut buffer)
+        .map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("output too long ({})", output_length))
+        })?;
+    Ok(env.buffer(buffer))
 }
 
 // Alternate implementation to fill an existing buffer.
 #[bridge_fn_void(jni = false, node = false)]
-fn HKDF_Derive(
-    output: &mut [u8],
-    version: u32,
-    ikm: &[u8],
-    label: &[u8],
-    salt: &[u8],
-) -> Result<()> {
-    let kdf = HKDF::new(version)?;
-    let kdf_output = kdf.derive_salted_secrets(ikm, salt, label, output.len())?;
-    output.copy_from_slice(&kdf_output);
+fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Result<()> {
+    hkdf::Hkdf::<sha2::Sha256>::new(Some(salt), ikm)
+        .expand(label, output)
+        .map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("output too long ({})", output.len()))
+        })?;
     Ok(())
 }
 

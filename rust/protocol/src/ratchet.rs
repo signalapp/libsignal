@@ -15,12 +15,13 @@ use crate::{KeyPair, Result, SessionRecord};
 use rand::{CryptoRng, Rng};
 
 fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
-    let kdf = crate::kdf::HKDF::new(3)?;
+    let mut secrets = [0; 64];
+    hkdf::Hkdf::<sha2::Sha256>::new(None, secret_input)
+        .expand(b"WhisperText", &mut secrets)
+        .expect("valid length");
 
-    let secrets = kdf.derive_secrets(secret_input, b"WhisperText", 64)?;
-
-    let root_key = RootKey::new(kdf, &secrets[0..32])?;
-    let chain_key = ChainKey::new(kdf, &secrets[32..64], 0)?;
+    let root_key = RootKey::new(&secrets[0..32])?;
+    let chain_key = ChainKey::new(&secrets[32..64], 0)?;
 
     Ok((root_key, chain_key))
 }

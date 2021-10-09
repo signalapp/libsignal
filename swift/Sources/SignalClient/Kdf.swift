@@ -7,7 +7,6 @@ import SignalFfi
 import Foundation
 
 public func hkdf<InputBytes, SaltBytes, InfoBytes>(outputLength: Int,
-                                                   version: UInt32,
                                                    inputKeyMaterial: InputBytes,
                                                    salt: SaltBytes,
                                                    info: InfoBytes) throws -> [UInt8]
@@ -19,7 +18,6 @@ where InputBytes: ContiguousBytes, SaltBytes: ContiguousBytes, InfoBytes: Contig
             try info.withUnsafeBytes { infoBytes in
                 try checkError(signal_hkdf_derive(&output,
                                                   outputLength,
-                                                  version,
                                                   inputBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), inputBytes.count,
                                                   infoBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), infoBytes.count,
                                                   saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), saltBytes.count))
@@ -28,4 +26,18 @@ where InputBytes: ContiguousBytes, SaltBytes: ContiguousBytes, InfoBytes: Contig
     }
 
     return output
+}
+
+@available(*, deprecated, message: "Remove the 'version' parameter for standard HKDF behavior")
+public func hkdf<InputBytes, SaltBytes, InfoBytes>(outputLength: Int,
+                                                   version: UInt32,
+                                                   inputKeyMaterial: InputBytes,
+                                                   salt: SaltBytes,
+                                                   info: InfoBytes) throws -> [UInt8]
+where InputBytes: ContiguousBytes, SaltBytes: ContiguousBytes, InfoBytes: ContiguousBytes {
+    precondition(version == 3, "HKDF versions other than 3 are no longer supported")
+    return try hkdf(outputLength: outputLength,
+                    inputKeyMaterial: inputKeyMaterial,
+                    salt: salt,
+                    info: info)
 }

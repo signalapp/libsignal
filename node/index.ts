@@ -45,14 +45,14 @@ export const enum ContentHint {
 export type Uuid = string;
 
 export class HKDF {
-  private readonly version: number;
-
-  private constructor(version: number) {
-    this.version = version;
-  }
-
+  /**
+   * @deprecated Use the top-level 'hkdf' function for standard HKDF behavior
+   */
   static new(version: number): HKDF {
-    return new HKDF(version);
+    if (version != 3) {
+      throw new Error('HKDF versions other than 3 are no longer supported');
+    }
+    return new HKDF();
   }
 
   deriveSecrets(
@@ -61,14 +61,17 @@ export class HKDF {
     label: Buffer,
     salt: Buffer | null
   ): Buffer {
-    return NativeImpl.HKDF_DeriveSecrets(
-      outputLength,
-      this.version,
-      keyMaterial,
-      label,
-      salt
-    );
+    return hkdf(outputLength, keyMaterial, label, salt);
   }
+}
+
+export function hkdf(
+  outputLength: number,
+  keyMaterial: Buffer,
+  label: Buffer,
+  salt: Buffer | null
+): Buffer {
+  return NativeImpl.HKDF_DeriveSecrets(outputLength, keyMaterial, label, salt);
 }
 
 export class ScannableFingerprint {

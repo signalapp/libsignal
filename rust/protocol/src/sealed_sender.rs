@@ -7,7 +7,7 @@ use crate::{
     message_encrypt, CiphertextMessageType, Context, Direction, IdentityKey, IdentityKeyPair,
     IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress,
     PublicKey, Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError,
-    SignedPreKeyStore, HKDF,
+    SignedPreKeyStore,
 };
 
 use crate::crypto;
@@ -629,13 +629,11 @@ mod sealed_sender_v1 {
             }
             .concat();
 
-            let agreement = our_keys.calculate_agreement(their_public)?;
-            let derived_values = HKDF::new(3)?.derive_salted_secrets(
-                &agreement,
-                &ephemeral_salt,
-                &[],
-                EPHEMERAL_KEYS_KDF_LEN,
-            )?;
+            let shared_secret = our_keys.private_key.calculate_agreement(their_public)?;
+            let mut derived_values = [0; EPHEMERAL_KEYS_KDF_LEN];
+            hkdf::Hkdf::<sha2::Sha256>::new(Some(&ephemeral_salt), &shared_secret)
+                .expand(&[], &mut derived_values)
+                .expect("valid output length");
 
             Ok(Self {
                 chain_key: *array_ref![&derived_values, 0, 32],
@@ -689,12 +687,10 @@ mod sealed_sender_v1 {
             // 96 bytes are derived, but the first 32 are discarded/unused. This is intended to
             // mirror the way the EphemeralKeys are derived, even though StaticKeys does not end up
             // requiring a third "chain key".
-            let derived_values = HKDF::new(3)?.derive_salted_secrets(
-                &shared_secret,
-                &salt,
-                &[],
-                EPHEMERAL_KEYS_KDF_LEN,
-            )?;
+            let mut derived_values = [0; 96];
+            hkdf::Hkdf::<sha2::Sha256>::new(Some(&salt), &shared_secret)
+                .expand(&[], &mut derived_values)
+                .expect("valid output length");
 
             Ok(Self {
                 cipher_key: *array_ref![&derived_values, 32, 32],
@@ -926,16 +922,12 @@ mod sealed_sender_v2 {
     impl DerivedKeys {
         /// Derive a set of ephemeral keys from a slice of random bytes `m`.
         pub(super) fn calculate(m: &[u8]) -> DerivedKeys {
-            let kdf = HKDF::new(3).expect("valid KDF version");
-            let r = kdf
-                .derive_secrets(m, LABEL_R, 64)
-                .expect("valid use of KDF");
-            let k = kdf
-                .derive_secrets(m, LABEL_K, MESSAGE_KEY_LEN)
-                .expect("valid use of KDF");
-            let k = <[u8; MESSAGE_KEY_LEN]>::try_from(&k[..]).expect("correct length");
-            let e_raw =
-                Scalar::from_bytes_mod_order_wide(r.as_ref().try_into().expect("64-byte slice"));
+            let kdf = hkdf::Hkdf::<sha2::Sha256>::new(None, m);
+            let mut r = [0; 64];
+            kdf.expand(LABEL_R, &mut r).expect("valid output length");
+            let mut k = [0; MESSAGE_KEY_LEN];
+            kdf.expand(LABEL_K, &mut k).expect("valid output length");
+            let e_raw = Scalar::from_bytes_mod_order_wide(&r);
             let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
             let e = KeyPair::try_from(e).expect("can derive public key");
             DerivedKeys { e, k }
@@ -969,12 +961,10 @@ mod sealed_sender_v2 {
         }
         .concat();
 
-        let mut result: [u8; MESSAGE_KEY_LEN] = HKDF::new(3)?
-            .derive_secrets(&agreement_key_input, LABEL_DH, MESSAGE_KEY_LEN)?
-            .as_ref()
-            .try_into()
-            .expect("requested correct key size from HKDF");
-
+        let mut result = [0; MESSAGE_KEY_LEN];
+        hkdf::Hkdf::<sha2::Sha256>::new(None, &agreement_key_input)
+            .expand(LABEL_DH, &mut result)
+            .expect("valid output length");
         result
             .iter_mut()
             .zip(input)
@@ -1014,11 +1004,11 @@ mod sealed_sender_v2 {
             }
         }
 
-        Ok(HKDF::new(3)?
-            .derive_secrets(&agreement_key_input, LABEL_DH_S, AUTH_TAG_LEN)?
-            .as_ref()
-            .try_into()
-            .expect("requested correct key size from HKDF"))
+        let mut result = [0; AUTH_TAG_LEN];
+        hkdf::Hkdf::<sha2::Sha256>::new(None, &agreement_key_input)
+            .expand(LABEL_DH_S, &mut result)
+            .expect("valid output length");
+        Ok(result)
     }
 
     #[test]

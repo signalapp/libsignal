@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::proto::storage as storage_proto;
-use crate::{PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
+use crate::{PrivateKey, PublicKey, Result, SignalProtocolError};
 
 #[derive(Debug, Clone)]
 pub struct SenderMessageKey {
@@ -25,8 +25,10 @@ pub struct SenderMessageKey {
 
 impl SenderMessageKey {
     pub fn new(iteration: u32, seed: Vec<u8>) -> Result<Self> {
-        let hkdf = HKDF::new(3)?;
-        let derived = hkdf.derive_secrets(&seed, b"WhisperGroup", 48)?;
+        let mut derived = [0; 48];
+        hkdf::Hkdf::<sha2::Sha256>::new(None, &seed)
+            .expand(b"WhisperGroup", &mut derived)
+            .expect("valid output length");
         Ok(Self {
             iteration,
             seed,
