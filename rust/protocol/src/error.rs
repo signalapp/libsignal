@@ -6,13 +6,13 @@
 use crate::curve::KeyType;
 
 use displaydoc::Display;
+use thiserror::Error;
 
-use std::error::Error;
 use std::panic::UnwindSafe;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 
-#[derive(Debug, Display)]
+#[derive(Debug, Display, Error)]
 pub enum SignalProtocolError {
     /// invalid argument: {0}
     InvalidArgument(String),
@@ -20,9 +20,9 @@ pub enum SignalProtocolError {
     InvalidState(&'static str, String),
 
     /// failed to decode protobuf: {0}
-    ProtobufDecodingError(prost::DecodeError),
+    ProtobufDecodingError(#[from] prost::DecodeError),
     /// failed to encode protobuf: {0}
-    ProtobufEncodingError(prost::EncodeError),
+    ProtobufEncodingError(#[from] prost::EncodeError),
     /// protobuf encoding was invalid
     InvalidProtobufEncoding,
 
@@ -93,7 +93,7 @@ pub enum SignalProtocolError {
     /// error in method call '{0}': {1}
     ApplicationCallbackError(
         &'static str,
-        Box<dyn std::error::Error + Send + Sync + UnwindSafe + 'static>,
+        #[source] Box<dyn std::error::Error + Send + Sync + UnwindSafe + 'static>,
     ),
 
     /// invalid sealed sender message {0}
@@ -102,27 +102,4 @@ pub enum SignalProtocolError {
     UnknownSealedSenderVersion(u8),
     /// self send of a sealed sender message
     SealedSenderSelfSend,
-}
-
-impl Error for SignalProtocolError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            SignalProtocolError::ProtobufEncodingError(e) => Some(e),
-            SignalProtocolError::ProtobufDecodingError(e) => Some(e),
-            SignalProtocolError::ApplicationCallbackError(_, e) => Some(e.as_ref()),
-            _ => None,
-        }
-    }
-}
-
-impl From<prost::DecodeError> for SignalProtocolError {
-    fn from(value: prost::DecodeError) -> SignalProtocolError {
-        SignalProtocolError::ProtobufDecodingError(value)
-    }
-}
-
-impl From<prost::EncodeError> for SignalProtocolError {
-    fn from(value: prost::EncodeError) -> SignalProtocolError {
-        SignalProtocolError::ProtobufEncodingError(value)
-    }
 }
