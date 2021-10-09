@@ -4,12 +4,12 @@
 //
 
 use crate::state::{PreKeyId, SignedPreKeyId};
-use crate::{IdentityKey, PublicKey, Result};
+use crate::{DeviceId, IdentityKey, PublicKey, Result};
 
 #[derive(Debug, Clone)]
 pub struct PreKeyBundle {
     registration_id: u32,
-    device_id: u32,
+    device_id: DeviceId,
     pre_key_id: Option<PreKeyId>,
     pre_key_public: Option<PublicKey>,
     signed_pre_key_id: SignedPreKeyId,
@@ -21,7 +21,7 @@ pub struct PreKeyBundle {
 impl PreKeyBundle {
     pub fn new(
         registration_id: u32,
-        device_id: u32,
+        device_id: DeviceId,
         pre_key: Option<(PreKeyId, PublicKey)>,
         signed_pre_key_id: SignedPreKeyId,
         signed_pre_key_public: PublicKey,
@@ -49,7 +49,7 @@ impl PreKeyBundle {
         Ok(self.registration_id)
     }
 
-    pub fn device_id(&self) -> Result<u32> {
+    pub fn device_id(&self) -> Result<DeviceId> {
         Ok(self.device_id)
     }
 

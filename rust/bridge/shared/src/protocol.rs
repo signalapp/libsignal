@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -87,7 +87,7 @@ fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Resu
 
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
-    ProtocolAddress::new(name, device_id)
+    ProtocolAddress::new(name, device_id.into())
 }
 
 #[bridge_fn(ffi = "publickey_deserialize", jni = false)]
@@ -316,8 +316,8 @@ fn PreKeySignalMessage_New(
     PreKeySignalMessage::new(
         message_version,
         registration_id,
-        pre_key_id,
-        signed_pre_key_id,
+        pre_key_id.map(|id| id.into()),
+        signed_pre_key_id.into(),
         *base_key,
         IdentityKey::new(*identity_key),
         signal_message.clone(),
@@ -496,9 +496,9 @@ fn PreKeyBundle_New(
 ) -> Result<PreKeyBundle> {
     let identity_key = IdentityKey::new(*identity_key);
 
-    let prekey = match (prekey, prekey_id) {
+    let prekey: Option<(PreKeyId, PublicKey)> = match (prekey, prekey_id) {
         (None, None) => None,
-        (Some(k), Some(id)) => Some((id, *k)),
+        (Some(k), Some(id)) => Some((id.into(), *k)),
         _ => {
             return Err(SignalProtocolError::InvalidArgument(
                 "Must supply both or neither of prekey and prekey_id".to_owned(),
@@ -508,9 +508,9 @@ fn PreKeyBundle_New(
 
     PreKeyBundle::new(
         registration_id,
-        device_id,
+        device_id.into(),
         prekey,
-        signed_prekey_id,
+        signed_prekey_id.into(),
         *signed_prekey,
         signed_prekey_signature.to_vec(),
         identity_key,
@@ -550,7 +550,7 @@ fn SignedPreKeyRecord_New(
     signature: &[u8],
 ) -> SignedPreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
-    SignedPreKeyRecord::new(id, timestamp.as_millis(), &keypair, signature)
+    SignedPreKeyRecord::new(id.into(), timestamp.as_millis(), &keypair, signature)
 }
 
 bridge_deserialize!(PreKeyRecord::deserialize);
@@ -565,7 +565,7 @@ bridge_get!(PreKeyRecord::private_key -> PrivateKey);
 #[bridge_fn]
 fn PreKeyRecord_New(id: u32, pub_key: &PublicKey, priv_key: &PrivateKey) -> PreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
-    PreKeyRecord::new(id, &keypair)
+    PreKeyRecord::new(id.into(), &keypair)
 }
 
 bridge_deserialize!(SenderKeyRecord::deserialize);
@@ -631,7 +631,7 @@ fn SenderCertificate_New(
         sender_uuid,
         sender_e164,
         *sender_key,
-        sender_device_id,
+        sender_device_id.into(),
         expiration.as_millis(),
         signer_cert.clone(),
         signer_key,
@@ -1101,7 +1101,7 @@ async fn SealedSender_DecryptMessage(
         timestamp.as_millis(),
         local_e164,
         local_uuid,
-        local_device_id,
+        local_device_id.into(),
         identity_store,
         session_store,
         prekey_store,

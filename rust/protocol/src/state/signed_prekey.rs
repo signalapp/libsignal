@@ -1,13 +1,36 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
+
 use prost::Message;
 
-pub type SignedPreKeyId = u32;
+use std::fmt;
+
+/// A unique identifier selecting among this client's known signed pre-keys.
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct SignedPreKeyId(u32);
+
+impl From<u32> for SignedPreKeyId {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<SignedPreKeyId> for u32 {
+    fn from(value: SignedPreKeyId) -> Self {
+        value.0
+    }
+}
+
+impl fmt::Display for SignedPreKeyId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SignedPreKeyRecord {
@@ -21,7 +44,7 @@ impl SignedPreKeyRecord {
         let signature = signature.to_vec();
         Self {
             signed_pre_key: SignedPreKeyRecordStructure {
-                id,
+                id: id.into(),
                 timestamp,
                 public_key,
                 private_key,
@@ -38,7 +61,7 @@ impl SignedPreKeyRecord {
     }
 
     pub fn id(&self) -> Result<SignedPreKeyId> {
-        Ok(self.signed_pre_key.id)
+        Ok(self.signed_pre_key.id.into())
     }
 
     pub fn timestamp(&self) -> Result<u64> {

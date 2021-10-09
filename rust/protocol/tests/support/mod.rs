@@ -71,9 +71,9 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 
     let pre_key_bundle = PreKeyBundle::new(
         store.get_local_registration_id(None).await?,
-        device_id,
-        Some((pre_key_id, pre_key_pair.public_key)),
-        signed_pre_key_id,
+        device_id.into(),
+        Some((pre_key_id.into(), pre_key_pair.public_key)),
+        signed_pre_key_id.into(),
         signed_pre_key_pair.public_key,
         signed_pre_key_signature.to_vec(),
         *store.get_identity_key_pair(None).await?.identity_key(),
@@ -81,8 +81,8 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 
     store
         .save_pre_key(
-            pre_key_id,
-            &PreKeyRecord::new(pre_key_id, &pre_key_pair),
+            pre_key_id.into(),
+            &PreKeyRecord::new(pre_key_id.into(), &pre_key_pair),
             None,
         )
         .await?;
@@ -91,9 +91,9 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 
     store
         .save_signed_pre_key(
-            signed_pre_key_id,
+            signed_pre_key_id.into(),
             &SignedPreKeyRecord::new(
-                signed_pre_key_id,
+                signed_pre_key_id.into(),
                 timestamp,
                 &signed_pre_key_pair,
                 &signed_pre_key_signature,

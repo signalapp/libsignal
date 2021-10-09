@@ -16,8 +16,10 @@ mod support;
 pub fn v1(c: &mut Criterion) {
     let mut rng = OsRng;
 
-    let alice_address = ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1);
-    let bob_address = ProtocolAddress::new("796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(), 1);
+    let alice_address =
+        ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1.into());
+    let bob_address =
+        ProtocolAddress::new("796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(), 1.into());
 
     let mut alice_store = support::test_in_memory_protocol_store().expect("brand new store");
     let mut bob_store = support::test_in_memory_protocol_store().expect("brand new store");
@@ -104,8 +106,10 @@ pub fn v1(c: &mut Criterion) {
 pub fn v2(c: &mut Criterion) {
     let mut rng = OsRng;
 
-    let alice_address = ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1);
-    let bob_address = ProtocolAddress::new("796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(), 1);
+    let alice_address =
+        ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1.into());
+    let bob_address =
+        ProtocolAddress::new("796abedb-ca4e-4f18-8803-1fde5b921f9f".to_owned(), 1.into());
 
     let mut alice_store = support::test_in_memory_protocol_store().expect("brand new store");
     let mut bob_store = support::test_in_memory_protocol_store().expect("brand new store");
@@ -201,7 +205,7 @@ pub fn v2(c: &mut Criterion) {
     // Fill out additional recipients.
     let mut recipients = vec![bob_address.clone()];
     while recipients.len() < 10 {
-        let next_address = ProtocolAddress::new(Uuid::from_bytes(rng.gen()).to_string(), 1);
+        let next_address = ProtocolAddress::new(Uuid::from_bytes(rng.gen()).to_string(), 1.into());
 
         let mut next_store = support::test_in_memory_protocol_store().expect("brand new store");
 

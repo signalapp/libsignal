@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -40,11 +40,11 @@ impl Participant {
             .calculate_signature(&their_signed_pre_key_public, rng)
             .unwrap();
 
-        let signed_pre_key_id = rng.gen_range(0, 0xFF_FFFF);
+        let signed_pre_key_id: SignedPreKeyId = rng.gen_range(0, 0xFF_FFFF).into();
 
         them.store
             .save_signed_pre_key(
-                signed_pre_key_id,
+                signed_pre_key_id.into(),
                 &SignedPreKeyRecord::new(
                     signed_pre_key_id,
                     /*timestamp*/ 42,
@@ -57,7 +57,7 @@ impl Participant {
             .unwrap();
 
         let pre_key_info = if use_one_time_pre_key {
-            let pre_key_id = rng.gen_range(0, 0xFF_FFFF);
+            let pre_key_id: PreKeyId = rng.gen_range(0, 0xFF_FFFF).into();
             let one_time_pre_key = KeyPair::generate(rng);
 
             them.store
@@ -75,9 +75,9 @@ impl Participant {
 
         let their_pre_key_bundle = PreKeyBundle::new(
             them.store.get_local_registration_id(None).await.unwrap(),
-            1, // device id
-            pre_key_info,
-            signed_pre_key_id,
+            1.into(), // device id
+            pre_key_info.into(),
+            signed_pre_key_id.into(),
             their_signed_pre_key_pair.public_key,
             their_signed_pre_key_signature.into_vec(),
             *them
@@ -188,7 +188,7 @@ fuzz_target!(|data: (u64, &[u8])| {
 
         let mut alice = Participant {
             name: "alice",
-            address: ProtocolAddress::new("+14151111111".to_owned(), 1),
+            address: ProtocolAddress::new("+14151111111".to_owned(), 1.into()),
             store: InMemSignalProtocolStore::new(
                 IdentityKeyPair::generate(&mut csprng),
                 csprng.gen(),
@@ -199,7 +199,7 @@ fuzz_target!(|data: (u64, &[u8])| {
         };
         let mut bob = Participant {
             name: "bob",
-            address: ProtocolAddress::new("+14151111112".to_owned(), 1),
+            address: ProtocolAddress::new("+14151111112".to_owned(), 1.into()),
             store: InMemSignalProtocolStore::new(
                 IdentityKeyPair::generate(&mut csprng),
                 csprng.gen(),

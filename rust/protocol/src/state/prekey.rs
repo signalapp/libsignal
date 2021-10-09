@@ -1,13 +1,36 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use crate::proto::storage::PreKeyRecordStructure;
 use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
+
 use prost::Message;
 
-pub type PreKeyId = u32;
+use std::fmt;
+
+/// A unique identifier selecting among this client's known pre-keys.
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct PreKeyId(u32);
+
+impl From<u32> for PreKeyId {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<PreKeyId> for u32 {
+    fn from(value: PreKeyId) -> Self {
+        value.0
+    }
+}
+
+impl fmt::Display for PreKeyId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct PreKeyRecord {
@@ -20,7 +43,7 @@ impl PreKeyRecord {
         let private_key = key.private_key.serialize().to_vec();
         Self {
             pre_key: PreKeyRecordStructure {
-                id,
+                id: id.into(),
                 public_key,
                 private_key,
             },
@@ -35,7 +58,7 @@ impl PreKeyRecord {
     }
 
     pub fn id(&self) -> Result<PreKeyId> {
-        Ok(self.pre_key.id)
+        Ok(self.pre_key.id.into())
     }
 
     pub fn key_pair(&self) -> Result<KeyPair> {

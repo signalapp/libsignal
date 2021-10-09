@@ -182,7 +182,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
             timestamp,
             local_e164,
             local_uuid,
-            local_device_id,
+            local_device_id.into(),
             &mut identity_store,
             &mut session_store,
             &mut prekey_store,
@@ -194,7 +194,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
 
         write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
         write_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
-        write_result_to(sender_device_id, decrypted.device_id)?;
+        write_result_to(sender_device_id, u32::from(decrypted.device_id))?;
         write_bytearray_to(out, out_len, Some(decrypted.message))
     })
 }
