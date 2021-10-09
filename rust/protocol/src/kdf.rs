@@ -75,7 +75,7 @@ impl HKDF {
         let iterations = (output_length + Self::HASH_OUTPUT_SIZE - 1) / Self::HASH_OUTPUT_SIZE;
         let mut result = Vec::<u8>::with_capacity(iterations * Self::HASH_OUTPUT_SIZE);
         let mut mac =
-            Hmac::<Sha256>::new_varkey(prk).expect("HMAC-SHA256 should accept any size key");
+            Hmac::<Sha256>::new_from_slice(prk).expect("HMAC-SHA256 should accept any size key");
 
         for i in 0..iterations {
             if result.len() >= Self::HASH_OUTPUT_SIZE {
