@@ -6,26 +6,31 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.util.guava.Optional;
 
-public final class DecryptionErrorMessage {
+public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
 
-  final long handle;
+  final long unsafeHandle;
 
   @Override
   protected void finalize() {
-     Native.DecryptionErrorMessage_Destroy(this.handle);
+     Native.DecryptionErrorMessage_Destroy(this.unsafeHandle);
   }
 
-  DecryptionErrorMessage(long handle) {
-    this.handle = handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return unsafeHandle;
+  }
+
+  DecryptionErrorMessage(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   public DecryptionErrorMessage(byte[] serialized) throws InvalidMessageException {
-    handle = Native.DecryptionErrorMessage_Deserialize(serialized);
+    this.unsafeHandle = Native.DecryptionErrorMessage_Deserialize(serialized);
   }
 
   public static DecryptionErrorMessage forOriginalMessage(byte[] originalBytes, int messageType, long timestamp, int originalSenderDeviceId) {
@@ -34,24 +39,32 @@ public final class DecryptionErrorMessage {
   }
 
   public byte[] serialize() {
-    return Native.DecryptionErrorMessage_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.DecryptionErrorMessage_GetSerialized(guard.nativeHandle());
+    }
   }
 
   public Optional<ECPublicKey> getRatchetKey() {
-    long keyHandle = Native.DecryptionErrorMessage_GetRatchetKey(this.handle);
-    if (keyHandle == 0) {
-      return Optional.absent();
-    } else {
-      return Optional.of(new ECPublicKey(keyHandle));
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      long keyHandle = Native.DecryptionErrorMessage_GetRatchetKey(guard.nativeHandle());
+      if (keyHandle == 0) {
+        return Optional.absent();
+      } else {
+        return Optional.of(new ECPublicKey(keyHandle));
+      }
     }
   }
 
   public long getTimestamp() {
-    return Native.DecryptionErrorMessage_GetTimestamp(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.DecryptionErrorMessage_GetTimestamp(guard.nativeHandle());
+    }
   }
 
   public int getDeviceId() {
-    return Native.DecryptionErrorMessage_GetDeviceId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.DecryptionErrorMessage_GetDeviceId(guard.nativeHandle());
+    }
   }
 
   /// For testing only

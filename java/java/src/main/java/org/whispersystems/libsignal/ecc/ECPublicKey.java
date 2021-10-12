@@ -7,20 +7,21 @@
 package org.whispersystems.libsignal.ecc;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import java.util.Arrays;
 
-public class ECPublicKey implements Comparable<ECPublicKey> {
+public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.Owner {
 
   public static final int KEY_SIZE = 33;
 
-  private final long handle;
+  private final long unsafeHandle;
 
   public ECPublicKey(byte[] serialized, int offset) {
-    this.handle = Native.ECPublicKey_Deserialize(serialized, offset);
+    this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, offset);
   }
 
   public ECPublicKey(byte[] serialized) {
-    this.handle = Native.ECPublicKey_Deserialize(serialized, 0);
+    this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, 0);
   }
 
   static public ECPublicKey fromPublicKeyBytes(byte[] key) {
@@ -34,24 +35,30 @@ public class ECPublicKey implements Comparable<ECPublicKey> {
     if (nativeHandle == 0) {
       throw new NullPointerException();
     }
-    this.handle = nativeHandle;
+    this.unsafeHandle = nativeHandle;
   }
 
   @Override
   protected void finalize() {
-     Native.ECPublicKey_Destroy(this.handle);
+     Native.ECPublicKey_Destroy(this.unsafeHandle);
   }
 
   public boolean verifySignature(byte[] message, byte[] signature) {
-    return Native.ECPublicKey_Verify(this.handle, message, signature);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ECPublicKey_Verify(guard.nativeHandle(), message, signature);
+    }
   }
 
   public byte[] serialize() {
-    return Native.ECPublicKey_Serialize(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ECPublicKey_Serialize(guard.nativeHandle());
+    }
   }
 
   public byte[] getPublicKeyBytes() {
-    return Native.ECPublicKey_GetPublicKeyBytes(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ECPublicKey_GetPublicKeyBytes(guard.nativeHandle());
+    }
   }
 
   public int getType() {
@@ -59,8 +66,8 @@ public class ECPublicKey implements Comparable<ECPublicKey> {
     return serialized[0];
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 
   @Override
@@ -79,6 +86,11 @@ public class ECPublicKey implements Comparable<ECPublicKey> {
 
   @Override
   public int compareTo(ECPublicKey another) {
-    return Native.ECPublicKey_Compare(this.nativeHandle(), another.nativeHandle());
+    try (
+      NativeHandleGuard guard = new NativeHandleGuard(this);
+      NativeHandleGuard otherGuard = new NativeHandleGuard(another);
+    ) {
+      return Native.ECPublicKey_Compare(guard.nativeHandle(), otherGuard.nativeHandle());
+    }
   }
 }

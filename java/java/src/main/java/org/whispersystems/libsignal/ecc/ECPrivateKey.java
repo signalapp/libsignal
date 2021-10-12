@@ -5,48 +5,61 @@
  */
 
 package org.whispersystems.libsignal.ecc;
-import org.signal.client.internal.Native;
 
-public class ECPrivateKey {
-  private long handle;
+import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
+
+public class ECPrivateKey implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   static ECPrivateKey generate() {
     return new ECPrivateKey(Native.ECPrivateKey_Generate());
   }
 
   ECPrivateKey(byte[] privateKey) {
-    this.handle = Native.ECPrivateKey_Deserialize(privateKey);
+    this.unsafeHandle = Native.ECPrivateKey_Deserialize(privateKey);
   }
 
   public ECPrivateKey(long nativeHandle) {
     if(nativeHandle == 0) {
       throw new NullPointerException();
     }
-    this.handle = nativeHandle;
+    this.unsafeHandle = nativeHandle;
   }
 
   @Override
   protected void finalize() {
-     Native.ECPrivateKey_Destroy(this.handle);
+     Native.ECPrivateKey_Destroy(this.unsafeHandle);
   }
 
   public byte[] serialize() {
-    return Native.ECPrivateKey_Serialize(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ECPrivateKey_Serialize(guard.nativeHandle());
+    }
   }
 
   public byte[] calculateSignature(byte[] message) {
-     return Native.ECPrivateKey_Sign(this.handle, message);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ECPrivateKey_Sign(guard.nativeHandle(), message);
+    }
   }
 
   public byte[] calculateAgreement(ECPublicKey other) {
-    return Native.ECPrivateKey_Agree(this.handle, other.nativeHandle());
+    try (
+      NativeHandleGuard privateKey = new NativeHandleGuard(this);
+      NativeHandleGuard publicKey = new NativeHandleGuard(other);
+    ) {
+      return Native.ECPrivateKey_Agree(privateKey.nativeHandle(), publicKey.nativeHandle());
+    }
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 
   public ECPublicKey publicKey() {
-    return new ECPublicKey(Native.ECPrivateKey_GetPublicKey(this.handle));
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return new ECPublicKey(Native.ECPrivateKey_GetPublicKey(guard.nativeHandle()));
+    }
   }
 }

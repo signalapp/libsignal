@@ -6,29 +6,40 @@
 package org.signal.libsignal.crypto;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
-public class CryptographicHash {
-  private final long handle;
+public class CryptographicHash implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   public CryptographicHash(String algo) {
-    this.handle = Native.CryptographicHash_New(algo);
+    this.unsafeHandle = Native.CryptographicHash_New(algo);
+  }
+
+  public long unsafeNativeHandleWithoutGuard() {
+    return unsafeHandle;
   }
 
   @Override
   protected void finalize() {
-    Native.CryptographicHash_Destroy(this.handle);
+    Native.CryptographicHash_Destroy(this.unsafeHandle);
   }
 
   public void update(byte[] input, int offset, int len) {
-    Native.CryptographicHash_UpdateWithOffset(this.handle, input, offset, len);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      Native.CryptographicHash_UpdateWithOffset(guard.nativeHandle(), input, offset, len);
+    }
   }
 
   public void update(byte[] input) {
-    Native.CryptographicHash_Update(this.handle, input);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      Native.CryptographicHash_Update(guard.nativeHandle(), input);
+    }
   }
 
   public byte[] finish() {
-    return Native.CryptographicHash_Finalize(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.CryptographicHash_Finalize(guard.nativeHandle());
+    }
   }
 
 }

@@ -6,6 +6,7 @@
 package org.signal.libsignal.hsmenclave;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.InvalidKeyException;
 
 import java.io.ByteArrayOutputStream;
@@ -28,8 +29,8 @@ import java.util.List;
  * to pass along.  When a message is received (as ciphertext), it is passed to HsmEnclaveClient.establishedRecv(),
  * which decrypts and verifies it, passing the plaintext back to the client for processing.
  */
-public class HsmEnclaveClient {
-  private long handle;
+public class HsmEnclaveClient implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   public HsmEnclaveClient(byte[] public_key, List<byte[]> code_hashes) {
     ByteArrayOutputStream concatHashes = new ByteArrayOutputStream();
@@ -43,31 +44,43 @@ public class HsmEnclaveClient {
         throw new AssertionError("writing to ByteArrayOutputStream failed", e);
       }
     }
-    this.handle = Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray());
+    this.unsafeHandle = Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray());
   }
 
   @Override
   protected void finalize() {
-    Native.HsmEnclaveClient_Destroy(this.handle);
+    Native.HsmEnclaveClient_Destroy(this.unsafeHandle);
+  }
+
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 
   /** Initial request to send to HSM enclave, to begin handshake. */
   public byte[] initialRequest() {
-    return Native.HsmEnclaveClient_InitialRequest(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.HsmEnclaveClient_InitialRequest(guard.nativeHandle());
+    }
   }
 
   /** Called by client upon receipt of first message from HSM enclave, to complete handshake. */
   public void completeHandshake(byte[] handshakeResponse) {
-    Native.HsmEnclaveClient_CompleteHandshake(this.handle, handshakeResponse);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      Native.HsmEnclaveClient_CompleteHandshake(guard.nativeHandle(), handshakeResponse);
+    }
   }
 
   /** Called by client after completeHandshake has succeeded, to encrypt a message to send. */
   public byte[] establishedSend(byte[] plaintextToSend) {
-    return Native.HsmEnclaveClient_EstablishedSend(this.handle, plaintextToSend);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.HsmEnclaveClient_EstablishedSend(guard.nativeHandle(), plaintextToSend);
+    }
   }
 
   /** Called by client after completeHandshake has succeeded, to decrypt a received message. */
   public byte[] establishedRecv(byte[] receivedCiphertext) {
-    return Native.HsmEnclaveClient_EstablishedRecv(this.handle, receivedCiphertext);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.HsmEnclaveClient_EstablishedRecv(guard.nativeHandle(), receivedCiphertext);
+    }
   }
 }

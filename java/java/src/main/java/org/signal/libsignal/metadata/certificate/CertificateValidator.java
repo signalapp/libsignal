@@ -1,6 +1,7 @@
 package org.signal.libsignal.metadata.certificate;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
@@ -18,8 +19,11 @@ public class CertificateValidator {
   }
 
   public void validate(SenderCertificate certificate, long validationTime) throws InvalidCertificateException {
-    try {
-       if (!Native.SenderCertificate_Validate(certificate.nativeHandle(), trustRoot.nativeHandle(), validationTime)) {
+    try (
+      NativeHandleGuard certificateGuard = new NativeHandleGuard(certificate);
+      NativeHandleGuard trustRootGuard = new NativeHandleGuard(trustRoot);
+    ) {
+       if (!Native.SenderCertificate_Validate(certificateGuard.nativeHandle(), trustRootGuard.nativeHandle(), validationTime)) {
          throw new InvalidCertificateException("Validation failed");
        }
     } catch (Exception e) {

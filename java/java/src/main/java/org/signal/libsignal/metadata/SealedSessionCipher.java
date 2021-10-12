@@ -28,6 +28,7 @@ import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import java.util.List;
 import java.util.UUID;
@@ -55,28 +56,35 @@ public class SealedSessionCipher {
   public byte[] encrypt(SignalProtocolAddress destinationAddress, SenderCertificate senderCertificate, byte[] paddedPlaintext)
       throws InvalidKeyException, UntrustedIdentityException
   {
-    CiphertextMessage message = Native.SessionCipher_EncryptMessage(
-      paddedPlaintext,
-      destinationAddress.nativeHandle(),
-      this.signalProtocolStore,
-      this.signalProtocolStore,
-      null);
-    UnidentifiedSenderMessageContent content = new UnidentifiedSenderMessageContent(
-      message,
-      senderCertificate,
-      UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT,
-      Optional.<byte[]>absent());
-    return encrypt(destinationAddress, content);
+    try (NativeHandleGuard addressGuard = new NativeHandleGuard(destinationAddress)) {
+      CiphertextMessage message = Native.SessionCipher_EncryptMessage(
+        paddedPlaintext,
+        addressGuard.nativeHandle(),
+        this.signalProtocolStore,
+        this.signalProtocolStore,
+        null);
+      UnidentifiedSenderMessageContent content = new UnidentifiedSenderMessageContent(
+        message,
+        senderCertificate,
+        UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT,
+        Optional.<byte[]>absent());
+      return encrypt(destinationAddress, content);
+    }
   }
 
   public byte[] encrypt(SignalProtocolAddress destinationAddress, UnidentifiedSenderMessageContent content)
       throws InvalidKeyException, UntrustedIdentityException
   {
-    return Native.SealedSessionCipher_Encrypt(
-      destinationAddress.nativeHandle(),
-      content.nativeHandle(),
-      this.signalProtocolStore,
-      null);
+    try (
+      NativeHandleGuard addressGuard = new NativeHandleGuard(destinationAddress);
+      NativeHandleGuard contentGuard = new NativeHandleGuard(content);
+    ) {
+      return Native.SealedSessionCipher_Encrypt(
+        addressGuard.nativeHandle(),
+        contentGuard.nativeHandle(),
+        this.signalProtocolStore,
+        null);
+    }
   }
 
   public byte[] multiRecipientEncrypt(List<SignalProtocolAddress> recipients, UnidentifiedSenderMessageContent content)
@@ -87,26 +95,35 @@ public class SealedSessionCipher {
     List<SessionRecord> recipientSessions =
       this.signalProtocolStore.loadExistingSessions(recipients);
 
-    long[] recipientSessionHandles = new long[recipientSessions.size()];
-    int i = 0;
-    for (SessionRecord nextSession : recipientSessions) {
-      recipientSessionHandles[i] = nextSession.nativeHandle();
-      i++;
-    }
-
+    // Unsafely access the native handles for the recipients and sessions,
+    // because try-with-resources syntax doesn't support a List of resources.
     long[] recipientHandles = new long[recipients.size()];
-    i = 0;
+    int i = 0;
     for (SignalProtocolAddress nextRecipient : recipients) {
-      recipientHandles[i] = nextRecipient.nativeHandle();
+      recipientHandles[i] = nextRecipient.unsafeNativeHandleWithoutGuard();
       i++;
     }
 
-    return Native.SealedSessionCipher_MultiRecipientEncrypt(
-      recipientHandles,
-      recipientSessionHandles,
-      content.nativeHandle(),
-      this.signalProtocolStore,
-      null);
+    long[] recipientSessionHandles = new long[recipientSessions.size()];
+    i = 0;
+    for (SessionRecord nextSession : recipientSessions) {
+      recipientSessionHandles[i] = nextSession.unsafeNativeHandleWithoutGuard();
+      i++;
+    }
+
+    try (NativeHandleGuard contentGuard = new NativeHandleGuard(content)) {
+      byte[] result = Native.SealedSessionCipher_MultiRecipientEncrypt(
+        recipientHandles,
+        recipientSessionHandles,
+        contentGuard.nativeHandle(),
+        this.signalProtocolStore,
+        null);
+      // Manually keep the lists of recipients and sessions from being garbage collected
+      // while we're using their native handles.
+      Native.keepAlive(recipients);
+      Native.keepAlive(recipientSessions);
+      return result;
+    }
   }
 
   // For testing only.

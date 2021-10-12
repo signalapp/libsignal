@@ -6,35 +6,46 @@
 package org.signal.libsignal.crypto;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.InvalidKeyException;
 
-public class Aes256GcmDecryption {
+public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
   public static final int TAG_SIZE_IN_BYTES = 16;
 
-  private long handle;
+  private long unsafeHandle;
 
   public Aes256GcmDecryption(byte[] key, byte[] nonce, byte[] associatedData) throws InvalidKeyException {
-    this.handle = Native.Aes256GcmDecryption_New(key, nonce, associatedData);
+    this.unsafeHandle = Native.Aes256GcmDecryption_New(key, nonce, associatedData);
   }
 
   @Override
   protected void finalize() {
-    Native.Aes256GcmDecryption_Destroy(this.handle);
+    Native.Aes256GcmDecryption_Destroy(this.unsafeHandle);
+  }
+
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 
   public void decrypt(byte[] plaintext) {
-    Native.Aes256GcmDecryption_Update(this.handle, plaintext, 0, plaintext.length);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      Native.Aes256GcmDecryption_Update(guard.nativeHandle(), plaintext, 0, plaintext.length);
+    }
   }
 
   public void decrypt(byte[] plaintext, int offset, int length) {
-    Native.Aes256GcmDecryption_Update(this.handle, plaintext, offset, length);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      Native.Aes256GcmDecryption_Update(guard.nativeHandle(), plaintext, offset, length);
+    }
   }
 
   public boolean verifyTag(byte[] tag) {
-    boolean tagOk = Native.Aes256GcmDecryption_VerifyTag(this.handle, tag);
-    Native.Aes256GcmDecryption_Destroy(this.handle);
-    this.handle = 0;
-    return tagOk;
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      boolean tagOk = Native.Aes256GcmDecryption_VerifyTag(guard.nativeHandle(), tag);
+      Native.Aes256GcmDecryption_Destroy(guard.nativeHandle());
+      this.unsafeHandle = 0;
+      return tagOk;
+    }
   }
 
 }

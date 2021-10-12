@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
@@ -14,61 +15,77 @@ import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.util.guava.Optional;
 
-public class PreKeySignalMessage implements CiphertextMessage {
+public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard.Owner {
 
-  private long handle;
+  private final long unsafeHandle;
 
   @Override
   protected void finalize() {
-     Native.PreKeySignalMessage_Destroy(this.handle);
+     Native.PreKeySignalMessage_Destroy(this.unsafeHandle);
   }
 
   public PreKeySignalMessage(byte[] serialized)
       throws InvalidMessageException, InvalidVersionException
   {
-    this.handle = Native.PreKeySignalMessage_Deserialize(serialized);
+    this.unsafeHandle = Native.PreKeySignalMessage_Deserialize(serialized);
   }
 
-  public PreKeySignalMessage(long handle) {
-    this.handle = handle;
+  public PreKeySignalMessage(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   public int getMessageVersion() {
-    return Native.PreKeySignalMessage_GetVersion(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.PreKeySignalMessage_GetVersion(guard.nativeHandle());
+    }
   }
 
   public IdentityKey getIdentityKey() throws InvalidKeyException {
-    return new IdentityKey(Native.PreKeySignalMessage_GetIdentityKey(this.handle), 0);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return new IdentityKey(Native.PreKeySignalMessage_GetIdentityKey(guard.nativeHandle()), 0);
+    }
   }
 
   public int getRegistrationId() {
-    return Native.PreKeySignalMessage_GetRegistrationId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.PreKeySignalMessage_GetRegistrationId(guard.nativeHandle());
+    }
   }
 
   public Optional<Integer> getPreKeyId() {
-    int pre_key = Native.PreKeySignalMessage_GetPreKeyId(this.handle);
-    if(pre_key < 0) {
-      return Optional.absent();
-    } else {
-      return Optional.of(pre_key);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      int pre_key = Native.PreKeySignalMessage_GetPreKeyId(guard.nativeHandle());
+      if (pre_key < 0) {
+        return Optional.absent();
+      } else {
+        return Optional.of(pre_key);
+      }
     }
   }
 
   public int getSignedPreKeyId() {
-    return Native.PreKeySignalMessage_GetSignedPreKeyId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.PreKeySignalMessage_GetSignedPreKeyId(guard.nativeHandle());
+    }
   }
 
   public ECPublicKey getBaseKey() throws InvalidKeyException {
-    return new ECPublicKey(Native.PreKeySignalMessage_GetBaseKey(this.handle));
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return new ECPublicKey(Native.PreKeySignalMessage_GetBaseKey(guard.nativeHandle()));
+    }
   }
 
   public SignalMessage getWhisperMessage() throws InvalidMessageException, LegacyMessageException {
-    return new SignalMessage(Native.PreKeySignalMessage_GetSignalMessage(this.handle));
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return new SignalMessage(Native.PreKeySignalMessage_GetSignalMessage(guard.nativeHandle()));
+    }
   }
 
   @Override
   public byte[] serialize() {
-    return Native.PreKeySignalMessage_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.PreKeySignalMessage_GetSerialized(guard.nativeHandle());
+    }
   }
 
   @Override
@@ -76,7 +93,7 @@ public class PreKeySignalMessage implements CiphertextMessage {
     return CiphertextMessage.PREKEY_TYPE;
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 }

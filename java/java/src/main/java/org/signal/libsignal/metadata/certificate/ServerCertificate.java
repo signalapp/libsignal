@@ -1,53 +1,64 @@
 package org.signal.libsignal.metadata.certificate;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
-public class ServerCertificate {
-  private final long handle;
+public class ServerCertificate implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   @Override
   protected void finalize() {
-     Native.ServerCertificate_Destroy(this.handle);
+     Native.ServerCertificate_Destroy(this.unsafeHandle);
   }
 
-  public ServerCertificate(long handle) {
-    this.handle = handle;
+  public ServerCertificate(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   public ServerCertificate(byte[] serialized) throws InvalidCertificateException {
     try {
-      this.handle = Native.ServerCertificate_Deserialize(serialized);
+      this.unsafeHandle = Native.ServerCertificate_Deserialize(serialized);
     } catch (Exception e) {
       throw new InvalidCertificateException(e);
     }
   }
 
   public int getKeyId() {
-    return Native.ServerCertificate_GetKeyId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ServerCertificate_GetKeyId(guard.nativeHandle());
+    }
   }
 
   public ECPublicKey getKey() {
-    return new ECPublicKey(Native.ServerCertificate_GetKey(this.handle));
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return new ECPublicKey(Native.ServerCertificate_GetKey(guard.nativeHandle()));
+    }
   }
 
   public byte[] getSerialized() {
-    return Native.ServerCertificate_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ServerCertificate_GetSerialized(guard.nativeHandle());
+    }
   }
 
   public byte[] getCertificate() {
-    return Native.ServerCertificate_GetCertificate(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ServerCertificate_GetCertificate(guard.nativeHandle());
+    }
   }
 
   public byte[] getSignature() {
-    return Native.ServerCertificate_GetSignature(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ServerCertificate_GetSignature(guard.nativeHandle());
+    }
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 }

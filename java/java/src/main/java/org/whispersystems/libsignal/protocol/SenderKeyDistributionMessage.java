@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
@@ -14,48 +15,60 @@ import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 import java.util.UUID;
 
-public class SenderKeyDistributionMessage {
+public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
 
-  private final long handle;
+  private final long unsafeHandle;
 
   @Override
   protected void finalize() {
-     Native.SenderKeyDistributionMessage_Destroy(this.handle);
+     Native.SenderKeyDistributionMessage_Destroy(this.unsafeHandle);
   }
 
-  public SenderKeyDistributionMessage(long handle) {
-    this.handle = handle;
+  public SenderKeyDistributionMessage(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   public SenderKeyDistributionMessage(byte[] serialized) throws LegacyMessageException, InvalidMessageException {
-    handle = Native.SenderKeyDistributionMessage_Deserialize(serialized);
+    unsafeHandle = Native.SenderKeyDistributionMessage_Deserialize(serialized);
   }
 
   public byte[] serialize() {
-    return Native.SenderKeyDistributionMessage_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyDistributionMessage_GetSerialized(guard.nativeHandle());
+    }
   }
 
   public UUID getDistributionId() {
-    return Native.SenderKeyMessage_GetDistributionId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyMessage_GetDistributionId(guard.nativeHandle());
+    }
   }
 
   public int getIteration() {
-    return Native.SenderKeyDistributionMessage_GetIteration(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyDistributionMessage_GetIteration(guard.nativeHandle());
+    }
   }
 
   public byte[] getChainKey() {
-    return Native.SenderKeyDistributionMessage_GetChainKey(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyDistributionMessage_GetChainKey(guard.nativeHandle());
+    }
   }
 
   public ECPublicKey getSignatureKey() {
-    return new ECPublicKey(Native.SenderKeyDistributionMessage_GetSignatureKey(this.handle));
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return new ECPublicKey(Native.SenderKeyDistributionMessage_GetSignatureKey(guard.nativeHandle()));
+    }
   }
 
   public int getChainId() {
-    return Native.SenderKeyDistributionMessage_GetChainId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyDistributionMessage_GetChainId(guard.nativeHandle());
+    }
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 }

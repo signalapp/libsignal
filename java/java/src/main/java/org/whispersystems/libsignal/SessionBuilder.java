@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.logging.Log;
 import org.whispersystems.libsignal.state.IdentityKeyStore;
@@ -85,10 +86,15 @@ public class SessionBuilder {
    *                                                                  trusted.
    */
   public void process(PreKeyBundle preKey) throws InvalidKeyException, UntrustedIdentityException {
-    Native.SessionBuilder_ProcessPreKeyBundle(preKey.nativeHandle(),
-                                              remoteAddress.nativeHandle(),
-                                              sessionStore,
-                                              identityKeyStore,
-                                              null);
+    try (
+      NativeHandleGuard preKeyGuard = new NativeHandleGuard(preKey);
+      NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+    ) {
+      Native.SessionBuilder_ProcessPreKeyBundle(preKeyGuard.nativeHandle(),
+                                                remoteAddressGuard.nativeHandle(),
+                                                sessionStore,
+                                                identityKeyStore,
+                                                null);
+    }
   }
 }

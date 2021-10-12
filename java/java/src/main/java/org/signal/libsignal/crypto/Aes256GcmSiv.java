@@ -6,28 +6,37 @@
 package org.signal.libsignal.crypto;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.InvalidKeyException;
 
-class Aes256GcmSiv {
-  private final long handle;
+class Aes256GcmSiv implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   public Aes256GcmSiv(byte[] key) throws InvalidKeyException {
-    this.handle = Native.Aes256GcmSiv_New(key);
+    this.unsafeHandle = Native.Aes256GcmSiv_New(key);
   }
 
   @Override
   protected void finalize() {
-    Native.Aes256GcmSiv_Destroy(this.handle);
+    Native.Aes256GcmSiv_Destroy(this.unsafeHandle);
+  }
+
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 
   byte[] encrypt(byte[] plaintext, byte[] nonce, byte[] associated_data)
       throws InvalidMessageException, IllegalArgumentException {
-    return Native.Aes256GcmSiv_Encrypt(this.handle, plaintext, nonce, associated_data);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.Aes256GcmSiv_Encrypt(guard.nativeHandle(), plaintext, nonce, associated_data);
+    }
   }
 
   byte[] decrypt(byte[] ciphertext, byte[] nonce, byte[] associated_data)
       throws InvalidMessageException {
-    return Native.Aes256GcmSiv_Decrypt(this.handle, ciphertext, nonce, associated_data);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.Aes256GcmSiv_Decrypt(guard.nativeHandle(), ciphertext, nonce, associated_data);
+    }
   }
 }

@@ -6,29 +6,34 @@
 package org.whispersystems.libsignal;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
-public class SignalProtocolAddress {
-  private final long handle;
+public class SignalProtocolAddress implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   public SignalProtocolAddress(String name, int deviceId) {
-    this.handle = Native.ProtocolAddress_New(name, deviceId);
+    this.unsafeHandle = Native.ProtocolAddress_New(name, deviceId);
   }
 
-  public SignalProtocolAddress(long handle) {
-    this.handle = handle;
+  public SignalProtocolAddress(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   @Override
   protected void finalize() {
-    Native.ProtocolAddress_Destroy(this.handle);
+    Native.ProtocolAddress_Destroy(this.unsafeHandle);
   }
 
   public String getName() {
-    return Native.ProtocolAddress_Name(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ProtocolAddress_Name(guard.nativeHandle());
+    }
   }
 
   public int getDeviceId() {
-    return Native.ProtocolAddress_DeviceId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.ProtocolAddress_DeviceId(guard.nativeHandle());
+    }
   }
 
   @Override
@@ -50,7 +55,7 @@ public class SignalProtocolAddress {
     return this.getName().hashCode() ^ this.getDeviceId();
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 }
