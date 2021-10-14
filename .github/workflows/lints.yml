@@ -4,7 +4,7 @@ name: Lints
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
     paths: ['**/*.sh', '**/*.py']
   pull_request:
     paths: ['**/*.sh', '**/*.py']
