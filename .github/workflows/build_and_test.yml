@@ -2,7 +2,7 @@ name: Build and Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request: # all target branches
 
 env:
