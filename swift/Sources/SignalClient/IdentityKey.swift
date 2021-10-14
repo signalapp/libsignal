@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -49,9 +49,11 @@ public struct IdentityKeyPair {
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_identitykeypair_serialize($0, $1, publicKey.nativeHandle, privateKey.nativeHandle)
+        return withNativeHandles(publicKey, privateKey) { publicKey, privateKey in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_identitykeypair_serialize($0, $1, publicKey, privateKey)
+                }
             }
         }
     }

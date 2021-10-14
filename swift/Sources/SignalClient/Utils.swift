@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -49,34 +49,16 @@ internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMut
     return output
 }
 
-internal func invokeFnReturningPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey {
-    var pk_handle: OpaquePointer?
-    try checkError(fn(&pk_handle))
-    return PublicKey(owned: pk_handle!)
-}
-
-internal func invokeFnReturningPrivateKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PrivateKey {
-    var pk_handle: OpaquePointer?
-    try checkError(fn(&pk_handle))
-    return PrivateKey(owned: pk_handle!)
-}
-
-internal func invokeFnReturningOptionalPublicKey(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> PublicKey? {
-    var pk_handle: OpaquePointer?
-    try checkError(fn(&pk_handle))
-    return pk_handle.map { PublicKey(owned: $0) }
-}
-
-internal func invokeFnReturningCiphertextMessage(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> CiphertextMessage {
+internal func invokeFnReturningNativeHandle<Owner: NativeHandleOwner>(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> Owner {
     var handle: OpaquePointer?
     try checkError(fn(&handle))
-    return CiphertextMessage(owned: handle)
+    return Owner(owned: handle!)
 }
 
-internal func invokeFnReturningProtocolAddress(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> ProtocolAddress {
+internal func invokeFnReturningOptionalNativeHandle<Owner: NativeHandleOwner>(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> Owner? {
     var handle: OpaquePointer?
     try checkError(fn(&handle))
-    return ProtocolAddress(owned: handle!)
+    return handle.map { Owner(owned: $0) }
 }
 
 extension StoreContext {

@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -15,46 +15,52 @@ public class SessionRecord: ClonableHandleOwner {
         return signal_session_record_clone(&newHandle, currentHandle)
     }
 
-    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_session_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
+        self.init(owned: handle!)
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_session_record_serialize($0, $1, nativeHandle)
+        return self.withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_session_record_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var hasCurrentState: Bool {
         var result = false
-        failOnError(signal_session_record_has_current_state(&result, nativeHandle))
+        self.withNativeHandle { nativeHandle in
+            failOnError(signal_session_record_has_current_state(&result, nativeHandle))
+        }
         return result
     }
 
     public func archiveCurrentState() {
-        failOnError(signal_session_record_archive_current_state(nativeHandle))
+        self.withNativeHandle { nativeHandle in
+            failOnError(signal_session_record_archive_current_state(nativeHandle))
+        }
     }
 
     public func remoteRegistrationId() throws -> UInt32 {
-        return try invokeFnReturningInteger {
-            signal_session_record_get_remote_registration_id($0, nativeHandle)
+        return try self.withNativeHandle { nativeHandle in
+            try invokeFnReturningInteger {
+                signal_session_record_get_remote_registration_id($0, nativeHandle)
+            }
         }
     }
 
     public func currentRatchetKeyMatches(_ key: PublicKey) throws -> Bool {
         var result: Bool = false
-        try checkError(signal_session_record_current_ratchet_key_matches(&result, nativeHandle, key.nativeHandle))
+        try withNativeHandles(self, key) { sessionHandle, keyHandle in
+            try checkError(signal_session_record_current_ratchet_key_matches(&result, sessionHandle, keyHandle))
+        }
         return result
     }
 }

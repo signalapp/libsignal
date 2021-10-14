@@ -1,25 +1,17 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import SignalFfi
 
 public class ProtocolAddress: ClonableHandleOwner {
-    public init(name: String, deviceId: UInt32) throws {
+    public convenience init(name: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?
         try checkError(signal_address_new(&handle,
                                           name,
                                           deviceId))
-        super.init(owned: handle!)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
-    }
-
-    internal override init(owned handle: OpaquePointer) {
-        super.init(owned: handle)
+        self.init(owned: handle!)
     }
 
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
@@ -31,17 +23,21 @@ public class ProtocolAddress: ClonableHandleOwner {
     }
 
     public var name: String {
-        return failOnError {
-            try invokeFnReturningString {
-                signal_address_get_name($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningString {
+                    signal_address_get_name($0, nativeHandle)
+                }
             }
         }
     }
 
     public var deviceId: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_address_get_device_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_address_get_device_id($0, nativeHandle)
+                }
             }
         }
     }

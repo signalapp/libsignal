@@ -96,7 +96,7 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     case SignalErrorCode_SessionNotFound:
         throw SignalError.sessionNotFound(errStr)
     case SignalErrorCode_InvalidRegistrationId:
-        let address = try invokeFnReturningProtocolAddress {
+        let address: ProtocolAddress = try invokeFnReturningNativeHandle {
             signal_error_get_address(error, $0)
         }
         throw SignalError.invalidRegistrationId(address: address, message: errStr)

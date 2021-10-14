@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -53,13 +53,15 @@ public struct NumericFingerprintGenerator {
                                                 remoteKey: PublicKey) throws -> Fingerprint
     where LocalBytes: ContiguousBytes, RemoteBytes: ContiguousBytes {
         var obj: OpaquePointer?
-        try localIdentifier.withUnsafeBytes { localBytes in
-            try remoteIdentifier.withUnsafeBytes { remoteBytes in
-                try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
-                                                      localBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), localBytes.count,
-                                                      localKey.nativeHandle,
-                                                      remoteBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), remoteBytes.count,
-                                                      remoteKey.nativeHandle))
+        try withNativeHandles(localKey, remoteKey) { localKeyHandle, remoteKeyHandle in
+            try localIdentifier.withUnsafeBytes { localBytes in
+                try remoteIdentifier.withUnsafeBytes { remoteBytes in
+                    try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
+                                                          localBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), localBytes.count,
+                                                          localKeyHandle,
+                                                          remoteBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), remoteBytes.count,
+                                                          remoteKeyHandle))
+                }
             }
         }
 

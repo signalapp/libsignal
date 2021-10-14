@@ -5,9 +5,7 @@
 
 import SignalFfi
 
-public class CiphertextMessage {
-    internal var nativeHandle: OpaquePointer?
-
+public class CiphertextMessage: NativeHandleOwner {
     public struct MessageType: RawRepresentable, Hashable {
         public var rawValue: UInt8
         public init(rawValue: UInt8) {
@@ -32,32 +30,34 @@ public class CiphertextMessage {
         }
     }
 
-    deinit {
-        failOnError(signal_ciphertext_message_destroy(nativeHandle))
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_ciphertext_message_destroy(handle)
     }
 
-    internal init(owned rawPtr: OpaquePointer?) {
-        nativeHandle = rawPtr
-    }
-
-    public init(_ plaintextContent: PlaintextContent) {
+    public convenience init(_ plaintextContent: PlaintextContent) {
         var result: OpaquePointer?
-        failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContent.nativeHandle))
-        nativeHandle = result!
+        plaintextContent.withNativeHandle { plaintextContentHandle in
+            failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContentHandle))
+        }
+        self.init(owned: result!)
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_ciphertext_message_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_ciphertext_message_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var messageType: MessageType {
-        let rawValue = failOnError {
-            try invokeFnReturningInteger {
-                signal_ciphertext_message_type($0, nativeHandle)
+        let rawValue = withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_ciphertext_message_type($0, nativeHandle)
+                }
             }
         }
         return MessageType(rawValue: rawValue)

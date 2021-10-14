@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -15,33 +15,27 @@ public class SenderKeyRecord: ClonableHandleOwner {
         return signal_sender_key_record_clone(&newHandle, currentHandle)
     }
 
-    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_sender_key_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
-    internal override init(owned handle: OpaquePointer) {
-        super.init(owned: handle)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
-    }
-
-    public init() {
+    public convenience init() {
         var handle: OpaquePointer?
         failOnError(signal_sender_key_record_new_fresh(&handle))
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_sender_key_record_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_sender_key_record_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
