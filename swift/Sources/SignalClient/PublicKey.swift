@@ -7,21 +7,13 @@ import SignalFfi
 import Foundation
 
 public class PublicKey: ClonableHandleOwner {
-    public init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_publickey_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
-    }
-
-    internal override init(owned handle: OpaquePointer) {
-        super.init(owned: handle)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
+        self.init(owned: handle!)
     }
 
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {

@@ -27,7 +27,7 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(message: Bytes,
     return try sealedSenderEncrypt(usmc, for: address, identityStore: identityStore, context: context)
 }
 
-public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
+public class UnidentifiedSenderMessageContent: NativeHandleOwner {
     public struct ContentHint: RawRepresentable, Hashable {
         public var rawValue: UInt32
         public init(rawValue: UInt32) {
@@ -49,9 +49,9 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
         }
     }
 
-    public init<Bytes: ContiguousBytes>(message sealedSenderMessage: Bytes,
-                                        identityStore: IdentityKeyStore,
-                                        context: StoreContext) throws {
+    public convenience init<Bytes: ContiguousBytes>(message sealedSenderMessage: Bytes,
+                                                    identityStore: IdentityKeyStore,
+                                                    context: StoreContext) throws {
         var result: OpaquePointer?
         try sealedSenderMessage.withUnsafeBytes { messageBytes in
             try context.withOpaquePointer { context in
@@ -66,13 +66,13 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
                 }
             }
         }
-        super.init(owned: result!)
+        self.init(owned: result!)
     }
 
-    public init<GroupIdBytes: ContiguousBytes>(_ message: CiphertextMessage,
-                                               from sender: SenderCertificate,
-                                               contentHint: ContentHint,
-                                               groupId: GroupIdBytes) throws {
+    public convenience init<GroupIdBytes: ContiguousBytes>(_ message: CiphertextMessage,
+                                                           from sender: SenderCertificate,
+                                                           contentHint: ContentHint,
+                                                           groupId: GroupIdBytes) throws {
         var result: OpaquePointer?
         try groupId.withUnsafeBytes { groupIdBytes in
             try checkError(
@@ -83,7 +83,7 @@ public class UnidentifiedSenderMessageContent: ClonableHandleOwner {
                                                                groupIdBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                                                                groupIdBytes.count))
         }
-        super.init(owned: result!)
+        self.init(owned: result!)
     }
 
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {

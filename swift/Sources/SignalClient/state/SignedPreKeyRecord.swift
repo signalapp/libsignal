@@ -15,19 +15,19 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
         return signal_signed_pre_key_record_clone(&newHandle, currentHandle)
     }
 
-    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_signed_pre_key_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
-    public init<Bytes: ContiguousBytes>(id: UInt32,
-                                        timestamp: UInt64,
-                                        privateKey: PrivateKey,
-                                        signature: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(id: UInt32,
+                                                    timestamp: UInt64,
+                                                    privateKey: PrivateKey,
+                                                    signature: Bytes) throws {
         let publicKey = privateKey.publicKey
         let handle: OpaquePointer? = try signature.withUnsafeBytes {
             var result: OpaquePointer?
@@ -36,11 +36,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
                                                             $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
+        self.init(owned: handle!)
     }
 
     public func serialize() -> [UInt8] {
@@ -69,7 +65,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
 
     public var publicKey: PublicKey {
         return failOnError {
-            try invokeFnReturningPublicKey {
+            try invokeFnReturningNativeHandle {
                 signal_signed_pre_key_record_get_public_key($0, nativeHandle)
             }
         }
@@ -77,7 +73,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
 
     public var privateKey: PrivateKey {
         return failOnError {
-            try invokeFnReturningPrivateKey {
+            try invokeFnReturningNativeHandle {
                 signal_signed_pre_key_record_get_private_key($0, nativeHandle)
             }
         }

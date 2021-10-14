@@ -15,7 +15,7 @@ public func signalEncrypt<Bytes: ContiguousBytes>(message: Bytes,
         try context.withOpaquePointer { context in
             try withSessionStore(sessionStore) { ffiSessionStore in
                 try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                    try invokeFnReturningCiphertextMessage {
+                    try invokeFnReturningNativeHandle {
                         signal_encrypt_message($0, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, address.nativeHandle, ffiSessionStore, ffiIdentityStore, context)
                     }
                 }
@@ -85,7 +85,7 @@ public func groupEncrypt<Bytes: ContiguousBytes>(_ message: Bytes,
         try message.withUnsafeBytes { messageBytes in
             try withUnsafePointer(to: distributionId.uuid) { distributionId in
                 try withSenderKeyStore(store) { ffiStore in
-                    try invokeFnReturningCiphertextMessage {
+                    try invokeFnReturningNativeHandle {
                         signal_group_encrypt_message($0, sender.nativeHandle, distributionId, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
                     }
                 }

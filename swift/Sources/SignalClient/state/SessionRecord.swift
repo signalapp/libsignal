@@ -15,17 +15,13 @@ public class SessionRecord: ClonableHandleOwner {
         return signal_session_record_clone(&newHandle, currentHandle)
     }
 
-    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_session_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
+        self.init(owned: handle!)
     }
 
     public func serialize() -> [UInt8] {

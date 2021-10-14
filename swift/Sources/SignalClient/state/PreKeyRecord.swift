@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -15,25 +15,21 @@ public class PreKeyRecord: ClonableHandleOwner {
         return signal_pre_key_record_clone(&newHandle, currentHandle)
     }
 
-    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_pre_key_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
-    }
-
-    public init(id: UInt32,
-                publicKey: PublicKey,
-                privateKey: PrivateKey) throws {
+    public convenience init(id: UInt32,
+                            publicKey: PublicKey,
+                            privateKey: PrivateKey) throws {
         var handle: OpaquePointer?
         try checkError(signal_pre_key_record_new(&handle, id, publicKey.nativeHandle, privateKey.nativeHandle))
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
     public convenience init(id: UInt32, privateKey: PrivateKey) throws {
@@ -58,7 +54,7 @@ public class PreKeyRecord: ClonableHandleOwner {
 
     public var publicKey: PublicKey {
         return failOnError {
-            try invokeFnReturningPublicKey {
+            try invokeFnReturningNativeHandle {
                 signal_pre_key_record_get_public_key($0, nativeHandle)
             }
         }
@@ -66,7 +62,7 @@ public class PreKeyRecord: ClonableHandleOwner {
 
     public var privateKey: PrivateKey {
         return failOnError {
-            try invokeFnReturningPrivateKey {
+            try invokeFnReturningNativeHandle {
                 signal_pre_key_record_get_private_key($0, nativeHandle)
             }
         }

@@ -6,29 +6,21 @@
 import SignalFfi
 import Foundation
 
-public class ServerCertificate: ClonableHandleOwner {
-    public init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
+public class ServerCertificate: NativeHandleOwner {
+    public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_server_certificate_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
     // For testing
-    public init(keyId: UInt32, publicKey: PublicKey, trustRoot: PrivateKey) throws {
+    public convenience init(keyId: UInt32, publicKey: PublicKey, trustRoot: PrivateKey) throws {
         var result: OpaquePointer?
         try checkError(signal_server_certificate_new(&result, keyId, publicKey.nativeHandle, trustRoot.nativeHandle))
-        super.init(owned: result!)
-    }
-
-    internal override init(owned handle: OpaquePointer) {
-        super.init(owned: handle)
-    }
-
-    internal override init(borrowing handle: OpaquePointer?) {
-        super.init(borrowing: handle)
+        self.init(owned: result!)
     }
 
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
@@ -69,25 +61,25 @@ public class ServerCertificate: ClonableHandleOwner {
 
     public var publicKey: PublicKey {
         return failOnError {
-            try invokeFnReturningPublicKey {
+            try invokeFnReturningNativeHandle {
                 signal_server_certificate_get_key($0, nativeHandle)
             }
         }
     }
 }
 
-public class SenderCertificate: ClonableHandleOwner {
-    public init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
+public class SenderCertificate: NativeHandleOwner {
+    public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_sender_certificate_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
+        self.init(owned: handle!)
     }
 
     // For testing
-    public init(sender: SealedSenderAddress, publicKey: PublicKey, expiration: UInt64, signerCertificate: ServerCertificate, signerKey: PrivateKey) throws {
+    public convenience init(sender: SealedSenderAddress, publicKey: PublicKey, expiration: UInt64, signerCertificate: ServerCertificate, signerKey: PrivateKey) throws {
         var result: OpaquePointer?
         try checkError(signal_sender_certificate_new(&result,
                                                      sender.uuidString,
@@ -97,11 +89,7 @@ public class SenderCertificate: ClonableHandleOwner {
                                                      expiration,
                                                      signerCertificate.nativeHandle,
                                                      signerKey.nativeHandle))
-        super.init(owned: result!)
-    }
-
-    internal override init(owned handle: OpaquePointer) {
-        super.init(owned: handle)
+        self.init(owned: result!)
     }
 
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
@@ -150,7 +138,7 @@ public class SenderCertificate: ClonableHandleOwner {
 
     public var publicKey: PublicKey {
         return failOnError {
-            try invokeFnReturningPublicKey {
+            try invokeFnReturningNativeHandle {
                 signal_sender_certificate_get_key($0, nativeHandle)
             }
         }

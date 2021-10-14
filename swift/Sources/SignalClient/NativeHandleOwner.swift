@@ -1,15 +1,15 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-public class ClonableHandleOwner {
-    private enum MaybeOwnedHandle {
+public class NativeHandleOwner {
+    fileprivate enum MaybeOwnedHandle {
         case borrowed(OpaquePointer)
         case owned(OpaquePointer)
     }
 
-    private var handle: MaybeOwnedHandle?
+    fileprivate var handle: MaybeOwnedHandle?
 
     internal var nativeHandle: OpaquePointer? {
         switch handle {
@@ -22,12 +22,37 @@ public class ClonableHandleOwner {
         }
     }
 
-    internal init(owned handle: OpaquePointer) {
+    required internal init(owned handle: OpaquePointer) {
         self.handle = .owned(handle)
     }
 
-    internal init(borrowing handle: OpaquePointer?) {
+    fileprivate init(borrowing handle: OpaquePointer?) {
         self.handle = handle.map { .borrowed($0) }
+    }
+
+    internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        fatalError("must be implemented by subclasses")
+    }
+
+    deinit {
+        switch handle {
+        case nil:
+            return
+        case .borrowed?:
+            preconditionFailure("borrowed handle may have escaped")
+        case .owned(let handle)?:
+            failOnError(Self.destroyNativeHandle(handle))
+        }
+    }
+}
+
+public class ClonableHandleOwner: NativeHandleOwner {
+    required internal init(owned handle: OpaquePointer) {
+        super.init(owned: handle)
+    }
+
+    internal override init(borrowing handle: OpaquePointer?) {
+        super.init(borrowing: handle)
     }
 
     internal func replaceWithClone() {
@@ -56,22 +81,7 @@ public class ClonableHandleOwner {
     }
 
     internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
-        fatalError("\(self) does not support cloning")
-    }
-
-    internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         fatalError("must be implemented by subclasses")
-    }
-
-    deinit {
-        switch handle {
-        case nil:
-            return
-        case .borrowed?:
-            preconditionFailure("borrowed handle may have escaped")
-        case .owned(let handle)?:
-            failOnError(Self.destroyNativeHandle(handle))
-        }
     }
 }
 

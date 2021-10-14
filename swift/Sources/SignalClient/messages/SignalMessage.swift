@@ -1,34 +1,28 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import SignalFfi
 import Foundation
 
-public class SignalMessage {
-    private var handle: OpaquePointer?
-
-    deinit {
-        failOnError(signal_message_destroy(handle))
+public class SignalMessage: NativeHandleOwner {
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_message_destroy(handle)
     }
 
-    internal init(owned rawPtr: OpaquePointer?) {
-        handle = rawPtr
-    }
-
-    public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        handle = try bytes.withUnsafeBytes {
-            var result: OpaquePointer?
+    public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
+        var result: OpaquePointer?
+        try bytes.withUnsafeBytes {
             try checkError(signal_message_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
-            return result
         }
+        self.init(owned: result!)
     }
 
     public var senderRatchetKey: PublicKey {
         return failOnError {
-            try invokeFnReturningPublicKey {
-                signal_message_get_sender_ratchet_key($0, handle)
+            try invokeFnReturningNativeHandle {
+                signal_message_get_sender_ratchet_key($0, nativeHandle)
             }
         }
     }
@@ -36,7 +30,7 @@ public class SignalMessage {
     public var body: [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_message_get_body($0, $1, handle)
+                signal_message_get_body($0, $1, nativeHandle)
             }
         }
     }
@@ -44,7 +38,7 @@ public class SignalMessage {
     public func serialize() -> [UInt8] {
         return failOnError {
             try invokeFnReturningArray {
-                signal_message_get_serialized($0, $1, handle)
+                signal_message_get_serialized($0, $1, nativeHandle)
             }
         }
     }
@@ -52,7 +46,7 @@ public class SignalMessage {
     public var messageVersion: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_message_get_message_version($0, handle)
+                signal_message_get_message_version($0, nativeHandle)
             }
         }
     }
@@ -60,7 +54,7 @@ public class SignalMessage {
     public var counter: UInt32 {
         return failOnError {
             try invokeFnReturningInteger {
-                signal_message_get_counter($0, handle)
+                signal_message_get_counter($0, nativeHandle)
             }
         }
     }
@@ -71,7 +65,7 @@ public class SignalMessage {
         return try macKey.withUnsafeBytes {
             var result: Bool = false
             try checkError(signal_message_verify_mac(&result,
-                                                     handle,
+                                                     nativeHandle,
                                                      sender.nativeHandle,
                                                      receiver.nativeHandle,
                                                      $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
@@ -79,9 +73,4 @@ public class SignalMessage {
             return result
         }
     }
-
-    internal var nativeHandle: OpaquePointer? {
-        return handle
-    }
-
 }

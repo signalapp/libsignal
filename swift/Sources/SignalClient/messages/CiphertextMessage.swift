@@ -5,9 +5,7 @@
 
 import SignalFfi
 
-public class CiphertextMessage {
-    internal var nativeHandle: OpaquePointer?
-
+public class CiphertextMessage: NativeHandleOwner {
     public struct MessageType: RawRepresentable, Hashable {
         public var rawValue: UInt8
         public init(rawValue: UInt8) {
@@ -32,18 +30,14 @@ public class CiphertextMessage {
         }
     }
 
-    deinit {
-        failOnError(signal_ciphertext_message_destroy(nativeHandle))
+    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        return signal_ciphertext_message_destroy(handle)
     }
 
-    internal init(owned rawPtr: OpaquePointer?) {
-        nativeHandle = rawPtr
-    }
-
-    public init(_ plaintextContent: PlaintextContent) {
+    public convenience init(_ plaintextContent: PlaintextContent) {
         var result: OpaquePointer?
         failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContent.nativeHandle))
-        nativeHandle = result!
+        self.init(owned: result!)
     }
 
     public func serialize() -> [UInt8] {

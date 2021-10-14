@@ -7,17 +7,13 @@ import SignalFfi
 import Foundation
 
 public class PrivateKey: ClonableHandleOwner {
-    public init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBytes {
             var result: OpaquePointer?
             try checkError(signal_privatekey_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
             return result
         }
-        super.init(owned: handle!)
-    }
-
-    internal override init(owned handle: OpaquePointer) {
-        super.init(owned: handle)
+        self.init(owned: handle!)
     }
 
     public static func generate() -> PrivateKey {
@@ -62,7 +58,7 @@ public class PrivateKey: ClonableHandleOwner {
 
     public var publicKey: PublicKey {
         return failOnError {
-            try invokeFnReturningPublicKey {
+            try invokeFnReturningNativeHandle {
                 signal_privatekey_get_public_key($0, nativeHandle)
             }
         }
