@@ -802,7 +802,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.9.6"
+version = "0.9.7"
 dependencies = [
  "async-trait",
  "cpufeatures",
@@ -819,7 +819,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.9.6"
+version = "0.9.7"
 dependencies = [
  "async-trait",
  "jni",
@@ -833,7 +833,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.9.6"
+version = "0.9.7"
 dependencies = [
  "async-trait",
  "libsignal-bridge",
