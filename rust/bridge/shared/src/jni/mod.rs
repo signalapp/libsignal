@@ -573,8 +573,9 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
             return Ok(None);
         }
 
-        let handle: jlong =
-            call_method_checked(env, obj, "nativeHandle", jni_signature!(() -> long), &[])?;
+        let handle: jlong = env
+            .get_field(obj, "unsafeHandle", jni_signature!(long))?
+            .try_into()?;
         if handle == 0 {
             return Ok(None);
         }

@@ -7,6 +7,7 @@ import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 public class ServerCertificateTest extends TestCase {
 
@@ -14,33 +15,43 @@ public class ServerCertificateTest extends TestCase {
     ECKeyPair trustRoot = Curve.generateKeyPair();
     ECKeyPair keyPair   = Curve.generateKeyPair();
 
-    ServerCertificate certificate = new ServerCertificate(
-       Native.ServerCertificate_New(1, keyPair.getPublicKey().nativeHandle(), trustRoot.getPrivateKey().nativeHandle()));
-
-    new CertificateValidator(trustRoot.getPublicKey()).validate(certificate);
-
-    byte[] serialized = certificate.getSerialized();
-    new CertificateValidator(trustRoot.getPublicKey()).validate(new ServerCertificate(serialized));
+    try (
+      NativeHandleGuard serverPublicGuard = new NativeHandleGuard(keyPair.getPublicKey());
+      NativeHandleGuard trustRootPrivateGuard = new NativeHandleGuard(trustRoot.getPrivateKey());
+    ) {
+      ServerCertificate certificate = new ServerCertificate(
+         Native.ServerCertificate_New(1, serverPublicGuard.nativeHandle(), trustRootPrivateGuard.nativeHandle()));
+  
+      new CertificateValidator(trustRoot.getPublicKey()).validate(certificate);
+  
+      byte[] serialized = certificate.getSerialized();
+      new CertificateValidator(trustRoot.getPublicKey()).validate(new ServerCertificate(serialized));  
+    }
   }
 
   public void testBadSignature() throws Exception {
     ECKeyPair trustRoot = Curve.generateKeyPair();
     ECKeyPair keyPair   = Curve.generateKeyPair();
 
-    ServerCertificate certificate = new ServerCertificate(
-       Native.ServerCertificate_New(1, keyPair.getPublicKey().nativeHandle(), trustRoot.getPrivateKey().nativeHandle()));
+    try (
+      NativeHandleGuard serverPublicGuard = new NativeHandleGuard(keyPair.getPublicKey());
+      NativeHandleGuard trustRootPrivateGuard = new NativeHandleGuard(trustRoot.getPrivateKey());
+    ) {
+      ServerCertificate certificate = new ServerCertificate(
+         Native.ServerCertificate_New(1, serverPublicGuard.nativeHandle(), trustRootPrivateGuard.nativeHandle()));
 
-    byte[] badSignature = certificate.getSerialized();
+      byte[] badSignature = certificate.getSerialized();
 
-    badSignature[badSignature.length - 1] ^= 1;
+      badSignature[badSignature.length - 1] ^= 1;
 
-    ServerCertificate badCert = new ServerCertificate(badSignature);
+      ServerCertificate badCert = new ServerCertificate(badSignature);
 
-    try {
-       new CertificateValidator(trustRoot.getPublicKey()).validate(new ServerCertificate(badSignature));
-       throw new AssertionError();
-    } catch (InvalidCertificateException e) {
-       // good
+      try {
+         new CertificateValidator(trustRoot.getPublicKey()).validate(new ServerCertificate(badSignature));
+         fail();
+      } catch (InvalidCertificateException e) {
+         // good
+      }
     }
   }
 

@@ -317,13 +317,9 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             make_result: fn(&'a T) -> CiphertextMessageRef<'a>,
         ) -> SignalJniResult<Option<CiphertextMessageRef<'a>>> {
             if env.is_instance_of(foreign, class_name)? {
-                let handle = call_method_checked(
-                    env,
-                    foreign,
-                    "nativeHandle",
-                    jni_signature!(() -> long),
-                    &[],
-                )?;
+                let handle: jlong = env
+                    .get_field(foreign, "unsafeHandle", jni_signature!(long))?
+                    .try_into()?;
                 Ok(Some(make_result(unsafe { native_handle_cast(handle)? })))
             } else {
                 Ok(None)

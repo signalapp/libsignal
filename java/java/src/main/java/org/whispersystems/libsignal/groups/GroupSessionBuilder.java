@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.groups;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
@@ -44,9 +45,16 @@ public class GroupSessionBuilder {
    * @param senderKeyDistributionMessage A received SenderKeyDistributionMessage.
    */
   public void process(SignalProtocolAddress sender, SenderKeyDistributionMessage senderKeyDistributionMessage) {
-    Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(sender.nativeHandle(),
-                                                                   senderKeyDistributionMessage.nativeHandle(),
-                                                                   senderKeyStore, null);
+    try (
+      NativeHandleGuard senderGuard = new NativeHandleGuard(sender);
+      NativeHandleGuard skdmGuard = new NativeHandleGuard(senderKeyDistributionMessage);
+    ) {
+      Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(
+        senderGuard.nativeHandle(),
+        skdmGuard.nativeHandle(),
+        senderKeyStore,
+        null);
+    }
   }
 
   /**
@@ -57,6 +65,8 @@ public class GroupSessionBuilder {
    * @return A SenderKeyDistributionMessage that is individually distributed to each member of the group.
    */
   public SenderKeyDistributionMessage create(SignalProtocolAddress sender, UUID distributionId) {
-    return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(sender.nativeHandle(), distributionId, senderKeyStore, null));
+    try (NativeHandleGuard senderGuard = new NativeHandleGuard(sender)) {
+      return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderGuard.nativeHandle(), distributionId, senderKeyStore, null));
+    }
   }
 }

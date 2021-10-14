@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
 
@@ -41,6 +42,11 @@ public class IdentityKeyPair {
   }
 
   public byte[] serialize() {
-    return Native.IdentityKeyPair_Serialize(this.publicKey.nativeHandle(), this.privateKey.nativeHandle());
+    try (
+      NativeHandleGuard publicKey = new NativeHandleGuard(this.publicKey.getPublicKey());
+      NativeHandleGuard privateKey = new NativeHandleGuard(this.privateKey);
+    ) {
+      return Native.IdentityKeyPair_Serialize(publicKey.nativeHandle(), privateKey.nativeHandle());
+    }
   }
 }

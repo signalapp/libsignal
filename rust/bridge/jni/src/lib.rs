@@ -6,7 +6,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
-use jni::objects::JClass;
+use jni::objects::{JClass, JObject};
 use jni::sys::{jbyteArray, jlongArray};
 use jni::JNIEnv;
 use std::convert::TryFrom;
@@ -34,4 +34,15 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_
         env.set_long_array_region(result, 0, &tuple)?;
         Ok(result)
     })
+}
+
+/// An optimization barrier / guard against garbage collection.
+///
+/// cbindgen:ignore
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_client_internal_Native_keepAlive(
+    _env: JNIEnv,
+    _class: JClass,
+    _obj: JObject,
+) {
 }

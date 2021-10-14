@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.groups;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.DuplicateMessageException;
 import org.whispersystems.libsignal.InvalidKeyIdException;
 import org.whispersystems.libsignal.InvalidMessageException;
@@ -49,8 +50,8 @@ public class GroupCipher {
    * @throws NoSessionException
    */
   public CiphertextMessage encrypt(UUID distributionId, byte[] paddedPlaintext) throws NoSessionException {
-    try {
-      return Native.GroupCipher_EncryptMessage(this.sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore, null);
+    try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
+      return Native.GroupCipher_EncryptMessage(sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
     }
@@ -68,8 +69,8 @@ public class GroupCipher {
   public byte[] decrypt(byte[] senderKeyMessageBytes)
       throws LegacyMessageException, DuplicateMessageException, InvalidMessageException, NoSessionException
   {
-    try {
-      return Native.GroupCipher_DecryptMessage(this.sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
+    try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
+      return Native.GroupCipher_DecryptMessage(sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
     } catch (IllegalStateException e) {
       throw new NoSessionException(e);
     }

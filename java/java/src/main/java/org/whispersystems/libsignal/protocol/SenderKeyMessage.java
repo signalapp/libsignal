@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
@@ -16,54 +17,69 @@ import org.whispersystems.libsignal.ecc.ECPublicKey;
 import java.text.ParseException;
 import java.util.UUID;
 
-public class SenderKeyMessage implements CiphertextMessage {
+public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Owner {
 
-  private long handle;
+  private final long unsafeHandle;
 
   @Override
   protected void finalize() {
-     Native.SenderKeyMessage_Destroy(this.handle);
+     Native.SenderKeyMessage_Destroy(this.unsafeHandle);
   }
 
-  public SenderKeyMessage(long handle) {
-    this.handle = handle;
+  public SenderKeyMessage(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
-  public long nativeHandle() {
-    return handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return unsafeHandle;
   }
 
   public SenderKeyMessage(byte[] serialized) throws InvalidMessageException, LegacyMessageException {
-    handle = Native.SenderKeyMessage_Deserialize(serialized);
+    unsafeHandle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 
   public UUID getDistributionId() {
-    return Native.SenderKeyMessage_GetDistributionId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyMessage_GetDistributionId(guard.nativeHandle());
+    }
   }
 
   public int getChainId() {
-    return Native.SenderKeyMessage_GetChainId(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyMessage_GetChainId(guard.nativeHandle());
+    }
   }
 
   public int getIteration() {
-    return Native.SenderKeyMessage_GetIteration(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyMessage_GetIteration(guard.nativeHandle());
+    }
   }
 
   public byte[] getCipherText() {
-    return Native.SenderKeyMessage_GetCipherText(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyMessage_GetCipherText(guard.nativeHandle());
+    }
   }
 
   public void verifySignature(ECPublicKey signatureKey)
       throws InvalidMessageException
   {
-    if(!Native.SenderKeyMessage_VerifySignature(this.handle, signatureKey.nativeHandle())) {
-      throw new InvalidMessageException("Invalid signature!");
+    try (
+      NativeHandleGuard guard = new NativeHandleGuard(this);
+      NativeHandleGuard keyGuard = new NativeHandleGuard(signatureKey);
+    ) {
+      if (!Native.SenderKeyMessage_VerifySignature(guard.nativeHandle(), keyGuard.nativeHandle())) {
+        throw new InvalidMessageException("Invalid signature!");
+      }
     }
   }
 
   @Override
   public byte[] serialize() {
-    return Native.SenderKeyMessage_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyMessage_GetSerialized(guard.nativeHandle());
+    }
   }
 
   @Override

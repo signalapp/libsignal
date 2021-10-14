@@ -6,36 +6,41 @@
 package org.whispersystems.libsignal.protocol;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.util.guava.Optional;
 
-public final class PlaintextContent implements CiphertextMessage {
+public final class PlaintextContent implements CiphertextMessage, NativeHandleGuard.Owner {
 
-  private final long handle;
+  private final long unsafeHandle;
 
   @Override
   protected void finalize() {
-     Native.PlaintextContent_Destroy(this.handle);
+     Native.PlaintextContent_Destroy(this.unsafeHandle);
   }
 
-  public long nativeHandle() {
-    return handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return unsafeHandle;
   }
 
   // Used by Rust.
   @SuppressWarnings("unused")
-  private PlaintextContent(long handle) {
-    this.handle = handle;
+  private PlaintextContent(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   public PlaintextContent(DecryptionErrorMessage message) {
-    handle = Native.PlaintextContent_FromDecryptionErrorMessage(message.handle);
+    try (NativeHandleGuard messageGuard = new NativeHandleGuard(message)) {
+      this.unsafeHandle = Native.PlaintextContent_FromDecryptionErrorMessage(messageGuard.nativeHandle());
+    }
   }
 
   @Override
   public byte[] serialize() {
-    return Native.PlaintextContent_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.PlaintextContent_GetSerialized(guard.nativeHandle());
+    }
   }
 
   @Override
@@ -44,6 +49,8 @@ public final class PlaintextContent implements CiphertextMessage {
   }
 
   public byte[] getBody() {
-    return Native.PlaintextContent_GetBody(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.PlaintextContent_GetBody(guard.nativeHandle());
+    }
   }
 }

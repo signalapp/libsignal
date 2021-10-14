@@ -122,7 +122,7 @@ template_file = open(os.path.join(our_abs_dir, 'Native.java.in')).read()
 
 contents = template_file.replace('\n  // INSERT DECLS HERE', "\n".join(decls))
 
-native_java = os.path.join(our_abs_dir, '../../../../java/java/src/main/java/org/signal/internal/Native.java')
+native_java = os.path.join(our_abs_dir, '../../../../java/java/src/main/java/org/signal/client/internal/Native.java')
 
 if not os.access(native_java, os.F_OK):
     raise Exception("Didn't find Native.java where it was expected")

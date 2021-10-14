@@ -33,6 +33,7 @@ import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.util.Hex;
 import org.whispersystems.libsignal.util.Pair;
@@ -360,10 +361,20 @@ public class SealedSessionCipherTest extends TestCase {
       throws InvalidKeyException, InvalidCertificateException {
     ECKeyPair serverKey = Curve.generateKeyPair();
 
-    ServerCertificate serverCertificate = new ServerCertificate(Native.ServerCertificate_New(1, serverKey.getPublicKey().nativeHandle(), trustRoot.getPrivateKey().nativeHandle()));
+    try (
+      NativeHandleGuard serverPublicGuard = new NativeHandleGuard(serverKey.getPublicKey());
+      NativeHandleGuard trustRootPrivateGuard = new NativeHandleGuard(trustRoot.getPrivateKey());
+    ) {
+      ServerCertificate serverCertificate = new ServerCertificate(Native.ServerCertificate_New(1, serverPublicGuard.nativeHandle(), trustRootPrivateGuard.nativeHandle()));
 
-    return new SenderCertificate(Native.SenderCertificate_New(uuid.toString(), e164, deviceId, identityKey.nativeHandle(), expires,
-                                                              serverCertificate.nativeHandle(), serverKey.getPrivateKey().nativeHandle()));
+      try (
+        NativeHandleGuard identityGuard = new NativeHandleGuard(identityKey);
+        NativeHandleGuard serverCertificateGuard = new NativeHandleGuard(serverCertificate);
+        NativeHandleGuard serverPrivateGuard = new NativeHandleGuard(serverKey.getPrivateKey());
+      ) {
+        return new SenderCertificate(Native.SenderCertificate_New(uuid.toString(), e164, deviceId, identityGuard.nativeHandle(), expires, serverCertificateGuard.nativeHandle(), serverPrivateGuard.nativeHandle()));
+      }
+    }
   }
 
   private void initializeSessions(TestInMemorySignalProtocolStore aliceStore, TestInMemorySignalProtocolStore bobStore, SignalProtocolAddress bobAddress)

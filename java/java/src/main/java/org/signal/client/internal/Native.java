@@ -70,6 +70,21 @@ public final class Native {
 
   private Native() {}
 
+  /**
+   * Keeps an object from being garbage-collected until this call completes.
+   *
+   * This can be used to keep a Java wrapper around a Rust object handle alive while
+   * earlier calls use that Rust object handle. That is, you should call {@code keepAlive} 
+   * <em>after</em> the code where an object must not be garbage-collected.
+   * However, most of the time {@link NativeHandleGuard} is a better choice,
+   * since the lifetime of the guard is clear.
+   *
+   * Effectively equivalent to Java 9's <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/ref/Reference.html#reachabilityFence-java.lang.Object-"><code>reachabilityFence()</code></a>.
+   * Uses {@code native} because the JVM can't look into the implementation of the method
+   * and optimize away the use of {@code obj}. (The actual implementation does nothing.)
+   */
+  public static native void keepAlive(Object obj);
+
   public static native void Aes256Ctr32_Destroy(long handle);
   public static native long Aes256Ctr32_New(byte[] key, byte[] nonce, int initialCtr);
   public static native void Aes256Ctr32_Process(long ctr, byte[] data, int offset, int length);

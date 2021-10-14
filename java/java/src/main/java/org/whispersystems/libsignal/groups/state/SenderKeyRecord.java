@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal.groups.state;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 import java.io.IOException;
 
 /**
@@ -14,31 +15,33 @@ import java.io.IOException;
  *
  * @author Moxie Marlinspike
  */
-public class SenderKeyRecord {
-  private long handle;
+public class SenderKeyRecord implements NativeHandleGuard.Owner {
+  private final long unsafeHandle;
 
   @Override
   protected void finalize() {
-    Native.SenderKeyRecord_Destroy(this.handle);
+    Native.SenderKeyRecord_Destroy(this.unsafeHandle);
   }
 
   public SenderKeyRecord() {
-    handle = Native.SenderKeyRecord_New();
+    this.unsafeHandle = Native.SenderKeyRecord_New();
   }
 
-  public SenderKeyRecord(long handle) {
-    this.handle = handle;
+  public SenderKeyRecord(long unsafeHandle) {
+    this.unsafeHandle = unsafeHandle;
   }
 
   public SenderKeyRecord(byte[] serialized) throws IOException {
-    handle = Native.SenderKeyRecord_Deserialize(serialized);
+    this.unsafeHandle = Native.SenderKeyRecord_Deserialize(serialized);
   }
 
   public byte[] serialize() {
-    return Native.SenderKeyRecord_GetSerialized(this.handle);
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SenderKeyRecord_GetSerialized(guard.nativeHandle());
+    }
   }
 
-  public long nativeHandle() {
-    return this.handle;
+  public long unsafeNativeHandleWithoutGuard() {
+    return this.unsafeHandle;
   }
 }

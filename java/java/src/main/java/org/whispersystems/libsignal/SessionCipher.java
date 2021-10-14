@@ -6,6 +6,7 @@
 package org.whispersystems.libsignal;
 
 import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
@@ -70,11 +71,13 @@ public class SessionCipher {
    * @return A ciphertext message encrypted to the recipient+device tuple.
    */
   public CiphertextMessage encrypt(byte[] paddedMessage) throws UntrustedIdentityException {
-     return Native.SessionCipher_EncryptMessage(paddedMessage,
-                                                this.remoteAddress.nativeHandle(),
-                                                sessionStore,
-                                                identityKeyStore,
-                                                null);
+    try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress)) {
+      return Native.SessionCipher_EncryptMessage(paddedMessage,
+                                                 remoteAddress.nativeHandle(),
+                                                 sessionStore,
+                                                 identityKeyStore,
+                                                 null);
+    }
   }
 
   /**
@@ -96,13 +99,18 @@ public class SessionCipher {
       throws DuplicateMessageException, LegacyMessageException, InvalidMessageException,
              InvalidKeyIdException, InvalidKeyException, UntrustedIdentityException
   {
-    return Native.SessionCipher_DecryptPreKeySignalMessage(ciphertext.nativeHandle(),
-                                                           remoteAddress.nativeHandle(),
-                                                           sessionStore,
-                                                           identityKeyStore,
-                                                           preKeyStore,
-                                                           signedPreKeyStore,
-                                                           null);
+    try (
+      NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
+      NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+    ) {
+      return Native.SessionCipher_DecryptPreKeySignalMessage(ciphertextGuard.nativeHandle(),
+                                                             remoteAddressGuard.nativeHandle(),
+                                                             sessionStore,
+                                                             identityKeyStore,
+                                                             preKeyStore,
+                                                             signedPreKeyStore,
+                                                             null);
+    }
   }
 
   /**
@@ -121,11 +129,16 @@ public class SessionCipher {
       throws InvalidMessageException, DuplicateMessageException, LegacyMessageException,
       NoSessionException, UntrustedIdentityException
   {
-     return Native.SessionCipher_DecryptSignalMessage(ciphertext.nativeHandle(),
-                                                      remoteAddress.nativeHandle(),
-                                                      sessionStore,
-                                                      identityKeyStore,
-                                                      null);
+    try (
+      NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
+      NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
+    ) {
+      return Native.SessionCipher_DecryptSignalMessage(ciphertextGuard.nativeHandle(),
+                                                       remoteAddressGuard.nativeHandle(),
+                                                       sessionStore,
+                                                       identityKeyStore,
+                                                       null);
+    }
   }
 
   public int getRemoteRegistrationId() {
