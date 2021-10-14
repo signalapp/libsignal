@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -23,17 +23,21 @@ public class ProtocolAddress: ClonableHandleOwner {
     }
 
     public var name: String {
-        return failOnError {
-            try invokeFnReturningString {
-                signal_address_get_name($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningString {
+                    signal_address_get_name($0, nativeHandle)
+                }
             }
         }
     }
 
     public var deviceId: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_address_get_device_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_address_get_device_id($0, nativeHandle)
+                }
             }
         }
     }

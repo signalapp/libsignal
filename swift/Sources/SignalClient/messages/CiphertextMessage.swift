@@ -36,22 +36,28 @@ public class CiphertextMessage: NativeHandleOwner {
 
     public convenience init(_ plaintextContent: PlaintextContent) {
         var result: OpaquePointer?
-        failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContent.nativeHandle))
+        plaintextContent.withNativeHandle { plaintextContentHandle in
+            failOnError(signal_ciphertext_message_from_plaintext_content(&result, plaintextContentHandle))
+        }
         self.init(owned: result!)
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_ciphertext_message_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_ciphertext_message_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var messageType: MessageType {
-        let rawValue = failOnError {
-            try invokeFnReturningInteger {
-                signal_ciphertext_message_type($0, nativeHandle)
+        let rawValue = withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_ciphertext_message_type($0, nativeHandle)
+                }
             }
         }
         return MessageType(rawValue: rawValue)

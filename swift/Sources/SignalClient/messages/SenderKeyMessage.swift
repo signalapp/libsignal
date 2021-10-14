@@ -20,48 +20,60 @@ public class SenderKeyMessage: NativeHandleOwner {
     }
 
     public var distributionId: UUID {
-        return failOnError {
-            try invokeFnReturningUuid {
-                signal_sender_key_message_get_distribution_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningUuid {
+                    signal_sender_key_message_get_distribution_id($0, nativeHandle)
+                }
             }
         }
     }
 
     public var chainId: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_sender_key_message_get_chain_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_sender_key_message_get_chain_id($0, nativeHandle)
+                }
             }
         }
     }
 
     public var iteration: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_sender_key_message_get_iteration($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_sender_key_message_get_iteration($0, nativeHandle)
+                }
             }
         }
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_sender_key_message_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_sender_key_message_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var ciphertext: [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_sender_key_message_get_cipher_text($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_sender_key_message_get_cipher_text($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public func verifySignature(against key: PublicKey) throws -> Bool {
         var result: Bool = false
-        try checkError(signal_sender_key_message_verify_signature(&result, nativeHandle, key.nativeHandle))
+        try withNativeHandles(self, key) { messageHandle, keyHandle in
+            try checkError(signal_sender_key_message_verify_signature(&result, messageHandle, keyHandle))
+        }
         return result
     }
 }

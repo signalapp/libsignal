@@ -28,19 +28,21 @@ public class Aes256GcmSiv: NativeHandleOwner {
             NonceBytes: ContiguousBytes,
             AssociatedDataBytes: ContiguousBytes {
 
-        try message.withUnsafeBytes { messageBytes in
-            try nonce.withUnsafeBytes { nonceBytes in
-                try associated_data.withUnsafeBytes { adBytes in
-                    try invokeFnReturningArray {
-                        signal_aes256_gcm_siv_encrypt($0,
-                                                      $1,
-                                                      nativeHandle,
-                                                      messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                      messageBytes.count,
-                                                      nonceBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                      nonceBytes.count,
-                                                      adBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                      adBytes.count)
+        try withNativeHandle { nativeHandle in
+            try message.withUnsafeBytes { messageBytes in
+                try nonce.withUnsafeBytes { nonceBytes in
+                    try associated_data.withUnsafeBytes { adBytes in
+                        try invokeFnReturningArray {
+                            signal_aes256_gcm_siv_encrypt($0,
+                                                          $1,
+                                                          nativeHandle,
+                                                          messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                          messageBytes.count,
+                                                          nonceBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                          nonceBytes.count,
+                                                          adBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                          adBytes.count)
+                        }
                     }
                 }
             }
@@ -55,19 +57,21 @@ public class Aes256GcmSiv: NativeHandleOwner {
             NonceBytes: ContiguousBytes,
             AssociatedDataBytes: ContiguousBytes {
 
-        try message.withUnsafeBytes { messageBytes in
-            try nonce.withUnsafeBytes { nonceBytes in
-                try associated_data.withUnsafeBytes { adBytes in
-                    try invokeFnReturningArray {
-                        signal_aes256_gcm_siv_decrypt($0,
-                                                      $1,
-                                                      nativeHandle,
-                                                      messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                      messageBytes.count,
-                                                      nonceBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                      nonceBytes.count,
-                                                      adBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                      adBytes.count)
+        try withNativeHandle { nativeHandle in
+            try message.withUnsafeBytes { messageBytes in
+                try nonce.withUnsafeBytes { nonceBytes in
+                    try associated_data.withUnsafeBytes { adBytes in
+                        try invokeFnReturningArray {
+                            signal_aes256_gcm_siv_decrypt($0,
+                                                          $1,
+                                                          nativeHandle,
+                                                          messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                          messageBytes.count,
+                                                          nonceBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                          nonceBytes.count,
+                                                          adBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                          adBytes.count)
+                        }
                     }
                 }
             }

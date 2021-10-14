@@ -28,7 +28,9 @@ public class PreKeyRecord: ClonableHandleOwner {
                             publicKey: PublicKey,
                             privateKey: PrivateKey) throws {
         var handle: OpaquePointer?
-        try checkError(signal_pre_key_record_new(&handle, id, publicKey.nativeHandle, privateKey.nativeHandle))
+        try withNativeHandles(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
+            try checkError(signal_pre_key_record_new(&handle, id, publicKeyHandle, privateKeyHandle))
+        }
         self.init(owned: handle!)
     }
 
@@ -37,33 +39,41 @@ public class PreKeyRecord: ClonableHandleOwner {
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_pre_key_record_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_pre_key_record_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var id: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_pre_key_record_get_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_pre_key_record_get_id($0, nativeHandle)
+                }
             }
         }
     }
 
     public var publicKey: PublicKey {
-        return failOnError {
-            try invokeFnReturningNativeHandle {
-                signal_pre_key_record_get_public_key($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningNativeHandle {
+                    signal_pre_key_record_get_public_key($0, nativeHandle)
+                }
             }
         }
     }
 
     public var privateKey: PrivateKey {
-        return failOnError {
-            try invokeFnReturningNativeHandle {
-                signal_pre_key_record_get_private_key($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningNativeHandle {
+                    signal_pre_key_record_get_private_key($0, nativeHandle)
+                }
             }
         }
     }

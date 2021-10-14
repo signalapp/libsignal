@@ -11,7 +11,11 @@ public class NativeHandleOwner {
 
     fileprivate var handle: MaybeOwnedHandle?
 
-    internal var nativeHandle: OpaquePointer? {
+    /// Returns the native handle (if any) without any lifetime guarantees.
+    ///
+    /// You should probably use `withNativeHandle(_:)`
+    /// unless you can't use block scoping to keep the owner (`self`) alive.
+    internal var unsafeNativeHandle: OpaquePointer? {
         switch handle {
         case nil:
             return nil
@@ -44,6 +48,39 @@ public class NativeHandleOwner {
             failOnError(Self.destroyNativeHandle(handle))
         }
     }
+
+    /// Provides access to the wrapped Rust object pointer while keeping the wrapper alive.
+    ///
+    /// See also the free functions `withNativeHandles(…)`,
+    /// which make it convenient to access the native handles of multiple objects.
+    internal func withNativeHandle<R>(_ callback: (OpaquePointer?) throws -> R) rethrows -> R {
+        return try withExtendedLifetime(self) {
+            try callback(self.unsafeNativeHandle)
+        }
+    }
+}
+
+@available(*, unavailable, message: "use the method form instead")
+internal func withNativeHandle<Result>(_ a: NativeHandleOwner, _ callback: (OpaquePointer?) throws -> Result) rethrows -> Result {
+    fatalError()
+}
+
+internal func withNativeHandles<Result>(_ a: NativeHandleOwner, _ b: NativeHandleOwner, _ callback: (OpaquePointer?, OpaquePointer?) throws -> Result) rethrows -> Result {
+    return try a.withNativeHandle { aHandle in
+        try b.withNativeHandle { bHandle in
+            try callback(aHandle, bHandle)
+        }
+    }
+}
+
+internal func withNativeHandles<Result>(_ a: NativeHandleOwner, _ b: NativeHandleOwner, _ c: NativeHandleOwner, _ callback: (OpaquePointer?, OpaquePointer?, OpaquePointer?) throws -> Result) rethrows -> Result {
+    return try a.withNativeHandle { aHandle in
+        try b.withNativeHandle { bHandle in
+            try c.withNativeHandle { cHandle in
+                try callback(aHandle, bHandle, cHandle)
+            }
+        }
+    }
 }
 
 public class ClonableHandleOwner: NativeHandleOwner {
@@ -66,11 +103,16 @@ public class ClonableHandleOwner: NativeHandleOwner {
     }
 
     fileprivate func takeNativeHandle() -> OpaquePointer? {
-        if case .borrowed? = self.handle {
-            preconditionFailure("borrowed handle may have escaped")
-        }
         defer { handle = nil }
-        return nativeHandle
+
+        switch handle {
+        case nil:
+            return nil
+        case .borrowed(_):
+            preconditionFailure("borrowed handle may have escaped")
+        case .owned(let ptr):
+            return ptr
+        }
     }
 
     fileprivate func forgetBorrowedHandle() {
@@ -107,6 +149,8 @@ internal func cloneOrTakeHandle<Owner: ClonableHandleOwner>(from handleOwner: in
     }
 
     var result: OpaquePointer?
-    try checkError(type(of: handleOwner).cloneNativeHandle(&result, currentHandle: handleOwner.nativeHandle))
+    try handleOwner.withNativeHandle {
+        try checkError(type(of: handleOwner).cloneNativeHandle(&result, currentHandle: $0))
+    }
     return result
 }

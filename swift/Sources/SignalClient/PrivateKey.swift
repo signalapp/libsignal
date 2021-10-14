@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC
+// Copyright 2020-2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -17,9 +17,11 @@ public class PrivateKey: ClonableHandleOwner {
     }
 
     public static func generate() -> PrivateKey {
-        var handle: OpaquePointer?
-        failOnError(signal_privatekey_generate(&handle))
-        return PrivateKey(owned: handle!)
+        return failOnError {
+            try invokeFnReturningNativeHandle {
+                signal_privatekey_generate($0)
+            }
+        }
     }
 
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
@@ -31,35 +33,43 @@ public class PrivateKey: ClonableHandleOwner {
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_privatekey_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_privatekey_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public func generateSignature<Bytes: ContiguousBytes>(message: Bytes) -> [UInt8] {
-        return message.withUnsafeBytes { messageBytes in
-            failOnError {
-                try invokeFnReturningArray {
-                    signal_privatekey_sign($0, $1, nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count)
+        return withNativeHandle { nativeHandle in
+            message.withUnsafeBytes { messageBytes in
+                failOnError {
+                    try invokeFnReturningArray {
+                        signal_privatekey_sign($0, $1, nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count)
+                    }
                 }
             }
         }
     }
 
     public func keyAgreement(with other: PublicKey) -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_privatekey_agree($0, $1, nativeHandle, other.nativeHandle)
+        return withNativeHandles(self, other) { nativeHandle, otherHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_privatekey_agree($0, $1, nativeHandle, otherHandle)
+                }
             }
         }
     }
 
     public var publicKey: PublicKey {
-        return failOnError {
-            try invokeFnReturningNativeHandle {
-                signal_privatekey_get_public_key($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningNativeHandle {
+                    signal_privatekey_get_public_key($0, nativeHandle)
+                }
             }
         }
     }

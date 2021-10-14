@@ -16,13 +16,15 @@ public class SenderKeyDistributionMessage: NativeHandleOwner {
                             store: SenderKeyStore,
                             context: StoreContext) throws {
         var result: OpaquePointer?
-        try context.withOpaquePointer { context in
-            try withUnsafePointer(to: distributionId.uuid) { distributionId in
-                try withSenderKeyStore(store) {
-                    try checkError(signal_sender_key_distribution_message_create(&result,
-                                                                                 sender.nativeHandle,
-                                                                                 distributionId,
-                                                                                 $0, context))
+        try sender.withNativeHandle { senderHandle in
+            try context.withOpaquePointer { context in
+                try withUnsafePointer(to: distributionId.uuid) { distributionId in
+                    try withSenderKeyStore(store) {
+                        try checkError(signal_sender_key_distribution_message_create(&result,
+                                                                                     senderHandle,
+                                                                                     distributionId,
+                                                                                     $0, context))
+                    }
                 }
             }
         }
@@ -36,49 +38,61 @@ public class SenderKeyDistributionMessage: NativeHandleOwner {
     }
 
     public var signatureKey: PublicKey {
-        return failOnError {
-            try invokeFnReturningNativeHandle {
-                signal_sender_key_distribution_message_get_signature_key($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningNativeHandle {
+                    signal_sender_key_distribution_message_get_signature_key($0, nativeHandle)
+                }
             }
         }
     }
 
     public var distributionId: UUID {
-        return failOnError {
-            try invokeFnReturningUuid {
-                signal_sender_key_message_get_distribution_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningUuid {
+                    signal_sender_key_message_get_distribution_id($0, nativeHandle)
+                }
             }
         }
     }
 
     public var chainId: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_sender_key_distribution_message_get_chain_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_sender_key_distribution_message_get_chain_id($0, nativeHandle)
+                }
             }
         }
     }
 
     public var iteration: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_sender_key_distribution_message_get_iteration($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_sender_key_distribution_message_get_iteration($0, nativeHandle)
+                }
             }
         }
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_sender_key_distribution_message_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_sender_key_distribution_message_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var chainKey: [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_sender_key_distribution_message_get_chain_key($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_sender_key_distribution_message_get_chain_key($0, $1, nativeHandle)
+                }
             }
         }
     }

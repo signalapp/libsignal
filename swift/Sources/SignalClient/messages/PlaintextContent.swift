@@ -21,22 +21,28 @@ public class PlaintextContent: NativeHandleOwner {
 
     public convenience init(_ decryptionError: DecryptionErrorMessage) {
         var result: OpaquePointer?
-        failOnError(signal_plaintext_content_from_decryption_error_message(&result, decryptionError.nativeHandle))
+        decryptionError.withNativeHandle { decryptionErrorHandle in
+            failOnError(signal_plaintext_content_from_decryption_error_message(&result, decryptionErrorHandle))
+        }
         self.init(owned: result!)
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_plaintext_content_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_plaintext_content_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var body: [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_plaintext_content_get_body($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_plaintext_content_get_body($0, $1, nativeHandle)
+                }
             }
         }
     }
@@ -65,41 +71,49 @@ public class DecryptionErrorMessage: NativeHandleOwner {
 
     // For testing
     public static func extractFromSerializedContent<Bytes: ContiguousBytes>(_ bytes: Bytes) throws -> DecryptionErrorMessage {
-        var result: OpaquePointer?
-        try bytes.withUnsafeBytes {
-            try checkError(signal_decryption_error_message_extract_from_serialized_content(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+        return try bytes.withUnsafeBytes { bytes in
+            try invokeFnReturningNativeHandle {
+                signal_decryption_error_message_extract_from_serialized_content($0, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count)
+            }
         }
-        return DecryptionErrorMessage(owned: result!)
     }
 
     public func serialize() -> [UInt8] {
-        return failOnError {
-            try invokeFnReturningArray {
-                signal_decryption_error_message_serialize($0, $1, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_decryption_error_message_serialize($0, $1, nativeHandle)
+                }
             }
         }
     }
 
     public var ratchetKey: PublicKey? {
-        return failOnError {
-            try invokeFnReturningOptionalNativeHandle {
-                signal_decryption_error_message_get_ratchet_key($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningOptionalNativeHandle {
+                    signal_decryption_error_message_get_ratchet_key($0, nativeHandle)
+                }
             }
         }
     }
 
     public var timestamp: UInt64 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_decryption_error_message_get_timestamp($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_decryption_error_message_get_timestamp($0, nativeHandle)
+                }
             }
         }
     }
 
     public var deviceId: UInt32 {
-        return failOnError {
-            try invokeFnReturningInteger {
-                signal_decryption_error_message_get_device_id($0, nativeHandle)
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_decryption_error_message_get_device_id($0, nativeHandle)
+                }
             }
         }
     }
