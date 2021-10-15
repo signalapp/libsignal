@@ -5,9 +5,9 @@
  */
 package org.whispersystems.libsignal.kdf;
 
+/**
+ * @deprecated Use the static methods of {@link HKDF} instead.
+ */
+@Deprecated
 public class HKDFv3 extends HKDF {
-  @Override
-  protected int getVersion() {
-    return 3;
-  }
 }

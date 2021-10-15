@@ -19,10 +19,10 @@ impl CryptographicMac {
     pub fn new(algo: &str, key: &[u8]) -> Result<Self> {
         match algo {
             "HMACSha1" | "HmacSha1" => Ok(Self::HmacSha1(
-                Hmac::<Sha1>::new_varkey(key).expect("HMAC accepts any key length"),
+                Hmac::<Sha1>::new_from_slice(key).expect("HMAC accepts any key length"),
             )),
             "HMACSha256" | "HmacSha256" => Ok(Self::HmacSha256(
-                Hmac::<Sha256>::new_varkey(key).expect("HMAC accepts any key length"),
+                Hmac::<Sha256>::new_from_slice(key).expect("HMAC accepts any key length"),
             )),
             _ => Err(Error::UnknownAlgorithm("MAC", algo.to_string())),
         }

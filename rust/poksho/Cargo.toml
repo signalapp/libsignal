@@ -13,7 +13,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 curve25519-dalek = { version = "3.0", features = ["serde"] }
 sha2 = "0.9"
-hmac = "0.9.0"
+hmac = "0.11"
 
 [dev-dependencies]
 hex = "0.4"

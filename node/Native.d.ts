@@ -61,7 +61,7 @@ export function Fingerprint_New(iterations: number, version: number, localIdenti
 export function Fingerprint_ScannableEncoding(obj: Wrapper<Fingerprint>): Buffer;
 export function GroupCipher_DecryptMessage(sender: Wrapper<ProtocolAddress>, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
 export function GroupCipher_EncryptMessage(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, message: Buffer, store: SenderKeyStore, ctx: null): Promise<CiphertextMessage>;
-export function HKDF_DeriveSecrets(outputLength: number, version: number, ikm: Buffer, label: Buffer | null, salt: Buffer | null): Buffer;
+export function HKDF_DeriveSecrets(outputLength: number, ikm: Buffer, label: Buffer | null, salt: Buffer | null): Buffer;
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Buffer;
 export function PlaintextContent_Deserialize(buffer: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;

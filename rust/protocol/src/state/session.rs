@@ -6,7 +6,7 @@
 use prost::Message;
 
 use crate::ratchet::{ChainKey, MessageKeys, RootKey};
-use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError, HKDF};
+use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use crate::consts;
 use crate::proto::storage::session_structure;
@@ -118,8 +118,7 @@ impl SessionState {
         if self.session.root_key.len() != 32 {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
-        let hkdf = HKDF::new(self.session_version()?)?;
-        RootKey::new(hkdf, &self.session.root_key)
+        RootKey::new(&self.session.root_key)
     }
 
     pub(crate) fn set_root_key(&mut self, root_key: &RootKey) -> Result<()> {
@@ -194,8 +193,7 @@ impl SessionState {
                     if c.key.len() != 32 {
                         return Err(SignalProtocolError::InvalidProtobufEncoding);
                     }
-                    let hkdf = HKDF::new(self.session_version()?)?;
-                    Ok(Some(ChainKey::new(hkdf, &c.key, c.index)?))
+                    Ok(Some(ChainKey::new(&c.key, c.index)?))
                 }
             },
         }
@@ -264,8 +262,7 @@ impl SessionState {
             SignalProtocolError::InvalidState("get_sender_chain_key", "No chain key".to_owned())
         })?;
 
-        let hkdf = HKDF::new(self.session_version()?)?;
-        ChainKey::new(hkdf, &chain_key.key, chain_key.index)
+        ChainKey::new(&chain_key.key, chain_key.index)
     }
 
     pub(crate) fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {

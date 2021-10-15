@@ -408,7 +408,6 @@ SignalFfiError *signal_unidentified_sender_message_content_destroy(SignalUnident
 
 SignalFfiError *signal_hkdf_derive(unsigned char *output,
                                    size_t output_len,
-                                   uint32_t version,
                                    const unsigned char *ikm,
                                    size_t ikm_len,
                                    const unsigned char *label,

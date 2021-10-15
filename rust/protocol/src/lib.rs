@@ -30,7 +30,6 @@ pub mod error;
 mod fingerprint;
 mod group_cipher;
 mod identity_key;
-mod kdf;
 mod proto;
 mod protocol;
 mod ratchet;
@@ -54,7 +53,6 @@ pub use {
         process_sender_key_distribution_message,
     },
     identity_key::{IdentityKey, IdentityKeyPair},
-    kdf::HKDF,
     protocol::{
         extract_decryption_error_message_from_serialized_content, CiphertextMessage,
         CiphertextMessageType, DecryptionErrorMessage, PlaintextContent, PreKeySignalMessage,

@@ -165,12 +165,8 @@ impl SignalMessage {
         if mac_key.len() != 32 {
             return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));
         }
-        let mut mac = Hmac::<Sha256>::new_varkey(mac_key).map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!(
-                "Invalid HMAC key length <{}>",
-                mac_key.len()
-            ))
-        })?;
+        let mut mac = Hmac::<Sha256>::new_from_slice(mac_key)
+            .expect("HMAC-SHA256 should accept any size key");
 
         mac.update(sender_identity_key.public_key().serialize().as_ref());
         mac.update(receiver_identity_key.public_key().serialize().as_ref());
