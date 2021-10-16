@@ -347,71 +347,86 @@ impl crate::support::Env for Env {
     }
 }
 
+/// A marker for Rust objects exposed as opaque pointers.
+pub trait BridgeHandle {}
+
+impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for &T {
+    type ArgType = *const T;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(foreign: *const T) -> SignalFfiResult<Self> {
+        unsafe { native_handle_cast(foreign) }
+    }
+}
+
+impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for Option<&T> {
+    type ArgType = *const T;
+    fn convert_from(foreign: *const T) -> SignalFfiResult<Self> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            <&T>::convert_from(foreign).map(Some)
+        }
+    }
+}
+
+impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for &mut T {
+    type ArgType = *mut T;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(foreign: *mut T) -> SignalFfiResult<Self> {
+        unsafe { native_handle_cast_mut(foreign) }
+    }
+}
+
+impl<T: BridgeHandle> SizedArgTypeInfo for &[&T] {
+    type ArgType = *const *const T;
+    fn convert_from(input: Self::ArgType, input_len: usize) -> SignalFfiResult<Self> {
+        if input.is_null() {
+            if input_len != 0 {
+                return Err(SignalFfiError::NullPointer);
+            }
+            // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+            return Ok(&[]);
+        }
+
+        let slice_of_pointers = unsafe { std::slice::from_raw_parts(input, input_len) };
+
+        if slice_of_pointers.contains(&std::ptr::null()) {
+            return Err(SignalFfiError::NullPointer);
+        }
+
+        let base_ptr_for_slice_of_refs = input as *const &T;
+
+        unsafe {
+            Ok(std::slice::from_raw_parts(
+                base_ptr_for_slice_of_refs,
+                input_len,
+            ))
+        }
+    }
+}
+
+impl<T: BridgeHandle> ResultTypeInfo for T {
+    type ResultType = *mut T;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(Box::into_raw(Box::new(self)))
+    }
+}
+
+impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
+    type ResultType = *mut T;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        match self {
+            Some(obj) => obj.convert_into(),
+            None => Ok(std::ptr::null_mut()),
+        }
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $ffi_name:ident, clone = false ) => {
-        impl ffi::SimpleArgTypeInfo for &$typ {
-            type ArgType = *const $typ;
-            #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *const $typ) -> ffi::SignalFfiResult<Self> {
-                unsafe { ffi::native_handle_cast(foreign) }
-            }
-        }
-        impl ffi::SimpleArgTypeInfo for Option<&$typ> {
-            type ArgType = *const $typ;
-            fn convert_from(foreign: *const $typ) -> ffi::SignalFfiResult<Self> {
-                if foreign.is_null() {
-                    Ok(None)
-                } else {
-                    <&$typ>::convert_from(foreign).map(Some)
-                }
-            }
-        }
-        impl ffi::SimpleArgTypeInfo for &mut $typ {
-            type ArgType = *mut $typ;
-            #[allow(clippy::not_unsafe_ptr_arg_deref)]
-            fn convert_from(foreign: *mut $typ) -> ffi::SignalFfiResult<Self> {
-                unsafe { ffi::native_handle_cast_mut(foreign) }
-            }
-        }
-        impl ffi::SizedArgTypeInfo for &[& $typ] {
-            type ArgType = *const *const $typ;
-            fn convert_from(input: Self::ArgType, input_len: usize) -> ffi::SignalFfiResult<Self> {
-                if input.is_null() {
-                    if input_len != 0 {
-                        return Err(ffi::SignalFfiError::NullPointer);
-                    }
-                    // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
-                    return Ok(&[]);
-                }
-
-                let slice_of_pointers = unsafe { std::slice::from_raw_parts(input, input_len) };
-
-                if slice_of_pointers.contains(&std::ptr::null()) {
-                    return Err(ffi::SignalFfiError::NullPointer);
-                }
-
-                let base_ptr_for_slice_of_refs = input as *const & $typ;
-
-                unsafe { Ok(std::slice::from_raw_parts(base_ptr_for_slice_of_refs, input_len)) }
-            }
-        }
-        impl ffi::ResultTypeInfo for $typ {
-            type ResultType = *mut $typ;
-            fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
-                Ok(Box::into_raw(Box::new(self)))
-            }
-        }
-        impl ffi::ResultTypeInfo for Option<$typ> {
-            type ResultType = *mut $typ;
-            fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
-                match self {
-                    Some(obj) => obj.convert_into(),
-                    None => Ok(std::ptr::null_mut()),
-                }
-            }
-        }
+        impl ffi::BridgeHandle for $typ {}
         ffi_bridge_destroy!($typ as $ffi_name);
     };
     ( $typ:ty as $ffi_name:ident ) => {
