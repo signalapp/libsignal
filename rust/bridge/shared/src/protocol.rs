@@ -851,6 +851,16 @@ fn SessionRecord_CurrentRatchetKeyMatches(s: &SessionRecord, key: &PublicKey) ->
     s.current_ratchet_key_matches(key)
 }
 
+#[bridge_fn_buffer(ffi = false, node = false)]
+fn SessionRecord_GetRemoteIdentityKeyPublic<E: Env>(
+    env: E,
+    obj: &SessionRecord,
+) -> Result<Option<E::Buffer>> {
+    Ok(obj
+        .remote_identity_key_bytes()?
+        .map(|bytes| env.buffer(bytes)))
+}
+
 bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false);
 
 bridge_deserialize!(SessionRecord::deserialize);
@@ -858,11 +868,6 @@ bridge_get_bytearray!(SessionRecord::serialize as Serialize);
 bridge_get_bytearray!(SessionRecord::alice_base_key, ffi = false, node = false);
 bridge_get_bytearray!(
     SessionRecord::local_identity_key_bytes as GetLocalIdentityKeyPublic,
-    ffi = false,
-    node = false
-);
-bridge_get_optional_bytearray!(
-    SessionRecord::remote_identity_key_bytes as GetRemoteIdentityKeyPublic,
     ffi = false,
     node = false
 );

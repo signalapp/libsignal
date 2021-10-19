@@ -152,49 +152,6 @@ macro_rules! bridge_get_bytearray {
     };
 }
 
-/// Exposes an optional-buffer-returning getter to the bridges.
-///
-/// Example:
-///
-/// ```no_run
-/// # #[macro_use] extern crate libsignal_bridge_macros;
-/// # struct Foo;
-/// # impl Foo {
-/// #     fn payload(&self) -> Result<Option<Vec<u8>>, ()> {
-/// #         Err(())
-/// #     }
-/// # }
-///
-/// bridge_get_optional_bytearray!(Foo::payload); // generates Foo_GetPayload
-/// ```
-///
-/// The underlying implementation is expected to return `Result<Option<T>, _>`, where `T` is a type
-/// that adopts `Into<Cow<[u8]>>`. As a special case, `T` can also be `Box<[u8]>`.
-///
-/// Like `bridge_fn`, the `ffi`, `jni`, and `node` parameters allow customizing the name of the
-/// resulting entry points; they can also be `false` to disable a particular entry point.
-macro_rules! bridge_get_optional_bytearray {
-    ($typ:ident :: $method:ident as $name:ident $(, $param:ident = $val:tt)*) => {
-        paste! {
-            #[bridge_fn_buffer($($param = $val),*)]
-            fn [<$typ _ $name>]<E: Env>(env: E, obj: &$typ) -> Result<Option<E::Buffer>> {
-                let result = $typ::$method(obj);
-                let result_without_errors = TransformHelper(result).ok_if_needed()?.0;
-                let result_buffer = result_without_errors.map(|b| {
-                    env.buffer(TransformHelper(b).into_vec_if_needed().0)
-                });
-                Ok(result_buffer)
-            }
-        }
-    };
-    ($typ:ident :: $method:ident $(, $param:ident = $val:tt)*) => {
-        paste! {
-            bridge_get_optional_bytearray!(
-                $typ::$method as [<Get $method:camel>] $(, $param = $val)*);
-        }
-    };
-}
-
 /// Exposes a getter method as a `bridge_fn`.
 ///
 /// Full form:
