@@ -122,32 +122,3 @@ macro_rules! ffi_bridge_destroy {
         }
     };
 }
-
-/// Implementation of [`bridge_deserialize`](crate::support::bridge_deserialize) for FFI.
-macro_rules! ffi_bridge_deserialize {
-    ( $typ:ident::$fn:path as false ) => {};
-    ( $typ:ident::$fn:path as $ffi_name:ident ) => {
-        paste! {
-            #[cfg(feature = "ffi")]
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name _deserialize>](
-                p: *mut *mut $typ,
-                data: *const libc::c_uchar,
-                data_len: libc::size_t,
-            ) -> *mut ffi::SignalFfiError {
-                ffi::run_ffi_safe(|| {
-                    if data.is_null() {
-                        return Err(ffi::SignalFfiError::NullPointer);
-                    }
-                    let data = std::slice::from_raw_parts(data, data_len);
-                    ffi::write_result_to(p, $typ::$fn(data))
-                })
-            }
-        }
-    };
-    ( $typ:ident::$fn:path ) => {
-        paste! {
-            ffi_bridge_deserialize!($typ::$fn as [<$typ:snake>]);
-        }
-    };
-}

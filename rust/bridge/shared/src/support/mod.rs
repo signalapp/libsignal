@@ -81,7 +81,7 @@ macro_rules! bridge_handle {
     };
 }
 
-/// Exposes a deserialization method to the bridges.
+/// Convenience syntax to expose a deserialization method to the bridges.
 ///
 /// Example:
 ///
@@ -100,19 +100,18 @@ macro_rules! bridge_handle {
 /// The underlying method is expected to take a single `&[u8]` parameter and return
 /// `Result<Self, _>`.
 ///
-/// The `ffi`, `jni`, and `node` parameters control the name of the **type**; the resulting function
-/// will always be suffixed with `_Deserialize` or `_deserialize` as appropriate. Unlike
-/// `bridge_fn`, these parameters are identifiers, not string literals, and there is no way to
-/// disable a particular bridge.
+/// This function does not allow customizing which bridges are enabled, or the name of the bridge
+/// functions that are generated (they are always suffixed with `_Deserialize` or `_deserialize`
+/// as appropriate). If you need additional flexibility, use `bridge_fn` directly.
 macro_rules! bridge_deserialize {
-    ($typ:ident::$fn:path $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? ) => {
-        #[cfg(feature = "ffi")]
-        ffi_bridge_deserialize!($typ::$fn $(as $ffi_name)?);
-        #[cfg(feature = "jni")]
-        jni_bridge_deserialize!($typ::$fn $(as $jni_name)?);
-        #[cfg(feature = "node")]
-        node_bridge_deserialize!($typ::$fn $(as $node_name)?);
-    }
+    ($typ:ident::$fn:path) => {
+        paste! {
+            #[bridge_fn]
+            fn [<$typ _Deserialize>](data: &[u8]) -> Result<$typ> {
+                $typ::$fn(data)
+            }
+        }
+    };
 }
 
 /// Exposes a buffer-returning getter to the bridges.

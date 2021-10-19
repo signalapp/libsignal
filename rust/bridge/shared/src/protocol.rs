@@ -72,7 +72,10 @@ fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id)
 }
 
-bridge_deserialize!(PublicKey::deserialize, ffi = publickey, jni = false);
+#[bridge_fn(ffi = "publickey_deserialize", jni = false)]
+fn PublicKey_Deserialize(data: &[u8]) -> Result<PublicKey> {
+    PublicKey::deserialize(data)
+}
 
 // Alternate implementation to deserialize from an offset.
 #[bridge_fn(ffi = false, node = false)]
@@ -108,11 +111,11 @@ fn ECPublicKey_Verify(key: &PublicKey, message: &[u8], signature: &[u8]) -> Resu
     key.verify_signature(message, signature)
 }
 
-bridge_deserialize!(
-    PrivateKey::deserialize,
-    ffi = privatekey,
-    jni = ECPrivateKey
-);
+#[bridge_fn(ffi = "privatekey_deserialize", jni = "ECPrivateKey_1Deserialize")]
+fn PrivateKey_Deserialize(data: &[u8]) -> Result<PrivateKey> {
+    PrivateKey::deserialize(data)
+}
+
 bridge_get_bytearray!(
     PrivateKey::serialize as Serialize,
     ffi = "privatekey_serialize",
@@ -215,7 +218,10 @@ fn ScannableFingerprint_Compare(fprint1: &[u8], fprint2: &[u8]) -> Result<bool> 
     ScannableFingerprint::deserialize(fprint1)?.compare(fprint2)
 }
 
-bridge_deserialize!(SignalMessage::try_from, ffi = message);
+#[bridge_fn(ffi = "message_deserialize")]
+fn SignalMessage_Deserialize(data: &[u8]) -> Result<SignalMessage> {
+    SignalMessage::try_from(data)
+}
 
 #[bridge_fn_buffer(ffi = false, node = false)]
 fn SignalMessage_GetSenderRatchetKey<E: Env>(env: E, m: &SignalMessage) -> E::Buffer {
