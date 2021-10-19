@@ -38,7 +38,7 @@ public class SignalProtocolAddress implements NativeHandleGuard.Owner {
 
   @Override
   public String toString() {
-    return getName() + ":" + getDeviceId();
+    return getName() + "." + getDeviceId();
   }
 
   @Override
