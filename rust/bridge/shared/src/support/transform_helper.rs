@@ -18,7 +18,8 @@ impl<T> TransformHelper<T> {
     /// Extracts the value from the TransformHelper and transforms it as requested.
     ///
     /// This isn't an actual implementation of Into (or From)
-    /// because `U` could be anything, including types outside this crate.
+    /// because that would conflict with the identity implementation
+    /// `TransformHelper<T>: From<TransformHelper<T>>`.
     pub(crate) fn into<U: From<T>>(self) -> U {
         self.0.into()
     }
