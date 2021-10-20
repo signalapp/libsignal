@@ -7,6 +7,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use device_transfer::Error as DeviceTransferError;
+use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 
@@ -17,6 +18,7 @@ use crate::support::describe_panic;
 pub enum SignalFfiError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
+    HsmEnclave(HsmEnclaveError),
     SignalCrypto(SignalCryptoError),
     InsufficientOutputSize(usize, usize),
     NullPointer,
@@ -31,6 +33,9 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::Signal(s) => write!(f, "{}", s),
             SignalFfiError::DeviceTransfer(c) => {
                 write!(f, "Device transfer operation failed: {}", c)
+            }
+            SignalFfiError::HsmEnclave(e) => {
+                write!(f, "HSM enclave operation failed: {}", e)
             }
             SignalFfiError::SignalCrypto(c) => {
                 write!(f, "Cryptographic operation failed: {}", c)
@@ -57,6 +62,12 @@ impl From<SignalProtocolError> for SignalFfiError {
 impl From<DeviceTransferError> for SignalFfiError {
     fn from(e: DeviceTransferError) -> SignalFfiError {
         SignalFfiError::DeviceTransfer(e)
+    }
+}
+
+impl From<HsmEnclaveError> for SignalFfiError {
+    fn from(e: HsmEnclaveError) -> SignalFfiError {
+        SignalFfiError::HsmEnclave(e)
     }
 }
 

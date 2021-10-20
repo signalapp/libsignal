@@ -4,6 +4,7 @@
 //
 
 use device_transfer::Error as DeviceTransferError;
+use hsm_enclave::Error as HsmEnclaveError;
 use libc::{c_char, c_uchar, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
@@ -100,6 +101,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
+            | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
                 SignalErrorCode::InvalidKey
             }
@@ -141,7 +143,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding)
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_)) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
+            | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
                 SignalErrorCode::InvalidMessage
             }
 
@@ -149,17 +152,20 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::LegacyCiphertextVersion
             }
 
-            SignalFfiError::Signal(SignalProtocolError::UntrustedIdentity(_)) => {
+            SignalFfiError::Signal(SignalProtocolError::UntrustedIdentity(_))
+            | SignalFfiError::HsmEnclave(HsmEnclaveError::TrustedCodeError) => {
                 SignalErrorCode::UntrustedIdentity
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
             | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState)
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure)
+            | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
+            | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError)
             | SignalFfiError::SignalCrypto(_) => SignalErrorCode::InvalidArgument,
 
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
