@@ -26,8 +26,8 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_
         let data = env.convert_byte_array(data)?;
         let key = IdentityKeyPair::try_from(data.as_ref())?;
 
-        let public_key_handle = box_object(Ok(*key.identity_key().public_key()))?;
-        let private_key_handle = box_object(Ok(*key.private_key()))?;
+        let public_key_handle = key.identity_key().public_key().convert_into(&env)?;
+        let private_key_handle = key.private_key().convert_into(&env)?;
         let tuple = [public_key_handle, private_key_handle];
 
         let result = env.new_long_array(2)?;

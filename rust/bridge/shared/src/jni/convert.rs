@@ -515,22 +515,22 @@ impl ResultTypeInfo for CiphertextMessage {
             CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
                 env,
                 "org/whispersystems/libsignal/protocol/SignalMessage",
-                box_object::<SignalMessage>(Ok(m))?,
+                m.convert_into(env)?,
             ),
             CiphertextMessage::PreKeySignalMessage(m) => jobject_from_native_handle(
                 env,
                 "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
-                box_object::<PreKeySignalMessage>(Ok(m))?,
+                m.convert_into(env)?,
             ),
             CiphertextMessage::SenderKeyMessage(m) => jobject_from_native_handle(
                 env,
                 "org/whispersystems/libsignal/protocol/SenderKeyMessage",
-                box_object::<SenderKeyMessage>(Ok(m))?,
+                m.convert_into(env)?,
             ),
             CiphertextMessage::PlaintextContent(m) => jobject_from_native_handle(
                 env,
                 "org/whispersystems/libsignal/protocol/PlaintextContent",
-                box_object::<PlaintextContent>(Ok(m))?,
+                m.convert_into(env)?,
             ),
         };
 
@@ -683,7 +683,7 @@ impl<'storage, 'context: 'storage, T: BridgeHandle> ArgTypeInfo<'storage, 'conte
 impl<T: BridgeHandle> ResultTypeInfo for T {
     type ResultType = ObjectHandle;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
-        box_object(Ok(self))
+        Ok(Box::into_raw(Box::new(self)) as ObjectHandle)
     }
     fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JavaObject {
         JavaObject::null()

@@ -368,13 +368,6 @@ where
     }
 }
 
-pub fn box_object<T>(t: Result<T, SignalProtocolError>) -> Result<ObjectHandle, SignalJniError> {
-    match t {
-        Ok(t) => Ok(Box::into_raw(Box::new(t)) as ObjectHandle),
-        Err(e) => Err(SignalJniError::Signal(e)),
-    }
-}
-
 pub unsafe fn native_handle_cast<T>(
     handle: ObjectHandle,
 ) -> Result<&'static mut T, SignalJniError> {
