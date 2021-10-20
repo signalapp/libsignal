@@ -139,7 +139,13 @@ pub trait ResultTypeInfo: Sized {
 impl<'a> SimpleArgTypeInfo<'a> for u32 {
     type ArgType = jint;
     fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
-        jint_to_u32(foreign)
+        if foreign < 0 {
+            return Err(SignalJniError::IntegerOverflow(format!(
+                "{} to u32",
+                foreign
+            )));
+        }
+        Ok(foreign as u32)
     }
 }
 
@@ -164,7 +170,13 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
 impl<'a> SimpleArgTypeInfo<'a> for u64 {
     type ArgType = jlong;
     fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
-        jlong_to_u64(foreign)
+        if foreign < 0 {
+            return Err(SignalJniError::IntegerOverflow(format!(
+                "{} to u64",
+                foreign
+            )));
+        }
+        Ok(foreign as u64)
     }
 }
 
@@ -172,7 +184,13 @@ impl<'a> SimpleArgTypeInfo<'a> for u64 {
 impl<'a> SimpleArgTypeInfo<'a> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
-        jint_to_u8(foreign)
+        match u8::try_from(foreign) {
+            Err(_) => Err(SignalJniError::IntegerOverflow(format!(
+                "{} to u8",
+                foreign
+            ))),
+            Ok(v) => Ok(v),
+        }
     }
 }
 
@@ -619,7 +637,7 @@ impl ResultTypeInfo for Option<jobject> {
 impl crate::support::Env for &'_ JNIEnv<'_> {
     type Buffer = SignalJniResult<jbyteArray>;
     fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
-        to_jbytearray(self, Ok(input.into()))
+        Ok(self.byte_array_from_slice(&input.into())?)
     }
 }
 

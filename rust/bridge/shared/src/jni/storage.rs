@@ -57,7 +57,7 @@ impl<'a> JniIdentityKeyStore<'a> {
             callback_sig,
             &[],
         )?;
-        jint_to_u32(i)
+        u32::convert_from(self.env, i)
     }
 
     fn do_save_identity(
