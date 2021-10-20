@@ -21,6 +21,7 @@ armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 device-transfer = { path = "../../device-transfer" }
+hsm-enclave = { path = "../../hsm-enclave" }
 signal-crypto = { path = "../../crypto" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"

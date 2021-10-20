@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::panic::RefUnwindSafe;
+
 use ::hsm_enclave;
 use libsignal_bridge_macros::*;
 
@@ -15,6 +17,8 @@ pub enum HsmEnclaveClient {
     Connection(hsm_enclave::ClientConnection),
     InvalidConnectionState,
 }
+
+impl RefUnwindSafe for HsmEnclaveClient {}
 
 impl HsmEnclaveClient {
     pub fn new(trusted_public_key: &[u8], trusted_code_hashes: &[u8]) -> Result<Self> {
@@ -71,9 +75,9 @@ impl HsmEnclaveClient {
     }
 }
 
-bridge_handle!(HsmEnclaveClient, mut = true, ffi = false, node = false);
+bridge_handle!(HsmEnclaveClient, clone = false, mut = true, node = false);
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(node = false)]
 fn HsmEnclaveClient_New(
     trusted_public_key: &[u8],
     trusted_code_hashes: &[u8],
@@ -81,13 +85,12 @@ fn HsmEnclaveClient_New(
     HsmEnclaveClient::new(trusted_public_key, trusted_code_hashes)
 }
 
-bridge_get!(
+bridge_get_buffer!(
     HsmEnclaveClient::initial_request as InitialRequest -> &[u8],
-    ffi = false,
     node = false
 );
 
-#[bridge_fn_void(node = false, ffi = false)]
+#[bridge_fn_void(node = false)]
 fn HsmEnclaveClient_CompleteHandshake(
     cli: &mut HsmEnclaveClient,
     handshake_received: &[u8],
@@ -95,7 +98,7 @@ fn HsmEnclaveClient_CompleteHandshake(
     cli.complete_handshake(handshake_received)
 }
 
-#[bridge_fn_buffer(node = false, ffi = false)]
+#[bridge_fn_buffer(node = false)]
 fn HsmEnclaveClient_EstablishedSend(
     cli: &mut HsmEnclaveClient,
     plaintext_to_send: &[u8],
@@ -103,7 +106,7 @@ fn HsmEnclaveClient_EstablishedSend(
     cli.established_send(plaintext_to_send)
 }
 
-#[bridge_fn_buffer(node = false, ffi = false)]
+#[bridge_fn_buffer(node = false)]
 fn HsmEnclaveClient_EstablishedRecv(
     cli: &mut HsmEnclaveClient,
     received_ciphertext: &[u8],

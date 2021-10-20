@@ -86,6 +86,8 @@ typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
 
 typedef struct SignalFingerprint SignalFingerprint;
 
+typedef struct SignalHsmEnclaveClient SignalHsmEnclaveClient;
+
 typedef struct SignalPlaintextContent SignalPlaintextContent;
 
 typedef struct SignalPreKeyBundle SignalPreKeyBundle;
@@ -1013,5 +1015,33 @@ SignalFfiError *signal_device_transfer_generate_certificate(const unsigned char 
                                                             size_t private_key_len,
                                                             const char *name,
                                                             uint32_t days_to_expire);
+
+SignalFfiError *signal_hsm_enclave_client_destroy(SignalHsmEnclaveClient *p);
+
+SignalFfiError *signal_hsm_enclave_client_new(SignalHsmEnclaveClient **out,
+                                              const unsigned char *trusted_public_key,
+                                              size_t trusted_public_key_len,
+                                              const unsigned char *trusted_code_hashes,
+                                              size_t trusted_code_hashes_len);
+
+SignalFfiError *signal_hsm_enclave_client_initial_request(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          const SignalHsmEnclaveClient *obj);
+
+SignalFfiError *signal_hsm_enclave_client_complete_handshake(SignalHsmEnclaveClient *cli,
+                                                             const unsigned char *handshake_received,
+                                                             size_t handshake_received_len);
+
+SignalFfiError *signal_hsm_enclave_client_established_send(const unsigned char **out,
+                                                           size_t *out_len,
+                                                           SignalHsmEnclaveClient *cli,
+                                                           const unsigned char *plaintext_to_send,
+                                                           size_t plaintext_to_send_len);
+
+SignalFfiError *signal_hsm_enclave_client_established_recv(const unsigned char **out,
+                                                           size_t *out_len,
+                                                           SignalHsmEnclaveClient *cli,
+                                                           const unsigned char *received_ciphertext,
+                                                           size_t received_ciphertext_len);
 
 #endif /* SIGNAL_FFI_H_ */

@@ -32,5 +32,5 @@ pub mod protocol;
 #[cfg(any(feature = "jni", feature = "ffi"))]
 pub mod device_transfer;
 
-#[cfg(any(feature = "jni"))]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 pub mod hsm_enclave;
