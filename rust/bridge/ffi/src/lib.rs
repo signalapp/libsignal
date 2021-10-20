@@ -69,7 +69,7 @@ pub unsafe extern "C" fn signal_error_get_address(
         let err = err.as_ref().ok_or(SignalFfiError::NullPointer)?;
         match err {
             SignalFfiError::Signal(SignalProtocolError::InvalidRegistrationId(addr, _value)) => {
-                box_object(out, Ok(addr.clone()))?;
+                write_result_to(out, addr.clone())?;
             }
             _ => {
                 return Err(SignalFfiError::Signal(
@@ -112,8 +112,9 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
     run_ffi_safe(|| {
         let input = as_slice(input, input_len)?;
         let identity_key_pair = IdentityKeyPair::try_from(input)?;
-        box_object::<PublicKey>(public_key, Ok(*identity_key_pair.public_key()))?;
-        box_object::<PrivateKey>(private_key, Ok(*identity_key_pair.private_key()))
+        write_result_to(public_key, *identity_key_pair.public_key())?;
+        write_result_to(private_key, *identity_key_pair.private_key())?;
+        Ok(())
     })
 }
 
