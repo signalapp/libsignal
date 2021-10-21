@@ -7,7 +7,7 @@ use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
 use paste::paste;
 use std::ffi::CStr;
-use std::{borrow::Cow, ops::Deref};
+use std::ops::Deref;
 
 use super::*;
 
@@ -333,17 +333,6 @@ impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.unwrap_or(u32::MAX))
-    }
-}
-
-/// A dummy type used to implement [`crate::support::Env`].
-pub(crate) struct Env;
-
-/// Returns a Rust-owned boxed `[u8]`, which will be split up into a pointer/length pair.
-impl crate::support::Env for Env {
-    type Buffer = Box<[u8]>;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
-        input.into().into()
     }
 }
 

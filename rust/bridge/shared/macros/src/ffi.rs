@@ -16,35 +16,26 @@ use crate::ResultKind;
 pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
     let name = format_ident!("signal_{}", name);
 
-    let (output_args, env_arg, output_processing) = match (result_kind, &sig.output) {
-        (ResultKind::Regular, ReturnType::Default) => (quote!(), quote!(), quote!()),
-        (ResultKind::Regular, ReturnType::Type(_, ref ty)) => (
+    let (output_args, output_processing) = match (result_kind, &sig.output) {
+        (_, ReturnType::Default) => (quote!(), quote!()),
+        (ResultKind::Regular, ReturnType::Type(_, ty)) => (
             quote!(out: *mut ffi_result_type!(#ty),), // note the trailing comma
-            quote!(),
             quote!(ffi::write_result_to(out, __result)?),
         ),
-        (ResultKind::Void, ReturnType::Default) => (quote!(), quote!(), quote!()),
-        (ResultKind::Void, ReturnType::Type(_, _)) => (quote!(), quote!(), quote!(__result?;)),
+        (ResultKind::Void, ReturnType::Type(_, _)) => (quote!(), quote!(__result?;)),
         (ResultKind::Buffer, ReturnType::Type(_, _)) => (
             quote!(
                 out: *mut *const libc::c_uchar,
                 out_len: *mut libc::size_t, // note the trailing comma
             ),
-            quote!(ffi::Env,), // note the trailing comma
             quote! {
-                let __result = support::TransformHelper(__result?)
+                let __result = support::TransformHelper(__result)
+                    .ok_if_needed()?
                     .some_if_needed()
                     .map(|helper| helper.0);
                 ffi::write_bytearray_to(out, out_len, __result)?
             },
         ),
-        (ResultKind::Buffer, ReturnType::Default) => {
-            return Error::new(
-                sig.paren_token.span,
-                "missing result type for bridge_fn_buffer",
-            )
-            .to_compile_error()
-        }
     };
 
     let await_if_needed = sig.asyncness.map(|_| {
@@ -56,7 +47,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
     let (input_names, input_args, input_processing): (Vec<_>, Vec<_>, Vec<_>) = sig
         .inputs
         .iter()
-        .skip(if result_kind.has_env() { 1 } else { 0 })
         .map(|arg| match arg {
             FnArg::Receiver(tokens) => (
                 Ident::new("self", tokens.self_token.span),
@@ -115,7 +105,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
         ) -> *mut ffi::SignalFfiError {
             ffi::run_ffi_safe(|| {
                 #(#input_processing);*;
-                let __result = #orig_name(#env_arg #(#input_names),*);
+                let __result = #orig_name(#(#input_names),*);
                 #await_if_needed;
                 #output_processing;
                 Ok(())

@@ -5,7 +5,6 @@
 
 use neon::prelude::*;
 use paste::paste;
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
@@ -521,6 +520,21 @@ impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         Ok(cx.string(self))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for &[u8] {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        let len: u32 = self
+            .len()
+            .try_into()
+            .or_else(|_| cx.throw_error("buffer too large to return to JavaScript"))?;
+        let mut buffer = cx.buffer(len)?;
+        cx.borrow_mut(&mut buffer, |raw_buffer| {
+            raw_buffer.as_mut_slice().copy_from_slice(self);
+        });
+        Ok(buffer)
     }
 }
 
@@ -1042,31 +1056,4 @@ macro_rules! node_bridge_handle {
             node_bridge_handle!($typ as $typ $(, mut = $_)?);
         }
     };
-}
-
-impl<'a> crate::support::Env for &'_ mut FunctionContext<'a> {
-    type Buffer = JsResult<'a, JsBuffer>;
-    fn buffer<'b, T: Into<Cow<'b, [u8]>>>(self, input: T) -> Self::Buffer {
-        let input = input.into();
-        let len: u32 = input
-            .len()
-            .try_into()
-            .or_else(|_| self.throw_error("buffer too large to return to JavaScript"))?;
-        let mut result = Context::buffer(self, len)?;
-        self.borrow_mut(&mut result, |buf| {
-            buf.as_mut_slice().copy_from_slice(input.as_ref())
-        });
-        Ok(result)
-    }
-}
-
-/// A dummy type used to implement [`crate::support::Env`] for `async` `bridge_fn`s.
-pub(crate) struct AsyncEnv;
-
-impl crate::support::Env for AsyncEnv {
-    // FIXME: Can we avoid this copy?
-    type Buffer = Vec<u8>;
-    fn buffer<'b, T: Into<Cow<'b, [u8]>>>(self, input: T) -> Self::Buffer {
-        input.into().into_owned()
-    }
 }

@@ -3,20 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::borrow::Cow;
-
 pub(crate) use paste::paste;
 
 mod transform_helper;
 pub(crate) use transform_helper::*;
-
-/// Used for returning newly-allocated buffers as efficiently as possible.
-///
-/// Functions marked `#[bridge_fn_buffer]` must have an `Env` as their first parameter.
-pub(crate) trait Env {
-    type Buffer;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer;
-}
 
 /// Exposes a Rust type to each of the bridges as a boxed value.
 ///
@@ -139,9 +129,9 @@ macro_rules! bridge_get_bytearray {
     ($typ:ident :: $method:ident as $name:ident $(, $param:ident = $val:tt)*) => {
         paste! {
             #[bridge_fn_buffer($($param = $val),*)]
-            fn [<$typ _ $name>]<E: Env>(env: E, obj: &$typ) -> Result<E::Buffer> {
+            fn [<$typ _ $name>](obj: &$typ) -> Result<Vec<u8>> {
                 let result = TransformHelper($typ::$method(obj));
-                Ok(env.buffer(result.ok_if_needed()?.into_vec_if_needed().0))
+                Ok(result.ok_if_needed()?.into_vec_if_needed().0.into())
             }
         }
     };

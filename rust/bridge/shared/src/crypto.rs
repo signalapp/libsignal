@@ -123,12 +123,8 @@ fn Aes256GcmEncryption_Update(
 }
 
 #[bridge_fn_buffer(node = false)]
-fn Aes256GcmEncryption_ComputeTag<T: Env>(
-    env: T,
-    gcm: &mut Aes256GcmEncryption,
-) -> Result<T::Buffer> {
-    let tag = gcm.compute_tag()?;
-    Ok(env.buffer(tag))
+fn Aes256GcmEncryption_ComputeTag(gcm: &mut Aes256GcmEncryption) -> Result<Vec<u8>> {
+    gcm.compute_tag()
 }
 
 #[bridge_fn(node = false)]
@@ -166,13 +162,12 @@ fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv> {
 }
 
 #[bridge_fn_buffer]
-fn Aes256GcmSiv_Encrypt<T: Env>(
-    env: T,
+fn Aes256GcmSiv_Encrypt(
     aes_gcm_siv_obj: &Aes256GcmSiv,
     ptext: &[u8],
     nonce: &[u8],
     associated_data: &[u8],
-) -> Result<T::Buffer> {
+) -> Result<Vec<u8>> {
     if nonce.len() != <aes_gcm_siv::Aes256GcmSiv as AeadCore>::NonceSize::USIZE {
         return Err(Error::InvalidNonceSize);
     }
@@ -187,17 +182,16 @@ fn Aes256GcmSiv_Encrypt<T: Env>(
         .encrypt_in_place(nonce, associated_data, &mut buf)
         .expect("cannot run out of capacity in a Vec");
 
-    Ok(env.buffer(buf))
+    Ok(buf)
 }
 
 #[bridge_fn_buffer]
-fn Aes256GcmSiv_Decrypt<T: Env>(
-    env: T,
+fn Aes256GcmSiv_Decrypt(
     aes_gcm_siv: &Aes256GcmSiv,
     ctext: &[u8],
     nonce: &[u8],
     associated_data: &[u8],
-) -> Result<T::Buffer> {
+) -> Result<Vec<u8>> {
     if nonce.len() != <aes_gcm_siv::Aes256GcmSiv as AeadCore>::NonceSize::USIZE {
         return Err(Error::InvalidNonceSize);
     }
@@ -208,7 +202,7 @@ fn Aes256GcmSiv_Decrypt<T: Env>(
         .0
         .decrypt_in_place(nonce, associated_data, &mut buf)
         .map_err(|_| Error::InvalidTag)?;
-    Ok(env.buffer(buf))
+    Ok(buf)
 }
 
 #[bridge_fn(ffi = false, node = false)]
@@ -234,9 +228,8 @@ fn CryptographicHash_UpdateWithOffset(
 }
 
 #[bridge_fn_buffer(ffi = false, node = false)]
-fn CryptographicHash_Finalize<T: Env>(env: T, hash: &mut CryptographicHash) -> Result<T::Buffer> {
-    let digest = hash.finalize()?;
-    Ok(env.buffer(digest))
+fn CryptographicHash_Finalize(hash: &mut CryptographicHash) -> Result<Vec<u8>> {
+    hash.finalize()
 }
 
 #[bridge_fn(ffi = false, node = false)]
@@ -262,7 +255,6 @@ fn CryptographicMac_UpdateWithOffset(
 }
 
 #[bridge_fn_buffer(ffi = false, node = false)]
-fn CryptographicMac_Finalize<T: Env>(env: T, mac: &mut CryptographicMac) -> Result<T::Buffer> {
-    let digest = mac.finalize()?;
-    Ok(env.buffer(digest))
+fn CryptographicMac_Finalize(mac: &mut CryptographicMac) -> Result<Vec<u8>> {
+    mac.finalize()
 }

@@ -8,7 +8,6 @@ use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
-use std::borrow::Cow;
 use std::convert::TryInto;
 use std::ops::Deref;
 
@@ -502,6 +501,57 @@ impl ResultTypeInfo for Option<&str> {
     }
 }
 
+impl ResultTypeInfo for &[u8] {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        Ok(env.byte_array_from_slice(self)?)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
+impl ResultTypeInfo for Option<&[u8]> {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        match self {
+            Some(s) => s.convert_into(env),
+            None => Ok(std::ptr::null_mut()),
+        }
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
+impl ResultTypeInfo for Vec<u8> {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        self.deref().convert_into(env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
+impl ResultTypeInfo for Option<Vec<u8>> {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        self.as_deref().convert_into(env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
 impl ResultTypeInfo for uuid::Uuid {
     type ResultType = jobject;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -631,13 +681,6 @@ impl ResultTypeInfo for Option<jobject> {
         signal_jni_result
             .as_ref()
             .map_or(JObject::null(), |&jobj| JObject::from(jobj))
-    }
-}
-
-impl crate::support::Env for &'_ JNIEnv<'_> {
-    type Buffer = SignalJniResult<jbyteArray>;
-    fn buffer<'a, T: Into<Cow<'a, [u8]>>>(self, input: T) -> Self::Buffer {
-        Ok(self.byte_array_from_slice(&input.into())?)
     }
 }
 
@@ -870,8 +913,11 @@ macro_rules! jni_result_type {
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => {
         jni_result_type!(&$typ)
     };
+    (Result<Option<$typ:tt<$($args:tt),+> > $(, $_:ty)?>) => {
+        jni_result_type!($typ<$($args),+>)
+    };
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
-        jni_result_type!($typ<$($args)+>)
+        jni_result_type!($typ<$($args),+>)
     };
     (bool) => {
         jni::jboolean
@@ -898,22 +944,22 @@ macro_rules! jni_result_type {
     (String) => {
         jni::jstring
     };
-    (Option<String>) => {
-        jni::jstring
-    };
-    (Option<&str>) => {
-        jni::jstring
-    };
     (Uuid) => {
         jni::JavaReturnUUID
+    };
+    (&[u8]) => {
+        jni::jbyteArray
     };
     (Vec<u8>) => {
         jni::jbyteArray
     };
+    (Option<$typ:tt>) => {
+        jni_result_type!($typ)
+    };
     (CiphertextMessage) => {
         jni::JavaReturnCiphertextMessage
     };
-    ( $typ:ty ) => {
+    ( $handle:ident ) => {
         jni::ObjectHandle
     };
 }
