@@ -348,9 +348,12 @@ impl crate::support::Env for Env {
 }
 
 /// A marker for Rust objects exposed as opaque pointers.
-pub trait BridgeHandle {}
+///
+/// When we do this, we hand the lifetime over to the app. Since we don't know how long the object
+/// will be kept alive, it can't (safely) have references to anything with a non-static lifetime.
+pub trait BridgeHandle: 'static {}
 
-impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for &T {
+impl<T: BridgeHandle> SimpleArgTypeInfo for &T {
     type ArgType = *const T;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: *const T) -> SignalFfiResult<Self> {
@@ -358,7 +361,7 @@ impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for &T {
     }
 }
 
-impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for Option<&T> {
+impl<T: BridgeHandle> SimpleArgTypeInfo for Option<&T> {
     type ArgType = *const T;
     fn convert_from(foreign: *const T) -> SignalFfiResult<Self> {
         if foreign.is_null() {
@@ -369,7 +372,7 @@ impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for Option<&T> {
     }
 }
 
-impl<T: BridgeHandle + 'static> SimpleArgTypeInfo for &mut T {
+impl<T: BridgeHandle> SimpleArgTypeInfo for &mut T {
     type ArgType = *mut T;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: *mut T) -> SignalFfiResult<Self> {

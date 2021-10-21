@@ -624,16 +624,19 @@ impl crate::support::Env for &'_ JNIEnv<'_> {
 }
 
 /// A marker for Rust objects exposed as opaque handles (pointers converted to `jlong`).
-pub trait BridgeHandle {}
+///
+/// When we do this, we hand the lifetime over to the app. Since we don't know how long the object
+/// will be kept alive, it can't (safely) have references to anything with a non-static lifetime.
+pub trait BridgeHandle: 'static {}
 
-impl<'a, T: BridgeHandle + 'static> SimpleArgTypeInfo<'a> for &T {
+impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for &T {
     type ArgType = ObjectHandle;
     fn convert_from(_env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         Ok(unsafe { native_handle_cast(foreign) }?)
     }
 }
 
-impl<'a, T: BridgeHandle + 'static> SimpleArgTypeInfo<'a> for Option<&T> {
+impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for Option<&T> {
     type ArgType = ObjectHandle;
     fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         if foreign == 0 {
@@ -644,7 +647,7 @@ impl<'a, T: BridgeHandle + 'static> SimpleArgTypeInfo<'a> for Option<&T> {
     }
 }
 
-impl<'a, T: BridgeHandle + 'static> SimpleArgTypeInfo<'a> for &mut T {
+impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for &mut T {
     type ArgType = ObjectHandle;
     fn convert_from(_env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         unsafe { native_handle_cast(foreign) }
