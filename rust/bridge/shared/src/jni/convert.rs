@@ -593,16 +593,14 @@ impl<T: ResultTypeInfo> ResultTypeInfo for SignalJniResult<T> {
     }
 }
 
-impl<T> ResultTypeInfo for Option<SignalJniResult<T>>
-where
-    Option<T>: ResultTypeInfo,
-{
-    type ResultType = <Option<T> as ResultTypeInfo>::ResultType;
+/// Used when returning an optional buffer, since the conversion to a Java array might also fail.
+impl ResultTypeInfo for Option<SignalJniResult<jbyteArray>> {
+    type ResultType = <Option<jbyteArray> as ResultTypeInfo>::ResultType;
     fn convert_into(self, env: &jni::JNIEnv) -> SignalJniResult<Self::ResultType> {
         self.transpose()?.convert_into(env)
     }
     fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
-        <Option<T> as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+        <Option<jbyteArray> as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
     }
 }
 
@@ -625,98 +623,97 @@ impl crate::support::Env for &'_ JNIEnv<'_> {
     }
 }
 
+/// A marker for Rust objects exposed as opaque handles (pointers converted to `jlong`).
+///
+/// When we do this, we hand the lifetime over to the app. Since we don't know how long the object
+/// will be kept alive, it can't (safely) have references to anything with a non-static lifetime.
+pub trait BridgeHandle: 'static {}
+
+impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for &T {
+    type ArgType = ObjectHandle;
+    fn convert_from(_env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        Ok(unsafe { native_handle_cast(foreign) }?)
+    }
+}
+
+impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for Option<&T> {
+    type ArgType = ObjectHandle;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        if foreign == 0 {
+            Ok(None)
+        } else {
+            <&T>::convert_from(env, foreign).map(Some)
+        }
+    }
+}
+
+impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for &mut T {
+    type ArgType = ObjectHandle;
+    fn convert_from(_env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        unsafe { native_handle_cast(foreign) }
+    }
+}
+
+impl<'storage, 'context: 'storage, T: BridgeHandle> ArgTypeInfo<'storage, 'context>
+    for &'storage [&'storage T]
+{
+    type ArgType = jlongArray;
+    type StoredType = Vec<&'storage T>;
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+        let array = env.get_long_array_elements(foreign, ReleaseMode::NoCopyBack)?;
+        let len = array.size()? as usize;
+        let slice = unsafe { std::slice::from_raw_parts(array.as_ptr(), len) };
+        slice
+            .iter()
+            .map(|&raw_handle| unsafe {
+                (raw_handle as *const T)
+                    .as_ref()
+                    .ok_or(SignalJniError::NullHandle)
+            })
+            .collect()
+    }
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> SignalJniResult<&'storage [&'storage T]> {
+        Ok(&*stored)
+    }
+}
+
+impl<T: BridgeHandle> ResultTypeInfo for T {
+    type ResultType = ObjectHandle;
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        box_object(Ok(self))
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JavaObject {
+        JavaObject::null()
+    }
+}
+
+impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
+    type ResultType = ObjectHandle;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        match self {
+            Some(obj) => obj.convert_into(env),
+            None => Ok(0),
+        }
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JavaObject {
+        JavaObject::null()
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
 macro_rules! jni_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $jni_name:ident ) => {
-        impl<'a> jni::SimpleArgTypeInfo<'a> for &$typ {
-            type ArgType = jni::ObjectHandle;
-            fn convert_from(
-                _env: &jni::JNIEnv,
-                foreign: Self::ArgType,
-            ) -> jni::SignalJniResult<Self> {
-                Ok(unsafe { jni::native_handle_cast(foreign) }?)
-            }
-        }
-        impl<'a> jni::SimpleArgTypeInfo<'a> for Option<&$typ> {
-            type ArgType = jni::ObjectHandle;
-            fn convert_from(
-                env: &jni::JNIEnv,
-                foreign: Self::ArgType,
-            ) -> jni::SignalJniResult<Self> {
-                if foreign == 0 {
-                    Ok(None)
-                } else {
-                    <&$typ>::convert_from(env, foreign).map(Some)
-                }
-            }
-        }
-        impl<'a> jni::SimpleArgTypeInfo<'a> for &mut $typ {
-            type ArgType = jni::ObjectHandle;
-            fn convert_from(
-                _env: &jni::JNIEnv,
-                foreign: Self::ArgType,
-            ) -> jni::SignalJniResult<Self> {
-                unsafe { jni::native_handle_cast(foreign) }
-            }
-        }
-
-        impl<'storage, 'context: 'storage> jni::ArgTypeInfo<'storage, 'context>
-            for &'storage [&'storage $typ]
-        {
-            type ArgType = jni::jlongArray;
-            type StoredType = Vec<&'storage $typ>;
-            fn borrow(
-                env: &'context jni::JNIEnv,
-                foreign: Self::ArgType,
-            ) -> jni::SignalJniResult<Self::StoredType> {
-                let array = env.get_long_array_elements(foreign, jni::ReleaseMode::NoCopyBack)?;
-                let len = array.size()? as usize;
-                let slice = unsafe { std::slice::from_raw_parts(array.as_ptr(), len) };
-                slice
-                    .iter()
-                    .map(|&raw_handle| unsafe {
-                        (raw_handle as *const $typ)
-                            .as_ref()
-                            .ok_or(jni::SignalJniError::NullHandle)
-                    })
-                    .collect()
-            }
-            fn load_from(
-                _env: &jni::JNIEnv,
-                stored: &'storage mut Self::StoredType,
-            ) -> jni::SignalJniResult<&'storage [&'storage $typ]> {
-                Ok(&*stored)
-            }
-        }
-        impl jni::ResultTypeInfo for $typ {
-            type ResultType = jni::ObjectHandle;
-            fn convert_into(self, _env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
-                jni::box_object(Ok(self))
-            }
-            fn convert_into_jobject(
-                _signal_jni_result: &jni::SignalJniResult<Self::ResultType>,
-            ) -> jni::JavaObject {
-                jni::JavaObject::null()
-            }
-        }
-        impl jni::ResultTypeInfo for Option<$typ> {
-            type ResultType = jni::ObjectHandle;
-            fn convert_into(self, env: &jni::JNIEnv) -> jni::SignalJniResult<Self::ResultType> {
-                match self {
-                    Some(obj) => obj.convert_into(env),
-                    None => Ok(0),
-                }
-            }
-            fn convert_into_jobject(
-                _signal_jni_result: &jni::SignalJniResult<Self::ResultType>,
-            ) -> jni::JavaObject {
-                jni::JavaObject::null()
-            }
-        }
+        impl jni::BridgeHandle for $typ {}
         jni_bridge_destroy!($typ as $jni_name);
     };
     ( $typ:ty ) => {
+        // `paste!` turns the type back into an identifier.
+        // We can't specify an identifier here because the main `bridge_handle!` accepts any type
+        // and just passes it down.
         paste! {
             jni_bridge_handle!($typ as $typ);
         }
