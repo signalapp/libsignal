@@ -6,10 +6,11 @@
 use neon::prelude::*;
 use paste::paste;
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::convert::{TryFrom, TryInto};
 use std::hash::Hasher;
-use std::ops::{Deref, RangeInclusive};
+use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use super::*;
@@ -165,14 +166,12 @@ where
     T: SimpleArgTypeInfo,
 {
     type ArgType = T::ArgType;
-    type StoredType = super::DefaultFinalize<Option<Self>>;
+    type StoredType = DefaultFinalize<Option<Self>>;
     fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        Ok(super::DefaultFinalize(Some(Self::convert_from(
-            cx, foreign,
-        )?)))
+        Ok(DefaultFinalize(Some(Self::convert_from(cx, foreign)?)))
     }
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored.0.take().expect("should only be loaded once")
@@ -632,48 +631,199 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
 /// The name of the property on JavaScript objects that wrap a boxed Rust value.
 pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
 
-/// Safely persists a boxed Rust value by treating its JavaScript wrapper as a GC root.
+/// A marker trait for Rust objects exposed to JavaScript through [`neon::types::JsBox`].
 ///
-/// A `PersistentBoxedValue` **cannot be dropped**; instead, it must be explicitly
-/// finalized in a JavaScript context, as it contains a [`neon::handle::Root`].
-pub struct PersistentBoxedValue<T: Send + Sync + 'static> {
-    owner: Root<JsObject>,
-    value_ptr: *const T,
+/// Since this trait is used as a marker and implemented through a macro,
+/// operations that might differ across types have been factored into the [`BridgeHandleStrategy`]
+/// trait. The [`bridge_handle`] macro will automatically choose the correct strategy.
+pub trait BridgeHandle: Send + Sync + Sized + 'static {
+    /// Factors out operations that differ between mutable and immutable bridge handles.
+    type Strategy: BridgeHandleStrategy<Self>;
 }
 
-impl<T: Send + Sync + 'static> PersistentBoxedValue<T> {
+/// Factors out operations that differ between mutable and immutable bridge handles.
+///
+/// See the [`BridgeHandle`] trait.
+pub trait BridgeHandleStrategy<T> {
+    /// If the Rust object needs any additional wrapping before being boxed by Neon,
+    /// this type can be used.
+    type JsBoxContents: From<T> + Send + 'static;
+}
+
+/// A phantom type for immutable bridge handles.
+///
+/// See [`BridgeHandleStrategy<T>`].
+pub struct Immutable<T>(std::marker::PhantomData<T>);
+
+/// A phantom type for mutable bridge handles.
+///
+/// See [`BridgeHandleStrategy<T>`].
+pub struct Mutable<T>(std::marker::PhantomData<T>);
+
+/// Immutable handles need no extra boxing.
+impl<T: BridgeHandle> BridgeHandleStrategy<T> for Immutable<T> {
+    type JsBoxContents = T;
+}
+
+/// Mutable handles use a [`RefCell`] for safety.
+impl<T: BridgeHandle> BridgeHandleStrategy<T> for Mutable<T> {
+    type JsBoxContents = RefCell<T>;
+}
+
+/// Shorthand for `T::Strategy::JsBoxContents` when `T: `[`BridgeHandle`], which Rust can't always
+/// resolve.
+type JsBoxContentsFor<T> =
+    <<T as BridgeHandle>::Strategy as BridgeHandleStrategy<T>>::JsBoxContents;
+
+impl<'a, T: BridgeHandle> ResultTypeInfo<'a> for T {
+    type ResultType = JsValue;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        Ok(cx
+            .boxed(DefaultFinalize(JsBoxContentsFor::<T>::from(self)))
+            .upcast())
+    }
+}
+/// Used to access a boxed Rust value.
+///
+/// Some Rust values boxed for JavaScript are stored directly, but mutable values need to be wrapped
+/// in a RefCell for safety. BorrowedJsBoxedBridgeHandle abstracts over that with the `Borrowed`
+/// parameter, which represents the active borrow. For immutable values `Borrowed` will be a simple
+/// reference (`&`); for mutable values it will be [`std::cell::Ref`] or [`std::cell::RefMut`].
+///
+/// Once created, the value can be accessed using the usual [`Deref`] and [`DerefMut`] operations.
+///
+/// Also stores the JavaScript handle that owns the JsBox to ensure that the Rust value is kept
+/// alive.
+///
+/// # Example
+///
+/// ```no_run
+/// # use libsignal_bridge::node::{BridgeHandle, BorrowedJsBoxedBridgeHandle, Mutable};
+/// # use neon::prelude::*;
+/// # use std::cell::{RefCell, RefMut};
+/// #
+/// struct Counter(usize);
+/// # impl Counter { fn increment(&mut self) { self.0 += 1 } }
+/// # impl BridgeHandle for Counter { type Strategy = Mutable<Counter>; };
+///
+/// # fn test<'a>(cx: &mut impl Context<'a>, wrapper: Handle<'a, JsObject>) -> NeonResult<()> {
+/// let mut borrowed_handle: BorrowedJsBoxedBridgeHandle<RefMut<Counter>> =
+///   BorrowedJsBoxedBridgeHandle::from_wrapper(cx, wrapper, RefCell::borrow_mut)?;
+/// borrowed_handle.increment(); // DerefMut allows accessing the Counter inside.
+/// #   Ok(())
+/// # }
+/// ```
+pub struct BorrowedJsBoxedBridgeHandle<'a, Borrowed: Deref + 'a>
+where
+    Borrowed::Target: BridgeHandle,
+{
+    /// Keeps the data alive by functioning as an active GC reference.
+    _owned: Handle<'a, DefaultJsBox<JsBoxContentsFor<Borrowed::Target>>>,
+    /// Provides access to the data.
+    borrowed: Borrowed,
+}
+
+impl<'a, Borrowed: Deref + 'a> BorrowedJsBoxedBridgeHandle<'a, Borrowed>
+where
+    Borrowed::Target: BridgeHandle,
+{
+    /// Creates a BorrowedJsBoxedBridgeHandle by accessing `wrapper`, assuming it does in fact
+    /// reference a boxed Rust value under the `_nativeHandle` property.
+    ///
+    /// The `borrow` callback will be used to get an active reference for the Rust value. For
+    /// example, if the "box contents" for this handle use a [`RefCell`], `borrow` might be
+    /// [`RefCell::borrow_mut`] to get a mutable reference out. For a plain value, `borrow` can be
+    /// the identity function.
+    pub fn from_wrapper(
+        cx: &mut impl Context<'a>,
+        wrapper: Handle<'a, JsObject>,
+        borrow: fn(&'a JsBoxContentsFor<Borrowed::Target>) -> Borrowed,
+    ) -> NeonResult<Self> {
+        let js_boxed_bridge_handle: Handle<'a, DefaultJsBox<JsBoxContentsFor<Borrowed::Target>>> =
+            Object::get(*wrapper, cx, NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)?;
+        let js_box_contents: &JsBoxContentsFor<Borrowed::Target> = &*js_boxed_bridge_handle;
+        // FIXME: Workaround for https://github.com/neon-bindings/neon/issues/678
+        // The lifetime of the boxed contents is necessarily longer than the lifetime of any handles
+        // referring to it, i.e. longer than 'a. However, Deref'ing a Handle can only give us a
+        // reference whose lifetime matches a *particular* handle. Therefore, we unsafely (in the
+        // compiler sense) extend the lifetime to be the lifetime of the context, as given by the
+        // Handle. (We also know the object can't move because the compiler can't know how many JS
+        // references there are referring to the JsBox, any of which another thread could
+        // be dereferencing.)
+        let js_box_contents_with_extended_lifetime: &'a JsBoxContentsFor<Borrowed::Target> =
+            unsafe { extend_lifetime(js_box_contents) };
+        Ok(Self {
+            _owned: js_boxed_bridge_handle,
+            borrowed: borrow(js_box_contents_with_extended_lifetime),
+        })
+    }
+}
+
+impl<'a, Borrowed: Deref + 'a> Deref for BorrowedJsBoxedBridgeHandle<'a, Borrowed>
+where
+    Borrowed::Target: BridgeHandle,
+{
+    type Target = Borrowed::Target;
+
+    fn deref(&self) -> &Self::Target {
+        self.borrowed.deref()
+    }
+}
+
+impl<'a, Borrowed: DerefMut + 'a> DerefMut for BorrowedJsBoxedBridgeHandle<'a, Borrowed>
+where
+    Borrowed::Target: BridgeHandle + 'static,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.borrowed.deref_mut()
+    }
+}
+
+/// Safely persists a boxed Rust value by treating its JavaScript wrapper as a GC root.
+///
+/// A `PersistentBorrowedJsBoxedBridgeHandle` **cannot be dropped**; instead, it must be explicitly
+/// finalized in a JavaScript context, as it contains a [`neon::handle::Root`].
+pub struct PersistentBorrowedJsBoxedBridgeHandle<T: Send + Sync + 'static> {
+    owner: Root<JsObject>,
+    value_ref: &'static T,
+}
+
+impl<T: BridgeHandle<Strategy = Immutable<T>>> PersistentBorrowedJsBoxedBridgeHandle<T> {
     /// Persists `wrapper`, assuming it does in fact reference a boxed Rust value under the
     /// `_nativeHandle` property.
+    ///
+    /// Note that this only works for immutable handles, since
+    /// `PersistentBorrowedJsBoxedBridgeHandle` does not allow customizing how the box is accessed.
     pub(crate) fn new<'a>(
         cx: &mut impl Context<'a>,
         wrapper: Handle<JsObject>,
     ) -> NeonResult<Self> {
-        let value_box: Handle<JsBox<T>> = wrapper
+        let value_box: Handle<DefaultJsBox<T>> = wrapper
             .get(cx, NATIVE_HANDLE_PROPERTY)?
             .downcast_or_throw(cx)?;
-        let value_ptr = &**value_box as *const T;
+        let value_ref = &***value_box;
         // We must create the root after all failable operations.
         let owner = wrapper.root(cx);
-        Ok(Self { owner, value_ptr })
+        // We're unsafely assuming that `self.owner` will maintain a reference to the JsBox
+        // containing the storage referenced by `self.value_ref`.
+        // N-API won't let us put a JsBox in a Root, so this indirection is necessary.
+        // Once we believe the JsBox is kept alive, the safety is the same as for
+        // BorrowedJsBoxedBridgeHandle.
+        Ok(Self {
+            owner,
+            value_ref: unsafe { extend_lifetime(value_ref) },
+        })
     }
 }
 
-impl<T: Send + Sync + 'static> Deref for PersistentBoxedValue<T> {
+impl<T: Send + Sync + 'static> Deref for PersistentBorrowedJsBoxedBridgeHandle<T> {
     type Target = T;
     fn deref(&self) -> &T {
-        // We're unsafely assuming that `self.owner` still has a reference to the JsBox containing
-        // the storage referenced by `self.value_ptr`.
-        // N-API won't let us put a JsBox in a Root, so this indirection is necessary.
-        unsafe { self.value_ptr.as_ref().expect("JsBox never contains NULL") }
+        self.value_ref
     }
 }
 
-// PersistentBoxedValue is not automatically Send because it contains a pointer.
-// We already know the contents of the value are only accessible to Rust, immutably,
-// and we're promising it won't be deallocated (see above).
-unsafe impl<T: Send + Sync + 'static> Send for PersistentBoxedValue<T> {}
-
-impl<T: Send + Sync + 'static> Finalize for PersistentBoxedValue<T> {
+impl<T: Send + Sync + 'static> Finalize for PersistentBorrowedJsBoxedBridgeHandle<T> {
     fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
         self.owner.finalize(cx)
     }
@@ -683,37 +833,41 @@ impl<T: Send + Sync + 'static> Finalize for PersistentBoxedValue<T> {
 ///
 /// The array must contain wrapper objects that refer to an underlying `JsBox<T>`.
 ///
-/// A `PersistentArrayOfBoxedValues` **cannot be dropped**; instead, it must be explicitly
-/// finalized in a JavaScript context, as it contains a [`neon::handle::Root`].
-pub struct PersistentArrayOfBoxedValues<T: Send + Sync + 'static> {
+/// A `PersistentArrayOfBorrowedJsBoxedBridgeHandles` **cannot be dropped**; instead, it must be
+/// explicitly finalized in a JavaScript context, as it contains a [`neon::handle::Root`].
+pub struct PersistentArrayOfBorrowedJsBoxedBridgeHandles<T: Send + Sync + 'static> {
     owner: Root<JsArray>,
     // We're unsafely assuming that `owner` will the boxed references in `value_refs` alive.
     // `owner` can't be deallocated out from under us, but it could be mutated.
     value_refs: Vec<&'static T>,
 }
 
-impl<T: Send + Sync + 'static> PersistentArrayOfBoxedValues<T> {
+impl<T: BridgeHandle<Strategy = Immutable<T>>> PersistentArrayOfBorrowedJsBoxedBridgeHandles<T> {
     /// Persists `array`, assuming it does in fact contain an array of objects referencing a boxed
     /// Rust value under the `_nativeHandle` property.
-    pub(crate) fn new<'a, U, C>(cx: &mut C, array: Handle<JsArray>) -> NeonResult<Self>
-    where
-        C: Context<'a>,
-        U: std::borrow::Borrow<T> + Send + Sync + 'static,
-    {
+    ///
+    /// Note that this only works for immutable handles, since
+    /// `PersistentArrayOfBorrowedJsBoxedBridgeHandles` does not allow customizing how the boxes are
+    /// accessed.
+    pub(crate) fn new<'a>(cx: &mut impl Context<'a>, array: Handle<JsArray>) -> NeonResult<Self> {
         let len = array.len(cx);
-        let value_refs: NeonResult<Vec<&'static T>> = (0..len)
+        let value_refs = (0..len)
             .map(|i| {
                 let element = array.get(cx, i)?;
-                let value_box: Handle<JsBox<U>> = element
+                let value_box: Handle<DefaultJsBox<T>> = element
                     .downcast_or_throw::<JsObject, _>(cx)?
                     .get(cx, NATIVE_HANDLE_PROPERTY)?
                     .downcast_or_throw(cx)?;
-                Ok(unsafe {
-                    extend_lifetime::<'_, 'static, T>(std::borrow::Borrow::borrow(&**value_box))
-                })
+                // We're unsafely assuming that
+                // (1) the JS array will not be modified while the
+                //     PersistentArrayOfBorrowedJsBoxedBridgeHandles is in use.
+                // (2) each object in the array will continue to reference the JsBox we are
+                //     borrowing from below.
+                // Once we believe the JsBox is kept alive, the safety is the same as for
+                // BorrowedJsBoxedBridgeHandle.
+                Ok(unsafe { extend_lifetime::<'_, 'static, T>(&**value_box) })
             })
-            .collect();
-        let value_refs = value_refs?;
+            .collect::<NeonResult<Vec<&'static T>>>()?;
 
         // We must create the root after all failable operations.
         let owner = array.root(cx);
@@ -725,188 +879,160 @@ impl<T: Send + Sync + 'static> PersistentArrayOfBoxedValues<T> {
     }
 }
 
-impl<T: Send + Sync + 'static> Finalize for PersistentArrayOfBoxedValues<T> {
+impl<T: Send + Sync + 'static> Finalize for PersistentArrayOfBorrowedJsBoxedBridgeHandles<T> {
     fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
         self.owner.finalize(cx)
     }
+}
+
+impl<'storage, T: BridgeHandle<Strategy = Immutable<T>>> AsyncArgTypeInfo<'storage>
+    for &'storage [&'storage T]
+{
+    type ArgType = JsArray;
+    type StoredType = PersistentArrayOfBorrowedJsBoxedBridgeHandles<T>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        PersistentArrayOfBorrowedJsBoxedBridgeHandles::new(cx, foreign)
+    }
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        stored.value_refs()
+    }
+}
+
+/// Loads a Rust value from a wrapper JavaScript object and clones it.
+///
+/// Note that this is currently only implemented for mutable values, where cloning protects against
+/// unwanted changes. Immutable values should use borrows instead.
+fn clone_from_wrapper<'a, T: BridgeHandle<Strategy = Mutable<T>> + Clone>(
+    cx: &mut impl Context<'a>,
+    wrapper: Handle<'a, JsObject>,
+) -> NeonResult<T> {
+    let borrow = BorrowedJsBoxedBridgeHandle::from_wrapper(cx, wrapper, RefCell::<T>::borrow)?;
+    Ok(borrow.deref().clone())
+}
+
+/// Clones each element in an array of JavaScript wrappers around Rust values.
+///
+/// Note that this is currently only implemented for mutable values, where cloning protects against
+/// unwanted changes. Immutable values should use borrows instead.
+pub fn clone_from_array_of_wrappers<'a, T: BridgeHandle<Strategy = Mutable<T>> + Clone>(
+    cx: &mut impl Context<'a>,
+    array: Handle<'_, JsArray>,
+) -> NeonResult<Vec<T>> {
+    let len = array.len(cx);
+    (0..len)
+        .map(|i| {
+            let element = array.get(cx, i)?;
+            let wrapper = element.downcast_or_throw::<JsObject, _>(cx)?;
+            clone_from_wrapper(cx, wrapper)
+        })
+        .collect()
 }
 
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for Node.
 macro_rules! node_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $node_name:ident ) => {
-        impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
-        for &'storage $typ {
-            type ArgType = node::JsObject;
-            type StoredType = node::Handle<'context, node::DefaultJsBox<$typ>>;
-            fn borrow(
-                cx: &mut node::FunctionContext<'context>,
-                foreign: node::Handle<'context, Self::ArgType>,
-            ) -> node::NeonResult<Self::StoredType> {
-                node::Object::get(*foreign, cx, node::NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)
-            }
-            fn load_from(
-                foreign: &'storage mut Self::StoredType,
-            ) -> Self {
-                &*foreign
-            }
-        }
-
         paste! {
             #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
-            impl<'a> node::ResultTypeInfo<'a> for $typ {
-                type ResultType = node::JsValue;
-                fn convert_into(
-                    self,
-                    cx: &mut impl node::Context<'a>,
-                ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
-                    node::return_boxed_object(cx, Ok(self))
-                }
+            impl node::BridgeHandle for $typ {
+                type Strategy = node::Immutable<Self>;
             }
         }
 
-        impl<'storage> node::AsyncArgTypeInfo<'storage> for &'storage $typ {
-            type ArgType = node::JsObject;
-            type StoredType = node::PersistentBoxedValue<node::DefaultFinalize<$typ>>;
-            fn save_async_arg(
-                cx: &mut node::FunctionContext,
-                foreign: node::Handle<Self::ArgType>,
-            ) -> node::NeonResult<Self::StoredType> {
-                node::PersistentBoxedValue::new(cx, foreign)
-            }
-            fn load_async_arg(
-                stored: &'storage mut Self::StoredType,
-            ) -> Self {
-                &*stored
-            }
-        }
-
-        impl<'storage> node::AsyncArgTypeInfo<'storage>
-        for &'storage [&'storage $typ] {
-            type ArgType = node::JsArray;
-            type StoredType = node::PersistentArrayOfBoxedValues<$typ>;
-            fn save_async_arg(
-                cx: &mut node::FunctionContext,
-                foreign: node::Handle<Self::ArgType>,
-            ) -> node::NeonResult<Self::StoredType> {
-                node::PersistentArrayOfBoxedValues::new::<node::DefaultFinalize<$typ>, _>(
-                    cx,
-                    foreign,
-                )
-            }
-            fn load_async_arg(
-                stored: &'storage mut Self::StoredType,
-            ) -> Self {
-                stored.value_refs()
-            }
-        }
-    };
-    ( $typ:ty as $node_name:ident, mut = true ) => {
+        // ArgTypeInfo already has a blanket impl (SimpleArgTypeInfo),
+        // so we have to declare this explicitly.
         impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
             for &'storage $typ
         {
             type ArgType = node::JsObject;
-            type StoredType = (
-                node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>>,
-                std::cell::Ref<'context, $typ>,
-            );
+            type StoredType = node::BorrowedJsBoxedBridgeHandle<'context, &'context $typ>;
             fn borrow(
                 cx: &mut node::FunctionContext<'context>,
                 foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                let boxed_value: node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>> =
-                    node::Object::get(*foreign, cx, node::NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)?;
-                let cell: &std::cell::RefCell<_> = &***boxed_value;
-                // FIXME: Workaround for https://github.com/neon-bindings/neon/issues/678
-                // The lifetime of the boxed RefCell is necessarily longer than the lifetime of any handles referring to it, i.e. longer than 'context.
-                // However, Deref'ing a Handle can only give us a Ref whose lifetime matches a *particular* handle.
-                // Therefore, we unsafely (in the compiler sense) extend the lifetime to be the lifetime of the context, as given by the Handle.
-                // (We also know the RefCell can't move because we can't know how many JS references there are referring to the JsBox.)
-                let cell_with_extended_lifetime: &'context std::cell::RefCell<_> = unsafe {
-                    node::extend_lifetime(cell)
-                };
-                Ok((boxed_value, cell_with_extended_lifetime.borrow()))
+                Self::StoredType::from_wrapper(cx, foreign, std::convert::identity)
             }
-            fn load_from(
-                stored: &'storage mut Self::StoredType,
-            ) -> Self {
-                &*stored.1
+            fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+                &*stored
             }
         }
 
+        // And likewise for AsyncArgTypeInfo.
+        impl<'storage> node::AsyncArgTypeInfo<'storage> for &'storage $typ {
+            type ArgType = node::JsObject;
+            type StoredType = node::PersistentBorrowedJsBoxedBridgeHandle<$typ>;
+            fn save_async_arg(
+                cx: &mut node::FunctionContext,
+                foreign: node::Handle<Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                Self::StoredType::new(cx, foreign)
+            }
+            fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+                &*stored
+            }
+        }
+    };
+    ( $typ:ty as $node_name:ident, mut = true ) => {
+        paste! {
+            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
+            impl node::BridgeHandle for $typ {
+                type Strategy = node::Mutable<Self>;
+            }
+        }
+
+        // ArgTypeInfo already has a blanket impl (SimpleArgTypeInfo),
+        // so we have to declare these explicitly.
+        impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
+            for &'storage $typ
+        {
+            type ArgType = node::JsObject;
+            type StoredType =
+                node::BorrowedJsBoxedBridgeHandle<'context, std::cell::Ref<'context, $typ>>;
+            fn borrow(
+                cx: &mut node::FunctionContext<'context>,
+                foreign: node::Handle<'context, Self::ArgType>,
+            ) -> node::NeonResult<Self::StoredType> {
+                Self::StoredType::from_wrapper(cx, foreign, std::cell::RefCell::borrow)
+            }
+            fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+                &*stored
+            }
+        }
         impl<'storage, 'context: 'storage> node::ArgTypeInfo<'storage, 'context>
             for &'storage mut $typ
         {
             type ArgType = node::JsObject;
-            type StoredType = (
-                node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>>,
-                std::cell::RefMut<'context, $typ>,
-            );
+            type StoredType =
+                node::BorrowedJsBoxedBridgeHandle<'context, std::cell::RefMut<'context, $typ>>;
             fn borrow(
                 cx: &mut node::FunctionContext<'context>,
                 foreign: node::Handle<'context, Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                let boxed_value: node::Handle<'context, node::DefaultJsBox<std::cell::RefCell<$typ>>> =
-                    node::Object::get(*foreign, cx, node::NATIVE_HANDLE_PROPERTY)?.downcast_or_throw(cx)?;
-                let cell: &std::cell::RefCell<_> = &***boxed_value;
-                // See above.
-                let cell_with_extended_lifetime: &'context std::cell::RefCell<_> = unsafe {
-                    node::extend_lifetime(cell)
-                };
-                Ok((boxed_value, cell_with_extended_lifetime.borrow_mut()))
+                Self::StoredType::from_wrapper(cx, foreign, std::cell::RefCell::borrow_mut)
             }
-            fn load_from(
-                stored: &'storage mut Self::StoredType,
-            ) -> Self {
-                &mut *stored.1
+            fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+                &mut *stored
             }
         }
 
-        paste! {
-            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
-            impl<'a> node::ResultTypeInfo<'a> for $typ {
-                type ResultType = node::JsValue;
-                fn convert_into(
-                    self,
-                    cx: &mut impl node::Context<'a>,
-                ) -> node::NeonResult<node::Handle<'a, Self::ResultType>> {
-                    node::return_boxed_object(cx, Ok(std::cell::RefCell::new(self)))
-                }
-            }
-        }
-
+        // And AsyncArgTypeInfo already has a blanket impl (also SimpleArgTypeInfo),
+        // so we have to declare this explicitly too.
         // FIXME: This is necessarily a cloning API.
         // We should try to avoid cloning data when possible.
-        impl<'storage> node::AsyncArgTypeInfo<'storage>
-        for &'storage [$typ] {
+        impl<'storage> node::AsyncArgTypeInfo<'storage> for &'storage [$typ]
+        {
             type ArgType = node::JsArray;
             type StoredType = node::DefaultFinalize<Vec<$typ>>;
             fn save_async_arg(
                 cx: &mut node::FunctionContext,
                 array: node::Handle<Self::ArgType>,
             ) -> node::NeonResult<Self::StoredType> {
-                let len = array.len(cx);
-                let result = (0..len)
-                    .map(|i| {
-                        let element = neon::object::Object::get(*array, cx, i)?;
-                        let wrapper = element.downcast_or_throw::<node::JsObject, _>(cx)?;
-                        let value_box = neon::object::Object::get(
-                            *wrapper,
-                            cx,
-                            node::NATIVE_HANDLE_PROPERTY
-                        )?;
-                        let value_box: node::Handle<node::DefaultJsBox<std::cell::RefCell<$typ>>> =
-                            value_box.downcast_or_throw(cx)?;
-                        let cell: &std::cell::RefCell<_> = &***value_box;
-                        let result = cell.borrow().clone();
-                        Ok(result)
-                    })
-                    .collect::<node::NeonResult<_>>()?;
-                Ok(node::DefaultFinalize(result))
+                Ok(node::clone_from_array_of_wrappers(cx, array)?.into())
             }
-            fn load_async_arg(
-                stored: &'storage mut Self::StoredType,
-            ) -> Self {
+            fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
                 &stored.0
             }
         }
