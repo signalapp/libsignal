@@ -866,12 +866,12 @@ SignalFfiError *signal_unidentified_sender_message_content_get_contents(const un
                                                                         size_t *out_len,
                                                                         const SignalUnidentifiedSenderMessageContent *obj);
 
-SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(SignalSenderCertificate **out,
-                                                                           const SignalUnidentifiedSenderMessageContent *m);
-
 SignalFfiError *signal_unidentified_sender_message_content_get_group_id(const unsigned char **out,
                                                                         size_t *out_len,
-                                                                        const SignalUnidentifiedSenderMessageContent *m);
+                                                                        const SignalUnidentifiedSenderMessageContent *obj);
+
+SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(SignalSenderCertificate **out,
+                                                                           const SignalUnidentifiedSenderMessageContent *m);
 
 SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t *out,
                                                                         const SignalUnidentifiedSenderMessageContent *m);
