@@ -6,7 +6,6 @@
 pub mod api;
 pub mod common;
 pub mod crypto;
-pub mod ffi;
 pub use api::*;
 pub use common::constants::*;
 pub use common::errors::*;
