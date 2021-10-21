@@ -117,27 +117,26 @@ macro_rules! bridge_deserialize {
 /// #     }
 /// # }
 ///
-/// bridge_get_bytearray!(Foo::payload); // generates Foo_GetPayload
+/// bridge_get_buffer!(Foo::payload -> Vec<u8>); // generates Foo_GetPayload
 /// ```
 ///
-/// The underlying implementation is expected to return `Result<T, _>`, where `T` is a type that
-/// adopts `Into<Cow<[u8]>>`. As a special case, `T` can also be `Box<[u8]>`.
+/// As a special case, accessors that produce `Box<[u8]>` can be converted to returning `Vec<u8>`.
 ///
 /// Like `bridge_fn`, the `ffi`, `jni`, and `node` parameters allow customizing the name of the
 /// resulting entry points; they can also be `false` to disable a particular entry point.
-macro_rules! bridge_get_bytearray {
-    ($typ:ident :: $method:ident as $name:ident $(, $param:ident = $val:tt)*) => {
+macro_rules! bridge_get_buffer {
+    ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)*) => {
         paste! {
             #[bridge_fn_buffer($($param = $val),*)]
-            fn [<$typ _ $name>](obj: &$typ) -> Result<Vec<u8>> {
+            fn [<$typ _ $name>](obj: &$typ) -> Result<$result> {
                 let result = TransformHelper($typ::$method(obj));
-                Ok(result.ok_if_needed()?.into_vec_if_needed().0.into())
+                Ok(result.ok_if_needed()?.into_vec_if_needed().0)
             }
         }
     };
-    ($typ:ident :: $method:ident $(, $param:ident = $val:tt)*) => {
+    ($typ:ident :: $method:ident -> $result:ty $(, $param:ident = $val:tt)*) => {
         paste! {
-            bridge_get_bytearray!($typ::$method as [<Get $method:camel>] $(, $param = $val)*);
+            bridge_get_buffer!($typ::$method as [<Get $method:camel>] -> $result $(, $param = $val)*);
         }
     };
 }
