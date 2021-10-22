@@ -5,10 +5,12 @@ Swift, or TypeScript library. The underlying implementations are written in Rust
 
 - libsignal-protocol: Implements the Signal protocol, including the [Double Ratchet algorithm][]. A
   replacement for [libsignal-protocol-java][] and [libsignal-metadata-java][].
-- signal-crypto: Cryptographic primitives such as AES-GCM-SIV. We use [RustCrypto][]'s where we can
+- signal-crypto: Cryptographic primitives such as AES-GCM. We use [RustCrypto][]'s where we can
   but sometimes have differing needs.
 - device-transfer: Support logic for Signal's device-to-device transfer feature.
-- poksho: Utilities for implementing zero-knowledge proofs; stands for "proof-of-knowledge, stateful-hash-object". See [zkgroup][].
+- hsm-enclave: A wrapper around the [Noise protocol][] used to securely communicate with server-side [HSMs][].
+- zkgroup: Functionality for [zero-knowledge groups][] and related features available in Signal.
+- poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
 
 This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]). Use
 outside of Signal is unsupported. In particular, the products of this repository are the Java,
@@ -20,7 +22,9 @@ layers.
 [libsignal-protocol-java]: https://github.com/signalapp/libsignal-protocol-java
 [libsignal-metadata-java]: https://github.com/signalapp/libsignal-metadata-java
 [RustCrypto]: https://github.com/RustCrypto
-[zkgroup]: https://github.com/signalapp/zkgroup
+[Noise protocol]: http://noiseprotocol.org/
+[HSMs]: https://en.wikipedia.org/wiki/Hardware_security_module
+[zero-knowledge groups]: https://signal.org/blog/signal-private-group-system/
 [Android]: https://github.com/signalapp/Signal-Android
 [iOS]: https://github.com/signalapp/Signal-iOS
 [Desktop]: https://github.com/signalapp/Signal-Desktop
