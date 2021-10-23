@@ -10,7 +10,7 @@
 package org.signal.zkgroup;
 
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
 
 public final class ServerPublicParams extends ByteArray {
 
@@ -18,27 +18,11 @@ public final class ServerPublicParams extends ByteArray {
 
   public ServerPublicParams(byte[] contents)  {
     super(contents, SIZE, true);
-    
-    int ffi_return = Native.serverPublicParamsCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new IllegalArgumentException(new InvalidInputException("FFI_RETURN_INPUT_ERROR"));
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ServerPublicParams_CheckValidContents(contents);
   }
 
   public void verifySignature(byte[] message, NotarySignature notarySignature) throws VerificationFailedException {
-    int ffi_return = Native.serverPublicParamsVerifySignatureJNI(contents, message, notarySignature.getInternalContentsForJNI());
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ServerPublicParams_VerifySignature(contents, message, notarySignature.getInternalContentsForJNI());
   }
 
   public byte[] serialize() {

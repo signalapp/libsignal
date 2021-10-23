@@ -13,8 +13,9 @@ import java.security.SecureRandom;
 import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.ServerSecretParams;
 import org.signal.zkgroup.VerificationFailedException;
-import org.signal.zkgroup.ZkGroupError;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public class ServerZkReceiptOperations {
 
@@ -29,19 +30,10 @@ public class ServerZkReceiptOperations {
   }
 
   public ReceiptCredentialResponse issueReceiptCredential(SecureRandom secureRandom, ReceiptCredentialRequest receiptCredentialRequest, long receiptExpirationTime, long receiptLevel) throws VerificationFailedException {
-    byte[] newContents = new byte[ReceiptCredentialResponse.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverSecretParamsIssueReceiptCredentialDeterministicJNI(serverSecretParams.getInternalContentsForJNI(), random, receiptCredentialRequest.getInternalContentsForJNI(), receiptExpirationTime, receiptLevel, newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerSecretParams_IssueReceiptCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, receiptCredentialRequest.getInternalContentsForJNI(), receiptExpirationTime, receiptLevel);
 
     try {
       return new ReceiptCredentialResponse(newContents);
@@ -52,14 +44,7 @@ public class ServerZkReceiptOperations {
   }
 
   public void verifyReceiptCredentialPresentation(ReceiptCredentialPresentation receiptCredentialPresentation) throws VerificationFailedException {
-    int ffi_return = Native.serverSecretParamsVerifyReceiptCredentialPresentationJNI(serverSecretParams.getInternalContentsForJNI(), receiptCredentialPresentation.getInternalContentsForJNI());
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ServerSecretParams_VerifyReceiptCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), receiptCredentialPresentation.getInternalContentsForJNI());
   }
 
 }

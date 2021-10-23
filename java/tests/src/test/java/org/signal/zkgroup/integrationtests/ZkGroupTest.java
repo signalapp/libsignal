@@ -39,7 +39,6 @@ import org.signal.zkgroup.profiles.ProfileKeyCredentialRequestContext;
 import org.signal.zkgroup.profiles.ProfileKeyCredentialResponse;
 import org.signal.zkgroup.profiles.ProfileKeyVersion;
 import org.signal.zkgroup.profiles.ServerZkProfileOperations;
-import org.signal.zkgroup.util.UUIDUtil;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -50,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 
 public final class ZkGroupTest extends SecureRandomTest {
 
-  private static final byte[] TEST_ARRAY_16   = Hex.fromStringCondensedAssert("000102030405060708090a0b0c0d0e0f");
+  private static final UUID   TEST_UUID       = UUID.fromString("00010203-0405-0607-0809-0a0b0c0d0e0f");
 
   private static final byte[] TEST_ARRAY_32   = Hex.fromStringCondensedAssert("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 
@@ -78,7 +77,7 @@ private static final byte[] profileKeyPresentationResult = Hex.fromStringCondens
   @Test
   public void testAuthIntegration() throws VerificationFailedException, InvalidInputException, InvalidRedemptionTimeException {
 
-    UUID uuid           = UUIDUtil.deserialize(TEST_ARRAY_16);
+    UUID uuid           = TEST_UUID;
     int  redemptionTime = 123456;
 
     // Generate keys (client's are per-group, server's are not)
@@ -148,7 +147,7 @@ private static final byte[] profileKeyPresentationResult = Hex.fromStringCondens
     // This test is mostly the same as testAuthIntegration() except instead of using a hardcoded
     // redemption date to compare against test vectors, it uses the current time
 
-    UUID uuid           = UUIDUtil.deserialize(TEST_ARRAY_16);
+    UUID uuid           = TEST_UUID;
     int  redemptionTime = (int)TimeUnit.DAYS.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
 
     // Generate keys (client's are per-group, server's are not)
@@ -216,7 +215,7 @@ private static final byte[] profileKeyPresentationResult = Hex.fromStringCondens
   @Test
   public void testProfileKeyIntegration() throws VerificationFailedException, InvalidInputException, UnsupportedEncodingException {
 
-    UUID uuid           = UUIDUtil.deserialize(TEST_ARRAY_16);
+    UUID uuid           = TEST_UUID;
     int  redemptionTime = 1234567;
 
     // Generate keys (client's are per-group, server's are not)

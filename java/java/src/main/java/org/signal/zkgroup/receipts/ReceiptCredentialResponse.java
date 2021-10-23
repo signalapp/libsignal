@@ -10,9 +10,8 @@
 package org.signal.zkgroup.receipts;
 
 import org.signal.zkgroup.InvalidInputException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
 
 public final class ReceiptCredentialResponse extends ByteArray {
 
@@ -20,16 +19,7 @@ public final class ReceiptCredentialResponse extends ByteArray {
 
   public ReceiptCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
-    
-    int ffi_return = Native.receiptCredentialResponseCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new InvalidInputException("FFI_RETURN_INPUT_ERROR");
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ReceiptCredentialResponse_CheckValidContents(contents);
   }
 
   public byte[] serialize() {

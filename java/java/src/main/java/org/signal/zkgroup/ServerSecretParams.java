@@ -10,9 +10,10 @@
 package org.signal.zkgroup;
 
 import java.security.SecureRandom;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public final class ServerSecretParams extends ByteArray {
 
@@ -23,16 +24,10 @@ public final class ServerSecretParams extends ByteArray {
   }
 
   public static ServerSecretParams generate(SecureRandom secureRandom) {
-    byte[] newContents = new byte[ServerSecretParams.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverSecretParamsGenerateDeterministicJNI(random, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerSecretParams_GenerateDeterministic(random);
 
     try {
       return new ServerSecretParams(newContents);
@@ -43,27 +38,11 @@ public final class ServerSecretParams extends ByteArray {
 
   public ServerSecretParams(byte[] contents)  {
     super(contents, SIZE, true);
-    
-    int ffi_return = Native.serverSecretParamsCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new IllegalArgumentException(new InvalidInputException("FFI_RETURN_INPUT_ERROR"));
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ServerSecretParams_CheckValidContents(contents);
   }
 
   public ServerPublicParams getPublicParams() {
-    byte[] newContents = new byte[ServerPublicParams.SIZE];
-
-    int ffi_return = Native.serverSecretParamsGetPublicParamsJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
-
+    byte[] newContents = Native.ServerSecretParams_GetPublicParams(contents);
     return new ServerPublicParams(newContents);
   }
 
@@ -72,16 +51,10 @@ public final class ServerSecretParams extends ByteArray {
   }
 
   public NotarySignature sign(SecureRandom secureRandom, byte[] message) {
-    byte[] newContents = new byte[NotarySignature.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverSecretParamsSignDeterministicJNI(contents, random, message, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerSecretParams_SignDeterministic(contents, random, message);
 
     try {
       return new NotarySignature(newContents);
