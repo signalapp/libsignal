@@ -12,6 +12,8 @@ use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 
+use crate::support::describe_panic;
+
 use super::*;
 
 /// The top-level error type for when something goes wrong.
@@ -47,10 +49,9 @@ impl fmt::Display for SignalJniError {
             SignalJniError::HsmEnclave(e) => {
                 write!(f, "{}", e)
             }
-            SignalJniError::UnexpectedPanic(e) => match e.downcast_ref::<&'static str>() {
-                Some(s) => write!(f, "unexpected panic: {}", s),
-                None => write!(f, "unknown unexpected panic"),
-            },
+            SignalJniError::UnexpectedPanic(e) => {
+                write!(f, "unexpected panic: {}", describe_panic(e))
+            }
         }
     }
 }
