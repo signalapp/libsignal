@@ -2204,6 +2204,7 @@ dependencies = [
  "bincode",
  "criterion",
  "curve25519-dalek",
+ "displaydoc",
  "hex",
  "poksho",
  "serde",

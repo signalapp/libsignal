@@ -5,14 +5,11 @@
 
 #![allow(non_snake_case)]
 
-use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-
-use ZkGroupError::*;
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UidStruct {
@@ -20,6 +17,8 @@ pub struct UidStruct {
     pub(crate) M1: RistrettoPoint,
     pub(crate) M2: RistrettoPoint,
 }
+
+pub struct PointDecodeFailure;
 
 impl UidStruct {
     pub fn new(uid_bytes: UidBytes) -> Self {
@@ -33,8 +32,7 @@ impl UidStruct {
         }
     }
 
-    // Might return PointDecodeFailure
-    pub fn from_M2(M2: RistrettoPoint) -> Result<Self, ZkGroupError> {
+    pub fn from_M2(M2: RistrettoPoint) -> Result<Self, PointDecodeFailure> {
         match M2.lizard_decode::<Sha256>() {
             None => Err(PointDecodeFailure),
             Some(bytes) => Ok(Self::new(bytes)),
