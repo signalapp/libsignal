@@ -16,10 +16,10 @@ import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.ServerSecretParams;
 import org.signal.zkgroup.VerificationFailedException;
 import org.signal.zkgroup.InvalidRedemptionTimeException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.groups.GroupPublicParams;
-import org.signal.zkgroup.internal.Native;
-import org.signal.zkgroup.util.UUIDUtil;
+import org.signal.client.internal.Native;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public class ServerZkAuthOperations {
 
@@ -34,16 +34,11 @@ public class ServerZkAuthOperations {
   }
 
   public AuthCredentialResponse issueAuthCredential(SecureRandom secureRandom, UUID uuid, int redemptionTime) {
-    byte[] newContents = new byte[AuthCredentialResponse.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
+    byte[] random      = new byte[RANDOM_LENGTH];
 
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverSecretParamsIssueAuthCredentialDeterministicJNI(serverSecretParams.getInternalContentsForJNI(), random, UUIDUtil.serialize(uuid), redemptionTime, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, uuid, redemptionTime);
 
     try {
       return new AuthCredentialResponse(newContents);
@@ -65,14 +60,7 @@ public class ServerZkAuthOperations {
         throw new InvalidRedemptionTimeException();
     }
 
-    int ffi_return = Native.serverSecretParamsVerifyAuthCredentialPresentationJNI(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), authCredentialPresentation.getInternalContentsForJNI());
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ServerSecretParams_VerifyAuthCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), authCredentialPresentation.getInternalContentsForJNI());
   }
 
 }

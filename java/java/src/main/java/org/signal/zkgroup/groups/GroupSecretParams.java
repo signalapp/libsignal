@@ -11,9 +11,10 @@ package org.signal.zkgroup.groups;
 
 import java.security.SecureRandom;
 import org.signal.zkgroup.InvalidInputException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public final class GroupSecretParams extends ByteArray {
 
@@ -24,16 +25,10 @@ public final class GroupSecretParams extends ByteArray {
   }
 
   public static GroupSecretParams generate(SecureRandom secureRandom) {
-    byte[] newContents = new byte[GroupSecretParams.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.groupSecretParamsGenerateDeterministicJNI(random, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_GenerateDeterministic(random);
 
     try {
       return new GroupSecretParams(newContents);
@@ -43,13 +38,7 @@ public final class GroupSecretParams extends ByteArray {
   }
 
   public static GroupSecretParams deriveFromMasterKey(GroupMasterKey groupMasterKey) {
-    byte[] newContents = new byte[GroupSecretParams.SIZE];
-
-    int ffi_return = Native.groupSecretParamsDeriveFromMasterKeyJNI(groupMasterKey.getInternalContentsForJNI(), newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_DeriveFromMasterKey(groupMasterKey.getInternalContentsForJNI());
 
     try {
       return new GroupSecretParams(newContents);
@@ -60,26 +49,11 @@ public final class GroupSecretParams extends ByteArray {
 
   public GroupSecretParams(byte[] contents)  {
     super(contents, SIZE, true);
-    
-    int ffi_return = Native.groupSecretParamsCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new IllegalArgumentException(new InvalidInputException("FFI_RETURN_INPUT_ERROR"));
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.GroupSecretParams_CheckValidContents(contents);
   }
 
   public GroupMasterKey getMasterKey() {
-    byte[] newContents = new byte[GroupMasterKey.SIZE];
-
-    int ffi_return = Native.groupSecretParamsGetMasterKeyJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_GetMasterKey(contents);
 
     try {
       return new GroupMasterKey(newContents);
@@ -90,13 +64,7 @@ public final class GroupSecretParams extends ByteArray {
   }
 
   public GroupPublicParams getPublicParams() {
-    byte[] newContents = new byte[GroupPublicParams.SIZE];
-
-    int ffi_return = Native.groupSecretParamsGetPublicParamsJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_GetPublicParams(contents);
 
     try {
       return new GroupPublicParams(newContents);

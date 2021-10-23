@@ -14,10 +14,10 @@ import java.security.SecureRandom;
 import java.util.UUID;
 import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.VerificationFailedException;
-import org.signal.zkgroup.ZkGroupError;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
 import org.signal.zkgroup.profiles.ProfileKey;
-import org.signal.zkgroup.util.UUIDUtil;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public class ClientZkGroupCipher {
 
@@ -28,13 +28,7 @@ public class ClientZkGroupCipher {
   }
 
   public UuidCiphertext encryptUuid(UUID uuid) {
-    byte[] newContents = new byte[UuidCiphertext.SIZE];
-
-    int ffi_return = Native.groupSecretParamsEncryptUuidJNI(groupSecretParams.getInternalContentsForJNI(), UUIDUtil.serialize(uuid), newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_EncryptUuid(groupSecretParams.getInternalContentsForJNI(), uuid);
 
     try {
       return new UuidCiphertext(newContents);
@@ -45,28 +39,11 @@ public class ClientZkGroupCipher {
   }
 
   public UUID decryptUuid(UuidCiphertext uuidCiphertext) throws VerificationFailedException {
-    byte[] newContents = new byte[UUIDUtil.UUID_LENGTH];
-
-    int ffi_return = Native.groupSecretParamsDecryptUuidJNI(groupSecretParams.getInternalContentsForJNI(), uuidCiphertext.getInternalContentsForJNI(), newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
-
-    return UUIDUtil.deserialize(newContents);
+     return Native.GroupSecretParams_DecryptUuid(groupSecretParams.getInternalContentsForJNI(), uuidCiphertext.getInternalContentsForJNI());
   }
 
   public ProfileKeyCiphertext encryptProfileKey(ProfileKey profileKey, UUID uuid) {
-    byte[] newContents = new byte[ProfileKeyCiphertext.SIZE];
-
-    int ffi_return = Native.groupSecretParamsEncryptProfileKeyJNI(groupSecretParams.getInternalContentsForJNI(), profileKey.getInternalContentsForJNI(), UUIDUtil.serialize(uuid), newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+     byte[] newContents = Native.GroupSecretParams_EncryptProfileKey(groupSecretParams.getInternalContentsForJNI(), profileKey.getInternalContentsForJNI(), uuid);
 
     try {
       return new ProfileKeyCiphertext(newContents);
@@ -77,16 +54,7 @@ public class ClientZkGroupCipher {
   }
 
   public ProfileKey decryptProfileKey(ProfileKeyCiphertext profileKeyCiphertext, UUID uuid) throws VerificationFailedException {
-    byte[] newContents = new byte[ProfileKey.SIZE];
-
-    int ffi_return = Native.groupSecretParamsDecryptProfileKeyJNI(groupSecretParams.getInternalContentsForJNI(), profileKeyCiphertext.getInternalContentsForJNI(), UUIDUtil.serialize(uuid), newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_DecryptProfileKey(groupSecretParams.getInternalContentsForJNI(), profileKeyCiphertext.getInternalContentsForJNI(), uuid);
 
     try {
       return new ProfileKey(newContents);
@@ -105,34 +73,15 @@ public class ClientZkGroupCipher {
     byte[] paddedPlaintext = new byte[plaintext.length + 4];
     System.arraycopy(plaintext, 0, paddedPlaintext, 4, plaintext.length);
 
-    byte[] newContents = new byte[paddedPlaintext.length + 29];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
+    byte[] random      = new byte[RANDOM_LENGTH];
 
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.groupSecretParamsEncryptBlobDeterministicJNI(groupSecretParams.getInternalContentsForJNI(), random, paddedPlaintext, newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
-
-    return newContents;
+    return Native.GroupSecretParams_EncryptBlobDeterministic(groupSecretParams.getInternalContentsForJNI(), random, paddedPlaintext);
   }
 
   public byte[] decryptBlob(byte[] blobCiphertext) throws VerificationFailedException {
-    byte[] newContents = new byte[blobCiphertext.length + -29];
-
-    int ffi_return = Native.groupSecretParamsDecryptBlobJNI(groupSecretParams.getInternalContentsForJNI(), blobCiphertext, newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.GroupSecretParams_DecryptBlob(groupSecretParams.getInternalContentsForJNI(), blobCiphertext);
 
     if (newContents.length < 4) {
         throw new VerificationFailedException();

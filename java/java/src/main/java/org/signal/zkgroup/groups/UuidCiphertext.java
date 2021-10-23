@@ -10,9 +10,8 @@
 package org.signal.zkgroup.groups;
 
 import org.signal.zkgroup.InvalidInputException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
 
 public final class UuidCiphertext extends ByteArray {
 
@@ -20,16 +19,7 @@ public final class UuidCiphertext extends ByteArray {
 
   public UuidCiphertext(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
-    
-    int ffi_return = Native.uuidCiphertextCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new InvalidInputException("FFI_RETURN_INPUT_ERROR");
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.UuidCiphertext_CheckValidContents(contents);
   }
 
   public byte[] serialize() {

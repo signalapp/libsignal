@@ -11,10 +11,9 @@ package org.signal.zkgroup.auth;
 
 import java.nio.ByteBuffer;
 import org.signal.zkgroup.InvalidInputException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.groups.UuidCiphertext;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
 
 public final class AuthCredentialPresentation extends ByteArray {
 
@@ -22,45 +21,21 @@ public final class AuthCredentialPresentation extends ByteArray {
 
   public AuthCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
-    
-    int ffi_return = Native.authCredentialPresentationCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new InvalidInputException("FFI_RETURN_INPUT_ERROR");
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.AuthCredentialPresentation_CheckValidContents(contents);
   }
 
   public UuidCiphertext getUuidCiphertext() {
-    byte[] newContents = new byte[UuidCiphertext.SIZE];
-
-    int ffi_return = Native.authCredentialPresentationGetUuidCiphertextJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.AuthCredentialPresentation_GetUuidCiphertext(contents);
 
     try {
       return new UuidCiphertext(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public int getRedemptionTime() {
-    byte[] newContents = new byte[4];
-
-    int ffi_return = Native.authCredentialPresentationGetRedemptionTimeJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-     }
-
-    return ByteBuffer.wrap(newContents).getInt();
+    return Native.AuthCredentialPresentation_GetRedemptionTime(contents);
   }
 
   public byte[] serialize() {
