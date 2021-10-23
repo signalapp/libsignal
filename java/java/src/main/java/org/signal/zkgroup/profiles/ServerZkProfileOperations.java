@@ -14,10 +14,10 @@ import java.util.UUID;
 import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.ServerSecretParams;
 import org.signal.zkgroup.VerificationFailedException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.groups.GroupPublicParams;
-import org.signal.zkgroup.internal.Native;
-import org.signal.zkgroup.util.UUIDUtil;
+import org.signal.client.internal.Native;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public class ServerZkProfileOperations {
 
@@ -32,19 +32,10 @@ public class ServerZkProfileOperations {
   }
 
   public ProfileKeyCredentialResponse issueProfileKeyCredential(SecureRandom secureRandom, ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment) throws VerificationFailedException {
-    byte[] newContents = new byte[ProfileKeyCredentialResponse.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverSecretParamsIssueProfileKeyCredentialDeterministicJNI(serverSecretParams.getInternalContentsForJNI(), random, profileKeyCredentialRequest.getInternalContentsForJNI(), UUIDUtil.serialize(uuid), profileKeyCommitment.getInternalContentsForJNI(), newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerSecretParams_IssueProfileKeyCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, profileKeyCredentialRequest.getInternalContentsForJNI(), uuid, profileKeyCommitment.getInternalContentsForJNI());
 
     try {
       return new ProfileKeyCredentialResponse(newContents);
@@ -55,14 +46,7 @@ public class ServerZkProfileOperations {
   }
 
   public void verifyProfileKeyCredentialPresentation(GroupPublicParams groupPublicParams, ProfileKeyCredentialPresentation profileKeyCredentialPresentation) throws VerificationFailedException {
-    int ffi_return = Native.serverSecretParamsVerifyProfileKeyCredentialPresentationJNI(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), profileKeyCredentialPresentation.getInternalContentsForJNI());
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), profileKeyCredentialPresentation.getInternalContentsForJNI());
   }
 
 }

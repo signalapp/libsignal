@@ -12,10 +12,8 @@ package org.signal.zkgroup.profiles;
 import java.util.UUID;
 import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.VerificationFailedException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
-import org.signal.zkgroup.util.UUIDUtil;
+import org.signal.client.internal.Native;
 
 public final class ProfileKey extends ByteArray {
 
@@ -26,12 +24,7 @@ public final class ProfileKey extends ByteArray {
   }
 
   public ProfileKeyCommitment getCommitment(UUID uuid) {
-    byte[] newContents = new byte[ProfileKeyCommitment.SIZE];
-
-    int ffi_return = Native.profileKeyGetCommitmentJNI(contents, UUIDUtil.serialize(uuid), newContents);
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ProfileKey_GetCommitment(contents, uuid);
 
     try {
       return new ProfileKeyCommitment(newContents);
@@ -42,12 +35,7 @@ public final class ProfileKey extends ByteArray {
   }
 
   public ProfileKeyVersion getProfileKeyVersion(UUID uuid) {
-    byte[] newContents = new byte[ProfileKeyVersion.SIZE];
-
-    int ffi_return = Native.profileKeyGetProfileKeyVersionJNI(contents, UUIDUtil.serialize(uuid), newContents);
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ProfileKey_GetProfileKeyVersion(contents, uuid);
 
     try {
       return new ProfileKeyVersion(newContents);

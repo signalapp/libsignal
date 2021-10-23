@@ -11,9 +11,8 @@ package org.signal.zkgroup.receipts;
 
 import java.nio.ByteBuffer;
 import org.signal.zkgroup.InvalidInputException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.internal.ByteArray;
-import org.signal.zkgroup.internal.Native;
+import org.signal.client.internal.Native;
 
 public final class ReceiptCredential extends ByteArray {
 
@@ -21,40 +20,15 @@ public final class ReceiptCredential extends ByteArray {
 
   public ReceiptCredential(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
-    
-    int ffi_return = Native.receiptCredentialCheckValidContentsJNI(contents);
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new InvalidInputException("FFI_RETURN_INPUT_ERROR");
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    Native.ReceiptCredential_CheckValidContents(contents);
   }
 
   public long getReceiptExpirationTime() {
-    byte[] newContents = new byte[8];
-
-    int ffi_return = Native.receiptCredentialGetReceiptExpirationTimeJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
-
-    return ByteBuffer.wrap(newContents).getLong();
+    return Native.ReceiptCredential_GetReceiptExpirationTime(contents);
   }
 
   public long getReceiptLevel() {
-    byte[] newContents = new byte[8];
-
-    int ffi_return = Native.receiptCredentialGetReceiptLevelJNI(contents, newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
-
-    return ByteBuffer.wrap(newContents).getLong();
+    return Native.ReceiptCredential_GetReceiptLevel(contents);
   }
 
   public byte[] serialize() {

@@ -7,37 +7,45 @@
 
 package org.signal.zkgroup;
 
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
 import java.security.SecureRandom;
+import java.security.SecureRandomSpi;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
 
 public abstract class SecureRandomTest {
 
+  private static class MockRandomSpi extends SecureRandomSpi {
+    private byte[] bytes;
+
+    private MockRandomSpi(byte[] bytes) {
+      this.bytes = bytes;
+    }
+
+    protected byte[] engineGenerateSeed(int numBytes) {
+      throw new AssertionError("should only use nextBytes()");
+    }
+
+    protected void engineNextBytes(byte[] outBytes) {
+      assertNotNull("Bytes have been used", bytes);
+      assertEquals("createSecureRandom was setup with wrong number of bytes", bytes.length, outBytes.length);
+      System.arraycopy(bytes, 0, outBytes, 0, bytes.length);
+      bytes = null;
+    }
+
+    protected void engineSetSeed(byte[] seed) {
+      throw new AssertionError("should only use nextBytes()");
+    }
+  }
+
+  private static class MockRandom extends SecureRandom {
+    private MockRandom(byte[] bytes) {
+      super(new MockRandomSpi(bytes), new SecureRandom().getProvider());
+    }
+  }
+
   public static SecureRandom createSecureRandom(final byte[] nextRandom) {
-    SecureRandom mockRandom = Mockito.mock(SecureRandom.class);
-    doAnswer(new Answer() {
-      byte[] bytes = Arrays.copyOf(nextRandom, nextRandom.length);
-
-      @Override
-      public Object answer(InvocationOnMock invocation) {
-        assertNotNull("Bytes have been used", bytes);
-        byte[] input = (byte[]) invocation.getArguments()[0];
-        assertEquals("setSecureRandomNextBytes was setup with wrong number of bytes", nextRandom.length, input.length);
-        System.arraycopy(bytes, 0, input, 0, bytes.length);
-        bytes = null;
-
-        return null; // Void method
-      }
-    }).when(mockRandom).nextBytes(any(byte[].class));
-
-    return mockRandom;
+    return new MockRandom(nextRandom);
   }
 }

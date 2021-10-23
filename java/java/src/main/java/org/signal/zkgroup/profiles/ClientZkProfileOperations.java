@@ -14,10 +14,10 @@ import java.util.UUID;
 import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.ServerPublicParams;
 import org.signal.zkgroup.VerificationFailedException;
-import org.signal.zkgroup.ZkGroupError;
 import org.signal.zkgroup.groups.GroupSecretParams;
-import org.signal.zkgroup.internal.Native;
-import org.signal.zkgroup.util.UUIDUtil;
+import org.signal.client.internal.Native;
+
+import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public class ClientZkProfileOperations {
 
@@ -32,16 +32,10 @@ public class ClientZkProfileOperations {
   }
 
   public ProfileKeyCredentialRequestContext createProfileKeyCredentialRequestContext(SecureRandom secureRandom, UUID uuid, ProfileKey profileKey) {
-    byte[] newContents = new byte[ProfileKeyCredentialRequestContext.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverPublicParamsCreateProfileKeyCredentialRequestContextDeterministicJNI(serverPublicParams.getInternalContentsForJNI(), random, UUIDUtil.serialize(uuid), profileKey.getInternalContentsForJNI(), newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams.getInternalContentsForJNI(), random, uuid, profileKey.getInternalContentsForJNI());
 
     try {
       return new ProfileKeyCredentialRequestContext(newContents);
@@ -56,16 +50,7 @@ public class ClientZkProfileOperations {
       throw new VerificationFailedException();
     }
 
-    byte[] newContents = new byte[ProfileKeyCredential.SIZE];
-
-    int ffi_return = Native.serverPublicParamsReceiveProfileKeyCredentialJNI(serverPublicParams.getInternalContentsForJNI(), profileKeyCredentialRequestContext.getInternalContentsForJNI(), profileKeyCredentialResponse.getInternalContentsForJNI(), newContents);
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw new VerificationFailedException();
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerPublicParams_ReceiveProfileKeyCredential(serverPublicParams.getInternalContentsForJNI(), profileKeyCredentialRequestContext.getInternalContentsForJNI(), profileKeyCredentialResponse.getInternalContentsForJNI());
 
     try {
       return new ProfileKeyCredential(newContents);
@@ -80,16 +65,10 @@ public class ClientZkProfileOperations {
   }
 
   public ProfileKeyCredentialPresentation createProfileKeyCredentialPresentation(SecureRandom secureRandom, GroupSecretParams groupSecretParams, ProfileKeyCredential profileKeyCredential) {
-    byte[] newContents = new byte[ProfileKeyCredentialPresentation.SIZE];
-    byte[] random      = new byte[Native.RANDOM_LENGTH];
-
+    byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    int ffi_return = Native.serverPublicParamsCreateProfileKeyCredentialPresentationDeterministicJNI(serverPublicParams.getInternalContentsForJNI(), random, groupSecretParams.getInternalContentsForJNI(), profileKeyCredential.getInternalContentsForJNI(), newContents);
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw new ZkGroupError("FFI_RETURN!=OK");
-    }
+    byte[] newContents = Native.ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(serverPublicParams.getInternalContentsForJNI(), random, groupSecretParams.getInternalContentsForJNI(), profileKeyCredential.getInternalContentsForJNI());
 
     try {
       return new ProfileKeyCredentialPresentation(newContents);
