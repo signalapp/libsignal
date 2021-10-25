@@ -13,68 +13,36 @@ public class ReceiptCredentialPresentation : ByteArray {
 
   public static let SIZE: Int = 329
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ReceiptCredentialPresentation.SIZE)
 
-    
-    let ffi_return = FFI_ReceiptCredentialPresentation_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_receipt_credential_presentation_check_valid_contents(contents))
     }
   }
 
   public func getReceiptExpirationTime() throws  -> UInt64 {
-    var newContents: [UInt8] = Array(repeating: 0, count: Int(8))
-
-    let ffi_return = FFI_ReceiptCredentialPresentation_getReceiptExpirationTime(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-     }
-
-    let data = Data(bytes: newContents)
-    let value = UInt64(bigEndian: data.withUnsafeBytes { $0.pointee })
-    return value
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningInteger {
+        signal_receipt_credential_presentation_get_receipt_expiration_time($0, contents)
+      }
+    }
   }
 
   public func getReceiptLevel() throws  -> UInt64 {
-    var newContents: [UInt8] = Array(repeating: 0, count: Int(8))
-
-    let ffi_return = FFI_ReceiptCredentialPresentation_getReceiptLevel(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-     }
-
-    let data = Data(bytes: newContents)
-    let value = UInt64(bigEndian: data.withUnsafeBytes { $0.pointee })
-    return value
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningInteger {
+        signal_receipt_credential_presentation_get_receipt_level($0, contents)
+      }
+    }
   }
 
   public func getReceiptSerial() throws  -> ReceiptSerial {
-    var newContents: [UInt8] = Array(repeating: 0, count: ReceiptSerial.SIZE)
-
-    let ffi_return = FFI_ReceiptCredentialPresentation_getReceiptSerial(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_receipt_credential_presentation_get_receipt_serial($0, contents)
+      }
     }
-
-    do {
-      return try ReceiptSerial(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

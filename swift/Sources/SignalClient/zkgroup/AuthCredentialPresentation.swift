@@ -13,54 +13,28 @@ public class AuthCredentialPresentation : ByteArray {
 
   public static let SIZE: Int = 493
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: AuthCredentialPresentation.SIZE)
 
-    
-    let ffi_return = FFI_AuthCredentialPresentation_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_auth_credential_presentation_check_valid_contents(contents))
     }
   }
 
   public func getUuidCiphertext() throws  -> UuidCiphertext {
-    var newContents: [UInt8] = Array(repeating: 0, count: UuidCiphertext.SIZE)
-
-    let ffi_return = FFI_AuthCredentialPresentation_getUuidCiphertext(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_auth_credential_presentation_get_uuid_ciphertext($0, contents)
+      }
     }
-
-    do {
-      return try UuidCiphertext(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func getRedemptionTime() throws  -> UInt32 {
-    var newContents: [UInt8] = Array(repeating: 0, count: Int(4))
-
-    let ffi_return = FFI_AuthCredentialPresentation_getRedemptionTime(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-     }
-
-    let data = Data(bytes: newContents)
-    let value = UInt32(bigEndian: data.withUnsafeBytes { $0.pointee })
-    return value
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningInteger {
+        signal_auth_credential_presentation_get_redemption_time($0, contents)
+      }
+    }
   }
 
 }

@@ -12,13 +12,8 @@ public class GroupIdentifier : ByteArray {
 
   public static let SIZE: Int = 32
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: GroupIdentifier.SIZE)
-
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

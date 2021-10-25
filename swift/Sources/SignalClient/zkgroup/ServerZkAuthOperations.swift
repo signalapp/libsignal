@@ -18,40 +18,28 @@ public class ServerZkAuthOperations {
   }
 
   public func issueAuthCredential(uuid: ZKGUuid, redemptionTime: UInt32) throws  -> AuthCredentialResponse {
-    var randomness: [UInt8] = Array(repeating: 0, count: Int(32))
-    let result = SecRandomCopyBytes(kSecRandomDefault, randomness.count, &randomness)
-    guard result == errSecSuccess else {
-      throw ZkGroupException.AssertionError
-    }
-
-    return try issueAuthCredential(randomness: randomness, uuid: uuid, redemptionTime: redemptionTime)
+    return try issueAuthCredential(randomness: Randomness.generate(), uuid: uuid, redemptionTime: redemptionTime)
   }
 
-  public func issueAuthCredential(randomness: [UInt8], uuid: ZKGUuid, redemptionTime: UInt32) throws  -> AuthCredentialResponse {
-    var newContents: [UInt8] = Array(repeating: 0, count: AuthCredentialResponse.SIZE)
-
-    let ffi_return = FFI_ServerSecretParams_issueAuthCredentialDeterministic(serverSecretParams.getInternalContentsForFFI(), UInt32(serverSecretParams.getInternalContentsForFFI().count), randomness, UInt32(randomness.count), uuid.getInternalContentsForFFI(), UInt32(uuid.getInternalContentsForFFI().count), redemptionTime, &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+  public func issueAuthCredential(randomness: Randomness, uuid: ZKGUuid, redemptionTime: UInt32) throws  -> AuthCredentialResponse {
+    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try uuid.withUnsafePointerToSerialized { uuid in
+          try invokeFnReturningSerialized {
+            signal_server_secret_params_issue_auth_credential_deterministic($0, serverSecretParams, randomness, uuid, redemptionTime)
+          }
+        }
+      }
     }
-
-    do {
-      return try AuthCredentialResponse(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func verifyAuthCredentialPresentation(groupPublicParams: GroupPublicParams, authCredentialPresentation: AuthCredentialPresentation) throws {
-    let ffi_return = FFI_ServerSecretParams_verifyAuthCredentialPresentation(serverSecretParams.getInternalContentsForFFI(), UInt32(serverSecretParams.getInternalContentsForFFI().count), groupPublicParams.getInternalContentsForFFI(), UInt32(groupPublicParams.getInternalContentsForFFI().count), authCredentialPresentation.getInternalContentsForFFI(), UInt32(authCredentialPresentation.getInternalContentsForFFI().count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
+        try authCredentialPresentation.withUnsafePointerToSerialized { authCredentialPresentation in
+          try checkError(signal_server_secret_params_verify_auth_credential_presentation(serverSecretParams, groupPublicParams, authCredentialPresentation))
+        }
+      }
     }
   }
 

@@ -18,50 +18,33 @@ public class ClientZkAuthOperations {
   }
 
   public func receiveAuthCredential(uuid: ZKGUuid, redemptionTime: UInt32, authCredentialResponse: AuthCredentialResponse) throws  -> AuthCredential {
-    var newContents: [UInt8] = Array(repeating: 0, count: AuthCredential.SIZE)
-
-    let ffi_return = FFI_ServerPublicParams_receiveAuthCredential(serverPublicParams.getInternalContentsForFFI(), UInt32(serverPublicParams.getInternalContentsForFFI().count), uuid.getInternalContentsForFFI(), UInt32(uuid.getInternalContentsForFFI().count), redemptionTime, authCredentialResponse.getInternalContentsForFFI(), UInt32(authCredentialResponse.getInternalContentsForFFI().count), &newContents, UInt32(newContents.count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
+    return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+      try uuid.withUnsafePointerToSerialized { uuid in
+        try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
+          try invokeFnReturningSerialized {
+            signal_server_public_params_receive_auth_credential($0, serverPublicParams, uuid, redemptionTime, authCredentialResponse)
+          }
+        }
+      }
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-
-    do {
-      return try AuthCredential(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func createAuthCredentialPresentation(groupSecretParams: GroupSecretParams, authCredential: AuthCredential) throws  -> AuthCredentialPresentation {
-    var randomness: [UInt8] = Array(repeating: 0, count: Int(32))
-    let result = SecRandomCopyBytes(kSecRandomDefault, randomness.count, &randomness)
-    guard result == errSecSuccess else {
-      throw ZkGroupException.AssertionError
-    }
-
-    return try createAuthCredentialPresentation(randomness: randomness, groupSecretParams: groupSecretParams, authCredential: authCredential)
+    return try createAuthCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, authCredential: authCredential)
   }
 
-  public func createAuthCredentialPresentation(randomness: [UInt8], groupSecretParams: GroupSecretParams, authCredential: AuthCredential) throws  -> AuthCredentialPresentation {
-    var newContents: [UInt8] = Array(repeating: 0, count: AuthCredentialPresentation.SIZE)
-
-    let ffi_return = FFI_ServerPublicParams_createAuthCredentialPresentationDeterministic(serverPublicParams.getInternalContentsForFFI(), UInt32(serverPublicParams.getInternalContentsForFFI().count), randomness, UInt32(randomness.count), groupSecretParams.getInternalContentsForFFI(), UInt32(groupSecretParams.getInternalContentsForFFI().count), authCredential.getInternalContentsForFFI(), UInt32(authCredential.getInternalContentsForFFI().count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+  public func createAuthCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, authCredential: AuthCredential) throws  -> AuthCredentialPresentation {
+    return try serverPublicParams.withUnsafePointerToSerialized { contents in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
+          try authCredential.withUnsafePointerToSerialized { authCredential in
+            try invokeFnReturningSerialized {
+              signal_server_public_params_create_auth_credential_presentation_deterministic($0, contents, randomness, groupSecretParams, authCredential)
+            }
+          }
+        }
+      }
     }
-
-    do {
-      return try AuthCredentialPresentation(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
 }
