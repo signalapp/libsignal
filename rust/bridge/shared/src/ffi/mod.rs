@@ -32,25 +32,6 @@ pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::Unwi
     }
 }
 
-pub unsafe fn box_object<T>(
-    p: *mut *mut T,
-    obj: Result<T, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if p.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-    match obj {
-        Ok(o) => {
-            *p = Box::into_raw(Box::new(o));
-            Ok(())
-        }
-        Err(e) => {
-            *p = std::ptr::null_mut();
-            Err(SignalFfiError::Signal(e))
-        }
-    }
-}
-
 pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, SignalFfiError> {
     if handle.is_null() {
         return Err(SignalFfiError::NullPointer);

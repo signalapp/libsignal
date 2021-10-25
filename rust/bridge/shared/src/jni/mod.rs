@@ -368,13 +368,6 @@ where
     }
 }
 
-pub fn box_object<T>(t: Result<T, SignalProtocolError>) -> Result<ObjectHandle, SignalJniError> {
-    match t {
-        Ok(t) => Ok(Box::into_raw(Box::new(t)) as ObjectHandle),
-        Err(e) => Err(SignalJniError::Signal(e)),
-    }
-}
-
 pub unsafe fn native_handle_cast<T>(
     handle: ObjectHandle,
 ) -> Result<&'static mut T, SignalJniError> {
@@ -388,36 +381,6 @@ pub unsafe fn native_handle_cast<T>(
     }
 
     Ok(&mut *(handle as *mut T))
-}
-
-pub fn jint_to_u32(v: jint) -> Result<u32, SignalJniError> {
-    if v < 0 {
-        return Err(SignalJniError::IntegerOverflow(format!("{} to u32", v)));
-    }
-    Ok(v as u32)
-}
-
-pub fn jint_to_u8(v: jint) -> Result<u8, SignalJniError> {
-    match u8::try_from(v) {
-        Err(_) => Err(SignalJniError::IntegerOverflow(format!("{} to u8", v))),
-        Ok(v) => Ok(v),
-    }
-}
-
-pub fn jlong_to_u64(v: jlong) -> Result<u64, SignalJniError> {
-    if v < 0 {
-        return Err(SignalJniError::IntegerOverflow(format!("{} to u64", v)));
-    }
-    Ok(v as u64)
-}
-
-pub fn to_jbytearray<T: AsRef<[u8]>>(
-    env: &JNIEnv,
-    data: Result<T, SignalProtocolError>,
-) -> Result<jbyteArray, SignalJniError> {
-    let data = data?;
-    let data: &[u8] = data.as_ref();
-    Ok(env.byte_array_from_slice(data)?)
 }
 
 /// Calls a passed in function with a local frame of capacity that's passed in. Basically just
@@ -511,7 +474,7 @@ pub fn jobject_from_serialized<'a>(
 ) -> Result<JObject<'a>, SignalJniError> {
     let class_type = env.find_class(class_name)?;
     let ctor_sig = jni_signature!(([byte]) -> void);
-    let ctor_args = [JValue::from(to_jbytearray(env, Ok(serialized))?)];
+    let ctor_args = [JValue::from(env.byte_array_from_slice(serialized)?)];
     Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
 }
 

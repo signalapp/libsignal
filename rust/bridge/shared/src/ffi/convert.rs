@@ -442,7 +442,7 @@ macro_rules! ffi_bridge_handle {
             ) -> *mut ffi::SignalFfiError {
                 ffi::run_ffi_safe(|| {
                     let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::box_object::<$typ>(new_obj, Ok(obj.clone()))
+                    ffi::write_result_to::<$typ>(new_obj, obj.clone())
                 })
             }
         }

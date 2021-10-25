@@ -57,7 +57,7 @@ impl<'a> JniIdentityKeyStore<'a> {
             callback_sig,
             &[],
         )?;
-        jint_to_u32(i)
+        u32::convert_from(self.env, i)
     }
 
     fn do_save_identity(
@@ -499,7 +499,7 @@ impl<'a> JniSenderKeyStore<'a> {
         let sender_key_record_jobject = jobject_from_native_handle(
             self.env,
             "org/whispersystems/libsignal/groups/state/SenderKeyRecord",
-            box_object::<SenderKeyRecord>(Ok(record.clone()))?,
+            record.clone().convert_into(self.env)?,
         )?;
 
         let callback_args = [
