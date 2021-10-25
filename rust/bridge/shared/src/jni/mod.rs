@@ -671,26 +671,3 @@ macro_rules! jni_bridge_destroy {
         }
     };
 }
-
-/// Implementation of [`bridge_deserialize`](crate::support::bridge_deserialize) for JNI.
-macro_rules! jni_bridge_deserialize {
-    ( $typ:ident::$fn:path as false ) => {};
-    ( $typ:ident::$fn:path as $jni_name:ident ) => {
-        paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<Java_org_signal_client_internal_Native_ $jni_name _1Deserialize>](
-                env: jni::JNIEnv,
-                _class: jni::JClass,
-                data: jni::jbyteArray,
-            ) -> jni::ObjectHandle {
-                jni::run_ffi_safe(&env, || {
-                    let data = env.convert_byte_array(data)?;
-                    jni::ResultTypeInfo::convert_into($typ::$fn(data.as_ref()), &env)
-                })
-            }
-        }
-    };
-    ( $typ:ident::$fn:path ) => {
-        jni_bridge_deserialize!($typ::$fn as $typ);
-    };
-}

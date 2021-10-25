@@ -81,7 +81,7 @@ macro_rules! bridge_handle {
     };
 }
 
-/// Exposes a deserialization method to the bridges.
+/// Convenience syntax to expose a deserialization method to the bridges.
 ///
 /// Example:
 ///
@@ -100,19 +100,18 @@ macro_rules! bridge_handle {
 /// The underlying method is expected to take a single `&[u8]` parameter and return
 /// `Result<Self, _>`.
 ///
-/// The `ffi`, `jni`, and `node` parameters control the name of the **type**; the resulting function
-/// will always be suffixed with `_Deserialize` or `_deserialize` as appropriate. Unlike
-/// `bridge_fn`, these parameters are identifiers, not string literals, and there is no way to
-/// disable a particular bridge.
+/// This function does not allow customizing which bridges are enabled, or the name of the bridge
+/// functions that are generated (they are always suffixed with `_Deserialize` or `_deserialize`
+/// as appropriate). If you need additional flexibility, use `bridge_fn` directly.
 macro_rules! bridge_deserialize {
-    ($typ:ident::$fn:path $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)? ) => {
-        #[cfg(feature = "ffi")]
-        ffi_bridge_deserialize!($typ::$fn $(as $ffi_name)?);
-        #[cfg(feature = "jni")]
-        jni_bridge_deserialize!($typ::$fn $(as $jni_name)?);
-        #[cfg(feature = "node")]
-        node_bridge_deserialize!($typ::$fn $(as $node_name)?);
-    }
+    ($typ:ident::$fn:path) => {
+        paste! {
+            #[bridge_fn]
+            fn [<$typ _Deserialize>](data: &[u8]) -> Result<$typ> {
+                $typ::$fn(data)
+            }
+        }
+    };
 }
 
 /// Exposes a buffer-returning getter to the bridges.
@@ -149,49 +148,6 @@ macro_rules! bridge_get_bytearray {
     ($typ:ident :: $method:ident $(, $param:ident = $val:tt)*) => {
         paste! {
             bridge_get_bytearray!($typ::$method as [<Get $method:camel>] $(, $param = $val)*);
-        }
-    };
-}
-
-/// Exposes an optional-buffer-returning getter to the bridges.
-///
-/// Example:
-///
-/// ```no_run
-/// # #[macro_use] extern crate libsignal_bridge_macros;
-/// # struct Foo;
-/// # impl Foo {
-/// #     fn payload(&self) -> Result<Option<Vec<u8>>, ()> {
-/// #         Err(())
-/// #     }
-/// # }
-///
-/// bridge_get_optional_bytearray!(Foo::payload); // generates Foo_GetPayload
-/// ```
-///
-/// The underlying implementation is expected to return `Result<Option<T>, _>`, where `T` is a type
-/// that adopts `Into<Cow<[u8]>>`. As a special case, `T` can also be `Box<[u8]>`.
-///
-/// Like `bridge_fn`, the `ffi`, `jni`, and `node` parameters allow customizing the name of the
-/// resulting entry points; they can also be `false` to disable a particular entry point.
-macro_rules! bridge_get_optional_bytearray {
-    ($typ:ident :: $method:ident as $name:ident $(, $param:ident = $val:tt)*) => {
-        paste! {
-            #[bridge_fn_buffer($($param = $val),*)]
-            fn [<$typ _ $name>]<E: Env>(env: E, obj: &$typ) -> Result<Option<E::Buffer>> {
-                let result = $typ::$method(obj);
-                let result_without_errors = TransformHelper(result).ok_if_needed()?.0;
-                let result_buffer = result_without_errors.map(|b| {
-                    env.buffer(TransformHelper(b).into_vec_if_needed().0)
-                });
-                Ok(result_buffer)
-            }
-        }
-    };
-    ($typ:ident :: $method:ident $(, $param:ident = $val:tt)*) => {
-        paste! {
-            bridge_get_optional_bytearray!(
-                $typ::$method as [<Get $method:camel>] $(, $param = $val)*);
         }
     };
 }
