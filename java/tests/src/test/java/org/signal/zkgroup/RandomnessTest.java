@@ -6,12 +6,13 @@
 package org.signal.zkgroup;
 
 import org.junit.Test;
+import org.signal.zkgroup.internal.*;
+import org.whispersystems.libsignal.util.Hex;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 
 import static org.junit.Assert.assertArrayEquals;
-import org.signal.zkgroup.internal.*;
-import java.io.IOException;
 
 public final class RandomnessTest extends SecureRandomTest {
 

@@ -8,7 +8,6 @@ package org.signal.zkgroup.integrationtests;
 import java.io.UnsupportedEncodingException;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
-import org.signal.zkgroup.Hex;
 import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.NotarySignature;
 import org.signal.zkgroup.SecureRandomTest;
@@ -37,6 +36,7 @@ import org.signal.zkgroup.profiles.ProfileKeyCredentialRequestContext;
 import org.signal.zkgroup.profiles.ProfileKeyCredentialResponse;
 import org.signal.zkgroup.profiles.ProfileKeyVersion;
 import org.signal.zkgroup.profiles.ServerZkProfileOperations;
+import org.whispersystems.libsignal.util.Hex;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
