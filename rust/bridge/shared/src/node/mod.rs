@@ -66,59 +66,13 @@ impl<T> Deref for DefaultFinalize<T> {
     }
 }
 
-impl<T> std::borrow::Borrow<T> for DefaultFinalize<T> {
-    fn borrow(&self) -> &T {
-        &self.0
+impl<T> From<T> for DefaultFinalize<T> {
+    fn from(value: T) -> Self {
+        Self(value)
     }
 }
 
 pub type DefaultJsBox<T> = JsBox<DefaultFinalize<T>>;
-
-pub fn return_boxed_object<'a, T: 'static + Send>(
-    cx: &mut impl Context<'a>,
-    value: Result<T, SignalProtocolError>,
-) -> JsResult<'a, JsValue> {
-    match value {
-        Ok(v) => Ok(cx.boxed(DefaultFinalize(v)).upcast()),
-        Err(e) => cx.throw_error(e.to_string()),
-    }
-}
-
-pub fn return_binary_data<'a, T: AsRef<[u8]>>(
-    cx: &mut impl Context<'a>,
-    bytes: Result<Option<T>, SignalProtocolError>,
-) -> JsResult<'a, JsValue> {
-    match bytes {
-        Ok(Some(bytes)) => {
-            let bytes = bytes.as_ref();
-
-            let bytes_len = match u32::try_from(bytes.len()) {
-                Ok(l) => l,
-                Err(_) => {
-                    return cx.throw_error("Cannot return very large object to JS environment")
-                }
-            };
-            let mut buffer = cx.buffer(bytes_len)?;
-            cx.borrow_mut(&mut buffer, |raw_buffer| {
-                raw_buffer.as_mut_slice().copy_from_slice(bytes);
-            });
-            Ok(buffer.upcast())
-        }
-        Ok(None) => Ok(cx.null().upcast()),
-        Err(e) => cx.throw_error(e.to_string()),
-    }
-}
-
-pub fn return_string<'a, T: AsRef<str>>(
-    cx: &mut FunctionContext<'a>,
-    string: Result<Option<T>, SignalProtocolError>,
-) -> JsResult<'a, JsValue> {
-    match string {
-        Ok(Some(string)) => Ok(cx.string(string).upcast()),
-        Ok(None) => Ok(cx.null().upcast()),
-        Err(e) => cx.throw_error(e.to_string()),
-    }
-}
 
 pub(crate) fn with_buffer_contents<R>(
     cx: &mut FunctionContext,
