@@ -4,10 +4,7 @@
 //
 
 import * as Native from './Native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-const NativeImpl = require('node-gyp-build')(
-  __dirname + '/../..'
-) as typeof Native;
+import NativeImpl from './NativeImpl';
 
 export class ProtocolAddress {
   readonly _nativeHandle: Native.ProtocolAddress;
