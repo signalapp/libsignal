@@ -37,6 +37,16 @@ internal func invokeFnReturningOptionalArray(fn: (UnsafeMutablePointer<UnsafePoi
     return result
 }
 
+internal func invokeFnReturningSerialized<Result: ByteArray, SerializedResult>(fn: (UnsafeMutablePointer<SerializedResult>) -> SignalFfiErrorRef?) throws -> Result {
+    precondition(MemoryLayout<SerializedResult>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
+    var output = Array(repeating: 0 as UInt8, count: MemoryLayout<SerializedResult>.size)
+    try output.withUnsafeMutableBytes { buffer -> Void in
+        let typedPointer = buffer.baseAddress!.assumingMemoryBound(to: SerializedResult.self)
+        return try checkError(fn(typedPointer))
+    }
+    return try Result(contents: output)
+}
+
 internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> SignalFfiErrorRef?) throws -> UUID {
     var output = UUID_NULL
     try checkError(fn(&output))

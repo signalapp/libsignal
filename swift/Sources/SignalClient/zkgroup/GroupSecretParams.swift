@@ -14,98 +14,46 @@ public class GroupSecretParams : ByteArray {
   public static let SIZE: Int = 289
 
   public static func generate() throws  -> GroupSecretParams {
-    var randomness: [UInt8] = Array(repeating: 0, count: Int(32))
-    let result = SecRandomCopyBytes(kSecRandomDefault, randomness.count, &randomness)
-    guard result == errSecSuccess else {
-      throw ZkGroupException.AssertionError
-    }
-
-    return try generate(randomness: randomness)
+    return try generate(randomness: Randomness.generate())
   }
 
-  public static func generate(randomness: [UInt8]) throws  -> GroupSecretParams {
-    var newContents: [UInt8] = Array(repeating: 0, count: GroupSecretParams.SIZE)
-
-    let ffi_return = FFI_GroupSecretParams_generateDeterministic(randomness, UInt32(randomness.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+  public static func generate(randomness: Randomness) throws  -> GroupSecretParams {
+    return try randomness.withUnsafePointerToBytes { randomness in
+      try invokeFnReturningSerialized {
+        signal_group_secret_params_generate_deterministic($0, randomness)
+      }
     }
-
-    do {
-      return try GroupSecretParams(contents: newContents)
-    } catch ZkGroupException.IllegalArgument {
-      throw ZkGroupException.AssertionError
-    } 
   }
 
   public static func deriveFromMasterKey(groupMasterKey: GroupMasterKey) throws  -> GroupSecretParams {
-    var newContents: [UInt8] = Array(repeating: 0, count: GroupSecretParams.SIZE)
-
-    let ffi_return = FFI_GroupSecretParams_deriveFromMasterKey(groupMasterKey.getInternalContentsForFFI(), UInt32(groupMasterKey.getInternalContentsForFFI().count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try groupMasterKey.withUnsafePointerToSerialized { groupMasterKey in
+      try invokeFnReturningSerialized {
+        signal_group_secret_params_derive_from_master_key($0, groupMasterKey)
+      }
     }
-
-    do {
-      return try GroupSecretParams(contents: newContents)
-    } catch ZkGroupException.IllegalArgument {
-      throw ZkGroupException.AssertionError
-    } 
   }
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: GroupSecretParams.SIZE, unrecoverable: true)
-
-    
-    let ffi_return = FFI_GroupSecretParams_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.IllegalArgument
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_group_secret_params_check_valid_contents(contents))
     }
   }
 
   public func getMasterKey() throws  -> GroupMasterKey {
-    var newContents: [UInt8] = Array(repeating: 0, count: GroupMasterKey.SIZE)
-
-    let ffi_return = FFI_GroupSecretParams_getMasterKey(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_group_secret_params_get_master_key($0, contents)
+      }
     }
-
-    do {
-      return try GroupMasterKey(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func getPublicParams() throws  -> GroupPublicParams {
-    var newContents: [UInt8] = Array(repeating: 0, count: GroupPublicParams.SIZE)
-
-    let ffi_return = FFI_GroupSecretParams_getPublicParams(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_group_secret_params_get_public_params($0, contents)
+      }
     }
-
-    do {
-      return try GroupPublicParams(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

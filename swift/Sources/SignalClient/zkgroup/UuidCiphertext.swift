@@ -13,23 +13,12 @@ public class UuidCiphertext : ByteArray {
 
   public static let SIZE: Int = 65
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws {
     try super.init(newContents: contents, expectedLength: UuidCiphertext.SIZE)
 
-    
-    let ffi_return = FFI_UuidCiphertext_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
+    try self.withUnsafePointerToSerialized { contents in
+      try checkError(signal_uuid_ciphertext_check_valid_contents(contents))
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

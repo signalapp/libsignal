@@ -13,57 +13,28 @@ public class ProfileKeyCredentialPresentation : ByteArray {
 
   public static let SIZE: Int = 713
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ProfileKeyCredentialPresentation.SIZE)
 
-    
-    let ffi_return = FFI_ProfileKeyCredentialPresentation_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_profile_key_credential_presentation_check_valid_contents(contents))
     }
   }
 
   public func getUuidCiphertext() throws  -> UuidCiphertext {
-    var newContents: [UInt8] = Array(repeating: 0, count: UuidCiphertext.SIZE)
-
-    let ffi_return = FFI_ProfileKeyCredentialPresentation_getUuidCiphertext(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_profile_key_credential_presentation_get_uuid_ciphertext($0, contents)
+      }
     }
-
-    do {
-      return try UuidCiphertext(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func getProfileKeyCiphertext() throws  -> ProfileKeyCiphertext {
-    var newContents: [UInt8] = Array(repeating: 0, count: ProfileKeyCiphertext.SIZE)
-
-    let ffi_return = FFI_ProfileKeyCredentialPresentation_getProfileKeyCiphertext(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_profile_key_credential_presentation_get_profile_key_ciphertext($0, contents)
+      }
     }
-
-    do {
-      return try ProfileKeyCiphertext(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

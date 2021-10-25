@@ -18,43 +18,32 @@ public class ServerZkProfileOperations {
   }
 
   public func issueProfileKeyCredential(profileKeyCredentialRequest: ProfileKeyCredentialRequest, uuid: ZKGUuid, profileKeyCommitment: ProfileKeyCommitment) throws  -> ProfileKeyCredentialResponse {
-    var randomness: [UInt8] = Array(repeating: 0, count: Int(32))
-    let result = SecRandomCopyBytes(kSecRandomDefault, randomness.count, &randomness)
-    guard result == errSecSuccess else {
-      throw ZkGroupException.AssertionError
-    }
-
-    return try issueProfileKeyCredential(randomness: randomness, profileKeyCredentialRequest: profileKeyCredentialRequest, uuid: uuid, profileKeyCommitment: profileKeyCommitment)
+    return try issueProfileKeyCredential(randomness: Randomness.generate(), profileKeyCredentialRequest: profileKeyCredentialRequest, uuid: uuid, profileKeyCommitment: profileKeyCommitment)
   }
 
-  public func issueProfileKeyCredential(randomness: [UInt8], profileKeyCredentialRequest: ProfileKeyCredentialRequest, uuid: ZKGUuid, profileKeyCommitment: ProfileKeyCommitment) throws  -> ProfileKeyCredentialResponse {
-    var newContents: [UInt8] = Array(repeating: 0, count: ProfileKeyCredentialResponse.SIZE)
-
-    let ffi_return = FFI_ServerSecretParams_issueProfileKeyCredentialDeterministic(serverSecretParams.getInternalContentsForFFI(), UInt32(serverSecretParams.getInternalContentsForFFI().count), randomness, UInt32(randomness.count), profileKeyCredentialRequest.getInternalContentsForFFI(), UInt32(profileKeyCredentialRequest.getInternalContentsForFFI().count), uuid.getInternalContentsForFFI(), UInt32(uuid.getInternalContentsForFFI().count), profileKeyCommitment.getInternalContentsForFFI(), UInt32(profileKeyCommitment.getInternalContentsForFFI().count), &newContents, UInt32(newContents.count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
+  public func issueProfileKeyCredential(randomness: Randomness, profileKeyCredentialRequest: ProfileKeyCredentialRequest, uuid: ZKGUuid, profileKeyCommitment: ProfileKeyCommitment) throws  -> ProfileKeyCredentialResponse {
+    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try profileKeyCredentialRequest.withUnsafePointerToSerialized { request in
+          try uuid.withUnsafePointerToSerialized { uuid in
+            try profileKeyCommitment.withUnsafePointerToSerialized { commitment in
+              try invokeFnReturningSerialized {
+                signal_server_secret_params_issue_profile_key_credential_deterministic($0, serverSecretParams, randomness, request, uuid, commitment)
+              }
+            }
+          }
+        }
+      }
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-
-    do {
-      return try ProfileKeyCredentialResponse(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func verifyProfileKeyCredentialPresentation(groupPublicParams: GroupPublicParams, profileKeyCredentialPresentation: ProfileKeyCredentialPresentation) throws {
-    let ffi_return = FFI_ServerSecretParams_verifyProfileKeyCredentialPresentation(serverSecretParams.getInternalContentsForFFI(), UInt32(serverSecretParams.getInternalContentsForFFI().count), groupPublicParams.getInternalContentsForFFI(), UInt32(groupPublicParams.getInternalContentsForFFI().count), profileKeyCredentialPresentation.getInternalContentsForFFI(), UInt32(profileKeyCredentialPresentation.getInternalContentsForFFI().count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
+        try profileKeyCredentialPresentation.withUnsafePointerToSerialized { presentation in
+          try checkError(signal_server_secret_params_verify_profile_key_credential_presentation(serverSecretParams, groupPublicParams, presentation))
+        }
+      }
     }
   }
 

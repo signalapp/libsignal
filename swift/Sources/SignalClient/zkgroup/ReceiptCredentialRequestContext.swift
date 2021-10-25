@@ -13,40 +13,20 @@ public class ReceiptCredentialRequestContext : ByteArray {
 
   public static let SIZE: Int = 177
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ReceiptCredentialRequestContext.SIZE)
 
-    
-    let ffi_return = FFI_ReceiptCredentialRequestContext_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_receipt_credential_request_context_check_valid_contents(contents))
     }
   }
 
   public func getRequest() throws  -> ReceiptCredentialRequest {
-    var newContents: [UInt8] = Array(repeating: 0, count: ReceiptCredentialRequest.SIZE)
-
-    let ffi_return = FFI_ReceiptCredentialRequestContext_getRequest(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningSerialized {
+        signal_receipt_credential_request_context_get_request($0, contents)
+      }
     }
-
-    do {
-      return try ReceiptCredentialRequest(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

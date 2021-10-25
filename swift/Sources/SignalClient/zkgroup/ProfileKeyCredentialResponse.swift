@@ -13,23 +13,12 @@ public class ProfileKeyCredentialResponse : ByteArray {
 
   public static let SIZE: Int = 457
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ProfileKeyCredentialResponse.SIZE)
 
-    
-    let ffi_return = FFI_ProfileKeyCredentialResponse_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_profile_key_credential_response_check_valid_contents(contents))
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

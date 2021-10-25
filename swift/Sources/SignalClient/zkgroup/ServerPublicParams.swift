@@ -13,34 +13,20 @@ public class ServerPublicParams : ByteArray {
 
   public static let SIZE: Int = 225
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ServerPublicParams.SIZE, unrecoverable: true)
 
-    
-    let ffi_return = FFI_ServerPublicParams_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.IllegalArgument
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_server_public_params_check_valid_contents(contents))
     }
   }
 
   public func verifySignature(message: [UInt8], notarySignature: NotarySignature) throws {
-    let ffi_return = FFI_ServerPublicParams_verifySignature(self.contents, UInt32(self.contents.count), message, UInt32(message.count), notarySignature.getInternalContentsForFFI(), UInt32(notarySignature.getInternalContentsForFFI().count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
+    try withUnsafePointerToSerialized { contents in
+      try notarySignature.withUnsafePointerToSerialized { notarySignature in
+        try checkError(signal_server_public_params_verify_signature(contents, message, message.count, notarySignature))
+      }
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

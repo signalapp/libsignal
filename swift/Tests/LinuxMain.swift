@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -10,4 +10,5 @@ XCTMain([
     testCase(ClonableHandleOwnerTests.allTests),
     testCase(PublicAPITests.allTests),
     testCase(SessionTests.allTests),
+    testCase(ZKGroupTests.allTests),
 ])

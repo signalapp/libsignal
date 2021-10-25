@@ -18,43 +18,26 @@ public class ServerZkReceiptOperations {
   }
 
   public func issueReceiptCredential(receiptCredentialRequest: ReceiptCredentialRequest, receiptExpirationTime: UInt64, receiptLevel: UInt64) throws  -> ReceiptCredentialResponse {
-    var randomness: [UInt8] = Array(repeating: 0, count: Int(32))
-    let result = SecRandomCopyBytes(kSecRandomDefault, randomness.count, &randomness)
-    guard result == errSecSuccess else {
-      throw ZkGroupException.AssertionError
-    }
-
-    return try issueReceiptCredential(randomness: randomness, receiptCredentialRequest: receiptCredentialRequest, receiptExpirationTime: receiptExpirationTime, receiptLevel: receiptLevel)
+    return try issueReceiptCredential(randomness: Randomness.generate(), receiptCredentialRequest: receiptCredentialRequest, receiptExpirationTime: receiptExpirationTime, receiptLevel: receiptLevel)
   }
 
-  public func issueReceiptCredential(randomness: [UInt8], receiptCredentialRequest: ReceiptCredentialRequest, receiptExpirationTime: UInt64, receiptLevel: UInt64) throws  -> ReceiptCredentialResponse {
-    var newContents: [UInt8] = Array(repeating: 0, count: ReceiptCredentialResponse.SIZE)
-
-    let ffi_return = FFI_ServerSecretParams_issueReceiptCredentialDeterministic(serverSecretParams.getInternalContentsForFFI(), UInt32(serverSecretParams.getInternalContentsForFFI().count), randomness, UInt32(randomness.count), receiptCredentialRequest.getInternalContentsForFFI(), UInt32(receiptCredentialRequest.getInternalContentsForFFI().count), receiptExpirationTime, receiptLevel, &newContents, UInt32(newContents.count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
+  public func issueReceiptCredential(randomness: Randomness, receiptCredentialRequest: ReceiptCredentialRequest, receiptExpirationTime: UInt64, receiptLevel: UInt64) throws  -> ReceiptCredentialResponse {
+    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try receiptCredentialRequest.withUnsafePointerToSerialized { receiptCredentialRequest in
+          try invokeFnReturningSerialized {
+            signal_server_secret_params_issue_receipt_credential_deterministic($0, serverSecretParams, randomness, receiptCredentialRequest, receiptExpirationTime, receiptLevel)
+          }
+        }
+      }
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-
-    do {
-      return try ReceiptCredentialResponse(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func verifyReceiptCredentialPresentation(receiptCredentialPresentation: ReceiptCredentialPresentation) throws {
-    let ffi_return = FFI_ServerSecretParams_verifyReceiptCredentialPresentation(serverSecretParams.getInternalContentsForFFI(), UInt32(serverSecretParams.getInternalContentsForFFI().count), receiptCredentialPresentation.getInternalContentsForFFI(), UInt32(receiptCredentialPresentation.getInternalContentsForFFI().count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try receiptCredentialPresentation.withUnsafePointerToSerialized { receiptCredentialPresentation in
+        try checkError(signal_server_secret_params_verify_receipt_credential_presentation(serverSecretParams, receiptCredentialPresentation))
+        }
     }
   }
 

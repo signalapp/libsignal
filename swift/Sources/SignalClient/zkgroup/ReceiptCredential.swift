@@ -13,51 +13,28 @@ public class ReceiptCredential : ByteArray {
 
   public static let SIZE: Int = 129
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ReceiptCredential.SIZE)
 
-    
-    let ffi_return = FFI_ReceiptCredential_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
-    }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_receipt_credential_check_valid_contents(contents))
     }
   }
 
   public func getReceiptExpirationTime() throws  -> UInt64 {
-    var newContents: [UInt8] = Array(repeating: 0, count: Int(8))
-
-    let ffi_return = FFI_ReceiptCredential_getReceiptExpirationTime(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-     }
-
-    let data = Data(bytes: newContents)
-    let value = UInt64(bigEndian: data.withUnsafeBytes { $0.pointee })
-    return value
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningInteger {
+        signal_receipt_credential_get_receipt_expiration_time($0, contents)
+      }
+    }
   }
 
   public func getReceiptLevel() throws  -> UInt64 {
-    var newContents: [UInt8] = Array(repeating: 0, count: Int(8))
-
-    let ffi_return = FFI_ReceiptCredential_getReceiptLevel(self.contents, UInt32(self.contents.count), &newContents, UInt32(newContents.count))
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-     }
-
-    let data = Data(bytes: newContents)
-    let value = UInt64(bigEndian: data.withUnsafeBytes { $0.pointee })
-    return value
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
+    return try withUnsafePointerToSerialized { contents in
+      try invokeFnReturningInteger {
+        signal_receipt_credential_get_receipt_level($0, contents)
+      }
+    }
   }
 
 }
