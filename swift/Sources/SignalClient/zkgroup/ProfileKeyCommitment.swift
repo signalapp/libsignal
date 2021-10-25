@@ -13,23 +13,12 @@ public class ProfileKeyCommitment : ByteArray {
 
   public static let SIZE: Int = 97
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ProfileKeyCommitment.SIZE)
 
-    
-    let ffi_return = FFI_ProfileKeyCommitment_checkValidContents(self.contents, UInt32(self.contents.count))
-
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.InvalidInput
+    try withUnsafePointerToSerialized { contents in
+      try checkError(signal_profile_key_commitment_check_valid_contents(contents))
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }

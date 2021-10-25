@@ -13,53 +13,28 @@ public class ProfileKey : ByteArray {
 
   public static let SIZE: Int = 32
 
-  public init(contents: [UInt8]) throws  {
+  public required init(contents: [UInt8]) throws  {
     try super.init(newContents: contents, expectedLength: ProfileKey.SIZE)
-
   }
 
   public func getCommitment(uuid: ZKGUuid) throws  -> ProfileKeyCommitment {
-    var newContents: [UInt8] = Array(repeating: 0, count: ProfileKeyCommitment.SIZE)
-
-    let ffi_return = FFI_ProfileKey_getCommitment(self.contents, UInt32(self.contents.count), uuid.getInternalContentsForFFI(), UInt32(uuid.getInternalContentsForFFI().count), &newContents, UInt32(newContents.count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
+    return try withUnsafePointerToSerialized { contents in
+      try uuid.withUnsafePointerToSerialized { uuid in
+        try invokeFnReturningSerialized {
+          signal_profile_key_get_commitment($0, contents, uuid)
+        }
+      }
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-
-    do {
-      return try ProfileKeyCommitment(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
   }
 
   public func getProfileKeyVersion(uuid: ZKGUuid) throws  -> ProfileKeyVersion {
-    var newContents: [UInt8] = Array(repeating: 0, count: ProfileKeyVersion.SIZE)
-
-    let ffi_return = FFI_ProfileKey_getProfileKeyVersion(self.contents, UInt32(self.contents.count), uuid.getInternalContentsForFFI(), UInt32(uuid.getInternalContentsForFFI().count), &newContents, UInt32(newContents.count))
-    if (ffi_return == Native.FFI_RETURN_INPUT_ERROR) {
-      throw ZkGroupException.VerificationFailed
+    return try withUnsafePointerToSerialized { contents in
+      try uuid.withUnsafePointerToSerialized { uuid in
+        try invokeFnReturningSerialized {
+          signal_profile_key_get_profile_key_version($0, contents, uuid)
+        }
+      }
     }
-
-    if (ffi_return != Native.FFI_RETURN_OK) {
-      throw ZkGroupException.ZkGroupError
-    }
-
-    do {
-      return try ProfileKeyVersion(contents: newContents)
-    } catch ZkGroupException.InvalidInput {
-      throw ZkGroupException.AssertionError
-    }
-
-  }
-
-  public func serialize() -> [UInt8] {
-    return contents
   }
 
 }
