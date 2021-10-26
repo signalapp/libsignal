@@ -13,6 +13,7 @@ export enum ErrorCode {
   SealedSenderSelfSend,
   UntrustedIdentity,
   InvalidRegistrationId,
+  VerificationFailed,
 }
 
 export class SignalClientErrorBase extends Error {
@@ -85,9 +86,14 @@ export type InvalidRegistrationIdError = SignalClientErrorCommon & {
   addr: ProtocolAddress;
 };
 
+export type VerificationFailedError = SignalClientErrorCommon & {
+  code: ErrorCode.VerificationFailed;
+};
+
 export type SignalClientError =
   | GenericError
   | DuplicatedMessageError
   | SealedSenderSelfSendError
   | UntrustedIdentityError
-  | InvalidRegistrationIdError;
+  | InvalidRegistrationIdError
+  | VerificationFailedError;
