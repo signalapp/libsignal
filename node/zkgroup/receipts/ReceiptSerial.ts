@@ -8,13 +8,12 @@
  */
 
 import ByteArray from "../internal/ByteArray";
-import {FFICompatArrayType} from "../internal/FFICompatArray";
 
 export default class ReceiptSerial extends ByteArray {
 
     static SIZE = 16;
 
-    constructor(contents: FFICompatArrayType) {
+    constructor(contents: Buffer) {
         super(contents, ReceiptSerial.SIZE, true);
     }
 }
