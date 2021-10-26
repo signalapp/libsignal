@@ -1,0 +1,49 @@
+//
+// Copyright (C) 2020 Signal Messenger, LLC.
+// All rights reserved.
+//
+// SPDX-License-Identifier: GPL-3.0-only
+//
+
+#![allow(non_snake_case)]
+
+use crate::common::errors::*;
+use crate::common::sho::*;
+use crate::common::simple_types::*;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+
+use ZkGroupError::*;
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UidStruct {
+    pub(crate) bytes: UidBytes,
+    pub(crate) M1: RistrettoPoint,
+    pub(crate) M2: RistrettoPoint,
+}
+
+impl UidStruct {
+    pub fn new(uid_bytes: UidBytes) -> Self {
+        let mut sho = Sho::new(b"Signal_ZKGroup_20200424_UID_CalcM1", &uid_bytes);
+        let M1 = sho.get_point();
+        let M2 = RistrettoPoint::lizard_encode::<Sha256>(&uid_bytes);
+        UidStruct {
+            bytes: uid_bytes,
+            M1,
+            M2,
+        }
+    }
+
+    // Might return PointDecodeFailure
+    pub fn from_M2(M2: RistrettoPoint) -> Result<Self, ZkGroupError> {
+        match M2.lizard_decode::<Sha256>() {
+            None => Err(PointDecodeFailure),
+            Some(bytes) => Ok(Self::new(bytes)),
+        }
+    }
+
+    pub fn to_bytes(&self) -> UidBytes {
+        self.bytes
+    }
+}
