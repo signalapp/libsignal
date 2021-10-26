@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![allow(non_snake_case)]
 extern crate zkgroup;
 
 use curve25519_dalek::ristretto::RistrettoPoint;

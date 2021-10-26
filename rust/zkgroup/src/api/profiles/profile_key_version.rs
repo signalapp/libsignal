@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![allow(non_snake_case)]
-
 use crate::common::simple_types::*;
 use serde::ser::SerializeTuple;
 use serde::{Serialize, Serializer};

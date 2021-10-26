@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![allow(non_snake_case)]
-
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 

@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![allow(non_snake_case)]
-
 pub const NUM_AUTH_CRED_ATTRIBUTES: usize = 3;
 pub const NUM_PROFILE_KEY_CRED_ATTRIBUTES: usize = 4;
 pub const NUM_RECEIPT_CRED_ATTRIBUTES: usize = 2;
