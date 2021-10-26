@@ -8,26 +8,14 @@
  */
 
 import ByteArray from '../internal/ByteArray';
-import {FFICompatArrayType} from '../internal/FFICompatArray';
-import InvalidInputException from '../errors/InvalidInputException';
-import ZkGroupError from '../errors/ZkGroupError';
-import Native, {FFI_RETURN_INPUT_ERROR, FFI_RETURN_OK} from '../internal/Native';
+import NativeImpl from '../../NativeImpl';
 
 export default class ReceiptCredentialResponse extends ByteArray {
 
     static SIZE = 409;
 
-    constructor(contents: FFICompatArrayType) {
+    constructor(contents: Buffer) {
         super(contents, ReceiptCredentialResponse.SIZE, true);
-
-        const ffi_return = Native.FFI_ReceiptCredentialResponse_checkValidContents(this.contents, this.contents.length);
-
-        if (ffi_return == FFI_RETURN_INPUT_ERROR) {
-            throw new InvalidInputException('FFI_RETURN_INPUT_ERROR');
-        }
-
-        if (ffi_return != FFI_RETURN_OK) {
-            throw new ZkGroupError('FFI_RETURN!=OK');
-        }
+        NativeImpl.ReceiptCredentialResponse_CheckValidContents(contents);
     }
 }
