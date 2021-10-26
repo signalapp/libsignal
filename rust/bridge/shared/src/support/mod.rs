@@ -8,6 +8,17 @@ pub(crate) use paste::paste;
 mod transform_helper;
 pub(crate) use transform_helper::*;
 
+// See https://github.com/rust-lang/rfcs/issues/1389
+pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
+    if let Some(msg) = any.downcast_ref::<&str>() {
+        msg.to_string()
+    } else if let Some(msg) = any.downcast_ref::<String>() {
+        msg.to_string()
+    } else {
+        "(break on rust_panic to debug)".to_string()
+    }
+}
+
 /// Exposes a Rust type to each of the bridges as a boxed value.
 ///
 /// Full form:

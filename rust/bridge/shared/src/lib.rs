@@ -23,6 +23,7 @@ pub mod node;
 
 #[macro_use]
 mod support;
+pub use support::describe_panic;
 
 pub mod crypto;
 pub mod protocol;

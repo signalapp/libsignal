@@ -10,6 +10,8 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 
+use crate::support::describe_panic;
+
 /// The top-level error type (opaquely) returned to C clients when something goes wrong.
 #[derive(Debug)]
 pub enum SignalFfiError {
@@ -39,11 +41,9 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::InsufficientOutputSize(n, h) => {
                 write!(f, "needed {} elements only {} provided", n, h)
             }
-
-            SignalFfiError::UnexpectedPanic(e) => match e.downcast_ref::<&'static str>() {
-                Some(s) => write!(f, "unexpected panic: {}", s),
-                None => write!(f, "unknown unexpected panic"),
-            },
+            SignalFfiError::UnexpectedPanic(e) => {
+                write!(f, "unexpected panic: {}", describe_panic(e))
+            }
         }
     }
 }
