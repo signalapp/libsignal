@@ -1,8 +1,6 @@
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
-# All rights reserved.
-#
-# SPDX-License-Identifier: GPL-3.0-only
+# Copyright 2020-2021 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
 #
 
 [package]
@@ -11,7 +9,7 @@ version = "0.8.2"
 authors = ["Trevor Perrin <trevp@signal.org>"]
 edition = "2018"
 description = "A zero-knowledge group library"
-license = "GPL-3.0-only"
+license = "AGPL-3.0-only"
 
 [lib]
 name = "zkgroup"
