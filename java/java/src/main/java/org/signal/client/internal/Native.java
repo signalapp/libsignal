@@ -155,7 +155,7 @@ public final class Native {
   public static native void HsmEnclaveClient_Destroy(long handle);
   public static native byte[] HsmEnclaveClient_EstablishedRecv(long cli, byte[] receivedCiphertext);
   public static native byte[] HsmEnclaveClient_EstablishedSend(long cli, byte[] plaintextToSend);
-  public static native byte[] HsmEnclaveClient_InitialRequest(long cli);
+  public static native byte[] HsmEnclaveClient_InitialRequest(long obj);
   public static native long HsmEnclaveClient_New(byte[] trustedPublicKey, byte[] trustedCodeHashes);
 
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
@@ -316,7 +316,7 @@ public final class Native {
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
   public static native int UnidentifiedSenderMessageContent_GetContentHint(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetContents(long obj);
-  public static native byte[] UnidentifiedSenderMessageContent_GetGroupId(long m);
+  public static native byte[] UnidentifiedSenderMessageContent_GetGroupId(long obj);
   public static native int UnidentifiedSenderMessageContent_GetMsgType(long m);
   public static native long UnidentifiedSenderMessageContent_GetSenderCert(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long obj);

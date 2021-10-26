@@ -185,15 +185,6 @@ enum ResultKind {
     Void,
 }
 
-impl ResultKind {
-    fn has_env(self) -> bool {
-        match self {
-            Self::Regular | Self::Void => false,
-            Self::Buffer => true,
-        }
-    }
-}
-
 fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
 
@@ -263,12 +254,12 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, ResultKind::Regular)
 }
 
-/// Generates C, Java, and Node entry points for a Rust function that returns a buffer,
-/// avoiding unnecessary copies of the return value.
+/// Generates C, Java, and Node entry points for a Rust function that returns a buffer.
 ///
-/// Unlike a normal `bridge_fn`, functions annotated with `bridge_fn_buffer` take an extra initial
-/// parameter of type `E: Env` and have a return type containing `E::Buffer`. All other parameters
-/// behave the same as they do in a normal `bridge_fn`.
+/// Because the C bindings conventions represent buffers as a pointer/length pair,
+/// the function will have multiple output parameters, which must be annotated specially.
+///
+/// Prefer returning a slice to `Vec<u8>` or similar to avoid unnecessary copies.
 ///
 /// See the [crate-level documentation](crate) for more information.
 ///
@@ -280,9 +271,10 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// // with the FFI entry point disabled.
 /// # #[cfg(ignore_even_when_running_all_tests)]
 /// #[bridge_fn_buffer(ffi = false, jni = "Cipher_1Rot13")]
-/// fn Rot13<E: Env>(env: E, buffer: &[u8]) -> E::Buffer {
-///   // let result = ...;
-///   e.buffer(result)
+/// fn Rot13(buffer: &[u8]) -> Vec<u8> {
+///   let mut output = buffer.to_vec();
+///   // ...
+///   output
 /// }
 /// ```
 #[proc_macro_attribute]

@@ -81,10 +81,11 @@ fn HsmEnclaveClient_New(
     HsmEnclaveClient::new(trusted_public_key, trusted_code_hashes)
 }
 
-#[bridge_fn_buffer(node = false, ffi = false)]
-fn HsmEnclaveClient_InitialRequest<T: Env>(env: T, cli: &HsmEnclaveClient) -> Result<T::Buffer> {
-    Ok(env.buffer(cli.initial_request()?))
-}
+bridge_get!(
+    HsmEnclaveClient::initial_request as InitialRequest -> &[u8],
+    ffi = false,
+    node = false
+);
 
 #[bridge_fn_void(node = false, ffi = false)]
 fn HsmEnclaveClient_CompleteHandshake(
@@ -95,19 +96,17 @@ fn HsmEnclaveClient_CompleteHandshake(
 }
 
 #[bridge_fn_buffer(node = false, ffi = false)]
-fn HsmEnclaveClient_EstablishedSend<T: Env>(
-    env: T,
+fn HsmEnclaveClient_EstablishedSend(
     cli: &mut HsmEnclaveClient,
     plaintext_to_send: &[u8],
-) -> Result<T::Buffer> {
-    Ok(env.buffer(cli.established_send(plaintext_to_send)?))
+) -> Result<Vec<u8>> {
+    cli.established_send(plaintext_to_send)
 }
 
 #[bridge_fn_buffer(node = false, ffi = false)]
-fn HsmEnclaveClient_EstablishedRecv<T: Env>(
-    env: T,
+fn HsmEnclaveClient_EstablishedRecv(
     cli: &mut HsmEnclaveClient,
     received_ciphertext: &[u8],
-) -> Result<T::Buffer> {
-    Ok(env.buffer(cli.established_recv(received_ciphertext)?))
+) -> Result<Vec<u8>> {
+    cli.established_recv(received_ciphertext)
 }

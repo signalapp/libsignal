@@ -10,20 +10,16 @@ use crate::support::*;
 use crate::*;
 
 #[bridge_fn_buffer(node = false)]
-fn DeviceTransfer_GeneratePrivateKey<T: Env>(env: T) -> Result<T::Buffer, device_transfer::Error> {
+fn DeviceTransfer_GeneratePrivateKey() -> Result<Vec<u8>, device_transfer::Error> {
     const DEVICE_TRANSFER_KEY_BITS: usize = 4096;
-
-    let buf = device_transfer::create_rsa_private_key(DEVICE_TRANSFER_KEY_BITS)?;
-    Ok(env.buffer(buf))
+    device_transfer::create_rsa_private_key(DEVICE_TRANSFER_KEY_BITS)
 }
 
 #[bridge_fn_buffer(node = false)]
-fn DeviceTransfer_GenerateCertificate<T: Env>(
-    env: T,
+fn DeviceTransfer_GenerateCertificate(
     private_key: &[u8],
     name: String,
     days_to_expire: u32,
-) -> Result<T::Buffer, device_transfer::Error> {
-    let buf = device_transfer::create_self_signed_cert(private_key, &name, days_to_expire)?;
-    Ok(env.buffer(buf))
+) -> Result<Vec<u8>, device_transfer::Error> {
+    device_transfer::create_self_signed_cert(private_key, &name, days_to_expire)
 }
