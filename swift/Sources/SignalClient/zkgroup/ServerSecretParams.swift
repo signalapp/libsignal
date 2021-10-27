@@ -8,8 +8,6 @@ import SignalFfi
 
 public class ServerSecretParams: ByteArray {
 
-  public static let SIZE: Int = 1121
-
   public static func generate() throws -> ServerSecretParams {
     return try generate(randomness: Randomness.generate())
   }
@@ -23,11 +21,7 @@ public class ServerSecretParams: ByteArray {
   }
 
   public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: ServerSecretParams.SIZE, unrecoverable: true)
-
-    try withUnsafePointerToSerialized { contents in
-      try checkError(signal_server_secret_params_check_valid_contents(contents))
-    }
+    try super.init(contents, checkValid: signal_server_secret_params_check_valid_contents)
   }
 
   public func getPublicParams() throws -> ServerPublicParams {

@@ -8,8 +8,6 @@ import SignalFfi
 
 public class GroupSecretParams: ByteArray {
 
-  public static let SIZE: Int = 289
-
   public static func generate() throws -> GroupSecretParams {
     return try generate(randomness: Randomness.generate())
   }
@@ -31,10 +29,7 @@ public class GroupSecretParams: ByteArray {
   }
 
   public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: GroupSecretParams.SIZE, unrecoverable: true)
-    try withUnsafePointerToSerialized { contents in
-      try checkError(signal_group_secret_params_check_valid_contents(contents))
-    }
+    try super.init(contents, checkValid: signal_group_secret_params_check_valid_contents)
   }
 
   public func getMasterKey() throws -> GroupMasterKey {

@@ -8,14 +8,8 @@ import SignalFfi
 
 public class AuthCredentialPresentation: ByteArray {
 
-  public static let SIZE: Int = 493
-
   public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: AuthCredentialPresentation.SIZE)
-
-    try withUnsafePointerToSerialized { contents in
-      try checkError(signal_auth_credential_presentation_check_valid_contents(contents))
-    }
+    try super.init(contents, checkValid: signal_auth_credential_presentation_check_valid_contents)
   }
 
   public func getUuidCiphertext() throws -> UuidCiphertext {

@@ -9,15 +9,22 @@ import SignalFfi
 public class ByteArray {
     private let contents: [UInt8]
 
+    init<Serialized>(_ newContents: [UInt8], checkValid: (UnsafePointer<Serialized>) -> SignalFfiErrorRef?) throws {
+        contents = newContents
+        try withUnsafePointerToSerialized { contents in
+            try checkError(checkValid(contents))
+        }
+    }
+
     init(newContents: [UInt8], expectedLength: Int, unrecoverable: Bool = false) throws {
         if newContents.count != expectedLength {
-            throw SignalError.invalidArgument("\(type(of: self)) uses \(expectedLength) bytes, but tried to deserialize from an array of \(newContents.count) bytes")
+            throw SignalError.invalidType("\(type(of: self)) uses \(expectedLength) bytes, but tried to deserialize from an array of \(newContents.count) bytes")
         }
         contents = newContents
     }
 
     required init(contents: [UInt8]) throws {
-        fatalError("must be overridden by subclasses to specify what size they expect")
+        fatalError("must be overridden by subclasses to specify how to validate the contents")
     }
 
     public func serialize() -> [UInt8] {
@@ -35,13 +42,13 @@ public class ByteArray {
     /// tuples representing a fixed-size array; using another type, or using the wrong size of
     /// array, is considered a programmer error and can result in arbitrary behavior (including
     /// violating type safety). So, uh, don't do that.
-    func withUnsafePointerToSerialized<Serialized, Result>(_ callback: (UnsafePointer<Serialized>) throws -> Result) rethrows -> Result {
+    func withUnsafePointerToSerialized<Serialized, Result>(_ callback: (UnsafePointer<Serialized>) throws -> Result) throws -> Result {
         precondition(MemoryLayout<Serialized>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
 
         return try contents.withUnsafeBytes { buffer in
             let expectedSize = MemoryLayout<Serialized>.size
             guard expectedSize == buffer.count else {
-                fatalError("\(type(of: self)) uses \(buffer.count) bytes, but was passed to a callback that uses \(expectedSize) bytes")
+                throw SignalError.invalidType("\(type(of: self)) uses \(buffer.count) bytes, but was passed to a callback that uses \(expectedSize) bytes")
             }
 
             // Use assumingMemoryBound(to:) here rather than bindMemory(to:)
