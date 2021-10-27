@@ -12,10 +12,8 @@ import org.signal.client.internal.Native;
 
 public final class ReceiptCredential extends ByteArray {
 
-  public static final int SIZE = 129;
-
   public ReceiptCredential(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
+    super(contents);
     Native.ReceiptCredential_CheckValidContents(contents);
   }
 
@@ -25,10 +23,6 @@ public final class ReceiptCredential extends ByteArray {
 
   public long getReceiptLevel() {
     return Native.ReceiptCredential_GetReceiptLevel(contents);
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

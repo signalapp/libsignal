@@ -14,8 +14,6 @@ import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public final class GroupSecretParams extends ByteArray {
 
-  public static final int SIZE = 289;
-
   public static GroupSecretParams generate() {
     return generate(new SecureRandom());
   }
@@ -44,7 +42,7 @@ public final class GroupSecretParams extends ByteArray {
   }
 
   public GroupSecretParams(byte[] contents)  {
-    super(contents, SIZE, true);
+    super(contents);
     Native.GroupSecretParams_CheckValidContents(contents);
   }
 
@@ -56,7 +54,6 @@ public final class GroupSecretParams extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public GroupPublicParams getPublicParams() {
@@ -67,7 +64,6 @@ public final class GroupSecretParams extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public byte[] serialize() {

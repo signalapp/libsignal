@@ -11,12 +11,13 @@ import org.signal.client.internal.Native;
 
 public final class GroupPublicParams extends ByteArray {
 
-  public static final int SIZE = 97;
-
   public GroupPublicParams(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
-    
-    Native.GroupPublicParams_CheckValidContents(contents);
+    super(contents);
+    try {
+      Native.GroupPublicParams_CheckValidContents(contents);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidInputException(e.getMessage());
+    }
   }
 
   public GroupIdentifier getGroupIdentifier() {
@@ -27,11 +28,6 @@ public final class GroupPublicParams extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

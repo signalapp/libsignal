@@ -36,7 +36,6 @@ public class ClientZkReceiptOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ReceiptCredential receiveReceiptCredential(ReceiptCredentialRequestContext receiptCredentialRequestContext, ReceiptCredentialResponse receiptCredentialResponse) throws VerificationFailedException {
@@ -47,7 +46,6 @@ public class ClientZkReceiptOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ReceiptCredentialPresentation createReceiptCredentialPresentation(ReceiptCredential receiptCredential) throws VerificationFailedException {
@@ -65,7 +63,6 @@ public class ClientZkReceiptOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
 }

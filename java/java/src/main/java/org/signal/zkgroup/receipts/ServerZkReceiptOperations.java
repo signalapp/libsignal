@@ -36,7 +36,6 @@ public class ServerZkReceiptOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public void verifyReceiptCredentialPresentation(ReceiptCredentialPresentation receiptCredentialPresentation) throws VerificationFailedException {
