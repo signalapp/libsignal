@@ -163,6 +163,8 @@ impl SignalNodeError for SignalProtocolError {
 
 impl SignalNodeError for device_transfer::Error {}
 
+impl SignalNodeError for hsm_enclave::Error {}
+
 impl SignalNodeError for signal_crypto::Error {}
 
 /// Represents an error returned by a callback.
