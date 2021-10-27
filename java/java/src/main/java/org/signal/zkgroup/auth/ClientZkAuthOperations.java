@@ -48,7 +48,6 @@ public class ClientZkAuthOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
 }

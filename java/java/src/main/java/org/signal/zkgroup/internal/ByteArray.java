@@ -14,16 +14,12 @@ public abstract class ByteArray {
 
   protected final byte[] contents;
 
-  protected ByteArray(byte[] contents, int expectedLength) throws InvalidInputException {
-    this.contents = cloneArrayOfLength(contents, expectedLength);
+  protected ByteArray(byte[] contents) {
+    this.contents = contents.clone();
   }
 
-  protected ByteArray(byte[] contents, int expectedLength, boolean unrecoverable) {
-    try {
-      this.contents = cloneArrayOfLength(contents, expectedLength);
-    } catch (InvalidInputException e) {
-      throw new IllegalArgumentException(e);
-    }
+  protected ByteArray(byte[] contents, int expectedLength) throws InvalidInputException {
+    this.contents = cloneArrayOfLength(contents, expectedLength);
   }
 
   private static byte[] cloneArrayOfLength(byte[] bytes, int expectedLength) throws InvalidInputException {
@@ -38,6 +34,10 @@ public abstract class ByteArray {
     return contents;
   }
 
+  public byte[] serialize() {
+    return contents.clone();
+  }
+
   @Override
   public int hashCode() {
     return getClass().hashCode() * 31 + Arrays.hashCode(contents);
@@ -48,13 +48,13 @@ public abstract class ByteArray {
     if (o == null || getClass() != o.getClass()) return false;
 
     ByteArray other = (ByteArray) o;
-    if (contents == other.contents) return true;
+    if (contents == other.getInternalContentsForJNI()) return true;
 
-    if (contents.length != other.contents.length) return false;
+    if (contents.length != other.getInternalContentsForJNI().length) return false;
 
     int result = 0;
     for (int i = 0; i < contents.length; i++) {
-      result |= contents[i] ^ other.contents[i];
+      result |= contents[i] ^ other.getInternalContentsForJNI()[i];
     }
     return result == 0;
   }

@@ -31,7 +31,6 @@ public class ClientZkGroupCipher {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public UUID decryptUuid(UuidCiphertext uuidCiphertext) throws VerificationFailedException {
@@ -46,7 +45,6 @@ public class ClientZkGroupCipher {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ProfileKey decryptProfileKey(ProfileKeyCiphertext profileKeyCiphertext, UUID uuid) throws VerificationFailedException {
@@ -57,7 +55,6 @@ public class ClientZkGroupCipher {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public byte[] encryptBlob(byte[] plaintext) throws VerificationFailedException {

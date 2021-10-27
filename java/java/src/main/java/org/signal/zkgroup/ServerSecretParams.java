@@ -13,8 +13,6 @@ import static org.signal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public final class ServerSecretParams extends ByteArray {
 
-  public static final int SIZE = 1121;
-
   public static ServerSecretParams generate() {
     return generate(new SecureRandom());
   }
@@ -33,7 +31,7 @@ public final class ServerSecretParams extends ByteArray {
   }
 
   public ServerSecretParams(byte[] contents)  {
-    super(contents, SIZE, true);
+    super(contents);
     Native.ServerSecretParams_CheckValidContents(contents);
   }
 
@@ -57,11 +55,6 @@ public final class ServerSecretParams extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

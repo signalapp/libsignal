@@ -38,7 +38,6 @@ public class ServerZkProfileOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public void verifyProfileKeyCredentialPresentation(GroupPublicParams groupPublicParams, ProfileKeyCredentialPresentation profileKeyCredentialPresentation) throws VerificationFailedException {

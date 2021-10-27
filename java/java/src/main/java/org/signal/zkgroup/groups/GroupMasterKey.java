@@ -16,8 +16,4 @@ public final class GroupMasterKey extends ByteArray {
     super(contents, SIZE);
   }
 
-  public byte[] serialize() {
-    return contents.clone();
-  }
-
 }

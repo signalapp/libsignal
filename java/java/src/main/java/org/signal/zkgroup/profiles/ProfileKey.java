@@ -13,10 +13,13 @@ import org.signal.client.internal.Native;
 
 public final class ProfileKey extends ByteArray {
 
-  public static final int SIZE = 32;
-
   public ProfileKey(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
+    super(contents);
+    try {
+      Native.ProfileKey_CheckValidContents(contents);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidInputException(e.getMessage());
+    }
   }
 
   public ProfileKeyCommitment getCommitment(UUID uuid) {
@@ -27,7 +30,6 @@ public final class ProfileKey extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ProfileKeyVersion getProfileKeyVersion(UUID uuid) {
@@ -38,11 +40,6 @@ public final class ProfileKey extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

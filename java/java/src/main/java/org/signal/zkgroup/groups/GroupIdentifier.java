@@ -16,8 +16,4 @@ public final class GroupIdentifier extends ByteArray {
     super(contents, SIZE);
   }
 
-  public byte[] serialize() {
-    return contents.clone();
-  }
-
 }

@@ -38,7 +38,6 @@ public class ClientZkProfileOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ProfileKeyCredential receiveProfileKeyCredential(ProfileKeyCredentialRequestContext profileKeyCredentialRequestContext, ProfileKeyCredentialResponse profileKeyCredentialResponse) throws VerificationFailedException {
@@ -53,7 +52,6 @@ public class ClientZkProfileOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ProfileKeyCredentialPresentation createProfileKeyCredentialPresentation(GroupSecretParams groupSecretParams, ProfileKeyCredential profileKeyCredential) {
@@ -71,7 +69,6 @@ public class ClientZkProfileOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
 }

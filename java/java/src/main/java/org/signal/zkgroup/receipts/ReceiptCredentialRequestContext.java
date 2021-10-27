@@ -26,7 +26,6 @@ public final class ReceiptCredentialRequestContext extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public byte[] serialize() {
