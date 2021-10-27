@@ -10,16 +10,12 @@ import org.signal.zkgroup.internal.ByteArray;
 import org.signal.client.internal.Native;
 
 public final class ProfileKeyCredentialRequest extends ByteArray {
-
-  public static final int SIZE = 329;
-
   public ProfileKeyCredentialRequest(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
-    Native.ProfileKeyCredentialRequest_CheckValidContents(contents);
+    super(contents);
+    try {
+      Native.ProfileKeyCredentialRequest_CheckValidContents(contents);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidInputException(e.getMessage());
+    }
   }
-
-  public byte[] serialize() {
-    return contents.clone();
-  }
-
 }

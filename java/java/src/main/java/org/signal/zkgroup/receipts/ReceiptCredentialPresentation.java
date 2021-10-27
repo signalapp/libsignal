@@ -11,11 +11,8 @@ import org.signal.zkgroup.internal.ByteArray;
 import org.signal.client.internal.Native;
 
 public final class ReceiptCredentialPresentation extends ByteArray {
-
-  public static final int SIZE = 329;
-
   public ReceiptCredentialPresentation(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
+    super(contents);
     Native.ReceiptCredentialPresentation_CheckValidContents(contents);
   }
 
@@ -35,11 +32,6 @@ public final class ReceiptCredentialPresentation extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

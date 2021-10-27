@@ -302,10 +302,37 @@ private static final byte[] profileKeyPresentationResult = Hex.fromStringCondens
     //assertByteArray("31f2c60f86f4c5996e9e2568355591d9", groupPublicParams.getGroupIdentifier().serialize());
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testErrors() throws RuntimeException {
+  @Test(expected = InvalidInputException.class)
+  public void testInvalidSerialized() throws InvalidInputException {
 
-    byte[] ckp = new byte[GroupSecretParams.SIZE];
+    byte[] ckp = new byte[97]; // right size, wrong contents
+    Arrays.fill(ckp, (byte) -127);
+
+    GroupPublicParams groupSecretParams = new GroupPublicParams(ckp);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testInvalidSerializedInfallible() {
+
+    byte[] ckp = new byte[289]; // right size, wrong contents
+    Arrays.fill(ckp, (byte) -127);
+
+    GroupSecretParams groupSecretParams = new GroupSecretParams(ckp);
+  }
+
+  @Test(expected = InvalidInputException.class)
+  public void testWrongSizeSerialized() throws InvalidInputException {
+
+    byte[] ckp = new byte[5]; // right size, wrong contents
+    Arrays.fill(ckp, (byte) -127);
+
+    GroupPublicParams groupSecretParams = new GroupPublicParams(ckp);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testWrongSizeSerializedInfallible() {
+
+    byte[] ckp = new byte[5]; // right size, wrong contents
     Arrays.fill(ckp, (byte) -127);
 
     GroupSecretParams groupSecretParams = new GroupSecretParams(ckp);

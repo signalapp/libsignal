@@ -41,7 +41,6 @@ public class ServerZkAuthOperations {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation) throws VerificationFailedException, InvalidRedemptionTimeException {

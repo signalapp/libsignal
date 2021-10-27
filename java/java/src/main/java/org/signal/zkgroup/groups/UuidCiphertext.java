@@ -10,16 +10,12 @@ import org.signal.zkgroup.internal.ByteArray;
 import org.signal.client.internal.Native;
 
 public final class UuidCiphertext extends ByteArray {
-
-  public static final int SIZE = 65;
-
   public UuidCiphertext(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
-    Native.UuidCiphertext_CheckValidContents(contents);
+    super(contents);
+    try {
+      Native.UuidCiphertext_CheckValidContents(contents);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidInputException(e.getMessage());
+    }
   }
-
-  public byte[] serialize() {
-    return contents.clone();
-  }
-
 }

@@ -13,11 +13,13 @@ import org.signal.client.internal.Native;
 
 public final class AuthCredentialPresentation extends ByteArray {
 
-  public static final int SIZE = 493;
-
   public AuthCredentialPresentation(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
-    Native.AuthCredentialPresentation_CheckValidContents(contents);
+    super(contents);
+    try {
+      Native.AuthCredentialPresentation_CheckValidContents(contents);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidInputException(e.getMessage());
+    }
   }
 
   public UuidCiphertext getUuidCiphertext() {
@@ -32,10 +34,6 @@ public final class AuthCredentialPresentation extends ByteArray {
 
   public int getRedemptionTime() {
     return Native.AuthCredentialPresentation_GetRedemptionTime(contents);
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

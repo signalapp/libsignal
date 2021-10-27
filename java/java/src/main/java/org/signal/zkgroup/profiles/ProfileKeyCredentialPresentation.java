@@ -12,12 +12,13 @@ import org.signal.zkgroup.internal.ByteArray;
 import org.signal.client.internal.Native;
 
 public final class ProfileKeyCredentialPresentation extends ByteArray {
-
-  public static final int SIZE = 713;
-
   public ProfileKeyCredentialPresentation(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
-    Native.ProfileKeyCredentialPresentation_CheckValidContents(contents);
+    super(contents);
+    try {
+      Native.ProfileKeyCredentialPresentation_CheckValidContents(contents);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidInputException(e.getMessage());
+    }
   }
 
   public UuidCiphertext getUuidCiphertext() {
@@ -28,7 +29,6 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
   }
 
   public ProfileKeyCiphertext getProfileKeyCiphertext() {
@@ -39,11 +39,6 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
-
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }

@@ -9,16 +9,19 @@ import org.signal.zkgroup.InvalidInputException;
 import org.signal.zkgroup.internal.ByteArray;
 import java.io.UnsupportedEncodingException;
 
-public final class ProfileKeyVersion extends ByteArray {
+public final class ProfileKeyVersion {
 
-  public static final int SIZE = 64;
+  private byte[] contents;
 
   public ProfileKeyVersion(byte[] contents) throws InvalidInputException {
-    super(contents, SIZE);
+    if (contents.length != 64) {
+      throw new InvalidInputException("bad length");
+    }
+    this.contents = contents.clone();
   }
 
   public ProfileKeyVersion(String contents) throws InvalidInputException, UnsupportedEncodingException {
-    super(contents.getBytes("UTF-8"), SIZE);
+    this(contents.getBytes("UTF-8"));
   }
 
   public String serialize() {

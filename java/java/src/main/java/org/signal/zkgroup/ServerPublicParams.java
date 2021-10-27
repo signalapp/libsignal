@@ -9,20 +9,13 @@ import org.signal.zkgroup.internal.ByteArray;
 import org.signal.client.internal.Native;
 
 public final class ServerPublicParams extends ByteArray {
-
-  public static final int SIZE = 225;
-
   public ServerPublicParams(byte[] contents)  {
-    super(contents, SIZE, true);
+    super(contents);
     Native.ServerPublicParams_CheckValidContents(contents);
   }
 
   public void verifySignature(byte[] message, NotarySignature notarySignature) throws VerificationFailedException {
     Native.ServerPublicParams_VerifySignature(contents, message, notarySignature.getInternalContentsForJNI());
-  }
-
-  public byte[] serialize() {
-    return contents.clone();
   }
 
 }
