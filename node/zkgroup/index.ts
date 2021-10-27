@@ -1,3 +1,8 @@
+//
+// Copyright 2020-2021 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 // Root
 export { default as ServerPublicParams } from './ServerPublicParams';
 export { default as ServerSecretParams } from './ServerSecretParams';

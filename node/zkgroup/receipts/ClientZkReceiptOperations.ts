@@ -1,11 +1,7 @@
-/*
- *
- * Copyright (C) 2021 Signal Messenger, LLC.
- * All rights reserved.
- *
- * SPDX-License-Identifier: GPL-3.0-only
- *
- */
+//
+// Copyright 2021 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
 import {randomBytes} from 'crypto';
 import {RANDOM_LENGTH} from '../internal/Constants';
