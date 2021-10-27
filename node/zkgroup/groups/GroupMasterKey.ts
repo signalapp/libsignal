@@ -9,6 +9,6 @@ export default class GroupMasterKey extends ByteArray {
   static SIZE = 32;
 
   constructor(contents: Buffer) {
-    super(contents, GroupMasterKey.SIZE, true);
+    super(contents, GroupMasterKey.checkLength(GroupMasterKey.SIZE));
   }
 }

@@ -333,15 +333,16 @@ describe('ZKGroup', () => {
     // assertByteArray('31f2c60f86f4c5996e9e2568355591d9', groupPublicParams.getGroupIdentifier().serialize());
   });
 
-  it('testErrors', () => {
-    const ckp = Buffer.alloc(GroupSecretParams.SIZE);
+  it('testInvalidSerialized', () => {
+    const ckp = Buffer.alloc(289);
     ckp.fill(-127);
+    assert.throws(() => new GroupSecretParams(ckp));
+  });
 
-    try {
-      const _groupSecretParams = new GroupSecretParams(ckp);
-    } catch (error) {
-      // good
-    }
+  it('testWrongSizeSerialized', () => {
+    const ckp = Buffer.alloc(5);
+    ckp.fill(-127);
+    assert.throws(() => new GroupSecretParams(ckp));
   });
 
   it('testBlobEncryption', () => {

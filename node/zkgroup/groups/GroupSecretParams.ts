@@ -12,8 +12,6 @@ import GroupMasterKey from './GroupMasterKey';
 import GroupPublicParams from './GroupPublicParams';
 
 export default class GroupSecretParams extends ByteArray {
-  static SIZE = 289;
-
   static generate(): GroupSecretParams {
     const random = randomBytes(RANDOM_LENGTH);
 
@@ -37,8 +35,7 @@ export default class GroupSecretParams extends ByteArray {
   }
 
   constructor(contents: Buffer) {
-    super(contents, GroupSecretParams.SIZE, true);
-    NativeImpl.GroupSecretParams_CheckValidContents(this.contents);
+    super(contents, NativeImpl.GroupSecretParams_CheckValidContents);
   }
 
   getMasterKey(): GroupMasterKey {

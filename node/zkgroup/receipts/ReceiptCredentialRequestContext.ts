@@ -11,8 +11,10 @@ export default class ReceiptCredentialRequestContext extends ByteArray {
   static SIZE = 177;
 
   constructor(contents: Buffer) {
-    super(contents, ReceiptCredentialRequestContext.SIZE, true);
-    NativeImpl.ReceiptCredentialRequestContext_CheckValidContents(contents);
+    super(
+      contents,
+      NativeImpl.ReceiptCredentialRequestContext_CheckValidContents
+    );
   }
 
   getRequest(): ReceiptCredentialRequest {

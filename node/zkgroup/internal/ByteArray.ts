@@ -8,19 +8,23 @@ import { SignalClientErrorBase } from '../../Errors';
 export default class ByteArray {
   contents: Buffer;
 
-  constructor(
-    contents: Buffer,
-    expectedLength: number,
-    _unrecoverable: boolean
-  ) {
-    if (contents.length !== expectedLength) {
-      throw new SignalClientErrorBase(
-        `Length of array supplied was ${contents.length} expected ${expectedLength}`,
-        undefined,
-        this.constructor.name
-      );
-    }
+  constructor(contents: Buffer, checkValid: (contents: Buffer) => void) {
+    checkValid(contents);
     this.contents = Buffer.from(contents);
+  }
+
+  protected static checkLength(
+    expectedLength: number
+  ): (contents: Buffer) => void {
+    return contents => {
+      if (contents.length !== expectedLength) {
+        throw new SignalClientErrorBase(
+          `Length of array supplied was ${contents.length} expected ${expectedLength}`,
+          undefined,
+          this.name
+        );
+      }
+    };
   }
 
   public getContents(): Buffer {

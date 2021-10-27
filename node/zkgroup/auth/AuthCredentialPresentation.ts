@@ -8,11 +8,8 @@ import NativeImpl from '../../NativeImpl';
 import UuidCiphertext from '../groups/UuidCiphertext';
 
 export default class AuthCredentialPresentation extends ByteArray {
-  static SIZE = 493;
-
   constructor(contents: Buffer) {
-    super(contents, AuthCredentialPresentation.SIZE, true);
-    NativeImpl.AuthCredentialPresentation_CheckValidContents(contents);
+    super(contents, NativeImpl.AuthCredentialPresentation_CheckValidContents);
   }
 
   getUuidCiphertext(): UuidCiphertext {

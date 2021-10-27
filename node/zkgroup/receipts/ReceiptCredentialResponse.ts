@@ -7,10 +7,7 @@ import ByteArray from '../internal/ByteArray';
 import NativeImpl from '../../NativeImpl';
 
 export default class ReceiptCredentialResponse extends ByteArray {
-  static SIZE = 409;
-
   constructor(contents: Buffer) {
-    super(contents, ReceiptCredentialResponse.SIZE, true);
-    NativeImpl.ReceiptCredentialResponse_CheckValidContents(contents);
+    super(contents, NativeImpl.ReceiptCredentialResponse_CheckValidContents);
   }
 }

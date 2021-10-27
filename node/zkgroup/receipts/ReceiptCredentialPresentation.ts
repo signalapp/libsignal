@@ -11,8 +11,10 @@ export default class ReceiptCredentialPresentation extends ByteArray {
   static SIZE = 329;
 
   constructor(contents: Buffer) {
-    super(contents, ReceiptCredentialPresentation.SIZE, true);
-    NativeImpl.ReceiptCredentialPresentation_CheckValidContents(contents);
+    super(
+      contents,
+      NativeImpl.ReceiptCredentialPresentation_CheckValidContents
+    );
   }
 
   getReceiptExpirationTime(): bigint {
