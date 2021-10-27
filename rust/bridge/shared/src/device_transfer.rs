@@ -6,6 +6,8 @@
 use ::device_transfer;
 use libsignal_bridge_macros::*;
 
+// Not used by the Java bridge.
+#[allow(unused_imports)]
 use crate::support::*;
 use crate::*;
 
