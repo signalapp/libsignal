@@ -1,3 +1,8 @@
+//
+// Copyright 2020-2021 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 // Ideally we would replace the operations in this file with the 'uuid' package,
 // but the tests use an invalid UUID as a test string, and 'uuid' always validates.
 

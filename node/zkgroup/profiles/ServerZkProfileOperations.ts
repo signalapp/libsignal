@@ -1,3 +1,8 @@
+//
+// Copyright 2020-2021 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 import { randomBytes } from 'crypto';
 import NativeImpl from '../../NativeImpl';
 import { RANDOM_LENGTH } from '../internal/Constants';
