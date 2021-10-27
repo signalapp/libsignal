@@ -9,6 +9,6 @@ export default class ReceiptSerial extends ByteArray {
   static SIZE = 16;
 
   constructor(contents: Buffer) {
-    super(contents, ReceiptSerial.SIZE, true);
+    super(contents, ReceiptSerial.checkLength(ReceiptSerial.SIZE));
   }
 }

@@ -8,11 +8,8 @@ import NativeImpl from '../NativeImpl';
 import NotarySignature from './NotarySignature';
 
 export default class ServerPublicParams extends ByteArray {
-  static SIZE = 225;
-
   constructor(contents: Buffer) {
-    super(contents, ServerPublicParams.SIZE, true);
-    NativeImpl.ServerPublicParams_CheckValidContents(contents);
+    super(contents, NativeImpl.ServerPublicParams_CheckValidContents);
   }
 
   verifySignature(message: Buffer, notarySignature: NotarySignature): void {

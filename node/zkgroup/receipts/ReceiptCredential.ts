@@ -7,11 +7,8 @@ import ByteArray from '../internal/ByteArray';
 import NativeImpl from '../../NativeImpl';
 
 export default class ReceiptCredential extends ByteArray {
-  static SIZE = 129;
-
   constructor(contents: Buffer) {
-    super(contents, ReceiptCredential.SIZE, true);
-    NativeImpl.ReceiptCredential_CheckValidContents(contents);
+    super(contents, NativeImpl.ReceiptCredential_CheckValidContents);
   }
 
   getReceiptExpirationTime(): bigint {

@@ -12,8 +12,6 @@ import ServerPublicParams from './ServerPublicParams';
 import NotarySignature from './NotarySignature';
 
 export default class ServerSecretParams extends ByteArray {
-  static SIZE = 1121;
-
   static generate(): ServerSecretParams {
     const random = randomBytes(RANDOM_LENGTH);
 
@@ -27,8 +25,7 @@ export default class ServerSecretParams extends ByteArray {
   }
 
   constructor(contents: Buffer) {
-    super(contents, ServerSecretParams.SIZE, true);
-    NativeImpl.ServerSecretParams_CheckValidContents(contents);
+    super(contents, NativeImpl.ServerSecretParams_CheckValidContents);
   }
 
   getPublicParams(): ServerPublicParams {

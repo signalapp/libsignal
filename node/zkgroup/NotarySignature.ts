@@ -9,6 +9,6 @@ export default class NotarySignature extends ByteArray {
   static SIZE = 64;
 
   constructor(contents: Buffer) {
-    super(contents, NotarySignature.SIZE, true);
+    super(contents, NotarySignature.checkLength(NotarySignature.SIZE));
   }
 }

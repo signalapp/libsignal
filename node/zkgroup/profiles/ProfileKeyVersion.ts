@@ -11,8 +11,7 @@ export default class ProfileKeyVersion extends ByteArray {
   constructor(contents: Buffer | string) {
     super(
       typeof contents === 'string' ? Buffer.from(contents) : contents,
-      ProfileKeyVersion.SIZE,
-      false
+      ProfileKeyVersion.checkLength(ProfileKeyVersion.SIZE)
     );
   }
 

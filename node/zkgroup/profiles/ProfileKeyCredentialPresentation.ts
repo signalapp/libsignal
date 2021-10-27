@@ -9,11 +9,11 @@ import UuidCiphertext from '../groups/UuidCiphertext';
 import ProfileKeyCiphertext from '../groups/ProfileKeyCiphertext';
 
 export default class ProfileKeyCredentialPresentation extends ByteArray {
-  static SIZE = 713;
-
   constructor(contents: Buffer) {
-    super(contents, ProfileKeyCredentialPresentation.SIZE, true);
-    NativeImpl.ProfileKeyCredentialPresentation_CheckValidContents(contents);
+    super(
+      contents,
+      NativeImpl.ProfileKeyCredentialPresentation_CheckValidContents
+    );
   }
 
   getUuidCiphertext(): UuidCiphertext {
