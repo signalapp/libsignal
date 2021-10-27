@@ -1,5 +1,6 @@
 //
-//  Copyright (c) 2020 Open Whisper Systems. All rights reserved.
+// Copyright 2020-2021 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import XCTest
@@ -75,7 +76,7 @@ class ZKGroupTests: TestCaseBase {
   0xd3, 0xe0, 0xf1, 0xa5, 0x43, 0x19, 0x08, 0x1f, 0x77, 0xc7, 0x2c, 0x8f, 0x52,
   0x54, 0x74, 0x40, 0xe2, 0x01, 0x00]
 
-  let profileKeyPresentationResult: [UInt8] = [ 
+  let profileKeyPresentationResult: [UInt8] = [
     0x00, 0xc4, 0xd1, 0x9b, 0xca, 0x1a, 0xe8, 0x44, 0x58, 0x51, 0x68, 0x86, 0x9d, 0xa4, 0x13, 0x3e,
     0x0e, 0x0b, 0xb5, 0x9f, 0x2c, 0xe1, 0x7b, 0x7a, 0xc6, 0x5b, 0xff, 0x5d, 0xa9, 0x61, 0x0e, 0xca,
     0x10, 0x34, 0x29, 0xd8, 0x02, 0x2a, 0x94, 0xba, 0xe2, 0xb5, 0xb1, 0x05, 0x7b, 0x55, 0x95, 0xb8,
@@ -261,7 +262,7 @@ class ZKGroupTests: TestCaseBase {
   func testErrors() throws {
     let ckp: [UInt8] = Array(repeating: 255, count: GroupSecretParams.SIZE)
     do {
-        let _ = try GroupSecretParams(contents: ckp)
+        _ = try GroupSecretParams(contents: ckp)
         XCTAssert(false)
     } catch SignalError.invalidType(_) {
         // good
@@ -272,7 +273,7 @@ class ZKGroupTests: TestCaseBase {
     let groupSecretParams = try GroupSecretParams.generate()
     let clientZkGroupCipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
 
-    let plaintext: [UInt8] = [0,1,2,3,4]
+    let plaintext: [UInt8] = [0, 1, 2, 3, 4]
     let ciphertext = try clientZkGroupCipher.encryptBlob(plaintext: plaintext)
     let plaintext2 = try clientZkGroupCipher.decryptBlob(blobCiphertext: ciphertext)
 
