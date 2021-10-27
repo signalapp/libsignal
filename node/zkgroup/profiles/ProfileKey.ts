@@ -13,7 +13,7 @@ export default class ProfileKey extends ByteArray {
   static SIZE = 32;
 
   constructor(contents: Buffer) {
-    super(contents, ProfileKey.SIZE, true);
+    super(contents, ProfileKey.checkLength(ProfileKey.SIZE));
   }
 
   getCommitment(uuid: UUIDType): ProfileKeyCommitment {
