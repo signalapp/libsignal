@@ -177,6 +177,38 @@ where
     }
 }
 
+// Implement AsyncArgTypeInfo for a slice of SessionRecords outside of
+// the node_bridge_handle macro since we don't want to use async for
+// the HsmEnclave module.
+// FIXME: This is necessarily a cloning API.
+// We should try to avoid cloning data when possible.
+impl<'a> AsyncArgTypeInfo<'a> for &'a [SessionRecord] {
+    type ArgType = JsArray;
+    type StoredType = DefaultFinalize<Vec<SessionRecord>>;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        array: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let len = array.len(cx);
+        let result = (0..len)
+            .map(|i| {
+                let element = neon::object::Object::get(*array, cx, i)?;
+                let wrapper = element.downcast_or_throw::<JsObject, _>(cx)?;
+                let value_box = neon::object::Object::get(*wrapper, cx, NATIVE_HANDLE_PROPERTY)?;
+                let value_box: Handle<DefaultJsBox<std::cell::RefCell<SessionRecord>>> =
+                    value_box.downcast_or_throw(cx)?;
+                let cell: &std::cell::RefCell<_> = &***value_box;
+                let result = cell.borrow().clone();
+                Ok(result)
+            })
+            .collect::<NeonResult<_>>()?;
+        Ok(DefaultFinalize(result))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        &stored.0
+    }
+}
+
 /// Converts result values from their Rust form to their JavaScript form.
 ///
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
@@ -1029,25 +1061,6 @@ macro_rules! node_bridge_handle {
             }
             fn load_from(stored: &'storage mut Self::StoredType) -> Self {
                 &mut *stored
-            }
-        }
-
-        // And AsyncArgTypeInfo already has a blanket impl (also SimpleArgTypeInfo),
-        // so we have to declare this explicitly too.
-        // FIXME: This is necessarily a cloning API.
-        // We should try to avoid cloning data when possible.
-        impl<'storage> node::AsyncArgTypeInfo<'storage> for &'storage [$typ]
-        {
-            type ArgType = node::JsArray;
-            type StoredType = node::DefaultFinalize<Vec<$typ>>;
-            fn save_async_arg(
-                cx: &mut node::FunctionContext,
-                array: node::Handle<Self::ArgType>,
-            ) -> node::NeonResult<Self::StoredType> {
-                Ok(node::clone_from_array_of_wrappers(cx, array)?.into())
-            }
-            fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
-                &stored.0
             }
         }
     };

@@ -75,9 +75,9 @@ impl HsmEnclaveClient {
     }
 }
 
-bridge_handle!(HsmEnclaveClient, clone = false, mut = true, node = false);
+bridge_handle!(HsmEnclaveClient, clone = false, mut = true);
 
-#[bridge_fn(node = false)]
+#[bridge_fn]
 fn HsmEnclaveClient_New(
     trusted_public_key: &[u8],
     trusted_code_hashes: &[u8],
@@ -86,11 +86,10 @@ fn HsmEnclaveClient_New(
 }
 
 bridge_get_buffer!(
-    HsmEnclaveClient::initial_request as InitialRequest -> &[u8],
-    node = false
+    HsmEnclaveClient::initial_request as InitialRequest -> &[u8]
 );
 
-#[bridge_fn_void(node = false)]
+#[bridge_fn_void]
 fn HsmEnclaveClient_CompleteHandshake(
     cli: &mut HsmEnclaveClient,
     handshake_received: &[u8],
@@ -98,7 +97,7 @@ fn HsmEnclaveClient_CompleteHandshake(
     cli.complete_handshake(handshake_received)
 }
 
-#[bridge_fn_buffer(node = false)]
+#[bridge_fn_buffer]
 fn HsmEnclaveClient_EstablishedSend(
     cli: &mut HsmEnclaveClient,
     plaintext_to_send: &[u8],
@@ -106,7 +105,7 @@ fn HsmEnclaveClient_EstablishedSend(
     cli.established_send(plaintext_to_send)
 }
 
-#[bridge_fn_buffer(node = false)]
+#[bridge_fn_buffer]
 fn HsmEnclaveClient_EstablishedRecv(
     cli: &mut HsmEnclaveClient,
     received_ciphertext: &[u8],

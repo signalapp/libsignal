@@ -1474,3 +1474,43 @@ export async function sealedSenderDecryptToUsmc(
   );
   return UnidentifiedSenderMessageContent._fromNativeHandle(usmc);
 }
+
+export class HsmEnclaveClient {
+  readonly _nativeHandle: Native.HsmEnclaveClient;
+
+  private constructor(nativeHandle: Native.HsmEnclaveClient) {
+    this._nativeHandle = nativeHandle;
+  }
+
+  static new(public_key: PublicKey, code_hashes: Buffer[]): HsmEnclaveClient {
+    code_hashes.forEach(hash => {
+      if (hash.length != 32) {
+        throw new Error('code hash length must be 32');
+      }
+    });
+    const concat_hashes = Buffer.concat(code_hashes);
+
+    return new HsmEnclaveClient(
+      NativeImpl.HsmEnclaveClient_New(
+        public_key.getPublicKeyBytes(),
+        concat_hashes
+      )
+    );
+  }
+
+  initialRequest(): Buffer {
+    return NativeImpl.HsmEnclaveClient_InitialRequest(this);
+  }
+
+  completeHandshake(buffer: Buffer): void {
+    return NativeImpl.HsmEnclaveClient_CompleteHandshake(this, buffer);
+  }
+
+  establishedSend(buffer: Buffer): Buffer {
+    return NativeImpl.HsmEnclaveClient_EstablishedSend(this, buffer);
+  }
+
+  establishedRecv(buffer: Buffer): Buffer {
+    return NativeImpl.HsmEnclaveClient_EstablishedRecv(this, buffer);
+  }
+}
