@@ -8,14 +8,8 @@ import SignalFfi
 
 public class ReceiptCredentialRequestContext: ByteArray {
 
-  public static let SIZE: Int = 177
-
   public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: ReceiptCredentialRequestContext.SIZE)
-
-    try withUnsafePointerToSerialized { contents in
-      try checkError(signal_receipt_credential_request_context_check_valid_contents(contents))
-    }
+    try super.init(contents, checkValid: signal_receipt_credential_request_context_check_valid_contents)
   }
 
   public func getRequest() throws -> ReceiptCredentialRequest {

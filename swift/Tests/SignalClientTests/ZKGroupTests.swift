@@ -259,11 +259,21 @@ class ZKGroupTests: TestCaseBase {
     }
   }
 
-  func testErrors() throws {
-    let ckp: [UInt8] = Array(repeating: 255, count: GroupSecretParams.SIZE)
+  func testInvalidSerialized() throws {
+    let ckp: [UInt8] = Array(repeating: 255, count: 289)
     do {
         _ = try GroupSecretParams(contents: ckp)
-        XCTAssert(false)
+        XCTFail("should have thrown")
+    } catch SignalError.invalidType(_) {
+        // good
+    }
+  }
+
+  func testWrongSizeSerialized() throws {
+    let ckp: [UInt8] = Array(repeating: 255, count: 5)
+    do {
+        _ = try GroupSecretParams(contents: ckp)
+        XCTFail("should have thrown")
     } catch SignalError.invalidType(_) {
         // good
     }
@@ -337,7 +347,8 @@ class ZKGroupTests: TestCaseBase {
       ("testAuthIntegration", testAuthIntegration),
       ("testProfileKeyIntegration", testProfileKeyIntegration),
       ("testServerSignatures", testServerSignatures),
-      ("testErrors", testErrors),
+      ("testInvalidSerialized", testInvalidSerialized),
+      ("testWrongSizeSerialized", testWrongSizeSerialized),
       ("testBlobEncryption", testBlobEncryption),
       ("testBlobEncryptionWithRandom", testBlobEncryptionWithRandom),
     ]

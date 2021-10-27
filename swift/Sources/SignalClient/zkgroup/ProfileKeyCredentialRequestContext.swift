@@ -8,13 +8,8 @@ import SignalFfi
 
 public class ProfileKeyCredentialRequestContext: ByteArray {
 
-  public static let SIZE: Int = 473
-
   public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: ProfileKeyCredentialRequestContext.SIZE)
-    try withUnsafePointerToSerialized { contents in
-      try checkError(signal_profile_key_credential_request_context_check_valid_contents(contents))
-    }
+    try super.init(contents, checkValid: signal_profile_key_credential_request_context_check_valid_contents)
   }
 
   public func getRequest() throws -> ProfileKeyCredentialRequest {
