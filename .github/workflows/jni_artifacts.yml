@@ -1,0 +1,49 @@
+name: Publish JNI Artifacts to GitHub Release
+
+on:
+  push:
+    tags:
+      - v*
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            library: libsignal_jni.so
+          - os: windows-latest
+            library: signal_jni.dll
+          - os: macos-latest
+            library: libsignal_jni.dylib
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install nightly rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+
+    - run: cargo build --release -p libsignal-jni
+      env:
+        # Keep this settings in sync with java/build_jni.sh, which supports Android as well.
+        CARGO_PROFILE_RELEASE_DEBUG: 1
+        CARGO_PROFILE_RELEASE_LTO: thin
+        CARGO_PROFILE_RELEASE_OPT_LEVEL: s
+
+    - name: Upload
+      uses: svenstaro/upload-release-action@2.2.0
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/release/${{ matrix.library }}
+        tag: ${{ github.ref }}
+        overwrite: true
