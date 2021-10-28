@@ -50,7 +50,11 @@ Note that both the tag *and* the branch need to be pushed.
 
 ### Android: Sonatype
 
-Set the environment variables `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`, `KEYRING_FILE`, `SIGNING_KEY`, and `SIGNING_KEY_PASSSWORD`, then run `make -C java publish_java` to build through Docker. (Sonatype is pretty slow; even after the build completes it might take a while for it to show up.)
+1. Wait for the "Publish JNI Artifacts to GitHub Release" action to complete. These artifacts, though not built reproducibly, will be included in the "testable" jar that supports running on macOS and Windows as well.
+2. Set the environment variables `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`, `KEYRING_FILE`, `SIGNING_KEY`, and `SIGNING_KEY_PASSSWORD`.
+3. Run `make -C java publish_java` to build through Docker.
+
+Note that Sonatype is pretty slow; even after the build completes it might take a while for it to show up.
 
 ### Node: NPM
 

@@ -24,5 +24,6 @@ java/gradle.properties
 java/local.properties
 java/android/src/main/jniLibs
 java/java/src/main/resources
+java/java/src/otherPlatformLibraries/resources
 
 .DS_Store
