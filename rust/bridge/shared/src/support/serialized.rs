@@ -24,7 +24,6 @@ pub(crate) trait FixedLengthBincodeSerializable: 'static {
 pub(crate) struct Serialized<T>(T);
 
 impl<T> Serialized<T> {
-    #[allow(dead_code)]
     pub fn into_inner(self) -> T {
         self.0
     }

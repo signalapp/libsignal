@@ -15,6 +15,7 @@ libsignal-protocol = { path = "../../protocol" }
 signal-crypto = { path = "../../crypto" }
 device-transfer = { path = "../../device-transfer" }
 hsm-enclave = { path = "../../hsm-enclave" }
+zkgroup = { path = "../../zkgroup" }
 libsignal-bridge-macros = { path = "macros" }
 aes-gcm-siv = "0.10.1"
 async-trait = "0.1.41"

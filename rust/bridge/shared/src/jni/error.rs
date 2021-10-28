@@ -11,6 +11,7 @@ use device_transfer::Error as DeviceTransferError;
 use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use zkgroup::ZkGroupError;
 
 use crate::support::describe_panic;
 
@@ -22,13 +23,14 @@ pub enum SignalJniError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
     SignalCrypto(SignalCryptoError),
+    HsmEnclave(HsmEnclaveError),
+    ZkGroup(ZkGroupError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     DeserializationFailed(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
-    HsmEnclave(HsmEnclaveError),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
@@ -37,7 +39,9 @@ impl fmt::Display for SignalJniError {
         match self {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
+            SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
             SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
+            SignalJniError::ZkGroup(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -49,9 +53,6 @@ impl fmt::Display for SignalJniError {
             }
             SignalJniError::DeserializationFailed(ty) => {
                 write!(f, "failed to deserialize {}", ty)
-            }
-            SignalJniError::HsmEnclave(e) => {
-                write!(f, "{}", e)
             }
             SignalJniError::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))
@@ -81,6 +82,12 @@ impl From<HsmEnclaveError> for SignalJniError {
 impl From<SignalCryptoError> for SignalJniError {
     fn from(e: SignalCryptoError) -> SignalJniError {
         SignalJniError::SignalCrypto(e)
+    }
+}
+
+impl From<ZkGroupError> for SignalJniError {
+    fn from(e: ZkGroupError) -> SignalJniError {
+        SignalJniError::ZkGroup(e)
     }
 }
 
