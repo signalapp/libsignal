@@ -33,3 +33,5 @@ pub mod protocol;
 pub mod device_transfer;
 
 pub mod hsm_enclave;
+
+pub mod zkgroup;

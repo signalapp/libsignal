@@ -50,6 +50,11 @@ export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_Encrypt(aesGcmSivObj: Wrapper<Aes256GcmSiv>, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;
+export function AuthCredentialPresentation_CheckValidContents(Obj: Serialized<AuthCredentialPresentation>): void;
+export function AuthCredentialPresentation_GetRedemptionTime(presentation: Serialized<AuthCredentialPresentation>): number;
+export function AuthCredentialPresentation_GetUuidCiphertext(presentation: Serialized<AuthCredentialPresentation>): Serialized<UuidCiphertext>;
+export function AuthCredentialResponse_CheckValidContents(Obj: Serialized<AuthCredentialResponse>): void;
+export function AuthCredential_CheckValidContents(Obj: Serialized<AuthCredential>): void;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -65,6 +70,20 @@ export function Fingerprint_New(iterations: number, version: number, localIdenti
 export function Fingerprint_ScannableEncoding(obj: Wrapper<Fingerprint>): Buffer;
 export function GroupCipher_DecryptMessage(sender: Wrapper<ProtocolAddress>, message: Buffer, store: SenderKeyStore, ctx: null): Promise<Buffer>;
 export function GroupCipher_EncryptMessage(sender: Wrapper<ProtocolAddress>, distributionId: Uuid, message: Buffer, store: SenderKeyStore, ctx: null): Promise<CiphertextMessage>;
+export function GroupMasterKey_CheckValidContents(Obj: Serialized<GroupMasterKey>): void;
+export function GroupPublicParams_CheckValidContents(Obj: Serialized<GroupPublicParams>): void;
+export function GroupPublicParams_GetGroupIdentifier(groupPublicParams: Serialized<GroupPublicParams>): Buffer;
+export function GroupSecretParams_CheckValidContents(Obj: Serialized<GroupSecretParams>): void;
+export function GroupSecretParams_DecryptBlob(params: Serialized<GroupSecretParams>, ciphertext: Buffer): Buffer;
+export function GroupSecretParams_DecryptProfileKey(params: Serialized<GroupSecretParams>, profileKey: Serialized<ProfileKeyCiphertext>, uuid: Uuid): Serialized<ProfileKey>;
+export function GroupSecretParams_DecryptUuid(params: Serialized<GroupSecretParams>, uuid: Serialized<UuidCiphertext>): Uuid;
+export function GroupSecretParams_DeriveFromMasterKey(masterKey: Serialized<GroupMasterKey>): Serialized<GroupSecretParams>;
+export function GroupSecretParams_EncryptBlobDeterministic(params: Serialized<GroupSecretParams>, randomness: Buffer, plaintext: Buffer): Buffer;
+export function GroupSecretParams_EncryptProfileKey(params: Serialized<GroupSecretParams>, profileKey: Serialized<ProfileKey>, uuid: Uuid): Serialized<ProfileKeyCiphertext>;
+export function GroupSecretParams_EncryptUuid(params: Serialized<GroupSecretParams>, uuid: Uuid): Serialized<UuidCiphertext>;
+export function GroupSecretParams_GenerateDeterministic(randomness: Buffer): Serialized<GroupSecretParams>;
+export function GroupSecretParams_GetMasterKey(params: Serialized<GroupSecretParams>): Serialized<GroupMasterKey>;
+export function GroupSecretParams_GetPublicParams(params: Serialized<GroupSecretParams>): Serialized<GroupPublicParams>;
 export function HKDF_DeriveSecrets(outputLength: number, ikm: Buffer, label: Buffer | null, salt: Buffer | null): Buffer;
 export function HsmEnclaveClient_CompleteHandshake(cli: Wrapper<HsmEnclaveClient>, handshakeReceived: Buffer): void;
 export function HsmEnclaveClient_EstablishedRecv(cli: Wrapper<HsmEnclaveClient>, receivedCiphertext: Buffer): Buffer;
@@ -104,6 +123,19 @@ export function PrivateKey_Generate(): PrivateKey;
 export function PrivateKey_GetPublicKey(k: Wrapper<PrivateKey>): PublicKey;
 export function PrivateKey_Serialize(obj: Wrapper<PrivateKey>): Buffer;
 export function PrivateKey_Sign(key: Wrapper<PrivateKey>, message: Buffer): Buffer;
+export function ProfileKeyCiphertext_CheckValidContents(Obj: Serialized<ProfileKeyCiphertext>): void;
+export function ProfileKeyCommitment_CheckValidContents(Obj: Serialized<ProfileKeyCommitment>): void;
+export function ProfileKeyCredentialPresentation_CheckValidContents(Obj: Serialized<ProfileKeyCredentialPresentation>): void;
+export function ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(presentation: Serialized<ProfileKeyCredentialPresentation>): Serialized<ProfileKeyCiphertext>;
+export function ProfileKeyCredentialPresentation_GetUuidCiphertext(presentation: Serialized<ProfileKeyCredentialPresentation>): Serialized<UuidCiphertext>;
+export function ProfileKeyCredentialRequestContext_CheckValidContents(Obj: Serialized<ProfileKeyCredentialRequestContext>): void;
+export function ProfileKeyCredentialRequestContext_GetRequest(context: Serialized<ProfileKeyCredentialRequestContext>): Serialized<ProfileKeyCredentialRequest>;
+export function ProfileKeyCredentialRequest_CheckValidContents(Obj: Serialized<ProfileKeyCredentialRequest>): void;
+export function ProfileKeyCredentialResponse_CheckValidContents(Obj: Serialized<ProfileKeyCredentialResponse>): void;
+export function ProfileKeyCredential_CheckValidContents(Obj: Serialized<ProfileKeyCredential>): void;
+export function ProfileKey_CheckValidContents(Obj: Serialized<ProfileKey>): void;
+export function ProfileKey_GetCommitment(profileKey: Serialized<ProfileKey>, uuid: Uuid): Serialized<ProfileKeyCommitment>;
+export function ProfileKey_GetProfileKeyVersion(profileKey: Serialized<ProfileKey>, uuid: Uuid): Buffer;
 export function ProtocolAddress_DeviceId(obj: Wrapper<ProtocolAddress>): number;
 export function ProtocolAddress_Name(obj: Wrapper<ProtocolAddress>): string;
 export function ProtocolAddress_New(name: string, deviceId: number): ProtocolAddress;
@@ -112,6 +144,17 @@ export function PublicKey_Deserialize(data: Buffer): PublicKey;
 export function PublicKey_GetPublicKeyBytes(obj: Wrapper<PublicKey>): Buffer;
 export function PublicKey_Serialize(obj: Wrapper<PublicKey>): Buffer;
 export function PublicKey_Verify(key: Wrapper<PublicKey>, message: Buffer, signature: Buffer): boolean;
+export function ReceiptCredentialPresentation_CheckValidContents(Obj: Serialized<ReceiptCredentialPresentation>): void;
+export function ReceiptCredentialPresentation_GetReceiptExpirationTime(presentation: Serialized<ReceiptCredentialPresentation>): Buffer;
+export function ReceiptCredentialPresentation_GetReceiptLevel(presentation: Serialized<ReceiptCredentialPresentation>): Buffer;
+export function ReceiptCredentialPresentation_GetReceiptSerial(presentation: Serialized<ReceiptCredentialPresentation>): Buffer;
+export function ReceiptCredentialRequestContext_CheckValidContents(Obj: Serialized<ReceiptCredentialRequestContext>): void;
+export function ReceiptCredentialRequestContext_GetRequest(requestContext: Serialized<ReceiptCredentialRequestContext>): Serialized<ReceiptCredentialRequest>;
+export function ReceiptCredentialRequest_CheckValidContents(Obj: Serialized<ReceiptCredentialRequest>): void;
+export function ReceiptCredentialResponse_CheckValidContents(Obj: Serialized<ReceiptCredentialResponse>): void;
+export function ReceiptCredential_CheckValidContents(Obj: Serialized<ReceiptCredential>): void;
+export function ReceiptCredential_GetReceiptExpirationTime(receiptCredential: Serialized<ReceiptCredential>): Buffer;
+export function ReceiptCredential_GetReceiptLevel(receiptCredential: Serialized<ReceiptCredential>): Buffer;
 export function ScannableFingerprint_Compare(fprint1: Buffer, fprint2: Buffer): boolean;
 export function SealedSenderDecryptionResult_GetDeviceId(obj: Wrapper<SealedSenderDecryptionResult>): number;
 export function SealedSenderDecryptionResult_GetSenderE164(obj: Wrapper<SealedSenderDecryptionResult>): string | null;
@@ -161,6 +204,26 @@ export function ServerCertificate_GetKeyId(obj: Wrapper<ServerCertificate>): num
 export function ServerCertificate_GetSerialized(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_GetSignature(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_New(keyId: number, serverKey: Wrapper<PublicKey>, trustRoot: Wrapper<PrivateKey>): ServerCertificate;
+export function ServerPublicParams_CheckValidContents(Obj: Serialized<ServerPublicParams>): void;
+export function ServerPublicParams_CreateAuthCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredential: Serialized<AuthCredential>): Serialized<AuthCredentialPresentation>;
+export function ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<ProfileKeyCredential>): Serialized<ProfileKeyCredentialPresentation>;
+export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, uuid: Uuid, profileKey: Serialized<ProfileKey>): Serialized<ProfileKeyCredentialRequestContext>;
+export function ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, receiptCredential: Serialized<ReceiptCredential>): Serialized<ReceiptCredentialPresentation>;
+export function ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, receiptSerial: Buffer): Serialized<ReceiptCredentialRequestContext>;
+export function ServerPublicParams_ReceiveAuthCredential(params: Serialized<ServerPublicParams>, uuid: Uuid, redemptionTime: number, response: Serialized<AuthCredentialResponse>): Serialized<AuthCredential>;
+export function ServerPublicParams_ReceiveProfileKeyCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<ProfileKeyCredentialRequestContext>, response: Serialized<ProfileKeyCredentialResponse>): Serialized<ProfileKeyCredential>;
+export function ServerPublicParams_ReceiveReceiptCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<ReceiptCredentialRequestContext>, response: Serialized<ReceiptCredentialResponse>): Serialized<ReceiptCredential>;
+export function ServerPublicParams_VerifySignature(serverPublicParams: Serialized<ServerPublicParams>, message: Buffer, notarySignature: Buffer): void;
+export function ServerSecretParams_CheckValidContents(Obj: Serialized<ServerSecretParams>): void;
+export function ServerSecretParams_GenerateDeterministic(randomness: Buffer): Serialized<ServerSecretParams>;
+export function ServerSecretParams_GetPublicParams(params: Serialized<ServerSecretParams>): Serialized<ServerPublicParams>;
+export function ServerSecretParams_IssueAuthCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, uuid: Uuid, redemptionTime: number): Serialized<AuthCredentialResponse>;
+export function ServerSecretParams_IssueProfileKeyCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ProfileKeyCredentialRequest>, uuid: Uuid, commitment: Serialized<ProfileKeyCommitment>): Serialized<ProfileKeyCredentialResponse>;
+export function ServerSecretParams_IssueReceiptCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ReceiptCredentialRequest>, receiptExpirationTime: Buffer, receiptLevel: Buffer): Serialized<ReceiptCredentialResponse>;
+export function ServerSecretParams_SignDeterministic(params: Serialized<ServerSecretParams>, randomness: Buffer, message: Buffer): Buffer;
+export function ServerSecretParams_VerifyAuthCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentation: Serialized<AuthCredentialPresentation>): void;
+export function ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentation: Serialized<ProfileKeyCredentialPresentation>): void;
+export function ServerSecretParams_VerifyReceiptCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, presentation: Serialized<ReceiptCredentialPresentation>): void;
 export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<void>;
 export function SessionCipher_DecryptPreKeySignalMessage(message: Wrapper<PreKeySignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, ctx: null): Promise<Buffer>;
 export function SessionCipher_DecryptSignalMessage(message: Wrapper<SignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
@@ -195,26 +258,49 @@ export function UnidentifiedSenderMessageContent_GetMsgType(m: Wrapper<Unidentif
 export function UnidentifiedSenderMessageContent_GetSenderCert(m: Wrapper<UnidentifiedSenderMessageContent>): SenderCertificate;
 export function UnidentifiedSenderMessageContent_New(message: Wrapper<CiphertextMessage>, sender: Wrapper<SenderCertificate>, contentHint: number, groupId: Buffer | null): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_Serialize(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
+export function UuidCiphertext_CheckValidContents(Obj: Serialized<UuidCiphertext>): void;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }
+interface AuthCredential { readonly __type: unique symbol; }
+interface AuthCredentialPresentation { readonly __type: unique symbol; }
+interface AuthCredentialResponse { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
 interface Fingerprint { readonly __type: unique symbol; }
+interface GroupMasterKey { readonly __type: unique symbol; }
+interface GroupPublicParams { readonly __type: unique symbol; }
+interface GroupSecretParams { readonly __type: unique symbol; }
 interface HsmEnclaveClient { readonly __type: unique symbol; }
 interface PlaintextContent { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }
 interface PreKeyRecord { readonly __type: unique symbol; }
 interface PreKeySignalMessage { readonly __type: unique symbol; }
 interface PrivateKey { readonly __type: unique symbol; }
+interface ProfileKey { readonly __type: unique symbol; }
+interface ProfileKeyCiphertext { readonly __type: unique symbol; }
+interface ProfileKeyCommitment { readonly __type: unique symbol; }
+interface ProfileKeyCredential { readonly __type: unique symbol; }
+interface ProfileKeyCredentialPresentation { readonly __type: unique symbol; }
+interface ProfileKeyCredentialRequest { readonly __type: unique symbol; }
+interface ProfileKeyCredentialRequestContext { readonly __type: unique symbol; }
+interface ProfileKeyCredentialResponse { readonly __type: unique symbol; }
 interface ProtocolAddress { readonly __type: unique symbol; }
 interface PublicKey { readonly __type: unique symbol; }
+interface ReceiptCredential { readonly __type: unique symbol; }
+interface ReceiptCredentialPresentation { readonly __type: unique symbol; }
+interface ReceiptCredentialRequest { readonly __type: unique symbol; }
+interface ReceiptCredentialRequestContext { readonly __type: unique symbol; }
+interface ReceiptCredentialResponse { readonly __type: unique symbol; }
 interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }
 interface SenderKeyDistributionMessage { readonly __type: unique symbol; }
 interface SenderKeyMessage { readonly __type: unique symbol; }
 interface SenderKeyRecord { readonly __type: unique symbol; }
 interface ServerCertificate { readonly __type: unique symbol; }
+interface ServerPublicParams { readonly __type: unique symbol; }
+interface ServerSecretParams { readonly __type: unique symbol; }
 interface SessionRecord { readonly __type: unique symbol; }
 interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
 interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }
+interface UuidCiphertext { readonly __type: unique symbol; }
