@@ -6,8 +6,11 @@
 use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
 use paste::paste;
+use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ops::Deref;
+
+use crate::support::{FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
 
@@ -457,6 +460,32 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
     }
 }
 
+impl<T> SimpleArgTypeInfo for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+{
+    type ArgType = *const T::Array;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let array = unsafe { foreign.as_ref() }.ok_or(SignalFfiError::NullPointer)?;
+        let result: T =
+            bincode::deserialize(array.as_ref()).map_err(|_| SignalFfiError::InvalidType)?;
+        Ok(Serialized::from(result))
+    }
+}
+
+impl<T> ResultTypeInfo for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + serde::Serialize,
+{
+    type ResultType = T::Array;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        Ok(result.as_slice().try_into().expect("wrong serialized size"))
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -540,6 +569,10 @@ macro_rules! ffi_arg_type {
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
+
+    // In order to provide a fixed-sized array of the correct length,
+    // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
+    (Serialized<$typ:ident>) => (*const [libc::c_uchar; paste!([<$typ:snake:upper _LEN>])]);
 }
 
 /// Syntactically translates `bridge_fn` result types to FFI types for `cbindgen`.
@@ -571,5 +604,10 @@ macro_rules! ffi_result_type {
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
     ([u8; $len:expr]) => ([u8; $len]);
+
+    // In order to provide a fixed-sized array of the correct length,
+    // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
+    (Serialized<$typ:ident>) => ([libc::c_uchar; paste!([<$typ:snake:upper _LEN>])]);
+
     ( $typ:ty ) => (*mut $typ);
 }

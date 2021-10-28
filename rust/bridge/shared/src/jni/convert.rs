@@ -11,6 +11,8 @@ use paste::paste;
 use std::convert::TryInto;
 use std::ops::Deref;
 
+use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
+
 use super::*;
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -794,6 +796,47 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
     }
 }
 
+impl<T> SimpleArgTypeInfo<'_> for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+{
+    type ArgType = jbyteArray;
+
+    fn convert_from(env: &jni_crate::JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        let borrowed_array = env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?;
+        let len = borrowed_array.size()? as usize;
+        if len != T::Array::LEN {
+            return Err(SignalJniError::DeserializationFailed(
+                std::any::type_name::<T>(),
+            ));
+        }
+        // Convert from i8 to u8.
+        let bytes =
+            unsafe { std::slice::from_raw_parts(borrowed_array.as_ptr() as *const u8, len) };
+        let result: T = bincode::deserialize(bytes)
+            .map_err(|_| SignalJniError::DeserializationFailed(std::any::type_name::<T>()))?;
+        Ok(Serialized::from(result))
+    }
+}
+
+impl<T> ResultTypeInfo for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + serde::Serialize,
+{
+    type ResultType = jbyteArray;
+
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        result.convert_into(env)
+    }
+
+    fn convert_into_jobject(
+        signal_jni_result: &SignalJniResult<Self::ResultType>,
+    ) -> jni_crate::objects::JObject {
+        Vec::<u8>::convert_into_jobject(signal_jni_result)
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
 macro_rules! jni_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -924,6 +967,9 @@ macro_rules! jni_arg_type {
     (Option<& $typ:ty>) => {
         jni::ObjectHandle
     };
+    (Serialized<$typ:ident>) => {
+        jni::jbyteArray
+    };
 }
 
 /// Syntactically translates `bridge_fn` result types to JNI types for `cbindgen` and
@@ -994,6 +1040,9 @@ macro_rules! jni_result_type {
     };
     (CiphertextMessage) => {
         jni::JavaReturnCiphertextMessage
+    };
+    (Serialized<$typ:ident>) => {
+        jni::jbyteArray
     };
     ( $handle:ident ) => {
         jni::ObjectHandle
