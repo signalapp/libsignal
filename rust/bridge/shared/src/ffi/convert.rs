@@ -253,6 +253,21 @@ impl ResultTypeInfo for uuid::Uuid {
     }
 }
 
+impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: *const [u8; LEN]) -> SignalFfiResult<Self> {
+        unsafe { arg.as_ref() }.ok_or(SignalFfiError::NullPointer)
+    }
+}
+
+impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
+    type ResultType = [u8; LEN];
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self)
+    }
+}
+
 macro_rules! store {
     ($name:ident) => {
         paste! {
@@ -519,6 +534,7 @@ macro_rules! ffi_arg_type {
     (Context) => (*mut libc::c_void);
     (Timestamp) => (u64);
     (Uuid) => (*const [u8; 16]);
+    (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (*const *const $typ);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
@@ -554,5 +570,6 @@ macro_rules! ffi_result_type {
     (Option<$typ:ty>) => (*mut $typ);
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
+    ([u8; $len:expr]) => ([u8; $len]);
     ( $typ:ty ) => (*mut $typ);
 }

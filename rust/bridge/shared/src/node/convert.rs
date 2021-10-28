@@ -608,6 +608,39 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     }
 }
 
+/// Loads from a JsBuffer, assuming it won't be mutated while in use.
+/// See [`AssumedImmutableBuffer`].
+impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
+    for &'storage [u8; LEN]
+{
+    type ArgType = JsBuffer;
+    type StoredType = AssumedImmutableBuffer<'context>;
+    fn borrow(
+        cx: &mut FunctionContext,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let result = AssumedImmutableBuffer::new(cx, foreign);
+        if result.buffer.len() != LEN {
+            cx.throw_error(format!(
+                "buffer has incorrect length {} (expected {})",
+                result.buffer.len(),
+                LEN
+            ))?;
+        }
+        Ok(result)
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.buffer.try_into().expect("checked length already")
+    }
+}
+
+impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        self.as_ref().convert_into(cx)
+    }
+}
+
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     type ResultType = T::ResultType;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
