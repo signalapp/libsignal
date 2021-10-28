@@ -12,6 +12,8 @@ use std::hash::Hasher;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
+use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
+
 use super::*;
 
 /// Converts arguments from their JavaScript form to their Rust form.
@@ -698,6 +700,39 @@ macro_rules! full_range_integer {
 full_range_integer!(u8);
 full_range_integer!(u32);
 full_range_integer!(i32);
+
+impl<T> SimpleArgTypeInfo for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+{
+    type ArgType = JsBuffer;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let result: T = cx
+            .borrow(&foreign, |buffer| {
+                let bytes = buffer.as_slice();
+                if bytes.len() != T::Array::LEN {
+                    Err(bincode::ErrorKind::SizeLimit.into())
+                } else {
+                    bincode::deserialize(bytes)
+                }
+            })
+            .or_else(|_| cx.throw_error("failed to deserialize"))?;
+        Ok(Serialized::from(result))
+    }
+}
+
+impl<'a, T> crate::node::ResultTypeInfo<'a> for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + serde::Serialize,
+{
+    type ResultType = JsBuffer;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        result.convert_into(cx)
+    }
+}
 
 /// Extremely unsafe function to extend the lifetime of a reference.
 ///

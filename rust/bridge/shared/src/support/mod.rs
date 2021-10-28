@@ -5,6 +5,9 @@
 
 pub(crate) use paste::paste;
 
+mod serialized;
+pub(crate) use serialized::*;
+
 mod transform_helper;
 pub(crate) use transform_helper::*;
 
