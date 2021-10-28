@@ -1,14 +1,18 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[derive(Debug)]
+#[derive(Debug, displaydoc::Display)]
 pub enum ZkGroupError {
-    BadArgs,                      // Bad arguments were passed to the function
-    DecryptionFailure,            // Decryption failed
-    MacVerificationFailure,       // MAC verification failed
-    ProofVerificationFailure,     // Proof verification failed
-    SignatureVerificationFailure, // Signature verification failed
-    PointDecodeFailure,           // Lizard failed to decode; CAN HAPPEN
+    /// Bad arguments were passed to the function
+    BadArgs,
+    /// Decryption failed
+    DecryptionFailure,
+    /// MAC verification failed
+    MacVerificationFailure,
+    /// Proof verification failed
+    ProofVerificationFailure,
+    /// Signature verification failed
+    SignatureVerificationFailure,
 }
