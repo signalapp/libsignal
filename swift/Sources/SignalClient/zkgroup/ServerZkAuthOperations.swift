@@ -14,14 +14,14 @@ public class ServerZkAuthOperations {
     self.serverSecretParams = serverSecretParams
   }
 
-  public func issueAuthCredential(uuid: ZKGUuid, redemptionTime: UInt32) throws -> AuthCredentialResponse {
+  public func issueAuthCredential(uuid: UUID, redemptionTime: UInt32) throws -> AuthCredentialResponse {
     return try issueAuthCredential(randomness: Randomness.generate(), uuid: uuid, redemptionTime: redemptionTime)
   }
 
-  public func issueAuthCredential(randomness: Randomness, uuid: ZKGUuid, redemptionTime: UInt32) throws -> AuthCredentialResponse {
+  public func issueAuthCredential(randomness: Randomness, uuid: UUID, redemptionTime: UInt32) throws -> AuthCredentialResponse {
     return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
-        try uuid.withUnsafePointerToSerialized { uuid in
+        try withUnsafePointer(to: uuid.uuid) { uuid in
           try invokeFnReturningSerialized {
             signal_server_secret_params_issue_auth_credential_deterministic($0, serverSecretParams, randomness, uuid, redemptionTime)
           }
