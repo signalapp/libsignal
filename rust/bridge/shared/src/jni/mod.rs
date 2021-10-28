@@ -220,9 +220,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
-        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize) => {
-            "java/lang/IllegalArgumentException"
-        }
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
+        | SignalJniError::DeserializationFailed(_) => "java/lang/IllegalArgumentException",
 
         SignalJniError::IntegerOverflow(_)
         | SignalJniError::Jni(_)

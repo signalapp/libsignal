@@ -24,6 +24,7 @@ pub enum SignalJniError {
     SignalCrypto(SignalCryptoError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
+    DeserializationFailed(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
@@ -45,6 +46,9 @@ impl fmt::Display for SignalJniError {
             }
             SignalJniError::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
+            }
+            SignalJniError::DeserializationFailed(ty) => {
+                write!(f, "failed to deserialize {}", ty)
             }
             SignalJniError::HsmEnclave(e) => {
                 write!(f, "{}", e)
