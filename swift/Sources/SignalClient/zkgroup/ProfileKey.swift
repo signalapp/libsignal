@@ -14,9 +14,9 @@ public class ProfileKey: ByteArray {
     try super.init(newContents: contents, expectedLength: ProfileKey.SIZE)
   }
 
-  public func getCommitment(uuid: ZKGUuid) throws -> ProfileKeyCommitment {
+  public func getCommitment(uuid: UUID) throws -> ProfileKeyCommitment {
     return try withUnsafePointerToSerialized { contents in
-      try uuid.withUnsafePointerToSerialized { uuid in
+      try withUnsafePointer(to: uuid.uuid) { uuid in
         try invokeFnReturningSerialized {
           signal_profile_key_get_commitment($0, contents, uuid)
         }
@@ -24,9 +24,9 @@ public class ProfileKey: ByteArray {
     }
   }
 
-  public func getProfileKeyVersion(uuid: ZKGUuid) throws -> ProfileKeyVersion {
+  public func getProfileKeyVersion(uuid: UUID) throws -> ProfileKeyVersion {
     return try withUnsafePointerToSerialized { contents in
-      try uuid.withUnsafePointerToSerialized { uuid in
+      try withUnsafePointer(to: uuid.uuid) { uuid in
         try invokeFnReturningSerialized {
           signal_profile_key_get_profile_key_version($0, contents, uuid)
         }

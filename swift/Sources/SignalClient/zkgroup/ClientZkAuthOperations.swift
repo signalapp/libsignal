@@ -14,9 +14,9 @@ public class ClientZkAuthOperations {
     self.serverPublicParams = serverPublicParams
   }
 
-  public func receiveAuthCredential(uuid: ZKGUuid, redemptionTime: UInt32, authCredentialResponse: AuthCredentialResponse) throws -> AuthCredential {
+  public func receiveAuthCredential(uuid: UUID, redemptionTime: UInt32, authCredentialResponse: AuthCredentialResponse) throws -> AuthCredential {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
-      try uuid.withUnsafePointerToSerialized { uuid in
+      try withUnsafePointer(to: uuid.uuid) { uuid in
         try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
           try invokeFnReturningSerialized {
             signal_server_public_params_receive_auth_credential($0, serverPublicParams, uuid, redemptionTime, authCredentialResponse)
