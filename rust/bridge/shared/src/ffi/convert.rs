@@ -246,6 +246,13 @@ impl SimpleArgTypeInfo for uuid::Uuid {
     }
 }
 
+impl ResultTypeInfo for uuid::Uuid {
+    type ResultType = uuid::Bytes;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(*self.as_bytes())
+    }
+}
+
 macro_rules! store {
     ($name:ident) => {
         paste! {
@@ -530,5 +537,6 @@ macro_rules! ffi_result_type {
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
     (Option<$typ:ty>) => (*mut $typ);
+    (Uuid) => ([u8; 16]);
     ( $typ:ty ) => (*mut $typ);
 }
