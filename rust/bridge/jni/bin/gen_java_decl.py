@@ -39,7 +39,8 @@ ignore_this_warning = re.compile(
     "("
     r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
     r"WARN: Missing `\[defines\]` entry for `feature = \".*\"` in cbindgen config\.|"
-    r"WARN: Skip libsignal-bridge::_ - \(not `pub`\)\."
+    r"WARN: Skip libsignal-bridge::_ - \(not `pub`\)\.|"
+    r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants"
     ")")
 
 unknown_warning = False

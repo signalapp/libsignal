@@ -39,6 +39,9 @@ def translate_to_ts(typ):
     if typ in type_map:
         return type_map[typ]
 
+    if typ.startswith('[u8;') or typ.startswith('&[u8;'):
+        return 'Buffer'
+
     if typ.startswith('&mutdyn'):
         return typ[7:]
 
