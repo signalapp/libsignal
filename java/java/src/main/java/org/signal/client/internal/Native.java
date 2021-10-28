@@ -104,6 +104,14 @@ public final class Native {
   public static native byte[] Aes256GcmSiv_Encrypt(long aesGcmSivObj, byte[] ptext, byte[] nonce, byte[] associatedData);
   public static native long Aes256GcmSiv_New(byte[] key);
 
+  public static native void AuthCredentialPresentation_CheckValidContents(byte[] obj);
+  public static native int AuthCredentialPresentation_GetRedemptionTime(byte[] presentation);
+  public static native byte[] AuthCredentialPresentation_GetUuidCiphertext(byte[] presentation);
+
+  public static native void AuthCredentialResponse_CheckValidContents(byte[] obj);
+
+  public static native void AuthCredential_CheckValidContents(byte[] obj);
+
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);
   public static native long CryptographicHash_New(String algo);
@@ -145,6 +153,23 @@ public final class Native {
 
   public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store, Object ctx);
   public static native CiphertextMessage GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store, Object ctx);
+
+  public static native void GroupMasterKey_CheckValidContents(byte[] obj);
+
+  public static native void GroupPublicParams_CheckValidContents(byte[] obj);
+  public static native byte[] GroupPublicParams_GetGroupIdentifier(byte[] groupPublicParams);
+
+  public static native void GroupSecretParams_CheckValidContents(byte[] obj);
+  public static native byte[] GroupSecretParams_DecryptBlob(byte[] params, byte[] ciphertext);
+  public static native byte[] GroupSecretParams_DecryptProfileKey(byte[] params, byte[] profileKey, UUID uuid);
+  public static native UUID GroupSecretParams_DecryptUuid(byte[] params, byte[] uuid);
+  public static native byte[] GroupSecretParams_DeriveFromMasterKey(byte[] masterKey);
+  public static native byte[] GroupSecretParams_EncryptBlobDeterministic(byte[] params, byte[] randomness, byte[] plaintext);
+  public static native byte[] GroupSecretParams_EncryptProfileKey(byte[] params, byte[] profileKey, UUID uuid);
+  public static native byte[] GroupSecretParams_EncryptUuid(byte[] params, UUID uuid);
+  public static native byte[] GroupSecretParams_GenerateDeterministic(byte[] randomness);
+  public static native byte[] GroupSecretParams_GetMasterKey(byte[] params);
+  public static native byte[] GroupSecretParams_GetPublicParams(byte[] params);
 
   public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store, Object ctx);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store, Object ctx);
@@ -207,10 +232,47 @@ public final class Native {
   public static native int PreKeySignalMessage_GetVersion(long obj);
   public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKey, long identityKey, long signalMessage);
 
+  public static native void ProfileKeyCiphertext_CheckValidContents(byte[] obj);
+
+  public static native void ProfileKeyCommitment_CheckValidContents(byte[] obj);
+
+  public static native void ProfileKeyCredentialPresentation_CheckValidContents(byte[] obj);
+  public static native byte[] ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(byte[] presentation);
+  public static native byte[] ProfileKeyCredentialPresentation_GetUuidCiphertext(byte[] presentation);
+
+  public static native void ProfileKeyCredentialRequestContext_CheckValidContents(byte[] obj);
+  public static native byte[] ProfileKeyCredentialRequestContext_GetRequest(byte[] context);
+
+  public static native void ProfileKeyCredentialRequest_CheckValidContents(byte[] obj);
+
+  public static native void ProfileKeyCredentialResponse_CheckValidContents(byte[] obj);
+
+  public static native void ProfileKeyCredential_CheckValidContents(byte[] obj);
+
+  public static native void ProfileKey_CheckValidContents(byte[] obj);
+  public static native byte[] ProfileKey_GetCommitment(byte[] profileKey, UUID uuid);
+  public static native byte[] ProfileKey_GetProfileKeyVersion(byte[] profileKey, UUID uuid);
+
   public static native void ProtocolAddress_Destroy(long handle);
   public static native int ProtocolAddress_DeviceId(long obj);
   public static native String ProtocolAddress_Name(long obj);
   public static native long ProtocolAddress_New(String name, int deviceId);
+
+  public static native void ReceiptCredentialPresentation_CheckValidContents(byte[] obj);
+  public static native long ReceiptCredentialPresentation_GetReceiptExpirationTime(byte[] presentation);
+  public static native long ReceiptCredentialPresentation_GetReceiptLevel(byte[] presentation);
+  public static native byte[] ReceiptCredentialPresentation_GetReceiptSerial(byte[] presentation);
+
+  public static native void ReceiptCredentialRequestContext_CheckValidContents(byte[] obj);
+  public static native byte[] ReceiptCredentialRequestContext_GetRequest(byte[] requestContext);
+
+  public static native void ReceiptCredentialRequest_CheckValidContents(byte[] obj);
+
+  public static native void ReceiptCredentialResponse_CheckValidContents(byte[] obj);
+
+  public static native void ReceiptCredential_CheckValidContents(byte[] obj);
+  public static native long ReceiptCredential_GetReceiptExpirationTime(byte[] receiptCredential);
+  public static native long ReceiptCredential_GetReceiptLevel(byte[] receiptCredential);
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 
@@ -267,6 +329,28 @@ public final class Native {
   public static native byte[] ServerCertificate_GetSignature(long obj);
   public static native long ServerCertificate_New(int keyId, long serverKey, long trustRoot);
 
+  public static native void ServerPublicParams_CheckValidContents(byte[] obj);
+  public static native byte[] ServerPublicParams_CreateAuthCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
+  public static native byte[] ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);
+  public static native byte[] ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, UUID uuid, byte[] profileKey);
+  public static native byte[] ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptCredential);
+  public static native byte[] ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptSerial);
+  public static native byte[] ServerPublicParams_ReceiveAuthCredential(byte[] params, UUID uuid, int redemptionTime, byte[] response);
+  public static native byte[] ServerPublicParams_ReceiveProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
+  public static native byte[] ServerPublicParams_ReceiveReceiptCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
+  public static native void ServerPublicParams_VerifySignature(byte[] serverPublicParams, byte[] message, byte[] notarySignature);
+
+  public static native void ServerSecretParams_CheckValidContents(byte[] obj);
+  public static native byte[] ServerSecretParams_GenerateDeterministic(byte[] randomness);
+  public static native byte[] ServerSecretParams_GetPublicParams(byte[] params);
+  public static native byte[] ServerSecretParams_IssueAuthCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, UUID uuid, int redemptionTime);
+  public static native byte[] ServerSecretParams_IssueProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment);
+  public static native byte[] ServerSecretParams_IssueReceiptCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, long receiptExpirationTime, long receiptLevel);
+  public static native byte[] ServerSecretParams_SignDeterministic(byte[] params, byte[] randomness, byte[] message);
+  public static native void ServerSecretParams_VerifyAuthCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentation);
+  public static native void ServerSecretParams_VerifyProfileKeyCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentation);
+  public static native void ServerSecretParams_VerifyReceiptCredentialPresentation(byte[] serverSecretParams, byte[] presentation);
+
   public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
   public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, Object ctx);
@@ -321,4 +405,6 @@ public final class Native {
   public static native long UnidentifiedSenderMessageContent_GetSenderCert(long m);
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long obj);
   public static native long UnidentifiedSenderMessageContent_New(CiphertextMessage message, long sender, int contentHint, byte[] groupId);
+
+  public static native void UuidCiphertext_CheckValidContents(byte[] obj);
 }

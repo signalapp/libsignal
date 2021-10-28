@@ -10,6 +10,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::ffi::CString;
+use zkgroup::ZkGroupError;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -50,6 +51,8 @@ pub enum SignalErrorCode {
     DuplicatedMessage = 90,
 
     CallbackError = 100,
+
+    VerificationFailure = 110,
 }
 
 impl From<&SignalFfiError> for SignalErrorCode {
@@ -166,11 +169,19 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError)
-            | SignalFfiError::SignalCrypto(_) => SignalErrorCode::InvalidArgument,
+            | SignalFfiError::SignalCrypto(_)
+            | SignalFfiError::ZkGroup(ZkGroupError::BadArgs) => SignalErrorCode::InvalidArgument,
 
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
                 SignalErrorCode::CallbackError
             }
+
+            SignalFfiError::ZkGroup(
+                ZkGroupError::DecryptionFailure
+                | ZkGroupError::MacVerificationFailure
+                | ZkGroupError::ProofVerificationFailure
+                | ZkGroupError::SignatureVerificationFailure,
+            ) => SignalErrorCode::VerificationFailure,
         }
     }
 }

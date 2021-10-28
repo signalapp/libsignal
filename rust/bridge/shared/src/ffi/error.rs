@@ -10,6 +10,7 @@ use device_transfer::Error as DeviceTransferError;
 use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use zkgroup::ZkGroupError;
 
 use crate::support::describe_panic;
 
@@ -20,6 +21,7 @@ pub enum SignalFfiError {
     DeviceTransfer(DeviceTransferError),
     HsmEnclave(HsmEnclaveError),
     SignalCrypto(SignalCryptoError),
+    ZkGroup(ZkGroupError),
     InsufficientOutputSize(usize, usize),
     NullPointer,
     InvalidUtf8String,
@@ -40,6 +42,7 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::SignalCrypto(c) => {
                 write!(f, "Cryptographic operation failed: {}", c)
             }
+            SignalFfiError::ZkGroup(e) => write!(f, "{}", e),
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidType => write!(f, "invalid type"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
@@ -74,6 +77,12 @@ impl From<HsmEnclaveError> for SignalFfiError {
 impl From<SignalCryptoError> for SignalFfiError {
     fn from(e: SignalCryptoError) -> SignalFfiError {
         SignalFfiError::SignalCrypto(e)
+    }
+}
+
+impl From<ZkGroupError> for SignalFfiError {
+    fn from(e: ZkGroupError) -> SignalFfiError {
+        SignalFfiError::ZkGroup(e)
     }
 }
 

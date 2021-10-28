@@ -23,6 +23,7 @@ libsignal-protocol = { path = "../../protocol" }
 device-transfer = { path = "../../device-transfer" }
 hsm-enclave = { path = "../../hsm-enclave" }
 signal-crypto = { path = "../../crypto" }
+zkgroup = { path = "../../zkgroup" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.

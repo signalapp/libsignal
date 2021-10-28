@@ -809,6 +809,7 @@ dependencies = [
  "signal-neon-futures",
  "static_assertions",
  "uuid",
+ "zkgroup",
 ]
 
 [[package]]
@@ -839,6 +840,7 @@ dependencies = [
  "log-panics",
  "rand 0.7.3",
  "signal-crypto",
+ "zkgroup",
 ]
 
 [[package]]
