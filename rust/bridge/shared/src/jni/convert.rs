@@ -552,6 +552,36 @@ impl ResultTypeInfo for Option<Vec<u8>> {
     }
 }
 
+impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
+    for &'storage [u8; LEN]
+{
+    type ArgType = jbyteArray;
+    type StoredType = AutoArray<'context, 'context, jbyte>;
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+        Ok(env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?)
+    }
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> SignalJniResult<&'storage [u8; LEN]> {
+        unsafe { std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize) }
+            .try_into()
+            .map_err(|_| SignalJniError::DeserializationFailed(std::any::type_name::<[u8; LEN]>()))
+    }
+}
+
+impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        self.as_ref().convert_into(env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
 impl ResultTypeInfo for uuid::Uuid {
     type ResultType = jobject;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -867,6 +897,9 @@ macro_rules! jni_arg_type {
     (&mut [u8]) => {
         jni::jbyteArray
     };
+    (&[u8; $len:expr]) => {
+        jni::jbyteArray
+    };
     (Context) => {
         jni::JObject
     };
@@ -951,6 +984,9 @@ macro_rules! jni_result_type {
         jni::jbyteArray
     };
     (Vec<u8>) => {
+        jni::jbyteArray
+    };
+    ([u8; $len:expr]) => {
         jni::jbyteArray
     };
     (Option<$typ:tt>) => {
