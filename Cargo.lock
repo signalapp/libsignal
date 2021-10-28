@@ -788,6 +788,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm-siv",
  "async-trait",
+ "bincode",
  "device-transfer",
  "futures-util",
  "hkdf",
@@ -802,6 +803,7 @@ dependencies = [
  "paste",
  "rand 0.7.3",
  "scopeguard",
+ "serde",
  "sha2",
  "signal-crypto",
  "signal-neon-futures",

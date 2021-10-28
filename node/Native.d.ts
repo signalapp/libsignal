@@ -41,6 +41,9 @@ interface Wrapper<T> {
   readonly _nativeHandle: T
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type Serialized<T> = Buffer;
+
 export function registerErrors(errorsModule: Record<string, unknown>): void;
 
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
