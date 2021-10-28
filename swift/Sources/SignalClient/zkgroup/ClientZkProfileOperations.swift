@@ -14,14 +14,14 @@ public class ClientZkProfileOperations {
     self.serverPublicParams = serverPublicParams
   }
 
-  public func createProfileKeyCredentialRequestContext(uuid: ZKGUuid, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
+  public func createProfileKeyCredentialRequestContext(uuid: UUID, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
     return try createProfileKeyCredentialRequestContext(randomness: Randomness.generate(), uuid: uuid, profileKey: profileKey)
   }
 
-  public func createProfileKeyCredentialRequestContext(randomness: Randomness, uuid: ZKGUuid, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
+  public func createProfileKeyCredentialRequestContext(randomness: Randomness, uuid: UUID, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
       try randomness.withUnsafePointerToBytes { randomness in
-        try uuid.withUnsafePointerToSerialized { uuid in
+        try withUnsafePointer(to: uuid.uuid) { uuid in
           try profileKey.withUnsafePointerToSerialized { profileKey in
             try invokeFnReturningSerialized {
               signal_server_public_params_create_profile_key_credential_request_context_deterministic($0, serverPublicParams, randomness, uuid, profileKey)

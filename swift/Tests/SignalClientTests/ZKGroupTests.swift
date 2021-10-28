@@ -8,7 +8,7 @@ import SignalClient
 
 class ZKGroupTests: TestCaseBase {
 
-  let TEST_ARRAY_16: [UInt8]      = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f]
+  let TEST_ARRAY_16: UUID         = UUID(uuid: (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f))
 
   let TEST_ARRAY_32: Randomness   = Randomness((0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                                               0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -131,8 +131,7 @@ class ZKGroupTests: TestCaseBase {
   0xd7, 0xa4, 0xab, 0x36, 0x7b, 0x06]
 
   func testAuthIntegration() throws {
-
-    let uuid: ZKGUuid           = try ZKGUuid(contents: TEST_ARRAY_16)
+    let uuid: UUID             = TEST_ARRAY_16
     let redemptionTime: UInt32 = 123456
 
     // Generate keys (client's are per-group, server's are not)
@@ -164,7 +163,7 @@ class ZKGroupTests: TestCaseBase {
     // Create and decrypt user entry
     let uuidCiphertext = try clientZkGroupCipher.encryptUuid(uuid: uuid)
     let plaintext      = try clientZkGroupCipher.decryptUuid(uuidCiphertext: uuidCiphertext)
-    XCTAssertEqual(uuid.serialize(), plaintext.serialize())
+    XCTAssertEqual(uuid, plaintext)
 
     // Create presentation
     let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(randomness: TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, authCredential: authCredential)
@@ -180,8 +179,7 @@ class ZKGroupTests: TestCaseBase {
 
   func testProfileKeyIntegration() throws {
 
-    let uuid: ZKGUuid           = try ZKGUuid(contents: TEST_ARRAY_16)
-
+    let uuid: UUID             = TEST_ARRAY_16
     // Generate keys (client's are per-group, server's are not)
     // ---
 
@@ -218,7 +216,7 @@ class ZKGroupTests: TestCaseBase {
     let uuidCiphertext = try clientZkGroupCipher.encryptUuid(uuid: uuid)
     let plaintext      = try clientZkGroupCipher.decryptUuid(uuidCiphertext: uuidCiphertext)
 
-    XCTAssertEqual(plaintext.serialize(), uuid.serialize())
+    XCTAssertEqual(plaintext, uuid)
 
     let profileKeyCiphertext   = try clientZkGroupCipher.encryptProfileKey(profileKey: profileKey, uuid: uuid)
     let decryptedProfileKey    = try clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext: profileKeyCiphertext, uuid: uuid)
