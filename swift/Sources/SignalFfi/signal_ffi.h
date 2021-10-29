@@ -586,14 +586,14 @@ SignalFfiError *signal_sender_key_message_serialize(const unsigned char **out,
                                                     size_t *out_len,
                                                     const SignalSenderKeyMessage *obj);
 
+SignalFfiError *signal_sender_key_message_get_distribution_id(uint8_t (*out)[16],
+                                                              const SignalSenderKeyMessage *obj);
+
 SignalFfiError *signal_sender_key_message_get_chain_id(uint32_t *out,
                                                        const SignalSenderKeyMessage *obj);
 
 SignalFfiError *signal_sender_key_message_get_iteration(uint32_t *out,
                                                         const SignalSenderKeyMessage *obj);
-
-SignalFfiError *signal_sender_key_message_get_distribution_id(uint8_t (*out)[16],
-                                                              const SignalSenderKeyMessage *obj);
 
 SignalFfiError *signal_sender_key_message_new(SignalSenderKeyMessage **out,
                                               uint8_t message_version,
@@ -620,14 +620,14 @@ SignalFfiError *signal_sender_key_distribution_message_serialize(const unsigned 
                                                                  size_t *out_len,
                                                                  const SignalSenderKeyDistributionMessage *obj);
 
+SignalFfiError *signal_sender_key_distribution_message_get_distribution_id(uint8_t (*out)[16],
+                                                                           const SignalSenderKeyDistributionMessage *obj);
+
 SignalFfiError *signal_sender_key_distribution_message_get_chain_id(uint32_t *out,
                                                                     const SignalSenderKeyDistributionMessage *obj);
 
 SignalFfiError *signal_sender_key_distribution_message_get_iteration(uint32_t *out,
                                                                      const SignalSenderKeyDistributionMessage *obj);
-
-SignalFfiError *signal_sender_key_distribution_message_get_distribution_id(uint8_t (*out)[16],
-                                                                           const SignalSenderKeyDistributionMessage *obj);
 
 SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistributionMessage **out,
                                                            uint8_t message_version,

@@ -336,16 +336,9 @@ bridge_get_buffer!(
     SenderKeyMessage::serialized as Serialize -> &[u8],
     jni = "SenderKeyMessage_1GetSerialized"
 );
-bridge_get!(SenderKeyMessage::distribution_id -> Uuid, ffi = false);
+bridge_get!(SenderKeyMessage::distribution_id -> Uuid);
 bridge_get!(SenderKeyMessage::chain_id -> u32);
 bridge_get!(SenderKeyMessage::iteration -> u32);
-
-// Alternate form that copies into an existing buffer.
-#[bridge_fn_void(jni = false, node = false)]
-fn SenderKeyMessageGetDistributionId(out: &mut [u8; 16], obj: &SenderKeyMessage) -> Result<()> {
-    *out = *obj.distribution_id().as_bytes();
-    Ok(())
-}
 
 // For testing
 #[bridge_fn]
@@ -392,19 +385,9 @@ bridge_get_buffer!(
     SenderKeyDistributionMessage::serialized as Serialize -> &[u8],
     jni = "SenderKeyDistributionMessage_1GetSerialized"
 );
-bridge_get!(SenderKeyDistributionMessage::distribution_id -> Uuid, ffi = false);
+bridge_get!(SenderKeyDistributionMessage::distribution_id -> Uuid);
 bridge_get!(SenderKeyDistributionMessage::chain_id -> u32);
 bridge_get!(SenderKeyDistributionMessage::iteration -> u32);
-
-// Alternate form that copies into an existing buffer.
-#[bridge_fn_void(jni = false, node = false)]
-fn SenderKeyDistributionMessageGetDistributionId(
-    out: &mut [u8; 16],
-    obj: &SenderKeyDistributionMessage,
-) -> Result<()> {
-    *out = *obj.distribution_id()?.as_bytes();
-    Ok(())
-}
 
 // For testing
 #[bridge_fn]
