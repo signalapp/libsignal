@@ -14,25 +14,44 @@ import GroupPublicParams from '../groups/GroupPublicParams';
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
 
 export default class ServerZkAuthOperations {
-
   serverSecretParams: ServerSecretParams;
 
   constructor(serverSecretParams: ServerSecretParams) {
     this.serverSecretParams = serverSecretParams;
   }
 
-  issueAuthCredential(uuid: UUIDType, redemptionTime: number): AuthCredentialResponse {
+  issueAuthCredential(
+    uuid: UUIDType,
+    redemptionTime: number
+  ): AuthCredentialResponse {
     const random = randomBytes(RANDOM_LENGTH);
 
     return this.issueAuthCredentialWithRandom(random, uuid, redemptionTime);
   }
 
-  issueAuthCredentialWithRandom(random: Buffer, uuid: UUIDType, redemptionTime: number): AuthCredentialResponse {
-    return new AuthCredentialResponse(NativeImpl.ServerSecretParams_IssueAuthCredentialDeterministic(this.serverSecretParams.getContents(), random, fromUUID(uuid), redemptionTime));
+  issueAuthCredentialWithRandom(
+    random: Buffer,
+    uuid: UUIDType,
+    redemptionTime: number
+  ): AuthCredentialResponse {
+    return new AuthCredentialResponse(
+      NativeImpl.ServerSecretParams_IssueAuthCredentialDeterministic(
+        this.serverSecretParams.getContents(),
+        random,
+        fromUUID(uuid),
+        redemptionTime
+      )
+    );
   }
 
-  verifyAuthCredentialPresentation(groupPublicParams: GroupPublicParams, authCredentialPresentation: AuthCredentialPresentation) {
-    NativeImpl.ServerSecretParams_VerifyAuthCredentialPresentation(this.serverSecretParams.getContents(), groupPublicParams.getContents(), authCredentialPresentation.getContents());
+  verifyAuthCredentialPresentation(
+    groupPublicParams: GroupPublicParams,
+    authCredentialPresentation: AuthCredentialPresentation
+  ) {
+    NativeImpl.ServerSecretParams_VerifyAuthCredentialPresentation(
+      this.serverSecretParams.getContents(),
+      groupPublicParams.getContents(),
+      authCredentialPresentation.getContents()
+    );
   }
-
 }

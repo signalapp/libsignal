@@ -19,35 +19,78 @@ import ProfileKeyCredentialResponse from './ProfileKeyCredentialResponse';
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
 
 export default class ClientZkProfileOperations {
-
-  serverPublicParams: ServerPublicParams
+  serverPublicParams: ServerPublicParams;
 
   constructor(serverPublicParams: ServerPublicParams) {
     this.serverPublicParams = serverPublicParams;
   }
 
-  createProfileKeyCredentialRequestContext(uuid: UUIDType, profileKey: ProfileKey): ProfileKeyCredentialRequestContext {
+  createProfileKeyCredentialRequestContext(
+    uuid: UUIDType,
+    profileKey: ProfileKey
+  ): ProfileKeyCredentialRequestContext {
     const random = randomBytes(RANDOM_LENGTH);
 
-    return this.createProfileKeyCredentialRequestContextWithRandom(random, uuid, profileKey);
+    return this.createProfileKeyCredentialRequestContextWithRandom(
+      random,
+      uuid,
+      profileKey
+    );
   }
 
-  createProfileKeyCredentialRequestContextWithRandom(random: Buffer, uuid: UUIDType, profileKey: ProfileKey): ProfileKeyCredentialRequestContext {
-    return new ProfileKeyCredentialRequestContext(NativeImpl.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(this.serverPublicParams.getContents(), random, fromUUID(uuid), profileKey.getContents()));
+  createProfileKeyCredentialRequestContextWithRandom(
+    random: Buffer,
+    uuid: UUIDType,
+    profileKey: ProfileKey
+  ): ProfileKeyCredentialRequestContext {
+    return new ProfileKeyCredentialRequestContext(
+      NativeImpl.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
+        this.serverPublicParams.getContents(),
+        random,
+        fromUUID(uuid),
+        profileKey.getContents()
+      )
+    );
   }
 
-  receiveProfileKeyCredential(profileKeyCredentialRequestContext: ProfileKeyCredentialRequestContext, profileKeyCredentialResponse: ProfileKeyCredentialResponse): ProfileKeyCredential {
-    return new ProfileKeyCredential(NativeImpl.ServerPublicParams_ReceiveProfileKeyCredential(this.serverPublicParams.getContents(), profileKeyCredentialRequestContext.getContents(), profileKeyCredentialResponse.getContents()));
+  receiveProfileKeyCredential(
+    profileKeyCredentialRequestContext: ProfileKeyCredentialRequestContext,
+    profileKeyCredentialResponse: ProfileKeyCredentialResponse
+  ): ProfileKeyCredential {
+    return new ProfileKeyCredential(
+      NativeImpl.ServerPublicParams_ReceiveProfileKeyCredential(
+        this.serverPublicParams.getContents(),
+        profileKeyCredentialRequestContext.getContents(),
+        profileKeyCredentialResponse.getContents()
+      )
+    );
   }
 
-  createProfileKeyCredentialPresentation(groupSecretParams: GroupSecretParams, profileKeyCredential: ProfileKeyCredential): ProfileKeyCredentialPresentation {
+  createProfileKeyCredentialPresentation(
+    groupSecretParams: GroupSecretParams,
+    profileKeyCredential: ProfileKeyCredential
+  ): ProfileKeyCredentialPresentation {
     const random = randomBytes(RANDOM_LENGTH);
 
-    return this.createProfileKeyCredentialPresentationWithRandom(random, groupSecretParams, profileKeyCredential);
+    return this.createProfileKeyCredentialPresentationWithRandom(
+      random,
+      groupSecretParams,
+      profileKeyCredential
+    );
   }
 
-  createProfileKeyCredentialPresentationWithRandom(random: Buffer, groupSecretParams: GroupSecretParams, profileKeyCredential: ProfileKeyCredential): ProfileKeyCredentialPresentation {
-    return new ProfileKeyCredentialPresentation(NativeImpl.ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(this.serverPublicParams.getContents(), random, groupSecretParams.getContents(), profileKeyCredential.getContents()));
+  createProfileKeyCredentialPresentationWithRandom(
+    random: Buffer,
+    groupSecretParams: GroupSecretParams,
+    profileKeyCredential: ProfileKeyCredential
+  ): ProfileKeyCredentialPresentation {
+    return new ProfileKeyCredentialPresentation(
+      NativeImpl.ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
+        this.serverPublicParams.getContents(),
+        random,
+        groupSecretParams.getContents(),
+        profileKeyCredential.getContents()
+      )
+    );
   }
-
 }

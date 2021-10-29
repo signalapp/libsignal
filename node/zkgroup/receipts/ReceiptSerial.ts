@@ -3,13 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray from "../internal/ByteArray";
+import ByteArray from '../internal/ByteArray';
 
 export default class ReceiptSerial extends ByteArray {
+  static SIZE = 16;
 
-    static SIZE = 16;
-
-    constructor(contents: Buffer) {
-        super(contents, ReceiptSerial.SIZE, true);
-    }
+  constructor(contents: Buffer) {
+    super(contents, ReceiptSerial.SIZE, true);
+  }
 }
