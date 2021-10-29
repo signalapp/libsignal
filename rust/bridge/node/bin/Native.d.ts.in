@@ -6,6 +6,7 @@
 // WARNING: this file was automatically generated
 
 type Uuid = Buffer;
+type Timestamp = number;
 
 export abstract class IdentityKeyStore {
   _getIdentityKey(): Promise<PrivateKey>;

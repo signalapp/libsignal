@@ -38,6 +38,25 @@ bridge_handle!(SignedPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Timestamp(u64);
+
+impl Timestamp {
+    pub(crate) fn from_millis(millis: u64) -> Self {
+        Self(millis)
+    }
+
+    pub(crate) fn as_millis(self) -> u64 {
+        self.0
+    }
+}
+
+impl From<u64> for Timestamp {
+    fn from(value: u64) -> Self {
+        Self::from_millis(value)
+    }
+}
+
 #[bridge_fn_buffer(ffi = false)]
 fn HKDF_DeriveSecrets(
     output_length: u32,
@@ -417,7 +436,7 @@ fn SenderKeyDistributionMessage_GetSignatureKey(
 }
 
 bridge_deserialize!(DecryptionErrorMessage::try_from);
-bridge_get!(DecryptionErrorMessage::timestamp -> u64);
+bridge_get!(DecryptionErrorMessage::timestamp -> Timestamp);
 bridge_get!(DecryptionErrorMessage::device_id -> u32);
 bridge_get_buffer!(
     DecryptionErrorMessage::serialized as Serialize -> &[u8],
@@ -433,7 +452,7 @@ fn DecryptionErrorMessage_GetRatchetKey(m: &DecryptionErrorMessage) -> Option<Pu
 fn DecryptionErrorMessage_ForOriginalMessage(
     original_bytes: &[u8],
     original_type: u8,
-    original_timestamp: u64,
+    original_timestamp: Timestamp,
     original_sender_device_id: u32,
 ) -> Result<DecryptionErrorMessage> {
     let original_type = CiphertextMessageType::try_from(original_type).map_err(|_| {
@@ -442,7 +461,7 @@ fn DecryptionErrorMessage_ForOriginalMessage(
     DecryptionErrorMessage::for_original(
         original_bytes,
         original_type,
-        original_timestamp,
+        original_timestamp.as_millis(),
         original_sender_device_id,
     )
 }
@@ -528,20 +547,20 @@ bridge_get_buffer!(
     jni = "SignedPreKeyRecord_1GetSerialized"
 );
 bridge_get!(SignedPreKeyRecord::id -> u32);
-bridge_get!(SignedPreKeyRecord::timestamp -> u64);
+bridge_get!(SignedPreKeyRecord::timestamp -> Timestamp);
 bridge_get!(SignedPreKeyRecord::public_key -> PublicKey);
 bridge_get!(SignedPreKeyRecord::private_key -> PrivateKey);
 
 #[bridge_fn]
 fn SignedPreKeyRecord_New(
     id: u32,
-    timestamp: u64,
+    timestamp: Timestamp,
     pub_key: &PublicKey,
     priv_key: &PrivateKey,
     signature: &[u8],
 ) -> SignedPreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
-    SignedPreKeyRecord::new(id, timestamp, &keypair, signature)
+    SignedPreKeyRecord::new(id, timestamp.as_millis(), &keypair, signature)
 }
 
 bridge_deserialize!(PreKeyRecord::deserialize);
@@ -593,7 +612,7 @@ bridge_get_buffer!(SenderCertificate::certificate -> &[u8]);
 bridge_get_buffer!(SenderCertificate::signature -> &[u8]);
 bridge_get!(SenderCertificate::sender_uuid -> &str);
 bridge_get!(SenderCertificate::sender_e164 -> Option<&str>);
-bridge_get!(SenderCertificate::expiration -> u64);
+bridge_get!(SenderCertificate::expiration -> Timestamp);
 bridge_get!(SenderCertificate::sender_device_id as GetDeviceId -> u32);
 bridge_get!(SenderCertificate::key -> PublicKey);
 
@@ -601,9 +620,9 @@ bridge_get!(SenderCertificate::key -> PublicKey);
 fn SenderCertificate_Validate(
     cert: &SenderCertificate,
     key: &PublicKey,
-    time: u64,
+    time: Timestamp,
 ) -> Result<bool> {
-    cert.validate(key, time)
+    cert.validate(key, time.as_millis())
 }
 
 #[bridge_fn]
@@ -617,7 +636,7 @@ fn SenderCertificate_New(
     sender_e164: Option<String>,
     sender_device_id: u32,
     sender_key: &PublicKey,
-    expiration: u64,
+    expiration: Timestamp,
     signer_cert: &ServerCertificate,
     signer_key: &PrivateKey,
 ) -> Result<SenderCertificate> {
@@ -628,7 +647,7 @@ fn SenderCertificate_New(
         sender_e164,
         *sender_key,
         sender_device_id,
-        expiration,
+        expiration.as_millis(),
         signer_cert.clone(),
         signer_key,
         &mut rng,
@@ -1080,7 +1099,7 @@ async fn SealedSessionCipher_DecryptToUsmc(
 async fn SealedSender_DecryptMessage(
     message: &[u8],
     trust_root: &PublicKey,
-    timestamp: u64,
+    timestamp: Timestamp,
     local_e164: Option<String>,
     local_uuid: String,
     local_device_id: u32,
@@ -1092,7 +1111,7 @@ async fn SealedSender_DecryptMessage(
     sealed_sender_decrypt(
         message,
         trust_root,
-        timestamp,
+        timestamp.as_millis(),
         local_e164,
         local_uuid,
         local_device_id,
