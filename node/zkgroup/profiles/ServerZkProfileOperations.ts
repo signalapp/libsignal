@@ -59,7 +59,7 @@ export default class ServerZkProfileOperations {
   verifyProfileKeyCredentialPresentation(
     groupPublicParams: GroupPublicParams,
     profileKeyCredentialPresentation: ProfileKeyCredentialPresentation
-  ) {
+  ): void {
     NativeImpl.ServerSecretParams_VerifyProfileKeyCredentialPresentation(
       this.serverSecretParams.getContents(),
       groupPublicParams.getContents(),

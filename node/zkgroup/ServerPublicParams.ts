@@ -15,7 +15,7 @@ export default class ServerPublicParams extends ByteArray {
     NativeImpl.ServerPublicParams_CheckValidContents(contents);
   }
 
-  verifySignature(message: Buffer, notarySignature: NotarySignature) {
+  verifySignature(message: Buffer, notarySignature: NotarySignature): void {
     NativeImpl.ServerPublicParams_VerifySignature(
       this.contents,
       message,
