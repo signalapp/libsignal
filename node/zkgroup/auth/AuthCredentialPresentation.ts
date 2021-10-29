@@ -8,7 +8,6 @@ import NativeImpl from '../../NativeImpl';
 import UuidCiphertext from '../groups/UuidCiphertext';
 
 export default class AuthCredentialPresentation extends ByteArray {
-
   static SIZE = 493;
 
   constructor(contents: Buffer) {
@@ -17,10 +16,14 @@ export default class AuthCredentialPresentation extends ByteArray {
   }
 
   getUuidCiphertext(): UuidCiphertext {
-    return new UuidCiphertext(NativeImpl.AuthCredentialPresentation_GetUuidCiphertext(this.contents));
+    return new UuidCiphertext(
+      NativeImpl.AuthCredentialPresentation_GetUuidCiphertext(this.contents)
+    );
   }
 
   getRedemptionTime(): number {
-    return NativeImpl.AuthCredentialPresentation_GetRedemptionTime(this.contents);
+    return NativeImpl.AuthCredentialPresentation_GetRedemptionTime(
+      this.contents
+    );
   }
 }

@@ -16,7 +16,6 @@ import { UUIDType, fromUUID, toUUID } from '../internal/UUIDUtil';
 import { SignalClientErrorBase } from '../../Errors';
 
 export default class ClientZkGroupCipher {
-
   groupSecretParams: GroupSecretParams;
 
   constructor(groupSecretParams: GroupSecretParams) {
@@ -24,20 +23,47 @@ export default class ClientZkGroupCipher {
   }
 
   encryptUuid(uuid: UUIDType): UuidCiphertext {
-    return new UuidCiphertext(NativeImpl.GroupSecretParams_EncryptUuid(this.groupSecretParams.getContents(), fromUUID(uuid)));
+    return new UuidCiphertext(
+      NativeImpl.GroupSecretParams_EncryptUuid(
+        this.groupSecretParams.getContents(),
+        fromUUID(uuid)
+      )
+    );
   }
 
   decryptUuid(uuidCiphertext: UuidCiphertext): UUIDType {
-    return toUUID(NativeImpl.GroupSecretParams_DecryptUuid(this.groupSecretParams.getContents(), uuidCiphertext.getContents()));
+    return toUUID(
+      NativeImpl.GroupSecretParams_DecryptUuid(
+        this.groupSecretParams.getContents(),
+        uuidCiphertext.getContents()
+      )
+    );
   }
 
-  encryptProfileKey(profileKey: ProfileKey, uuid: UUIDType): ProfileKeyCiphertext {
-    return new ProfileKeyCiphertext(NativeImpl.GroupSecretParams_EncryptProfileKey(this.groupSecretParams.getContents(), profileKey.getContents(), fromUUID(uuid)));
+  encryptProfileKey(
+    profileKey: ProfileKey,
+    uuid: UUIDType
+  ): ProfileKeyCiphertext {
+    return new ProfileKeyCiphertext(
+      NativeImpl.GroupSecretParams_EncryptProfileKey(
+        this.groupSecretParams.getContents(),
+        profileKey.getContents(),
+        fromUUID(uuid)
+      )
+    );
   }
 
-  decryptProfileKey(profileKeyCiphertext: ProfileKeyCiphertext, uuid: UUIDType): ProfileKey {
-    return new ProfileKey(NativeImpl.GroupSecretParams_DecryptProfileKey(this.groupSecretParams.getContents(), profileKeyCiphertext.getContents(), fromUUID(uuid)));
-
+  decryptProfileKey(
+    profileKeyCiphertext: ProfileKeyCiphertext,
+    uuid: UUIDType
+  ): ProfileKey {
+    return new ProfileKey(
+      NativeImpl.GroupSecretParams_DecryptProfileKey(
+        this.groupSecretParams.getContents(),
+        profileKeyCiphertext.getContents(),
+        fromUUID(uuid)
+      )
+    );
   }
 
   encryptBlob(plaintext: Buffer): Buffer {
@@ -47,21 +73,36 @@ export default class ClientZkGroupCipher {
   }
 
   encryptBlobWithRandom(random: Buffer, plaintext: Buffer): Buffer {
-    let paddedPlaintext = Buffer.alloc(plaintext.length+4);
+    let paddedPlaintext = Buffer.alloc(plaintext.length + 4);
     plaintext.copy(paddedPlaintext, 4);
-    return NativeImpl.GroupSecretParams_EncryptBlobDeterministic(this.groupSecretParams.getContents(), random, paddedPlaintext);
+    return NativeImpl.GroupSecretParams_EncryptBlobDeterministic(
+      this.groupSecretParams.getContents(),
+      random,
+      paddedPlaintext
+    );
   }
 
   decryptBlob(blobCiphertext: Buffer): Buffer {
-    const newContents = NativeImpl.GroupSecretParams_DecryptBlob(this.groupSecretParams.getContents(), blobCiphertext);
+    const newContents = NativeImpl.GroupSecretParams_DecryptBlob(
+      this.groupSecretParams.getContents(),
+      blobCiphertext
+    );
 
     if (newContents.length < 4) {
-        throw new SignalClientErrorBase('BAD LENGTH', 'VerificationFailed', 'decryptBlob');
+      throw new SignalClientErrorBase(
+        'BAD LENGTH',
+        'VerificationFailed',
+        'decryptBlob'
+      );
     }
 
     const padLen = newContents.readInt32BE(0);
-    if (newContents.length < (4 + padLen)) {
-        throw new SignalClientErrorBase('BAD LENGTH', 'VerificationFailed', 'decryptBlob');
+    if (newContents.length < 4 + padLen) {
+      throw new SignalClientErrorBase(
+        'BAD LENGTH',
+        'VerificationFailed',
+        'decryptBlob'
+      );
     }
 
     let depaddedContents = Buffer.alloc(newContents.length - (4 + padLen));
@@ -69,5 +110,4 @@ export default class ClientZkGroupCipher {
 
     return depaddedContents;
   }
-
 }

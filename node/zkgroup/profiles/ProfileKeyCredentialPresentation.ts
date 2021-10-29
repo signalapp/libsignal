@@ -9,7 +9,6 @@ import UuidCiphertext from '../groups/UuidCiphertext';
 import ProfileKeyCiphertext from '../groups/ProfileKeyCiphertext';
 
 export default class ProfileKeyCredentialPresentation extends ByteArray {
-
   static SIZE = 713;
 
   constructor(contents: Buffer) {
@@ -18,11 +17,18 @@ export default class ProfileKeyCredentialPresentation extends ByteArray {
   }
 
   getUuidCiphertext(): UuidCiphertext {
-    return new UuidCiphertext(NativeImpl.ProfileKeyCredentialPresentation_GetUuidCiphertext(this.contents));
+    return new UuidCiphertext(
+      NativeImpl.ProfileKeyCredentialPresentation_GetUuidCiphertext(
+        this.contents
+      )
+    );
   }
 
   getProfileKeyCiphertext(): ProfileKeyCiphertext {
-    return new ProfileKeyCiphertext(NativeImpl.ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(this.contents));
+    return new ProfileKeyCiphertext(
+      NativeImpl.ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
+        this.contents
+      )
+    );
   }
-
 }
