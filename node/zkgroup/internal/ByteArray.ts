@@ -11,7 +11,7 @@ export default class ByteArray {
   constructor(
     contents: Buffer,
     expectedLength: number,
-    unrecoverable: boolean
+    _unrecoverable: boolean
   ) {
     if (contents.length !== expectedLength) {
       throw new SignalClientErrorBase(

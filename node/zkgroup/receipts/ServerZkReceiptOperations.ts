@@ -52,7 +52,7 @@ export default class ServerZkReceiptOperations {
 
   verifyReceiptCredentialPresentation(
     receiptCredentialPresentation: ReceiptCredentialPresentation
-  ) {
+  ): void {
     NativeImpl.ServerSecretParams_VerifyReceiptCredentialPresentation(
       this.serverSecretParams.getContents(),
       receiptCredentialPresentation.getContents()

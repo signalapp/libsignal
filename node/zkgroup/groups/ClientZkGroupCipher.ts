@@ -73,7 +73,7 @@ export default class ClientZkGroupCipher {
   }
 
   encryptBlobWithRandom(random: Buffer, plaintext: Buffer): Buffer {
-    let paddedPlaintext = Buffer.alloc(plaintext.length + 4);
+    const paddedPlaintext = Buffer.alloc(plaintext.length + 4);
     plaintext.copy(paddedPlaintext, 4);
     return NativeImpl.GroupSecretParams_EncryptBlobDeterministic(
       this.groupSecretParams.getContents(),
@@ -105,7 +105,7 @@ export default class ClientZkGroupCipher {
       );
     }
 
-    let depaddedContents = Buffer.alloc(newContents.length - (4 + padLen));
+    const depaddedContents = Buffer.alloc(newContents.length - (4 + padLen));
     newContents.copy(depaddedContents, 0, 4, newContents.length - padLen);
 
     return depaddedContents;

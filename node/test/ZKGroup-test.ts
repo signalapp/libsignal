@@ -4,7 +4,7 @@
 //
 
 import { assert } from 'chai';
-import { toUUID, fromUUID } from '../zkgroup/internal/UUIDUtil';
+import { toUUID } from '../zkgroup/internal/UUIDUtil';
 
 import ServerSecretParams from '../zkgroup/ServerSecretParams';
 import ServerZkAuthOperations from '../zkgroup/auth/ServerZkAuthOperations';
@@ -203,7 +203,6 @@ describe('ZKGroup', () => {
 
   it('testProfileKeyIntegration', () => {
     const uuid = toUUID(TEST_ARRAY_16);
-    const redemptionTime = 1234567;
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -330,7 +329,7 @@ describe('ZKGroup', () => {
     const groupSecretParams = GroupSecretParams.generateWithRandom(
       TEST_ARRAY_32
     );
-    const groupPublicParams = groupSecretParams.getPublicParams();
+    const _groupPublicParams = groupSecretParams.getPublicParams();
     // assertByteArray('31f2c60f86f4c5996e9e2568355591d9', groupPublicParams.getGroupIdentifier().serialize());
   });
 
@@ -339,7 +338,7 @@ describe('ZKGroup', () => {
     ckp.fill(-127);
 
     try {
-      const groupSecretParams = new GroupSecretParams(ckp);
+      const _groupSecretParams = new GroupSecretParams(ckp);
     } catch (error) {
       // good
     }

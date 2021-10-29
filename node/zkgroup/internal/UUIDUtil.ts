@@ -18,7 +18,7 @@ export function toUUID(array: Buffer): UUIDType {
 
 export function fromUUID(uuid: UUIDType): Buffer {
   let i = 0;
-  let array = Buffer.alloc(16);
+  const array = Buffer.alloc(16);
 
   uuid.replace(/[0-9A-F]{2}/gi, (oct: string): string => {
     array[i++] = parseInt(oct, 16);

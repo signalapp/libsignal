@@ -59,7 +59,10 @@ module.exports = {
     'no-underscore-dangle': 'off',
 
     // useful for unused parameters
-    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+    ],
 
     // though we have a logger, we still remap console to log to disk
     'no-console': 'error',
