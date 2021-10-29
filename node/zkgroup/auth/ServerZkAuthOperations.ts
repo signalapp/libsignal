@@ -47,7 +47,7 @@ export default class ServerZkAuthOperations {
   verifyAuthCredentialPresentation(
     groupPublicParams: GroupPublicParams,
     authCredentialPresentation: AuthCredentialPresentation
-  ) {
+  ): void {
     NativeImpl.ServerSecretParams_VerifyAuthCredentialPresentation(
       this.serverSecretParams.getContents(),
       groupPublicParams.getContents(),
