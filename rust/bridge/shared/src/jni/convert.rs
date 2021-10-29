@@ -166,16 +166,16 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
 ///
 /// Negative `long` values are *not* reinterpreted as large `u64` values.
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
-impl<'a> SimpleArgTypeInfo<'a> for u64 {
+impl<'a> SimpleArgTypeInfo<'a> for crate::protocol::Timestamp {
     type ArgType = jlong;
     fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
         if foreign < 0 {
             return Err(SignalJniError::IntegerOverflow(format!(
-                "{} to u64",
+                "{} to Timestamp (u64)",
                 foreign
             )));
         }
-        Ok(foreign as u64)
+        Ok(Self::from_millis(foreign as u64))
     }
 }
 
@@ -436,14 +436,14 @@ impl ResultTypeInfo for Option<u32> {
     }
 }
 
-/// Reinterprets the bits of the `u64` as a Java `long`.
+/// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
 ///
-/// Note that this is different from the implementation of [`ArgTypeInfo`] for `u64`.
-impl ResultTypeInfo for u64 {
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
+impl ResultTypeInfo for crate::protocol::Timestamp {
     type ResultType = jlong;
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
-        Ok(self as jlong)
+        Ok(self.as_millis() as jlong)
     }
     fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
         JObject::null()
@@ -849,9 +849,6 @@ macro_rules! jni_arg_type {
     (Option<u32>) => {
         jni::jint
     };
-    (u64) => {
-        jni::jlong
-    };
     (String) => {
         jni::JString
     };
@@ -869,6 +866,9 @@ macro_rules! jni_arg_type {
     };
     (Context) => {
         jni::JObject
+    };
+    (Timestamp) => {
+        jni::jlong
     };
     (Uuid) => {
         jni::JavaUUID
@@ -932,9 +932,6 @@ macro_rules! jni_result_type {
     (u32) => {
         jni::jint
     };
-    (u64) => {
-        jni::jlong
-    };
     (Option<u32>) => {
         jni::jint
     };
@@ -946,6 +943,9 @@ macro_rules! jni_result_type {
     };
     (Uuid) => {
         jni::JavaReturnUUID
+    };
+    (Timestamp) => {
+        jni::jlong
     };
     (&[u8]) => {
         jni::jbyteArray

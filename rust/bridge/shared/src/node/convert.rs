@@ -250,14 +250,14 @@ const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
 /// Converts non-negative numbers up to [`Number.MAX_SAFE_INTEGER`][].
 ///
 /// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-impl SimpleArgTypeInfo for u64 {
+impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     type ArgType = JsNumber;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
-            return cx.throw_range_error(format!("cannot convert {} to u64", value));
+            return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
         }
-        Ok(value as u64)
+        Ok(Self::from_millis(value as u64))
     }
 }
 
@@ -527,17 +527,17 @@ impl<'a> ResultTypeInfo<'a> for bool {
 /// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
 ///
 /// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-impl<'a> ResultTypeInfo<'a> for u64 {
+impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
     type ResultType = JsNumber;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        let result = self as f64;
+        let result = self.as_millis() as f64;
         if result > MAX_SAFE_JS_INTEGER {
             cx.throw_range_error(format!(
                 "precision loss during conversion of {} to f64",
-                self
+                self.as_millis()
             ))?;
         }
-        Ok(cx.number(self as f64))
+        Ok(cx.number(result))
     }
 }
 

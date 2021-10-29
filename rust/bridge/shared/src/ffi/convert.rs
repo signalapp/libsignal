@@ -350,6 +350,20 @@ impl ResultTypeInfo for Option<u32> {
     }
 }
 
+impl SimpleArgTypeInfo for crate::protocol::Timestamp {
+    type ArgType = u64;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(Self::from_millis(foreign))
+    }
+}
+
+impl ResultTypeInfo for crate::protocol::Timestamp {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self.as_millis())
+    }
+}
+
 /// A marker for Rust objects exposed as opaque pointers.
 ///
 /// When we do this, we hand the lifetime over to the app. Since we don't know how long the object
@@ -503,6 +517,7 @@ macro_rules! ffi_arg_type {
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
     (Context) => (*mut libc::c_void);
+    (Timestamp) => (u64);
     (Uuid) => (*const [u8; 16]);
     (&[& $typ:ty]) => (*const *const $typ);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
@@ -537,6 +552,7 @@ macro_rules! ffi_result_type {
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
     (Option<$typ:ty>) => (*mut $typ);
+    (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
     ( $typ:ty ) => (*mut $typ);
 }
