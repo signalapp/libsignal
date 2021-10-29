@@ -13,9 +13,9 @@ export { default as NotarySignature } from './NotarySignature';
 export { default as ClientZkAuthOperations } from './auth/ClientZkAuthOperations';
 export { default as ServerZkAuthOperations } from './auth/ServerZkAuthOperations';
 
-export { default as AuthCredential } from './auth/AuthCredential'
-export { default as AuthCredentialResponse } from './auth/AuthCredentialResponse'
-export { default as AuthCredentialPresentation } from './auth/AuthCredentialPresentation'
+export { default as AuthCredential } from './auth/AuthCredential';
+export { default as AuthCredentialResponse } from './auth/AuthCredentialResponse';
+export { default as AuthCredentialPresentation } from './auth/AuthCredentialPresentation';
 
 // Groups
 export { default as ClientZkGroupCipher } from './groups/ClientZkGroupCipher';
@@ -49,4 +49,4 @@ export { default as ReceiptCredentialPresentation } from './receipts/ReceiptCred
 export { default as ReceiptCredentialRequest } from './receipts/ReceiptCredentialRequest';
 export { default as ReceiptCredentialRequestContext } from './receipts/ReceiptCredentialRequestContext';
 export { default as ReceiptCredentialResponse } from './receipts/ReceiptCredentialResponse';
-export { default as ReceiptSerial } from './receipts/ReceiptSerial'
+export { default as ReceiptSerial } from './receipts/ReceiptSerial';

@@ -7,9 +7,7 @@ import ByteArray from '../internal/ByteArray';
 import NativeImpl from '../../NativeImpl';
 import GroupIdentifier from './GroupIdentifier';
 
-
 export default class GroupPublicParams extends ByteArray {
-
   static SIZE = 97;
 
   constructor(contents: Buffer) {
@@ -18,7 +16,8 @@ export default class GroupPublicParams extends ByteArray {
   }
 
   getGroupIdentifier(): GroupIdentifier {
-    return new GroupIdentifier(NativeImpl.GroupPublicParams_GetGroupIdentifier(this.contents));
+    return new GroupIdentifier(
+      NativeImpl.GroupPublicParams_GetGroupIdentifier(this.contents)
+    );
   }
-
 }

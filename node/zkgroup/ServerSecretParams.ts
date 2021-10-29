@@ -12,7 +12,6 @@ import ServerPublicParams from './ServerPublicParams';
 import NotarySignature from './NotarySignature';
 
 export default class ServerSecretParams extends ByteArray {
-
   static SIZE = 1121;
 
   static generate(): ServerSecretParams {
@@ -22,16 +21,20 @@ export default class ServerSecretParams extends ByteArray {
   }
 
   static generateWithRandom(random: Buffer): ServerSecretParams {
-    return new ServerSecretParams(NativeImpl.ServerSecretParams_GenerateDeterministic(random));
+    return new ServerSecretParams(
+      NativeImpl.ServerSecretParams_GenerateDeterministic(random)
+    );
   }
 
-  constructor(contents: Buffer)  {
+  constructor(contents: Buffer) {
     super(contents, ServerSecretParams.SIZE, true);
     NativeImpl.ServerSecretParams_CheckValidContents(contents);
   }
 
   getPublicParams(): ServerPublicParams {
-    return new ServerPublicParams(NativeImpl.ServerSecretParams_GetPublicParams(this.contents));
+    return new ServerPublicParams(
+      NativeImpl.ServerSecretParams_GetPublicParams(this.contents)
+    );
   }
 
   sign(message: Buffer): NotarySignature {
@@ -41,6 +44,12 @@ export default class ServerSecretParams extends ByteArray {
   }
 
   signWithRandom(random: Buffer, message: Buffer): NotarySignature {
-    return new NotarySignature(NativeImpl.ServerSecretParams_SignDeterministic(this.contents, random, message));
+    return new NotarySignature(
+      NativeImpl.ServerSecretParams_SignDeterministic(
+        this.contents,
+        random,
+        message
+      )
+    );
   }
 }
