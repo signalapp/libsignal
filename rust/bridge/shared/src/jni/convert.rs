@@ -164,6 +164,14 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
     }
 }
 
+/// Reinterprets the bits of the Java `long` as a `u64`.
+impl<'a> SimpleArgTypeInfo<'a> for u64 {
+    type ArgType = jlong;
+    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
+        Ok(foreign as u64)
+    }
+}
+
 /// Supports values `0..=Long.MAX_VALUE`.
 ///
 /// Negative `long` values are *not* reinterpreted as large `u64` values.
@@ -432,6 +440,18 @@ impl ResultTypeInfo for Option<u32> {
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
         Ok(self.unwrap_or(u32::MAX) as jint)
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
+    }
+}
+
+/// Reinterprets the bits of the `u64` as a Java `long`.
+impl ResultTypeInfo for u64 {
+    type ResultType = jlong;
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        // Note that we don't check bounds here.
+        Ok(self as jlong)
     }
     fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
         JObject::null()
@@ -922,6 +942,9 @@ macro_rules! jni_arg_type {
     (Option<u32>) => {
         jni::jint
     };
+    (u64) => {
+        jni::jlong
+    };
     (String) => {
         jni::JString
     };
@@ -1013,6 +1036,9 @@ macro_rules! jni_result_type {
     };
     (Option<u32>) => {
         jni::jint
+    };
+    (u64) => {
+        jni::jlong
     };
     (&str) => {
         jni::jstring

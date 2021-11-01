@@ -263,6 +263,16 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     }
 }
 
+impl SimpleArgTypeInfo for u64 {
+    type ArgType = JsBuffer; // FIXME: eventually this should be a bigint
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        cx.borrow(&foreign, |buf| {
+            buf.as_slice().try_into().map(u64::from_be_bytes)
+        })
+        .or_else(|_| cx.throw_type_error("expected a buffer of 8 big-endian bytes"))
+    }
+}
+
 impl SimpleArgTypeInfo for String {
     type ArgType = JsString;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
@@ -540,6 +550,18 @@ impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
             ))?;
         }
         Ok(cx.number(result))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for u64 {
+    type ResultType = JsBuffer; // FIXME: eventually this should be a bigint
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let mut result = cx.buffer(8)?;
+        cx.borrow_mut(&mut result, |buf| {
+            buf.as_mut_slice().copy_from_slice(&self.to_be_bytes())
+        });
+        Ok(result)
     }
 }
 
