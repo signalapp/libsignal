@@ -1201,18 +1201,19 @@ SignalFfiError *signal_group_secret_params_decrypt_profile_key(unsigned char (*o
                                                                const unsigned char (*profile_key)[SignalPROFILE_KEY_CIPHERTEXT_LEN],
                                                                const uint8_t (*uuid)[16]);
 
-SignalFfiError *signal_group_secret_params_encrypt_blob_deterministic(const unsigned char **out,
-                                                                      size_t *out_len,
-                                                                      const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
-                                                                      const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
-                                                                      const unsigned char *plaintext,
-                                                                      size_t plaintext_len);
+SignalFfiError *signal_group_secret_params_encrypt_blob_with_padding_deterministic(const unsigned char **out,
+                                                                                   size_t *out_len,
+                                                                                   const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                                   const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                   const unsigned char *plaintext,
+                                                                                   size_t plaintext_len,
+                                                                                   uint32_t padding_len);
 
-SignalFfiError *signal_group_secret_params_decrypt_blob(const unsigned char **out,
-                                                        size_t *out_len,
-                                                        const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
-                                                        const unsigned char *ciphertext,
-                                                        size_t ciphertext_len);
+SignalFfiError *signal_group_secret_params_decrypt_blob_with_padding(const unsigned char **out,
+                                                                     size_t *out_len,
+                                                                     const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                     const unsigned char *ciphertext,
+                                                                     size_t ciphertext_len);
 
 SignalFfiError *signal_server_secret_params_generate_deterministic(unsigned char (*out)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                    const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);

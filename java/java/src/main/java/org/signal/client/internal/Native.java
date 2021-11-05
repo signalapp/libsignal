@@ -160,11 +160,11 @@ public final class Native {
   public static native byte[] GroupPublicParams_GetGroupIdentifier(byte[] groupPublicParams);
 
   public static native void GroupSecretParams_CheckValidContents(byte[] obj);
-  public static native byte[] GroupSecretParams_DecryptBlob(byte[] params, byte[] ciphertext);
+  public static native byte[] GroupSecretParams_DecryptBlobWithPadding(byte[] params, byte[] ciphertext);
   public static native byte[] GroupSecretParams_DecryptProfileKey(byte[] params, byte[] profileKey, UUID uuid);
   public static native UUID GroupSecretParams_DecryptUuid(byte[] params, byte[] uuid);
   public static native byte[] GroupSecretParams_DeriveFromMasterKey(byte[] masterKey);
-  public static native byte[] GroupSecretParams_EncryptBlobDeterministic(byte[] params, byte[] randomness, byte[] plaintext);
+  public static native byte[] GroupSecretParams_EncryptBlobWithPaddingDeterministic(byte[] params, byte[] randomness, byte[] plaintext, int paddingLen);
   public static native byte[] GroupSecretParams_EncryptProfileKey(byte[] params, byte[] profileKey, UUID uuid);
   public static native byte[] GroupSecretParams_EncryptUuid(byte[] params, UUID uuid);
   public static native byte[] GroupSecretParams_GenerateDeterministic(byte[] randomness);
