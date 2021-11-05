@@ -152,20 +152,21 @@ fn GroupSecretParams_DecryptProfileKey(
 }
 
 #[bridge_fn_buffer]
-fn GroupSecretParams_EncryptBlobDeterministic(
+fn GroupSecretParams_EncryptBlobWithPaddingDeterministic(
     params: Serialized<GroupSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
     plaintext: &[u8],
+    padding_len: u32,
 ) -> Result<Vec<u8>> {
-    params.encrypt_blob(*randomness, plaintext)
+    params.encrypt_blob_with_padding(*randomness, plaintext, padding_len)
 }
 
 #[bridge_fn_buffer]
-fn GroupSecretParams_DecryptBlob(
+fn GroupSecretParams_DecryptBlobWithPadding(
     params: Serialized<GroupSecretParams>,
     ciphertext: &[u8],
 ) -> Result<Vec<u8>> {
-    params.decrypt_blob(ciphertext)
+    params.decrypt_blob_with_padding(ciphertext)
 }
 
 #[bridge_fn]

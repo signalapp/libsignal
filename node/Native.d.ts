@@ -74,11 +74,11 @@ export function GroupMasterKey_CheckValidContents(Obj: Serialized<GroupMasterKey
 export function GroupPublicParams_CheckValidContents(Obj: Serialized<GroupPublicParams>): void;
 export function GroupPublicParams_GetGroupIdentifier(groupPublicParams: Serialized<GroupPublicParams>): Buffer;
 export function GroupSecretParams_CheckValidContents(Obj: Serialized<GroupSecretParams>): void;
-export function GroupSecretParams_DecryptBlob(params: Serialized<GroupSecretParams>, ciphertext: Buffer): Buffer;
+export function GroupSecretParams_DecryptBlobWithPadding(params: Serialized<GroupSecretParams>, ciphertext: Buffer): Buffer;
 export function GroupSecretParams_DecryptProfileKey(params: Serialized<GroupSecretParams>, profileKey: Serialized<ProfileKeyCiphertext>, uuid: Uuid): Serialized<ProfileKey>;
 export function GroupSecretParams_DecryptUuid(params: Serialized<GroupSecretParams>, uuid: Serialized<UuidCiphertext>): Uuid;
 export function GroupSecretParams_DeriveFromMasterKey(masterKey: Serialized<GroupMasterKey>): Serialized<GroupSecretParams>;
-export function GroupSecretParams_EncryptBlobDeterministic(params: Serialized<GroupSecretParams>, randomness: Buffer, plaintext: Buffer): Buffer;
+export function GroupSecretParams_EncryptBlobWithPaddingDeterministic(params: Serialized<GroupSecretParams>, randomness: Buffer, plaintext: Buffer, paddingLen: number): Buffer;
 export function GroupSecretParams_EncryptProfileKey(params: Serialized<GroupSecretParams>, profileKey: Serialized<ProfileKey>, uuid: Uuid): Serialized<ProfileKeyCiphertext>;
 export function GroupSecretParams_EncryptUuid(params: Serialized<GroupSecretParams>, uuid: Uuid): Serialized<UuidCiphertext>;
 export function GroupSecretParams_GenerateDeterministic(randomness: Buffer): Serialized<GroupSecretParams>;

@@ -63,38 +63,21 @@ public class ClientZkGroupCipher {
   }
 
   public func encryptBlob(randomness: Randomness, plaintext: [UInt8]) throws -> [UInt8] {
-    let paddedPlaintext = Array(repeating: 0, count: 4) + plaintext
-
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
         try invokeFnReturningArray {
-          signal_group_secret_params_encrypt_blob_deterministic($0, $1, groupSecretParams, randomness, paddedPlaintext, paddedPlaintext.count)
+          signal_group_secret_params_encrypt_blob_with_padding_deterministic($0, $1, groupSecretParams, randomness, plaintext, plaintext.count, 0)
         }
       }
     }
   }
 
   public func decryptBlob(blobCiphertext: [UInt8]) throws -> [UInt8] {
-    var newContents = try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
+    return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try invokeFnReturningArray {
-        signal_group_secret_params_decrypt_blob($0, $1, groupSecretParams, blobCiphertext, blobCiphertext.count)
+        signal_group_secret_params_decrypt_blob_with_padding($0, $1, groupSecretParams, blobCiphertext, blobCiphertext.count)
       }
     }
-
-    if newContents.count < 4 {
-      throw SignalError.verificationFailed("decrypted ciphertext too short")
-    }
-
-    var paddingLen = newContents.withUnsafeBytes({ $0.load(fromByteOffset: 0, as: UInt32.self) })
-    paddingLen = UInt32(bigEndian: paddingLen)
-
-    if newContents.count < (4 + paddingLen) {
-      throw SignalError.verificationFailed("decrypted ciphertext too short")
-    }
-
-    newContents.removeLast(Int(paddingLen))
-    newContents.removeFirst(4)
-    return newContents
   }
 
 }
