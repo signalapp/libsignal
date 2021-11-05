@@ -131,6 +131,15 @@ task installArchives(type: Upload) {
     }
 }
 
+task libsWithDebugSymbols(type: Zip) {
+    from 'src/main/jniLibs'
+    classifier 'debug-symbols'
+}
+
+artifacts {
+    archives libsWithDebugSymbols
+}
+
 tasks.withType(JavaCompile) {
     compileTask -> compileTask.dependsOn ':makeJniLibrariesAndroid'
 }
