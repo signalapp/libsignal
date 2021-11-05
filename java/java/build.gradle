@@ -5,6 +5,10 @@ buildscript {
     }
 }
 
+plugins {
+    id "de.undercouch.download" version "4.1.1"
+}
+
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'signing'
@@ -25,6 +29,7 @@ sourceSets {
             srcDirs = ['src/test/java/', project(':tests').file('src/test/java')]
         }
     }
+    otherPlatformLibraries {}
 }
 
 dependencies {
@@ -63,7 +68,7 @@ def getRepositoryPassword() {
 }
 
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask("uploadArchives") }
+    required { isReleaseBuild() && gradle.taskGraph.hasTask(":java:uploadArchives") }
     sign configurations.archives
 }
 
@@ -125,12 +130,34 @@ task packageSources(type: Jar) {
     classifier = 'sources'
 }
 
+task testableJar(type: Jar) {
+    from sourceSets.main.output
+    from sourceSets.otherPlatformLibraries.resources
+    classifier = 'testable'
+
+    onlyIf { gradle.taskGraph.hasTask(':java:uploadArchives') }
+
+    def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
+    def extraResourcesDir = 'src/otherPlatformLibraries/resources'
+
+    doFirst {
+        mkdir extraResourcesDir
+        extraResources.each { name ->
+            download {
+                src 'https://github.com/signalapp/libsignal-client/releases/download/v' + project.version + '/' + name
+                dest extraResourcesDir + '/' + name
+            }
+        }
+    }
+}
+
 artifacts {
     archives(packageJavadoc) {
         type = 'javadoc'
     }
 
     archives packageSources
+    archives testableJar
 }
 
 tasks.withType(JavaCompile) {
