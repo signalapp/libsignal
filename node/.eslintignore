@@ -1,2 +1,4 @@
 dist/**
 .eslintrc.js
+zkgroup.js
+zkgroup.d.ts

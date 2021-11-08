@@ -6,5 +6,6 @@
     "outDir": "./dist",
     "strict": true,
     "sourceMap": true
-  }
+  },
+  "include": ["index.ts", "zkgroup/index.ts", "test/*.ts"]
 }

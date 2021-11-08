@@ -42,7 +42,7 @@ def main():
     if len(sys.argv) > 1:
         update_version('SignalClient.podspec', PODSPEC_PATTERN, sys.argv[1])
         update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, sys.argv[1])
-        update_version('package.json', NODE_PATTERN, sys.argv[1])
+        update_version(os.path.join('node', 'package.json'), NODE_PATTERN, sys.argv[1])
         update_version(bridge_path('ffi'), CARGO_PATTERN, sys.argv[1])
         update_version(bridge_path('jni'), CARGO_PATTERN, sys.argv[1])
         update_version(bridge_path('node'), CARGO_PATTERN, sys.argv[1])
@@ -51,7 +51,7 @@ def main():
     package_versions = {
         'swift': read_version('SignalClient.podspec', PODSPEC_PATTERN),
         'java': read_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
-        'node': read_version('package.json', NODE_PATTERN)
+        'node': read_version(os.path.join('node', 'package.json'), NODE_PATTERN)
     }
 
     bridge_versions = {

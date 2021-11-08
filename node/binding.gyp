@@ -19,10 +19,10 @@
             'type': 'none',
             'actions': [
                 {
-                    'action_name': 'node/build_node_bridge.py',
+                    'action_name': 'build_node_bridge.py',
                     'action': [
                         'python3',
-                        'node/build_node_bridge.py',
+                        'build_node_bridge.py',
                         # Use separated arguments for paths, joined arguments for non-paths.
                         '--out-dir', '<(PRODUCT_DIR)/',
                         '--os-name=<(NODE_OS_NAME)',

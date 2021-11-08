@@ -2,23 +2,25 @@
   "name": "@signalapp/signal-client",
   "version": "0.10.0",
   "license": "AGPL-3.0-only",
-  "main": "node/dist/index.js",
-  "types": "node/dist/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "node/dist/*.js",
-    "node/dist/*.d.ts",
-    "node/dist/zkgroup/**/*.js",
-    "node/dist/zkgroup/**/*.d.ts",
+    "dist/*.js",
+    "dist/*.d.ts",
+    "dist/zkgroup/**/*.js",
+    "dist/zkgroup/**/*.d.ts",
+    "zkgroup.js",
+    "zkgroup.d.ts",
     "prebuilds/*/*.node"
   ],
   "scripts": {
     "install": "node-gyp-build",
     "build": "node-gyp build",
-    "tsc": "tsc -b node && yarn cpy node/*.d.ts node/dist/",
-    "clean": "rimraf node/dist build prebuilds",
-    "test": "electron-mocha --recursive node/dist/test --require source-map-support/register",
-    "lint": "cd node && eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "p() { prettier ${@:- --write} package.json '*.js' 'node/**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
+    "tsc": "tsc -b && yarn cpy Native.d.ts dist/",
+    "clean": "rimraf dist build prebuilds",
+    "test": "electron-mocha --recursive dist/test --require source-map-support/register",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}'; }; p"
   },
   "dependencies": {
     "node-gyp-build": "^4.2.3",

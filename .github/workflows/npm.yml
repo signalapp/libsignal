@@ -48,14 +48,16 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
 
     - run: yarn install --ignore-scripts --frozen-lockfile
+      working-directory: node
 
     - run: npx prebuildify --napi
+      working-directory: node
 
     - name: Upload library
       uses: actions/upload-artifact@v2
       with:
         name: libsignal_client (${{matrix.os}})
-        path: prebuilds/*
+        path: node/prebuilds/*
 
   publish:
     name: Publish
@@ -85,21 +87,26 @@ jobs:
         path: artifacts
 
     - name: Copy libraries
-      run: mkdir prebuilds && mv ${{ steps.download.outputs.download-path }}/*/* prebuilds && find prebuilds
+      run: mkdir node/prebuilds && mv ${{ steps.download.outputs.download-path }}/*/* node/prebuilds && find node/prebuilds
 
     - run: yarn install --frozen-lockfile
+      working-directory: node
 
     - run: yarn tsc
+      working-directory: node
 
     - run: yarn lint
+      working-directory: node
 
     - run: yarn format -c
+      working-directory: node
 
     - name: Run yarn test
       uses: GabrielBB/xvfb-action@v1.4
       with:
         # The tests use an Electron-based runner, so we need to set up a dummy display for them.
         run: yarn test
+        working-directory: node
 
     - name: Publish to NPM
       uses: JS-DevTools/npm-publish@v1
