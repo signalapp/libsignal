@@ -7,6 +7,8 @@
   "files": [
     "node/dist/*.js",
     "node/dist/*.d.ts",
+    "node/dist/zkgroup/**/*.js",
+    "node/dist/zkgroup/**/*.d.ts",
     "prebuilds/*/*.node"
   ],
   "scripts": {
