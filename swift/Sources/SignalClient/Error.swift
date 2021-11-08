@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -34,6 +34,7 @@ public enum SignalError: Error {
     case sessionNotFound(String)
     case invalidRegistrationId(address: ProtocolAddress, message: String)
     case duplicatedMessage(String)
+    case verificationFailed(String)
     case callbackError(String)
     case unknown(UInt32, String)
 }
@@ -102,6 +103,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidRegistrationId(address: address, message: errStr)
     case SignalErrorCode_DuplicatedMessage:
         throw SignalError.duplicatedMessage(errStr)
+    case SignalErrorCode_VerificationFailure:
+        throw SignalError.verificationFailed(errStr)
     case SignalErrorCode_CallbackError:
         throw SignalError.callbackError(errStr)
     default:

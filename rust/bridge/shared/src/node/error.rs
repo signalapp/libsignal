@@ -167,6 +167,8 @@ impl SignalNodeError for hsm_enclave::Error {}
 
 impl SignalNodeError for signal_crypto::Error {}
 
+impl SignalNodeError for zkgroup::ZkGroupError {}
+
 /// Represents an error returned by a callback.
 #[derive(Debug)]
 struct CallbackError {

@@ -17,8 +17,10 @@ style = "type"
 prefix_with_name = true
 
 [export]
-include = ["SignalErrorCode", "FfiDirection", "FfiCiphertextMessageType", "FfiContentHint"]
-item_types = ["enums", "functions", "opaque", "structs", "typedefs"]
+include = ["SignalErrorCode", "FfiDirection", "FfiCiphertextMessageType", "FfiContentHint", "RandomnessBytes"]
+exclude = ["TAG_SIZE", "NONCE_SIZE"]
+item_types = ["enums", "functions", "opaque", "structs", "typedefs", "constants"]
+# FIXME: this doesn't work well with constants in SCREAMING_SNAKE_CASE
 prefix = "Signal"
 renaming_overrides_prefixing = true
 
@@ -42,8 +44,8 @@ sort_by = "None"
 
 [parse]
 parse_deps = true
-include = ["libsignal-protocol", "signal-crypto"]
-extra_bindings = ["libsignal-bridge"]
+include = ["libsignal-protocol", "signal-crypto", "zkgroup"]
+extra_bindings = ["libsignal-bridge", "zkgroup"]
 
 [parse.expand]
 crates = ["libsignal-ffi", "libsignal-bridge"]

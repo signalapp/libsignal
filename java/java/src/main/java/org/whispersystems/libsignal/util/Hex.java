@@ -58,6 +58,14 @@ public class Hex {
     return out;
   }
 
+  public static byte[] fromStringCondensedAssert(String encoded) {
+    try {
+        return fromStringCondensed(encoded);
+    } catch (IOException e) {
+        throw new AssertionError(e);
+    }
+  }
+
   private static void appendHexCharWithPrefix(StringBuffer buf, int b) {
     buf.append("(byte)0x");
     appendHexChar(buf, b);

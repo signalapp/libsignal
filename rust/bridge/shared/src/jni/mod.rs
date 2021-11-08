@@ -14,6 +14,7 @@ use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
+use zkgroup::ZkGroupError;
 
 pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
 pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jstring};
@@ -220,9 +221,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
-        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize) => {
-            "java/lang/IllegalArgumentException"
-        }
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
+        | SignalJniError::DeserializationFailed(_) => "java/lang/IllegalArgumentException",
 
         SignalJniError::IntegerOverflow(_)
         | SignalJniError::Jni(_)
@@ -308,6 +308,16 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
             "java/lang/IllegalStateException"
         }
+
+        SignalJniError::ZkGroup(ZkGroupError::BadArgs) => {
+            "org/signal/zkgroup/InvalidInputException"
+        }
+        SignalJniError::ZkGroup(
+            ZkGroupError::DecryptionFailure
+            | ZkGroupError::MacVerificationFailure
+            | ZkGroupError::ProofVerificationFailure
+            | ZkGroupError::SignatureVerificationFailure,
+        ) => "org/signal/zkgroup/VerificationFailedException",
     };
 
     if let Err(e) = env.throw_new(exception_type, error.to_string()) {

@@ -12,6 +12,8 @@ use std::hash::Hasher;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
+use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
+
 use super::*;
 
 /// Converts arguments from their JavaScript form to their Rust form.
@@ -258,6 +260,16 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
             return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
         }
         Ok(Self::from_millis(value as u64))
+    }
+}
+
+impl SimpleArgTypeInfo for u64 {
+    type ArgType = JsBuffer; // FIXME: eventually this should be a bigint
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        cx.borrow(&foreign, |buf| {
+            buf.as_slice().try_into().map(u64::from_be_bytes)
+        })
+        .or_else(|_| cx.throw_type_error("expected a buffer of 8 big-endian bytes"))
     }
 }
 
@@ -541,6 +553,18 @@ impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for u64 {
+    type ResultType = JsBuffer; // FIXME: eventually this should be a bigint
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let mut result = cx.buffer(8)?;
+        cx.borrow_mut(&mut result, |buf| {
+            buf.as_mut_slice().copy_from_slice(&self.to_be_bytes())
+        });
+        Ok(result)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
@@ -608,6 +632,39 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     }
 }
 
+/// Loads from a JsBuffer, assuming it won't be mutated while in use.
+/// See [`AssumedImmutableBuffer`].
+impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
+    for &'storage [u8; LEN]
+{
+    type ArgType = JsBuffer;
+    type StoredType = AssumedImmutableBuffer<'context>;
+    fn borrow(
+        cx: &mut FunctionContext,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let result = AssumedImmutableBuffer::new(cx, foreign);
+        if result.buffer.len() != LEN {
+            cx.throw_error(format!(
+                "buffer has incorrect length {} (expected {})",
+                result.buffer.len(),
+                LEN
+            ))?;
+        }
+        Ok(result)
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.buffer.try_into().expect("checked length already")
+    }
+}
+
+impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        self.as_ref().convert_into(cx)
+    }
+}
+
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for NeonResult<T> {
     type ResultType = T::ResultType;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
@@ -665,6 +722,39 @@ macro_rules! full_range_integer {
 full_range_integer!(u8);
 full_range_integer!(u32);
 full_range_integer!(i32);
+
+impl<T> SimpleArgTypeInfo for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+{
+    type ArgType = JsBuffer;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let result: T = cx
+            .borrow(&foreign, |buffer| {
+                let bytes = buffer.as_slice();
+                if bytes.len() != T::Array::LEN {
+                    Err(bincode::ErrorKind::SizeLimit.into())
+                } else {
+                    bincode::deserialize(bytes)
+                }
+            })
+            .or_else(|_| cx.throw_error("failed to deserialize"))?;
+        Ok(Serialized::from(result))
+    }
+}
+
+impl<'a, T> crate::node::ResultTypeInfo<'a> for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + serde::Serialize,
+{
+    type ResultType = JsBuffer;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        result.convert_into(cx)
+    }
+}
 
 /// Extremely unsafe function to extend the lifetime of a reference.
 ///

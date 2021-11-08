@@ -14,6 +14,78 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdint.h>
 #include <stdlib.h>
 
+#define SignalNUM_AUTH_CRED_ATTRIBUTES 3
+
+#define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
+
+#define SignalNUM_RECEIPT_CRED_ATTRIBUTES 2
+
+#define SignalAES_KEY_LEN 32
+
+#define SignalAESGCM_NONCE_LEN 12
+
+#define SignalAESGCM_TAG_LEN 16
+
+#define SignalGROUP_MASTER_KEY_LEN 32
+
+#define SignalGROUP_SECRET_PARAMS_LEN 289
+
+#define SignalGROUP_PUBLIC_PARAMS_LEN 97
+
+#define SignalGROUP_IDENTIFIER_LEN 32
+
+#define SignalAUTH_CREDENTIAL_LEN 181
+
+#define SignalAUTH_CREDENTIAL_PRESENTATION_LEN 493
+
+#define SignalAUTH_CREDENTIAL_RESPONSE_LEN 361
+
+#define SignalPROFILE_KEY_LEN 32
+
+#define SignalPROFILE_KEY_CIPHERTEXT_LEN 65
+
+#define SignalPROFILE_KEY_COMMITMENT_LEN 97
+
+#define SignalPROFILE_KEY_CREDENTIAL_LEN 145
+
+#define SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_LEN 713
+
+#define SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN 329
+
+#define SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN 473
+
+#define SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN 457
+
+#define SignalPROFILE_KEY_VERSION_LEN 32
+
+#define SignalPROFILE_KEY_VERSION_ENCODED_LEN 64
+
+#define SignalRECEIPT_CREDENTIAL_LEN 129
+
+#define SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN 329
+
+#define SignalRECEIPT_CREDENTIAL_REQUEST_LEN 97
+
+#define SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN 177
+
+#define SignalRECEIPT_CREDENTIAL_RESPONSE_LEN 409
+
+#define SignalRECEIPT_SERIAL_LEN 16
+
+#define SignalRESERVED_LEN 1
+
+#define SignalSERVER_SECRET_PARAMS_LEN 1121
+
+#define SignalSERVER_PUBLIC_PARAMS_LEN 225
+
+#define SignalUUID_CIPHERTEXT_LEN 65
+
+#define SignalRANDOMNESS_LEN 32
+
+#define SignalSIGNATURE_LEN 64
+
+#define SignalUUID_LEN 16
+
 typedef enum {
   SignalCiphertextMessageType_Whisper = 2,
   SignalCiphertextMessageType_PreKey = 3,
@@ -67,6 +139,7 @@ typedef enum {
   SignalErrorCode_InvalidRegistrationId = 81,
   SignalErrorCode_DuplicatedMessage = 90,
   SignalErrorCode_CallbackError = 100,
+  SignalErrorCode_VerificationFailure = 110,
 } SignalErrorCode;
 
 /**
@@ -201,6 +274,8 @@ typedef struct {
   SignalLoadSenderKey load_sender_key;
   SignalStoreSenderKey store_sender_key;
 } SignalSenderKeyStore;
+
+typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
 
 void signal_print_ptr(const void *p);
 
@@ -1043,5 +1118,229 @@ SignalFfiError *signal_hsm_enclave_client_established_recv(const unsigned char *
                                                            SignalHsmEnclaveClient *cli,
                                                            const unsigned char *received_ciphertext,
                                                            size_t received_ciphertext_len);
+
+SignalFfiError *signal_auth_credential_check_valid_contents(const unsigned char (*_obj)[SignalAUTH_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_auth_credential_presentation_check_valid_contents(const unsigned char (*_obj)[SignalAUTH_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_auth_credential_response_check_valid_contents(const unsigned char (*_obj)[SignalAUTH_CREDENTIAL_RESPONSE_LEN]);
+
+SignalFfiError *signal_group_master_key_check_valid_contents(const unsigned char (*_obj)[SignalGROUP_MASTER_KEY_LEN]);
+
+SignalFfiError *signal_group_public_params_check_valid_contents(const unsigned char (*_obj)[SignalGROUP_PUBLIC_PARAMS_LEN]);
+
+SignalFfiError *signal_group_secret_params_check_valid_contents(const unsigned char (*_obj)[SignalGROUP_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_profile_key_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_LEN]);
+
+SignalFfiError *signal_profile_key_ciphertext_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_CIPHERTEXT_LEN]);
+
+SignalFfiError *signal_profile_key_commitment_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_COMMITMENT_LEN]);
+
+SignalFfiError *signal_profile_key_credential_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_profile_key_credential_presentation_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_profile_key_credential_request_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN]);
+
+SignalFfiError *signal_profile_key_credential_request_context_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN]);
+
+SignalFfiError *signal_profile_key_credential_response_check_valid_contents(const unsigned char (*_obj)[SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN]);
+
+SignalFfiError *signal_receipt_credential_check_valid_contents(const unsigned char (*_obj)[SignalRECEIPT_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_receipt_credential_presentation_check_valid_contents(const unsigned char (*_obj)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_receipt_credential_request_check_valid_contents(const unsigned char (*_obj)[SignalRECEIPT_CREDENTIAL_REQUEST_LEN]);
+
+SignalFfiError *signal_receipt_credential_request_context_check_valid_contents(const unsigned char (*_obj)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN]);
+
+SignalFfiError *signal_receipt_credential_response_check_valid_contents(const unsigned char (*_obj)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN]);
+
+SignalFfiError *signal_server_public_params_check_valid_contents(const unsigned char (*_obj)[SignalSERVER_PUBLIC_PARAMS_LEN]);
+
+SignalFfiError *signal_server_secret_params_check_valid_contents(const unsigned char (*_obj)[SignalSERVER_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_uuid_ciphertext_check_valid_contents(const unsigned char (*_obj)[SignalUUID_CIPHERTEXT_LEN]);
+
+SignalFfiError *signal_profile_key_get_commitment(unsigned char (*out)[SignalPROFILE_KEY_COMMITMENT_LEN],
+                                                  const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN],
+                                                  const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_profile_key_get_profile_key_version(uint8_t (*out)[SignalPROFILE_KEY_VERSION_ENCODED_LEN],
+                                                           const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN],
+                                                           const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_group_secret_params_generate_deterministic(unsigned char (*out)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                  const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_group_secret_params_derive_from_master_key(unsigned char (*out)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                  const unsigned char (*master_key)[SignalGROUP_MASTER_KEY_LEN]);
+
+SignalFfiError *signal_group_secret_params_get_master_key(unsigned char (*out)[SignalGROUP_MASTER_KEY_LEN],
+                                                          const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_group_secret_params_get_public_params(unsigned char (*out)[SignalGROUP_PUBLIC_PARAMS_LEN],
+                                                             const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_group_secret_params_encrypt_uuid(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN],
+                                                        const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                        const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_group_secret_params_decrypt_uuid(uint8_t (*out)[16],
+                                                        const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                        const unsigned char (*uuid)[SignalUUID_CIPHERTEXT_LEN]);
+
+SignalFfiError *signal_group_secret_params_encrypt_profile_key(unsigned char (*out)[SignalPROFILE_KEY_CIPHERTEXT_LEN],
+                                                               const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                               const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN],
+                                                               const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_group_secret_params_decrypt_profile_key(unsigned char (*out)[SignalPROFILE_KEY_LEN],
+                                                               const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                               const unsigned char (*profile_key)[SignalPROFILE_KEY_CIPHERTEXT_LEN],
+                                                               const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_group_secret_params_encrypt_blob_with_padding_deterministic(const unsigned char **out,
+                                                                                   size_t *out_len,
+                                                                                   const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                                   const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                   const unsigned char *plaintext,
+                                                                                   size_t plaintext_len,
+                                                                                   uint32_t padding_len);
+
+SignalFfiError *signal_group_secret_params_decrypt_blob_with_padding(const unsigned char **out,
+                                                                     size_t *out_len,
+                                                                     const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                     const unsigned char *ciphertext,
+                                                                     size_t ciphertext_len);
+
+SignalFfiError *signal_server_secret_params_generate_deterministic(unsigned char (*out)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                   const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_server_secret_params_get_public_params(unsigned char (*out)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                              const unsigned char (*params)[SignalSERVER_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_server_secret_params_sign_deterministic(uint8_t (*out)[SignalSIGNATURE_LEN],
+                                                               const unsigned char (*params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                               const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                               const unsigned char *message,
+                                                               size_t message_len);
+
+SignalFfiError *signal_server_public_params_receive_auth_credential(unsigned char (*out)[SignalAUTH_CREDENTIAL_LEN],
+                                                                    const unsigned char (*params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                    const uint8_t (*uuid)[16],
+                                                                    uint32_t redemption_time,
+                                                                    const unsigned char (*response)[SignalAUTH_CREDENTIAL_RESPONSE_LEN]);
+
+SignalFfiError *signal_server_public_params_create_auth_credential_presentation_deterministic(unsigned char (*out)[SignalAUTH_CREDENTIAL_PRESENTATION_LEN],
+                                                                                              const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                              const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                              const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                                              const unsigned char (*auth_credential)[SignalAUTH_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_server_public_params_create_profile_key_credential_request_context_deterministic(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN],
+                                                                                                        const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                                        const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                                        const uint8_t (*uuid)[16],
+                                                                                                        const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN]);
+
+SignalFfiError *signal_server_public_params_receive_profile_key_credential(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_LEN],
+                                                                           const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                           const unsigned char (*request_context)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN],
+                                                                           const unsigned char (*response)[SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN]);
+
+SignalFfiError *signal_server_public_params_create_profile_key_credential_presentation_deterministic(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_LEN],
+                                                                                                     const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                                     const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                                     const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                                                     const unsigned char (*profile_key_credential)[SignalPROFILE_KEY_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_server_public_params_create_receipt_credential_request_context_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN],
+                                                                                                    const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                                    const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                                    const uint8_t (*receipt_serial)[SignalRECEIPT_SERIAL_LEN]);
+
+SignalFfiError *signal_server_public_params_receive_receipt_credential(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_LEN],
+                                                                       const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                       const unsigned char (*request_context)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN],
+                                                                       const unsigned char (*response)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN]);
+
+SignalFfiError *signal_server_public_params_create_receipt_credential_presentation_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN],
+                                                                                                 const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                                 const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                                 const unsigned char (*receipt_credential)[SignalRECEIPT_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_server_secret_params_issue_auth_credential_deterministic(unsigned char (*out)[SignalAUTH_CREDENTIAL_RESPONSE_LEN],
+                                                                                const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                const uint8_t (*uuid)[16],
+                                                                                uint32_t redemption_time);
+
+SignalFfiError *signal_server_secret_params_verify_auth_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN],
+                                                                                const unsigned char (*presentation)[SignalAUTH_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_server_secret_params_issue_profile_key_credential_deterministic(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN],
+                                                                                       const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                       const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                       const unsigned char (*request)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN],
+                                                                                       const uint8_t (*uuid)[16],
+                                                                                       const unsigned char (*commitment)[SignalPROFILE_KEY_COMMITMENT_LEN]);
+
+SignalFfiError *signal_server_secret_params_verify_profile_key_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                       const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN],
+                                                                                       const unsigned char (*presentation)[SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_server_secret_params_issue_receipt_credential_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN],
+                                                                                   const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                   const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                   const unsigned char (*request)[SignalRECEIPT_CREDENTIAL_REQUEST_LEN],
+                                                                                   uint64_t receipt_expiration_time,
+                                                                                   uint64_t receipt_level);
+
+SignalFfiError *signal_server_secret_params_verify_receipt_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                   const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_group_public_params_get_group_identifier(uint8_t (*out)[SignalGROUP_IDENTIFIER_LEN],
+                                                                const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN]);
+
+SignalFfiError *signal_server_public_params_verify_signature(const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                             const unsigned char *message,
+                                                             size_t message_len,
+                                                             const uint8_t (*notary_signature)[SignalSIGNATURE_LEN]);
+
+SignalFfiError *signal_auth_credential_presentation_get_uuid_ciphertext(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN],
+                                                                        const unsigned char (*presentation)[SignalAUTH_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_auth_credential_presentation_get_redemption_time(uint32_t *out,
+                                                                        const unsigned char (*presentation)[SignalAUTH_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_profile_key_credential_request_context_get_request(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN],
+                                                                          const unsigned char (*context)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN]);
+
+SignalFfiError *signal_profile_key_credential_presentation_get_uuid_ciphertext(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN],
+                                                                               const unsigned char (*presentation)[SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_profile_key_credential_presentation_get_profile_key_ciphertext(unsigned char (*out)[SignalPROFILE_KEY_CIPHERTEXT_LEN],
+                                                                                      const unsigned char (*presentation)[SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_receipt_credential_request_context_get_request(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_REQUEST_LEN],
+                                                                      const unsigned char (*request_context)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN]);
+
+SignalFfiError *signal_receipt_credential_get_receipt_expiration_time(uint64_t *out,
+                                                                      const unsigned char (*receipt_credential)[SignalRECEIPT_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_receipt_credential_get_receipt_level(uint64_t *out,
+                                                            const unsigned char (*receipt_credential)[SignalRECEIPT_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_receipt_credential_presentation_get_receipt_expiration_time(uint64_t *out,
+                                                                                   const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_receipt_credential_presentation_get_receipt_level(uint64_t *out,
+                                                                         const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
+
+SignalFfiError *signal_receipt_credential_presentation_get_receipt_serial(uint8_t (*out)[SignalRECEIPT_SERIAL_LEN],
+                                                                          const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
 
 #endif /* SIGNAL_FFI_H_ */

@@ -11,6 +11,8 @@ use paste::paste;
 use std::convert::TryInto;
 use std::ops::Deref;
 
+use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
+
 use super::*;
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -159,6 +161,14 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
         } else {
             u32::convert_from(env, foreign).map(Some)
         }
+    }
+}
+
+/// Reinterprets the bits of the Java `long` as a `u64`.
+impl<'a> SimpleArgTypeInfo<'a> for u64 {
+    type ArgType = jlong;
+    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
+        Ok(foreign as u64)
     }
 }
 
@@ -436,6 +446,18 @@ impl ResultTypeInfo for Option<u32> {
     }
 }
 
+/// Reinterprets the bits of the `u64` as a Java `long`.
+impl ResultTypeInfo for u64 {
+    type ResultType = jlong;
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        // Note that we don't check bounds here.
+        Ok(self as jlong)
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
+    }
+}
+
 /// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
 ///
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
@@ -552,6 +574,36 @@ impl ResultTypeInfo for Option<Vec<u8>> {
     }
 }
 
+impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
+    for &'storage [u8; LEN]
+{
+    type ArgType = jbyteArray;
+    type StoredType = AutoArray<'context, 'context, jbyte>;
+    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+        Ok(env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?)
+    }
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> SignalJniResult<&'storage [u8; LEN]> {
+        unsafe { std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize) }
+            .try_into()
+            .map_err(|_| SignalJniError::DeserializationFailed(std::any::type_name::<[u8; LEN]>()))
+    }
+}
+
+impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        self.as_ref().convert_into(env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
 impl ResultTypeInfo for uuid::Uuid {
     type ResultType = jobject;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
@@ -642,6 +694,16 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, hsm_enclave::Error> {
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupError> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
@@ -764,6 +826,47 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
     }
 }
 
+impl<T> SimpleArgTypeInfo<'_> for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+{
+    type ArgType = jbyteArray;
+
+    fn convert_from(env: &jni_crate::JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        let borrowed_array = env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?;
+        let len = borrowed_array.size()? as usize;
+        if len != T::Array::LEN {
+            return Err(SignalJniError::DeserializationFailed(
+                std::any::type_name::<T>(),
+            ));
+        }
+        // Convert from i8 to u8.
+        let bytes =
+            unsafe { std::slice::from_raw_parts(borrowed_array.as_ptr() as *const u8, len) };
+        let result: T = bincode::deserialize(bytes)
+            .map_err(|_| SignalJniError::DeserializationFailed(std::any::type_name::<T>()))?;
+        Ok(Serialized::from(result))
+    }
+}
+
+impl<T> ResultTypeInfo for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable + serde::Serialize,
+{
+    type ResultType = jbyteArray;
+
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        result.convert_into(env)
+    }
+
+    fn convert_into_jobject(
+        signal_jni_result: &SignalJniResult<Self::ResultType>,
+    ) -> jni_crate::objects::JObject {
+        Vec::<u8>::convert_into_jobject(signal_jni_result)
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
 macro_rules! jni_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -849,6 +952,9 @@ macro_rules! jni_arg_type {
     (Option<u32>) => {
         jni::jint
     };
+    (u64) => {
+        jni::jlong
+    };
     (String) => {
         jni::JString
     };
@@ -862,6 +968,9 @@ macro_rules! jni_arg_type {
         jni::jbyteArray
     };
     (&mut [u8]) => {
+        jni::jbyteArray
+    };
+    (&[u8; $len:expr]) => {
         jni::jbyteArray
     };
     (Context) => {
@@ -890,6 +999,9 @@ macro_rules! jni_arg_type {
     };
     (Option<& $typ:ty>) => {
         jni::ObjectHandle
+    };
+    (Serialized<$typ:ident>) => {
+        jni::jbyteArray
     };
 }
 
@@ -935,6 +1047,9 @@ macro_rules! jni_result_type {
     (Option<u32>) => {
         jni::jint
     };
+    (u64) => {
+        jni::jlong
+    };
     (&str) => {
         jni::jstring
     };
@@ -953,11 +1068,17 @@ macro_rules! jni_result_type {
     (Vec<u8>) => {
         jni::jbyteArray
     };
+    ([u8; $len:expr]) => {
+        jni::jbyteArray
+    };
     (Option<$typ:tt>) => {
         jni_result_type!($typ)
     };
     (CiphertextMessage) => {
         jni::JavaReturnCiphertextMessage
+    };
+    (Serialized<$typ:ident>) => {
+        jni::jbyteArray
     };
     ( $handle:ident ) => {
         jni::ObjectHandle

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::TryInto;
+
 use crate::api;
 use crate::common::constants::*;
 use crate::common::errors::*;
@@ -41,6 +43,8 @@ impl GroupMasterKey {
         GroupMasterKey { bytes }
     }
 }
+
+const ENCRYPTED_BLOB_PADDING_LENGTH_SIZE: usize = std::mem::size_of::<u32>();
 
 impl GroupSecretParams {
     pub fn generate(randomness: RandomnessBytes) -> Self {
@@ -174,6 +178,21 @@ impl GroupSecretParams {
         }
     }
 
+    pub fn encrypt_blob_with_padding(
+        &self,
+        randomness: RandomnessBytes,
+        plaintext: &[u8],
+        padding_len: u32,
+    ) -> Result<Vec<u8>, ZkGroupError> {
+        let full_length =
+            ENCRYPTED_BLOB_PADDING_LENGTH_SIZE + plaintext.len() + padding_len as usize;
+        let mut padded_plaintext = Vec::with_capacity(full_length);
+        padded_plaintext.extend_from_slice(&padding_len.to_be_bytes());
+        padded_plaintext.extend_from_slice(plaintext);
+        padded_plaintext.resize(full_length, 0);
+        self.encrypt_blob(randomness, &padded_plaintext)
+    }
+
     pub fn decrypt_blob(self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupError> {
         if ciphertext.len() < AESGCM_NONCE_LEN + 1 {
             // AESGCM_NONCE_LEN = 12 bytes for IV
@@ -183,6 +202,25 @@ impl GroupSecretParams {
         let nonce = &ciphertext[unreserved_len - AESGCM_NONCE_LEN..unreserved_len];
         let ciphertext = &ciphertext[..unreserved_len - AESGCM_NONCE_LEN];
         self.decrypt_blob_aesgcmsiv(&self.blob_key, nonce, ciphertext)
+    }
+
+    pub fn decrypt_blob_with_padding(self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupError> {
+        let mut decrypted = self.decrypt_blob(ciphertext)?;
+
+        if decrypted.len() < ENCRYPTED_BLOB_PADDING_LENGTH_SIZE {
+            return Err(ZkGroupError::DecryptionFailure);
+        }
+        let (padding_len_bytes, plaintext_plus_padding) =
+            decrypted.split_at(ENCRYPTED_BLOB_PADDING_LENGTH_SIZE);
+
+        let padding_len = u32::from_be_bytes(padding_len_bytes.try_into().expect("correct size"));
+        if plaintext_plus_padding.len() < padding_len as usize {
+            return Err(ZkGroupError::DecryptionFailure);
+        }
+
+        decrypted.truncate(decrypted.len() - padding_len as usize);
+        decrypted.drain(..ENCRYPTED_BLOB_PADDING_LENGTH_SIZE);
+        Ok(decrypted)
     }
 
     fn encrypt_blob_aesgcmsiv(
@@ -310,5 +348,39 @@ mod tests {
             .decrypt_blob_aesgcmsiv(&key_vec, &nonce_vec, &calc_ciphertext)
             .unwrap();
         assert!(calc_plaintext[..] == plaintext_vec[..]);
+    }
+
+    #[test]
+    fn test_encrypt_with_padding() {
+        let group_secret_params = GroupSecretParams::generate([0u8; RANDOMNESS_LEN]);
+        let plaintext = b"secret team";
+
+        {
+            let expected_ciphertext_hex = "3798afe9c65ffb35a63b2c048b16f19dd50ee9acc33cc925667a9abad4d4c6f86675fa8e32243e0831203700";
+
+            let calc_ciphertext = group_secret_params
+                .encrypt_blob_with_padding([0u8; RANDOMNESS_LEN], plaintext, 0)
+                .unwrap();
+            assert_eq!(hex::encode(&calc_ciphertext), expected_ciphertext_hex);
+
+            let calc_plaintext = group_secret_params
+                .decrypt_blob_with_padding(&calc_ciphertext)
+                .unwrap();
+            assert_eq!(calc_plaintext[..], plaintext[..]);
+        }
+
+        {
+            let expected_ciphertext_hex = "880a70e071b33f81e1219842c8514f34901abb734c191292ac325455d898da000484080099c620f86675fa8e32243e0831203700";
+
+            let calc_ciphertext = group_secret_params
+                .encrypt_blob_with_padding([0u8; RANDOMNESS_LEN], plaintext, 8)
+                .unwrap();
+            assert_eq!(hex::encode(&calc_ciphertext), expected_ciphertext_hex);
+
+            let calc_plaintext = group_secret_params
+                .decrypt_blob_with_padding(&calc_ciphertext)
+                .unwrap();
+            assert_eq!(calc_plaintext[..], plaintext[..]);
+        }
     }
 }
