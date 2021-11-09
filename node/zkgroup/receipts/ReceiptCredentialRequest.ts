@@ -4,10 +4,10 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 export default class ReceiptCredentialRequest extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.ReceiptCredentialRequest_CheckValidContents);
+    super(contents, Native.ReceiptCredentialRequest_CheckValidContents);
   }
 }

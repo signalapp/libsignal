@@ -16,7 +16,7 @@
   "scripts": {
     "install": "node-gyp-build",
     "build": "node-gyp build",
-    "tsc": "tsc -b && yarn cpy Native.d.ts dist/",
+    "tsc": "tsc -b && yarn cpy Native.js Native.d.ts dist/",
     "clean": "rimraf dist build prebuilds",
     "test": "electron-mocha --recursive dist/test --require source-map-support/register",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",

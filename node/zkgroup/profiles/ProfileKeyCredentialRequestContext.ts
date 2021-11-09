@@ -4,20 +4,20 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import ProfileKeyCredentialRequest from './ProfileKeyCredentialRequest';
 
 export default class ProfileKeyCredentialRequestContext extends ByteArray {
   constructor(contents: Buffer) {
     super(
       contents,
-      NativeImpl.ProfileKeyCredentialRequestContext_CheckValidContents
+      Native.ProfileKeyCredentialRequestContext_CheckValidContents
     );
   }
 
   getRequest(): ProfileKeyCredentialRequest {
     return new ProfileKeyCredentialRequest(
-      NativeImpl.ProfileKeyCredentialRequestContext_GetRequest(this.contents)
+      Native.ProfileKeyCredentialRequestContext_GetRequest(this.contents)
     );
   }
 }

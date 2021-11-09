@@ -4,7 +4,7 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import ProfileKeyCommitment from './ProfileKeyCommitment';
 import ProfileKeyVersion from './ProfileKeyVersion';
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
@@ -18,13 +18,13 @@ export default class ProfileKey extends ByteArray {
 
   getCommitment(uuid: UUIDType): ProfileKeyCommitment {
     return new ProfileKeyCommitment(
-      NativeImpl.ProfileKey_GetCommitment(this.contents, fromUUID(uuid))
+      Native.ProfileKey_GetCommitment(this.contents, fromUUID(uuid))
     );
   }
 
   getProfileKeyVersion(uuid: UUIDType): ProfileKeyVersion {
     return new ProfileKeyVersion(
-      NativeImpl.ProfileKey_GetProfileKeyVersion(this.contents, fromUUID(uuid))
+      Native.ProfileKey_GetProfileKeyVersion(this.contents, fromUUID(uuid))
     );
   }
 }

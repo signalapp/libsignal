@@ -4,29 +4,24 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import UuidCiphertext from '../groups/UuidCiphertext';
 import ProfileKeyCiphertext from '../groups/ProfileKeyCiphertext';
 
 export default class ProfileKeyCredentialPresentation extends ByteArray {
   constructor(contents: Buffer) {
-    super(
-      contents,
-      NativeImpl.ProfileKeyCredentialPresentation_CheckValidContents
-    );
+    super(contents, Native.ProfileKeyCredentialPresentation_CheckValidContents);
   }
 
   getUuidCiphertext(): UuidCiphertext {
     return new UuidCiphertext(
-      NativeImpl.ProfileKeyCredentialPresentation_GetUuidCiphertext(
-        this.contents
-      )
+      Native.ProfileKeyCredentialPresentation_GetUuidCiphertext(this.contents)
     );
   }
 
   getProfileKeyCiphertext(): ProfileKeyCiphertext {
     return new ProfileKeyCiphertext(
-      NativeImpl.ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
+      Native.ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
         this.contents
       )
     );

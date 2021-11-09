@@ -6,7 +6,7 @@
 import { randomBytes } from 'crypto';
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import { RANDOM_LENGTH } from '../internal/Constants';
 import GroupMasterKey from './GroupMasterKey';
 import GroupPublicParams from './GroupPublicParams';
@@ -20,7 +20,7 @@ export default class GroupSecretParams extends ByteArray {
 
   static generateWithRandom(random: Buffer): GroupSecretParams {
     return new GroupSecretParams(
-      NativeImpl.GroupSecretParams_GenerateDeterministic(random)
+      Native.GroupSecretParams_GenerateDeterministic(random)
     );
   }
 
@@ -28,25 +28,23 @@ export default class GroupSecretParams extends ByteArray {
     groupMasterKey: GroupMasterKey
   ): GroupSecretParams {
     return new GroupSecretParams(
-      NativeImpl.GroupSecretParams_DeriveFromMasterKey(
-        groupMasterKey.getContents()
-      )
+      Native.GroupSecretParams_DeriveFromMasterKey(groupMasterKey.getContents())
     );
   }
 
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.GroupSecretParams_CheckValidContents);
+    super(contents, Native.GroupSecretParams_CheckValidContents);
   }
 
   getMasterKey(): GroupMasterKey {
     return new GroupMasterKey(
-      NativeImpl.GroupSecretParams_GetMasterKey(this.contents)
+      Native.GroupSecretParams_GetMasterKey(this.contents)
     );
   }
 
   getPublicParams(): GroupPublicParams {
     return new GroupPublicParams(
-      NativeImpl.GroupSecretParams_GetPublicParams(this.contents)
+      Native.GroupSecretParams_GetPublicParams(this.contents)
     );
   }
 }

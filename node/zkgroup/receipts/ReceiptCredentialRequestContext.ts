@@ -4,22 +4,19 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import ReceiptCredentialRequest from './ReceiptCredentialRequest';
 
 export default class ReceiptCredentialRequestContext extends ByteArray {
   static SIZE = 177;
 
   constructor(contents: Buffer) {
-    super(
-      contents,
-      NativeImpl.ReceiptCredentialRequestContext_CheckValidContents
-    );
+    super(contents, Native.ReceiptCredentialRequestContext_CheckValidContents);
   }
 
   getRequest(): ReceiptCredentialRequest {
     return new ReceiptCredentialRequest(
-      NativeImpl.ReceiptCredentialRequestContext_GetRequest(this.contents)
+      Native.ReceiptCredentialRequestContext_GetRequest(this.contents)
     );
   }
 }

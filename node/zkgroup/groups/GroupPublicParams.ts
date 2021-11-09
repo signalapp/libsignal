@@ -4,17 +4,17 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import GroupIdentifier from './GroupIdentifier';
 
 export default class GroupPublicParams extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.GroupPublicParams_CheckValidContents);
+    super(contents, Native.GroupPublicParams_CheckValidContents);
   }
 
   getGroupIdentifier(): GroupIdentifier {
     return new GroupIdentifier(
-      NativeImpl.GroupPublicParams_GetGroupIdentifier(this.contents)
+      Native.GroupPublicParams_GetGroupIdentifier(this.contents)
     );
   }
 }

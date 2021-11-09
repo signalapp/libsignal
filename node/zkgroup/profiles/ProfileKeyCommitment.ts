@@ -4,10 +4,10 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 export default class ProfileKeyCommitment extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.ProfileKeyCommitment_CheckValidContents);
+    super(contents, Native.ProfileKeyCommitment_CheckValidContents);
   }
 }

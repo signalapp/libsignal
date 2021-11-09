@@ -5,7 +5,7 @@
 
 import { randomBytes } from 'crypto';
 
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import { RANDOM_LENGTH } from '../internal/Constants';
 
 import ServerPublicParams from '../ServerPublicParams';
@@ -28,7 +28,7 @@ export default class ClientZkAuthOperations {
     authCredentialResponse: AuthCredentialResponse
   ): AuthCredential {
     return new AuthCredential(
-      NativeImpl.ServerPublicParams_ReceiveAuthCredential(
+      Native.ServerPublicParams_ReceiveAuthCredential(
         this.serverPublicParams.getContents(),
         fromUUID(uuid),
         redemptionTime,
@@ -56,7 +56,7 @@ export default class ClientZkAuthOperations {
     authCredential: AuthCredential
   ): AuthCredentialPresentation {
     return new AuthCredentialPresentation(
-      NativeImpl.ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
+      Native.ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
         this.serverPublicParams.getContents(),
         random,
         groupSecretParams.getContents(),

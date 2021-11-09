@@ -5,7 +5,7 @@
 
 import { randomBytes } from 'crypto';
 import { RANDOM_LENGTH } from '../internal/Constants';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 import UuidCiphertext from './UuidCiphertext';
 
@@ -23,7 +23,7 @@ export default class ClientZkGroupCipher {
 
   encryptUuid(uuid: UUIDType): UuidCiphertext {
     return new UuidCiphertext(
-      NativeImpl.GroupSecretParams_EncryptUuid(
+      Native.GroupSecretParams_EncryptUuid(
         this.groupSecretParams.getContents(),
         fromUUID(uuid)
       )
@@ -32,7 +32,7 @@ export default class ClientZkGroupCipher {
 
   decryptUuid(uuidCiphertext: UuidCiphertext): UUIDType {
     return toUUID(
-      NativeImpl.GroupSecretParams_DecryptUuid(
+      Native.GroupSecretParams_DecryptUuid(
         this.groupSecretParams.getContents(),
         uuidCiphertext.getContents()
       )
@@ -44,7 +44,7 @@ export default class ClientZkGroupCipher {
     uuid: UUIDType
   ): ProfileKeyCiphertext {
     return new ProfileKeyCiphertext(
-      NativeImpl.GroupSecretParams_EncryptProfileKey(
+      Native.GroupSecretParams_EncryptProfileKey(
         this.groupSecretParams.getContents(),
         profileKey.getContents(),
         fromUUID(uuid)
@@ -57,7 +57,7 @@ export default class ClientZkGroupCipher {
     uuid: UUIDType
   ): ProfileKey {
     return new ProfileKey(
-      NativeImpl.GroupSecretParams_DecryptProfileKey(
+      Native.GroupSecretParams_DecryptProfileKey(
         this.groupSecretParams.getContents(),
         profileKeyCiphertext.getContents(),
         fromUUID(uuid)
@@ -72,7 +72,7 @@ export default class ClientZkGroupCipher {
   }
 
   encryptBlobWithRandom(random: Buffer, plaintext: Buffer): Buffer {
-    return NativeImpl.GroupSecretParams_EncryptBlobWithPaddingDeterministic(
+    return Native.GroupSecretParams_EncryptBlobWithPaddingDeterministic(
       this.groupSecretParams.getContents(),
       random,
       plaintext,
@@ -81,7 +81,7 @@ export default class ClientZkGroupCipher {
   }
 
   decryptBlob(blobCiphertext: Buffer): Buffer {
-    return NativeImpl.GroupSecretParams_DecryptBlobWithPadding(
+    return Native.GroupSecretParams_DecryptBlobWithPadding(
       this.groupSecretParams.getContents(),
       blobCiphertext
     );

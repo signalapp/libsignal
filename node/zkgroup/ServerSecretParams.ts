@@ -4,7 +4,7 @@
 //
 
 import { randomBytes } from 'crypto';
-import NativeImpl from '../NativeImpl';
+import * as Native from '../Native';
 import ByteArray from './internal/ByteArray';
 
 import { RANDOM_LENGTH } from './internal/Constants';
@@ -20,17 +20,17 @@ export default class ServerSecretParams extends ByteArray {
 
   static generateWithRandom(random: Buffer): ServerSecretParams {
     return new ServerSecretParams(
-      NativeImpl.ServerSecretParams_GenerateDeterministic(random)
+      Native.ServerSecretParams_GenerateDeterministic(random)
     );
   }
 
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.ServerSecretParams_CheckValidContents);
+    super(contents, Native.ServerSecretParams_CheckValidContents);
   }
 
   getPublicParams(): ServerPublicParams {
     return new ServerPublicParams(
-      NativeImpl.ServerSecretParams_GetPublicParams(this.contents)
+      Native.ServerSecretParams_GetPublicParams(this.contents)
     );
   }
 
@@ -42,7 +42,7 @@ export default class ServerSecretParams extends ByteArray {
 
   signWithRandom(random: Buffer, message: Buffer): NotarySignature {
     return new NotarySignature(
-      NativeImpl.ServerSecretParams_SignDeterministic(
+      Native.ServerSecretParams_SignDeterministic(
         this.contents,
         random,
         message

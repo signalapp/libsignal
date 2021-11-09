@@ -4,10 +4,10 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 export default class ProfileKeyCredentialRequest extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.ProfileKeyCredentialRequest_CheckValidContents);
+    super(contents, Native.ProfileKeyCredentialRequest_CheckValidContents);
   }
 }

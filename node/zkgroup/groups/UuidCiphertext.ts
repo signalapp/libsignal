@@ -4,10 +4,10 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 export default class UuidCiphertext extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.UuidCiphertext_CheckValidContents);
+    super(contents, Native.UuidCiphertext_CheckValidContents);
   }
 }

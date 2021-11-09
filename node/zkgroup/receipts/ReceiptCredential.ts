@@ -4,21 +4,21 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 export default class ReceiptCredential extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.ReceiptCredential_CheckValidContents);
+    super(contents, Native.ReceiptCredential_CheckValidContents);
   }
 
   getReceiptExpirationTime(): bigint {
-    return NativeImpl.ReceiptCredential_GetReceiptExpirationTime(
+    return Native.ReceiptCredential_GetReceiptExpirationTime(
       this.contents
     ).readBigUInt64BE();
   }
 
   getReceiptLevel(): bigint {
-    return NativeImpl.ReceiptCredential_GetReceiptLevel(
+    return Native.ReceiptCredential_GetReceiptLevel(
       this.contents
     ).readBigUInt64BE();
   }

@@ -4,7 +4,6 @@
 //
 
 import * as Native from './Native';
-import NativeImpl from './NativeImpl';
 
 export class ProtocolAddress {
   readonly _nativeHandle: Native.ProtocolAddress;
@@ -18,14 +17,14 @@ export class ProtocolAddress {
   }
 
   static new(name: string, deviceId: number): ProtocolAddress {
-    return new ProtocolAddress(NativeImpl.ProtocolAddress_New(name, deviceId));
+    return new ProtocolAddress(Native.ProtocolAddress_New(name, deviceId));
   }
 
   name(): string {
-    return NativeImpl.ProtocolAddress_Name(this);
+    return Native.ProtocolAddress_Name(this);
   }
 
   deviceId(): number {
-    return NativeImpl.ProtocolAddress_DeviceId(this);
+    return Native.ProtocolAddress_DeviceId(this);
   }
 }

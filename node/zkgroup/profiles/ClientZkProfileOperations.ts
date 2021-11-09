@@ -6,7 +6,7 @@
 import { randomBytes } from 'crypto';
 
 import { RANDOM_LENGTH } from '../internal/Constants';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 
 import ServerPublicParams from '../ServerPublicParams';
 import ProfileKeyCredentialRequestContext from './ProfileKeyCredentialRequestContext';
@@ -44,7 +44,7 @@ export default class ClientZkProfileOperations {
     profileKey: ProfileKey
   ): ProfileKeyCredentialRequestContext {
     return new ProfileKeyCredentialRequestContext(
-      NativeImpl.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
+      Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
         this.serverPublicParams.getContents(),
         random,
         fromUUID(uuid),
@@ -58,7 +58,7 @@ export default class ClientZkProfileOperations {
     profileKeyCredentialResponse: ProfileKeyCredentialResponse
   ): ProfileKeyCredential {
     return new ProfileKeyCredential(
-      NativeImpl.ServerPublicParams_ReceiveProfileKeyCredential(
+      Native.ServerPublicParams_ReceiveProfileKeyCredential(
         this.serverPublicParams.getContents(),
         profileKeyCredentialRequestContext.getContents(),
         profileKeyCredentialResponse.getContents()
@@ -85,7 +85,7 @@ export default class ClientZkProfileOperations {
     profileKeyCredential: ProfileKeyCredential
   ): ProfileKeyCredentialPresentation {
     return new ProfileKeyCredentialPresentation(
-      NativeImpl.ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
+      Native.ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
         this.serverPublicParams.getContents(),
         random,
         groupSecretParams.getContents(),

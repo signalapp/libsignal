@@ -4,7 +4,7 @@
 //
 
 import { randomBytes } from 'crypto';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import { RANDOM_LENGTH } from '../internal/Constants';
 import { bufferFromBigUInt64BE } from '../internal/BigIntUtil';
 import ServerSecretParams from '../ServerSecretParams';
@@ -40,7 +40,7 @@ export default class ServerZkReceiptOperations {
     receiptLevel: bigint
   ): ReceiptCredentialResponse {
     return new ReceiptCredentialResponse(
-      NativeImpl.ServerSecretParams_IssueReceiptCredentialDeterministic(
+      Native.ServerSecretParams_IssueReceiptCredentialDeterministic(
         this.serverSecretParams.getContents(),
         random,
         receiptCredentialRequest.getContents(),
@@ -53,7 +53,7 @@ export default class ServerZkReceiptOperations {
   verifyReceiptCredentialPresentation(
     receiptCredentialPresentation: ReceiptCredentialPresentation
   ): void {
-    NativeImpl.ServerSecretParams_VerifyReceiptCredentialPresentation(
+    Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
       this.serverSecretParams.getContents(),
       receiptCredentialPresentation.getContents()
     );

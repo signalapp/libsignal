@@ -5,7 +5,7 @@
 
 import { randomBytes } from 'crypto';
 import { RANDOM_LENGTH } from '../internal/Constants';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import ServerPublicParams from '../ServerPublicParams';
 import ReceiptCredential from './ReceiptCredential';
 import ReceiptCredentialPresentation from './ReceiptCredentialPresentation';
@@ -35,7 +35,7 @@ export default class ClientZkReceiptOperations {
     receiptSerial: ReceiptSerial
   ): ReceiptCredentialRequestContext {
     return new ReceiptCredentialRequestContext(
-      NativeImpl.ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
+      Native.ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
         this.serverPublicParams.getContents(),
         random,
         receiptSerial.getContents()
@@ -48,7 +48,7 @@ export default class ClientZkReceiptOperations {
     receiptCredentialResponse: ReceiptCredentialResponse
   ): ReceiptCredential {
     return new ReceiptCredential(
-      NativeImpl.ServerPublicParams_ReceiveReceiptCredential(
+      Native.ServerPublicParams_ReceiveReceiptCredential(
         this.serverPublicParams.getContents(),
         receiptCredentialRequestContext.getContents(),
         receiptCredentialResponse.getContents()
@@ -71,7 +71,7 @@ export default class ClientZkReceiptOperations {
     receiptCredential: ReceiptCredential
   ): ReceiptCredentialPresentation {
     return new ReceiptCredentialPresentation(
-      NativeImpl.ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
+      Native.ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
         this.serverPublicParams.getContents(),
         random,
         receiptCredential.getContents()

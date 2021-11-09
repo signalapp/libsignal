@@ -4,9 +4,9 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 export default class AuthCredentialResponse extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.AuthCredentialResponse_CheckValidContents);
+    super(contents, Native.AuthCredentialResponse_CheckValidContents);
   }
 }

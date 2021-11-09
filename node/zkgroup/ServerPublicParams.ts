@@ -4,16 +4,16 @@
 //
 
 import ByteArray from './internal/ByteArray';
-import NativeImpl from '../NativeImpl';
+import * as Native from '../Native';
 import NotarySignature from './NotarySignature';
 
 export default class ServerPublicParams extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.ServerPublicParams_CheckValidContents);
+    super(contents, Native.ServerPublicParams_CheckValidContents);
   }
 
   verifySignature(message: Buffer, notarySignature: NotarySignature): void {
-    NativeImpl.ServerPublicParams_VerifySignature(
+    Native.ServerPublicParams_VerifySignature(
       this.contents,
       message,
       notarySignature.getContents()

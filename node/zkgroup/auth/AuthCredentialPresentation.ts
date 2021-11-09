@@ -4,23 +4,21 @@
 //
 
 import ByteArray from '../internal/ByteArray';
-import NativeImpl from '../../NativeImpl';
+import * as Native from '../../Native';
 import UuidCiphertext from '../groups/UuidCiphertext';
 
 export default class AuthCredentialPresentation extends ByteArray {
   constructor(contents: Buffer) {
-    super(contents, NativeImpl.AuthCredentialPresentation_CheckValidContents);
+    super(contents, Native.AuthCredentialPresentation_CheckValidContents);
   }
 
   getUuidCiphertext(): UuidCiphertext {
     return new UuidCiphertext(
-      NativeImpl.AuthCredentialPresentation_GetUuidCiphertext(this.contents)
+      Native.AuthCredentialPresentation_GetUuidCiphertext(this.contents)
     );
   }
 
   getRedemptionTime(): number {
-    return NativeImpl.AuthCredentialPresentation_GetRedemptionTime(
-      this.contents
-    );
+    return Native.AuthCredentialPresentation_GetRedemptionTime(this.contents);
   }
 }
