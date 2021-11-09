@@ -50,7 +50,7 @@ jobs:
     - run: yarn install --ignore-scripts --frozen-lockfile
       working-directory: node
 
-    - run: npx prebuildify --napi
+    - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
 
     - name: Upload library
