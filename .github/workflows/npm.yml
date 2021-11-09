@@ -113,4 +113,5 @@ jobs:
       with:
         token: ${{ secrets.NPM_TOKEN }}
         tag: ${{ github.event.inputs.npm_tag }}
+        package: node/package.json
         access: "public"
