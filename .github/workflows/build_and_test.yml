@@ -51,13 +51,9 @@ jobs:
           node:
           - *all
           - '.nvmrc'
-          - '.prettierignore'
-          - '.prettierrc'
-          - 'binding.gyp'
+          - '.prettierrc.js'
           - 'node/**'
-          - 'package.json'
           - 'rust/bridge/node/**'
-          - 'yarn.lock'
           rust_ios: &rust_ios
           - *all
           - 'rust/bridge/ffi/**'
@@ -236,20 +232,25 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
 
     - run: yarn install --frozen-lockfile
+      working-directory: node
 
     - run: yarn tsc
+      working-directory: node
 
     - run: yarn lint
       if: matrix.os == 'ubuntu-latest'
+      working-directory: node
 
     - run: yarn format -c
       if: matrix.os == 'ubuntu-latest'
+      working-directory: node
 
     - name: Run yarn test
       uses: GabrielBB/xvfb-action@v1.4
       with:
         # The tests use an Electron-based runner, so we need to set up a dummy display for them.
         run: yarn test
+        working-directory: node
 
   swift_package:
     name: Swift Package

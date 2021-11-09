@@ -87,6 +87,7 @@ appropriate version automatically.
 We use [`yarn`](https://classic.yarnpkg.com/) as our package manager. The Rust library will automatically be built when you run `yarn install`.
 
 ```shell
+$ cd node
 $ nvm use
 $ yarn install
 $ yarn tsc

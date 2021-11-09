@@ -1,0 +1,3 @@
+build/**
+dist/**
+Native.d.ts
