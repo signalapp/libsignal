@@ -9,6 +9,8 @@
     "dist/*.d.ts",
     "dist/zkgroup/**/*.js",
     "dist/zkgroup/**/*.d.ts",
+    "Native.js",
+    "Native.d.ts",
     "zkgroup.js",
     "zkgroup.d.ts",
     "prebuilds/*/*.node"
@@ -16,7 +18,7 @@
   "scripts": {
     "install": "node-gyp-build",
     "build": "node-gyp build",
-    "tsc": "tsc -b && yarn cpy Native.js Native.d.ts dist/",
+    "tsc": "tsc -b",
     "clean": "rimraf dist build prebuilds",
     "test": "electron-mocha --recursive dist/test --require source-map-support/register",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
@@ -37,7 +39,6 @@
     "@typescript-eslint/parser": "^4.6.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "cpy-cli": "^3.0.0",
     "electron": "13.3.0",
     "electron-mocha": "^10.0",
     "eslint": "^7.12.1",

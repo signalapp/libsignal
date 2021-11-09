@@ -7,5 +7,5 @@
     "strict": true,
     "sourceMap": true
   },
-  "include": ["index.ts", "zkgroup/index.ts", "test/*.ts"]
+  "include": ["ts/**/*.ts"]
 }
