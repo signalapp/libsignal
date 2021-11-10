@@ -185,6 +185,9 @@ public final class Native {
 
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
   public static native byte[] IdentityKeyPair_Serialize(long publicKey, long privateKey);
+  public static native byte[] IdentityKeyPair_SignAlternateIdentity(long publicKey, long privateKey, long otherIdentity);
+
+  public static native boolean IdentityKey_VerifyAlternateIdentity(long publicKey, long otherIdentity, byte[] signature);
 
   public static native void Logger_Initialize(int maxLevel, Class loggerClass);
   public static native void Logger_SetMaxLevel(int maxLevel);

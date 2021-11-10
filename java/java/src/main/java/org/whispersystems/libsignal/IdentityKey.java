@@ -5,6 +5,8 @@
  */
 package org.whispersystems.libsignal;
 
+import org.signal.client.internal.Native;
+import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.ecc.Curve;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
@@ -47,7 +49,16 @@ public class IdentityKey {
   public String getFingerprint() {
     return Hex.toString(publicKey.serialize());
   }
-	
+
+  public boolean verifyAlternateIdentity(IdentityKey other, byte[] signature) {
+    try (
+      NativeHandleGuard guard = new NativeHandleGuard(this.publicKey);
+      NativeHandleGuard otherGuard = new NativeHandleGuard(other.publicKey);
+    ) {
+      return Native.IdentityKey_VerifyAlternateIdentity(guard.nativeHandle(), otherGuard.nativeHandle(), signature);
+    }
+  }
+
   @Override
   public boolean equals(Object other) {
     if (other == null)                   return false;

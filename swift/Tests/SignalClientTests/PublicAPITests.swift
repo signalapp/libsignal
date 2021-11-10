@@ -321,6 +321,13 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(cert[0], 0x30)
     }
 
+    func testSignAlternateIdentity() {
+        let primary = IdentityKeyPair.generate()
+        let secondary = IdentityKeyPair.generate()
+        let signature = secondary.signAlternateIdentity(primary.identityKey)
+        XCTAssert(try! secondary.identityKey.verifyAlternateIdentity(primary.identityKey, signature: signature))
+    }
+
     static var allTests: [(String, (PublicAPITests) -> () throws -> Void)] {
         return [
             ("testAddreses", testAddress),
@@ -332,6 +339,7 @@ class PublicAPITests: TestCaseBase {
             ("testGroupCipher", testGroupCipher),
             ("testSenderCertifications", testSenderCertificates),
             ("testSerializationRoundTrip", testSerializationRoundTrip),
+            ("testSignAlternateIdentity", testSignAlternateIdentity),
         ]
     }
 }

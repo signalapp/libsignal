@@ -557,6 +557,18 @@ SignalFfiError *signal_identitykeypair_serialize(const unsigned char **out,
                                                  const SignalPublicKey *public_key,
                                                  const SignalPrivateKey *private_key);
 
+SignalFfiError *signal_identitykeypair_sign_alternate_identity(const unsigned char **out,
+                                                               size_t *out_len,
+                                                               const SignalPublicKey *public_key,
+                                                               const SignalPrivateKey *private_key,
+                                                               const SignalPublicKey *other_identity);
+
+SignalFfiError *signal_identitykey_verify_alternate_identity(bool *out,
+                                                             const SignalPublicKey *public_key,
+                                                             const SignalPublicKey *other_identity,
+                                                             const unsigned char *signature,
+                                                             size_t signature_len);
+
 SignalFfiError *signal_fingerprint_new(SignalFingerprint **out,
                                        uint32_t iterations,
                                        uint32_t version,
