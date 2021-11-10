@@ -193,7 +193,7 @@ impl GroupSecretParams {
         self.encrypt_blob(randomness, &padded_plaintext)
     }
 
-    pub fn decrypt_blob(self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupError> {
+    pub fn decrypt_blob(&self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupError> {
         if ciphertext.len() < AESGCM_NONCE_LEN + 1 {
             // AESGCM_NONCE_LEN = 12 bytes for IV
             return Err(ZkGroupError::DecryptionFailure);
@@ -204,7 +204,7 @@ impl GroupSecretParams {
         self.decrypt_blob_aesgcmsiv(&self.blob_key, nonce, ciphertext)
     }
 
-    pub fn decrypt_blob_with_padding(self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupError> {
+    pub fn decrypt_blob_with_padding(&self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupError> {
         let mut decrypted = self.decrypt_blob(ciphertext)?;
 
         if decrypted.len() < ENCRYPTED_BLOB_PADDING_LENGTH_SIZE {
@@ -239,7 +239,7 @@ impl GroupSecretParams {
     }
 
     fn decrypt_blob_aesgcmsiv(
-        self,
+        &self,
         key: &[u8],
         nonce: &[u8],
         ciphertext: &[u8],
