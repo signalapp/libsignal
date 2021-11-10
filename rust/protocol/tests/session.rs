@@ -68,6 +68,18 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
                 .session_version()?,
             3
         );
+        assert!(alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .expect("session found")
+            .has_sender_chain()
+            .expect("can ask about sender chain"));
+        assert!(!alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .expect("session found")
+            .needs_pni_signature()
+            .expect("has current state"));
 
         let original_message = "L'homme est condamné à être libre";
 
@@ -121,6 +133,12 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             .expect("session found");
         assert_eq!(bobs_session_with_alice.session_version()?, 3);
         assert_eq!(bobs_session_with_alice.alice_base_key()?.len(), 32 + 1);
+        assert!(bobs_session_with_alice
+            .has_sender_chain()
+            .expect("can ask about sender chain"));
+        assert!(!bobs_session_with_alice
+            .needs_pni_signature()
+            .expect("has current state"));
 
         let bob_outgoing = encrypt(&mut bob_store, &alice_address, bobs_response).await?;
 
@@ -1982,6 +2000,84 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
         );
 
         assert!(is_session_id_equal(&bob_store, &bob_address, &alice_store, &alice_address).await?);
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn test_needs_pni_signature() -> Result<(), SignalProtocolError> {
+    async {
+        let mut csprng = OsRng;
+
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
+
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
+
+        let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng).await?;
+
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            &mut csprng,
+            None,
+        )
+        .await?;
+
+        // Not set by default.
+        let mut alice_session_with_bob = alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .expect("session found");
+        assert!(!alice_session_with_bob
+            .needs_pni_signature()
+            .expect("has current session"));
+
+        alice_session_with_bob
+            .set_needs_pni_signature(true)
+            .expect("has current session");
+
+        assert!(alice_session_with_bob
+            .needs_pni_signature()
+            .expect("has current session"));
+
+        alice_store
+            .store_session(&bob_address, &alice_session_with_bob, None)
+            .await?;
+
+        // Sending a message doesn't clear the state...
+        let message = encrypt(&mut alice_store, &bob_address, "SYN").await?;
+
+        assert!(alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .expect("session found")
+            .needs_pni_signature()
+            .expect("has current session"));
+
+        // ...but receiving one does.
+        let _ = decrypt(&mut bob_store, &alice_address, &message).await?;
+
+        let reply = encrypt(&mut bob_store, &alice_address, "ACK").await?;
+        let _ = decrypt(&mut alice_store, &bob_address, &reply).await?;
+
+        let mut alice_session_with_bob = alice_store
+            .load_session(&bob_address, None)
+            .await?
+            .expect("session found");
+        assert!(!alice_session_with_bob
+            .needs_pni_signature()
+            .expect("has current session"));
+
+        // If you archive the session, you don't get to ask.
+        alice_session_with_bob.archive_current_state()?;
+        assert!(alice_session_with_bob.needs_pni_signature().is_err());
 
         Ok(())
     }
