@@ -49,7 +49,11 @@ impl PrivateKey {
     /// fixed to 0, but rather passed back in the most significant bit of the signature which would
     /// otherwise always be 0. This is for compatibility with the implementation found in
     /// libsignal-protocol-java.
-    pub fn calculate_signature<R>(&self, csprng: &mut R, message: &[u8]) -> [u8; SIGNATURE_LENGTH]
+    pub fn calculate_signature<R>(
+        &self,
+        csprng: &mut R,
+        message: &[&[u8]],
+    ) -> [u8; SIGNATURE_LENGTH]
     where
         R: CryptoRng + Rng,
     {
@@ -70,7 +74,9 @@ impl PrivateKey {
         ];
         hash1.update(&hash_prefix);
         hash1.update(&key_data);
-        hash1.update(&message);
+        for message_piece in message {
+            hash1.update(message_piece);
+        }
         hash1.update(&random_bytes[..]);
 
         let r = Scalar::from_hash(hash1);
@@ -79,7 +85,9 @@ impl PrivateKey {
         let mut hash = Sha512::new();
         hash.update(cap_r.as_bytes());
         hash.update(ed_public_key.as_bytes());
-        hash.update(&message);
+        for message_piece in message {
+            hash.update(message_piece);
+        }
 
         let h = Scalar::from_hash(hash);
         let s = (h * a) + r;
@@ -94,7 +102,7 @@ impl PrivateKey {
 
     pub fn verify_signature(
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
-        message: &[u8],
+        message: &[&[u8]],
         signature: &[u8; SIGNATURE_LENGTH],
     ) -> bool {
         let mont_point = MontgomeryPoint(*their_public_key);
@@ -117,7 +125,9 @@ impl PrivateKey {
         let mut hash = Sha512::new();
         hash.update(&cap_r);
         hash.update(cap_a.as_bytes());
-        hash.update(&message);
+        for message_piece in message {
+            hash.update(message_piece);
+        }
         let h = Scalar::from_hash(hash);
 
         let cap_r_check_point = EdwardsPoint::vartime_double_scalar_mul_basepoint(
@@ -245,7 +255,7 @@ mod tests {
         assert!(
             PrivateKey::verify_signature(
                 &alice_identity_public,
-                &alice_ephemeral_public,
+                &[&alice_ephemeral_public],
                 &alice_signature
             ),
             "signature check failed"
@@ -259,7 +269,7 @@ mod tests {
             assert!(
                 !PrivateKey::verify_signature(
                     &alice_identity_public,
-                    &alice_ephemeral_public,
+                    &[&alice_ephemeral_public],
                     &alice_signature_copy
                 ),
                 "signature check passed when it should not have"
@@ -274,9 +284,13 @@ mod tests {
             let mut message = [0u8; 64];
             csprng.fill_bytes(&mut message);
             let key = PrivateKey::new(&mut csprng);
-            let signature = key.calculate_signature(&mut csprng, &message);
+            let signature = key.calculate_signature(&mut csprng, &[&message]);
             assert!(
-                PrivateKey::verify_signature(&key.derive_public_key_bytes(), &message, &signature),
+                PrivateKey::verify_signature(
+                    &key.derive_public_key_bytes(),
+                    &[&message],
+                    &signature
+                ),
                 "signature check failed"
             );
         }

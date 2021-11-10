@@ -108,6 +108,14 @@ impl PublicKey {
     }
 
     pub fn verify_signature(&self, message: &[u8], signature: &[u8]) -> Result<bool> {
+        self.verify_signature_for_multipart_message(&[message], signature)
+    }
+
+    pub fn verify_signature_for_multipart_message(
+        &self,
+        message: &[&[u8]],
+        signature: &[u8],
+    ) -> Result<bool> {
         match &self.key {
             PublicKeyData::DjbPublicKey(pub_key) => {
                 if signature.len() != curve25519::SIGNATURE_LENGTH {
@@ -249,6 +257,14 @@ impl PrivateKey {
         message: &[u8],
         csprng: &mut R,
     ) -> Result<Box<[u8]>> {
+        self.calculate_signature_for_multipart_message(&[message], csprng)
+    }
+
+    pub fn calculate_signature_for_multipart_message<R: CryptoRng + Rng>(
+        &self,
+        message: &[&[u8]],
+        csprng: &mut R,
+    ) -> Result<Box<[u8]>> {
         match self.key {
             PrivateKeyData::DjbPrivateKey(k) => {
                 let private_key = curve25519::PrivateKey::from(k);
@@ -362,6 +378,17 @@ mod tests {
         assert!(!key_pair.public_key.verify_signature(&message, &signature)?);
         message[0] ^= 0x01u8;
         let public_key = key_pair.private_key.public_key()?;
+        assert!(public_key.verify_signature(&message, &signature)?);
+
+        assert!(public_key
+            .verify_signature_for_multipart_message(&[&message[..7], &message[7..]], &signature)?);
+
+        let signature = key_pair
+            .private_key
+            .calculate_signature_for_multipart_message(
+                &[&message[..20], &message[20..]],
+                &mut csprng,
+            )?;
         assert!(public_key.verify_signature(&message, &signature)?);
 
         Ok(())
