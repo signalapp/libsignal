@@ -828,7 +828,16 @@ fn SessionRecord_CurrentRatchetKeyMatches(s: &SessionRecord, key: &PublicKey) ->
     s.current_ratchet_key_matches(key)
 }
 
+#[bridge_fn_void]
+fn SessionRecord_SetNeedsPniSignature(
+    s: &mut SessionRecord,
+    needs_pni_signature: bool,
+) -> Result<()> {
+    s.set_needs_pni_signature(needs_pni_signature)
+}
+
 bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false);
+bridge_get!(SessionRecord::needs_pni_signature as NeedsPniSignature -> bool);
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get_buffer!(SessionRecord::serialize as Serialize -> Vec<u8>);

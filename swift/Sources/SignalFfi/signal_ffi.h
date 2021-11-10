@@ -984,7 +984,13 @@ SignalFfiError *signal_session_record_current_ratchet_key_matches(bool *out,
                                                                   const SignalSessionRecord *s,
                                                                   const SignalPublicKey *key);
 
+SignalFfiError *signal_session_record_set_needs_pni_signature(SignalSessionRecord *s,
+                                                              bool needs_pni_signature);
+
 SignalFfiError *signal_session_record_has_current_state(bool *out, const SignalSessionRecord *obj);
+
+SignalFfiError *signal_session_record_needs_pni_signature(bool *out,
+                                                          const SignalSessionRecord *obj);
 
 SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **out,
                                                   const unsigned char *data,

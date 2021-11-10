@@ -879,6 +879,71 @@ describe('SignalClient', () => {
       assert.exists(err.stack); // Make sure we're still getting the benefits of Error.
     }
   });
+
+  it('handles the needsPniSignature flag', async () => {
+    const aKeys = new InMemoryIdentityKeyStore();
+    const bKeys = new InMemoryIdentityKeyStore();
+
+    const aSess = new InMemorySessionStore();
+
+    const bPreK = new InMemoryPreKeyStore();
+    const bSPreK = new InMemorySignedPreKeyStore();
+
+    const bPreKey = SignalClient.PrivateKey.generate();
+    const bSPreKey = SignalClient.PrivateKey.generate();
+
+    const bIdentityKey = await bKeys.getIdentityKey();
+    const bSignedPreKeySig = bIdentityKey.sign(
+      bSPreKey.getPublicKey().serialize()
+    );
+
+    const bAddress = SignalClient.ProtocolAddress.new('+19192222222', 1);
+
+    const bRegistrationId = await bKeys.getLocalRegistrationId();
+    const bPreKeyId = 31337;
+    const bSignedPreKeyId = 22;
+
+    const bPreKeyBundle = SignalClient.PreKeyBundle.new(
+      bRegistrationId,
+      bAddress.deviceId(),
+      bPreKeyId,
+      bPreKey.getPublicKey(),
+      bSignedPreKeyId,
+      bSPreKey.getPublicKey(),
+      bSignedPreKeySig,
+      bIdentityKey.getPublicKey()
+    );
+
+    const bPreKeyRecord = SignalClient.PreKeyRecord.new(
+      bPreKeyId,
+      bPreKey.getPublicKey(),
+      bPreKey
+    );
+    bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+
+    const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
+      bSignedPreKeyId,
+      42, // timestamp
+      bSPreKey.getPublicKey(),
+      bSPreKey,
+      bSignedPreKeySig
+    );
+    bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+    await SignalClient.processPreKeyBundle(
+      bPreKeyBundle,
+      bAddress,
+      aSess,
+      aKeys
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const session = (await aSess.getSession(bAddress))!;
+    assert(!session.needsPniSignature());
+    session.setNeedsPniSignature(true);
+    assert(session.needsPniSignature());
+  });
+
   describe('SealedSender', () => {
     it('can encrypt/decrypt 1-1 messages', async () => {
       const aKeys = new InMemoryIdentityKeyStore();
