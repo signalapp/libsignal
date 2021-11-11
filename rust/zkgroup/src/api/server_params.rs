@@ -6,7 +6,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api;
-use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
@@ -15,10 +14,13 @@ use crate::crypto;
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct ServerSecretParams {
     pub(crate) reserved: ReservedBytes,
-    pub(crate) auth_credentials_key_pair: crypto::credentials::KeyPair,
-    pub(crate) profile_key_credentials_key_pair: crypto::credentials::KeyPair,
+    pub(crate) auth_credentials_key_pair:
+        crypto::credentials::KeyPair<crypto::credentials::AuthCredential>,
+    pub(crate) profile_key_credentials_key_pair:
+        crypto::credentials::KeyPair<crypto::credentials::ProfileKeyCredential>,
     sig_key_pair: crypto::signature::KeyPair,
-    receipt_credentials_key_pair: crypto::credentials::KeyPair,
+    receipt_credentials_key_pair:
+        crypto::credentials::KeyPair<crypto::credentials::ReceiptCredential>,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
@@ -37,13 +39,10 @@ impl ServerSecretParams {
             &randomness,
         );
 
-        let auth_credentials_key_pair =
-            crypto::credentials::KeyPair::generate(&mut sho, NUM_AUTH_CRED_ATTRIBUTES);
-        let profile_key_credentials_key_pair =
-            crypto::credentials::KeyPair::generate(&mut sho, NUM_PROFILE_KEY_CRED_ATTRIBUTES);
+        let auth_credentials_key_pair = crypto::credentials::KeyPair::generate(&mut sho);
+        let profile_key_credentials_key_pair = crypto::credentials::KeyPair::generate(&mut sho);
         let sig_key_pair = crypto::signature::KeyPair::generate(&mut sho);
-        let receipt_credentials_key_pair =
-            crypto::credentials::KeyPair::generate(&mut sho, NUM_RECEIPT_CRED_ATTRIBUTES);
+        let receipt_credentials_key_pair = crypto::credentials::KeyPair::generate(&mut sho);
 
         Self {
             reserved: Default::default(),

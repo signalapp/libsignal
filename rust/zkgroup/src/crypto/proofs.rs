@@ -106,7 +106,7 @@ impl AuthCredentialIssuanceProof {
     }
 
     pub fn new(
-        key_pair: credentials::KeyPair,
+        key_pair: credentials::KeyPair<credentials::AuthCredential>,
         credential: credentials::AuthCredential,
         uid: uid_struct::UidStruct,
         redemption_time: RedemptionTime,
@@ -121,9 +121,9 @@ impl AuthCredentialIssuanceProof {
         scalar_args.add("wprime", key_pair.wprime);
         scalar_args.add("x0", key_pair.x0);
         scalar_args.add("x1", key_pair.x1);
-        scalar_args.add("y1", key_pair.y1);
-        scalar_args.add("y2", key_pair.y2);
-        scalar_args.add("y3", key_pair.y3);
+        scalar_args.add("y1", key_pair.y[0]);
+        scalar_args.add("y2", key_pair.y[1]);
+        scalar_args.add("y3", key_pair.y[2]);
 
         let mut point_args = poksho::PointArgs::new();
         point_args.add("C_W", key_pair.C_W);
@@ -132,9 +132,9 @@ impl AuthCredentialIssuanceProof {
         point_args.add("G_V-I", system.G_V - key_pair.I);
         point_args.add("G_x0", system.G_x0);
         point_args.add("G_x1", system.G_x1);
-        point_args.add("G_y1", system.G_y1);
-        point_args.add("G_y2", system.G_y2);
-        point_args.add("G_y3", system.G_y3);
+        point_args.add("G_y1", system.G_y[0]);
+        point_args.add("G_y2", system.G_y[1]);
+        point_args.add("G_y3", system.G_y[2]);
         point_args.add("V", credential.V);
         point_args.add("U", credential.U);
         point_args.add("tU", credential.t * credential.U);
@@ -171,9 +171,9 @@ impl AuthCredentialIssuanceProof {
         point_args.add("G_V-I", system.G_V - public_key.I);
         point_args.add("G_x0", system.G_x0);
         point_args.add("G_x1", system.G_x1);
-        point_args.add("G_y1", system.G_y1);
-        point_args.add("G_y2", system.G_y2);
-        point_args.add("G_y3", system.G_y3);
+        point_args.add("G_y1", system.G_y[0]);
+        point_args.add("G_y2", system.G_y[1]);
+        point_args.add("G_y3", system.G_y[2]);
         point_args.add("V", credential.V);
         point_args.add("U", credential.U);
         point_args.add("tU", credential.t * credential.U);
@@ -295,7 +295,7 @@ impl ProfileKeyCredentialIssuanceProof {
     }
 
     pub fn new(
-        key_pair: credentials::KeyPair,
+        key_pair: credentials::KeyPair<credentials::ProfileKeyCredential>,
         request_public_key: profile_key_credential_request::PublicKey,
         request: profile_key_credential_request::Ciphertext,
         blinded_credential: credentials::BlindedProfileKeyCredentialWithSecretNonce,
@@ -309,10 +309,10 @@ impl ProfileKeyCredentialIssuanceProof {
         scalar_args.add("wprime", key_pair.wprime);
         scalar_args.add("x0", key_pair.x0);
         scalar_args.add("x1", key_pair.x1);
-        scalar_args.add("y1", key_pair.y1);
-        scalar_args.add("y2", key_pair.y2);
-        scalar_args.add("y3", key_pair.y3);
-        scalar_args.add("y4", key_pair.y4);
+        scalar_args.add("y1", key_pair.y[0]);
+        scalar_args.add("y2", key_pair.y[1]);
+        scalar_args.add("y3", key_pair.y[2]);
+        scalar_args.add("y4", key_pair.y[3]);
         scalar_args.add("rprime", blinded_credential.rprime);
 
         let mut point_args = poksho::PointArgs::new();
@@ -322,10 +322,10 @@ impl ProfileKeyCredentialIssuanceProof {
         point_args.add("G_V-I", credentials_system.G_V - key_pair.I);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("G_y1", credentials_system.G_y1);
-        point_args.add("G_y2", credentials_system.G_y2);
-        point_args.add("G_y3", credentials_system.G_y3);
-        point_args.add("G_y4", credentials_system.G_y4);
+        point_args.add("G_y1", credentials_system.G_y[0]);
+        point_args.add("G_y2", credentials_system.G_y[1]);
+        point_args.add("G_y3", credentials_system.G_y[2]);
+        point_args.add("G_y4", credentials_system.G_y[3]);
         point_args.add("S1", blinded_credential.S1);
         point_args.add("D1", request.D1);
         point_args.add("E1", request.E1);
@@ -367,10 +367,10 @@ impl ProfileKeyCredentialIssuanceProof {
         point_args.add("G_V-I", credentials_system.G_V - credentials_public_key.I);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("G_y1", credentials_system.G_y1);
-        point_args.add("G_y2", credentials_system.G_y2);
-        point_args.add("G_y3", credentials_system.G_y3);
-        point_args.add("G_y4", credentials_system.G_y4);
+        point_args.add("G_y1", credentials_system.G_y[0]);
+        point_args.add("G_y2", credentials_system.G_y[1]);
+        point_args.add("G_y3", credentials_system.G_y[2]);
+        point_args.add("G_y4", credentials_system.G_y[3]);
         point_args.add("S1", blinded_credential.S1);
         point_args.add("D1", request.D1);
         point_args.add("E1", request.E1);
@@ -420,7 +420,7 @@ impl ReceiptCredentialIssuanceProof {
     }
 
     pub fn new(
-        key_pair: credentials::KeyPair,
+        key_pair: credentials::KeyPair<credentials::ReceiptCredential>,
         request_public_key: receipt_credential_request::PublicKey,
         request: receipt_credential_request::Ciphertext,
         blinded_credential: credentials::BlindedReceiptCredentialWithSecretNonce,
@@ -437,8 +437,8 @@ impl ReceiptCredentialIssuanceProof {
         scalar_args.add("wprime", key_pair.wprime);
         scalar_args.add("x0", key_pair.x0);
         scalar_args.add("x1", key_pair.x1);
-        scalar_args.add("y1", key_pair.y1);
-        scalar_args.add("y2", key_pair.y2);
+        scalar_args.add("y1", key_pair.y[0]);
+        scalar_args.add("y2", key_pair.y[1]);
         scalar_args.add("rprime", blinded_credential.rprime);
 
         let mut point_args = poksho::PointArgs::new();
@@ -448,8 +448,8 @@ impl ReceiptCredentialIssuanceProof {
         point_args.add("G_V-I", credentials_system.G_V - key_pair.I);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("G_y1", credentials_system.G_y1);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y1", credentials_system.G_y[0]);
+        point_args.add("G_y2", credentials_system.G_y[1]);
         point_args.add("S1", blinded_credential.S1);
         point_args.add("D1", request.D1);
         point_args.add("S2", blinded_credential.S2);
@@ -489,8 +489,8 @@ impl ReceiptCredentialIssuanceProof {
         point_args.add("G_V-I", credentials_system.G_V - credentials_public_key.I);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("G_y1", credentials_system.G_y1);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y1", credentials_system.G_y[0]);
+        point_args.add("G_y2", credentials_system.G_y[1]);
         point_args.add("S1", blinded_credential.S1);
         point_args.add("D1", request.D1);
         point_args.add("S2", blinded_credential.S2);
@@ -535,9 +535,9 @@ impl AuthCredentialPresentationProof {
 
         let z = sho.get_scalar();
 
-        let C_y1 = z * credentials_system.G_y1 + M[0];
-        let C_y2 = z * credentials_system.G_y2 + M[1];
-        let C_y3 = z * credentials_system.G_y3;
+        let C_y1 = z * credentials_system.G_y[0] + M[0];
+        let C_y2 = z * credentials_system.G_y[1] + M[1];
+        let C_y3 = z * credentials_system.G_y[2];
 
         let C_x0 = z * credentials_system.G_x0 + credential.U;
         let C_V = z * credentials_system.G_V + credential.V;
@@ -570,13 +570,13 @@ impl AuthCredentialPresentationProof {
         point_args.add("G_a1", uid_system.G_a1);
         point_args.add("G_a2", uid_system.G_a2);
         point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y2", credentials_system.G_y[1]);
         point_args.add("-E_A1", -uid_ciphertext.E_A1);
         point_args.add("E_A1", uid_ciphertext.E_A1);
         point_args.add("C_y1", C_y1);
-        point_args.add("G_y1", credentials_system.G_y1);
+        point_args.add("G_y1", credentials_system.G_y[0]);
         point_args.add("C_y3", C_y3);
-        point_args.add("G_y3", credentials_system.G_y3);
+        point_args.add("G_y3", credentials_system.G_y[2]);
 
         let poksho_proof = Self::get_poksho_statement()
             .prove(
@@ -600,7 +600,7 @@ impl AuthCredentialPresentationProof {
 
     pub fn verify(
         &self,
-        credentials_key_pair: credentials::KeyPair,
+        credentials_key_pair: credentials::KeyPair<credentials::AuthCredential>,
         uid_enc_public_key: uid_encryption::PublicKey,
         uid_ciphertext: uid_encryption::Ciphertext,
         redemption_time: RedemptionTime,
@@ -624,9 +624,7 @@ impl AuthCredentialPresentationProof {
             W,
             x0,
             x1,
-            y1,
-            y2,
-            y3,
+            y: [y1, y2, y3, ..],
             I,
             ..
         } = credentials_key_pair;
@@ -647,13 +645,13 @@ impl AuthCredentialPresentationProof {
         point_args.add("G_a1", enc_system.G_a1);
         point_args.add("G_a2", enc_system.G_a2);
         point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y2", credentials_system.G_y[1]);
         point_args.add("-E_A1", -uid_ciphertext.E_A1);
         point_args.add("E_A1", uid_ciphertext.E_A1);
         point_args.add("C_y1", C_y1);
-        point_args.add("G_y1", credentials_system.G_y1);
+        point_args.add("G_y1", credentials_system.G_y[0]);
         point_args.add("C_y3", C_y3);
-        point_args.add("G_y3", credentials_system.G_y3);
+        point_args.add("G_y3", credentials_system.G_y[2]);
 
         match Self::get_poksho_statement().verify_proof(poksho_proof, &point_args, &[]) {
             Err(_) => Err(ZkGroupError::ProofVerificationFailure),
@@ -697,10 +695,10 @@ impl ProfileKeyCredentialPresentationProof {
 
         let z = sho.get_scalar();
 
-        let C_y1 = z * credentials_system.G_y1 + uid.M1;
-        let C_y2 = z * credentials_system.G_y2 + uid.M2;
-        let C_y3 = z * credentials_system.G_y3 + profile_key.M3;
-        let C_y4 = z * credentials_system.G_y4 + profile_key.M4;
+        let C_y1 = z * credentials_system.G_y[0] + uid.M1;
+        let C_y2 = z * credentials_system.G_y[1] + uid.M2;
+        let C_y3 = z * credentials_system.G_y[2] + profile_key.M3;
+        let C_y4 = z * credentials_system.G_y[3] + profile_key.M4;
 
         let C_x0 = z * credentials_system.G_x0 + credential.U;
         let C_V = z * credentials_system.G_V + credential.V;
@@ -747,18 +745,18 @@ impl ProfileKeyCredentialPresentationProof {
         point_args.add("G_b2", profile_key_system.G_b2);
 
         point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y2", credentials_system.G_y[1]);
         point_args.add("-E_A1", -uid_ciphertext.E_A1);
         point_args.add("E_A1", uid_ciphertext.E_A1);
         point_args.add("C_y1", C_y1);
-        point_args.add("G_y1", credentials_system.G_y1);
+        point_args.add("G_y1", credentials_system.G_y[0]);
 
         point_args.add("C_y4-E_B2", C_y4 - profile_key_ciphertext.E_B2);
-        point_args.add("G_y4", credentials_system.G_y4);
+        point_args.add("G_y4", credentials_system.G_y[3]);
         point_args.add("-E_B1", -profile_key_ciphertext.E_B1);
         point_args.add("E_B1", profile_key_ciphertext.E_B1);
         point_args.add("C_y3", C_y3);
-        point_args.add("G_y3", credentials_system.G_y3);
+        point_args.add("G_y3", credentials_system.G_y[2]);
 
         let poksho_proof = Self::get_poksho_statement()
             .prove(
@@ -784,7 +782,7 @@ impl ProfileKeyCredentialPresentationProof {
 
     pub fn verify(
         &self,
-        credentials_key_pair: credentials::KeyPair,
+        credentials_key_pair: credentials::KeyPair<credentials::ProfileKeyCredential>,
         uid_ciphertext: uid_encryption::Ciphertext,
         uid_enc_public_key: uid_encryption::PublicKey,
         profile_key_ciphertext: profile_key_encryption::Ciphertext,
@@ -813,10 +811,7 @@ impl ProfileKeyCredentialPresentationProof {
             W,
             x0,
             x1,
-            y1,
-            y2,
-            y3,
-            y4,
+            y: [y1, y2, y3, y4, ..],
             I,
             ..
         } = credentials_key_pair;
@@ -844,18 +839,18 @@ impl ProfileKeyCredentialPresentationProof {
         point_args.add("G_b2", profile_key_enc_system.G_b2);
 
         point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y2", credentials_system.G_y[1]);
         point_args.add("-E_A1", -uid_ciphertext.E_A1);
         point_args.add("E_A1", uid_ciphertext.E_A1);
         point_args.add("C_y1", C_y1);
-        point_args.add("G_y1", credentials_system.G_y1);
+        point_args.add("G_y1", credentials_system.G_y[0]);
 
         point_args.add("C_y4-E_B2", C_y4 - profile_key_ciphertext.E_B2);
-        point_args.add("G_y4", credentials_system.G_y4);
+        point_args.add("G_y4", credentials_system.G_y[3]);
         point_args.add("-E_B1", -profile_key_ciphertext.E_B1);
         point_args.add("E_B1", profile_key_ciphertext.E_B1);
         point_args.add("C_y3", C_y3);
-        point_args.add("G_y3", credentials_system.G_y3);
+        point_args.add("G_y3", credentials_system.G_y[2]);
 
         match Self::get_poksho_statement().verify_proof(poksho_proof, &point_args, &[]) {
             Err(_) => Err(ZkGroupError::ProofVerificationFailure),
@@ -884,8 +879,8 @@ impl ReceiptCredentialPresentationProof {
 
         let z = sho.get_scalar();
 
-        let C_y1 = z * credentials_system.G_y1;
-        let C_y2 = z * credentials_system.G_y2;
+        let C_y1 = z * credentials_system.G_y[0];
+        let C_y2 = z * credentials_system.G_y[1];
 
         let I = credentials_public_key.I;
         let Z = z * I;
@@ -909,8 +904,8 @@ impl ReceiptCredentialPresentationProof {
         point_args.add("C_y2", C_y2);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("G_y1", credentials_system.G_y1);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y1", credentials_system.G_y[0]);
+        point_args.add("G_y2", credentials_system.G_y[1]);
 
         let poksho_proof = Self::get_poksho_statement()
             .prove(
@@ -933,7 +928,7 @@ impl ReceiptCredentialPresentationProof {
 
     pub fn verify(
         &self,
-        credentials_key_pair: credentials::KeyPair,
+        credentials_key_pair: credentials::KeyPair<credentials::ReceiptCredential>,
         receipt_struct: ReceiptStruct,
     ) -> Result<(), ZkGroupError> {
         let credentials_system = credentials::SystemParams::get_hardcoded();
@@ -953,8 +948,7 @@ impl ReceiptCredentialPresentationProof {
             W,
             x0,
             x1,
-            y1,
-            y2,
+            y: [y1, y2, ..],
             I,
             ..
         } = credentials_key_pair;
@@ -971,8 +965,8 @@ impl ReceiptCredentialPresentationProof {
         point_args.add("C_y2", C_y2);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("G_y1", credentials_system.G_y1);
-        point_args.add("G_y2", credentials_system.G_y2);
+        point_args.add("G_y1", credentials_system.G_y[0]);
+        point_args.add("G_y2", credentials_system.G_y[1]);
 
         match Self::get_poksho_statement().verify_proof(poksho_proof, &point_args, &[]) {
             Err(_) => Err(ZkGroupError::ProofVerificationFailure),
