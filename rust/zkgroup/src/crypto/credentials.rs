@@ -67,6 +67,9 @@ impl AttrScalars for ReceiptCredential {
     type Storage = [Scalar; 4];
     const NUM_ATTRS: usize = NUM_RECEIPT_CRED_ATTRIBUTES;
 }
+impl AttrScalars for PniCredential {
+    type Storage = [Scalar; 6];
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct KeyPair<S: AttrScalars> {
@@ -141,6 +144,9 @@ pub struct BlindedProfileKeyCredential {
     pub(crate) S1: RistrettoPoint,
     pub(crate) S2: RistrettoPoint,
 }
+
+/// A marker type only; PniCredentials are structurally the same as ProfileKeyCredentials.
+pub enum PniCredential {}
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReceiptCredential {
@@ -376,6 +382,34 @@ impl KeyPair<ProfileKeyCredential> {
         let rprime = sho.get_scalar();
         let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
         let R2 = rprime * public_key.Y + Vprime;
+        let S1 = R1 + (self.y[2] * ciphertext.D1) + (self.y[3] * ciphertext.E1);
+        let S2 = R2 + (self.y[2] * ciphertext.D2) + (self.y[3] * ciphertext.E2);
+        BlindedProfileKeyCredentialWithSecretNonce {
+            rprime,
+            t,
+            U,
+            S1,
+            S2,
+        }
+    }
+}
+
+impl KeyPair<PniCredential> {
+    pub fn create_blinded_pni_credential(
+        &self,
+        uid: uid_struct::UidStruct,
+        pni: uid_struct::UidStruct,
+        public_key: profile_key_credential_request::PublicKey,
+        ciphertext: profile_key_credential_request::Ciphertext,
+        sho: &mut Sho,
+    ) -> BlindedProfileKeyCredentialWithSecretNonce {
+        let M = [uid.M1, uid.M2];
+
+        let (t, U, Vprime) = self.credential_core(&M, sho);
+        let Vprime_with_pni = Vprime + (self.y[4] * pni.M1) + (self.y[5] * pni.M2);
+        let rprime = sho.get_scalar();
+        let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
+        let R2 = rprime * public_key.Y + Vprime_with_pni;
         let S1 = R1 + (self.y[2] * ciphertext.D1) + (self.y[3] * ciphertext.E1);
         let S2 = R2 + (self.y[2] * ciphertext.D2) + (self.y[3] * ciphertext.E2);
         BlindedProfileKeyCredentialWithSecretNonce {
