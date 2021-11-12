@@ -40,6 +40,11 @@ export { default as ProfileKeyCredentialRequestContext } from './profiles/Profil
 export { default as ProfileKeyCredentialResponse } from './profiles/ProfileKeyCredentialResponse';
 export { default as ProfileKeyVersion } from './profiles/ProfileKeyVersion';
 
+export { default as PniCredential } from './profiles/PniCredential';
+export { default as PniCredentialPresentation } from './profiles/PniCredentialPresentation';
+export { default as PniCredentialRequestContext } from './profiles/PniCredentialRequestContext';
+export { default as PniCredentialResponse } from './profiles/PniCredentialResponse';
+
 // Receipts
 export { default as ClientZkReceiptOperations } from './receipts/ClientZkReceiptOperations';
 export { default as ServerZkReceiptOperations } from './receipts/ServerZkReceiptOperations';
