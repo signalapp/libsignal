@@ -20,41 +20,9 @@ pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
 pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jstring};
 pub(crate) use jni::JNIEnv;
 
-/// Converts a function signature to a JNI signature string.
-///
-/// This macro uses Rust function syntax `(Foo, Bar) -> Baz`, and uses Rust syntax for Java arrays
-/// `[Foo]`, but otherwise uses Java names for types: `boolean`, `byte`, `void`.
-// Placed here so that it can be used in submodules.
-// (Unlike regular Rust declarations, macros rely on lexical ordering.)
-#[macro_export]
-macro_rules! jni_signature {
-    ( boolean ) => ("Z");
-    ( bool ) => (compile_error!("use Java type 'boolean'"));
-    ( byte ) => ("B");
-    ( char ) => ("C");
-    ( short ) => ("S");
-    ( int ) => ("I");
-    ( long ) => ("J");
-    ( float ) => ("F");
-    ( double ) => ("D");
-    ( void ) => ("V");
-    ( $x:literal ) => ($x);
-
-    // Functions
-    ( ( $($arg_base:tt $(. $arg_rest:ident)*),* $(,)? ) -> $ret_base:tt $(. $ret_rest:ident)* ) => {
-        concat!("(" $(, jni_signature!($arg_base $(. $arg_rest)*))*, ")", jni_signature!($ret_base $(. $ret_rest)*))
-    };
-
-    // Arrays
-    ( [$arg_base:tt $(. $arg_rest:ident)*] ) => {
-        concat!("[", jni_signature!($arg_base $(. $arg_rest)*))
-    };
-
-    // Objects
-    ( $arg_base:tt $(. $arg_rest:ident)* ) => {
-        concat!("L", stringify!($arg_base) $(, "/", stringify!($arg_rest))*, ";")
-    };
-}
+#[macro_use]
+mod args;
+pub use args::*;
 
 #[macro_use]
 mod convert;
@@ -106,7 +74,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(ref addr)) => {
             let result = env.throw_new(
-                "org/whispersystems/libsignal/UntrustedIdentityException",
+                jni_class_name!(org.whispersystems.libsignal.UntrustedIdentityException),
                 addr.name(),
             );
             if let Err(e) = result {
@@ -119,15 +87,16 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
+                    let args = jni_args!((
+                        addr_object => org.whispersystems.libsignal.SignalProtocolAddress,
+                        message => java.lang.String,
+                    ) -> void);
                     Ok(env.new_object(
-                        "org/whispersystems/libsignal/InvalidRegistrationIdException",
-                        jni_signature!(
-                            (
-                                org.whispersystems.libsignal.SignalProtocolAddress,
-                                java.lang.String,
-                            ) -> void
+                        jni_class_name!(
+                            org.whispersystems.libsignal.InvalidRegistrationIdException
                         ),
-                        &[JValue::from(addr_object), JValue::from(message)],
+                        args.sig,
+                        &args.args,
                     )?)
                 });
 
@@ -144,10 +113,16 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
+            let args = jni_args!((theirs as jint => int, ours as jint => int) -> void);
             let throwable = env.new_object(
-                "org/whispersystems/libsignal/fingerprint/FingerprintVersionMismatchException",
-                jni_signature!((int, int) -> void),
-                &[JValue::from(theirs as jint), JValue::from(ours as jint)],
+                jni_class_name!(
+                    org.whispersystems
+                        .libsignal
+                        .fingerprint
+                        .FingerprintVersionMismatchException
+                ),
+                args.sig,
+                &args.args,
             );
 
             match throwable {
@@ -164,7 +139,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
             let throwable = env.new_object(
-                "org/signal/libsignal/metadata/SelfSendException",
+                jni_class_name!(org.signal.libsignal.metadata.SelfSendException),
                 jni_signature!(() -> void),
                 &[],
             );
@@ -186,10 +161,11 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::UnexpectedJniResultType(_, _) => {
             // java.lang.AssertionError has a slightly different signature.
             let throwable = env.new_string(error.to_string()).and_then(|message| {
+                let args = jni_args!((message => java.lang.Object) -> void);
                 env.new_object(
-                    "java/lang/AssertionError",
-                    jni_signature!((java.lang.Object) -> void),
-                    &[JValue::from(message)],
+                    jni_class_name!(java.lang.AssertionError),
+                    args.sig,
+                    &args.args,
                 )
             });
 
@@ -209,20 +185,22 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
     };
 
     let exception_type = match error {
-        SignalJniError::NullHandle => "java/lang/NullPointerException",
+        SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState)
         | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
-            "java/lang/IllegalStateException"
+            jni_class_name!(java.lang.IllegalStateException)
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
-        | SignalJniError::DeserializationFailed(_) => "java/lang/IllegalArgumentException",
+        | SignalJniError::DeserializationFailed(_) => {
+            jni_class_name!(java.lang.IllegalArgumentException)
+        }
 
         SignalJniError::IntegerOverflow(_)
         | SignalJniError::Jni(_)
@@ -236,16 +214,16 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidRootKeyLength(_))
         | SignalJniError::Signal(SignalProtocolError::ProtobufEncodingError(_)) => {
-            "java/lang/RuntimeException"
+            jni_class_name!(java.lang.RuntimeException)
         }
 
         SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
-            "org/whispersystems/libsignal/DuplicateMessageException"
+            jni_class_name!(org.whispersystems.libsignal.DuplicateMessageException)
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
         | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
-            "org/whispersystems/libsignal/InvalidKeyIdException"
+            jni_class_name!(org.whispersystems.libsignal.InvalidKeyIdException)
         }
 
         SignalJniError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
@@ -253,11 +231,11 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
         | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
-            "org/whispersystems/libsignal/InvalidKeyException"
+            jni_class_name!(org.whispersystems.libsignal.InvalidKeyException)
         }
 
         SignalJniError::Signal(SignalProtocolError::SessionNotFound(_)) => {
-            "org/whispersystems/libsignal/NoSessionException"
+            jni_class_name!(org.whispersystems.libsignal.NoSessionException)
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
@@ -267,22 +245,27 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::ProtobufDecodingError(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => {
-            "org/whispersystems/libsignal/InvalidMessageException"
+            jni_class_name!(org.whispersystems.libsignal.InvalidMessageException)
         }
 
         SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
         | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
         | SignalJniError::Signal(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
-            "org/whispersystems/libsignal/InvalidVersionException"
+            jni_class_name!(org.whispersystems.libsignal.InvalidVersionException)
         }
 
         SignalJniError::Signal(SignalProtocolError::LegacyCiphertextVersion(_)) => {
-            "org/whispersystems/libsignal/LegacyMessageException"
+            jni_class_name!(org.whispersystems.libsignal.LegacyMessageException)
         }
 
         SignalJniError::Signal(SignalProtocolError::FingerprintIdentifierMismatch)
         | SignalJniError::Signal(SignalProtocolError::FingerprintParsingError) => {
-            "org/whispersystems/libsignal/fingerprint/FingerprintParsingException"
+            jni_class_name!(
+                org.whispersystems
+                    .libsignal
+                    .fingerprint
+                    .FingerprintParsingException
+            )
         }
 
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend)
@@ -296,28 +279,33 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
-            "org/signal/libsignal/hsmenclave/EnclaveCommunicationFailureException"
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .hsmenclave
+                    .EnclaveCommunicationFailureException
+            )
         }
         SignalJniError::HsmEnclave(HsmEnclaveError::TrustedCodeError) => {
-            "org/signal/libsignal/hsmenclave/TrustedCodeMismatchException"
+            jni_class_name!(org.signal.libsignal.hsmenclave.TrustedCodeMismatchException)
         }
         SignalJniError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
         | SignalJniError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError) => {
-            "java/lang/IllegalArgumentException"
+            jni_class_name!(java.lang.IllegalArgumentException)
         }
         SignalJniError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
-            "java/lang/IllegalStateException"
+            jni_class_name!(java.lang.IllegalStateException)
         }
 
         SignalJniError::ZkGroup(ZkGroupError::BadArgs) => {
-            "org/signal/zkgroup/InvalidInputException"
+            jni_class_name!(org.signal.zkgroup.InvalidInputException)
         }
         SignalJniError::ZkGroup(
             ZkGroupError::DecryptionFailure
             | ZkGroupError::MacVerificationFailure
             | ZkGroupError::ProofVerificationFailure
             | ZkGroupError::SignatureVerificationFailure,
-        ) => "org/signal/zkgroup/VerificationFailedException",
+        ) => jni_class_name!(org.signal.zkgroup.VerificationFailedException),
     };
 
     if let Err(e) = env.throw_new(exception_type, error.to_string()) {
@@ -432,16 +420,15 @@ where
 /// Wraps [`JNIEnv::call_method`]; all arguments are the same.
 /// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
 /// returned instead.
-pub fn call_method_checked<'a, O: Into<JObject<'a>>, R: TryFrom<JValue<'a>>>(
+pub fn call_method_checked<'a, O: Into<JObject<'a>>, R: TryFrom<JValue<'a>>, const LEN: usize>(
     env: &JNIEnv<'a>,
     obj: O,
     fn_name: &'static str,
-    sig: &'static str,
-    args: &[JValue<'_>],
+    args: JniArgs<'a, R, LEN>,
 ) -> Result<R, SignalJniError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
-    let result = env.call_method(obj, fn_name, sig, args);
+    let result = env.call_method(obj, fn_name, args.sig, &args.args);
 
     let throwable = env.exception_occurred()?;
     if **throwable == *JObject::null() {
@@ -469,9 +456,10 @@ pub fn jobject_from_native_handle<'a>(
     boxed_handle: ObjectHandle,
 ) -> Result<JObject<'a>, SignalJniError> {
     let class_type = env.find_class(class_name)?;
-    let ctor_sig = jni_signature!((long) -> void);
-    let ctor_args = [JValue::from(boxed_handle)];
-    Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
+    let args = jni_args!((
+        boxed_handle => long,
+    ) -> void);
+    Ok(env.new_object(class_type, args.sig, &args.args)?)
 }
 
 /// Constructs a Java object from its serialized form.
@@ -483,9 +471,10 @@ pub fn jobject_from_serialized<'a>(
     serialized: &[u8],
 ) -> Result<JObject<'a>, SignalJniError> {
     let class_type = env.find_class(class_name)?;
-    let ctor_sig = jni_signature!(([byte]) -> void);
-    let ctor_args = [JValue::from(env.byte_array_from_slice(serialized)?)];
-    Ok(env.new_object(class_type, ctor_sig, &ctor_args)?)
+    let args = jni_args!((
+        env.byte_array_from_slice(serialized)? => [byte],
+    ) -> void);
+    Ok(env.new_object(class_type, args.sig, &args.args)?)
 }
 
 /// Constructs a Java SignalProtocolAddress from a ProtocolAddress value.
@@ -493,14 +482,14 @@ fn protocol_address_to_jobject<'a>(
     env: &'a JNIEnv,
     address: &ProtocolAddress,
 ) -> Result<JObject<'a>, SignalJniError> {
-    let address_class = env.find_class("org/whispersystems/libsignal/SignalProtocolAddress")?;
-    let address_ctor_args = [
-        JObject::from(env.new_string(address.name())?).into(),
-        JValue::from(address.device_id().convert_into(env)?),
-    ];
-
-    let address_ctor_sig = jni_signature!((java.lang.String, int) -> void);
-    let address_jobject = env.new_object(address_class, address_ctor_sig, &address_ctor_args)?;
+    let address_class = env.find_class(jni_class_name!(
+        org.whispersystems.libsignal.SignalProtocolAddress
+    ))?;
+    let args = jni_args!((
+        env.new_string(address.name())? => java.lang.String,
+        address.device_id().convert_into(env)? => int,
+    ) -> void);
+    let address_jobject = env.new_object(address_class, args.sig, &args.args)?;
     Ok(address_jobject)
 }
 
@@ -527,21 +516,14 @@ pub fn check_jobject_type(
 ///
 /// The method is assumed to return a type with a `long nativeHandle()` method, which in turn must
 /// produce a boxed Rust value.
-pub fn get_object_with_native_handle<T: 'static + Clone>(
+pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
     env: &JNIEnv,
     store_obj: JObject,
-    callback_args: &[JValue],
-    callback_sig: &'static str,
+    callback_args: JniArgs<JObject, LEN>,
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
     with_local_frame_no_jobject_result(env, 64, || -> SignalJniResult<Option<T>> {
-        let obj = call_method_checked::<_, JObject>(
-            env,
-            store_obj,
-            callback_fn,
-            callback_sig,
-            callback_args,
-        )?;
+        let obj = call_method_checked(env, store_obj, callback_fn, callback_args)?;
         if obj.is_null() {
             return Ok(None);
         }
@@ -561,33 +543,20 @@ pub fn get_object_with_native_handle<T: 'static + Clone>(
 /// Calls a method, then serializes the result.
 ///
 /// The method is assumed to return a type with a `byte[] serialize()` method.
-pub fn get_object_with_serialization(
+pub fn get_object_with_serialization<const LEN: usize>(
     env: &JNIEnv,
     store_obj: JObject,
-    callback_args: &[JValue],
-    callback_sig: &'static str,
+    callback_args: JniArgs<JObject, LEN>,
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
     with_local_frame_no_jobject_result(env, 64, || -> SignalJniResult<Option<Vec<u8>>> {
-        let obj = call_method_checked::<_, JObject>(
-            env,
-            store_obj,
-            callback_fn,
-            callback_sig,
-            callback_args,
-        )?;
+        let obj = call_method_checked(env, store_obj, callback_fn, callback_args)?;
 
         if obj.is_null() {
             return Ok(None);
         }
 
-        let bytes = call_method_checked::<_, JObject>(
-            env,
-            obj,
-            "serialize",
-            jni_signature!(() -> [byte]),
-            &[],
-        )?;
+        let bytes = call_method_checked(env, obj, "serialize", jni_args!(() -> [byte]))?;
 
         Ok(Some(env.convert_byte_array(*bytes)?))
     })

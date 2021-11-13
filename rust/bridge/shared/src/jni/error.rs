@@ -146,8 +146,7 @@ impl ThrownException {
             env,
             class_type,
             "getCanonicalName",
-            jni_signature!(() -> java.lang.String),
-            &[],
+            jni_args!(() -> java.lang.String),
         )?;
 
         Ok(env.get_string(JString::from(class_name))?.into())
@@ -158,8 +157,7 @@ impl ThrownException {
             env,
             self.exception_ref.as_obj(),
             "getMessage",
-            jni_signature!(() -> java.lang.String),
-            &[],
+            jni_args!(() -> java.lang.String),
         )?;
         Ok(env.get_string(JString::from(message))?.into())
     }
