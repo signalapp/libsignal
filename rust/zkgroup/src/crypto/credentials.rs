@@ -10,7 +10,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
-use crate::common::array_like::ArrayLike;
+use crate::common::array_utils::{ArrayLike, OneBased};
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::receipt_struct::ReceiptStruct;
@@ -27,7 +27,7 @@ pub struct SystemParams {
     pub(crate) G_wprime: RistrettoPoint,
     pub(crate) G_x0: RistrettoPoint,
     pub(crate) G_x1: RistrettoPoint,
-    pub(crate) G_y: [RistrettoPoint; NUM_SUPPORTED_ATTRS],
+    pub(crate) G_y: OneBased<[RistrettoPoint; NUM_SUPPORTED_ATTRS]>,
     pub(crate) G_m1: RistrettoPoint,
     pub(crate) G_m2: RistrettoPoint,
     pub(crate) G_m3: RistrettoPoint,
@@ -44,7 +44,7 @@ pub struct SystemParams {
 /// that `NUM_ATTRS` must always be less than or equal to the number of elements in `Storage`.
 pub trait AttrScalars {
     /// The storage (should be a fixed-size array of Scalar).
-    type Storage: ArrayLike<Scalar> + Copy + Eq;
+    type Storage: ArrayLike<Scalar> + Copy + Eq + Serialize + for<'a> Deserialize<'a>;
 
     /// The number of attributes supported in this system.
     ///
@@ -79,7 +79,7 @@ pub struct KeyPair<S: AttrScalars> {
     pub(crate) W: RistrettoPoint,
     pub(crate) x0: Scalar,
     pub(crate) x1: Scalar,
-    pub(crate) y: S::Storage,
+    pub(crate) y: OneBased<S::Storage>,
 
     // public
     pub(crate) C_W: RistrettoPoint,
@@ -234,7 +234,7 @@ impl SystemParams {
             G_wprime,
             G_x0,
             G_x1,
-            G_y: [G_y1, G_y2, G_y3, G_y4, G_y5, G_y6],
+            G_y: OneBased([G_y1, G_y2, G_y3, G_y4, G_y5, G_y6]),
             G_m1,
             G_m2,
             G_m3,
@@ -306,12 +306,12 @@ impl<S: AttrScalars> KeyPair<S> {
         let x0 = sho.get_scalar();
         let x1 = sho.get_scalar();
 
-        let y = S::Storage::create(|| sho.get_scalar());
+        let y = OneBased::<S::Storage>::create(|| sho.get_scalar());
 
         let C_W = (w * system.G_w) + (wprime * system.G_wprime);
         let mut I = system.G_V - (x0 * system.G_x0) - (x1 * system.G_x1);
 
-        for (yn, G_yn) in y.as_ref().iter().zip(system.G_y).take(S::NUM_ATTRS) {
+        for (yn, G_yn) in y.iter().zip(system.G_y.iter()).take(S::NUM_ATTRS) {
             I -= yn * G_yn;
         }
 
@@ -348,7 +348,7 @@ impl<S: AttrScalars> KeyPair<S> {
         let U = sho.get_point();
 
         let mut V = self.W + (self.x0 + self.x1 * t) * U;
-        for (yn, Mn) in self.y.as_ref().iter().zip(M) {
+        for (yn, Mn) in self.y.iter().zip(M) {
             V += yn * Mn;
         }
         (t, U, V)
@@ -382,8 +382,8 @@ impl KeyPair<ProfileKeyCredential> {
         let rprime = sho.get_scalar();
         let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
         let R2 = rprime * public_key.Y + Vprime;
-        let S1 = R1 + (self.y[2] * ciphertext.D1) + (self.y[3] * ciphertext.E1);
-        let S2 = R2 + (self.y[2] * ciphertext.D2) + (self.y[3] * ciphertext.E2);
+        let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
+        let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
         BlindedProfileKeyCredentialWithSecretNonce {
             rprime,
             t,
@@ -406,12 +406,12 @@ impl KeyPair<PniCredential> {
         let M = [uid.M1, uid.M2];
 
         let (t, U, Vprime) = self.credential_core(&M, sho);
-        let Vprime_with_pni = Vprime + (self.y[4] * pni.M1) + (self.y[5] * pni.M2);
+        let Vprime_with_pni = Vprime + (self.y[5] * pni.M1) + (self.y[6] * pni.M2);
         let rprime = sho.get_scalar();
         let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
         let R2 = rprime * public_key.Y + Vprime_with_pni;
-        let S1 = R1 + (self.y[2] * ciphertext.D1) + (self.y[3] * ciphertext.E1);
-        let S2 = R2 + (self.y[2] * ciphertext.D2) + (self.y[3] * ciphertext.E2);
+        let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
+        let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
         BlindedProfileKeyCredentialWithSecretNonce {
             rprime,
             t,
@@ -439,8 +439,8 @@ impl KeyPair<ReceiptCredential> {
         let rprime = sho.get_scalar();
         let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
         let R2 = rprime * public_key.Y + Vprime;
-        let S1 = self.y[1] * ciphertext.D1 + R1;
-        let S2 = self.y[1] * ciphertext.D2 + R2;
+        let S1 = self.y[2] * ciphertext.D1 + R1;
+        let S2 = self.y[2] * ciphertext.D2 + R2;
         BlindedReceiptCredentialWithSecretNonce {
             rprime,
             t,
