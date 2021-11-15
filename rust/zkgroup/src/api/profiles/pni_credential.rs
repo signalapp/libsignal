@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct PniCredential {
     pub(crate) reserved: ReservedBytes,
-    pub(crate) credential: crypto::credentials::ProfileKeyCredential,
+    pub(crate) credential: crypto::credentials::PniCredential,
     pub(crate) aci_bytes: UidBytes,
     pub(crate) pni_bytes: UidBytes,
     pub(crate) profile_key_bytes: ProfileKeyBytes,

@@ -10,6 +10,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct PniCredentialResponse {
     pub(crate) reserved: ReservedBytes,
-    pub(crate) blinded_credential: crypto::credentials::BlindedProfileKeyCredential,
+    pub(crate) blinded_credential: crypto::credentials::BlindedPniCredential,
     pub(crate) proof: crypto::proofs::PniCredentialIssuanceProof,
 }

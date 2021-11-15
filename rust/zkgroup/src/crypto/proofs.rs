@@ -451,7 +451,7 @@ impl PniCredentialIssuanceProof {
         key_pair: credentials::KeyPair<credentials::PniCredential>,
         request_public_key: profile_key_credential_request::PublicKey,
         request: profile_key_credential_request::Ciphertext,
-        blinded_credential: credentials::BlindedProfileKeyCredentialWithSecretNonce,
+        blinded_credential: credentials::BlindedPniCredentialWithSecretNonce,
         uid: uid_struct::UidStruct,
         pni: uid_struct::UidStruct,
         sho: &mut Sho,
@@ -516,7 +516,7 @@ impl PniCredentialIssuanceProof {
         uid_bytes: UidBytes,
         pni_bytes: UidBytes,
         request: profile_key_credential_request::Ciphertext,
-        blinded_credential: credentials::BlindedProfileKeyCredential,
+        blinded_credential: credentials::BlindedPniCredential,
     ) -> Result<(), ZkGroupError> {
         let credentials_system = credentials::SystemParams::get_hardcoded();
         let uid = uid_struct::UidStruct::new(uid_bytes);
@@ -1047,7 +1047,7 @@ impl PniCredentialPresentationProof {
         uid_enc_key_pair: uid_encryption::KeyPair,
         profile_key_enc_key_pair: profile_key_encryption::KeyPair,
         credentials_public_key: credentials::PublicKey,
-        credential: credentials::ProfileKeyCredential,
+        credential: credentials::PniCredential,
         uid_ciphertext: uid_encryption::Ciphertext,
         pni_ciphertext: uid_encryption::Ciphertext,
         profile_key_ciphertext: profile_key_encryption::Ciphertext,

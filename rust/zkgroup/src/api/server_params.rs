@@ -248,8 +248,7 @@ impl ServerSecretParams {
 
         Ok(api::profiles::PniCredentialResponse {
             reserved: Default::default(),
-            blinded_credential: blinded_credential_with_secret_nonce
-                .get_blinded_profile_key_credential(),
+            blinded_credential: blinded_credential_with_secret_nonce.get_blinded_pni_credential(),
             proof,
         })
     }
@@ -472,7 +471,7 @@ impl ServerPublicParams {
 
         let credential = context
             .key_pair
-            .decrypt_blinded_profile_key_credential(response.blinded_credential);
+            .decrypt_blinded_pni_credential(response.blinded_credential);
 
         Ok(api::profiles::PniCredential {
             reserved: Default::default(),

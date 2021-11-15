@@ -145,8 +145,28 @@ pub struct BlindedProfileKeyCredential {
     pub(crate) S2: RistrettoPoint,
 }
 
-/// A marker type only; PniCredentials are structurally the same as ProfileKeyCredentials.
-pub enum PniCredential {}
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PniCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) V: RistrettoPoint,
+}
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlindedPniCredentialWithSecretNonce {
+    pub(crate) rprime: Scalar,
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) S1: RistrettoPoint,
+    pub(crate) S2: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlindedPniCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) S1: RistrettoPoint,
+    pub(crate) S2: RistrettoPoint,
+}
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReceiptCredential {
@@ -402,7 +422,7 @@ impl KeyPair<PniCredential> {
         public_key: profile_key_credential_request::PublicKey,
         ciphertext: profile_key_credential_request::Ciphertext,
         sho: &mut Sho,
-    ) -> BlindedProfileKeyCredentialWithSecretNonce {
+    ) -> BlindedPniCredentialWithSecretNonce {
         let M = [uid.M1, uid.M2];
 
         let (t, U, Vprime) = self.credential_core(&M, sho);
@@ -412,7 +432,7 @@ impl KeyPair<PniCredential> {
         let R2 = rprime * public_key.Y + Vprime_with_pni;
         let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
         let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
-        BlindedProfileKeyCredentialWithSecretNonce {
+        BlindedPniCredentialWithSecretNonce {
             rprime,
             t,
             U,
@@ -454,6 +474,17 @@ impl KeyPair<ReceiptCredential> {
 impl BlindedProfileKeyCredentialWithSecretNonce {
     pub fn get_blinded_profile_key_credential(&self) -> BlindedProfileKeyCredential {
         BlindedProfileKeyCredential {
+            t: self.t,
+            U: self.U,
+            S1: self.S1,
+            S2: self.S2,
+        }
+    }
+}
+
+impl BlindedPniCredentialWithSecretNonce {
+    pub fn get_blinded_pni_credential(&self) -> BlindedPniCredential {
+        BlindedPniCredential {
             t: self.t,
             U: self.U,
             S1: self.S1,
