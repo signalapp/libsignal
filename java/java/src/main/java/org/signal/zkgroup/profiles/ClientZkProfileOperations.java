@@ -40,6 +40,23 @@ public class ClientZkProfileOperations {
     }
   }
 
+  public PniCredentialRequestContext createPniCredentialRequestContext(UUID aci, UUID pni, ProfileKey profileKey) {
+    return createPniCredentialRequestContext(new SecureRandom(), aci, pni, profileKey);
+  }
+
+  public PniCredentialRequestContext createPniCredentialRequestContext(SecureRandom secureRandom, UUID aci, UUID pni, ProfileKey profileKey) {
+    byte[] random = new byte[RANDOM_LENGTH];
+    secureRandom.nextBytes(random);
+
+    byte[] newContents = Native.ServerPublicParams_CreatePniCredentialRequestContextDeterministic(serverPublicParams.getInternalContentsForJNI(), random, aci, pni, profileKey.getInternalContentsForJNI());
+
+    try {
+      return new PniCredentialRequestContext(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public ProfileKeyCredential receiveProfileKeyCredential(ProfileKeyCredentialRequestContext profileKeyCredentialRequestContext, ProfileKeyCredentialResponse profileKeyCredentialResponse) throws VerificationFailedException {
     if (profileKeyCredentialResponse == null) {
       throw new VerificationFailedException();
@@ -49,6 +66,20 @@ public class ClientZkProfileOperations {
 
     try {
       return new ProfileKeyCredential(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  public PniCredential receivePniCredential(PniCredentialRequestContext requestContext, PniCredentialResponse response) throws VerificationFailedException {
+    if (response == null) {
+      throw new VerificationFailedException();
+    }
+
+    byte[] newContents = Native.ServerPublicParams_ReceivePniCredential(serverPublicParams.getInternalContentsForJNI(), requestContext.getInternalContentsForJNI(), response.getInternalContentsForJNI());
+
+    try {
+      return new PniCredential(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
@@ -66,6 +97,23 @@ public class ClientZkProfileOperations {
 
     try {
       return new ProfileKeyCredentialPresentation(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  public PniCredentialPresentation createPniCredentialPresentation(GroupSecretParams groupSecretParams, PniCredential credential) {
+    return createPniCredentialPresentation(new SecureRandom(), groupSecretParams, credential);
+  }
+
+  public PniCredentialPresentation createPniCredentialPresentation(SecureRandom secureRandom, GroupSecretParams groupSecretParams, PniCredential credential) {
+    byte[] random = new byte[RANDOM_LENGTH];
+    secureRandom.nextBytes(random);
+
+    byte[] newContents = Native.ServerPublicParams_CreatePniCredentialPresentationDeterministic(serverPublicParams.getInternalContentsForJNI(), random, groupSecretParams.getInternalContentsForJNI(), credential.getInternalContentsForJNI());
+
+    try {
+      return new PniCredentialPresentation(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }

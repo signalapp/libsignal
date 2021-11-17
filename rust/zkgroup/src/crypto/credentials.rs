@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -10,22 +10,24 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
+use crate::common::array_utils::{ArrayLike, OneBased};
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::receipt_struct::ReceiptStruct;
 use crate::crypto::uid_struct;
 use crate::crypto::{profile_key_credential_request, receipt_credential_request, receipt_struct};
+use crate::{
+    NUM_AUTH_CRED_ATTRIBUTES, NUM_PROFILE_KEY_CRED_ATTRIBUTES, NUM_RECEIPT_CRED_ATTRIBUTES,
+};
 
+const NUM_SUPPORTED_ATTRS: usize = 6;
 #[derive(Copy, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SystemParams {
     pub(crate) G_w: RistrettoPoint,
     pub(crate) G_wprime: RistrettoPoint,
     pub(crate) G_x0: RistrettoPoint,
     pub(crate) G_x1: RistrettoPoint,
-    pub(crate) G_y1: RistrettoPoint,
-    pub(crate) G_y2: RistrettoPoint,
-    pub(crate) G_y3: RistrettoPoint,
-    pub(crate) G_y4: RistrettoPoint,
+    pub(crate) G_y: OneBased<[RistrettoPoint; NUM_SUPPORTED_ATTRS]>,
     pub(crate) G_m1: RistrettoPoint,
     pub(crate) G_m2: RistrettoPoint,
     pub(crate) G_m3: RistrettoPoint,
@@ -34,23 +36,78 @@ pub struct SystemParams {
     pub(crate) G_z: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
-pub struct KeyPair {
+/// Used to specialize a [`KeyPair<S>`] to support a certain number of attributes.
+///
+/// The only required member is `Storage`, which should be a fixed-size array of [`Scalar`], one for
+/// each attribute. However, for backwards compatibility some systems support fewer attributes than
+/// are actually stored, and in this case the `NUM_ATTRS` member can be set to a custom value. Note
+/// that `NUM_ATTRS` must always be less than or equal to the number of elements in `Storage`.
+pub trait AttrScalars {
+    /// The storage (should be a fixed-size array of Scalar).
+    type Storage: ArrayLike<Scalar> + Copy + Eq + Serialize + for<'a> Deserialize<'a>;
+
+    /// The number of attributes supported in this system.
+    ///
+    /// Defaults to the full set stored in `Self::Storage`.
+    const NUM_ATTRS: usize = Self::Storage::LEN;
+}
+
+impl AttrScalars for AuthCredential {
+    // Store four scalars for backwards compatibility.
+    type Storage = [Scalar; 4];
+    const NUM_ATTRS: usize = NUM_AUTH_CRED_ATTRIBUTES;
+}
+impl AttrScalars for ProfileKeyCredential {
+    // Store four scalars for backwards compatibility.
+    type Storage = [Scalar; 4];
+    const NUM_ATTRS: usize = NUM_PROFILE_KEY_CRED_ATTRIBUTES;
+}
+impl AttrScalars for ReceiptCredential {
+    // Store four scalars for backwards compatibility.
+    type Storage = [Scalar; 4];
+    const NUM_ATTRS: usize = NUM_RECEIPT_CRED_ATTRIBUTES;
+}
+impl AttrScalars for PniCredential {
+    type Storage = [Scalar; 6];
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct KeyPair<S: AttrScalars> {
     // private
     pub(crate) w: Scalar,
     pub(crate) wprime: Scalar,
     pub(crate) W: RistrettoPoint,
     pub(crate) x0: Scalar,
     pub(crate) x1: Scalar,
-    pub(crate) y1: Scalar,
-    pub(crate) y2: Scalar,
-    pub(crate) y3: Scalar,
-    pub(crate) y4: Scalar,
+    pub(crate) y: OneBased<S::Storage>,
 
     // public
     pub(crate) C_W: RistrettoPoint,
     pub(crate) I: RistrettoPoint,
 }
+
+impl<S: AttrScalars> Clone for KeyPair<S> {
+    fn clone(&self) -> Self {
+        // Rely on Copy
+        *self
+    }
+}
+
+impl<S: AttrScalars> Copy for KeyPair<S> {}
+
+impl<S: AttrScalars> PartialEq for KeyPair<S> {
+    fn eq(&self, other: &Self) -> bool {
+        self.w == other.w
+            && self.wprime == other.wprime
+            && self.W == other.W
+            && self.x0 == other.x0
+            && self.x1 == other.x1
+            && self.y == other.y
+            && self.C_W == other.C_W
+            && self.I == other.I
+    }
+}
+impl<S: AttrScalars> Eq for KeyPair<S> {}
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey {
@@ -82,6 +139,29 @@ pub struct BlindedProfileKeyCredentialWithSecretNonce {
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlindedProfileKeyCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) S1: RistrettoPoint,
+    pub(crate) S2: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PniCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) V: RistrettoPoint,
+}
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlindedPniCredentialWithSecretNonce {
+    pub(crate) rprime: Scalar,
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) S1: RistrettoPoint,
+    pub(crate) S2: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlindedPniCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) S1: RistrettoPoint,
@@ -139,7 +219,8 @@ pub(crate) fn convert_to_point_M2_receipt_serial_bytes(
 }
 
 impl SystemParams {
-    pub fn generate() -> Self {
+    #[cfg(test)]
+    fn generate() -> Self {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Constant_Credentials_SystemParams_Generate",
             b"",
@@ -163,15 +244,17 @@ impl SystemParams {
         let G_V = sho.get_point();
         let G_z = sho.get_point();
 
+        // We don't ever want to use existing generator points in new ways,
+        // so new points have to be added at the end.
+        let G_y5 = sho.get_point();
+        let G_y6 = sho.get_point();
+
         SystemParams {
             G_w,
             G_wprime,
             G_x0,
             G_x1,
-            G_y1,
-            G_y2,
-            G_y3,
-            G_y4,
+            G_y: OneBased([G_y1, G_y2, G_y3, G_y4, G_y5, G_y6]),
             G_m1,
             G_m2,
             G_m3,
@@ -182,10 +265,10 @@ impl SystemParams {
     }
 
     pub fn get_hardcoded() -> SystemParams {
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap()
+        bincode::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap()
     }
 
-    const SYSTEM_HARDCODED: [u8; 448] = [
+    const SYSTEM_HARDCODED: &'static [u8] = &[
         0x9a, 0xe7, 0xc8, 0xe5, 0xed, 0x77, 0x9b, 0x11, 0x4a, 0xe7, 0x70, 0x8a, 0xa2, 0xf7, 0x94,
         0x67, 0xa, 0xdd, 0xa3, 0x24, 0x98, 0x7b, 0x65, 0x99, 0x13, 0x12, 0x2c, 0x35, 0x50, 0x5b,
         0x10, 0x5e, 0x6c, 0xa3, 0x10, 0x25, 0xd2, 0xd7, 0x6b, 0xe7, 0xfd, 0x34, 0x94, 0x4f, 0x98,
@@ -203,27 +286,38 @@ impl SystemParams {
         0xb7, 0xac, 0xc, 0x3a, 0x14, 0xb1, 0x9, 0x80, 0x4f, 0xc7, 0x48, 0xd7, 0xfa, 0x45, 0x6c,
         0xff, 0xb4, 0x93, 0x4f, 0x98, 0xb, 0x6e, 0x9, 0xa2, 0x48, 0xa6, 0xf, 0x44, 0xa6, 0x15, 0xa,
         0xe6, 0xc1, 0x3d, 0x7e, 0x3c, 0x6, 0x26, 0x1d, 0x7e, 0x4e, 0xed, 0x37, 0xf3, 0x9f, 0x60,
-        0xcc, 0x60, 0x37, 0xdc, 0x31, 0xc2, 0xe8, 0xd4, 0x47, 0x4f, 0xb5, 0x19, 0x58, 0x7a, 0x44,
-        0x86, 0x93, 0x18, 0x2a, 0xd9, 0xd6, 0xd8, 0x6b, 0x53, 0x59, 0x57, 0x85, 0x8f, 0x54, 0x7b,
-        0x93, 0x40, 0x12, 0x7d, 0xa7, 0x5f, 0x80, 0x74, 0xca, 0xee, 0x94, 0x4a, 0xc3, 0x6c, 0xa,
-        0xc6, 0x62, 0xd3, 0x8c, 0x9b, 0x3c, 0xcc, 0xe0, 0x3a, 0x9, 0x3f, 0xcd, 0x96, 0x44, 0x4,
-        0x73, 0x98, 0xb8, 0x6b, 0x6e, 0x83, 0x37, 0x2f, 0xf1, 0x4f, 0xb8, 0xbb, 0xd, 0xea, 0x65,
-        0x53, 0x12, 0x52, 0xac, 0x70, 0xd5, 0x8a, 0x4a, 0x8, 0x10, 0xd6, 0x82, 0xa0, 0xe7, 0x9,
-        0xc9, 0x22, 0x7b, 0x30, 0xef, 0x6c, 0x8e, 0x17, 0xc5, 0x91, 0x5d, 0x52, 0x72, 0x21, 0xbb,
-        0x0, 0xda, 0x81, 0x75, 0xcd, 0x64, 0x89, 0xaa, 0x8a, 0xa4, 0x92, 0xa5, 0x0, 0xf9, 0xab,
-        0xee, 0x56, 0x90, 0xb9, 0xdf, 0xca, 0x88, 0x55, 0x4, 0xb6, 0x16, 0xc7, 0x6, 0xc8, 0xc,
-        0x75, 0x6c, 0x11, 0xa3, 0x1, 0x6b, 0xbf, 0xb6, 0x9, 0x77, 0xf4, 0x64, 0x8b, 0x5f, 0x23,
-        0x95, 0xa4, 0xb4, 0x28, 0xb7, 0x21, 0x19, 0x40, 0x81, 0x3e, 0x3a, 0xfd, 0xe2, 0xb8, 0x7a,
-        0xa9, 0xc2, 0xc3, 0x7b, 0xf7, 0x16, 0xe2, 0x57, 0x8f, 0x95, 0x65, 0x6d, 0xf1, 0x2c, 0x2f,
-        0xb6, 0xf5, 0xd0, 0x63, 0x1f, 0x6f, 0x71, 0xe2, 0xc3, 0x19, 0x3f, 0x6d,
+        0xb0, 0x4d, 0xd9, 0xd6, 0x7, 0xfd, 0x35, 0x70, 0x12, 0x27, 0x4d, 0x3c, 0x63, 0xdb, 0xb3,
+        0x8e, 0x73, 0x78, 0x59, 0x9c, 0x9e, 0x97, 0xdf, 0xbb, 0x28, 0x84, 0x26, 0x94, 0x89, 0x1d,
+        0x5f, 0xd, 0xdc, 0x72, 0x99, 0x19, 0xb7, 0x98, 0xb4, 0x13, 0x15, 0x3, 0x40, 0x8c, 0xc5,
+        0x7a, 0x9c, 0x53, 0x2f, 0x44, 0x27, 0x63, 0x2c, 0x88, 0xf5, 0x4c, 0xea, 0x53, 0x86, 0x1a,
+        0x5b, 0xc4, 0x4c, 0x61, 0xcc, 0x60, 0x37, 0xdc, 0x31, 0xc2, 0xe8, 0xd4, 0x47, 0x4f, 0xb5,
+        0x19, 0x58, 0x7a, 0x44, 0x86, 0x93, 0x18, 0x2a, 0xd9, 0xd6, 0xd8, 0x6b, 0x53, 0x59, 0x57,
+        0x85, 0x8f, 0x54, 0x7b, 0x93, 0x40, 0x12, 0x7d, 0xa7, 0x5f, 0x80, 0x74, 0xca, 0xee, 0x94,
+        0x4a, 0xc3, 0x6c, 0xa, 0xc6, 0x62, 0xd3, 0x8c, 0x9b, 0x3c, 0xcc, 0xe0, 0x3a, 0x9, 0x3f,
+        0xcd, 0x96, 0x44, 0x4, 0x73, 0x98, 0xb8, 0x6b, 0x6e, 0x83, 0x37, 0x2f, 0xf1, 0x4f, 0xb8,
+        0xbb, 0xd, 0xea, 0x65, 0x53, 0x12, 0x52, 0xac, 0x70, 0xd5, 0x8a, 0x4a, 0x8, 0x10, 0xd6,
+        0x82, 0xa0, 0xe7, 0x9, 0xc9, 0x22, 0x7b, 0x30, 0xef, 0x6c, 0x8e, 0x17, 0xc5, 0x91, 0x5d,
+        0x52, 0x72, 0x21, 0xbb, 0x0, 0xda, 0x81, 0x75, 0xcd, 0x64, 0x89, 0xaa, 0x8a, 0xa4, 0x92,
+        0xa5, 0x0, 0xf9, 0xab, 0xee, 0x56, 0x90, 0xb9, 0xdf, 0xca, 0x88, 0x55, 0x4, 0xb6, 0x16,
+        0xc7, 0x6, 0xc8, 0xc, 0x75, 0x6c, 0x11, 0xa3, 0x1, 0x6b, 0xbf, 0xb6, 0x9, 0x77, 0xf4, 0x64,
+        0x8b, 0x5f, 0x23, 0x95, 0xa4, 0xb4, 0x28, 0xb7, 0x21, 0x19, 0x40, 0x81, 0x3e, 0x3a, 0xfd,
+        0xe2, 0xb8, 0x7a, 0xa9, 0xc2, 0xc3, 0x7b, 0xf7, 0x16, 0xe2, 0x57, 0x8f, 0x95, 0x65, 0x6d,
+        0xf1, 0x2c, 0x2f, 0xb6, 0xf5, 0xd0, 0x63, 0x1f, 0x6f, 0x71, 0xe2, 0xc3, 0x19, 0x3f, 0x6d,
     ];
 }
 
-impl KeyPair {
-    pub fn generate(sho: &mut Sho, num_attributes: usize) -> Self {
-        if !(2..=4).contains(&num_attributes) {
-            panic!();
-        }
+impl<S: AttrScalars> KeyPair<S> {
+    pub fn generate(sho: &mut Sho) -> Self {
+        assert!(S::NUM_ATTRS >= 1, "at least one attribute required");
+        assert!(
+            S::NUM_ATTRS <= NUM_SUPPORTED_ATTRS,
+            "more than {} attributes not supported",
+            NUM_SUPPORTED_ATTRS
+        );
+        assert!(
+            S::NUM_ATTRS <= S::Storage::LEN,
+            "more attributes than storage",
+        );
 
         let system = SystemParams::get_hardcoded();
         let w = sho.get_scalar();
@@ -231,24 +325,14 @@ impl KeyPair {
         let wprime = sho.get_scalar();
         let x0 = sho.get_scalar();
         let x1 = sho.get_scalar();
-        let y1 = sho.get_scalar();
-        let y2 = sho.get_scalar();
-        let y3 = sho.get_scalar();
-        let y4 = sho.get_scalar();
+
+        let y = OneBased::<S::Storage>::create(|| sho.get_scalar());
 
         let C_W = (w * system.G_w) + (wprime * system.G_wprime);
-        let mut I = system.G_V
-            - (x0 * system.G_x0)
-            - (x1 * system.G_x1)
-            - (y1 * system.G_y1)
-            - (y2 * system.G_y2);
+        let mut I = system.G_V - (x0 * system.G_x0) - (x1 * system.G_x1);
 
-        if num_attributes > 2 {
-            I -= y3 * system.G_y3;
-        }
-
-        if num_attributes > 3 {
-            I -= y4 * system.G_y4;
+        for (yn, G_yn) in y.iter().zip(system.G_y.iter()).take(S::NUM_ATTRS) {
+            I -= yn * G_yn;
         }
 
         KeyPair {
@@ -257,10 +341,7 @@ impl KeyPair {
             W,
             x0,
             x1,
-            y1,
-            y2,
-            y3,
-            y4,
+            y,
             C_W,
             I,
         }
@@ -273,6 +354,28 @@ impl KeyPair {
         }
     }
 
+    fn credential_core(
+        &self,
+        M: &[RistrettoPoint],
+        sho: &mut Sho,
+    ) -> (Scalar, RistrettoPoint, RistrettoPoint) {
+        assert!(
+            M.len() <= S::NUM_ATTRS,
+            "more than {} attributes not supported",
+            S::NUM_ATTRS
+        );
+        let t = sho.get_scalar();
+        let U = sho.get_point();
+
+        let mut V = self.W + (self.x0 + self.x1 * t) * U;
+        for (yn, Mn) in self.y.iter().zip(M) {
+            V += yn * Mn;
+        }
+        (t, U, V)
+    }
+}
+
+impl KeyPair<AuthCredential> {
     pub fn create_auth_credential(
         &self,
         uid: uid_struct::UidStruct,
@@ -280,35 +383,12 @@ impl KeyPair {
         sho: &mut Sho,
     ) -> AuthCredential {
         let M = convert_to_points_uid_struct(uid, redemption_time);
-        let (t, U, V) = self.credential_core(M, sho);
+        let (t, U, V) = self.credential_core(&M, sho);
         AuthCredential { t, U, V }
     }
+}
 
-    fn credential_core(
-        &self,
-        M: Vec<RistrettoPoint>,
-        sho: &mut Sho,
-    ) -> (Scalar, RistrettoPoint, RistrettoPoint) {
-        if M.len() > 4 {
-            panic!();
-        }
-        let t = sho.get_scalar();
-        let U = sho.get_point();
-
-        let mut V = self.W + (self.x0 + self.x1 * t) * U;
-        V += self.y1 * M[0];
-        if M.len() > 1 {
-            V += self.y2 * M[1];
-        }
-        if M.len() > 2 {
-            V += self.y3 * M[2];
-        }
-        if M.len() > 3 {
-            V += self.y4 * M[3];
-        }
-        (t, U, V)
-    }
-
+impl KeyPair<ProfileKeyCredential> {
     pub fn create_blinded_profile_key_credential(
         &self,
         uid: uid_struct::UidStruct,
@@ -316,14 +396,14 @@ impl KeyPair {
         ciphertext: profile_key_credential_request::Ciphertext,
         sho: &mut Sho,
     ) -> BlindedProfileKeyCredentialWithSecretNonce {
-        let M = vec![uid.M1, uid.M2];
+        let M = [uid.M1, uid.M2];
 
-        let (t, U, Vprime) = self.credential_core(M, sho);
+        let (t, U, Vprime) = self.credential_core(&M, sho);
         let rprime = sho.get_scalar();
         let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
         let R2 = rprime * public_key.Y + Vprime;
-        let S1 = R1 + (self.y3 * ciphertext.D1) + (self.y4 * ciphertext.E1);
-        let S2 = R2 + (self.y3 * ciphertext.D2) + (self.y4 * ciphertext.E2);
+        let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
+        let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
         BlindedProfileKeyCredentialWithSecretNonce {
             rprime,
             t,
@@ -332,7 +412,37 @@ impl KeyPair {
             S2,
         }
     }
+}
 
+impl KeyPair<PniCredential> {
+    pub fn create_blinded_pni_credential(
+        &self,
+        uid: uid_struct::UidStruct,
+        pni: uid_struct::UidStruct,
+        public_key: profile_key_credential_request::PublicKey,
+        ciphertext: profile_key_credential_request::Ciphertext,
+        sho: &mut Sho,
+    ) -> BlindedPniCredentialWithSecretNonce {
+        let M = [uid.M1, uid.M2];
+
+        let (t, U, Vprime) = self.credential_core(&M, sho);
+        let Vprime_with_pni = Vprime + (self.y[5] * pni.M1) + (self.y[6] * pni.M2);
+        let rprime = sho.get_scalar();
+        let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
+        let R2 = rprime * public_key.Y + Vprime_with_pni;
+        let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
+        let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
+        BlindedPniCredentialWithSecretNonce {
+            rprime,
+            t,
+            U,
+            S1,
+            S2,
+        }
+    }
+}
+
+impl KeyPair<ReceiptCredential> {
     pub fn create_blinded_receipt_credential(
         &self,
         public_key: receipt_credential_request::PublicKey,
@@ -343,14 +453,14 @@ impl KeyPair {
     ) -> BlindedReceiptCredentialWithSecretNonce {
         let params = SystemParams::get_hardcoded();
         let m1 = ReceiptStruct::calc_m1_from(receipt_expiration_time, receipt_level);
-        let M = vec![m1 * params.G_m1];
+        let M = [m1 * params.G_m1];
 
-        let (t, U, Vprime) = self.credential_core(M, sho);
+        let (t, U, Vprime) = self.credential_core(&M, sho);
         let rprime = sho.get_scalar();
         let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
         let R2 = rprime * public_key.Y + Vprime;
-        let S1 = self.y2 * ciphertext.D1 + R1;
-        let S2 = self.y2 * ciphertext.D2 + R2;
+        let S1 = self.y[2] * ciphertext.D1 + R1;
+        let S2 = self.y[2] * ciphertext.D2 + R2;
         BlindedReceiptCredentialWithSecretNonce {
             rprime,
             t,
@@ -364,6 +474,17 @@ impl KeyPair {
 impl BlindedProfileKeyCredentialWithSecretNonce {
     pub fn get_blinded_profile_key_credential(&self) -> BlindedProfileKeyCredential {
         BlindedProfileKeyCredential {
+            t: self.t,
+            U: self.U,
+            S1: self.S1,
+            S2: self.S2,
+        }
+    }
+}
+
+impl BlindedPniCredentialWithSecretNonce {
+    pub fn get_blinded_pni_credential(&self) -> BlindedPniCredential {
+        BlindedPniCredential {
             t: self.t,
             U: self.U,
             S1: self.S1,
@@ -400,7 +521,7 @@ mod tests {
     #[test]
     fn test_mac() {
         let mut sho = Sho::new(b"Test_Credentials", b"");
-        let keypair = KeyPair::generate(&mut sho, NUM_AUTH_CRED_ATTRIBUTES);
+        let keypair = KeyPair::<AuthCredential>::generate(&mut sho);
 
         let uid_bytes = TEST_ARRAY_16;
         let redemption_time = 37;

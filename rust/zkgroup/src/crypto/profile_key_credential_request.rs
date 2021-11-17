@@ -6,7 +6,9 @@
 #![allow(non_snake_case)]
 
 use crate::common::sho::*;
-use crate::crypto::credentials::{BlindedProfileKeyCredential, ProfileKeyCredential};
+use crate::crypto::credentials::{
+    BlindedPniCredential, BlindedProfileKeyCredential, PniCredential, ProfileKeyCredential,
+};
 use crate::crypto::profile_key_struct;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
@@ -87,6 +89,18 @@ impl KeyPair {
         ProfileKeyCredential {
             t: blinded_profile_key_credential.t,
             U: blinded_profile_key_credential.U,
+            V,
+        }
+    }
+
+    pub fn decrypt_blinded_pni_credential(
+        &self,
+        blinded_pni_credential: BlindedPniCredential,
+    ) -> PniCredential {
+        let V = blinded_pni_credential.S2 - self.y * blinded_pni_credential.S1;
+        PniCredential {
+            t: blinded_pni_credential.t,
+            U: blinded_pni_credential.U,
             V,
         }
     }

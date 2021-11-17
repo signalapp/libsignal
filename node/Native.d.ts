@@ -95,6 +95,14 @@ export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;
 export function PlaintextContent_GetBody(obj: Wrapper<PlaintextContent>): Buffer;
 export function PlaintextContent_Serialize(obj: Wrapper<PlaintextContent>): Buffer;
+export function PniCredentialPresentation_CheckValidContents(Obj: Serialized<PniCredentialPresentation>): void;
+export function PniCredentialPresentation_GetAciCiphertext(presentation: Serialized<PniCredentialPresentation>): Serialized<UuidCiphertext>;
+export function PniCredentialPresentation_GetPniCiphertext(presentation: Serialized<PniCredentialPresentation>): Serialized<UuidCiphertext>;
+export function PniCredentialPresentation_GetProfileKeyCiphertext(presentation: Serialized<PniCredentialPresentation>): Serialized<ProfileKeyCiphertext>;
+export function PniCredentialRequestContext_CheckValidContents(Obj: Serialized<PniCredentialRequestContext>): void;
+export function PniCredentialRequestContext_GetRequest(context: Serialized<PniCredentialRequestContext>): Serialized<ProfileKeyCredentialRequest>;
+export function PniCredentialResponse_CheckValidContents(Obj: Serialized<PniCredentialResponse>): void;
+export function PniCredential_CheckValidContents(Obj: Serialized<PniCredential>): void;
 export function PreKeyBundle_GetDeviceId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetIdentityKey(p: Wrapper<PreKeyBundle>): PublicKey;
 export function PreKeyBundle_GetPreKeyId(obj: Wrapper<PreKeyBundle>): number | null;
@@ -206,11 +214,14 @@ export function ServerCertificate_GetSignature(obj: Wrapper<ServerCertificate>):
 export function ServerCertificate_New(keyId: number, serverKey: Wrapper<PublicKey>, trustRoot: Wrapper<PrivateKey>): ServerCertificate;
 export function ServerPublicParams_CheckValidContents(Obj: Serialized<ServerPublicParams>): void;
 export function ServerPublicParams_CreateAuthCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredential: Serialized<AuthCredential>): Serialized<AuthCredentialPresentation>;
+export function ServerPublicParams_CreatePniCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<PniCredential>): Serialized<PniCredentialPresentation>;
+export function ServerPublicParams_CreatePniCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, aci: Uuid, pni: Uuid, profileKey: Serialized<ProfileKey>): Serialized<PniCredentialRequestContext>;
 export function ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<ProfileKeyCredential>): Serialized<ProfileKeyCredentialPresentation>;
 export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, uuid: Uuid, profileKey: Serialized<ProfileKey>): Serialized<ProfileKeyCredentialRequestContext>;
 export function ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, receiptCredential: Serialized<ReceiptCredential>): Serialized<ReceiptCredentialPresentation>;
 export function ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, receiptSerial: Buffer): Serialized<ReceiptCredentialRequestContext>;
 export function ServerPublicParams_ReceiveAuthCredential(params: Serialized<ServerPublicParams>, uuid: Uuid, redemptionTime: number, response: Serialized<AuthCredentialResponse>): Serialized<AuthCredential>;
+export function ServerPublicParams_ReceivePniCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<PniCredentialRequestContext>, response: Serialized<PniCredentialResponse>): Serialized<PniCredential>;
 export function ServerPublicParams_ReceiveProfileKeyCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<ProfileKeyCredentialRequestContext>, response: Serialized<ProfileKeyCredentialResponse>): Serialized<ProfileKeyCredential>;
 export function ServerPublicParams_ReceiveReceiptCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<ReceiptCredentialRequestContext>, response: Serialized<ReceiptCredentialResponse>): Serialized<ReceiptCredential>;
 export function ServerPublicParams_VerifySignature(serverPublicParams: Serialized<ServerPublicParams>, message: Buffer, notarySignature: Buffer): void;
@@ -218,10 +229,12 @@ export function ServerSecretParams_CheckValidContents(Obj: Serialized<ServerSecr
 export function ServerSecretParams_GenerateDeterministic(randomness: Buffer): Serialized<ServerSecretParams>;
 export function ServerSecretParams_GetPublicParams(params: Serialized<ServerSecretParams>): Serialized<ServerPublicParams>;
 export function ServerSecretParams_IssueAuthCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, uuid: Uuid, redemptionTime: number): Serialized<AuthCredentialResponse>;
+export function ServerSecretParams_IssuePniCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ProfileKeyCredentialRequest>, aci: Uuid, pni: Uuid, commitment: Serialized<ProfileKeyCommitment>): Serialized<PniCredentialResponse>;
 export function ServerSecretParams_IssueProfileKeyCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ProfileKeyCredentialRequest>, uuid: Uuid, commitment: Serialized<ProfileKeyCommitment>): Serialized<ProfileKeyCredentialResponse>;
 export function ServerSecretParams_IssueReceiptCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ReceiptCredentialRequest>, receiptExpirationTime: Buffer, receiptLevel: Buffer): Serialized<ReceiptCredentialResponse>;
 export function ServerSecretParams_SignDeterministic(params: Serialized<ServerSecretParams>, randomness: Buffer, message: Buffer): Buffer;
 export function ServerSecretParams_VerifyAuthCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentation: Serialized<AuthCredentialPresentation>): void;
+export function ServerSecretParams_VerifyPniCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentation: Serialized<PniCredentialPresentation>): void;
 export function ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentation: Serialized<ProfileKeyCredentialPresentation>): void;
 export function ServerSecretParams_VerifyReceiptCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, presentation: Serialized<ReceiptCredentialPresentation>): void;
 export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<void>;
@@ -272,6 +285,10 @@ interface GroupPublicParams { readonly __type: unique symbol; }
 interface GroupSecretParams { readonly __type: unique symbol; }
 interface HsmEnclaveClient { readonly __type: unique symbol; }
 interface PlaintextContent { readonly __type: unique symbol; }
+interface PniCredential { readonly __type: unique symbol; }
+interface PniCredentialPresentation { readonly __type: unique symbol; }
+interface PniCredentialRequestContext { readonly __type: unique symbol; }
+interface PniCredentialResponse { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }
 interface PreKeyRecord { readonly __type: unique symbol; }
 interface PreKeySignalMessage { readonly __type: unique symbol; }

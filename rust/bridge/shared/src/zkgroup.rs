@@ -48,6 +48,10 @@ fixed_length_serializable!(AuthCredentialResponse);
 fixed_length_serializable!(GroupMasterKey);
 fixed_length_serializable!(GroupPublicParams);
 fixed_length_serializable!(GroupSecretParams);
+fixed_length_serializable!(PniCredential);
+fixed_length_serializable!(PniCredentialPresentation);
+fixed_length_serializable!(PniCredentialRequestContext);
+fixed_length_serializable!(PniCredentialResponse);
 fixed_length_serializable!(ProfileKey);
 fixed_length_serializable!(ProfileKeyCiphertext);
 fixed_length_serializable!(ProfileKeyCommitment);
@@ -238,6 +242,24 @@ fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
 }
 
 #[bridge_fn]
+fn ServerPublicParams_CreatePniCredentialRequestContextDeterministic(
+    server_public_params: Serialized<ServerPublicParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    aci: Uuid,
+    pni: Uuid,
+    profile_key: Serialized<ProfileKey>,
+) -> Result<Serialized<PniCredentialRequestContext>> {
+    Ok(server_public_params
+        .create_pni_credential_request_context(
+            *randomness,
+            *aci.as_bytes(),
+            *pni.as_bytes(),
+            profile_key.into_inner(),
+        )
+        .into())
+}
+
+#[bridge_fn]
 fn ServerPublicParams_ReceiveProfileKeyCredential(
     server_public_params: Serialized<ServerPublicParams>,
     request_context: Serialized<ProfileKeyCredentialRequestContext>,
@@ -245,6 +267,17 @@ fn ServerPublicParams_ReceiveProfileKeyCredential(
 ) -> Result<Serialized<ProfileKeyCredential>> {
     Ok(server_public_params
         .receive_profile_key_credential(&request_context, &response)?
+        .into())
+}
+
+#[bridge_fn]
+fn ServerPublicParams_ReceivePniCredential(
+    server_public_params: Serialized<ServerPublicParams>,
+    request_context: Serialized<PniCredentialRequestContext>,
+    response: Serialized<PniCredentialResponse>,
+) -> Result<Serialized<PniCredential>> {
+    Ok(server_public_params
+        .receive_pni_credential(&request_context, &response)?
         .into())
 }
 
@@ -257,6 +290,22 @@ fn ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
 ) -> Result<Serialized<ProfileKeyCredentialPresentation>> {
     Ok(server_public_params
         .create_profile_key_credential_presentation(
+            *randomness,
+            group_secret_params.into_inner(),
+            profile_key_credential.into_inner(),
+        )
+        .into())
+}
+
+#[bridge_fn]
+fn ServerPublicParams_CreatePniCredentialPresentationDeterministic(
+    server_public_params: Serialized<ServerPublicParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    group_secret_params: Serialized<GroupSecretParams>,
+    profile_key_credential: Serialized<PniCredential>,
+) -> Result<Serialized<PniCredentialPresentation>> {
+    Ok(server_public_params
+        .create_pni_credential_presentation(
             *randomness,
             group_secret_params.into_inner(),
             profile_key_credential.into_inner(),
@@ -337,6 +386,26 @@ fn ServerSecretParams_IssueProfileKeyCredentialDeterministic(
         .into())
 }
 
+#[bridge_fn]
+fn ServerSecretParams_IssuePniCredentialDeterministic(
+    server_secret_params: Serialized<ServerSecretParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    request: Serialized<ProfileKeyCredentialRequest>,
+    aci: Uuid,
+    pni: Uuid,
+    commitment: Serialized<ProfileKeyCommitment>,
+) -> Result<Serialized<PniCredentialResponse>> {
+    Ok(server_secret_params
+        .issue_pni_credential(
+            *randomness,
+            &request,
+            *aci.as_bytes(),
+            *pni.as_bytes(),
+            commitment.into_inner(),
+        )?
+        .into())
+}
+
 #[bridge_fn_void]
 fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
@@ -345,6 +414,16 @@ fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
 ) -> Result<()> {
     server_secret_params
         .verify_profile_key_credential_presentation(group_public_params.into_inner(), &presentation)
+}
+
+#[bridge_fn_void]
+fn ServerSecretParams_VerifyPniCredentialPresentation(
+    server_secret_params: Serialized<ServerSecretParams>,
+    group_public_params: Serialized<GroupPublicParams>,
+    presentation: Serialized<PniCredentialPresentation>,
+) -> Result<()> {
+    server_secret_params
+        .verify_pni_credential_presentation(group_public_params.into_inner(), &presentation)
 }
 
 #[bridge_fn]
@@ -416,6 +495,14 @@ fn ProfileKeyCredentialRequestContext_GetRequest(
 
 // FIXME: bridge_get
 #[bridge_fn]
+fn PniCredentialRequestContext_GetRequest(
+    context: Serialized<PniCredentialRequestContext>,
+) -> Serialized<ProfileKeyCredentialRequest> {
+    context.get_request().into()
+}
+
+// FIXME: bridge_get
+#[bridge_fn]
 fn ProfileKeyCredentialPresentation_GetUuidCiphertext(
     presentation: Serialized<ProfileKeyCredentialPresentation>,
 ) -> Serialized<UuidCiphertext> {
@@ -426,6 +513,30 @@ fn ProfileKeyCredentialPresentation_GetUuidCiphertext(
 #[bridge_fn]
 fn ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
     presentation: Serialized<ProfileKeyCredentialPresentation>,
+) -> Serialized<ProfileKeyCiphertext> {
+    presentation.get_profile_key_ciphertext().into()
+}
+
+// FIXME: bridge_get
+#[bridge_fn]
+fn PniCredentialPresentation_GetAciCiphertext(
+    presentation: Serialized<PniCredentialPresentation>,
+) -> Serialized<UuidCiphertext> {
+    presentation.get_aci_ciphertext().into()
+}
+
+// FIXME: bridge_get
+#[bridge_fn]
+fn PniCredentialPresentation_GetPniCiphertext(
+    presentation: Serialized<PniCredentialPresentation>,
+) -> Serialized<UuidCiphertext> {
+    presentation.get_pni_ciphertext().into()
+}
+
+// FIXME: bridge_get
+#[bridge_fn]
+fn PniCredentialPresentation_GetProfileKeyCiphertext(
+    presentation: Serialized<PniCredentialPresentation>,
 ) -> Serialized<ProfileKeyCiphertext> {
     presentation.get_profile_key_ciphertext().into()
 }
