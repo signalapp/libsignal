@@ -37,7 +37,6 @@ pub enum SignalErrorCode {
     InvalidKey = 40,
     InvalidSignature = 41,
 
-    FingerprintIdentifierMismatch = 50,
     FingerprintVersionMismatch = 51,
     FingerprintParsingError = 52,
 
@@ -115,10 +114,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidRegistrationId(..)) => {
                 SignalErrorCode::InvalidRegistrationId
-            }
-
-            SignalFfiError::Signal(SignalProtocolError::FingerprintIdentifierMismatch) => {
-                SignalErrorCode::FingerprintIdentifierMismatch
             }
 
             SignalFfiError::Signal(SignalProtocolError::FingerprintParsingError) => {

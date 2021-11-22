@@ -258,8 +258,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(org.whispersystems.libsignal.LegacyMessageException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::FingerprintIdentifierMismatch)
-        | SignalJniError::Signal(SignalProtocolError::FingerprintParsingError) => {
+        SignalJniError::Signal(SignalProtocolError::FingerprintParsingError) => {
             jni_class_name!(
                 org.whispersystems
                     .libsignal

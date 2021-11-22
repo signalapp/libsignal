@@ -138,7 +138,6 @@ typedef enum {
   SignalErrorCode_SealedSenderSelfSend = 31,
   SignalErrorCode_InvalidKey = 40,
   SignalErrorCode_InvalidSignature = 41,
-  SignalErrorCode_FingerprintIdentifierMismatch = 50,
   SignalErrorCode_FingerprintVersionMismatch = 51,
   SignalErrorCode_FingerprintParsingError = 52,
   SignalErrorCode_UntrustedIdentity = 60,
