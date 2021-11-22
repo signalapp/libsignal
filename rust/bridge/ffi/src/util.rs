@@ -23,7 +23,6 @@ pub enum SignalErrorCode {
     InvalidArgument = 5,
     InvalidType = 6,
     InvalidUtf8String = 7,
-    InsufficientOutputSize = 8,
 
     ProtobufError = 10,
 
@@ -75,7 +74,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
-            SignalFfiError::InsufficientOutputSize(_, _) => SignalErrorCode::InsufficientOutputSize,
 
             SignalFfiError::Signal(SignalProtocolError::ProtobufEncodingError(_))
             | SignalFfiError::Signal(SignalProtocolError::ProtobufDecodingError(_)) => {
