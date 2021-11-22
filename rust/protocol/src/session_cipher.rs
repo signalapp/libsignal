@@ -159,9 +159,10 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
             )
             .await
         }
-        _ => Err(SignalProtocolError::InvalidArgument(
-            "SessionCipher::decrypt cannot decrypt this message type".to_owned(),
-        )),
+        _ => Err(SignalProtocolError::InvalidArgument(format!(
+            "message_decrypt cannot be used to decrypt {:?} messages",
+            ciphertext.message_type()
+        ))),
     }
 }
 

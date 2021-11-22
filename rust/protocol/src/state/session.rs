@@ -570,9 +570,8 @@ impl SessionRecord {
         updated_session: SessionState,
     ) -> Result<()> {
         if old_session >= self.previous_sessions.len() {
-            return Err(SignalProtocolError::InvalidState(
-                "promote_old_session",
-                "out of range".into(),
+            return Err(SignalProtocolError::InternalError(
+                "tried to promote an old session that no longer exists (index out of range)",
             ));
         }
         self.previous_sessions.remove(old_session);
