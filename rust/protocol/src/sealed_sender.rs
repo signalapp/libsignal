@@ -720,7 +720,8 @@ mod sealed_sender_v1 {
             &sender_identity.public_key().serialize(),
             &sender_eph_keys.cipher_key,
             &sender_eph_keys.mac_key,
-        )?;
+        )
+        .expect("just generated these keys, they should be correct");
 
         // Generate another cipher and MAC key.
         let sender_static_keys = StaticKeys::calculate(
@@ -735,7 +736,8 @@ mod sealed_sender_v1 {
             sender_message_contents,
             &sender_static_keys.cipher_key,
             &sender_static_keys.mac_key,
-        )?;
+        )
+        .expect("just generated these keys, they should be correct");
 
         // The message recipient calculates the ephemeral key and the sender's public key.
         let recipient_eph_keys = EphemeralKeys::calculate(
@@ -749,7 +751,8 @@ mod sealed_sender_v1 {
             &sender_static_key_ctext,
             &recipient_eph_keys.cipher_key,
             &recipient_eph_keys.mac_key,
-        )?;
+        )
+        .expect("should decrypt successfully");
         let sender_public_key: PublicKey = PublicKey::try_from(&recipient_message_key_bytes[..])?;
         assert_eq!(sender_identity.public_key(), &sender_public_key);
 
@@ -764,7 +767,8 @@ mod sealed_sender_v1 {
             &sender_message_data,
             &recipient_static_keys.cipher_key,
             &recipient_static_keys.mac_key,
-        )?;
+        )
+        .expect("should decrypt successfully");
         assert_eq!(recipient_message_contents, sender_message_contents);
 
         Ok(())
@@ -872,7 +876,8 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         &our_identity.public_key().serialize(),
         &eph_keys.cipher_key,
         &eph_keys.mac_key,
-    )?;
+    )
+    .expect("just generated these keys, they should be correct");
 
     let static_keys = sealed_sender_v1::StaticKeys::calculate(
         &our_identity,
@@ -885,7 +890,8 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         usmc.serialized()?,
         &static_keys.cipher_key,
         &static_keys.mac_key,
-    )?;
+    )
+    .expect("just generated these keys, they should be correct");
 
     let version = SEALED_SENDER_V1_VERSION;
     let mut serialized = vec![version | (version << 4)];
@@ -1433,11 +1439,20 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 Direction::Receiving,
             )?;
 
-            let message_key_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+            let message_key_bytes = match crypto::aes256_ctr_hmacsha256_decrypt(
                 &encrypted_static,
                 &eph_keys.cipher_key,
                 &eph_keys.mac_key,
-            )?;
+            ) {
+                Ok(plaintext) => plaintext,
+                Err(crypto::DecryptionError::BadKeyOrIv) => {
+                    unreachable!("just derived these keys; they should be valid");
+                }
+                Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+                    log::error!("failed to decrypt Sealed sender v1 message key: {}", msg);
+                    return Err(SignalProtocolError::InvalidCiphertext);
+                }
+            };
 
             let static_key = PublicKey::try_from(&message_key_bytes[..])?;
 
@@ -1448,11 +1463,23 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 &encrypted_static,
             )?;
 
-            let message_bytes = crypto::aes256_ctr_hmacsha256_decrypt(
+            let message_bytes = match crypto::aes256_ctr_hmacsha256_decrypt(
                 &encrypted_message,
                 &static_keys.cipher_key,
                 &static_keys.mac_key,
-            )?;
+            ) {
+                Ok(plaintext) => plaintext,
+                Err(crypto::DecryptionError::BadKeyOrIv) => {
+                    unreachable!("just derived these keys; they should be valid");
+                }
+                Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+                    log::error!(
+                        "failed to decrypt Sealed sender v1 message contents: {}",
+                        msg
+                    );
+                    return Err(SignalProtocolError::InvalidCiphertext);
+                }
+            };
 
             let usmc = UnidentifiedSenderMessageContent::deserialize(&message_bytes)?;
 

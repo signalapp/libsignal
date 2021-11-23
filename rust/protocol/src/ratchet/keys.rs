@@ -97,19 +97,19 @@ impl ChainKey {
 
     pub fn next_chain_key(&self) -> Result<Self> {
         Ok(Self {
-            key: self.calculate_base_material(Self::CHAIN_KEY_SEED)?,
+            key: self.calculate_base_material(Self::CHAIN_KEY_SEED),
             index: self.index + 1,
         })
     }
 
     pub fn message_keys(&self) -> Result<MessageKeys> {
         MessageKeys::derive_keys(
-            &self.calculate_base_material(Self::MESSAGE_KEY_SEED)?,
+            &self.calculate_base_material(Self::MESSAGE_KEY_SEED),
             self.index,
         )
     }
 
-    fn calculate_base_material(&self, seed: [u8; 1]) -> Result<[u8; 32]> {
+    fn calculate_base_material(&self, seed: [u8; 1]) -> [u8; 32] {
         crypto::hmac_sha256(&self.key, &seed)
     }
 }
