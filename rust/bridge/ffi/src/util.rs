@@ -68,8 +68,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
 
-            SignalFfiError::Signal(SignalProtocolError::ProtobufEncodingError(_))
-            | SignalFfiError::Signal(SignalProtocolError::ProtobufDecodingError(_)) => {
+            SignalFfiError::Signal(SignalProtocolError::ProtobufDecodingError(_)) => {
                 SignalErrorCode::ProtobufError
             }
 

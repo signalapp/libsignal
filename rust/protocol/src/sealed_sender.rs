@@ -887,7 +887,8 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
         encrypted_static: Some(static_key_ctext),
         encrypted_message: Some(message_data),
     };
-    pb.encode(&mut serialized)?; // appends to buffer
+    pb.encode(&mut serialized)
+        .expect("can always append to Vec");
 
     Ok(serialized)
 }

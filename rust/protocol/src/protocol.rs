@@ -84,17 +84,19 @@ impl SignalMessage {
             previous_counter: Some(previous_counter),
             ciphertext: Some(Vec::<u8>::from(ciphertext)),
         };
-        let mut serialized = vec![0u8; 1 + message.encoded_len() + Self::MAC_LENGTH];
-        serialized[0] = ((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-        message.encode(&mut &mut serialized[1..message.encoded_len() + 1])?;
-        let msg_len_for_mac = serialized.len() - Self::MAC_LENGTH;
+        let mut serialized = Vec::new();
+        serialized.reserve(1 + message.encoded_len() + Self::MAC_LENGTH);
+        serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
+        message
+            .encode(&mut serialized)
+            .expect("can always append to a buffer");
         let mac = Self::compute_mac(
             sender_identity_key,
             receiver_identity_key,
             mac_key,
-            &serialized[..msg_len_for_mac],
+            &serialized,
         )?;
-        serialized[msg_len_for_mac..].copy_from_slice(&mac);
+        serialized.extend_from_slice(&mac);
         let serialized = serialized.into_boxed_slice();
         Ok(Self {
             message_version,
@@ -259,9 +261,12 @@ impl PreKeySignalMessage {
             identity_key: Some(identity_key.serialize().into_vec()),
             message: Some(Vec::from(message.as_ref())),
         };
-        let mut serialized = vec![0u8; 1 + proto_message.encoded_len()];
-        serialized[0] = ((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION;
-        proto_message.encode(&mut &mut serialized[1..])?;
+        let mut serialized = Vec::new();
+        serialized.reserve(1 + proto_message.encoded_len());
+        serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
+        proto_message
+            .encode(&mut serialized)
+            .expect("can always append to a Vec");
         Ok(Self {
             message_version,
             registration_id,
@@ -400,12 +405,14 @@ impl SenderKeyMessage {
             ciphertext: Some(ciphertext.to_vec()),
         };
         let proto_message_len = proto_message.encoded_len();
-        let mut serialized = vec![0u8; 1 + proto_message_len + Self::SIGNATURE_LEN];
-        serialized[0] = ((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION;
-        proto_message.encode(&mut &mut serialized[1..1 + proto_message_len])?;
-        let signature =
-            signature_key.calculate_signature(&serialized[..1 + proto_message_len], csprng)?;
-        serialized[1 + proto_message_len..].copy_from_slice(&signature[..]);
+        let mut serialized = Vec::new();
+        serialized.reserve(1 + proto_message_len + Self::SIGNATURE_LEN);
+        serialized.push(((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION);
+        proto_message
+            .encode(&mut serialized)
+            .expect("can always append to a buffer");
+        let signature = signature_key.calculate_signature(&serialized, csprng)?;
+        serialized.extend_from_slice(&signature[..]);
         Ok(Self {
             message_version: SENDERKEY_MESSAGE_CURRENT_VERSION,
             distribution_id,
@@ -536,9 +543,12 @@ impl SenderKeyDistributionMessage {
             chain_key: Some(chain_key.clone()),
             signing_key: Some(signing_key.serialize().to_vec()),
         };
-        let mut serialized = vec![0u8; 1 + proto_message.encoded_len()];
-        serialized[0] = ((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION;
-        proto_message.encode(&mut &mut serialized[1..])?;
+        let mut serialized = Vec::new();
+        serialized.reserve(1 + proto_message.encoded_len());
+        serialized.push(((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION);
+        proto_message
+            .encode(&mut serialized)
+            .expect("can always append to a buffer");
 
         Ok(Self {
             message_version,
@@ -753,8 +763,7 @@ impl DecryptionErrorMessage {
             ratchet_key: ratchet_key.map(|k| k.serialize().into()),
             device_id: Some(original_sender_device_id),
         };
-        let mut serialized = Vec::new();
-        proto_message.encode(&mut serialized)?;
+        let serialized = proto_message.encode_to_vec();
 
         Ok(Self {
             ratchet_key,

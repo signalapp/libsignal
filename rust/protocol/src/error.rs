@@ -24,8 +24,6 @@ pub enum SignalProtocolError {
     // see https://github.com/yaahc/blog.rust-lang.org/blob/master/posts/inside-rust/2021-05-15-What-the-error-handling-project-group-is-working-towards.md#duplicate-information-issue
     /// failed to decode protobuf: {0}
     ProtobufDecodingError(#[from] prost::DecodeError),
-    /// failed to encode protobuf: {0}
-    ProtobufEncodingError(#[from] prost::EncodeError),
     /// protobuf encoding was invalid
     InvalidProtobufEncoding,
 
