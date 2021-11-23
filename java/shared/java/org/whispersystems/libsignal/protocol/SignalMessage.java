@@ -57,7 +57,7 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
   }
 
   public void verifyMac(IdentityKey senderIdentityKey, IdentityKey receiverIdentityKey, SecretKeySpec macKey)
-      throws InvalidMessageException
+      throws InvalidMessageException, InvalidKeyException
   {
     try (
       NativeHandleGuard guard = new NativeHandleGuard(this);

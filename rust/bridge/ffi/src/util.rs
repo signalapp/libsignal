@@ -62,8 +62,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::UnexpectedPanic(_)
             | SignalFfiError::Signal(SignalProtocolError::InternalError(_))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::InternalError(_))
-            | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidMacKeyLength(_)) => {
+            | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_)) => {
                 SignalErrorCode::InternalError
             }
 
@@ -94,6 +93,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
+            | SignalFfiError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
