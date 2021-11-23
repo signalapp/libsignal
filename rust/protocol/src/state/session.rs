@@ -312,15 +312,24 @@ impl SessionState {
                 .message_keys
                 .iter()
                 .position(|m| m.index == counter);
+
             if let Some(position) = message_key_idx {
                 let message_key = chain_and_index.0.message_keys.remove(position);
 
-                let keys = MessageKeys::new(
-                    &message_key.cipher_key,
-                    &message_key.mac_key,
-                    &message_key.iv,
-                    counter,
-                )?;
+                let cipher_key_bytes = message_key
+                    .cipher_key
+                    .try_into()
+                    .map_err(|_| SignalProtocolError::InvalidSessionStructure)?;
+                let mac_key_bytes = message_key
+                    .mac_key
+                    .try_into()
+                    .map_err(|_| SignalProtocolError::InvalidSessionStructure)?;
+                let iv_bytes = message_key
+                    .iv
+                    .try_into()
+                    .map_err(|_| SignalProtocolError::InvalidSessionStructure)?;
+
+                let keys = MessageKeys::new(cipher_key_bytes, mac_key_bytes, iv_bytes, counter);
 
                 // Update with message key removed
                 self.session.receiver_chains[chain_and_index.1] = chain_and_index.0;

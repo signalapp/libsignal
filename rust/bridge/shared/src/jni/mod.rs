@@ -209,7 +209,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::InternalError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
-        | SignalJniError::Signal(SignalProtocolError::InvalidCipherCryptographicParameters(_, _))
         | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
         | SignalJniError::Signal(SignalProtocolError::ProtobufEncodingError(_)) => {
             jni_class_name!(java.lang.RuntimeException)

@@ -6,7 +6,7 @@
 use arrayref::array_ref;
 
 use crate::crypto;
-use crate::{PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{PrivateKey, PublicKey, Result};
 use std::fmt;
 
 pub struct MessageKeys {
@@ -31,23 +31,13 @@ impl MessageKeys {
         })
     }
 
-    pub fn new(cipher_key: &[u8], mac_key: &[u8], iv: &[u8], counter: u32) -> Result<Self> {
-        if mac_key.len() != 32 {
-            return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));
-        }
-        if cipher_key.len() != 32 || iv.len() != 16 {
-            return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
-                cipher_key.len(),
-                iv.len(),
-            ));
-        }
-
-        Ok(MessageKeys {
-            cipher_key: *array_ref![cipher_key, 0, 32],
-            mac_key: *array_ref![mac_key, 0, 32],
-            iv: *array_ref![iv, 0, 16],
+    pub fn new(cipher_key: [u8; 32], mac_key: [u8; 32], iv: [u8; 16], counter: u32) -> Self {
+        MessageKeys {
+            cipher_key,
+            mac_key,
+            iv,
             counter,
-        })
+        }
     }
 
     #[inline]
