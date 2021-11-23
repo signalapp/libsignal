@@ -49,11 +49,11 @@ message UnidentifiedSenderMessage {
             IMPLICIT   = 2; // Don't show any error UI at all; this is something sent implicitly like a typing message or a receipt
         }
 
-        optional Type              type              = 1;
-        optional SenderCertificate senderCertificate = 2;
-        optional bytes             content           = 3;
-        optional ContentHint       contentHint       = 4;
-        optional bytes             groupId           = 5;
+        optional Type type = 1;
+        optional bytes /*SenderCertificate*/ senderCertificate = 2;
+        optional bytes content = 3;
+        optional ContentHint contentHint = 4;
+        optional bytes groupId = 5;
     }
 
     optional bytes ephemeralPublic  = 1;

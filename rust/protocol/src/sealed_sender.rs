@@ -253,19 +253,6 @@ impl SenderCertificate {
         })
     }
 
-    pub(crate) fn from_protobuf(pb: &proto::sealed_sender::SenderCertificate) -> Result<Self> {
-        let mut bits = vec![];
-        pb.encode(&mut bits)?;
-        Self::deserialize(&bits)
-    }
-
-    pub(crate) fn to_protobuf(&self) -> Result<proto::sealed_sender::SenderCertificate> {
-        Ok(proto::sealed_sender::SenderCertificate {
-            certificate: Some(self.certificate.clone()),
-            signature: Some(self.signature.clone()),
-        })
-    }
-
     pub fn validate(&self, trust_root: &PublicKey, validation_time: u64) -> Result<bool> {
         if !self.signer.validate(trust_root)? {
             log::error!("received server certificate not signed by trust root");
@@ -434,7 +421,7 @@ impl UnidentifiedSenderMessageContent {
             .unwrap_or(ContentHint::Default);
         let group_id = pb.group_id;
 
-        let sender = SenderCertificate::from_protobuf(&sender)?;
+        let sender = SenderCertificate::deserialize(&sender)?;
 
         let serialized = data.to_vec();
 
@@ -466,7 +453,7 @@ impl UnidentifiedSenderMessageContent {
         let msg = proto::sealed_sender::unidentified_sender_message::Message {
             content: Some(contents.clone()),
             r#type: Some(proto_msg_type.into()),
-            sender_certificate: Some(sender.to_protobuf()?),
+            sender_certificate: Some(sender.serialized()?.to_vec()),
             content_hint: content_hint.to_proto(),
             group_id: group_id.as_ref().and_then(|buf| {
                 if buf.is_empty() {
@@ -1733,7 +1720,8 @@ fn test_lossless_round_trip() -> Result<()> {
         signature: Some(certificate_signature),
     };
 
-    let sender_certificate = SenderCertificate::from_protobuf(&sender_certificate_data)?;
+    let sender_certificate =
+        SenderCertificate::deserialize(&sender_certificate_data.encode_to_vec())?;
     assert!(sender_certificate.validate(&trust_root.public_key()?, 31336)?);
     Ok(())
 }
