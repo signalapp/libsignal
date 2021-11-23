@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::TryInto;
+
 use prost::Message;
 
 use crate::ratchet::{ChainKey, MessageKeys, RootKey};
@@ -115,10 +117,10 @@ impl SessionState {
     }
 
     pub(crate) fn root_key(&self) -> Result<RootKey> {
-        if self.session.root_key.len() != 32 {
-            return Err(SignalProtocolError::InvalidProtobufEncoding);
-        }
-        RootKey::new(&self.session.root_key)
+        let root_key_bytes = self.session.root_key[..]
+            .try_into()
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
+        Ok(RootKey::new(root_key_bytes))
     }
 
     pub(crate) fn set_root_key(&mut self, root_key: &RootKey) -> Result<()> {
@@ -190,10 +192,10 @@ impl SessionState {
             Some((chain, _)) => match chain.chain_key {
                 None => Err(SignalProtocolError::InvalidProtobufEncoding),
                 Some(c) => {
-                    if c.key.len() != 32 {
-                        return Err(SignalProtocolError::InvalidProtobufEncoding);
-                    }
-                    Ok(Some(ChainKey::new(&c.key, c.index)?))
+                    let chain_key_bytes = c.key[..]
+                        .try_into()
+                        .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
+                    Ok(Some(ChainKey::new(chain_key_bytes, c.index)))
                 }
             },
         }
@@ -262,7 +264,11 @@ impl SessionState {
             SignalProtocolError::InvalidState("get_sender_chain_key", "No chain key".to_owned())
         })?;
 
-        ChainKey::new(&chain_key.key, chain_key.index)
+        let chain_key_bytes = chain_key.key[..]
+            .try_into()
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
+
+        Ok(ChainKey::new(chain_key_bytes, chain_key.index))
     }
 
     pub(crate) fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>> {

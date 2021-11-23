@@ -81,15 +81,8 @@ impl ChainKey {
     const MESSAGE_KEY_SEED: [u8; 1] = [0x01u8];
     const CHAIN_KEY_SEED: [u8; 1] = [0x02u8];
 
-    pub fn new(key: &[u8], index: u32) -> Result<Self> {
-        if key.len() != 32 {
-            return Err(SignalProtocolError::InvalidChainKeyLength(key.len()));
-        }
-
-        Ok(Self {
-            key: *array_ref![key, 0, 32],
-            index,
-        })
+    pub fn new(key: [u8; 32], index: u32) -> Self {
+        Self { key, index }
     }
 
     #[inline]
@@ -127,13 +120,8 @@ pub struct RootKey {
 }
 
 impl RootKey {
-    pub fn new(key: &[u8]) -> Result<Self> {
-        if key.len() != 32 {
-            return Err(SignalProtocolError::InvalidRootKeyLength(key.len()));
-        }
-        Ok(Self {
-            key: *array_ref![key, 0, 32],
-        })
+    pub fn new(key: [u8; 32]) -> Self {
+        Self { key }
     }
 
     pub fn key(&self) -> &[u8; 32] {
@@ -196,7 +184,7 @@ mod tests {
             0xa2, 0x46, 0xd1, 0x5d,
         ];
 
-        let chain_key = ChainKey::new(&seed, 0)?;
+        let chain_key = ChainKey::new(seed, 0);
         assert_eq!(&seed, chain_key.key());
         assert_eq!(&message_key, chain_key.message_keys()?.cipher_key());
         assert_eq!(&mac_key, chain_key.message_keys()?.mac_key());

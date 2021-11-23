@@ -6,6 +6,8 @@
 mod keys;
 mod params;
 
+use std::convert::TryInto;
+
 pub use self::keys::{ChainKey, MessageKeys, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::proto::storage::SessionStructure;
@@ -19,9 +21,10 @@ fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
     hkdf::Hkdf::<sha2::Sha256>::new(None, secret_input)
         .expand(b"WhisperText", &mut secrets)
         .expect("valid length");
+    let (root_key_bytes, chain_key_bytes) = secrets.split_at(32);
 
-    let root_key = RootKey::new(&secrets[0..32])?;
-    let chain_key = ChainKey::new(&secrets[32..64], 0)?;
+    let root_key = RootKey::new(root_key_bytes.try_into().expect("correct length"));
+    let chain_key = ChainKey::new(chain_key_bytes.try_into().expect("correct length"), 0);
 
     Ok((root_key, chain_key))
 }
