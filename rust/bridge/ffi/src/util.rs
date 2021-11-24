@@ -99,7 +99,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidKey
             }
 
-            SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_)) => {
+            SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_))
+            | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
                 SignalErrorCode::SessionNotFound
             }
 
@@ -144,7 +145,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
             | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure)
-            | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState

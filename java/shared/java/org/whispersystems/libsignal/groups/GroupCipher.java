@@ -52,8 +52,6 @@ public class GroupCipher {
   public CiphertextMessage encrypt(UUID distributionId, byte[] paddedPlaintext) throws NoSessionException {
     try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
       return Native.GroupCipher_EncryptMessage(sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore, null);
-    } catch (IllegalStateException e) {
-      throw new NoSessionException(e);
     }
   }
 
@@ -71,8 +69,6 @@ public class GroupCipher {
   {
     try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
       return Native.GroupCipher_DecryptMessage(sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore, null);
-    } catch (IllegalStateException e) {
-      throw new NoSessionException(e);
     }
   }
 }

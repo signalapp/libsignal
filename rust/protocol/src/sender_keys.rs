@@ -280,7 +280,7 @@ impl SenderKeyRecord {
         if !self.states.is_empty() {
             return Ok(&mut self.states[0]);
         }
-        Err(SignalProtocolError::NoSenderKeyState)
+        Err(SignalProtocolError::InvalidSessionStructure)
     }
 
     pub fn sender_key_state_for_chain_id(
@@ -302,7 +302,7 @@ impl SenderKeyRecord {
                 .map(|state| state.chain_id().expect("accessed successfully above"))
                 .collect::<Vec<_>>()
         );
-        Err(SignalProtocolError::NoSenderKeyState)
+        Err(SignalProtocolError::NoSenderKeyState { distribution_id })
     }
 
     pub fn add_sender_key_state(

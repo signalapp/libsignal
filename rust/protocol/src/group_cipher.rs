@@ -29,7 +29,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let mut record = sender_key_store
         .load_sender_key(sender, distribution_id, ctx)
         .await?
-        .ok_or(SignalProtocolError::NoSenderKeyState)?;
+        .ok_or(SignalProtocolError::NoSenderKeyState { distribution_id })?;
 
     let sender_key_state = record.sender_key_state()?;
 
@@ -124,7 +124,9 @@ pub async fn group_decrypt(
     let mut record = sender_key_store
         .load_sender_key(sender, skm.distribution_id(), ctx)
         .await?
-        .ok_or(SignalProtocolError::NoSenderKeyState)?;
+        .ok_or(SignalProtocolError::NoSenderKeyState {
+            distribution_id: skm.distribution_id(),
+        })?;
 
     let mut sender_key_state =
         record.sender_key_state_for_chain_id(skm.chain_id(), skm.distribution_id())?;

@@ -189,7 +189,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure)
-        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
         | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
             jni_class_name!(java.lang.IllegalStateException)
@@ -231,7 +230,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(org.whispersystems.libsignal.InvalidKeyException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::SessionNotFound(_)) => {
+        SignalJniError::Signal(SignalProtocolError::SessionNotFound(_))
+        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
             jni_class_name!(org.whispersystems.libsignal.NoSessionException)
         }
 

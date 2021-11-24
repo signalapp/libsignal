@@ -25,7 +25,7 @@ public class InMemorySenderKeyStore implements SenderKeyStore {
       SenderKeyRecord record = store.get(new Pair(sender, distributionId));
 
       if (record == null) {
-        return new SenderKeyRecord();
+        return null;
       } else {
         return new SenderKeyRecord(record.serialize());
       }

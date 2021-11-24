@@ -63,8 +63,8 @@ pub enum SignalProtocolError {
     /// invalid MAC key length <{0}>
     InvalidMacKeyLength(usize),
 
-    /// no sender key state
-    NoSenderKeyState,
+    /// no sender key state with distribution ID {distribution_id}
+    NoSenderKeyState { distribution_id: Uuid },
 
     /// session with {0} not found
     SessionNotFound(crate::ProtocolAddress),
