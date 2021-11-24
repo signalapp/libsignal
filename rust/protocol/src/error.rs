@@ -77,8 +77,8 @@ pub enum SignalProtocolError {
 
     /// message with old counter {0} / {1}
     DuplicatedMessage(u32, u32),
-    /// invalid message: {0}
-    InvalidMessage(&'static str),
+    /// invalid {0:?} message: {1}
+    InvalidMessage(crate::CiphertextMessageType, &'static str),
 
     /// internal error: {0}
     InternalError(&'static str),
@@ -90,7 +90,7 @@ pub enum SignalProtocolError {
         #[source] Box<dyn std::error::Error + Send + Sync + UnwindSafe + 'static>,
     ),
 
-    /// invalid sealed sender message {0}
+    /// invalid sealed sender message: {0}
     InvalidSealedSenderMessage(String),
     /// unknown sealed sender message version {0}
     UnknownSealedSenderVersion(u8),

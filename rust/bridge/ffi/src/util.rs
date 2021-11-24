@@ -125,7 +125,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UnknownCiphertextVersion
             }
 
-            SignalFfiError::Signal(SignalProtocolError::InvalidMessage(_))
+            SignalFfiError::Signal(SignalProtocolError::InvalidMessage(..))
             | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))

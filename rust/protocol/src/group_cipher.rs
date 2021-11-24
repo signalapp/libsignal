@@ -7,8 +7,8 @@ use crate::consts;
 use crate::crypto;
 
 use crate::{
-    Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage, SenderKeyMessage,
-    SenderKeyRecord, SenderKeyStore, SignalProtocolError,
+    CiphertextMessageType, Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage,
+    SenderKeyMessage, SenderKeyRecord, SenderKeyStore, SignalProtocolError,
 };
 
 use crate::protocol::SENDERKEY_MESSAGE_CURRENT_VERSION;
@@ -99,6 +99,7 @@ fn get_sender_key(
             current_iteration
         );
         return Err(SignalProtocolError::InvalidMessage(
+            CiphertextMessageType::SenderKey,
             "message from too far into the future",
         ));
     }
@@ -169,7 +170,8 @@ pub async fn group_decrypt(
         Err(crypto::DecryptionError::BadCiphertext(msg)) => {
             log::error!("sender key decryption failed: {}", msg);
             return Err(SignalProtocolError::InvalidMessage(
-                "sender key decryption failed",
+                CiphertextMessageType::SenderKey,
+                "decryption failed",
             ));
         }
     };

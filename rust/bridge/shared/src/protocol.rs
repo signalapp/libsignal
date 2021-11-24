@@ -1109,8 +1109,9 @@ fn SealedSender_MultiRecipientMessageForSingleRecipient(
     encoded_multi_recipient_message: &[u8],
 ) -> Result<Vec<u8>> {
     let messages = sealed_sender_multi_recipient_fan_out(encoded_multi_recipient_message)?;
-    let [single_message] = <[_; 1]>::try_from(messages)
-        .map_err(|_| SignalProtocolError::InvalidMessage("encoded for more than one recipient"))?;
+    let [single_message] = <[_; 1]>::try_from(messages).map_err(|_| {
+        SignalProtocolError::InvalidArgument("encoded for more than one recipient".to_owned())
+    })?;
     Ok(single_message)
 }
 

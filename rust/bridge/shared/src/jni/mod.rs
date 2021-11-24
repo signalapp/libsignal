@@ -235,7 +235,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(org.whispersystems.libsignal.NoSessionException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
+        SignalJniError::Signal(SignalProtocolError::InvalidMessage(..))
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
         | SignalJniError::Signal(SignalProtocolError::ProtobufDecodingError(_))

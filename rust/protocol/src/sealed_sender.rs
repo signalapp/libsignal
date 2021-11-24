@@ -1444,8 +1444,8 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
                     log::error!("failed to decrypt sealed sender v1 message key: {}", msg);
-                    return Err(SignalProtocolError::InvalidMessage(
-                        "failed to decrypt sealed sender v1 message key",
+                    return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                        "failed to decrypt sealed sender v1 message key".to_owned(),
                     ));
                 }
             };
@@ -1473,8 +1473,8 @@ pub async fn sealed_sender_decrypt_to_usmc(
                         "failed to decrypt sealed sender v1 message contents: {}",
                         msg
                     );
-                    return Err(SignalProtocolError::InvalidMessage(
-                        "failed to decrypt sealed sender v1 message contents",
+                    return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                        "failed to decrypt sealed sender v1 message contents".to_owned(),
                     ));
                 }
             };
@@ -1656,10 +1656,10 @@ pub async fn sealed_sender_decrypt(
             .await?
         }
         msg_type => {
-            return Err(SignalProtocolError::InvalidSealedSenderMessage(format!(
-                "Unexpected message type {}",
-                msg_type as i32,
-            )))
+            return Err(SignalProtocolError::InvalidMessage(
+                msg_type,
+                "unexpected message type for sealed_sender_decrypt",
+            ));
         }
     };
 

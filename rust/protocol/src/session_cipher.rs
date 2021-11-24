@@ -4,9 +4,9 @@
 //
 
 use crate::{
-    CiphertextMessage, Context, Direction, IdentityKeyStore, KeyPair, PreKeySignalMessage,
-    PreKeyStore, ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
-    SignalProtocolError, SignedPreKeyStore,
+    CiphertextMessage, CiphertextMessageType, Context, Direction, IdentityKeyStore, KeyPair,
+    PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey, Result, SessionRecord,
+    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::consts::MAX_FORWARD_JUMPS;
@@ -215,6 +215,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         remote_address,
         &mut session_record,
         ciphertext.message(),
+        CiphertextMessageType::PreKey,
         csprng,
     )?;
 
@@ -242,8 +243,13 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
         .await?
         .ok_or_else(|| SignalProtocolError::SessionNotFound(remote_address.clone()))?;
 
-    let ptext =
-        decrypt_message_with_record(remote_address, &mut session_record, ciphertext, csprng)?;
+    let ptext = decrypt_message_with_record(
+        remote_address,
+        &mut session_record,
+        ciphertext,
+        CiphertextMessageType::Whisper,
+        csprng,
+    )?;
 
     // Why are we performing this check after decryption instead of before?
     let their_identity_key = session_record
@@ -381,13 +387,19 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     remote_address: &ProtocolAddress,
     record: &mut SessionRecord,
     ciphertext: &SignalMessage,
+    original_message_type: CiphertextMessageType,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
+    debug_assert!(matches!(
+        original_message_type,
+        CiphertextMessageType::Whisper | CiphertextMessageType::PreKey
+    ));
     let log_decryption_failure = |state: &SessionState, error: &SignalProtocolError| {
         // A warning rather than an error because we try multiple sessions.
         log::warn!(
-            "Failed to decrypt whisper message with ratchet key: {} and counter: {}. \
+            "Failed to decrypt {:?} message with ratchet key: {} and counter: {}. \
              Session loaded for {}. Local session has base key: {} and counter: {}. {}",
+            original_message_type,
             ciphertext
                 .sender_ratchet_key()
                 .public_key_bytes()
@@ -410,6 +422,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             CurrentOrPrevious::Current,
             &mut current_state,
             ciphertext,
+            original_message_type,
             remote_address,
             csprng,
         );
@@ -417,7 +430,8 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         match result {
             Ok(ptext) => {
                 log::info!(
-                    "decrypted message from {} with current session state (base key {})",
+                    "decrypted {:?} message from {} with current session state (base key {})",
+                    original_message_type,
                     remote_address,
                     current_state
                         .sender_ratchet_key_for_logging()
@@ -446,6 +460,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             CurrentOrPrevious::Previous,
             &mut previous,
             ciphertext,
+            original_message_type,
             remote_address,
             csprng,
         );
@@ -453,7 +468,8 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
         match result {
             Ok(ptext) => {
                 log::info!(
-                    "decrypted message from {} with PREVIOUS session state (base key {})",
+                    "decrypted {:?} message from {} with PREVIOUS session state (base key {})",
+                    original_message_type,
                     remote_address,
                     previous
                         .sender_ratchet_key_for_logging()
@@ -498,7 +514,8 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             create_decryption_failure_log(remote_address, &errs, record, ciphertext)?
         );
         Err(SignalProtocolError::InvalidMessage(
-            "Message decryption failed",
+            original_message_type,
+            "decryption failed",
         ))
     }
 }
@@ -522,11 +539,13 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     current_or_previous: CurrentOrPrevious,
     state: &mut SessionState,
     ciphertext: &SignalMessage,
+    original_message_type: CiphertextMessageType,
     remote_address: &ProtocolAddress,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
     if !state.has_sender_chain()? {
         return Err(SignalProtocolError::InvalidMessage(
+            original_message_type,
             "No session available to decrypt",
         ));
     }
@@ -541,8 +560,14 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     let their_ephemeral = ciphertext.sender_ratchet_key();
     let counter = ciphertext.counter();
     let chain_key = get_or_create_chain_key(state, their_ephemeral, remote_address, csprng)?;
-    let message_keys =
-        get_or_create_message_key(state, their_ephemeral, remote_address, &chain_key, counter)?;
+    let message_keys = get_or_create_message_key(
+        state,
+        their_ephemeral,
+        remote_address,
+        original_message_type,
+        &chain_key,
+        counter,
+    )?;
 
     let their_identity_key = state
         .remote_identity_key()?
@@ -556,6 +581,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
 
     if !mac_valid {
         return Err(SignalProtocolError::InvalidMessage(
+            original_message_type,
             "MAC verification failed",
         ));
     }
@@ -577,7 +603,8 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         Err(crypto::DecryptionError::BadCiphertext(msg)) => {
             log::warn!("failed to decrypt 1:1 message: {}", msg);
             return Err(SignalProtocolError::InvalidMessage(
-                "failed to decrypt 1:1 message",
+                original_message_type,
+                "failed to decrypt",
             ));
         }
     };
@@ -627,6 +654,7 @@ fn get_or_create_message_key(
     state: &mut SessionState,
     their_ephemeral: &PublicKey,
     remote_address: &ProtocolAddress,
+    original_message_type: CiphertextMessageType,
     chain_key: &ChainKey,
     counter: u32,
 ) -> Result<MessageKeys> {
@@ -668,6 +696,7 @@ fn get_or_create_message_key(
                 counter
             );
             return Err(SignalProtocolError::InvalidMessage(
+                original_message_type,
                 "message from too far into the future",
             ));
         }
