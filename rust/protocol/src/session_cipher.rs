@@ -555,7 +555,9 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     )?;
 
     if !mac_valid {
-        return Err(SignalProtocolError::InvalidCiphertext);
+        return Err(SignalProtocolError::InvalidMessage(
+            "MAC verification failed",
+        ));
     }
 
     let ptext = match crypto::aes_256_cbc_decrypt(
@@ -574,7 +576,9 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         }
         Err(crypto::DecryptionError::BadCiphertext(msg)) => {
             log::warn!("failed to decrypt 1:1 message: {}", msg);
-            return Err(SignalProtocolError::InvalidCiphertext);
+            return Err(SignalProtocolError::InvalidMessage(
+                "failed to decrypt 1:1 message",
+            ));
         }
     };
 

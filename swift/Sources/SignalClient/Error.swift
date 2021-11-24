@@ -17,7 +17,6 @@ public enum SignalError: Error {
     case invalidType(String)
     case invalidUtf8String(String)
     case protobufError(String)
-    case invalidCiphertext(String)
     case legacyCiphertextVersion(String)
     case unknownCiphertextVersion(String)
     case unrecognizedMessageVersion(String)
@@ -64,8 +63,6 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidUtf8String(errStr)
     case SignalErrorCode_ProtobufError:
         throw SignalError.protobufError(errStr)
-    case SignalErrorCode_InvalidCiphertext:
-        throw SignalError.invalidCiphertext(errStr)
     case SignalErrorCode_LegacyCiphertextVersion:
         throw SignalError.legacyCiphertextVersion(errStr)
     case SignalErrorCode_UnknownCiphertextVersion:

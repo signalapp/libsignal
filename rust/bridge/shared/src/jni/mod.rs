@@ -236,7 +236,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(_))
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-        | SignalJniError::Signal(SignalProtocolError::InvalidCiphertext)
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
         | SignalJniError::Signal(SignalProtocolError::ProtobufDecodingError(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))

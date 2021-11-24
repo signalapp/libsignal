@@ -1437,8 +1437,10 @@ pub async fn sealed_sender_decrypt_to_usmc(
                     unreachable!("just derived these keys; they should be valid");
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
-                    log::error!("failed to decrypt Sealed sender v1 message key: {}", msg);
-                    return Err(SignalProtocolError::InvalidCiphertext);
+                    log::error!("failed to decrypt sealed sender v1 message key: {}", msg);
+                    return Err(SignalProtocolError::InvalidMessage(
+                        "failed to decrypt sealed sender v1 message key",
+                    ));
                 }
             };
 
@@ -1462,10 +1464,12 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
                     log::error!(
-                        "failed to decrypt Sealed sender v1 message contents: {}",
+                        "failed to decrypt sealed sender v1 message contents: {}",
                         msg
                     );
-                    return Err(SignalProtocolError::InvalidCiphertext);
+                    return Err(SignalProtocolError::InvalidMessage(
+                        "failed to decrypt sealed sender v1 message contents",
+                    ));
                 }
             };
 

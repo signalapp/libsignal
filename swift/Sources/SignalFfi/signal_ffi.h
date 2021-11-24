@@ -129,7 +129,6 @@ typedef enum {
   SignalErrorCode_InvalidType = 6,
   SignalErrorCode_InvalidUtf8String = 7,
   SignalErrorCode_ProtobufError = 10,
-  SignalErrorCode_InvalidCiphertext = 20,
   SignalErrorCode_LegacyCiphertextVersion = 21,
   SignalErrorCode_UnknownCiphertextVersion = 22,
   SignalErrorCode_UnrecognizedMessageVersion = 23,

@@ -26,10 +26,10 @@ pub enum SignalErrorCode {
 
     ProtobufError = 10,
 
-    InvalidCiphertext = 20,
     LegacyCiphertextVersion = 21,
     UnknownCiphertextVersion = 22,
     UnrecognizedMessageVersion = 23,
+
     InvalidMessage = 30,
     SealedSenderSelfSend = 31,
 
@@ -115,12 +115,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::FingerprintVersionMismatch
             }
 
-            SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidCiphertext)
-            | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag) => {
-                SignalErrorCode::InvalidCiphertext
-            }
-
             SignalFfiError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
             | SignalFfiError::Signal(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
                 SignalErrorCode::UnrecognizedMessageVersion
@@ -131,8 +125,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(_))
+            | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
+            | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
                 SignalErrorCode::InvalidMessage
             }

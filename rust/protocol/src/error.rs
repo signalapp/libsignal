@@ -61,8 +61,6 @@ pub enum SignalProtocolError {
 
     /// invalid MAC key length <{0}>
     InvalidMacKeyLength(usize),
-    /// invalid ciphertext message
-    InvalidCiphertext,
 
     /// no sender key state
     NoSenderKeyState,
@@ -76,9 +74,9 @@ pub enum SignalProtocolError {
 
     /// message with old counter {0} / {1}
     DuplicatedMessage(u32, u32),
-    /// invalid message {0}
+    /// invalid message: {0}
     InvalidMessage(&'static str),
-    /// internal error {0}
+    /// internal error: {0}
     InternalError(&'static str),
     /// error while invoking an ffi callback: {0}
     FfiBindingError(String),

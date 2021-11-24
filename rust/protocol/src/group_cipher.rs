@@ -166,7 +166,9 @@ pub async fn group_decrypt(
         }
         Err(crypto::DecryptionError::BadCiphertext(msg)) => {
             log::error!("sender key decryption failed: {}", msg);
-            return Err(SignalProtocolError::InvalidCiphertext);
+            return Err(SignalProtocolError::InvalidMessage(
+                "sender key decryption failed",
+            ));
         }
     };
 
