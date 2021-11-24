@@ -1270,7 +1270,13 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         let their_identity = identity_store
             .get_identity(destination, ctx)
             .await?
-            .ok_or_else(|| SignalProtocolError::SessionNotFound(destination.clone()))?;
+            .ok_or_else(|| {
+                log::error!("missing identity key for {}", destination);
+                // Returned as a SessionNotFound error because (a) we don't have an identity error
+                // that includes the address, and (b) re-establishing the session should re-fetch
+                // the identity.
+                SignalProtocolError::SessionNotFound(destination.clone())
+            })?;
 
         let their_registration_id = session.remote_registration_id().map_err(|_| {
             SignalProtocolError::InvalidState(
