@@ -188,9 +188,10 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
+        | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure)
         | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState)
-        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure) => {
+        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
 

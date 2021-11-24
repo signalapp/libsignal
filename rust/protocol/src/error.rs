@@ -7,6 +7,7 @@ use crate::curve::KeyType;
 
 use displaydoc::Display;
 use thiserror::Error;
+use uuid::Uuid;
 
 use std::panic::UnwindSafe;
 
@@ -67,8 +68,10 @@ pub enum SignalProtocolError {
 
     /// session with {0} not found
     SessionNotFound(crate::ProtocolAddress),
-    /// invalid session structure
+    /// invalid session
     InvalidSessionStructure,
+    /// invalid sender key session with distribution ID {distribution_id}
+    InvalidSenderKeySession { distribution_id: Uuid },
     /// session for {0} has invalid registration ID {1:X}
     InvalidRegistrationId(crate::ProtocolAddress, u32),
 
@@ -76,6 +79,7 @@ pub enum SignalProtocolError {
     DuplicatedMessage(u32, u32),
     /// invalid message: {0}
     InvalidMessage(&'static str),
+
     /// internal error: {0}
     InternalError(&'static str),
     /// error while invoking an ffi callback: {0}

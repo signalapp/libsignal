@@ -42,8 +42,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
                     "outgoing sender key state corrupt for distribution ID {}",
                     distribution_id,
                 );
-                // FIXME: include distribution ID in the error.
-                SignalProtocolError::InvalidSessionStructure
+                SignalProtocolError::InvalidSenderKeySession { distribution_id }
             })?;
 
     let signing_key = sender_key_state.signing_key_private()?;
@@ -161,8 +160,9 @@ pub async fn group_decrypt(
                 skm.distribution_id(),
                 skm.chain_id(),
             );
-            // FIXME: include distribution ID in the error.
-            return Err(SignalProtocolError::InvalidSessionStructure);
+            return Err(SignalProtocolError::InvalidSenderKeySession {
+                distribution_id: skm.distribution_id(),
+            });
         }
         Err(crypto::DecryptionError::BadCiphertext(msg)) => {
             log::error!("sender key decryption failed: {}", msg);
