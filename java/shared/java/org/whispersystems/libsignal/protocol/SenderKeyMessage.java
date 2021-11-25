@@ -10,6 +10,7 @@ import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
+import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
@@ -34,7 +35,7 @@ public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Ow
     return unsafeHandle;
   }
 
-  public SenderKeyMessage(byte[] serialized) throws InvalidMessageException, LegacyMessageException {
+  public SenderKeyMessage(byte[] serialized) throws InvalidMessageException, InvalidVersionException, LegacyMessageException {
     unsafeHandle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 

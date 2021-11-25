@@ -128,7 +128,18 @@ public class SealedSessionCipher {
 
   // For testing only.
   static byte[] multiRecipientMessageForSingleRecipient(byte[] message) {
-    return Native.SealedSessionCipher_MultiRecipientMessageForSingleRecipient(message);
+    try {
+      return Native.SealedSessionCipher_MultiRecipientMessageForSingleRecipient(message);
+    } catch (Exception e) {
+      // Indirect with 'instanceof' because we haven't annotated our JNI methods as throwing.
+      // The compiler could theoretically optimize this away, so don't use this pattern anywhere but
+      // in a testing method.
+      if (e instanceof InvalidVersionException) {
+        throw new AssertionError(e);
+      } else {
+        throw e;
+      }
+    }
   }
 
   public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)

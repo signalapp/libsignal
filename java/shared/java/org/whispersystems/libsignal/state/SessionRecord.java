@@ -11,6 +11,7 @@ import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.IdentityKeyPair;
 import org.whispersystems.libsignal.InvalidKeyException;
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 
@@ -36,11 +37,13 @@ public class SessionRecord implements NativeHandleGuard.Owner {
     this.unsafeHandle = unsafeHandle;
   }
 
-  public static SessionRecord fromSingleSessionState(byte[] sessionStateBytes) throws IOException {
+  // FIXME: This shouldn't be considered a "message".
+  public static SessionRecord fromSingleSessionState(byte[] sessionStateBytes) throws InvalidMessageException {
     return new SessionRecord(Native.SessionRecord_FromSingleSessionState(sessionStateBytes));
   }
 
-  public SessionRecord(byte[] serialized) throws IOException {
+  // FIXME: This shouldn't be considered a "message".
+  public SessionRecord(byte[] serialized) throws InvalidMessageException {
     this.unsafeHandle = Native.SessionRecord_Deserialize(serialized);
   }
 

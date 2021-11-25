@@ -26,7 +26,7 @@ public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard
   }
 
   public PreKeySignalMessage(byte[] serialized)
-      throws InvalidMessageException, InvalidVersionException
+      throws InvalidMessageException, InvalidVersionException, LegacyMessageException, InvalidKeyException
   {
     this.unsafeHandle = Native.PreKeySignalMessage_Deserialize(serialized);
   }
@@ -41,7 +41,7 @@ public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard
     }
   }
 
-  public IdentityKey getIdentityKey() throws InvalidKeyException {
+  public IdentityKey getIdentityKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new IdentityKey(Native.PreKeySignalMessage_GetIdentityKey(guard.nativeHandle()));
     }
@@ -70,13 +70,13 @@ public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard
     }
   }
 
-  public ECPublicKey getBaseKey() throws InvalidKeyException {
+  public ECPublicKey getBaseKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new ECPublicKey(Native.PreKeySignalMessage_GetBaseKey(guard.nativeHandle()));
     }
   }
 
-  public SignalMessage getWhisperMessage() throws InvalidMessageException, LegacyMessageException {
+  public SignalMessage getWhisperMessage() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new SignalMessage(Native.PreKeySignalMessage_GetSignalMessage(guard.nativeHandle()));
     }

@@ -10,6 +10,7 @@ import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
+import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.util.ByteUtil;
@@ -24,7 +25,7 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
      Native.SignalMessage_Destroy(this.unsafeHandle);
   }
 
-  public SignalMessage(byte[] serialized) throws InvalidMessageException, LegacyMessageException {
+  public SignalMessage(byte[] serialized) throws InvalidMessageException, InvalidVersionException, InvalidKeyException, LegacyMessageException {
     unsafeHandle = Native.SignalMessage_Deserialize(serialized);
   }
 

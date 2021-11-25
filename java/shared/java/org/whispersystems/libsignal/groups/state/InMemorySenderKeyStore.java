@@ -2,10 +2,10 @@ package org.whispersystems.libsignal.groups.state;
 
 import org.whispersystems.libsignal.groups.state.SenderKeyRecord;
 import org.whispersystems.libsignal.groups.state.SenderKeyStore;
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.util.Pair;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -29,7 +29,7 @@ public class InMemorySenderKeyStore implements SenderKeyStore {
       } else {
         return new SenderKeyRecord(record.serialize());
       }
-    } catch (IOException e) {
+    } catch (InvalidMessageException e) {
       throw new AssertionError(e);
     }
   }

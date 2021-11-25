@@ -5,12 +5,12 @@
  */
 package org.whispersystems.libsignal.state.impl;
 
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.NoSessionException;
 import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SessionStore;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,7 +30,7 @@ public class InMemorySessionStore implements SessionStore {
       } else {
         return new SessionRecord();
       }
-    } catch (IOException e) {
+    } catch (InvalidMessageException e) {
       throw new AssertionError(e);
     }
   }
@@ -45,7 +45,7 @@ public class InMemorySessionStore implements SessionStore {
       }
       try {
         resultSessions.add(new SessionRecord(serialized));
-      } catch (IOException e) {
+      } catch (InvalidMessageException e) {
         throw new AssertionError(e);
       }
     }

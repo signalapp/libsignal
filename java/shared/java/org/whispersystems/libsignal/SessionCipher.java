@@ -88,16 +88,13 @@ public class SessionCipher {
    * @return The plaintext.
    * @throws InvalidMessageException if the input is not valid ciphertext.
    * @throws DuplicateMessageException if the input is a message that has already been received.
-   * @throws LegacyMessageException if the input is a message formatted by a protocol version that
-   *                                is no longer supported.
    * @throws InvalidKeyIdException when there is no local {@link org.whispersystems.libsignal.state.PreKeyRecord}
    *                               that corresponds to the PreKey ID in the message.
    * @throws InvalidKeyException when the message is formatted incorrectly.
    * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is untrusted.
    */
   public byte[] decrypt(PreKeySignalMessage ciphertext)
-      throws DuplicateMessageException, LegacyMessageException, InvalidMessageException,
-             InvalidKeyIdException, InvalidKeyException, UntrustedIdentityException
+      throws DuplicateMessageException, InvalidMessageException, InvalidKeyIdException, InvalidKeyException, UntrustedIdentityException
   {
     try (
       NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
@@ -120,14 +117,12 @@ public class SessionCipher {
    *
    * @return The plaintext.
    * @throws InvalidMessageException if the input is not valid ciphertext.
+   * @throws InvalidVersionException if the message version does not match the session version.
    * @throws DuplicateMessageException if the input is a message that has already been received.
-   * @throws LegacyMessageException if the input is a message formatted by a protocol version that
-   *                                is no longer supported.
    * @throws NoSessionException if there is no established session for this contact.
    */
   public byte[] decrypt(SignalMessage ciphertext)
-      throws InvalidMessageException, DuplicateMessageException, LegacyMessageException,
-      NoSessionException, UntrustedIdentityException
+      throws InvalidMessageException, InvalidVersionException, DuplicateMessageException, NoSessionException, UntrustedIdentityException
   {
     try (
       NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);

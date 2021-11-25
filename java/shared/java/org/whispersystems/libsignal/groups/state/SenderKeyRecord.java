@@ -7,7 +7,7 @@ package org.whispersystems.libsignal.groups.state;
 
 import org.signal.client.internal.Native;
 import org.signal.client.internal.NativeHandleGuard;
-import java.io.IOException;
+import org.whispersystems.libsignal.InvalidMessageException;
 
 /**
  * A durable representation of a set of SenderKeyStates for a specific
@@ -27,7 +27,8 @@ public class SenderKeyRecord implements NativeHandleGuard.Owner {
     this.unsafeHandle = unsafeHandle;
   }
 
-  public SenderKeyRecord(byte[] serialized) throws IOException {
+  // FIXME: This shouldn't be considered a "message".
+  public SenderKeyRecord(byte[] serialized) throws InvalidMessageException {
     this.unsafeHandle = Native.SenderKeyRecord_Deserialize(serialized);
   }
 

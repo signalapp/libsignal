@@ -6,10 +6,10 @@
 package org.whispersystems.libsignal.state.impl;
 
 import org.whispersystems.libsignal.InvalidKeyIdException;
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 import org.whispersystems.libsignal.state.SignedPreKeyStore;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,7 +27,7 @@ public class InMemorySignedPreKeyStore implements SignedPreKeyStore {
       }
 
       return new SignedPreKeyRecord(store.get(signedPreKeyId));
-    } catch (IOException e) {
+    } catch (InvalidMessageException e) {
       throw new AssertionError(e);
     }
   }
@@ -42,7 +42,7 @@ public class InMemorySignedPreKeyStore implements SignedPreKeyStore {
       }
 
       return results;
-    } catch (IOException e) {
+    } catch (InvalidMessageException e) {
       throw new AssertionError(e);
     }
   }

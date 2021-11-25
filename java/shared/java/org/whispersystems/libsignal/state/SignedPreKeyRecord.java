@@ -8,11 +8,10 @@ package org.whispersystems.libsignal.state;
 import org.signal.client.internal.Native;
 import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.InvalidKeyException;
+import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-
-import java.io.IOException;
 
 public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
@@ -36,7 +35,8 @@ public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
     }
   }
 
-  public SignedPreKeyRecord(byte[] serialized) throws IOException {
+  // FIXME: This shouldn't be considered a "message".
+  public SignedPreKeyRecord(byte[] serialized) throws InvalidMessageException {
     this.unsafeHandle = Native.SignedPreKeyRecord_Deserialize(serialized);
   }
 
