@@ -43,7 +43,7 @@ public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard
 
   public IdentityKey getIdentityKey() throws InvalidKeyException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new IdentityKey(Native.PreKeySignalMessage_GetIdentityKey(guard.nativeHandle()), 0);
+      return new IdentityKey(Native.PreKeySignalMessage_GetIdentityKey(guard.nativeHandle()));
     }
   }
 

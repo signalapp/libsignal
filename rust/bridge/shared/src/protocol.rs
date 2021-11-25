@@ -256,11 +256,6 @@ fn SignalMessage_Deserialize(data: &[u8]) -> Result<SignalMessage> {
     SignalMessage::try_from(data)
 }
 
-#[bridge_fn_buffer(ffi = false, node = false)]
-fn SignalMessage_GetSenderRatchetKey(m: &SignalMessage) -> Vec<u8> {
-    m.sender_ratchet_key().serialize().into_vec()
-}
-
 bridge_get_buffer!(SignalMessage::body -> &[u8], ffi = "message_get_body");
 bridge_get_buffer!(SignalMessage::serialized -> &[u8], ffi = "message_get_serialized");
 bridge_get!(SignalMessage::counter -> u32, ffi = "message_get_counter");
@@ -303,8 +298,8 @@ fn SignalMessage_VerifyMac(
     )
 }
 
-#[bridge_fn(ffi = "message_get_sender_ratchet_key", jni = false, node = false)]
-fn Message_GetSenderRatchetKey(m: &SignalMessage) -> PublicKey {
+#[bridge_fn(ffi = "message_get_sender_ratchet_key", node = false)]
+fn SignalMessage_GetSenderRatchetKey(m: &SignalMessage) -> PublicKey {
     *m.sender_ratchet_key()
 }
 
@@ -329,17 +324,17 @@ fn PreKeySignalMessage_New(
     )
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn(node = false)]
 fn PreKeySignalMessage_GetBaseKey(m: &PreKeySignalMessage) -> PublicKey {
     *m.base_key()
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn(node = false)]
 fn PreKeySignalMessage_GetIdentityKey(m: &PreKeySignalMessage) -> PublicKey {
     *m.identity_key().public_key()
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn(node = false)]
 fn PreKeySignalMessage_GetSignalMessage(m: &PreKeySignalMessage) -> SignalMessage {
     m.message().clone()
 }
@@ -349,25 +344,6 @@ bridge_get_buffer!(
     PreKeySignalMessage::serialized as Serialize -> &[u8],
     jni = "PreKeySignalMessage_1GetSerialized"
 );
-
-#[bridge_fn_buffer(ffi = false, jni = "PreKeySignalMessage_1GetBaseKey", node = false)]
-fn PreKeySignalMessage_GetBaseKeySerialized(m: &PreKeySignalMessage) -> Vec<u8> {
-    m.base_key().serialize().into_vec()
-}
-
-#[bridge_fn_buffer(ffi = false, jni = "PreKeySignalMessage_1GetIdentityKey", node = false)]
-fn PreKeySignalMessage_GetIdentityKeySerialized(m: &PreKeySignalMessage) -> Vec<u8> {
-    m.identity_key().serialize().into_vec()
-}
-
-#[bridge_fn_buffer(
-    ffi = false,
-    jni = "PreKeySignalMessage_1GetSignalMessage",
-    node = false
-)]
-fn PreKeySignalMessage_GetSignalMessageSerialized(m: &PreKeySignalMessage) -> &[u8] {
-    m.message().serialized()
-}
 
 bridge_get!(PreKeySignalMessage::registration_id -> u32);
 bridge_get!(PreKeySignalMessage::signed_pre_key_id -> u32);
@@ -414,17 +390,6 @@ fn SenderKeyMessage_VerifySignature(skm: &SenderKeyMessage, pubkey: &PublicKey) 
 bridge_deserialize!(SenderKeyDistributionMessage::try_from);
 bridge_get_buffer!(SenderKeyDistributionMessage::chain_key -> &[u8]);
 
-#[bridge_fn_buffer(
-    ffi = false,
-    jni = "SenderKeyDistributionMessage_1GetSignatureKey",
-    node = false
-)]
-fn SenderKeyDistributionMessage_GetSignatureKeySerialized(
-    m: &SenderKeyDistributionMessage,
-) -> Result<Vec<u8>> {
-    Ok(m.signing_key()?.serialize().into_vec())
-}
-
 bridge_get_buffer!(
     SenderKeyDistributionMessage::serialized as Serialize -> &[u8],
     jni = "SenderKeyDistributionMessage_1GetSerialized"
@@ -453,7 +418,7 @@ fn SenderKeyDistributionMessage_New(
     )
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn(node = false)]
 fn SenderKeyDistributionMessage_GetSignatureKey(
     m: &SenderKeyDistributionMessage,
 ) -> Result<PublicKey> {

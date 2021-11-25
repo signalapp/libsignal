@@ -237,12 +237,12 @@ public final class Native {
 
   public static native long PreKeySignalMessage_Deserialize(byte[] data);
   public static native void PreKeySignalMessage_Destroy(long handle);
-  public static native byte[] PreKeySignalMessage_GetBaseKey(long m);
-  public static native byte[] PreKeySignalMessage_GetIdentityKey(long m);
+  public static native long PreKeySignalMessage_GetBaseKey(long m);
+  public static native long PreKeySignalMessage_GetIdentityKey(long m);
   public static native int PreKeySignalMessage_GetPreKeyId(long obj);
   public static native int PreKeySignalMessage_GetRegistrationId(long obj);
   public static native byte[] PreKeySignalMessage_GetSerialized(long obj);
-  public static native byte[] PreKeySignalMessage_GetSignalMessage(long m);
+  public static native long PreKeySignalMessage_GetSignalMessage(long m);
   public static native int PreKeySignalMessage_GetSignedPreKeyId(long obj);
   public static native int PreKeySignalMessage_GetVersion(long obj);
   public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKey, long identityKey, long signalMessage);
@@ -317,7 +317,7 @@ public final class Native {
   public static native UUID SenderKeyDistributionMessage_GetDistributionId(long obj);
   public static native int SenderKeyDistributionMessage_GetIteration(long obj);
   public static native byte[] SenderKeyDistributionMessage_GetSerialized(long obj);
-  public static native byte[] SenderKeyDistributionMessage_GetSignatureKey(long m);
+  public static native long SenderKeyDistributionMessage_GetSignatureKey(long m);
   public static native long SenderKeyDistributionMessage_New(int messageVersion, UUID distributionId, int chainId, int iteration, byte[] chainkey, long pk);
 
   public static native long SenderKeyMessage_Deserialize(byte[] data);
@@ -402,7 +402,7 @@ public final class Native {
   public static native byte[] SignalMessage_GetBody(long obj);
   public static native int SignalMessage_GetCounter(long obj);
   public static native int SignalMessage_GetMessageVersion(long obj);
-  public static native byte[] SignalMessage_GetSenderRatchetKey(long m);
+  public static native long SignalMessage_GetSenderRatchetKey(long m);
   public static native byte[] SignalMessage_GetSerialized(long obj);
   public static native long SignalMessage_New(int messageVersion, byte[] macKey, long senderRatchetKey, int counter, int previousCounter, byte[] ciphertext, long senderIdentityKey, long receiverIdentityKey);
   public static native boolean SignalMessage_VerifyMac(long msg, long senderIdentityKey, long receiverIdentityKey, byte[] macKey);
