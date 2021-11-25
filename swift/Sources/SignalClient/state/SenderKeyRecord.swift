@@ -24,12 +24,6 @@ public class SenderKeyRecord: ClonableHandleOwner {
         self.init(owned: handle!)
     }
 
-    public convenience init() {
-        var handle: OpaquePointer?
-        failOnError(signal_sender_key_record_new_fresh(&handle))
-        self.init(owned: handle!)
-    }
-
     public func serialize() -> [UInt8] {
         return withNativeHandle { nativeHandle in
             failOnError {

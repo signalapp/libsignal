@@ -23,10 +23,6 @@ public class SenderKeyRecord implements NativeHandleGuard.Owner {
     Native.SenderKeyRecord_Destroy(this.unsafeHandle);
   }
 
-  public SenderKeyRecord() {
-    this.unsafeHandle = Native.SenderKeyRecord_New();
-  }
-
   public SenderKeyRecord(long unsafeHandle) {
     this.unsafeHandle = unsafeHandle;
   }

@@ -671,10 +671,6 @@ export class SenderKeyRecord {
     this._nativeHandle = nativeHandle;
   }
 
-  static new(): SenderKeyRecord {
-    return new SenderKeyRecord(Native.SenderKeyRecord_New());
-  }
-
   static deserialize(buffer: Buffer): SenderKeyRecord {
     return new SenderKeyRecord(Native.SenderKeyRecord_Deserialize(buffer));
   }

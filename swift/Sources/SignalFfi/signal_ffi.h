@@ -834,8 +834,6 @@ SignalFfiError *signal_sender_key_record_serialize(const unsigned char **out,
                                                    size_t *out_len,
                                                    const SignalSenderKeyRecord *obj);
 
-SignalFfiError *signal_sender_key_record_new_fresh(SignalSenderKeyRecord **out);
-
 SignalFfiError *signal_server_certificate_deserialize(SignalServerCertificate **out,
                                                       SignalBorrowedBuffer data);
 

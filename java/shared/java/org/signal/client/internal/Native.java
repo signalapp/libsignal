@@ -333,7 +333,6 @@ public final class Native {
   public static native long SenderKeyRecord_Deserialize(byte[] data);
   public static native void SenderKeyRecord_Destroy(long handle);
   public static native byte[] SenderKeyRecord_GetSerialized(long obj);
-  public static native long SenderKeyRecord_New();
 
   public static native long ServerCertificate_Deserialize(byte[] data);
   public static native void ServerCertificate_Destroy(long handle);

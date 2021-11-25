@@ -526,13 +526,6 @@ describe('SignalClient', () => {
     );
     assert.deepEqual(spkrFromBytes, spkr);
   });
-  it('SenderKeyRecord', () => {
-    const skr = SignalClient.SenderKeyRecord.new();
-    const skrFromBytes = SignalClient.SenderKeyRecord.deserialize(
-      skr.serialize()
-    );
-    assert.deepEqual(skr, skrFromBytes);
-  });
   it('SignalMessage and PreKeySignalMessage', () => {
     const messageVersion = 3;
     const macKey = Buffer.alloc(32, 0xab);

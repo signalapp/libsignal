@@ -31,7 +31,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
         .await?
         .ok_or(SignalProtocolError::NoSenderKeyState { distribution_id })?;
 
-    let sender_key_state = record.sender_key_state()?;
+    let sender_key_state = record.sender_key_state_mut()?;
 
     let sender_key = sender_key_state.sender_chain_key()?.sender_message_key()?;
 
@@ -221,35 +221,39 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     csprng: &mut R,
     ctx: Context,
 ) -> Result<SenderKeyDistributionMessage> {
-    let mut sender_key_record = sender_key_store
+    let sender_key_record = sender_key_store
         .load_sender_key(sender, distribution_id, ctx)
-        .await?
-        .unwrap_or_else(SenderKeyRecord::new_empty);
+        .await?;
 
-    if sender_key_record.is_empty()? {
-        // libsignal-protocol-java uses 31-bit integers for sender key chain IDs
-        let chain_id = (csprng.gen::<u32>()) >> 1;
-        log::info!(
-            "Creating SenderKey for distribution {} with chain ID {}",
-            distribution_id,
-            chain_id
-        );
+    let sender_key_record = match sender_key_record {
+        Some(record) => record,
+        None => {
+            // libsignal-protocol-java uses 31-bit integers for sender key chain IDs
+            let chain_id = (csprng.gen::<u32>()) >> 1;
+            log::info!(
+                "Creating SenderKey for distribution {} with chain ID {}",
+                distribution_id,
+                chain_id
+            );
 
-        let iteration = 0;
-        let sender_key: [u8; 32] = csprng.gen();
-        let signing_key = KeyPair::generate(csprng);
-        sender_key_record.set_sender_key_state(
-            SENDERKEY_MESSAGE_CURRENT_VERSION,
-            chain_id,
-            iteration,
-            &sender_key,
-            signing_key.public_key,
-            Some(signing_key.private_key),
-        )?;
-        sender_key_store
-            .store_sender_key(sender, distribution_id, &sender_key_record, ctx)
-            .await?;
-    }
+            let iteration = 0;
+            let sender_key: [u8; 32] = csprng.gen();
+            let signing_key = KeyPair::generate(csprng);
+            let mut record = SenderKeyRecord::new_empty();
+            record.add_sender_key_state(
+                SENDERKEY_MESSAGE_CURRENT_VERSION,
+                chain_id,
+                iteration,
+                &sender_key,
+                signing_key.public_key,
+                Some(signing_key.private_key),
+            )?;
+            sender_key_store
+                .store_sender_key(sender, distribution_id, &record, ctx)
+                .await?;
+            record
+        }
+    };
 
     let state = sender_key_record.sender_key_state()?;
     let sender_chain_key = state.sender_chain_key()?;

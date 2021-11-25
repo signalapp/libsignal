@@ -205,7 +205,6 @@ export function SenderKeyMessage_New(messageVersion: number, distributionId: Uui
 export function SenderKeyMessage_Serialize(obj: Wrapper<SenderKeyMessage>): Buffer;
 export function SenderKeyMessage_VerifySignature(skm: Wrapper<SenderKeyMessage>, pubkey: Wrapper<PublicKey>): boolean;
 export function SenderKeyRecord_Deserialize(data: Buffer): SenderKeyRecord;
-export function SenderKeyRecord_New(): SenderKeyRecord;
 export function SenderKeyRecord_Serialize(obj: Wrapper<SenderKeyRecord>): Buffer;
 export function ServerCertificate_Deserialize(data: Buffer): ServerCertificate;
 export function ServerCertificate_GetCertificate(obj: Wrapper<ServerCertificate>): Buffer;

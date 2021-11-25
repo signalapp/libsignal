@@ -256,7 +256,7 @@ pub struct SenderKeyRecord {
 }
 
 impl SenderKeyRecord {
-    pub fn new_empty() -> Self {
+    pub(crate) fn new_empty() -> Self {
         Self {
             states: VecDeque::with_capacity(consts::MAX_SENDER_KEY_STATES),
         }
@@ -276,7 +276,14 @@ impl SenderKeyRecord {
         Ok(self.states.is_empty())
     }
 
-    pub fn sender_key_state(&mut self) -> Result<&mut SenderKeyState> {
+    pub fn sender_key_state(&self) -> Result<&SenderKeyState> {
+        if !self.states.is_empty() {
+            return Ok(&self.states[0]);
+        }
+        Err(SignalProtocolError::InvalidSessionStructure)
+    }
+
+    pub fn sender_key_state_mut(&mut self) -> Result<&mut SenderKeyState> {
         if !self.states.is_empty() {
             return Ok(&mut self.states[0]);
         }
@@ -364,26 +371,6 @@ impl SenderKeyRecord {
         self.states
             .retain(|state| state.chain_id().ok() != Some(chain_id));
         initial_length - self.states.len()
-    }
-
-    pub fn set_sender_key_state(
-        &mut self,
-        message_version: u8,
-        chain_id: u32,
-        iteration: u32,
-        chain_key: &[u8],
-        signature_key: PublicKey,
-        signature_private_key: Option<PrivateKey>,
-    ) -> Result<()> {
-        self.states.clear();
-        self.add_sender_key_state(
-            message_version,
-            chain_id,
-            iteration,
-            chain_key,
-            signature_key,
-            signature_private_key,
-        )
     }
 
     pub fn as_protobuf(&self) -> Result<storage_proto::SenderKeyRecordStructure> {

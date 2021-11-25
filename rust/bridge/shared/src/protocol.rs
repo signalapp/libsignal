@@ -609,11 +609,6 @@ bridge_get_buffer!(
     jni = "SenderKeyRecord_1GetSerialized"
 );
 
-#[bridge_fn(ffi = "sender_key_record_new_fresh")]
-fn SenderKeyRecord_New() -> SenderKeyRecord {
-    SenderKeyRecord::new_empty()
-}
-
 bridge_deserialize!(ServerCertificate::deserialize);
 bridge_get_buffer!(ServerCertificate::serialized -> &[u8]);
 bridge_get_buffer!(ServerCertificate::certificate -> &[u8]);
