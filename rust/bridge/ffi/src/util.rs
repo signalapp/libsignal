@@ -60,7 +60,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::InvalidType => SignalErrorCode::InvalidType,
 
             SignalFfiError::UnexpectedPanic(_)
-            | SignalFfiError::Signal(SignalProtocolError::InternalError(_))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::InternalError(_))
             | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_)) => {
                 SignalErrorCode::InternalError

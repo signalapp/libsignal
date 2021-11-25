@@ -1240,10 +1240,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
                     &mut ciphertext,
                 )
             })
-            .map_err(|err| {
-                log::error!("failed to encrypt using AES-GCM-SIV: {}", err);
-                SignalProtocolError::InternalError("failed to encrypt using AES-GCM-SIV")
-            })?;
+            .expect("AES-GCM-SIV encryption should not fail with a just-computed key");
         // AES-GCM-SIV expects the authentication tag to be at the end of the ciphertext
         // when decrypting.
         ciphertext.extend_from_slice(&symmetric_authentication_tag);

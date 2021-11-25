@@ -80,8 +80,6 @@ pub enum SignalProtocolError {
     /// invalid {0:?} message: {1}
     InvalidMessage(crate::CiphertextMessageType, &'static str),
 
-    /// internal error: {0}
-    InternalError(&'static str),
     /// error while invoking an ffi callback: {0}
     FfiBindingError(String),
     /// error in method call '{0}': {1}
