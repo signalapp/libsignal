@@ -21,7 +21,7 @@ curve25519-dalek = { version = "3.0", features = ["serde"] }
 hkdf = "0.11"
 hmac = "0.11.0"
 itertools = "0.10.1"
-prost = "0.8"
+prost = "0.9"
 rand = "0.7.3"
 sha2 = "0.9"
 subtle = "2.2.3"
@@ -41,7 +41,7 @@ criterion = "0.3"
 futures-util = "0.3.7"
 
 [build-dependencies]
-prost-build = "0.8"
+prost-build = "0.9"
 
 [[bench]]
 name = "session"
