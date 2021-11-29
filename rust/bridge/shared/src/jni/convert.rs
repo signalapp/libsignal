@@ -224,10 +224,10 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
 impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JObject<'a>;
     fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
-        check_jobject_type(env, foreign, "java/util/UUID")?;
-        let sig = jni_signature!(() -> long);
-        let msb: jlong = call_method_checked(env, foreign, "getMostSignificantBits", sig, &[])?;
-        let lsb: jlong = call_method_checked(env, foreign, "getLeastSignificantBits", sig, &[])?;
+        check_jobject_type(env, foreign, jni_class_name!(java.util.UUID))?;
+        let args = jni_args!(() -> long);
+        let msb: jlong = call_method_checked(env, foreign, "getMostSignificantBits", args)?;
+        let lsb: jlong = call_method_checked(env, foreign, "getLeastSignificantBits", args)?;
 
         let mut bytes = [0u8; 16];
         bytes[..8].copy_from_slice(&msb.to_be_bytes());
@@ -361,7 +361,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                "org/whispersystems/libsignal/protocol/SignalMessage",
+                jni_class_name!(org.whispersystems.libsignal.protocol.SignalMessage),
                 Self::SignalMessage,
             )
             .transpose()
@@ -370,7 +370,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                jni_class_name!(org.whispersystems.libsignal.protocol.PreKeySignalMessage),
                 Self::PreKeySignalMessage,
             )
             .transpose()
@@ -379,7 +379,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                "org/whispersystems/libsignal/protocol/SenderKeyMessage",
+                jni_class_name!(org.whispersystems.libsignal.protocol.SenderKeyMessage),
                 Self::SenderKeyMessage,
             )
             .transpose()
@@ -388,7 +388,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                "org/whispersystems/libsignal/protocol/PlaintextContent",
+                jni_class_name!(org.whispersystems.libsignal.protocol.PlaintextContent),
                 Self::PlaintextContent,
             )
             .transpose()
@@ -607,18 +607,14 @@ impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
 impl ResultTypeInfo for uuid::Uuid {
     type ResultType = jobject;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
-        let uuid_class = env.find_class("java/util/UUID")?;
+        let uuid_class = env.find_class(jni_class_name!(java.util.UUID))?;
         let uuid_bytes: [u8; 16] = *self.as_bytes();
-        let ctor_args = [
-            JValue::from(jlong::from_be_bytes(
-                uuid_bytes[..8].try_into().expect("correct length"),
-            )),
-            JValue::from(jlong::from_be_bytes(
-                uuid_bytes[8..].try_into().expect("correct length"),
-            )),
-        ];
-
-        Ok(*env.new_object(uuid_class, "(JJ)V", &ctor_args)?)
+        let (msb, lsb) = uuid_bytes.split_at(8);
+        let args = jni_args!((
+            jlong::from_be_bytes(msb.try_into().expect("correct length")) => long,
+            jlong::from_be_bytes(lsb.try_into().expect("correct length")) => long,
+        ) -> void);
+        Ok(*env.new_object(uuid_class, args.sig, &args.args)?)
     }
     fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
         signal_jni_result
@@ -634,22 +630,22 @@ impl ResultTypeInfo for CiphertextMessage {
         let obj = match self {
             CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
                 env,
-                "org/whispersystems/libsignal/protocol/SignalMessage",
+                jni_class_name!(org.whispersystems.libsignal.protocol.SignalMessage),
                 m.convert_into(env)?,
             ),
             CiphertextMessage::PreKeySignalMessage(m) => jobject_from_native_handle(
                 env,
-                "org/whispersystems/libsignal/protocol/PreKeySignalMessage",
+                jni_class_name!(org.whispersystems.libsignal.protocol.PreKeySignalMessage),
                 m.convert_into(env)?,
             ),
             CiphertextMessage::SenderKeyMessage(m) => jobject_from_native_handle(
                 env,
-                "org/whispersystems/libsignal/protocol/SenderKeyMessage",
+                jni_class_name!(org.whispersystems.libsignal.protocol.SenderKeyMessage),
                 m.convert_into(env)?,
             ),
             CiphertextMessage::PlaintextContent(m) => jobject_from_native_handle(
                 env,
-                "org/whispersystems/libsignal/protocol/PlaintextContent",
+                jni_class_name!(org.whispersystems.libsignal.protocol.PlaintextContent),
                 m.convert_into(env)?,
             ),
         };
