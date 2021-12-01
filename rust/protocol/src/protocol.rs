@@ -205,7 +205,8 @@ impl TryFrom<&[u8]> for SignalMessage {
         }
 
         let proto_structure =
-            proto::wire::SignalMessage::decode(&value[1..value.len() - SignalMessage::MAC_LENGTH])?;
+            proto::wire::SignalMessage::decode(&value[1..value.len() - SignalMessage::MAC_LENGTH])
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let sender_ratchet_key = proto_structure
             .ratchet_key
@@ -346,7 +347,8 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
             ));
         }
 
-        let proto_structure = proto::wire::PreKeySignalMessage::decode(&value[1..])?;
+        let proto_structure = proto::wire::PreKeySignalMessage::decode(&value[1..])
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let base_key = proto_structure
             .base_key
@@ -488,7 +490,8 @@ impl TryFrom<&[u8]> for SenderKeyMessage {
             ));
         }
         let proto_structure =
-            proto::wire::SenderKeyMessage::decode(&value[1..value.len() - Self::SIGNATURE_LEN])?;
+            proto::wire::SenderKeyMessage::decode(&value[1..value.len() - Self::SIGNATURE_LEN])
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let distribution_id = proto_structure
             .distribution_uuid
@@ -625,7 +628,8 @@ impl TryFrom<&[u8]> for SenderKeyDistributionMessage {
             ));
         }
 
-        let proto_structure = proto::wire::SenderKeyDistributionMessage::decode(&value[1..])?;
+        let proto_structure = proto::wire::SenderKeyDistributionMessage::decode(&value[1..])
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let distribution_id = proto_structure
             .distribution_uuid
@@ -798,7 +802,8 @@ impl TryFrom<&[u8]> for DecryptionErrorMessage {
     type Error = SignalProtocolError;
 
     fn try_from(value: &[u8]) -> Result<Self> {
-        let proto_structure = proto::service::DecryptionErrorMessage::decode(value)?;
+        let proto_structure = proto::service::DecryptionErrorMessage::decode(value)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         let timestamp = proto_structure
             .timestamp
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -823,7 +828,8 @@ pub fn extract_decryption_error_message_from_serialized_content(
     if bytes.last() != Some(&PlaintextContent::PADDING_BOUNDARY_BYTE) {
         return Err(SignalProtocolError::InvalidProtobufEncoding);
     }
-    let content = proto::service::Content::decode(bytes.split_last().expect("checked above").1)?;
+    let content = proto::service::Content::decode(bytes.split_last().expect("checked above").1)
+        .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
     content
         .decryption_error_message
         .as_deref()

@@ -49,7 +49,8 @@ const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
 
 impl ServerCertificate {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
-        let pb = proto::sealed_sender::ServerCertificate::decode(data)?;
+        let pb = proto::sealed_sender::ServerCertificate::decode(data)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         if pb.certificate.is_none() || pb.signature.is_none() {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
@@ -62,7 +63,8 @@ impl ServerCertificate {
             .signature
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let certificate_data =
-            proto::sealed_sender::server_certificate::Certificate::decode(certificate.as_ref())?;
+            proto::sealed_sender::server_certificate::Certificate::decode(certificate.as_ref())
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         let key = PublicKey::try_from(
             &certificate_data
                 .key
@@ -165,7 +167,8 @@ pub struct SenderCertificate {
 
 impl SenderCertificate {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
-        let pb = proto::sealed_sender::SenderCertificate::decode(data)?;
+        let pb = proto::sealed_sender::SenderCertificate::decode(data)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         let certificate = pb
             .certificate
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
@@ -173,7 +176,8 @@ impl SenderCertificate {
             .signature
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let certificate_data =
-            proto::sealed_sender::sender_certificate::Certificate::decode(certificate.as_ref())?;
+            proto::sealed_sender::sender_certificate::Certificate::decode(certificate.as_ref())
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let sender_device_id = certificate_data
             .sender_device
@@ -402,7 +406,8 @@ pub struct UnidentifiedSenderMessageContent {
 
 impl UnidentifiedSenderMessageContent {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
-        let pb = proto::sealed_sender::unidentified_sender_message::Message::decode(data)?;
+        let pb = proto::sealed_sender::unidentified_sender_message::Message::decode(data)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let msg_type = pb
             .r#type
@@ -534,7 +539,8 @@ impl UnidentifiedSenderMessage {
         match version {
             0 | SEALED_SENDER_V1_VERSION => {
                 // XXX should we really be accepted version == 0 here?
-                let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])?;
+                let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])
+                    .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
                 let ephemeral_public = pb
                     .ephemeral_public
@@ -1369,7 +1375,8 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
         Ok(prefix)
     }
     fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
-        let result: usize = prost::decode_length_delimiter(*buf)?;
+        let result: usize = prost::decode_length_delimiter(*buf)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         let _ = advance(buf, prost::length_delimiter_len(result))
             .expect("just decoded that many bytes");
         result

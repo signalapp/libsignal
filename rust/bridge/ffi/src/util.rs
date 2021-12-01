@@ -67,7 +67,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
 
-            SignalFfiError::Signal(SignalProtocolError::ProtobufDecodingError(_)) => {
+            SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding) => {
                 SignalErrorCode::ProtobufError
             }
 
@@ -126,7 +126,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(..))
             | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding)
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {

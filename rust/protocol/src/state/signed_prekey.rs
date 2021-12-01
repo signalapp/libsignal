@@ -4,7 +4,7 @@
 //
 
 use crate::proto::storage::SignedPreKeyRecordStructure;
-use crate::{KeyPair, PrivateKey, PublicKey, Result};
+use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 use prost::Message;
 
 pub type SignedPreKeyId = u32;
@@ -32,7 +32,8 @@ impl SignedPreKeyRecord {
 
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         Ok(Self {
-            signed_pre_key: SignedPreKeyRecordStructure::decode(data)?,
+            signed_pre_key: SignedPreKeyRecordStructure::decode(data)
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?,
         })
     }
 

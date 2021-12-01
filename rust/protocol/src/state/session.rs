@@ -509,7 +509,8 @@ impl SessionRecord {
     }
 
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
-        let record = RecordStructure::decode(bytes)?;
+        let record = RecordStructure::decode(bytes)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         Ok(Self {
             current_session: record.current_session.map(|s| s.into()),
@@ -518,7 +519,10 @@ impl SessionRecord {
     }
 
     pub fn from_single_session_state(bytes: &[u8]) -> Result<Self> {
-        let session = SessionState::new(SessionStructure::decode(bytes)?);
+        let session = SessionState::new(
+            SessionStructure::decode(bytes)
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?,
+        );
         Ok(Self {
             current_session: Some(session),
             previous_sessions: Vec::new(),
@@ -580,9 +584,11 @@ impl SessionRecord {
     pub(crate) fn previous_session_states(
         &self,
     ) -> impl ExactSizeIterator<Item = Result<SessionState>> + '_ {
-        self.previous_sessions
-            .iter()
-            .map(|bytes| Ok(SessionStructure::decode(&bytes[..])?.into()))
+        self.previous_sessions.iter().map(|bytes| {
+            Ok(SessionStructure::decode(&bytes[..])
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?
+                .into())
+        })
     }
 
     pub(crate) fn promote_old_session(

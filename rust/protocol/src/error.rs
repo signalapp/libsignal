@@ -20,11 +20,6 @@ pub enum SignalProtocolError {
     /// invalid state for call to {0} to succeed: {1}
     InvalidState(&'static str, String),
 
-    // TODO: avoid duplicating error information in the Display impl and the #[from] or #[source]
-    // attribute if/when we switch to using an error reporting mechanism supporting stack traces:
-    // see https://github.com/yaahc/blog.rust-lang.org/blob/master/posts/inside-rust/2021-05-15-What-the-error-handling-project-group-is-working-towards.md#duplicate-information-issue
-    /// failed to decode protobuf: {0}
-    ProtobufDecodingError(#[from] prost::DecodeError),
     /// protobuf encoding was invalid
     InvalidProtobufEncoding,
 

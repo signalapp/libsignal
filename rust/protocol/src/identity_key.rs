@@ -140,7 +140,8 @@ impl TryFrom<&[u8]> for IdentityKeyPair {
     type Error = SignalProtocolError;
 
     fn try_from(value: &[u8]) -> Result<Self> {
-        let structure = proto::storage::IdentityKeyPairStructure::decode(value)?;
+        let structure = proto::storage::IdentityKeyPairStructure::decode(value)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         Ok(Self {
             identity_key: IdentityKey::try_from(&structure.public_key[..])?,
             private_key: PrivateKey::deserialize(&structure.private_key)?,

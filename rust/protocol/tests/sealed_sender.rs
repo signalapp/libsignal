@@ -41,7 +41,6 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
             }
             Err(e) => match e {
                 SignalProtocolError::InvalidProtobufEncoding
-                | SignalProtocolError::ProtobufDecodingError(_)
                 | SignalProtocolError::BadKeyType(_)
                 | SignalProtocolError::BadKeyLength(_, _) => {}
 
@@ -120,7 +119,6 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
             }
             Err(e) => match e {
                 SignalProtocolError::InvalidProtobufEncoding
-                | SignalProtocolError::ProtobufDecodingError(_)
                 | SignalProtocolError::BadKeyLength(_, _)
                 | SignalProtocolError::BadKeyType(_) => {}
 

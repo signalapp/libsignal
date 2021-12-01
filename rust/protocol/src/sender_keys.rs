@@ -156,7 +156,8 @@ impl SenderKeyState {
     }
 
     pub fn deserialize(buf: &[u8]) -> Result<Self> {
-        let state = storage_proto::SenderKeyStateStructure::decode(buf)?;
+        let state = storage_proto::SenderKeyStateStructure::decode(buf)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         Ok(Self { state })
     }
 
@@ -263,7 +264,8 @@ impl SenderKeyRecord {
     }
 
     pub fn deserialize(buf: &[u8]) -> Result<SenderKeyRecord> {
-        let skr = storage_proto::SenderKeyRecordStructure::decode(buf)?;
+        let skr = storage_proto::SenderKeyRecordStructure::decode(buf)
+            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
         let mut states = VecDeque::with_capacity(skr.sender_key_states.len());
         for state in skr.sender_key_states {
