@@ -9,7 +9,7 @@ use crate::crypto;
 use crate::{PrivateKey, PublicKey, Result};
 use std::fmt;
 
-pub struct MessageKeys {
+pub(crate) struct MessageKeys {
     cipher_key: [u8; 32],
     mac_key: [u8; 32],
     iv: [u8; 16],
@@ -17,21 +17,21 @@ pub struct MessageKeys {
 }
 
 impl MessageKeys {
-    pub fn derive_keys(input_key_material: &[u8], counter: u32) -> Result<Self> {
+    pub(crate) fn derive_keys(input_key_material: &[u8], counter: u32) -> Self {
         let mut okm = [0; 80];
         hkdf::Hkdf::<sha2::Sha256>::new(None, input_key_material)
             .expand(b"WhisperMessageKeys", &mut okm)
             .expect("valid output length");
 
-        Ok(MessageKeys {
+        MessageKeys {
             cipher_key: *array_ref![okm, 0, 32],
             mac_key: *array_ref![okm, 32, 32],
             iv: *array_ref![okm, 64, 16],
             counter,
-        })
+        }
     }
 
-    pub fn new(cipher_key: [u8; 32], mac_key: [u8; 32], iv: [u8; 16], counter: u32) -> Self {
+    pub(crate) fn new(cipher_key: [u8; 32], mac_key: [u8; 32], iv: [u8; 16], counter: u32) -> Self {
         MessageKeys {
             cipher_key,
             mac_key,
@@ -41,28 +41,28 @@ impl MessageKeys {
     }
 
     #[inline]
-    pub fn cipher_key(&self) -> &[u8; 32] {
+    pub(crate) fn cipher_key(&self) -> &[u8; 32] {
         &self.cipher_key
     }
 
     #[inline]
-    pub fn mac_key(&self) -> &[u8; 32] {
+    pub(crate) fn mac_key(&self) -> &[u8; 32] {
         &self.mac_key
     }
 
     #[inline]
-    pub fn iv(&self) -> &[u8; 16] {
+    pub(crate) fn iv(&self) -> &[u8; 16] {
         &self.iv
     }
 
     #[inline]
-    pub fn counter(&self) -> u32 {
+    pub(crate) fn counter(&self) -> u32 {
         self.counter
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct ChainKey {
+pub(crate) struct ChainKey {
     key: [u8; 32],
     index: u32,
 }
@@ -71,28 +71,28 @@ impl ChainKey {
     const MESSAGE_KEY_SEED: [u8; 1] = [0x01u8];
     const CHAIN_KEY_SEED: [u8; 1] = [0x02u8];
 
-    pub fn new(key: [u8; 32], index: u32) -> Self {
+    pub(crate) fn new(key: [u8; 32], index: u32) -> Self {
         Self { key, index }
     }
 
     #[inline]
-    pub fn key(&self) -> &[u8; 32] {
+    pub(crate) fn key(&self) -> &[u8; 32] {
         &self.key
     }
 
     #[inline]
-    pub fn index(&self) -> u32 {
+    pub(crate) fn index(&self) -> u32 {
         self.index
     }
 
-    pub fn next_chain_key(&self) -> Result<Self> {
-        Ok(Self {
+    pub(crate) fn next_chain_key(&self) -> Self {
+        Self {
             key: self.calculate_base_material(Self::CHAIN_KEY_SEED),
             index: self.index + 1,
-        })
+        }
     }
 
-    pub fn message_keys(&self) -> Result<MessageKeys> {
+    pub(crate) fn message_keys(&self) -> MessageKeys {
         MessageKeys::derive_keys(
             &self.calculate_base_material(Self::MESSAGE_KEY_SEED),
             self.index,
@@ -105,20 +105,20 @@ impl ChainKey {
 }
 
 #[derive(Clone, Debug)]
-pub struct RootKey {
+pub(crate) struct RootKey {
     key: [u8; 32],
 }
 
 impl RootKey {
-    pub fn new(key: [u8; 32]) -> Self {
+    pub(crate) fn new(key: [u8; 32]) -> Self {
         Self { key }
     }
 
-    pub fn key(&self) -> &[u8; 32] {
+    pub(crate) fn key(&self) -> &[u8; 32] {
         &self.key
     }
 
-    pub fn create_chain(
+    pub(crate) fn create_chain(
         &self,
         their_ratchet_key: &PublicKey,
         our_ratchet_key: &PrivateKey,
@@ -176,13 +176,13 @@ mod tests {
 
         let chain_key = ChainKey::new(seed, 0);
         assert_eq!(&seed, chain_key.key());
-        assert_eq!(&message_key, chain_key.message_keys()?.cipher_key());
-        assert_eq!(&mac_key, chain_key.message_keys()?.mac_key());
-        assert_eq!(&next_chain_key, chain_key.next_chain_key()?.key());
+        assert_eq!(&message_key, chain_key.message_keys().cipher_key());
+        assert_eq!(&mac_key, chain_key.message_keys().mac_key());
+        assert_eq!(&next_chain_key, chain_key.next_chain_key().key());
         assert_eq!(0, chain_key.index());
-        assert_eq!(0, chain_key.message_keys()?.counter());
-        assert_eq!(1, chain_key.next_chain_key()?.index());
-        assert_eq!(1, chain_key.next_chain_key()?.message_keys()?.counter());
+        assert_eq!(0, chain_key.message_keys().counter());
+        assert_eq!(1, chain_key.next_chain_key().index());
+        assert_eq!(1, chain_key.next_chain_key().message_keys().counter());
         Ok(())
     }
 }

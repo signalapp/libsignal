@@ -8,7 +8,7 @@ mod params;
 
 use std::convert::TryInto;
 
-pub use self::keys::{ChainKey, MessageKeys, RootKey};
+pub(crate) use self::keys::{ChainKey, MessageKeys, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::proto::storage::SessionStructure;
 use crate::protocol::CIPHERTEXT_MESSAGE_CURRENT_VERSION;
@@ -16,7 +16,7 @@ use crate::state::SessionState;
 use crate::{KeyPair, Result, SessionRecord};
 use rand::{CryptoRng, Rng};
 
-fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
+fn derive_keys(secret_input: &[u8]) -> (RootKey, ChainKey) {
     let mut secrets = [0; 64];
     hkdf::Hkdf::<sha2::Sha256>::new(None, secret_input)
         .expand(b"WhisperText", &mut secrets)
@@ -26,7 +26,7 @@ fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
     let root_key = RootKey::new(root_key_bytes.try_into().expect("correct length"));
     let chain_key = ChainKey::new(chain_key_bytes.try_into().expect("correct length"), 0);
 
-    Ok((root_key, chain_key))
+    (root_key, chain_key)
 }
 
 pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
@@ -64,7 +64,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
 
-    let (root_key, chain_key) = derive_keys(&secrets)?;
+    let (root_key, chain_key) = derive_keys(&secrets);
 
     let (sending_chain_root_key, sending_chain_chain_key) = root_key.create_chain(
         parameters.their_ratchet_key(),
@@ -87,8 +87,8 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
 
     let mut session = SessionState::new(session);
 
-    session.add_receiver_chain(parameters.their_ratchet_key(), &chain_key)?;
-    session.set_sender_chain(&sending_ratchet_key, &sending_chain_chain_key)?;
+    session.add_receiver_chain(parameters.their_ratchet_key(), &chain_key);
+    session.set_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
 
     Ok(session)
 }
@@ -131,7 +131,7 @@ pub(crate) fn initialize_bob_session(
         );
     }
 
-    let (root_key, chain_key) = derive_keys(&secrets)?;
+    let (root_key, chain_key) = derive_keys(&secrets);
 
     let session = SessionStructure {
         session_version: CIPHERTEXT_MESSAGE_CURRENT_VERSION as u32,
@@ -149,7 +149,7 @@ pub(crate) fn initialize_bob_session(
 
     let mut session = SessionState::new(session);
 
-    session.set_sender_chain(parameters.our_ratchet_key_pair(), &chain_key)?;
+    session.set_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 
     Ok(session)
 }

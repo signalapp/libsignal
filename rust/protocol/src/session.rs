@@ -116,11 +116,11 @@ async fn process_prekey_v3(
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;
 
-    new_session.set_local_registration_id(identity_store.get_local_registration_id(ctx).await?)?;
-    new_session.set_remote_registration_id(message.registration_id())?;
-    new_session.set_alice_base_key(&message.base_key().serialize())?;
+    new_session.set_local_registration_id(identity_store.get_local_registration_id(ctx).await?);
+    new_session.set_remote_registration_id(message.registration_id());
+    new_session.set_alice_base_key(&message.base_key().serialize());
 
-    session_record.promote_state(new_session)?;
+    session_record.promote_state(new_session);
 
     Ok(message.pre_key_id())
 }
@@ -185,17 +185,17 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         their_one_time_prekey_id,
         bundle.signed_pre_key_id()?,
         &our_base_key_pair.public_key,
-    )?;
+    );
 
-    session.set_local_registration_id(identity_store.get_local_registration_id(ctx).await?)?;
-    session.set_remote_registration_id(bundle.registration_id()?)?;
-    session.set_alice_base_key(&our_base_key_pair.public_key.serialize())?;
+    session.set_local_registration_id(identity_store.get_local_registration_id(ctx).await?);
+    session.set_remote_registration_id(bundle.registration_id()?);
+    session.set_alice_base_key(&our_base_key_pair.public_key.serialize());
 
     identity_store
         .save_identity(remote_address, their_identity_key, ctx)
         .await?;
 
-    session_record.promote_state(session)?;
+    session_record.promote_state(session);
 
     session_store
         .store_session(remote_address, &session_record, ctx)

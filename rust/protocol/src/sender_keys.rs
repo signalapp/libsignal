@@ -282,14 +282,18 @@ impl SenderKeyRecord {
         if !self.states.is_empty() {
             return Ok(&self.states[0]);
         }
-        Err(SignalProtocolError::InvalidSessionStructure)
+        Err(SignalProtocolError::InvalidSessionStructure(
+            "empty sender key state",
+        ))
     }
 
     pub fn sender_key_state_mut(&mut self) -> Result<&mut SenderKeyState> {
         if !self.states.is_empty() {
             return Ok(&mut self.states[0]);
         }
-        Err(SignalProtocolError::InvalidSessionStructure)
+        Err(SignalProtocolError::InvalidSessionStructure(
+            "empty sender key state",
+        ))
     }
 
     pub fn sender_key_state_for_chain_id(

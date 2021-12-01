@@ -862,8 +862,9 @@ fn SessionRecord_GetReceiverChainKeyValue(
     session_state: &SessionRecord,
     key: &PublicKey,
 ) -> Result<Option<Vec<u8>>> {
-    let chain_key = session_state.get_receiver_chain_key(key)?;
-    Ok(chain_key.map(|ck| ck.key().to_vec()))
+    Ok(session_state
+        .get_receiver_chain_key_bytes(key)?
+        .map(Vec::from))
 }
 
 #[bridge_fn(ffi = false, node = false)]

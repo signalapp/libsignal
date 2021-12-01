@@ -142,7 +142,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure)
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState
