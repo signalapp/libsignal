@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -8,15 +8,24 @@ use std::convert::TryFrom;
 
 use itertools::Itertools;
 use prost::Message;
-use uuid::Uuid;
 
 use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::proto::storage as storage_proto;
-use crate::{PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{PrivateKey, PublicKey, SignalProtocolError};
+
+/// A distinct error type to keep from accidentally propagating deserialization errors.
+#[derive(Debug)]
+pub(crate) struct InvalidSessionError(&'static str);
+
+impl std::fmt::Display for InvalidSessionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 #[derive(Debug, Clone)]
-pub struct SenderMessageKey {
+pub(crate) struct SenderMessageKey {
     iteration: u32,
     iv: Vec<u8>,
     cipher_key: Vec<u8>,
@@ -24,55 +33,49 @@ pub struct SenderMessageKey {
 }
 
 impl SenderMessageKey {
-    pub fn new(iteration: u32, seed: Vec<u8>) -> Result<Self> {
+    pub(crate) fn new(iteration: u32, seed: Vec<u8>) -> Self {
         let mut derived = [0; 48];
         hkdf::Hkdf::<sha2::Sha256>::new(None, &seed)
             .expand(b"WhisperGroup", &mut derived)
             .expect("valid output length");
-        Ok(Self {
+        Self {
             iteration,
             seed,
             iv: derived[0..16].to_vec(),
             cipher_key: derived[16..48].to_vec(),
-        })
+        }
     }
 
-    pub fn from_protobuf(
+    pub(crate) fn from_protobuf(
         smk: storage_proto::sender_key_state_structure::SenderMessageKey,
-    ) -> Result<Self> {
+    ) -> Self {
         Self::new(smk.iteration, smk.seed)
     }
 
-    pub fn iteration(&self) -> Result<u32> {
-        Ok(self.iteration)
+    pub(crate) fn iteration(&self) -> u32 {
+        self.iteration
     }
 
-    pub fn iv(&self) -> Result<Vec<u8>> {
-        Ok(self.iv.clone())
+    pub(crate) fn iv(&self) -> &[u8] {
+        &self.iv
     }
 
-    pub fn cipher_key(&self) -> Result<Vec<u8>> {
-        Ok(self.cipher_key.clone())
+    pub(crate) fn cipher_key(&self) -> &[u8] {
+        &self.cipher_key
     }
 
-    pub fn seed(&self) -> Result<Vec<u8>> {
-        Ok(self.seed.clone())
-    }
-
-    pub fn as_protobuf(
+    pub(crate) fn as_protobuf(
         &self,
-    ) -> Result<storage_proto::sender_key_state_structure::SenderMessageKey> {
-        Ok(
-            storage_proto::sender_key_state_structure::SenderMessageKey {
-                iteration: self.iteration,
-                seed: self.seed.clone(),
-            },
-        )
+    ) -> storage_proto::sender_key_state_structure::SenderMessageKey {
+        storage_proto::sender_key_state_structure::SenderMessageKey {
+            iteration: self.iteration,
+            seed: self.seed.clone(),
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SenderChainKey {
+pub(crate) struct SenderChainKey {
     iteration: u32,
     chain_key: Vec<u8>,
 }
@@ -81,29 +84,29 @@ impl SenderChainKey {
     const MESSAGE_KEY_SEED: u8 = 0x01;
     const CHAIN_KEY_SEED: u8 = 0x02;
 
-    pub fn new(iteration: u32, chain_key: Vec<u8>) -> Result<Self> {
-        Ok(Self {
+    pub(crate) fn new(iteration: u32, chain_key: Vec<u8>) -> Self {
+        Self {
             iteration,
             chain_key,
-        })
+        }
     }
 
-    pub fn iteration(&self) -> Result<u32> {
-        Ok(self.iteration)
+    pub(crate) fn iteration(&self) -> u32 {
+        self.iteration
     }
 
-    pub fn seed(&self) -> Result<Vec<u8>> {
-        Ok(self.chain_key.clone())
+    pub(crate) fn seed(&self) -> &[u8] {
+        &self.chain_key
     }
 
-    pub fn next(&self) -> Result<SenderChainKey> {
+    pub(crate) fn next(&self) -> SenderChainKey {
         SenderChainKey::new(
             self.iteration + 1,
             self.get_derivative(Self::CHAIN_KEY_SEED),
         )
     }
 
-    pub fn sender_message_key(&self) -> Result<SenderMessageKey> {
+    pub(crate) fn sender_message_key(&self) -> SenderMessageKey {
         SenderMessageKey::new(self.iteration, self.get_derivative(Self::MESSAGE_KEY_SEED))
     }
 
@@ -112,33 +115,33 @@ impl SenderChainKey {
         hmac_sha256(&self.chain_key, &label).to_vec()
     }
 
-    pub fn as_protobuf(&self) -> Result<storage_proto::sender_key_state_structure::SenderChainKey> {
-        Ok(storage_proto::sender_key_state_structure::SenderChainKey {
+    pub(crate) fn as_protobuf(&self) -> storage_proto::sender_key_state_structure::SenderChainKey {
+        storage_proto::sender_key_state_structure::SenderChainKey {
             iteration: self.iteration,
             seed: self.chain_key.clone(),
-        })
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SenderKeyState {
+pub(crate) struct SenderKeyState {
     state: storage_proto::SenderKeyStateStructure,
 }
 
 impl SenderKeyState {
-    pub fn new(
+    pub(crate) fn new(
         message_version: u8,
         chain_id: u32,
         iteration: u32,
         chain_key: &[u8],
         signature_key: PublicKey,
         signature_private_key: Option<PrivateKey>,
-    ) -> Result<SenderKeyState> {
+    ) -> SenderKeyState {
         let state = storage_proto::SenderKeyStateStructure {
             message_version: message_version as u32,
             chain_id,
             sender_chain_key: Some(
-                SenderChainKey::new(iteration, chain_key.to_vec())?.as_protobuf()?,
+                SenderChainKey::new(iteration, chain_key.to_vec()).as_protobuf(),
             ),
             sender_signing_key: Some(
                 storage_proto::sender_key_state_structure::SenderSigningKey {
@@ -152,91 +155,68 @@ impl SenderKeyState {
             sender_message_keys: vec![],
         };
 
-        Ok(Self { state })
-    }
-
-    pub fn deserialize(buf: &[u8]) -> Result<Self> {
-        let state = storage_proto::SenderKeyStateStructure::decode(buf)
-            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
-        Ok(Self { state })
-    }
-
-    pub fn from_protobuf(state: storage_proto::SenderKeyStateStructure) -> Self {
         Self { state }
     }
 
-    pub fn serialize(&self) -> Result<Vec<u8>> {
-        Ok(self.state.encode_to_vec())
+    pub(crate) fn from_protobuf(state: storage_proto::SenderKeyStateStructure) -> Self {
+        Self { state }
     }
 
-    pub fn message_version(&self) -> Result<u32> {
+    pub(crate) fn message_version(&self) -> u32 {
         match self.state.message_version {
-            0 => Ok(3), // the first SenderKey version
-            v => Ok(v),
+            0 => 3, // the first SenderKey version
+            v => v,
         }
     }
 
-    pub fn chain_id(&self) -> Result<u32> {
-        Ok(self.state.chain_id)
+    pub(crate) fn chain_id(&self) -> u32 {
+        self.state.chain_id
     }
 
-    pub fn sender_chain_key(&self) -> Result<SenderChainKey> {
-        let sender_chain = self
-            .state
-            .sender_chain_key
-            .as_ref()
-            .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
-        SenderChainKey::new(sender_chain.iteration, sender_chain.seed.clone())
+    pub(crate) fn sender_chain_key(&self) -> Option<SenderChainKey> {
+        let sender_chain = self.state.sender_chain_key.as_ref()?;
+        Some(SenderChainKey::new(
+            sender_chain.iteration,
+            sender_chain.seed.clone(),
+        ))
     }
 
-    pub fn set_sender_chain_key(&mut self, chain_key: SenderChainKey) -> Result<()> {
-        self.state.sender_chain_key = Some(chain_key.as_protobuf()?);
-        Ok(())
+    pub(crate) fn set_sender_chain_key(&mut self, chain_key: SenderChainKey) {
+        self.state.sender_chain_key = Some(chain_key.as_protobuf());
     }
 
-    pub fn signing_key_public(&self) -> Result<PublicKey> {
+    pub(crate) fn signing_key_public(&self) -> Result<PublicKey, InvalidSessionError> {
         if let Some(ref signing_key) = self.state.sender_signing_key {
-            Ok(PublicKey::try_from(&signing_key.public[..])?)
+            PublicKey::try_from(&signing_key.public[..])
+                .map_err(|_| InvalidSessionError("invalid public signing key"))
         } else {
-            Err(SignalProtocolError::InvalidProtobufEncoding)
+            Err(InvalidSessionError("missing signing key"))
         }
     }
 
-    pub fn signing_key_private(&self) -> Result<PrivateKey> {
+    pub(crate) fn signing_key_private(&self) -> Result<PrivateKey, InvalidSessionError> {
         if let Some(ref signing_key) = self.state.sender_signing_key {
-            Ok(PrivateKey::deserialize(&signing_key.private)?)
+            PrivateKey::deserialize(&signing_key.private)
+                .map_err(|_| InvalidSessionError("invalid private signing key"))
         } else {
-            Err(SignalProtocolError::InvalidProtobufEncoding)
+            Err(InvalidSessionError("missing signing key"))
         }
     }
 
-    pub fn has_sender_message_key(&self, iteration: u32) -> Result<bool> {
-        for sender_message_key in &self.state.sender_message_keys {
-            if sender_message_key.iteration == iteration {
-                return Ok(true);
-            }
-        }
-        Ok(false)
+    pub(crate) fn as_protobuf(&self) -> storage_proto::SenderKeyStateStructure {
+        self.state.clone()
     }
 
-    pub fn as_protobuf(&self) -> Result<storage_proto::SenderKeyStateStructure> {
-        Ok(self.state.clone())
-    }
-
-    pub fn add_sender_message_key(&mut self, sender_message_key: &SenderMessageKey) -> Result<()> {
+    pub(crate) fn add_sender_message_key(&mut self, sender_message_key: &SenderMessageKey) {
         self.state
             .sender_message_keys
-            .push(sender_message_key.as_protobuf()?);
+            .push(sender_message_key.as_protobuf());
         while self.state.sender_message_keys.len() > consts::MAX_MESSAGE_KEYS {
             self.state.sender_message_keys.remove(0);
         }
-        Ok(())
     }
 
-    pub fn remove_sender_message_key(
-        &mut self,
-        iteration: u32,
-    ) -> Result<Option<SenderMessageKey>> {
+    pub(crate) fn remove_sender_message_key(&mut self, iteration: u32) -> Option<SenderMessageKey> {
         if let Some(index) = self
             .state
             .sender_message_keys
@@ -244,9 +224,9 @@ impl SenderKeyState {
             .position(|x| x.iteration == iteration)
         {
             let smk = self.state.sender_message_keys.remove(index);
-            Ok(Some(SenderMessageKey::from_protobuf(smk)?))
+            Some(SenderMessageKey::from_protobuf(smk))
         } else {
-            Ok(None)
+            None
         }
     }
 }
@@ -263,7 +243,7 @@ impl SenderKeyRecord {
         }
     }
 
-    pub fn deserialize(buf: &[u8]) -> Result<SenderKeyRecord> {
+    pub fn deserialize(buf: &[u8]) -> Result<SenderKeyRecord, SignalProtocolError> {
         let skr = storage_proto::SenderKeyRecordStructure::decode(buf)
             .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
@@ -274,51 +254,39 @@ impl SenderKeyRecord {
         Ok(Self { states })
     }
 
-    pub fn is_empty(&self) -> Result<bool> {
-        Ok(self.states.is_empty())
-    }
-
-    pub fn sender_key_state(&self) -> Result<&SenderKeyState> {
+    pub(crate) fn sender_key_state(&self) -> Result<&SenderKeyState, InvalidSessionError> {
         if !self.states.is_empty() {
             return Ok(&self.states[0]);
         }
-        Err(SignalProtocolError::InvalidSessionStructure(
-            "empty sender key state",
-        ))
+        Err(InvalidSessionError("empty sender key state"))
     }
 
-    pub fn sender_key_state_mut(&mut self) -> Result<&mut SenderKeyState> {
+    pub(crate) fn sender_key_state_mut(
+        &mut self,
+    ) -> Result<&mut SenderKeyState, InvalidSessionError> {
         if !self.states.is_empty() {
             return Ok(&mut self.states[0]);
         }
-        Err(SignalProtocolError::InvalidSessionStructure(
-            "empty sender key state",
-        ))
+        Err(InvalidSessionError("empty sender key state"))
     }
 
-    pub fn sender_key_state_for_chain_id(
+    pub(crate) fn sender_key_state_for_chain_id(
         &mut self,
         chain_id: u32,
-        distribution_id: Uuid,
-    ) -> Result<&mut SenderKeyState> {
+    ) -> Option<&mut SenderKeyState> {
         for i in 0..self.states.len() {
-            if self.states[i].chain_id()? == chain_id {
-                return Ok(&mut self.states[i]);
+            if self.states[i].chain_id() == chain_id {
+                return Some(&mut self.states[i]);
             }
         }
-        log::error!(
-            "SenderKey distribution {} could not find chain ID {} (known chain IDs: {:?})",
-            distribution_id,
-            chain_id,
-            self.states
-                .iter()
-                .map(|state| state.chain_id().expect("accessed successfully above"))
-                .collect::<Vec<_>>()
-        );
-        Err(SignalProtocolError::NoSenderKeyState { distribution_id })
+        None
     }
 
-    pub fn add_sender_key_state(
+    pub(crate) fn chain_ids_for_logging(&self) -> impl ExactSizeIterator<Item = u32> + '_ {
+        self.states.iter().map(|state| state.chain_id())
+    }
+
+    pub(crate) fn add_sender_key_state(
         &mut self,
         message_version: u8,
         chain_id: u32,
@@ -326,7 +294,7 @@ impl SenderKeyRecord {
         chain_key: &[u8],
         signature_key: PublicKey,
         signature_private_key: Option<PrivateKey>,
-    ) -> Result<()> {
+    ) {
         let existing_state = self.remove_state(chain_id, signature_key);
 
         if self.remove_states_with_chain_id(chain_id) > 0 {
@@ -344,7 +312,7 @@ impl SenderKeyRecord {
                 chain_key,
                 signature_key,
                 signature_private_key,
-            )?,
+            ),
             Some(state) => state,
         };
 
@@ -353,8 +321,6 @@ impl SenderKeyRecord {
         }
 
         self.states.push_front(state);
-
-        Ok(())
     }
 
     /// Remove the state with the matching `chain_id` and `signature_key`.
@@ -362,8 +328,7 @@ impl SenderKeyRecord {
     /// Skips any bad protobufs.
     fn remove_state(&mut self, chain_id: u32, signature_key: PublicKey) -> Option<SenderKeyState> {
         let (index, _state) = self.states.iter().find_position(|state| {
-            state.chain_id().ok() == Some(chain_id)
-                && state.signing_key_public().ok() == Some(signature_key)
+            state.chain_id() == chain_id && state.signing_key_public().ok() == Some(signature_key)
         })?;
 
         self.states.remove(index)
@@ -374,24 +339,23 @@ impl SenderKeyRecord {
     /// Skips any bad protobufs.
     fn remove_states_with_chain_id(&mut self, chain_id: u32) -> usize {
         let initial_length = self.states.len();
-        self.states
-            .retain(|state| state.chain_id().ok() != Some(chain_id));
+        self.states.retain(|state| state.chain_id() != chain_id);
         initial_length - self.states.len()
     }
 
-    pub fn as_protobuf(&self) -> Result<storage_proto::SenderKeyRecordStructure> {
+    pub(crate) fn as_protobuf(&self) -> storage_proto::SenderKeyRecordStructure {
         let mut states = Vec::with_capacity(self.states.len());
         for state in &self.states {
-            states.push(state.as_protobuf()?);
+            states.push(state.as_protobuf());
         }
 
-        Ok(storage_proto::SenderKeyRecordStructure {
+        storage_proto::SenderKeyRecordStructure {
             sender_key_states: states,
-        })
+        }
     }
 
-    pub fn serialize(&self) -> Result<Vec<u8>> {
-        Ok(self.as_protobuf()?.encode_to_vec())
+    pub fn serialize(&self) -> Result<Vec<u8>, SignalProtocolError> {
+        Ok(self.as_protobuf().encode_to_vec())
     }
 }
 
@@ -428,8 +392,7 @@ mod sender_key_record_add_sender_key_state_tests {
         fn add_sender_key_state_record(&mut self, record_key: (PublicKey, u32), chain_key: &[u8]) {
             let (public_key, chain_id) = record_key;
             self.sender_key_record
-                .add_sender_key_state(1, chain_id, 1, chain_key, public_key, None)
-                .expect("to be able to add new state");
+                .add_sender_key_state(1, chain_id, 1, chain_key, public_key, None);
         }
 
         fn assert_number_of_states(&self, expected: usize) {
@@ -446,7 +409,7 @@ mod sender_key_record_add_sender_key_state_tests {
             let (public_key, chain_id) = record_key;
             let found_chain_key = self
                 .sender_key_record
-                .sender_key_state_for_chain_id(chain_id, Uuid::default())
+                .sender_key_state_for_chain_id(chain_id)
                 .expect("Expect to find chain id")
                 .sender_chain_key()
                 .expect("Expect to find chain key")
@@ -459,7 +422,7 @@ mod sender_key_record_add_sender_key_state_tests {
                 .states
                 .iter()
                 .filter(|state| {
-                    state.chain_id().expect("expect chain id") == chain_id
+                    state.chain_id() == chain_id
                         && state.signing_key_public().expect("expect public key") == public_key
                 })
                 .exactly_one()
@@ -482,7 +445,7 @@ mod sender_key_record_add_sender_key_state_tests {
                 .map(|state| {
                     (
                         state.signing_key_public().expect("expect public key"),
-                        state.chain_id().expect("expect chain id"),
+                        state.chain_id(),
                     )
                 })
                 .collect::<Vec<_>>();
