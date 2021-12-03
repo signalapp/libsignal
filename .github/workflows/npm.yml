@@ -22,7 +22,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-11]
+        include:
+        - os: macos-11
+          additional-rust-target: aarch64-apple-darwin
 
     steps:
     - uses: actions/checkout@v2
@@ -33,6 +36,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
+        target: ${{ matrix.additional-rust-target }}
 
     - name: Get Node version from .nvmrc
       id: get-nvm-version
@@ -49,6 +53,10 @@ jobs:
 
     - run: yarn install --ignore-scripts --frozen-lockfile
       working-directory: node
+
+    - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+      working-directory: node
+      if: matrix.os == 'macos-11'
 
     - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
@@ -107,6 +115,8 @@ jobs:
         # The tests use an Electron-based runner, so we need to set up a dummy display for them.
         run: yarn test
         working-directory: node
+      env:
+        PREBUILDS_ONLY: 1
 
     - name: Publish to NPM
       uses: JS-DevTools/npm-publish@v1
