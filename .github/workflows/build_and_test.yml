@@ -104,6 +104,15 @@ jobs:
     - name: Build benches
       run: cargo +stable build --workspace --benches --verbose
 
+    - name: Check that the fuzz target still builds
+      # We do this on stable because the fuzz target doesn't have a lockfile,
+      # and crates don't generally support arbitrary nightly versions.
+      # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
+      run: cargo +stable check --all-targets
+      working-directory: rust/protocol/fuzz
+      env:
+        RUSTFLAGS: --cfg fuzzing
+
   rust-nightly:
     name: Rust nightly
 
@@ -153,12 +162,6 @@ jobs:
 
     - name: Clippy
       run: cargo clippy --workspace --all-targets -- -D warnings
-
-    - name: Clippy (protocol fuzzing)
-      run: cargo clippy --all-targets -- -D warnings
-      working-directory: rust/protocol/fuzz
-      env:
-        RUSTFLAGS: --cfg fuzzing
 
   java:
     name: Java
