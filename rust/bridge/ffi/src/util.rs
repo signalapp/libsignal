@@ -23,7 +23,6 @@ pub enum SignalErrorCode {
     InvalidArgument = 5,
     InvalidType = 6,
     InvalidUtf8String = 7,
-    InsufficientOutputSize = 8,
 
     ProtobufError = 10,
 
@@ -37,7 +36,6 @@ pub enum SignalErrorCode {
     InvalidKey = 40,
     InvalidSignature = 41,
 
-    FingerprintIdentifierMismatch = 50,
     FingerprintVersionMismatch = 51,
     FingerprintParsingError = 52,
 
@@ -76,7 +74,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
-            SignalFfiError::InsufficientOutputSize(_, _) => SignalErrorCode::InsufficientOutputSize,
 
             SignalFfiError::Signal(SignalProtocolError::ProtobufEncodingError(_))
             | SignalFfiError::Signal(SignalProtocolError::ProtobufDecodingError(_)) => {
@@ -115,10 +112,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidRegistrationId(..)) => {
                 SignalErrorCode::InvalidRegistrationId
-            }
-
-            SignalFfiError::Signal(SignalProtocolError::FingerprintIdentifierMismatch) => {
-                SignalErrorCode::FingerprintIdentifierMismatch
             }
 
             SignalFfiError::Signal(SignalProtocolError::FingerprintParsingError) => {

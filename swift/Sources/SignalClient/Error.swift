@@ -16,7 +16,6 @@ public enum SignalError: Error {
     case invalidArgument(String)
     case invalidType(String)
     case invalidUtf8String(String)
-    case insufficientOutputSize(String)
     case protobufError(String)
     case invalidCiphertext(String)
     case legacyCiphertextVersion(String)
@@ -25,7 +24,6 @@ public enum SignalError: Error {
     case invalidMessage(String)
     case invalidKey(String)
     case invalidSignature(String)
-    case fingerprintIdentifierMismatch(String)
     case fingerprintVersionMismatch(String)
     case fingerprintParsingError(String)
     case sealedSenderSelfSend(String)
@@ -64,8 +62,6 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidType(errStr)
     case SignalErrorCode_InvalidUtf8String:
         throw SignalError.invalidUtf8String(errStr)
-    case SignalErrorCode_InsufficientOutputSize:
-        throw SignalError.insufficientOutputSize(errStr)
     case SignalErrorCode_ProtobufError:
         throw SignalError.protobufError(errStr)
     case SignalErrorCode_InvalidCiphertext:
@@ -86,8 +82,6 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidKey(errStr)
     case SignalErrorCode_InvalidSignature:
         throw SignalError.invalidSignature(errStr)
-    case SignalErrorCode_FingerprintIdentifierMismatch:
-        throw SignalError.fingerprintIdentifierMismatch(errStr)
     case SignalErrorCode_FingerprintVersionMismatch:
         throw SignalError.fingerprintVersionMismatch(errStr)
     case SignalErrorCode_UntrustedIdentity:

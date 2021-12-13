@@ -22,7 +22,6 @@ pub enum SignalFfiError {
     HsmEnclave(HsmEnclaveError),
     SignalCrypto(SignalCryptoError),
     ZkGroup(ZkGroupError),
-    InsufficientOutputSize(usize, usize),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -46,9 +45,6 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidType => write!(f, "invalid type"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
-            SignalFfiError::InsufficientOutputSize(n, h) => {
-                write!(f, "needed {} elements only {} provided", n, h)
-            }
             SignalFfiError::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))
             }
