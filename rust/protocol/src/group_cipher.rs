@@ -36,7 +36,15 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let sender_key = sender_key_state.sender_chain_key()?.sender_message_key()?;
 
     let ciphertext =
-        crypto::aes_256_cbc_encrypt(plaintext, &sender_key.cipher_key()?, &sender_key.iv()?)?;
+        crypto::aes_256_cbc_encrypt(plaintext, &sender_key.cipher_key()?, &sender_key.iv()?)
+            .map_err(|_| {
+                log::error!(
+                    "outgoing sender key state corrupt for distribution ID {}",
+                    distribution_id,
+                );
+                // FIXME: include distribution ID in the error.
+                SignalProtocolError::InvalidSessionStructure
+            })?;
 
     let signing_key = sender_key_state.signing_key_private()?;
 
@@ -140,11 +148,27 @@ pub async fn group_decrypt(
         skm.distribution_id(),
     )?;
 
-    let plaintext = crypto::aes_256_cbc_decrypt(
+    let plaintext = match crypto::aes_256_cbc_decrypt(
         skm.ciphertext(),
         &sender_key.cipher_key()?,
         &sender_key.iv()?,
-    )?;
+    ) {
+        Ok(plaintext) => plaintext,
+        Err(crypto::DecryptionError::BadKeyOrIv) => {
+            log::error!(
+                "incoming sender key state corrupt for {}, distribution ID {}, chain ID {}",
+                sender,
+                skm.distribution_id(),
+                skm.chain_id(),
+            );
+            // FIXME: include distribution ID in the error.
+            return Err(SignalProtocolError::InvalidSessionStructure);
+        }
+        Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+            log::error!("sender key decryption failed: {}", msg);
+            return Err(SignalProtocolError::InvalidCiphertext);
+        }
+    };
 
     sender_key_store
         .store_sender_key(sender, skm.distribution_id(), &record, ctx)

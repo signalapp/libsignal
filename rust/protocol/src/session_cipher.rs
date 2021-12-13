@@ -43,7 +43,11 @@ pub async fn message_encrypt(
         .remote_identity_key()?
         .ok_or(SignalProtocolError::InvalidSessionStructure)?;
 
-    let ctext = crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())?;
+    let ctext = crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
+        .map_err(|_| {
+            log::error!("session state corrupt for {}", remote_address);
+            SignalProtocolError::InvalidSessionStructure
+        })?;
 
     let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
         let local_registration_id = session_state.local_registration_id()?;
@@ -401,8 +405,13 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
 
     if let Ok(current_state) = record.session_state() {
         let mut current_state = current_state.clone();
-        let result =
-            decrypt_message_with_state(&mut current_state, ciphertext, remote_address, csprng);
+        let result = decrypt_message_with_state(
+            CurrentOrPrevious::Current,
+            &mut current_state,
+            ciphertext,
+            remote_address,
+            csprng,
+        );
 
         match result {
             Ok(ptext) => {
@@ -432,7 +441,13 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     for (idx, previous) in record.previous_session_states().enumerate() {
         let mut previous = previous?;
 
-        let result = decrypt_message_with_state(&mut previous, ciphertext, remote_address, csprng);
+        let result = decrypt_message_with_state(
+            CurrentOrPrevious::Previous,
+            &mut previous,
+            ciphertext,
+            remote_address,
+            csprng,
+        );
 
         match result {
             Ok(ptext) => {
@@ -487,7 +502,23 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
     }
 }
 
+#[derive(Clone, Copy)]
+enum CurrentOrPrevious {
+    Current,
+    Previous,
+}
+
+impl std::fmt::Display for CurrentOrPrevious {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Current => write!(f, "current"),
+            Self::Previous => write!(f, "previous"),
+        }
+    }
+}
+
 fn decrypt_message_with_state<R: Rng + CryptoRng>(
+    current_or_previous: CurrentOrPrevious,
     state: &mut SessionState,
     ciphertext: &SignalMessage,
     remote_address: &ProtocolAddress,
@@ -526,11 +557,25 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         return Err(SignalProtocolError::InvalidCiphertext);
     }
 
-    let ptext = crypto::aes_256_cbc_decrypt(
+    let ptext = match crypto::aes_256_cbc_decrypt(
         ciphertext.body(),
         message_keys.cipher_key(),
         message_keys.iv(),
-    )?;
+    ) {
+        Ok(ptext) => ptext,
+        Err(crypto::DecryptionError::BadKeyOrIv) => {
+            log::warn!(
+                "{} session state corrupt for {}",
+                current_or_previous,
+                remote_address,
+            );
+            return Err(SignalProtocolError::InvalidSessionStructure);
+        }
+        Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+            log::warn!("failed to decrypt 1:1 message: {}", msg);
+            return Err(SignalProtocolError::InvalidCiphertext);
+        }
+    };
 
     state.clear_unacknowledged_pre_key_message()?;
 

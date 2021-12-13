@@ -6,7 +6,7 @@
 use arrayref::array_ref;
 
 use crate::crypto;
-use crate::{PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{PrivateKey, PublicKey, Result};
 use std::fmt;
 
 pub struct MessageKeys {
@@ -31,23 +31,13 @@ impl MessageKeys {
         })
     }
 
-    pub fn new(cipher_key: &[u8], mac_key: &[u8], iv: &[u8], counter: u32) -> Result<Self> {
-        if mac_key.len() != 32 {
-            return Err(SignalProtocolError::InvalidMacKeyLength(mac_key.len()));
-        }
-        if cipher_key.len() != 32 || iv.len() != 16 {
-            return Err(SignalProtocolError::InvalidCipherCryptographicParameters(
-                cipher_key.len(),
-                iv.len(),
-            ));
-        }
-
-        Ok(MessageKeys {
-            cipher_key: *array_ref![cipher_key, 0, 32],
-            mac_key: *array_ref![mac_key, 0, 32],
-            iv: *array_ref![iv, 0, 16],
+    pub fn new(cipher_key: [u8; 32], mac_key: [u8; 32], iv: [u8; 16], counter: u32) -> Self {
+        MessageKeys {
+            cipher_key,
+            mac_key,
+            iv,
             counter,
-        })
+        }
     }
 
     #[inline]
@@ -81,15 +71,8 @@ impl ChainKey {
     const MESSAGE_KEY_SEED: [u8; 1] = [0x01u8];
     const CHAIN_KEY_SEED: [u8; 1] = [0x02u8];
 
-    pub fn new(key: &[u8], index: u32) -> Result<Self> {
-        if key.len() != 32 {
-            return Err(SignalProtocolError::InvalidChainKeyLength(key.len()));
-        }
-
-        Ok(Self {
-            key: *array_ref![key, 0, 32],
-            index,
-        })
+    pub fn new(key: [u8; 32], index: u32) -> Self {
+        Self { key, index }
     }
 
     #[inline]
@@ -104,19 +87,19 @@ impl ChainKey {
 
     pub fn next_chain_key(&self) -> Result<Self> {
         Ok(Self {
-            key: self.calculate_base_material(Self::CHAIN_KEY_SEED)?,
+            key: self.calculate_base_material(Self::CHAIN_KEY_SEED),
             index: self.index + 1,
         })
     }
 
     pub fn message_keys(&self) -> Result<MessageKeys> {
         MessageKeys::derive_keys(
-            &self.calculate_base_material(Self::MESSAGE_KEY_SEED)?,
+            &self.calculate_base_material(Self::MESSAGE_KEY_SEED),
             self.index,
         )
     }
 
-    fn calculate_base_material(&self, seed: [u8; 1]) -> Result<[u8; 32]> {
+    fn calculate_base_material(&self, seed: [u8; 1]) -> [u8; 32] {
         crypto::hmac_sha256(&self.key, &seed)
     }
 }
@@ -127,13 +110,8 @@ pub struct RootKey {
 }
 
 impl RootKey {
-    pub fn new(key: &[u8]) -> Result<Self> {
-        if key.len() != 32 {
-            return Err(SignalProtocolError::InvalidRootKeyLength(key.len()));
-        }
-        Ok(Self {
-            key: *array_ref![key, 0, 32],
-        })
+    pub fn new(key: [u8; 32]) -> Self {
+        Self { key }
     }
 
     pub fn key(&self) -> &[u8; 32] {
@@ -196,7 +174,7 @@ mod tests {
             0xa2, 0x46, 0xd1, 0x5d,
         ];
 
-        let chain_key = ChainKey::new(&seed, 0)?;
+        let chain_key = ChainKey::new(seed, 0);
         assert_eq!(&seed, chain_key.key());
         assert_eq!(&message_key, chain_key.message_keys()?.cipher_key());
         assert_eq!(&mac_key, chain_key.message_keys()?.mac_key());

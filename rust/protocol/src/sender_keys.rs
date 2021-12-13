@@ -99,17 +99,17 @@ impl SenderChainKey {
     pub fn next(&self) -> Result<SenderChainKey> {
         SenderChainKey::new(
             self.iteration + 1,
-            self.get_derivative(Self::CHAIN_KEY_SEED)?,
+            self.get_derivative(Self::CHAIN_KEY_SEED),
         )
     }
 
     pub fn sender_message_key(&self) -> Result<SenderMessageKey> {
-        SenderMessageKey::new(self.iteration, self.get_derivative(Self::MESSAGE_KEY_SEED)?)
+        SenderMessageKey::new(self.iteration, self.get_derivative(Self::MESSAGE_KEY_SEED))
     }
 
-    fn get_derivative(&self, label: u8) -> Result<Vec<u8>> {
+    fn get_derivative(&self, label: u8) -> Vec<u8> {
         let label = [label];
-        Ok(hmac_sha256(&self.chain_key, &label)?.to_vec())
+        hmac_sha256(&self.chain_key, &label).to_vec()
     }
 
     pub fn as_protobuf(&self) -> Result<storage_proto::sender_key_state_structure::SenderChainKey> {
