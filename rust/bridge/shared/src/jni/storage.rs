@@ -40,9 +40,11 @@ impl<'a> JniIdentityKeyStore<'a> {
         )?;
 
         match bits {
-            None => Err(SignalJniError::Signal(SignalProtocolError::InternalError(
-                "getIdentityKeyPair returned null",
-            ))),
+            None => Err(SignalProtocolError::InvalidState(
+                "get_identity_key_pair",
+                "no local identity key".to_string(),
+            )
+            .into()),
             Some(k) => Ok(IdentityKeyPair::try_from(k.as_ref())?),
         }
     }

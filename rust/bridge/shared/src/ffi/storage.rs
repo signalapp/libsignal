@@ -68,7 +68,10 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         }
 
         if key.is_null() {
-            return Err(SignalProtocolError::InternalError("No identity key pair"));
+            return Err(SignalProtocolError::InvalidState(
+                "get_identity_key_pair",
+                "no local identity key".to_string(),
+            ));
         }
 
         let priv_key = unsafe { Box::from_raw(key) };
