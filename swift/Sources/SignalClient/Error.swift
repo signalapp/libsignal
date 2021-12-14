@@ -4,6 +4,7 @@
 //
 
 import SignalFfi
+import Foundation
 
 #if canImport(SignalCoreKit)
 import SignalCoreKit
@@ -29,7 +30,9 @@ public enum SignalError: Error {
     case untrustedIdentity(String)
     case invalidKeyIdentifier(String)
     case sessionNotFound(String)
+    case invalidSession(String)
     case invalidRegistrationId(address: ProtocolAddress, message: String)
+    case invalidSenderKeySession(distributionId: UUID, message: String)
     case duplicatedMessage(String)
     case verificationFailed(String)
     case callbackError(String)
@@ -87,11 +90,18 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidKeyIdentifier(errStr)
     case SignalErrorCode_SessionNotFound:
         throw SignalError.sessionNotFound(errStr)
+    case SignalErrorCode_InvalidSession:
+        throw SignalError.invalidSession(errStr)
     case SignalErrorCode_InvalidRegistrationId:
         let address: ProtocolAddress = try invokeFnReturningNativeHandle {
             signal_error_get_address(error, $0)
         }
         throw SignalError.invalidRegistrationId(address: address, message: errStr)
+    case SignalErrorCode_InvalidSenderKeySession:
+        let distributionId = try invokeFnReturningUuid {
+            signal_error_get_uuid(error, $0)
+        }
+        throw SignalError.invalidSenderKeySession(distributionId: distributionId, message: errStr)
     case SignalErrorCode_DuplicatedMessage:
         throw SignalError.duplicatedMessage(errStr)
     case SignalErrorCode_VerificationFailure:

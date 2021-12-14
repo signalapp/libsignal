@@ -45,6 +45,8 @@ pub enum SignalErrorCode {
 
     SessionNotFound = 80,
     InvalidRegistrationId = 81,
+    InvalidSession = 82,
+    InvalidSenderKeySession = 83,
 
     DuplicatedMessage = 90,
 
@@ -142,10 +144,16 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure(_))
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::InvalidSessionStructure(_)) => {
+                SignalErrorCode::InvalidSession
+            }
+
+            SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeySession { .. }) => {
+                SignalErrorCode::InvalidSenderKeySession
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))

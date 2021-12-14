@@ -85,6 +85,33 @@ pub unsafe extern "C" fn signal_error_get_address(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_error_get_uuid(
+    err: *const SignalFfiError,
+    out: *mut [u8; 16],
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(SignalFfiError::NullPointer)?;
+        match err {
+            SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeySession {
+                distribution_id,
+            }) => {
+                write_result_to(out, *distribution_id.as_bytes())?;
+            }
+            _ => {
+                return Err(SignalFfiError::Signal(
+                    SignalProtocolError::InvalidArgument(format!(
+                        "cannot get address from error ({})",
+                        err
+                    )),
+                ));
+            }
+        }
+        Ok(())
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u32 {
     match err.as_ref() {
         Some(err) => {

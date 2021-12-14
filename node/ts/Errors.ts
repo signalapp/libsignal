@@ -14,6 +14,8 @@ export enum ErrorCode {
   UntrustedIdentity,
   InvalidRegistrationId,
   VerificationFailed,
+  InvalidSession,
+  InvalidSenderKeySession,
 }
 
 export class SignalClientErrorBase extends Error {
@@ -90,10 +92,21 @@ export type VerificationFailedError = SignalClientErrorCommon & {
   code: ErrorCode.VerificationFailed;
 };
 
+export type InvalidSessionError = SignalClientErrorCommon & {
+  code: ErrorCode.InvalidSession;
+};
+
+export type InvalidSenderKeySessionError = SignalClientErrorCommon & {
+  code: ErrorCode.InvalidSenderKeySession;
+  distributionId: string;
+};
+
 export type SignalClientError =
   | GenericError
   | DuplicatedMessageError
   | SealedSenderSelfSendError
   | UntrustedIdentityError
   | InvalidRegistrationIdError
-  | VerificationFailedError;
+  | VerificationFailedError
+  | InvalidSessionError
+  | InvalidSenderKeySessionError;

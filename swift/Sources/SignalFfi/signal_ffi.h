@@ -142,6 +142,8 @@ typedef enum {
   SignalErrorCode_InvalidKeyIdentifier = 70,
   SignalErrorCode_SessionNotFound = 80,
   SignalErrorCode_InvalidRegistrationId = 81,
+  SignalErrorCode_InvalidSession = 82,
+  SignalErrorCode_InvalidSenderKeySession = 83,
   SignalErrorCode_DuplicatedMessage = 90,
   SignalErrorCode_CallbackError = 100,
   SignalErrorCode_VerificationFailure = 110,
@@ -311,6 +313,8 @@ void signal_free_buffer(const unsigned char *buf, size_t buf_len);
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
 
 SignalFfiError *signal_error_get_address(const SignalFfiError *err, SignalProtocolAddress **out);
+
+SignalFfiError *signal_error_get_uuid(const SignalFfiError *err, uint8_t (*out)[16]);
 
 uint32_t signal_error_get_type(const SignalFfiError *err);
 

@@ -144,6 +144,28 @@ impl SignalNodeError for SignalProtocolError {
                     Some(props),
                 )
             }
+            SignalProtocolError::InvalidSessionStructure(..) => new_js_error(
+                cx,
+                module,
+                Some("InvalidSession"),
+                &self.to_string(),
+                operation_name,
+                None,
+            ),
+            SignalProtocolError::InvalidSenderKeySession { distribution_id } => {
+                let props = cx.empty_object();
+                let distribution_id_str =
+                    cx.string(format!("{:x}", distribution_id.to_hyphenated_ref()));
+                props.set(cx, "distribution_id", distribution_id_str)?;
+                new_js_error(
+                    cx,
+                    module,
+                    Some("InvalidSenderKeySession"),
+                    &self.to_string(),
+                    operation_name,
+                    Some(props),
+                )
+            }
             _ => new_js_error(cx, module, None, &self.to_string(), operation_name, None),
         };
 

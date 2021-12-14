@@ -14,6 +14,7 @@ use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
+use std::fmt::Display;
 use zkgroup::ZkGroupError;
 
 pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
@@ -48,6 +49,18 @@ pub type JavaReturnCiphertextMessage = jobject;
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
 /// appropriate Java exception class and thrown.
 fn throw_error(env: &JNIEnv, error: SignalJniError) {
+    fn try_throw<E: Display>(env: &JNIEnv, throwable: Result<JObject, E>, error: SignalJniError) {
+        match throwable {
+            Err(failure) => log::error!("failed to create exception for {}: {}", error, failure),
+            Ok(throwable) => {
+                let result = env.throw(JThrowable::from(throwable));
+                if let Err(failure) = result {
+                    log::error!("failed to throw exception for {}: {}", error, failure);
+                }
+            }
+        }
+    }
+
     // Handle special cases first.
     let error = match error {
         SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
@@ -100,15 +113,36 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                     )?)
                 });
 
-            match throwable {
-                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
-                Ok(throwable) => {
-                    let result = env.throw(JThrowable::from(throwable));
-                    if let Err(e) = result {
-                        log::error!("failed to throw exception for {}: {}", error, e);
-                    }
-                }
-            }
+            try_throw(env, throwable, error);
+            return;
+        }
+
+        SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession {
+            distribution_id,
+        }) => {
+            let throwable = distribution_id
+                .convert_into(env)
+                .and_then(|distribution_id_obj| {
+                    Ok((distribution_id_obj, env.new_string(error.to_string())?))
+                })
+                .and_then(|(distribution_id_obj, message)| {
+                    let args = jni_args!((
+                        distribution_id_obj => java.util.UUID,
+                        message => java.lang.String,
+                    ) -> void);
+                    Ok(env.new_object(
+                        jni_class_name!(
+                            org.whispersystems
+                                .libsignal
+                                .groups
+                                .InvalidSenderKeySessionException
+                        ),
+                        args.sig,
+                        &args.args,
+                    )?)
+                });
+
+            try_throw(env, throwable, error);
             return;
         }
 
@@ -125,15 +159,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                 &args.args,
             );
 
-            match throwable {
-                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
-                Ok(throwable) => {
-                    let result = env.throw(JThrowable::from(throwable));
-                    if let Err(e) = result {
-                        log::error!("failed to throw exception for {}: {}", error, e);
-                    }
-                }
-            }
+            try_throw(env, throwable, error);
             return;
         }
 
@@ -144,15 +170,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                 &[],
             );
 
-            match throwable {
-                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
-                Ok(throwable) => {
-                    let result = env.throw(JThrowable::from(throwable));
-                    if let Err(e) = result {
-                        log::error!("failed to throw exception for {}: {}", error, e);
-                    }
-                }
-            }
+            try_throw(env, throwable, error);
             return;
         }
 
@@ -169,15 +187,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                 )
             });
 
-            match throwable {
-                Err(e) => log::error!("failed to create exception for {}: {}", error, e),
-                Ok(throwable) => {
-                    let result = env.throw(JThrowable::from(throwable));
-                    if let Err(e) = result {
-                        log::error!("failed to throw exception for {}: {}", error, e);
-                    }
-                }
-            }
+            try_throw(env, throwable, error);
             return;
         }
 
@@ -188,8 +198,6 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
-        | SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure(_))
-        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
@@ -234,6 +242,10 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(org.whispersystems.libsignal.NoSessionException)
         }
 
+        SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure(_)) => {
+            jni_class_name!(org.whispersystems.libsignal.InvalidSessionException)
+        }
+
         SignalJniError::Signal(SignalProtocolError::InvalidMessage(..))
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
@@ -265,6 +277,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
         | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _))
         | SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(..))
+        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
         | SignalJniError::UnexpectedPanic(_)
         | SignalJniError::BadJniParameter(_)
         | SignalJniError::UnexpectedJniResultType(_, _) => {
