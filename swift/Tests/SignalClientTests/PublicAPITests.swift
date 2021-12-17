@@ -50,16 +50,16 @@ class PublicAPITests: TestCaseBase {
                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
         let nonce: [UInt8] = [0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
-        let gcm_siv = try! Aes256GcmSiv(key)
+        let gcm_siv = try! Aes256GcmSiv(key: key)
 
-        let ctext = try! gcm_siv.encrypt(ptext, nonce, ad)
+        let ctext = try! gcm_siv.encrypt(ptext, nonce: nonce, associatedData: ad)
         XCTAssertEqual(ctext, expected_ctext)
 
-        let recovered = try! gcm_siv.decrypt(ctext, nonce, ad)
+        let recovered = try! gcm_siv.decrypt(ctext, nonce: nonce, associatedData: ad)
         XCTAssertEqual(recovered, ptext)
 
-        XCTAssertThrowsError(try gcm_siv.decrypt(ptext, nonce, ad))
-        XCTAssertThrowsError(try gcm_siv.decrypt(ctext, ad, nonce))
+        XCTAssertThrowsError(try gcm_siv.decrypt(ptext, nonce: nonce, associatedData: ad))
+        XCTAssertThrowsError(try gcm_siv.decrypt(ctext, nonce: ad, associatedData: nonce))
     }
 
     func testAddress() {
