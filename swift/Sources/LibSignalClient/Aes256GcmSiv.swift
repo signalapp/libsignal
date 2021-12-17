@@ -7,7 +7,7 @@ import SignalFfi
 import Foundation
 
 public class Aes256GcmSiv: NativeHandleOwner {
-    public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
+    public convenience init<Bytes: ContiguousBytes>(key bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
             try checkError(signal_aes256_gcm_siv_new(&result, $0))
@@ -22,8 +22,9 @@ public class Aes256GcmSiv: NativeHandleOwner {
 
     public func encrypt<MessageBytes, NonceBytes, AssociatedDataBytes>(
       _ message: MessageBytes,
-      _ nonce: NonceBytes,
-      _ associated_data: AssociatedDataBytes) throws -> [UInt8]
+      nonce: NonceBytes,
+      associatedData: AssociatedDataBytes
+    ) throws -> [UInt8]
       where MessageBytes: ContiguousBytes,
             NonceBytes: ContiguousBytes,
             AssociatedDataBytes: ContiguousBytes {
@@ -31,7 +32,7 @@ public class Aes256GcmSiv: NativeHandleOwner {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
-                    try associated_data.withUnsafeBorrowedBuffer { adBuffer in
+                    try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                         try invokeFnReturningArray {
                             signal_aes256_gcm_siv_encrypt($0,
                                                           $1,
@@ -48,8 +49,8 @@ public class Aes256GcmSiv: NativeHandleOwner {
 
     public func decrypt<MessageBytes, NonceBytes, AssociatedDataBytes> (
       _ message: MessageBytes,
-      _ nonce: NonceBytes,
-      _ associated_data: AssociatedDataBytes) throws -> [UInt8]
+      nonce: NonceBytes,
+      associatedData: AssociatedDataBytes) throws -> [UInt8]
       where MessageBytes: ContiguousBytes,
             NonceBytes: ContiguousBytes,
             AssociatedDataBytes: ContiguousBytes {
@@ -57,7 +58,7 @@ public class Aes256GcmSiv: NativeHandleOwner {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
-                    try associated_data.withUnsafeBorrowedBuffer { adBuffer in
+                    try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                         try invokeFnReturningArray {
                             signal_aes256_gcm_siv_decrypt($0,
                                                           $1,
