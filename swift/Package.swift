@@ -28,7 +28,7 @@ let package = Package(
         .testTarget(
             name: "SignalClientTests",
             dependencies: ["SignalClient"],
-            linkerSettings: [.unsafeFlags(["\(rustBuildDir)/libsignal_ffi.a"])]
+            linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
         )
     ]
 )

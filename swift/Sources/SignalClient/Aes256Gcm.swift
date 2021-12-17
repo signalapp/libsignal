@@ -47,10 +47,7 @@ public struct Aes256GcmEncryptedData {
     ) throws -> Self
     where KeyBytes: ContiguousBytes, AssociatedDataBytes: ContiguousBytes {
         var nonce = Data(count: Self.nonceLength)
-        let result = nonce.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, $0.count, $0.baseAddress!) }
-        guard result == errSecSuccess else {
-          throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
-        }
+        try nonce.withUnsafeMutableBytes { try fillRandom($0) }
 
         let cipher = try Aes256GcmEncryption(key: key, nonce: nonce, associatedData: associatedData)
         var ciphertext = message

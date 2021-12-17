@@ -4,13 +4,14 @@
 //
 
 import XCTest
-import SignalClient
+@testable import SignalClient
 
 class CryptoTests: TestCaseBase {
     func generateAesKey() -> [UInt8] {
         var key = Array(repeating: UInt8(0), count: 32)
-        let result = SecRandomCopyBytes(kSecRandomDefault, key.count, &key)
-        precondition(result == errSecSuccess)
+        key.withUnsafeMutableBytes {
+            try! fillRandom($0)
+        }
         return key
     }
 

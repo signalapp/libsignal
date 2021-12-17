@@ -6,6 +6,10 @@
 import SignalFfi
 import Foundation
 
+#if canImport(Security)
+import Security
+#endif
+
 internal func invokeFnReturningString(fn: (UnsafeMutablePointer<UnsafePointer<CChar>?>?) -> SignalFfiErrorRef?) throws -> String {
     try invokeFnReturningOptionalString(fn: fn)!
 }
@@ -64,7 +68,7 @@ internal func invokeFnReturningSerialized<Result: ByteArray, SerializedResult>(f
 }
 
 internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> SignalFfiErrorRef?) throws -> UUID {
-    var output = UUID_NULL
+    var output: uuid_t = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     try checkError(fn(&output))
     return UUID(uuid: output)
 }
@@ -85,4 +89,23 @@ internal func invokeFnReturningOptionalNativeHandle<Owner: NativeHandleOwner>(fn
     var handle: OpaquePointer?
     try checkError(fn(&handle))
     return handle.map { Owner(owned: $0) }
+}
+
+internal func fillRandom(_ buffer: UnsafeMutableRawBufferPointer) throws {
+    guard let baseAddress = buffer.baseAddress else {
+        // Zero-length buffers are permitted to have nil baseAddresses.
+        assert(buffer.count == 0)
+        return
+    }
+
+#if canImport(Security)
+    let result = SecRandomCopyBytes(kSecRandomDefault, buffer.count, baseAddress)
+    guard result == errSecSuccess else {
+      throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
+    }
+#else
+    for i in buffer.indices {
+        buffer[i] = UInt8.random(in: .min ... .max)
+    }
+#endif
 }
