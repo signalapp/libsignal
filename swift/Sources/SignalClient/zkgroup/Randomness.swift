@@ -4,7 +4,6 @@
 //
 
 import SignalFfi
-import Security
 
 public struct Randomness {
     public var bytes: SignalRandomnessBytes
@@ -15,12 +14,9 @@ public struct Randomness {
 
     static func generate() throws -> Randomness {
         var bytes: SignalRandomnessBytes = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-
-        let result = SecRandomCopyBytes(kSecRandomDefault, MemoryLayout.size(ofValue: bytes), &bytes)
-        guard result == errSecSuccess else {
-          throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
+        try withUnsafeMutableBytes(of: &bytes) {
+            try fillRandom($0)
         }
-
         return Randomness(bytes)
     }
 
