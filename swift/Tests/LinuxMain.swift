@@ -8,6 +8,7 @@ import XCTest
 
 XCTMain([
     testCase(ClonableHandleOwnerTests.allTests),
+    testCase(CryptoTests.allTests),
     testCase(PublicAPITests.allTests),
     testCase(SessionTests.allTests),
     testCase(ZKGroupTests.allTests),
