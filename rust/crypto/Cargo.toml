@@ -8,6 +8,7 @@ name = "signal-crypto"
 version = "0.1.0"
 authors = ["Jack Lloyd <jack@signal.org>"]
 edition = "2018"
+license = "AGPL-3.0-only"
 
 [dependencies]
 aes = { version = "0.7.4", features = ["ctr"] }
