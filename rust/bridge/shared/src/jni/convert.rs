@@ -203,6 +203,13 @@ impl<'a> SimpleArgTypeInfo<'a> for u8 {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for bool {
+    type ArgType = jboolean;
+    fn convert_from(_env: &JNIEnv, foreign: jboolean) -> SignalJniResult<Self> {
+        Ok(foreign != 0)
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> SignalJniResult<Self> {
@@ -950,6 +957,9 @@ macro_rules! jni_arg_type {
     };
     (u64) => {
         jni::jlong
+    };
+    (bool) => {
+        jni::jboolean
     };
     (String) => {
         jni::JString

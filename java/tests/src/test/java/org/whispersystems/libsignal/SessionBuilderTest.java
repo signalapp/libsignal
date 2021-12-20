@@ -10,6 +10,7 @@ import org.whispersystems.libsignal.protocol.SignalMessage;
 import org.whispersystems.libsignal.state.IdentityKeyStore;
 import org.whispersystems.libsignal.state.PreKeyBundle;
 import org.whispersystems.libsignal.state.PreKeyRecord;
+import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.state.SignedPreKeyRecord;
 import org.whispersystems.libsignal.util.Pair;
@@ -458,5 +459,27 @@ public class SessionBuilderTest extends TestCase {
     }
   }
 
+  public void testNeedsPniSignature() throws InvalidKeyException, NoSessionException, UntrustedIdentityException {
+    SignalProtocolStore aliceStore          = new TestInMemorySignalProtocolStore();
+    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
 
+    final SignalProtocolStore bobStore                 = new TestInMemorySignalProtocolStore();
+          ECKeyPair    bobPreKeyPair            = Curve.generateKeyPair();
+          ECKeyPair    bobSignedPreKeyPair      = Curve.generateKeyPair();
+          byte[]       bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                           bobSignedPreKeyPair.getPublicKey().serialize());
+
+    PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
+                                              31337, bobPreKeyPair.getPublicKey(),
+                                              22, bobSignedPreKeyPair.getPublicKey(),
+                                              bobSignedPreKeySignature,
+                                              bobStore.getIdentityKeyPair().getPublicKey());
+
+    aliceSessionBuilder.process(bobPreKey);
+
+    SessionRecord session = aliceStore.loadSession(BOB_ADDRESS);
+    assertFalse(session.needsPniSignature());
+    session.setNeedsPniSignature(true);
+    assertTrue(session.needsPniSignature());
+  }
 }

@@ -27,6 +27,10 @@ message SessionStructure {
     }
 
     repeated MessageKey message_keys = 4;
+
+    // This is inside the sender chain so it automatically gets cleared on ratchet.
+    // It should never be set on a receiver chain.
+    bool needs_pni_signature = 5;
   }
 
   message PendingPreKey {
@@ -35,24 +39,24 @@ message SessionStructure {
     bytes  base_key          = 2;
   }
 
-  uint32         session_version            = 1;
-  bytes          local_identity_public      = 2;
-  bytes          remote_identity_public     = 3;
+  uint32         session_version        = 1;
+  bytes          local_identity_public  = 2;
+  bytes          remote_identity_public = 3;
 
-  bytes          root_key                   = 4;
-  uint32         previous_counter           = 5;
+  bytes          root_key               = 4;
+  uint32         previous_counter       = 5;
 
-  Chain          sender_chain               = 6;
+  Chain          sender_chain           = 6;
   // The order is significant; keys at the end are "older" and will get trimmed.
-  repeated Chain receiver_chains            = 7;
+  repeated Chain receiver_chains        = 7;
 
-  PendingPreKey      pending_pre_key        = 9;
+  PendingPreKey  pending_pre_key        = 9;
 
-  uint32             remote_registration_id = 10;
-  uint32             local_registration_id  = 11;
+  uint32         remote_registration_id = 10;
+  uint32         local_registration_id  = 11;
 
-  bool               needs_refresh          = 12;
-  bytes              alice_base_key         = 13;
+  reserved 12; // no longer used
+  bytes          alice_base_key         = 13;
 }
 
 message RecordStructure {

@@ -423,6 +423,44 @@ class SessionTests: TestCaseBase {
         XCTAssert(try bob_session_with_alice.currentRatchetKeyMatches(XCTUnwrap(bob_error_message.ratchetKey)))
     }
 
+    func testNeedsPniSignature() throws {
+        let bob_address = try! ProtocolAddress(name: "6838237D-02F6-4098-B110-698253D15961", deviceId: 1)
+
+        let bob_store = InMemorySignalProtocolStore()
+
+        let bob_pre_key = PrivateKey.generate()
+        let bob_signed_pre_key = PrivateKey.generate()
+
+        let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
+
+        let bob_identity_key = try! bob_store.identityKeyPair(context: NullContext()).identityKey
+        let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: NullContext()).privateKey.generateSignature(message: bob_signed_pre_key_public)
+
+        let prekey_id: UInt32 = 4570
+        let signed_prekey_id: UInt32 = 3006
+
+        let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: NullContext()),
+                                           deviceId: 9,
+                                           prekeyId: prekey_id,
+                                           prekey: bob_pre_key.publicKey,
+                                           signedPrekeyId: signed_prekey_id,
+                                           signedPrekey: bob_signed_pre_key.publicKey,
+                                           signedPrekeySignature: bob_signed_pre_key_signature,
+                                           identity: bob_identity_key)
+
+        // Alice processes the bundle:
+        let alice_store = InMemorySignalProtocolStore()
+        try! processPreKeyBundle(bob_bundle,
+                                 for: bob_address,
+                                 sessionStore: alice_store,
+                                 identityStore: alice_store,
+                                 context: NullContext())
+        let alice_session_with_bob = try! alice_store.loadSession(for: bob_address, context: NullContext())!
+        XCTAssertFalse(alice_session_with_bob.needsPniSignature)
+        alice_session_with_bob.needsPniSignature = true
+        XCTAssertTrue(alice_session_with_bob.needsPniSignature)
+    }
+
     static var allTests: [(String, (SessionTests) -> () throws -> Void)] {
         return [
             ("testSessionCipher", testSessionCipher),
@@ -431,7 +469,8 @@ class SessionTests: TestCaseBase {
             ("testArchiveSession", testArchiveSession),
             ("testSealedSenderGroupCipher", testSealedSenderGroupCipher),
             ("testSealedSenderGroupCipherWithBadRegistrationId", testSealedSenderGroupCipherWithBadRegistrationId),
-            ("testDecryptionErrorMessage", testDecryptionErrorMessage)
+            ("testDecryptionErrorMessage", testDecryptionErrorMessage),
+            ("testNeedsPniSignature", testNeedsPniSignature),
         ]
     }
 }

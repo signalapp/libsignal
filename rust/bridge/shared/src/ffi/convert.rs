@@ -562,6 +562,7 @@ macro_rules! ffi_arg_type {
     (u64) => (u64);
     (Option<u32>) => (u32);
     (usize) => (libc::size_t);
+    (bool) => (bool);
     (&[u8]) => (*const libc::c_uchar);
     (&mut [u8]) => (*mut libc::c_uchar);
     (String) => (*const libc::c_char);

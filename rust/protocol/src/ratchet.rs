@@ -31,6 +31,7 @@ fn derive_keys(secret_input: &[u8]) -> Result<(RootKey, ChainKey)> {
 
 pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
+
     mut csprng: &mut R,
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
@@ -81,7 +82,6 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         pending_pre_key: None,
         remote_registration_id: 0,
         local_registration_id: 0,
-        needs_refresh: false,
         alice_base_key: vec![],
     };
 
@@ -144,7 +144,6 @@ pub(crate) fn initialize_bob_session(
         pending_pre_key: None,
         remote_registration_id: 0,
         local_registration_id: 0,
-        needs_refresh: false,
         alice_base_key: vec![],
     };
 

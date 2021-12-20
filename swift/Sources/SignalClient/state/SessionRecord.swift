@@ -42,6 +42,25 @@ public class SessionRecord: ClonableHandleOwner {
         return result
     }
 
+    /// Checks if this session was marked as needing a PNI signature and has not received a
+    /// reply.
+    ///
+    /// - Precondition: `self.hasCurrentState`
+    public var needsPniSignature: Bool {
+        get {
+            var result = false
+            self.withNativeHandle { nativeHandle in
+                failOnError(signal_session_record_needs_pni_signature(&result, nativeHandle))
+            }
+            return result
+        }
+        set {
+            self.withNativeHandle { nativeHandle in
+                failOnError(signal_session_record_set_needs_pni_signature(nativeHandle, newValue))
+            }
+        }
+    }
+
     public func archiveCurrentState() {
         self.withNativeHandle { nativeHandle in
             failOnError(signal_session_record_archive_current_state(nativeHandle))

@@ -390,8 +390,10 @@ public final class Native {
   public static native boolean SessionRecord_HasSenderChain(long obj);
   public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
   public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
+  public static native boolean SessionRecord_NeedsPniSignature(long obj);
   public static native long SessionRecord_NewFresh();
   public static native byte[] SessionRecord_Serialize(long obj);
+  public static native void SessionRecord_SetNeedsPniSignature(long s, boolean needsPniSignature);
 
   public static native long SignalMessage_Deserialize(byte[] data);
   public static native void SignalMessage_Destroy(long handle);

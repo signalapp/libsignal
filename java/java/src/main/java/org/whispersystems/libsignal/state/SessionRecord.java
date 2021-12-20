@@ -101,6 +101,29 @@ public class SessionRecord implements NativeHandleGuard.Owner {
     }
   }
 
+  /**
+   * Returns true if this session was initialized needing a PNI signature and has not received a
+   * reply.
+   * <p>
+   * Precondition: `this.hasSenderChain()`
+   */
+  public boolean needsPniSignature() {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.SessionRecord_NeedsPniSignature(guard.nativeHandle());
+    }
+  }
+
+  /**
+   * Marks whether this session needs a PNI signature included in outgoing messages.
+   * <p>
+   * Precondition: `this.hasSenderChain()`
+   */
+  public void setNeedsPniSignature(boolean needsPniSignature) {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      Native.SessionRecord_SetNeedsPniSignature(guard.nativeHandle(), needsPniSignature);
+    }
+  }
+
   public boolean currentRatchetKeyMatches(ECPublicKey key) {
     try (
       NativeHandleGuard guard = new NativeHandleGuard(this);
