@@ -169,6 +169,31 @@ fn IdentityKeyPair_Serialize(public_key: &PublicKey, private_key: &PrivateKey) -
     identity_key_pair.serialize().into_vec()
 }
 
+#[bridge_fn_buffer(ffi = "identitykeypair_sign_alternate_identity")]
+fn IdentityKeyPair_SignAlternateIdentity(
+    public_key: &PublicKey,
+    private_key: &PrivateKey,
+    other_identity: &PublicKey,
+) -> Result<Vec<u8>> {
+    let mut rng = rand::rngs::OsRng;
+    let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(*public_key), *private_key);
+    let other_identity = IdentityKey::new(*other_identity);
+    Ok(identity_key_pair
+        .sign_alternate_identity(&other_identity, &mut rng)?
+        .into_vec())
+}
+
+#[bridge_fn(ffi = "identitykey_verify_alternate_identity")]
+fn IdentityKey_VerifyAlternateIdentity(
+    public_key: &PublicKey,
+    other_identity: &PublicKey,
+    signature: &[u8],
+) -> Result<bool> {
+    let identity = IdentityKey::new(*public_key);
+    let other_identity = IdentityKey::new(*other_identity);
+    identity.verify_alternate_identity(&other_identity, signature)
+}
+
 #[bridge_fn(jni = false)]
 fn Fingerprint_New(
     iterations: u32,

@@ -8,7 +8,10 @@ package org.whispersystems.libsignal;
 import org.signal.client.internal.Native;
 import org.signal.client.internal.NativeHandleGuard;
 
+import org.whispersystems.libsignal.ecc.Curve;
+import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
+import org.whispersystems.libsignal.ecc.ECPublicKey;
 
 /**
  * Holder for public and private identity key pair.
@@ -33,6 +36,13 @@ public class IdentityKeyPair {
     this.privateKey = new ECPrivateKey(privateKeyHandle);
   }
 
+  public static IdentityKeyPair generate() {
+    ECKeyPair keyPair = Curve.generateKeyPair();
+    ECPrivateKey privateKey = keyPair.getPrivateKey();
+    ECPublicKey publicKey = keyPair.getPublicKey();
+    return new IdentityKeyPair(new IdentityKey(publicKey), privateKey);
+  }
+
   public IdentityKey getPublicKey() {
     return publicKey;
   }
@@ -47,6 +57,16 @@ public class IdentityKeyPair {
       NativeHandleGuard privateKey = new NativeHandleGuard(this.privateKey);
     ) {
       return Native.IdentityKeyPair_Serialize(publicKey.nativeHandle(), privateKey.nativeHandle());
+    }
+  }
+
+  public byte[] signAlternateIdentity(IdentityKey other) {
+    try (
+      NativeHandleGuard publicKey = new NativeHandleGuard(this.publicKey.getPublicKey());
+      NativeHandleGuard privateKey = new NativeHandleGuard(this.privateKey);
+      NativeHandleGuard otherPublic = new NativeHandleGuard(other.getPublicKey());
+    ) {
+      return Native.IdentityKeyPair_SignAlternateIdentity(publicKey.nativeHandle(), privateKey.nativeHandle(), otherPublic.nativeHandle());
     }
   }
 }

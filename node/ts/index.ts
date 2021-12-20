@@ -197,6 +197,10 @@ export class PublicKey {
   verify(msg: Buffer, sig: Buffer): boolean {
     return Native.PublicKey_Verify(this, msg, sig);
   }
+
+  verifyAlternateIdentity(other: PublicKey, signature: Buffer): boolean {
+    return Native.IdentityKey_VerifyAlternateIdentity(this, other, signature);
+  }
 }
 
 export class PrivateKey {
@@ -236,20 +240,29 @@ export class PrivateKey {
 }
 
 export class IdentityKeyPair {
-  private readonly publicKey: PublicKey;
-  private readonly privateKey: PrivateKey;
+  readonly publicKey: PublicKey;
+  readonly privateKey: PrivateKey;
 
   constructor(publicKey: PublicKey, privateKey: PrivateKey) {
     this.publicKey = publicKey;
     this.privateKey = privateKey;
   }
 
-  static new(publicKey: PublicKey, privateKey: PrivateKey): IdentityKeyPair {
-    return new IdentityKeyPair(publicKey, privateKey);
+  static generate(): IdentityKeyPair {
+    const privateKey = PrivateKey.generate();
+    return new IdentityKeyPair(privateKey.getPublicKey(), privateKey);
   }
 
   serialize(): Buffer {
     return Native.IdentityKeyPair_Serialize(this.publicKey, this.privateKey);
+  }
+
+  signAlternateIdentity(other: PublicKey): Buffer {
+    return Native.IdentityKeyPair_SignAlternateIdentity(
+      this.publicKey,
+      this.privateKey,
+      other
+    );
   }
 }
 

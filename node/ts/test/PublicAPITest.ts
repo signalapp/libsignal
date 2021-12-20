@@ -1750,4 +1750,13 @@ describe('SignalClient', () => {
       SignalClient.PublicKey.deserialize(invalid_key);
     }, 'bad key type <0xab>');
   });
+
+  it('can sign and verify alternate identity keys', () => {
+    const primary = SignalClient.IdentityKeyPair.generate();
+    const secondary = SignalClient.IdentityKeyPair.generate();
+    const signature = secondary.signAlternateIdentity(primary.publicKey);
+    assert(
+      secondary.publicKey.verifyAlternateIdentity(primary.publicKey, signature)
+    );
+  });
 });
