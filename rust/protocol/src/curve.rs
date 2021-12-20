@@ -81,8 +81,8 @@ impl PublicKey {
     }
 
     pub fn public_key_bytes(&self) -> Result<&[u8]> {
-        match self.key {
-            PublicKeyData::DjbPublicKey(ref v) => Ok(v),
+        match &self.key {
+            PublicKeyData::DjbPublicKey(v) => Ok(v),
         }
     }
 
@@ -96,25 +96,25 @@ impl PublicKey {
     }
 
     pub fn serialize(&self) -> Box<[u8]> {
-        let value_len = match self.key {
+        let value_len = match &self.key {
             PublicKeyData::DjbPublicKey(v) => v.len(),
         };
         let mut result = Vec::with_capacity(1 + value_len);
         result.push(self.key_type().value());
-        match self.key {
-            PublicKeyData::DjbPublicKey(v) => result.extend_from_slice(&v),
+        match &self.key {
+            PublicKeyData::DjbPublicKey(v) => result.extend_from_slice(v),
         }
         result.into_boxed_slice()
     }
 
     pub fn verify_signature(&self, message: &[u8], signature: &[u8]) -> Result<bool> {
-        match self.key {
+        match &self.key {
             PublicKeyData::DjbPublicKey(pub_key) => {
                 if signature.len() != curve25519::SIGNATURE_LENGTH {
                     return Ok(false);
                 }
                 Ok(curve25519::PrivateKey::verify_signature(
-                    &pub_key,
+                    pub_key,
                     message,
                     array_ref![signature, 0, curve25519::SIGNATURE_LENGTH],
                 ))
@@ -123,13 +123,13 @@ impl PublicKey {
     }
 
     fn key_data(&self) -> &[u8] {
-        match self.key {
+        match &self.key {
             PublicKeyData::DjbPublicKey(ref k) => k.as_ref(),
         }
     }
 
     pub fn key_type(&self) -> KeyType {
-        match self.key {
+        match &self.key {
             PublicKeyData::DjbPublicKey(_) => KeyType::Djb,
         }
     }
@@ -223,23 +223,23 @@ impl PrivateKey {
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        match self.key {
+        match &self.key {
             PrivateKeyData::DjbPrivateKey(v) => v.to_vec(),
         }
     }
 
     pub fn public_key(&self) -> Result<PublicKey> {
-        match self.key {
+        match &self.key {
             PrivateKeyData::DjbPrivateKey(private_key) => {
                 let public_key =
-                    curve25519::PrivateKey::from(private_key).derive_public_key_bytes();
+                    curve25519::PrivateKey::from(*private_key).derive_public_key_bytes();
                 Ok(PublicKey::new(PublicKeyData::DjbPublicKey(public_key)))
             }
         }
     }
 
     pub fn key_type(&self) -> KeyType {
-        match self.key {
+        match &self.key {
             PrivateKeyData::DjbPrivateKey(_) => KeyType::Djb,
         }
     }
