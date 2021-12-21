@@ -8,7 +8,7 @@ Check GitHub to see if the latest commit has all tests passing. If not, fix the 
 
 The first version component should always be 0, to indicate that Signal does not promise stability between releases of the library.
 
-If the changes will require updates in Signal-Android, Signal-iOS, or Signal-Desktop, increase the second version component and reset the third to 0. Otherwise, increase the third version component.
+A change is "breaking" if it will require updates in any of the Signal client apps or server components, or in external Rust clients of libsignal-protocol, zkgroup, poksho, hsm-enclave, device-transfer, or signal-crypto. If there are any breaking changes, increase the second version component and reset the third to 0. Otherwise, increase the third version component.
 
 ```
 bin/update_versions.py 0.x.y
