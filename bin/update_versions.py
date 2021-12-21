@@ -42,12 +42,15 @@ def main():
     os.chdir(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
     if len(sys.argv) > 1:
-        update_version('LibSignalClient.podspec', PODSPEC_PATTERN, sys.argv[1])
-        update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, sys.argv[1])
-        update_version(os.path.join('node', 'package.json'), NODE_PATTERN, sys.argv[1])
-        update_version(bridge_path('ffi'), CARGO_PATTERN, sys.argv[1])
-        update_version(bridge_path('jni'), CARGO_PATTERN, sys.argv[1])
-        update_version(bridge_path('node'), CARGO_PATTERN, sys.argv[1])
+        new_version = sys.argv[1]
+        if new_version[0] == 'v':
+            new_version = new_version[1:]
+        update_version('LibSignalClient.podspec', PODSPEC_PATTERN, new_version)
+        update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, new_version)
+        update_version(os.path.join('node', 'package.json'), NODE_PATTERN, new_version)
+        update_version(bridge_path('ffi'), CARGO_PATTERN, new_version)
+        update_version(bridge_path('jni'), CARGO_PATTERN, new_version)
+        update_version(bridge_path('node'), CARGO_PATTERN, new_version)
         return 0
 
     package_versions = {
