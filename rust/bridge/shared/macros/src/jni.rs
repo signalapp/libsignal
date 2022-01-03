@@ -63,7 +63,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
                 } else {
                     (
                         Ident::new("unexpected", pat.span()),
-                        Error::new(pat.span(), "cannot use patterns in paramater")
+                        Error::new(pat.span(), "cannot use patterns in parameter")
                             .to_compile_error(),
                         quote!(),
                     )
