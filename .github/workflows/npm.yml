@@ -25,7 +25,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-11]
         include:
         - os: macos-11
-          additional-rust-target: aarch64-apple-darwin
+          arm64-rust-target: aarch64-apple-darwin
+        - os: windows-latest
+          arm64-rust-target: aarch64-pc-windows-msvc
 
     steps:
     - uses: actions/checkout@v2
@@ -36,7 +38,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        target: ${{ matrix.additional-rust-target }}
+        target: ${{ matrix.arm64-rust-target }}
 
     - name: Get Node version from .nvmrc
       id: get-nvm-version
@@ -56,7 +58,7 @@ jobs:
 
     - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
-      if: matrix.os == 'macos-11'
+      if: matrix.arm64-rust-target != ''
 
     - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
