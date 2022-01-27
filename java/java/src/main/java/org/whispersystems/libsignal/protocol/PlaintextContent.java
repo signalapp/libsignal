@@ -9,6 +9,7 @@ import org.signal.client.internal.Native;
 import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidMessageException;
+import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.libsignal.util.guava.Optional;
 
 public final class PlaintextContent implements CiphertextMessage, NativeHandleGuard.Owner {
@@ -34,6 +35,10 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
     try (NativeHandleGuard messageGuard = new NativeHandleGuard(message)) {
       this.unsafeHandle = Native.PlaintextContent_FromDecryptionErrorMessage(messageGuard.nativeHandle());
     }
+  }
+
+  public PlaintextContent(byte[] serialized) throws InvalidMessageException, InvalidVersionException {
+    unsafeHandle = Native.PlaintextContent_Deserialize(serialized);
   }
 
   @Override
