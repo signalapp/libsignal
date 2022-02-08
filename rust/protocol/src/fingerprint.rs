@@ -8,6 +8,7 @@ use crate::{IdentityKey, Result, SignalProtocolError};
 use prost::Message;
 use sha2::{digest::Digest, Sha512};
 use std::fmt;
+use std::fmt::Write;
 use subtle::ConstantTimeEq;
 
 #[derive(Debug, Clone)]
@@ -35,19 +36,16 @@ fn get_encoded_string(fprint: &[u8]) -> Result<String> {
 
     fn read5_mod_100k(fprint: &[u8]) -> u64 {
         assert_eq!(fprint.len(), 5);
-        let x = fprint.iter().fold(0u64, |acc, &x| acc * 256 + (x as u64));
-        x % 100000
+        let x = fprint.iter().fold(0u64, |acc, &x| (acc << 8) | (x as u64));
+        x % 100_000
     }
 
-    // todo use iterators
-    let s = format!(
-        "{:05}{:05}{:05}{:05}{:05}{:05}",
-        read5_mod_100k(&fprint[0..5]),
-        read5_mod_100k(&fprint[5..10]),
-        read5_mod_100k(&fprint[10..15]),
-        read5_mod_100k(&fprint[15..20]),
-        read5_mod_100k(&fprint[20..25]),
-        read5_mod_100k(&fprint[25..30])
+    let s = fprint.chunks_exact(5).take(6).map(read5_mod_100k).fold(
+        String::with_capacity(5 * 6),
+        |mut s, n| {
+            write!(s, "{:05}", n).expect("can always write to a String");
+            s
+        },
     );
 
     Ok(s)
