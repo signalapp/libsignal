@@ -43,7 +43,7 @@ fn get_encoded_string(fprint: &[u8]) -> Result<String> {
     let s = fprint.chunks_exact(5).take(6).map(read5_mod_100k).fold(
         String::with_capacity(5 * 6),
         |mut s, n| {
-            write!(s, "{:05}", n).expect("can always write to a Vec");
+            write!(s, "{:05}", n).expect("can always write to a String");
             s
         },
     );
