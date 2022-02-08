@@ -36,7 +36,7 @@ fn get_encoded_string(fprint: &[u8]) -> Result<String> {
     fn read5_mod_100k(fprint: &[u8]) -> u64 {
         assert_eq!(fprint.len(), 5);
         let x = fprint.iter().fold(0u64, |acc, &x| acc * 256 + (x as u64));
-        x % 100000
+        x % 100_000
     }
 
     // todo use iterators
