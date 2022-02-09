@@ -21,7 +21,7 @@ use crate::util::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_print_ptr(p: *const std::ffi::c_void) {
-    println!("In rust thats {:?}", p);
+    println!("In rust that's {:?}", p);
 }
 
 #[no_mangle]

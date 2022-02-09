@@ -49,8 +49,8 @@ use std::collections::HashMap;
 // left-hand-side under the group homomorphism).  In the above cases, "a" is the witness.
 //
 // The zero-knowledge proof is a standard Fiat-Shamir Sigma/Schnorr proof of knowledge.  To
-// immplement Fiat-Shamir hashing we use the SHO/HMAC-SHA256 construct, which provides a stateful object
-// which we can use to Absorb data, and then Squeeze out arbitrary-length ouput.  We use a SHO
+// implement Fiat-Shamir hashing we use the SHO/HMAC-SHA256 construct, which provides a stateful object
+// which we can use to Absorb data, and then Squeeze out arbitrary-length output.  We use a SHO
 // object not only to produce the Schnorr challenge, but also to produce the Schnorr nonce by
 // hashing some caller-supplied random data, the witness, and the message.  This "synthetic nonce"
 // strategy is intended to ensure that the nonce appears random to any attacker and that different
