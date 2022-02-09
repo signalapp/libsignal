@@ -1679,7 +1679,7 @@ fn test_lossless_round_trip() -> Result<()> {
 
     // To test a hypothetical addition of a new field:
     //
-    // Step 1: tempororarily add a new field to the .proto.
+    // Step 1: temporarily add a new field to the .proto.
     //
     //    --- a/rust/protocol/src/proto/sealed_sender.proto
     //    +++ b/rust/protocol/src/proto/sealed_sender.proto

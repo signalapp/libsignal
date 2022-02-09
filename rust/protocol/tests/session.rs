@@ -435,7 +435,7 @@ fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
             let _msg = encrypt(
                 &mut a1_store,
                 &a2_address,
-                "Yet another message for youself",
+                "Yet another message for yourself",
             )
             .await?;
         }

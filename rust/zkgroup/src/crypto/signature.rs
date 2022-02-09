@@ -95,7 +95,7 @@ mod tests {
             .verify(&message, signature)
             .unwrap();
 
-        // test signature falure
+        // test signature failure
         message[0] ^= 1;
         match key_pair2.get_public_key().verify(&message, signature) {
             Err(SignatureVerificationFailure) => (),

@@ -67,7 +67,7 @@ pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
 ///
 /// - Node: boxed values use Neon's [`JsBox`][] type, but this is only used for return values.
 ///   Arguments are always in the form of a JavaScript object with a `_nativeHandle` property that
-///   refers to the box. The type inside the box may not directy be a `Foo` on the Rust side;
+///   refers to the box. The type inside the box may not directly be a `Foo` on the Rust side;
 ///   that's an implementation detail.
 ///
 ///   For TypeScript's benefit, each boxed type gets its own unique `interface Foo`, and the
