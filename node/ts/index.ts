@@ -13,7 +13,15 @@ export * from './Address';
 
 import * as Native from '../Native';
 
-export const { initLogger, LogLevel } = Native;
+export const { initLogger } = Native;
+
+export enum LogLevel {
+  Error = 1,
+  Warn,
+  Info,
+  Debug,
+  Trace,
+}
 
 Native.registerErrors(Errors);
 
