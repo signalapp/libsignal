@@ -49,17 +49,19 @@ public struct HsmCodeHashList {
 ///
 public class HsmEnclaveClient: NativeHandleOwner {
 
-    public convenience init(publicKey: PublicKey, codeHashes: HsmCodeHashList) throws {
+    public convenience init<Bytes: ContiguousBytes>(publicKey: Bytes, codeHashes: HsmCodeHashList) throws {
         let codeHashBytes = codeHashes.flatten()
 
-        let handle: OpaquePointer? = try codeHashBytes.withUnsafeBytes { bytes in
-            var result: OpaquePointer?
-            try checkError(signal_hsm_enclave_client_new(&result,
-                                                         publicKey.keyBytes,
-                                                         publicKey.keyBytes.count,
-                                                         bytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                         bytes.count))
-            return result
+        let handle: OpaquePointer? = try publicKey.withUnsafeBytes { publicKeyBytes in
+            try codeHashBytes.withUnsafeBytes { codeHashBytes in
+                var result: OpaquePointer?
+                try checkError(signal_hsm_enclave_client_new(&result,
+                                                             publicKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                             publicKeyBytes.count,
+                                                             codeHashBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                                                             codeHashBytes.count))
+                return result
+            }
         }
 
         self.init(owned: handle!)
@@ -103,7 +105,7 @@ public class HsmEnclaveClient: NativeHandleOwner {
         return try withNativeHandle { nativeHandle in
             try receivedCiphertext.withUnsafeBytes { bytes in
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_established_send($0, $1, nativeHandle, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count)
+                    signal_hsm_enclave_client_established_recv($0, $1, nativeHandle, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count)
                 }
             }
         }
