@@ -19,7 +19,7 @@ class HsmEnclaveTests: TestCaseBase {
             0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
             0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
         ])
-        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey, codeHashes: hashes)
+        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey.keyBytes, codeHashes: hashes)
         let initialMessage = try! hsmEnclaveClient.initialRequest()
         XCTAssertEqual(112, initialMessage.count)
     }
@@ -27,7 +27,7 @@ class HsmEnclaveTests: TestCaseBase {
     func testCreateClientFailsWithNoHashes() {
         let validKey = IdentityKeyPair.generate().publicKey
         let hashes = HsmCodeHashList()
-        XCTAssertThrowsError(try HsmEnclaveClient(publicKey: validKey, codeHashes: hashes))
+        XCTAssertThrowsError(try HsmEnclaveClient(publicKey: validKey.keyBytes, codeHashes: hashes))
     }
 
     func testCompleteHandshakeWithoutInitialRequest() {
@@ -37,7 +37,7 @@ class HsmEnclaveTests: TestCaseBase {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ])
-        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey, codeHashes: hashes)
+        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey.keyBytes, codeHashes: hashes)
         let handshakeResponse: [UInt8] = [0x01, 0x02, 0x03]
         XCTAssertThrowsError(try hsmEnclaveClient.completeHandshake(handshakeResponse))
     }
@@ -49,7 +49,7 @@ class HsmEnclaveTests: TestCaseBase {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ])
-        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey, codeHashes: hashes)
+        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey.keyBytes, codeHashes: hashes)
         let plaintextToSend: [UInt8] = [0x01, 0x02, 0x03]
         XCTAssertThrowsError(try hsmEnclaveClient.establishedSend(plaintextToSend))
     }
@@ -61,7 +61,7 @@ class HsmEnclaveTests: TestCaseBase {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ])
-        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey, codeHashes: hashes)
+        let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey.keyBytes, codeHashes: hashes)
         let receivedCiphertext: [UInt8] = [0x01, 0x02, 0x03]
         XCTAssertThrowsError(try hsmEnclaveClient.establishedRecv(receivedCiphertext))
     }
