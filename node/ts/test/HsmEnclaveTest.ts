@@ -21,11 +21,9 @@ SignalClient.initLogger(
 );
 
 describe('HsmEnclaveClient', () => {
-  const validKey = SignalClient.PublicKey.deserialize(
-    Buffer.from(
-      '0506863bc66d02b40d27b8d49ca7c09e9239236f9d7d25d6fcca5ce13c7064d868',
-      'hex'
-    )
+  const validKey = Buffer.from(
+    '06863bc66d02b40d27b8d49ca7c09e9239236f9d7d25d6fcca5ce13c7064d868',
+    'hex'
   );
 
   it('create client', () => {
