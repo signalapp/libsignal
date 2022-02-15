@@ -1468,7 +1468,7 @@ export class HsmEnclaveClient {
     this._nativeHandle = nativeHandle;
   }
 
-  static new(public_key: PublicKey, code_hashes: Buffer[]): HsmEnclaveClient {
+  static new(public_key: Buffer, code_hashes: Buffer[]): HsmEnclaveClient {
     code_hashes.forEach(hash => {
       if (hash.length != 32) {
         throw new Error('code hash length must be 32');
@@ -1477,7 +1477,7 @@ export class HsmEnclaveClient {
     const concat_hashes = Buffer.concat(code_hashes);
 
     return new HsmEnclaveClient(
-      Native.HsmEnclaveClient_New(public_key.getPublicKeyBytes(), concat_hashes)
+      Native.HsmEnclaveClient_New(public_key, concat_hashes)
     );
   }
 
