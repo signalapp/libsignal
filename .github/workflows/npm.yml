@@ -58,14 +58,14 @@ jobs:
     - run: yarn install --ignore-scripts --frozen-lockfile
       working-directory: node
 
-    - run: |
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          sudo apt-get install -y crossbuild-essential-arm64
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-        fi
-        npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+    - name: Install crossbuild for Linux arm64
+      run: |
+        sudo apt-get install -y crossbuild-essential-arm64
+        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      if: matrix.os == 'ubuntu-latest'
+
+    - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
-      shell: bash
 
     - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
