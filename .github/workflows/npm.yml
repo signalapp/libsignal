@@ -28,6 +28,8 @@ jobs:
           arm64-rust-target: aarch64-apple-darwin
         - os: windows-latest
           arm64-rust-target: aarch64-pc-windows-msvc
+        - os: ubuntu-latest
+          arm64-rust-target: aarch64-unknown-linux-gnu
 
     steps:
     - uses: actions/checkout@v2
@@ -56,9 +58,14 @@ jobs:
     - run: yarn install --ignore-scripts --frozen-lockfile
       working-directory: node
 
+    - name: Install crossbuild for Linux arm64
+      run: |
+        sudo apt-get install -y crossbuild-essential-arm64
+        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      if: matrix.os == 'ubuntu-latest'
+
     - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
-      if: matrix.arm64-rust-target != ''
 
     - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
