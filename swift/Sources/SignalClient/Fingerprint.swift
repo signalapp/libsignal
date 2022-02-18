@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -23,8 +23,11 @@ public struct ScannableFingerprint {
 
     public func compare(against other: ScannableFingerprint) throws -> Bool {
         var result: Bool = false
-        try checkError(signal_fingerprint_compare(&result, encoding, encoding.count,
-                                                  other.encoding, other.encoding.count))
+        try encoding.withUnsafeBorrowedBuffer { encodingBuffer in
+            try other.encoding.withUnsafeBorrowedBuffer { otherEncodingBuffer in
+                try checkError(signal_fingerprint_compare(&result, encodingBuffer, otherEncodingBuffer))
+            }
+        }
         return result
     }
 }
@@ -54,12 +57,12 @@ public struct NumericFingerprintGenerator {
     where LocalBytes: ContiguousBytes, RemoteBytes: ContiguousBytes {
         var obj: OpaquePointer?
         try withNativeHandles(localKey, remoteKey) { localKeyHandle, remoteKeyHandle in
-            try localIdentifier.withUnsafeBytes { localBytes in
-                try remoteIdentifier.withUnsafeBytes { remoteBytes in
+            try localIdentifier.withUnsafeBorrowedBuffer { localBuffer in
+                try remoteIdentifier.withUnsafeBorrowedBuffer { remoteBuffer in
                     try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
-                                                          localBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), localBytes.count,
+                                                          localBuffer,
                                                           localKeyHandle,
-                                                          remoteBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), remoteBytes.count,
+                                                          remoteBuffer,
                                                           remoteKeyHandle))
                 }
             }

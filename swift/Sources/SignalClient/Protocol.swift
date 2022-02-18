@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -12,12 +12,12 @@ public func signalEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                   identityStore: IdentityKeyStore,
                                                   context: StoreContext) throws -> CiphertextMessage {
     return try address.withNativeHandle { addressHandle in
-        try message.withUnsafeBytes { messageBytes in
+        try message.withUnsafeBorrowedBuffer { messageBuffer in
             try context.withOpaquePointer { context in
                 try withSessionStore(sessionStore) { ffiSessionStore in
                     try withIdentityKeyStore(identityStore) { ffiIdentityStore in
                         try invokeFnReturningNativeHandle {
-                            signal_encrypt_message($0, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, addressHandle, ffiSessionStore, ffiIdentityStore, context)
+                            signal_encrypt_message($0, messageBuffer, addressHandle, ffiSessionStore, ffiIdentityStore, context)
                         }
                     }
                 }
@@ -91,11 +91,11 @@ public func groupEncrypt<Bytes: ContiguousBytes>(_ message: Bytes,
                                                  context: StoreContext) throws -> CiphertextMessage {
     return try sender.withNativeHandle { senderHandle in
         try context.withOpaquePointer { context in
-            try message.withUnsafeBytes { messageBytes in
+            try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try withUnsafePointer(to: distributionId.uuid) { distributionId in
                     try withSenderKeyStore(store) { ffiStore in
                         try invokeFnReturningNativeHandle {
-                            signal_group_encrypt_message($0, senderHandle, distributionId, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
+                            signal_group_encrypt_message($0, senderHandle, distributionId, messageBuffer, ffiStore, context)
                         }
                     }
                 }
@@ -110,10 +110,10 @@ public func groupDecrypt<Bytes: ContiguousBytes>(_ message: Bytes,
                                                  context: StoreContext) throws -> [UInt8] {
     return try sender.withNativeHandle { senderHandle in
         try context.withOpaquePointer { context in
-            try message.withUnsafeBytes { messageBytes in
+            try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try withSenderKeyStore(store) { ffiStore in
                     try invokeFnReturningArray {
-                        signal_group_decrypt_message($0, $1, senderHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, ffiStore, context)
+                        signal_group_decrypt_message($0, $1, senderHandle, messageBuffer, ffiStore, context)
                     }
                 }
             }

@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -13,8 +13,8 @@ public class SenderKeyMessage: NativeHandleOwner {
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         var result: OpaquePointer?
-        try bytes.withUnsafeBytes {
-            try checkError(signal_sender_key_message_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+        try bytes.withUnsafeBorrowedBuffer {
+            try checkError(signal_sender_key_message_deserialize(&result, $0))
         }
         self.init(owned: result!)
     }

@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -13,8 +13,8 @@ public class PlaintextContent: NativeHandleOwner {
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         var result: OpaquePointer?
-        try bytes.withUnsafeBytes {
-            try checkError(signal_plaintext_content_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+        try bytes.withUnsafeBorrowedBuffer {
+            try checkError(signal_plaintext_content_deserialize(&result, $0))
         }
         self.init(owned: result!)
     }
@@ -55,25 +55,25 @@ public class DecryptionErrorMessage: NativeHandleOwner {
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         var result: OpaquePointer?
-        try bytes.withUnsafeBytes {
-            try checkError(signal_decryption_error_message_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+        try bytes.withUnsafeBorrowedBuffer {
+            try checkError(signal_decryption_error_message_deserialize(&result, $0))
         }
         self.init(owned: result!)
     }
 
     public convenience init<Bytes: ContiguousBytes>(originalMessageBytes bytes: Bytes, type: CiphertextMessage.MessageType, timestamp: UInt64, originalSenderDeviceId: UInt32) throws {
         var result: OpaquePointer?
-        try bytes.withUnsafeBytes {
-            try checkError(signal_decryption_error_message_for_original_message(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count, type.rawValue, timestamp, originalSenderDeviceId))
+        try bytes.withUnsafeBorrowedBuffer {
+            try checkError(signal_decryption_error_message_for_original_message(&result, $0, type.rawValue, timestamp, originalSenderDeviceId))
         }
         self.init(owned: result!)
     }
 
     // For testing
     public static func extractFromSerializedContent<Bytes: ContiguousBytes>(_ bytes: Bytes) throws -> DecryptionErrorMessage {
-        return try bytes.withUnsafeBytes { bytes in
+        return try bytes.withUnsafeBorrowedBuffer { buffer in
             try invokeFnReturningNativeHandle {
-                signal_decryption_error_message_extract_from_serialized_content($0, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count)
+                signal_decryption_error_message_extract_from_serialized_content($0, buffer)
             }
         }
     }

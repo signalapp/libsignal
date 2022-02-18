@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -16,9 +16,9 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
-            try checkError(signal_signed_pre_key_record_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            try checkError(signal_signed_pre_key_record_deserialize(&result, $0))
             return result
         }
         self.init(owned: handle!)
@@ -31,10 +31,10 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
         let publicKey = privateKey.publicKey
         var result: OpaquePointer?
         try withNativeHandles(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
-            try signature.withUnsafeBytes {
+            try signature.withUnsafeBorrowedBuffer {
                 try checkError(signal_signed_pre_key_record_new(&result, id, timestamp,
                                                                 publicKeyHandle, privateKeyHandle,
-                                                                $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+                                                                $0))
             }
         }
         self.init(owned: result!)

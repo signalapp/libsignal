@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -24,13 +24,13 @@ public struct DeviceTransferKey {
     }
 
     public func generateCertificate(_ name: String, _ daysTilExpire: Int) -> [UInt8] {
-        return privateKey.withUnsafeBytes { privateKeyBytes in
+        return privateKey.withUnsafeBorrowedBuffer { privateKeyBuffer in
             failOnError {
                 try invokeFnReturningArray {
                     signal_device_transfer_generate_certificate($0, $1,
-                                                                privateKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                                privateKeyBytes.count,
-                                                                name, UInt32(daysTilExpire))
+                                                                privateKeyBuffer,
+                                                                name,
+                                                                UInt32(daysTilExpire))
                 }
             }
         }

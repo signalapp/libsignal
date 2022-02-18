@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -8,9 +8,9 @@ import Foundation
 
 public class ServerCertificate: NativeHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
-            try checkError(signal_server_certificate_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            try checkError(signal_server_certificate_deserialize(&result, $0))
             return result
         }
         self.init(owned: handle!)
@@ -82,9 +82,9 @@ public class ServerCertificate: NativeHandleOwner {
 
 public class SenderCertificate: NativeHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
-            try checkError(signal_sender_certificate_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            try checkError(signal_sender_certificate_deserialize(&result, $0))
             return result
         }
         self.init(owned: handle!)

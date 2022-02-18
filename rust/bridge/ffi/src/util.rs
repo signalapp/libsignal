@@ -5,7 +5,7 @@
 
 use device_transfer::Error as DeviceTransferError;
 use hsm_enclave::Error as HsmEnclaveError;
-use libc::{c_char, c_uchar, size_t};
+use libc::c_char;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -171,13 +171,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
             ) => SignalErrorCode::VerificationFailure,
         }
     }
-}
-
-pub(crate) unsafe fn as_slice<'a>(
-    input: *const c_uchar,
-    input_len: size_t,
-) -> Result<&'a [u8], SignalFfiError> {
-    SizedArgTypeInfo::convert_from(input, input_len)
 }
 
 pub(crate) unsafe fn write_cstr_to(

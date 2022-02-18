@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -13,14 +13,15 @@ public func hkdf<InputBytes, SaltBytes, InfoBytes>(outputLength: Int,
 where InputBytes: ContiguousBytes, SaltBytes: ContiguousBytes, InfoBytes: ContiguousBytes {
     var output = Array(repeating: UInt8(0x00), count: outputLength)
 
-    try inputKeyMaterial.withUnsafeBytes { inputBytes in
-        try salt.withUnsafeBytes { saltBytes in
-            try info.withUnsafeBytes { infoBytes in
-                try checkError(signal_hkdf_derive(&output,
-                                                  outputLength,
-                                                  inputBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), inputBytes.count,
-                                                  infoBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), infoBytes.count,
-                                                  saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), saltBytes.count))
+    try output.withUnsafeMutableBytes { outputBuffer in
+        try inputKeyMaterial.withUnsafeBorrowedBuffer { inputBuffer in
+            try salt.withUnsafeBorrowedBuffer { saltBuffer in
+                try info.withUnsafeBorrowedBuffer { infoBuffer in
+                    try checkError(signal_hkdf_derive(.init(outputBuffer),
+                                                      inputBuffer,
+                                                      infoBuffer,
+                                                      saltBuffer))
+                }
             }
         }
     }

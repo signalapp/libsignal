@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -106,11 +106,10 @@ pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
 pub unsafe extern "C" fn signal_identitykeypair_deserialize(
     private_key: *mut *mut PrivateKey,
     public_key: *mut *mut PublicKey,
-    input: *const c_uchar,
-    input_len: size_t,
+    input: BorrowedSliceOf<c_uchar>,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
-        let input = as_slice(input, input_len)?;
+        let input = input.as_slice()?;
         let identity_key_pair = IdentityKeyPair::try_from(input)?;
         write_result_to(public_key, *identity_key_pair.public_key())?;
         write_result_to(private_key, *identity_key_pair.private_key())?;
@@ -125,8 +124,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
     sender_e164: *mut *const c_char,
     sender_uuid: *mut *const c_char,
     sender_device_id: *mut u32,
-    ctext: *const c_uchar,
-    ctext_len: size_t,
+    ctext: BorrowedSliceOf<c_uchar>,
     trust_root: *const PublicKey,
     timestamp: u64,
     local_e164: *const c_char,
@@ -139,7 +137,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
     ctx: *mut c_void,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
-        let ctext = as_slice(ctext, ctext_len)?;
+        let ctext = ctext.as_slice()?;
         let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
         let mut identity_store = identity_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
         let mut session_store = session_store.as_ref().ok_or(SignalFfiError::NullPointer)?;

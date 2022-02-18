@@ -58,36 +58,22 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
                 attrs,
                 pat,
                 colon_token,
-                ty
+                ty,
             }) => {
                 if let Pat::Ident(name) = pat.as_ref() {
-                    match ty.as_ref() {
-                        Type::Reference(TypeReference { elem, .. }) if matches!(elem.as_ref(), Type::Slice(_)) => {
-                            let size_arg = format_ident!("{}_len", name.ident);
-                            (
-                                name.ident.clone(),
-                                quote!(
-                                    #(#attrs)* #name #colon_token ffi_arg_type!(#ty),
-                                    #size_arg: libc::size_t
-                                ),
-                                quote!(
-                                    let #name = <#ty as ffi::SizedArgTypeInfo>::convert_from(#name, #size_arg)?
-                                ),
-                            )
-                        }
-                        _ => (
-                            name.ident.clone(),
-                            quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty)),
-                            quote! {
-                                let mut #name = <#ty as ffi::ArgTypeInfo>::borrow(#name)?;
-                                let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name)?
-                            },
-                        )
-                    }
+                    (
+                        name.ident.clone(),
+                        quote!(#(#attrs)* #name #colon_token ffi_arg_type!(#ty)),
+                        quote! {
+                            let mut #name = <#ty as ffi::ArgTypeInfo>::borrow(#name)?;
+                            let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name)?
+                        },
+                    )
                 } else {
                     (
                         Ident::new("unexpected", arg.span()),
-                        Error::new(arg.span(), "cannot use patterns in parameter").to_compile_error(),
+                        Error::new(arg.span(), "cannot use patterns in parameter")
+                            .to_compile_error(),
                         quote!(),
                     )
                 }

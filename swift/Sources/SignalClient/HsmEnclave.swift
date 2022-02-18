@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -52,14 +52,12 @@ public class HsmEnclaveClient: NativeHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(publicKey: Bytes, codeHashes: HsmCodeHashList) throws {
         let codeHashBytes = codeHashes.flatten()
 
-        let handle: OpaquePointer? = try publicKey.withUnsafeBytes { publicKeyBytes in
-            try codeHashBytes.withUnsafeBytes { codeHashBytes in
+        let handle: OpaquePointer? = try publicKey.withUnsafeBorrowedBuffer { publicKeyBuffer in
+            try codeHashBytes.withUnsafeBorrowedBuffer { codeHashBuffer in
                 var result: OpaquePointer?
                 try checkError(signal_hsm_enclave_client_new(&result,
-                                                             publicKeyBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                             publicKeyBytes.count,
-                                                             codeHashBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                             codeHashBytes.count))
+                                                             publicKeyBuffer,
+                                                             codeHashBuffer))
                 return result
             }
         }
@@ -83,8 +81,8 @@ public class HsmEnclaveClient: NativeHandleOwner {
     /// Called by client upon receipt of first message from HSM enclave, to complete handshake.
     public func completeHandshake<Bytes: ContiguousBytes>(_ handshakeResponse: Bytes) throws {
         try withNativeHandle { nativeHandle in
-            try handshakeResponse.withUnsafeBytes { bytes in
-                try checkError(signal_hsm_enclave_client_complete_handshake(nativeHandle, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count))
+            try handshakeResponse.withUnsafeBorrowedBuffer { buffer in
+                try checkError(signal_hsm_enclave_client_complete_handshake(nativeHandle, buffer))
             }
         }
     }
@@ -92,9 +90,9 @@ public class HsmEnclaveClient: NativeHandleOwner {
     /// Called by client after completeHandshake has succeeded, to encrypt a message to send.
     public func establishedSend<Bytes: ContiguousBytes>(_ plaintextToSend: Bytes) throws -> [UInt8] {
         return try withNativeHandle { nativeHandle in
-            try plaintextToSend.withUnsafeBytes { bytes in
+            try plaintextToSend.withUnsafeBorrowedBuffer { buffer in
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_established_send($0, $1, nativeHandle, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count)
+                    signal_hsm_enclave_client_established_send($0, $1, nativeHandle, buffer)
                 }
             }
         }
@@ -103,9 +101,9 @@ public class HsmEnclaveClient: NativeHandleOwner {
     /// Called by client after completeHandshake has succeeded, to decrypt a received message.
     public func establishedRecv<Bytes: ContiguousBytes>(_ receivedCiphertext: Bytes) throws -> [UInt8] {
         return try withNativeHandle { nativeHandle in
-            try receivedCiphertext.withUnsafeBytes { bytes in
+            try receivedCiphertext.withUnsafeBorrowedBuffer { buffer in
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_established_recv($0, $1, nativeHandle, bytes.baseAddress?.assumingMemoryBound(to: UInt8.self), bytes.count)
+                    signal_hsm_enclave_client_established_recv($0, $1, nativeHandle, buffer)
                 }
             }
         }

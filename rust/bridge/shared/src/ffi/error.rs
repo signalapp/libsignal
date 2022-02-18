@@ -14,6 +14,8 @@ use zkgroup::ZkGroupError;
 
 use crate::support::describe_panic;
 
+use super::NullPointerError;
+
 /// The top-level error type (opaquely) returned to C clients when something goes wrong.
 #[derive(Debug)]
 pub enum SignalFfiError {
@@ -79,6 +81,12 @@ impl From<SignalCryptoError> for SignalFfiError {
 impl From<ZkGroupError> for SignalFfiError {
     fn from(e: ZkGroupError) -> SignalFfiError {
         SignalFfiError::ZkGroup(e)
+    }
+}
+
+impl From<NullPointerError> for SignalFfiError {
+    fn from(_: NullPointerError) -> SignalFfiError {
+        SignalFfiError::NullPointer
     }
 }
 

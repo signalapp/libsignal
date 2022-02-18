@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -16,6 +16,49 @@ pub use error::*;
 
 mod storage;
 pub use storage::*;
+
+#[derive(Debug)]
+pub struct NullPointerError;
+
+#[repr(C)]
+pub struct BorrowedSliceOf<T> {
+    base: *const T,
+    length: usize,
+}
+
+impl<T> BorrowedSliceOf<T> {
+    pub unsafe fn as_slice(&self) -> Result<&[T], NullPointerError> {
+        if self.base.is_null() {
+            if self.length != 0 {
+                return Err(NullPointerError);
+            }
+            // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+            return Ok(&[]);
+        }
+
+        Ok(std::slice::from_raw_parts(self.base, self.length))
+    }
+}
+
+#[repr(C)]
+pub struct BorrowedMutableSliceOf<T> {
+    base: *mut T,
+    length: usize,
+}
+
+impl<T> BorrowedMutableSliceOf<T> {
+    pub unsafe fn as_slice_mut(&mut self) -> Result<&mut [T], NullPointerError> {
+        if self.base.is_null() {
+            if self.length != 0 {
+                return Err(NullPointerError);
+            }
+            // We can't just fall through because slice::from_raw_parts still expects a non-null pointer. Reference a dummy buffer instead.
+            return Ok(&mut []);
+        }
+
+        Ok(std::slice::from_raw_parts_mut(self.base, self.length))
+    }
+}
 
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,

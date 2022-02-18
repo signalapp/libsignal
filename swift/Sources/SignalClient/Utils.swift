@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -69,4 +69,24 @@ internal func invokeFnReturningOptionalNativeHandle<Owner: NativeHandleOwner>(fn
     var handle: OpaquePointer?
     try checkError(fn(&handle))
     return handle.map { Owner(owned: $0) }
+}
+
+extension ContiguousBytes {
+    func withUnsafeBorrowedBuffer<Result>(_ body: (SignalBorrowedBuffer) throws -> Result) rethrows -> Result {
+        try withUnsafeBytes {
+            try body(SignalBorrowedBuffer($0))
+        }
+    }
+}
+
+extension SignalBorrowedBuffer {
+    internal init(_ buffer: UnsafeRawBufferPointer) {
+        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: UInt(buffer.count))
+    }
+}
+
+extension SignalBorrowedMutableBuffer {
+    internal init(_ buffer: UnsafeMutableRawBufferPointer) {
+        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: UInt(buffer.count))
+    }
 }

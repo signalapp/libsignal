@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -8,9 +8,9 @@ import Foundation
 
 public class PublicKey: ClonableHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
-            try checkError(signal_publickey_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            try checkError(signal_publickey_deserialize(&result, $0))
             return result
         }
         self.init(owned: handle!)
@@ -48,9 +48,9 @@ public class PublicKey: ClonableHandleOwner {
     where MessageBytes: ContiguousBytes, SignatureBytes: ContiguousBytes {
         var result: Bool = false
         try withNativeHandle { nativeHandle in
-            try message.withUnsafeBytes { messageBytes in
-                try signature.withUnsafeBytes { signatureBytes in
-                    try checkError(signal_publickey_verify(&result, nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count, signatureBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), signatureBytes.count))
+            try message.withUnsafeBorrowedBuffer { messageBuffer in
+                try signature.withUnsafeBorrowedBuffer { signatureBuffer in
+                    try checkError(signal_publickey_verify(&result, nativeHandle, messageBuffer, signatureBuffer))
                 }
             }
         }

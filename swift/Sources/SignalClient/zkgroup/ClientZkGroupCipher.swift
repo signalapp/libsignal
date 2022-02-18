@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -65,8 +65,10 @@ public class ClientZkGroupCipher {
   public func encryptBlob(randomness: Randomness, plaintext: [UInt8]) throws -> [UInt8] {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
-        try invokeFnReturningArray {
-          signal_group_secret_params_encrypt_blob_with_padding_deterministic($0, $1, groupSecretParams, randomness, plaintext, plaintext.count, 0)
+        try plaintext.withUnsafeBorrowedBuffer { plaintext in
+          try invokeFnReturningArray {
+            signal_group_secret_params_encrypt_blob_with_padding_deterministic($0, $1, groupSecretParams, randomness, plaintext, 0)
+          }
         }
       }
     }
@@ -74,8 +76,10 @@ public class ClientZkGroupCipher {
 
   public func decryptBlob(blobCiphertext: [UInt8]) throws -> [UInt8] {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
-      try invokeFnReturningArray {
-        signal_group_secret_params_decrypt_blob_with_padding($0, $1, groupSecretParams, blobCiphertext, blobCiphertext.count)
+      try blobCiphertext.withUnsafeBorrowedBuffer { blobCiphertext in
+        try invokeFnReturningArray {
+          signal_group_secret_params_decrypt_blob_with_padding($0, $1, groupSecretParams, blobCiphertext)
+        }
       }
     }
   }

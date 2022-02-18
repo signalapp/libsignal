@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -53,14 +53,13 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner {
                                                     identityStore: IdentityKeyStore,
                                                     context: StoreContext) throws {
         var result: OpaquePointer?
-        try sealedSenderMessage.withUnsafeBytes { messageBytes in
+        try sealedSenderMessage.withUnsafeBorrowedBuffer { messageBuffer in
             try context.withOpaquePointer { context in
                 try withIdentityKeyStore(identityStore) { ffiIdentityStore in
                     try checkError(
                         signal_sealed_session_cipher_decrypt_to_usmc(
                             &result,
-                            messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                            messageBytes.count,
+                            messageBuffer,
                             ffiIdentityStore,
                             context))
                 }
@@ -75,14 +74,13 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner {
                                                            groupId: GroupIdBytes) throws {
         var result: OpaquePointer?
         try withNativeHandles(message, sender) { messageHandle, senderHandle in
-            try groupId.withUnsafeBytes { groupIdBytes in
+            try groupId.withUnsafeBorrowedBuffer { groupIdBuffer in
                 try checkError(
                     signal_unidentified_sender_message_content_new(&result,
                                                                    messageHandle,
                                                                    senderHandle,
                                                                    contentHint.rawValue,
-                                                                   groupIdBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                                   groupIdBytes.count))
+                                                                   groupIdBuffer))
             }
         }
         self.init(owned: result!)
@@ -172,17 +170,23 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
     // Use withExtendedLifetime instead of withNativeHandle for the arrays of wrapper objects,
     // which aren't compatible with withNativeHandle's simple lexical scoping.
     return try withExtendedLifetime((recipients, sessions)) {
-        try content.withNativeHandle { contentHandle in
-            try context.withOpaquePointer { context in
-                try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                    try invokeFnReturningArray {
-                        signal_sealed_sender_multi_recipient_encrypt($0, $1,
-                                                                     recipients.map { $0.unsafeNativeHandle },
-                                                                     recipients.count,
-                                                                     sessions.map { $0.unsafeNativeHandle },
-                                                                     sessions.count,
-                                                                     contentHandle,
-                                                                     ffiIdentityStore, context)
+        let recipientHandles = recipients.map { $0.unsafeNativeHandle }
+        let sessionHandles = sessions.map { $0.unsafeNativeHandle }
+        return try content.withNativeHandle { contentHandle in
+            return try recipientHandles.withUnsafeBufferPointer { recipientHandles in
+                let recipientHandlesBuffer = SignalBorrowedSliceOfProtocolAddress(base: recipientHandles.baseAddress, length: UInt(recipientHandles.count))
+                return try sessionHandles.withUnsafeBufferPointer { sessionHandles in
+                    let sessionHandlesBuffer = SignalBorrowedSliceOfSessionRecord(base: sessionHandles.baseAddress, length: UInt(sessionHandles.count))
+                    return try context.withOpaquePointer { context in
+                        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
+                            try invokeFnReturningArray {
+                                signal_sealed_sender_multi_recipient_encrypt($0, $1,
+                                                                             recipientHandlesBuffer,
+                                                                             sessionHandlesBuffer,
+                                                                             contentHandle,
+                                                                             ffiIdentityStore, context)
+                            }
+                        }
                     }
                 }
             }
@@ -192,8 +196,10 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
 
 // For testing only.
 internal func sealedSenderMultiRecipientMessageForSingleRecipient(_ message: [UInt8]) throws -> [UInt8] {
-    return try invokeFnReturningArray {
-        signal_sealed_sender_multi_recipient_message_for_single_recipient($0, $1, message, message.count)
+    return try message.withUnsafeBorrowedBuffer { message in
+        try invokeFnReturningArray {
+            signal_sealed_sender_multi_recipient_message_for_single_recipient($0, $1, message)
+        }
     }
 }
 
@@ -228,7 +234,7 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
     var senderDeviceId: UInt32 = 0
 
     let plaintext = try trustRoot.withNativeHandle { trustRootHandle in
-        try message.withUnsafeBytes { messageBytes in
+        try message.withUnsafeBorrowedBuffer { messageBuffer in
             try context.withOpaquePointer { context in
                 try withSessionStore(sessionStore) { ffiSessionStore in
                     try withIdentityKeyStore(identityStore) { ffiIdentityStore in
@@ -241,8 +247,7 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
                                         &senderE164,
                                         &senderUUID,
                                         &senderDeviceId,
-                                        messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                        messageBytes.count,
+                                        messageBuffer,
                                         trustRootHandle,
                                         timestamp,
                                         localAddress.e164,

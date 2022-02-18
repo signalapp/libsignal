@@ -207,6 +207,11 @@ typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
 
+typedef struct {
+  const unsigned char *base;
+  uintptr_t length;
+} SignalBorrowedBuffer;
+
 typedef int (*SignalLoadSession)(void *store_ctx, SignalSessionRecord **recordp, const SignalProtocolAddress *address, void *ctx);
 
 typedef int (*SignalStoreSession)(void *store_ctx, const SignalProtocolAddress *address, const SignalSessionRecord *record, void *ctx);
@@ -271,6 +276,21 @@ typedef struct {
   SignalLogFlushCallback flush;
 } SignalFfiLogger;
 
+typedef struct {
+  unsigned char *base;
+  uintptr_t length;
+} SignalBorrowedMutableBuffer;
+
+typedef struct {
+  const SignalProtocolAddress *const *base;
+  uintptr_t length;
+} SignalBorrowedSliceOfProtocolAddress;
+
+typedef struct {
+  const SignalSessionRecord *const *base;
+  uintptr_t length;
+} SignalBorrowedSliceOfSessionRecord;
+
 typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16], void *ctx);
 
 typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16], const SignalSenderKeyRecord*, void *ctx);
@@ -299,16 +319,14 @@ void signal_error_free(SignalFfiError *err);
 
 SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_key,
                                                    SignalPublicKey **public_key,
-                                                   const unsigned char *input,
-                                                   size_t input_len);
+                                                   SignalBorrowedBuffer input);
 
 SignalFfiError *signal_sealed_session_cipher_decrypt(const unsigned char **out,
                                                      size_t *out_len,
                                                      const char **sender_e164,
                                                      const char **sender_uuid,
                                                      uint32_t *sender_device_id,
-                                                     const unsigned char *ctext,
-                                                     size_t ctext_len,
+                                                     SignalBorrowedBuffer ctext,
                                                      const SignalPublicKey *trust_root,
                                                      uint64_t timestamp,
                                                      const char *local_e164,
@@ -331,29 +349,22 @@ SignalFfiError *signal_aes256_gcm_encryption_destroy(SignalAes256GcmEncryption *
 SignalFfiError *signal_aes256_gcm_decryption_destroy(SignalAes256GcmDecryption *p);
 
 SignalFfiError *signal_aes256_ctr32_new(SignalAes256Ctr32 **out,
-                                        const unsigned char *key,
-                                        size_t key_len,
-                                        const unsigned char *nonce,
-                                        size_t nonce_len,
+                                        SignalBorrowedBuffer key,
+                                        SignalBorrowedBuffer nonce,
                                         uint32_t initial_ctr);
 
 SignalFfiError *signal_aes256_ctr32_process(SignalAes256Ctr32 *ctr,
-                                            unsigned char *data,
-                                            size_t data_len,
+                                            SignalBorrowedMutableBuffer data,
                                             uint32_t offset,
                                             uint32_t length);
 
 SignalFfiError *signal_aes256_gcm_encryption_new(SignalAes256GcmEncryption **out,
-                                                 const unsigned char *key,
-                                                 size_t key_len,
-                                                 const unsigned char *nonce,
-                                                 size_t nonce_len,
-                                                 const unsigned char *associated_data,
-                                                 size_t associated_data_len);
+                                                 SignalBorrowedBuffer key,
+                                                 SignalBorrowedBuffer nonce,
+                                                 SignalBorrowedBuffer associated_data);
 
 SignalFfiError *signal_aes256_gcm_encryption_update(SignalAes256GcmEncryption *gcm,
-                                                    unsigned char *data,
-                                                    size_t data_len,
+                                                    SignalBorrowedMutableBuffer data,
                                                     uint32_t offset,
                                                     uint32_t length);
 
@@ -362,47 +373,34 @@ SignalFfiError *signal_aes256_gcm_encryption_compute_tag(const unsigned char **o
                                                          SignalAes256GcmEncryption *gcm);
 
 SignalFfiError *signal_aes256_gcm_decryption_new(SignalAes256GcmDecryption **out,
-                                                 const unsigned char *key,
-                                                 size_t key_len,
-                                                 const unsigned char *nonce,
-                                                 size_t nonce_len,
-                                                 const unsigned char *associated_data,
-                                                 size_t associated_data_len);
+                                                 SignalBorrowedBuffer key,
+                                                 SignalBorrowedBuffer nonce,
+                                                 SignalBorrowedBuffer associated_data);
 
 SignalFfiError *signal_aes256_gcm_decryption_update(SignalAes256GcmDecryption *gcm,
-                                                    unsigned char *data,
-                                                    size_t data_len,
+                                                    SignalBorrowedMutableBuffer data,
                                                     uint32_t offset,
                                                     uint32_t length);
 
 SignalFfiError *signal_aes256_gcm_decryption_verify_tag(bool *out,
                                                         SignalAes256GcmDecryption *gcm,
-                                                        const unsigned char *tag,
-                                                        size_t tag_len);
+                                                        SignalBorrowedBuffer tag);
 
-SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out,
-                                          const unsigned char *key,
-                                          size_t key_len);
+SignalFfiError *signal_aes256_gcm_siv_new(SignalAes256GcmSiv **out, SignalBorrowedBuffer key);
 
 SignalFfiError *signal_aes256_gcm_siv_encrypt(const unsigned char **out,
                                               size_t *out_len,
                                               const SignalAes256GcmSiv *aes_gcm_siv_obj,
-                                              const unsigned char *ptext,
-                                              size_t ptext_len,
-                                              const unsigned char *nonce,
-                                              size_t nonce_len,
-                                              const unsigned char *associated_data,
-                                              size_t associated_data_len);
+                                              SignalBorrowedBuffer ptext,
+                                              SignalBorrowedBuffer nonce,
+                                              SignalBorrowedBuffer associated_data);
 
 SignalFfiError *signal_aes256_gcm_siv_decrypt(const unsigned char **out,
                                               size_t *out_len,
                                               const SignalAes256GcmSiv *aes_gcm_siv,
-                                              const unsigned char *ctext,
-                                              size_t ctext_len,
-                                              const unsigned char *nonce,
-                                              size_t nonce_len,
-                                              const unsigned char *associated_data,
-                                              size_t associated_data_len);
+                                              SignalBorrowedBuffer ctext,
+                                              SignalBorrowedBuffer nonce,
+                                              SignalBorrowedBuffer associated_data);
 
 SignalFfiError *signal_ciphertext_message_destroy(SignalCiphertextMessage *p);
 
@@ -489,22 +487,16 @@ SignalFfiError *signal_signed_pre_key_record_clone(SignalSignedPreKeyRecord **ne
 
 SignalFfiError *signal_unidentified_sender_message_content_destroy(SignalUnidentifiedSenderMessageContent *p);
 
-SignalFfiError *signal_hkdf_derive(unsigned char *output,
-                                   size_t output_len,
-                                   const unsigned char *ikm,
-                                   size_t ikm_len,
-                                   const unsigned char *label,
-                                   size_t label_len,
-                                   const unsigned char *salt,
-                                   size_t salt_len);
+SignalFfiError *signal_hkdf_derive(SignalBorrowedMutableBuffer output,
+                                   SignalBorrowedBuffer ikm,
+                                   SignalBorrowedBuffer label,
+                                   SignalBorrowedBuffer salt);
 
 SignalFfiError *signal_address_new(SignalProtocolAddress **out,
                                    const char *name,
                                    uint32_t device_id);
 
-SignalFfiError *signal_publickey_deserialize(SignalPublicKey **out,
-                                             const unsigned char *data,
-                                             size_t data_len);
+SignalFfiError *signal_publickey_deserialize(SignalPublicKey **out, SignalBorrowedBuffer data);
 
 SignalFfiError *signal_publickey_serialize(const unsigned char **out,
                                            size_t *out_len,
@@ -524,14 +516,10 @@ SignalFfiError *signal_publickey_compare(int32_t *out,
 
 SignalFfiError *signal_publickey_verify(bool *out,
                                         const SignalPublicKey *key,
-                                        const unsigned char *message,
-                                        size_t message_len,
-                                        const unsigned char *signature,
-                                        size_t signature_len);
+                                        SignalBorrowedBuffer message,
+                                        SignalBorrowedBuffer signature);
 
-SignalFfiError *signal_privatekey_deserialize(SignalPrivateKey **out,
-                                              const unsigned char *data,
-                                              size_t data_len);
+SignalFfiError *signal_privatekey_deserialize(SignalPrivateKey **out, SignalBorrowedBuffer data);
 
 SignalFfiError *signal_privatekey_serialize(const unsigned char **out,
                                             size_t *out_len,
@@ -544,8 +532,7 @@ SignalFfiError *signal_privatekey_get_public_key(SignalPublicKey **out, const Si
 SignalFfiError *signal_privatekey_sign(const unsigned char **out,
                                        size_t *out_len,
                                        const SignalPrivateKey *key,
-                                       const unsigned char *message,
-                                       size_t message_len);
+                                       SignalBorrowedBuffer message);
 
 SignalFfiError *signal_privatekey_agree(const unsigned char **out,
                                         size_t *out_len,
@@ -566,17 +553,14 @@ SignalFfiError *signal_identitykeypair_sign_alternate_identity(const unsigned ch
 SignalFfiError *signal_identitykey_verify_alternate_identity(bool *out,
                                                              const SignalPublicKey *public_key,
                                                              const SignalPublicKey *other_identity,
-                                                             const unsigned char *signature,
-                                                             size_t signature_len);
+                                                             SignalBorrowedBuffer signature);
 
 SignalFfiError *signal_fingerprint_new(SignalFingerprint **out,
                                        uint32_t iterations,
                                        uint32_t version,
-                                       const unsigned char *local_identifier,
-                                       size_t local_identifier_len,
+                                       SignalBorrowedBuffer local_identifier,
                                        const SignalPublicKey *local_key,
-                                       const unsigned char *remote_identifier,
-                                       size_t remote_identifier_len,
+                                       SignalBorrowedBuffer remote_identifier,
                                        const SignalPublicKey *remote_key);
 
 SignalFfiError *signal_fingerprint_scannable_encoding(const unsigned char **out,
@@ -586,14 +570,10 @@ SignalFfiError *signal_fingerprint_scannable_encoding(const unsigned char **out,
 SignalFfiError *signal_fingerprint_display_string(const char **out, const SignalFingerprint *obj);
 
 SignalFfiError *signal_fingerprint_compare(bool *out,
-                                           const unsigned char *fprint1,
-                                           size_t fprint1_len,
-                                           const unsigned char *fprint2,
-                                           size_t fprint2_len);
+                                           SignalBorrowedBuffer fprint1,
+                                           SignalBorrowedBuffer fprint2);
 
-SignalFfiError *signal_message_deserialize(SignalMessage **out,
-                                           const unsigned char *data,
-                                           size_t data_len);
+SignalFfiError *signal_message_deserialize(SignalMessage **out, SignalBorrowedBuffer data);
 
 SignalFfiError *signal_message_get_body(const unsigned char **out,
                                         size_t *out_len,
@@ -609,13 +589,11 @@ SignalFfiError *signal_message_get_message_version(uint32_t *out, const SignalMe
 
 SignalFfiError *signal_message_new(SignalMessage **out,
                                    uint8_t message_version,
-                                   const unsigned char *mac_key,
-                                   size_t mac_key_len,
+                                   SignalBorrowedBuffer mac_key,
                                    const SignalPublicKey *sender_ratchet_key,
                                    uint32_t counter,
                                    uint32_t previous_counter,
-                                   const unsigned char *ciphertext,
-                                   size_t ciphertext_len,
+                                   SignalBorrowedBuffer ciphertext,
                                    const SignalPublicKey *sender_identity_key,
                                    const SignalPublicKey *receiver_identity_key);
 
@@ -623,8 +601,7 @@ SignalFfiError *signal_message_verify_mac(bool *out,
                                           const SignalMessage *msg,
                                           const SignalPublicKey *sender_identity_key,
                                           const SignalPublicKey *receiver_identity_key,
-                                          const unsigned char *mac_key,
-                                          size_t mac_key_len);
+                                          SignalBorrowedBuffer mac_key);
 
 SignalFfiError *signal_message_get_sender_ratchet_key(SignalPublicKey **out,
                                                       const SignalMessage *m);
@@ -648,8 +625,7 @@ SignalFfiError *signal_pre_key_signal_message_get_signal_message(SignalMessage *
                                                                  const SignalPreKeySignalMessage *m);
 
 SignalFfiError *signal_pre_key_signal_message_deserialize(SignalPreKeySignalMessage **out,
-                                                          const unsigned char *data,
-                                                          size_t data_len);
+                                                          SignalBorrowedBuffer data);
 
 SignalFfiError *signal_pre_key_signal_message_serialize(const unsigned char **out,
                                                         size_t *out_len,
@@ -668,8 +644,7 @@ SignalFfiError *signal_pre_key_signal_message_get_version(uint32_t *out,
                                                           const SignalPreKeySignalMessage *obj);
 
 SignalFfiError *signal_sender_key_message_deserialize(SignalSenderKeyMessage **out,
-                                                      const unsigned char *data,
-                                                      size_t data_len);
+                                                      SignalBorrowedBuffer data);
 
 SignalFfiError *signal_sender_key_message_get_cipher_text(const unsigned char **out,
                                                           size_t *out_len,
@@ -693,8 +668,7 @@ SignalFfiError *signal_sender_key_message_new(SignalSenderKeyMessage **out,
                                               const uint8_t (*distribution_id)[16],
                                               uint32_t chain_id,
                                               uint32_t iteration,
-                                              const unsigned char *ciphertext,
-                                              size_t ciphertext_len,
+                                              SignalBorrowedBuffer ciphertext,
                                               const SignalPrivateKey *pk);
 
 SignalFfiError *signal_sender_key_message_verify_signature(bool *out,
@@ -702,8 +676,7 @@ SignalFfiError *signal_sender_key_message_verify_signature(bool *out,
                                                            const SignalPublicKey *pubkey);
 
 SignalFfiError *signal_sender_key_distribution_message_deserialize(SignalSenderKeyDistributionMessage **out,
-                                                                   const unsigned char *data,
-                                                                   size_t data_len);
+                                                                   SignalBorrowedBuffer data);
 
 SignalFfiError *signal_sender_key_distribution_message_get_chain_key(const unsigned char **out,
                                                                      size_t *out_len,
@@ -727,16 +700,14 @@ SignalFfiError *signal_sender_key_distribution_message_new(SignalSenderKeyDistri
                                                            const uint8_t (*distribution_id)[16],
                                                            uint32_t chain_id,
                                                            uint32_t iteration,
-                                                           const unsigned char *chainkey,
-                                                           size_t chainkey_len,
+                                                           SignalBorrowedBuffer chainkey,
                                                            const SignalPublicKey *pk);
 
 SignalFfiError *signal_sender_key_distribution_message_get_signature_key(SignalPublicKey **out,
                                                                          const SignalSenderKeyDistributionMessage *m);
 
 SignalFfiError *signal_decryption_error_message_deserialize(SignalDecryptionErrorMessage **out,
-                                                            const unsigned char *data,
-                                                            size_t data_len);
+                                                            SignalBorrowedBuffer data);
 
 SignalFfiError *signal_decryption_error_message_get_timestamp(uint64_t *out,
                                                               const SignalDecryptionErrorMessage *obj);
@@ -752,19 +723,16 @@ SignalFfiError *signal_decryption_error_message_get_ratchet_key(SignalPublicKey 
                                                                 const SignalDecryptionErrorMessage *m);
 
 SignalFfiError *signal_decryption_error_message_for_original_message(SignalDecryptionErrorMessage **out,
-                                                                     const unsigned char *original_bytes,
-                                                                     size_t original_bytes_len,
+                                                                     SignalBorrowedBuffer original_bytes,
                                                                      uint8_t original_type,
                                                                      uint64_t original_timestamp,
                                                                      uint32_t original_sender_device_id);
 
 SignalFfiError *signal_decryption_error_message_extract_from_serialized_content(SignalDecryptionErrorMessage **out,
-                                                                                const unsigned char *bytes,
-                                                                                size_t bytes_len);
+                                                                                SignalBorrowedBuffer bytes);
 
 SignalFfiError *signal_plaintext_content_deserialize(SignalPlaintextContent **out,
-                                                     const unsigned char *data,
-                                                     size_t data_len);
+                                                     SignalBorrowedBuffer data);
 
 SignalFfiError *signal_plaintext_content_serialize(const unsigned char **out,
                                                    size_t *out_len,
@@ -784,8 +752,7 @@ SignalFfiError *signal_pre_key_bundle_new(SignalPreKeyBundle **out,
                                           const SignalPublicKey *prekey,
                                           uint32_t signed_prekey_id,
                                           const SignalPublicKey *signed_prekey,
-                                          const unsigned char *signed_prekey_signature,
-                                          size_t signed_prekey_signature_len,
+                                          SignalBorrowedBuffer signed_prekey_signature,
                                           const SignalPublicKey *identity_key);
 
 SignalFfiError *signal_pre_key_bundle_get_identity_key(SignalPublicKey **out,
@@ -812,8 +779,7 @@ SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_public(SignalPublicKey 
                                                                 const SignalPreKeyBundle *obj);
 
 SignalFfiError *signal_signed_pre_key_record_deserialize(SignalSignedPreKeyRecord **out,
-                                                         const unsigned char *data,
-                                                         size_t data_len);
+                                                         SignalBorrowedBuffer data);
 
 SignalFfiError *signal_signed_pre_key_record_get_signature(const unsigned char **out,
                                                            size_t *out_len,
@@ -840,12 +806,10 @@ SignalFfiError *signal_signed_pre_key_record_new(SignalSignedPreKeyRecord **out,
                                                  uint64_t timestamp,
                                                  const SignalPublicKey *pub_key,
                                                  const SignalPrivateKey *priv_key,
-                                                 const unsigned char *signature,
-                                                 size_t signature_len);
+                                                 SignalBorrowedBuffer signature);
 
 SignalFfiError *signal_pre_key_record_deserialize(SignalPreKeyRecord **out,
-                                                  const unsigned char *data,
-                                                  size_t data_len);
+                                                  SignalBorrowedBuffer data);
 
 SignalFfiError *signal_pre_key_record_serialize(const unsigned char **out,
                                                 size_t *out_len,
@@ -865,8 +829,7 @@ SignalFfiError *signal_pre_key_record_new(SignalPreKeyRecord **out,
                                           const SignalPrivateKey *priv_key);
 
 SignalFfiError *signal_sender_key_record_deserialize(SignalSenderKeyRecord **out,
-                                                     const unsigned char *data,
-                                                     size_t data_len);
+                                                     SignalBorrowedBuffer data);
 
 SignalFfiError *signal_sender_key_record_serialize(const unsigned char **out,
                                                    size_t *out_len,
@@ -875,8 +838,7 @@ SignalFfiError *signal_sender_key_record_serialize(const unsigned char **out,
 SignalFfiError *signal_sender_key_record_new_fresh(SignalSenderKeyRecord **out);
 
 SignalFfiError *signal_server_certificate_deserialize(SignalServerCertificate **out,
-                                                      const unsigned char *data,
-                                                      size_t data_len);
+                                                      SignalBorrowedBuffer data);
 
 SignalFfiError *signal_server_certificate_get_serialized(const unsigned char **out,
                                                          size_t *out_len,
@@ -902,8 +864,7 @@ SignalFfiError *signal_server_certificate_new(SignalServerCertificate **out,
                                               const SignalPrivateKey *trust_root);
 
 SignalFfiError *signal_sender_certificate_deserialize(SignalSenderCertificate **out,
-                                                      const unsigned char *data,
-                                                      size_t data_len);
+                                                      SignalBorrowedBuffer data);
 
 SignalFfiError *signal_sender_certificate_get_serialized(const unsigned char **out,
                                                          size_t *out_len,
@@ -950,8 +911,7 @@ SignalFfiError *signal_sender_certificate_new(SignalSenderCertificate **out,
                                               const SignalPrivateKey *signer_key);
 
 SignalFfiError *signal_unidentified_sender_message_content_deserialize(SignalUnidentifiedSenderMessageContent **out,
-                                                                       const unsigned char *data,
-                                                                       size_t data_len);
+                                                                       SignalBorrowedBuffer data);
 
 SignalFfiError *signal_unidentified_sender_message_content_serialize(const unsigned char **out,
                                                                      size_t *out_len,
@@ -978,8 +938,7 @@ SignalFfiError *signal_unidentified_sender_message_content_new(SignalUnidentifie
                                                                const SignalCiphertextMessage *message,
                                                                const SignalSenderCertificate *sender,
                                                                uint32_t content_hint,
-                                                               const unsigned char *group_id,
-                                                               size_t group_id_len);
+                                                               SignalBorrowedBuffer group_id);
 
 SignalFfiError *signal_ciphertext_message_type(uint8_t *out, const SignalCiphertextMessage *msg);
 
@@ -1005,8 +964,7 @@ SignalFfiError *signal_session_record_needs_pni_signature(bool *out,
                                                           const SignalSessionRecord *obj);
 
 SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **out,
-                                                  const unsigned char *data,
-                                                  size_t data_len);
+                                                  SignalBorrowedBuffer data);
 
 SignalFfiError *signal_session_record_serialize(const unsigned char **out,
                                                 size_t *out_len,
@@ -1025,8 +983,7 @@ SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle,
                                              void *ctx);
 
 SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out,
-                                       const unsigned char *ptext,
-                                       size_t ptext_len,
+                                       SignalBorrowedBuffer ptext,
                                        const SignalProtocolAddress *protocol_address,
                                        const SignalSessionStore *session_store,
                                        const SignalIdentityKeyStore *identity_key_store,
@@ -1059,22 +1016,18 @@ SignalFfiError *signal_sealed_session_cipher_encrypt(const unsigned char **out,
 
 SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(const unsigned char **out,
                                                              size_t *out_len,
-                                                             const SignalProtocolAddress *const *recipients,
-                                                             size_t recipients_len,
-                                                             const SignalSessionRecord *const *recipient_sessions,
-                                                             size_t recipient_sessions_len,
+                                                             SignalBorrowedSliceOfProtocolAddress recipients,
+                                                             SignalBorrowedSliceOfSessionRecord recipient_sessions,
                                                              const SignalUnidentifiedSenderMessageContent *content,
                                                              const SignalIdentityKeyStore *identity_key_store,
                                                              void *ctx);
 
 SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipient(const unsigned char **out,
                                                                                   size_t *out_len,
-                                                                                  const unsigned char *encoded_multi_recipient_message,
-                                                                                  size_t encoded_multi_recipient_message_len);
+                                                                                  SignalBorrowedBuffer encoded_multi_recipient_message);
 
 SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out,
-                                                             const unsigned char *ctext,
-                                                             size_t ctext_len,
+                                                             SignalBorrowedBuffer ctext,
                                                              const SignalIdentityKeyStore *identity_store,
                                                              void *ctx);
 
@@ -1092,16 +1045,14 @@ SignalFfiError *signal_process_sender_key_distribution_message(const SignalProto
 SignalFfiError *signal_group_encrypt_message(SignalCiphertextMessage **out,
                                              const SignalProtocolAddress *sender,
                                              const uint8_t (*distribution_id)[16],
-                                             const unsigned char *message,
-                                             size_t message_len,
+                                             SignalBorrowedBuffer message,
                                              const SignalSenderKeyStore *store,
                                              void *ctx);
 
 SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
                                              size_t *out_len,
                                              const SignalProtocolAddress *sender,
-                                             const unsigned char *message,
-                                             size_t message_len,
+                                             SignalBorrowedBuffer message,
                                              const SignalSenderKeyStore *store,
                                              void *ctx);
 
@@ -1110,38 +1061,32 @@ SignalFfiError *signal_device_transfer_generate_private_key(const unsigned char 
 
 SignalFfiError *signal_device_transfer_generate_certificate(const unsigned char **out,
                                                             size_t *out_len,
-                                                            const unsigned char *private_key,
-                                                            size_t private_key_len,
+                                                            SignalBorrowedBuffer private_key,
                                                             const char *name,
                                                             uint32_t days_to_expire);
 
 SignalFfiError *signal_hsm_enclave_client_destroy(SignalHsmEnclaveClient *p);
 
 SignalFfiError *signal_hsm_enclave_client_new(SignalHsmEnclaveClient **out,
-                                              const unsigned char *trusted_public_key,
-                                              size_t trusted_public_key_len,
-                                              const unsigned char *trusted_code_hashes,
-                                              size_t trusted_code_hashes_len);
+                                              SignalBorrowedBuffer trusted_public_key,
+                                              SignalBorrowedBuffer trusted_code_hashes);
 
 SignalFfiError *signal_hsm_enclave_client_initial_request(const unsigned char **out,
                                                           size_t *out_len,
                                                           const SignalHsmEnclaveClient *obj);
 
 SignalFfiError *signal_hsm_enclave_client_complete_handshake(SignalHsmEnclaveClient *cli,
-                                                             const unsigned char *handshake_received,
-                                                             size_t handshake_received_len);
+                                                             SignalBorrowedBuffer handshake_received);
 
 SignalFfiError *signal_hsm_enclave_client_established_send(const unsigned char **out,
                                                            size_t *out_len,
                                                            SignalHsmEnclaveClient *cli,
-                                                           const unsigned char *plaintext_to_send,
-                                                           size_t plaintext_to_send_len);
+                                                           SignalBorrowedBuffer plaintext_to_send);
 
 SignalFfiError *signal_hsm_enclave_client_established_recv(const unsigned char **out,
                                                            size_t *out_len,
                                                            SignalHsmEnclaveClient *cli,
-                                                           const unsigned char *received_ciphertext,
-                                                           size_t received_ciphertext_len);
+                                                           SignalBorrowedBuffer received_ciphertext);
 
 SignalFfiError *signal_auth_credential_check_valid_contents(const unsigned char (*_obj)[SignalAUTH_CREDENTIAL_LEN]);
 
@@ -1237,15 +1182,13 @@ SignalFfiError *signal_group_secret_params_encrypt_blob_with_padding_determinist
                                                                                    size_t *out_len,
                                                                                    const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
                                                                                    const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
-                                                                                   const unsigned char *plaintext,
-                                                                                   size_t plaintext_len,
+                                                                                   SignalBorrowedBuffer plaintext,
                                                                                    uint32_t padding_len);
 
 SignalFfiError *signal_group_secret_params_decrypt_blob_with_padding(const unsigned char **out,
                                                                      size_t *out_len,
                                                                      const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN],
-                                                                     const unsigned char *ciphertext,
-                                                                     size_t ciphertext_len);
+                                                                     SignalBorrowedBuffer ciphertext);
 
 SignalFfiError *signal_server_secret_params_generate_deterministic(unsigned char (*out)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                    const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
@@ -1256,8 +1199,7 @@ SignalFfiError *signal_server_secret_params_get_public_params(unsigned char (*ou
 SignalFfiError *signal_server_secret_params_sign_deterministic(uint8_t (*out)[SignalSIGNATURE_LEN],
                                                                const unsigned char (*params)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
-                                                               const unsigned char *message,
-                                                               size_t message_len);
+                                                               SignalBorrowedBuffer message);
 
 SignalFfiError *signal_server_public_params_receive_auth_credential(unsigned char (*out)[SignalAUTH_CREDENTIAL_LEN],
                                                                     const unsigned char (*params)[SignalSERVER_PUBLIC_PARAMS_LEN],
@@ -1368,8 +1310,7 @@ SignalFfiError *signal_group_public_params_get_group_identifier(uint8_t (*out)[S
                                                                 const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN]);
 
 SignalFfiError *signal_server_public_params_verify_signature(const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
-                                                             const unsigned char *message,
-                                                             size_t message_len,
+                                                             SignalBorrowedBuffer message,
                                                              const uint8_t (*notary_signature)[SignalSIGNATURE_LEN]);
 
 SignalFfiError *signal_auth_credential_presentation_get_uuid_ciphertext(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN],

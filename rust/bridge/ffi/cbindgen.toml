@@ -34,10 +34,16 @@ renaming_overrides_prefixing = true
 "FfiCiphertextMessageType" = "SignalCiphertextMessageType"
 "FfiContentHint" = "SignalContentHint"
 
+"BorrowedSliceOfc_uchar" = "SignalBorrowedBuffer"
+"BorrowedMutableSliceOfc_uchar" = "SignalBorrowedMutableBuffer"
+
 # Avoid double-prefixing these
 "SignalFfiError" = "SignalFfiError"
 "SignalErrorCode" = "SignalErrorCode"
 "SignalMessage" = "SignalMessage"
+
+[export.mangle]
+remove_underscores = true
 
 [fn]
 sort_by = "None"

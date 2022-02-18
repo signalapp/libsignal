@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -24,8 +24,8 @@ public struct IdentityKey: Equatable {
     public func verifyAlternateIdentity<Bytes: ContiguousBytes>(_ other: IdentityKey, signature: Bytes) throws -> Bool {
         var result: Bool = false
         try withNativeHandles(publicKey, other.publicKey) { selfHandle, otherHandle in
-            try signature.withUnsafeBytes { signatureBytes in
-                try checkError(signal_identitykey_verify_alternate_identity(&result, selfHandle, otherHandle, signatureBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), signatureBytes.count))
+            try signature.withUnsafeBorrowedBuffer { signatureBuffer in
+                try checkError(signal_identitykey_verify_alternate_identity(&result, selfHandle, otherHandle, signatureBuffer))
             }
         }
         return result
@@ -46,8 +46,8 @@ public struct IdentityKeyPair {
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
         var pubkeyPtr: OpaquePointer?
         var privkeyPtr: OpaquePointer?
-        try bytes.withUnsafeBytes {
-            try checkError(signal_identitykeypair_deserialize(&privkeyPtr, &pubkeyPtr, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+        try bytes.withUnsafeBorrowedBuffer {
+            try checkError(signal_identitykeypair_deserialize(&privkeyPtr, &pubkeyPtr, $0))
         }
 
         publicKey = PublicKey(owned: pubkeyPtr!)

@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -22,7 +22,7 @@ public class PreKeyBundle: NativeHandleOwner {
                                                     identity identityKey: IdentityKey) throws {
         var result: OpaquePointer?
         try withNativeHandles(prekey, signedPrekey, identityKey.publicKey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle in
-            try signedPrekeySignature.withUnsafeBytes {
+            try signedPrekeySignature.withUnsafeBorrowedBuffer {
                 try checkError(signal_pre_key_bundle_new(&result,
                                                          registrationId,
                                                          deviceId,
@@ -30,8 +30,7 @@ public class PreKeyBundle: NativeHandleOwner {
                                                          prekeyHandle,
                                                          signedPrekeyId,
                                                          signedPrekeyHandle,
-                                                         $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                         $0.count,
+                                                         $0,
                                                          identityKeyHandle))
             }
 
@@ -48,7 +47,7 @@ public class PreKeyBundle: NativeHandleOwner {
                                                     identity identityKey: IdentityKey) throws {
         var result: OpaquePointer?
         try withNativeHandles(signedPrekey, identityKey.publicKey) { signedPrekeyHandle, identityKeyHandle in
-            try signedPrekeySignature.withUnsafeBytes {
+            try signedPrekeySignature.withUnsafeBorrowedBuffer {
                 try checkError(signal_pre_key_bundle_new(&result,
                                                          registrationId,
                                                          deviceId,
@@ -56,8 +55,7 @@ public class PreKeyBundle: NativeHandleOwner {
                                                          nil,
                                                          signedPrekeyId,
                                                          signedPrekeyHandle,
-                                                         $0.baseAddress?.assumingMemoryBound(to: UInt8.self),
-                                                         $0.count,
+                                                         $0,
                                                          identityKeyHandle))
             }
         }

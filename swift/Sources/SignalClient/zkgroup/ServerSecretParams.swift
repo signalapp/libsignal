@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -39,8 +39,10 @@ public class ServerSecretParams: ByteArray {
   public func sign(randomness: Randomness, message: [UInt8]) throws -> NotarySignature {
     return try withUnsafePointerToSerialized { contents in
       try randomness.withUnsafePointerToBytes { randomness in
-        try invokeFnReturningSerialized {
-          signal_server_secret_params_sign_deterministic($0, contents, randomness, message, message.count)
+        try message.withUnsafeBorrowedBuffer { message in
+          try invokeFnReturningSerialized {
+            signal_server_secret_params_sign_deterministic($0, contents, randomness, message)
+          }
         }
       }
     }

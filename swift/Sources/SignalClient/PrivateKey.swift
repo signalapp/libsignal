@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -8,9 +8,9 @@ import Foundation
 
 public class PrivateKey: ClonableHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBytes {
+        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
-            try checkError(signal_privatekey_deserialize(&result, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), $0.count))
+            try checkError(signal_privatekey_deserialize(&result, $0))
             return result
         }
         self.init(owned: handle!)
@@ -44,10 +44,10 @@ public class PrivateKey: ClonableHandleOwner {
 
     public func generateSignature<Bytes: ContiguousBytes>(message: Bytes) -> [UInt8] {
         return withNativeHandle { nativeHandle in
-            message.withUnsafeBytes { messageBytes in
+            message.withUnsafeBorrowedBuffer { messageBuffer in
                 failOnError {
                     try invokeFnReturningArray {
-                        signal_privatekey_sign($0, $1, nativeHandle, messageBytes.baseAddress?.assumingMemoryBound(to: UInt8.self), messageBytes.count)
+                        signal_privatekey_sign($0, $1, nativeHandle, messageBuffer)
                     }
                 }
             }

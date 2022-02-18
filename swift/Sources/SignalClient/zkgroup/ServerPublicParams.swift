@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -14,8 +14,10 @@ public class ServerPublicParams: ByteArray {
 
   public func verifySignature(message: [UInt8], notarySignature: NotarySignature) throws {
     try withUnsafePointerToSerialized { contents in
-      try notarySignature.withUnsafePointerToSerialized { notarySignature in
-        try checkError(signal_server_public_params_verify_signature(contents, message, message.count, notarySignature))
+      try message.withUnsafeBorrowedBuffer { message in
+        try notarySignature.withUnsafePointerToSerialized { notarySignature in
+          try checkError(signal_server_public_params_verify_signature(contents, message, notarySignature))
+        }
       }
     }
   }
