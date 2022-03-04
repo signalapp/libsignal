@@ -39,7 +39,7 @@ android {
 
     sourceSets {
         androidTest {
-            java.srcDirs = ['src/androidTest/java', project(':tests').file('src/test/java')]
+            java.srcDirs = ['src/androidTest/java', '../test/src/test/java']
         }
     }
 }
