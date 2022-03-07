@@ -20,7 +20,6 @@ java/android/build/
 java/java/build
 java/tests/build
 java/.gradle
-java/gradle.properties
 java/local.properties
 java/android/src/main/jniLibs
 java/java/src/main/resources

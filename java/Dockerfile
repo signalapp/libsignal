@@ -39,24 +39,21 @@ ENV SHELL /bin/bash
 WORKDIR /home/libsignal
 
 # Android SDK setup...
-ARG ANDROID_SDK_FILENAME=commandlinetools-linux-6200805_latest.zip
-ARG ANDROID_SDK_SHA=f10f9d5bca53cc27e2d210be2cbc7c0f1ee906ad9b868748d74d62e10f2c8275
-ARG ANDROID_API_LEVELS=android-28
-ARG ANDROID_BUILD_TOOLS_VERSION=28.0.3
+ARG ANDROID_SDK_FILENAME=commandlinetools-linux-7583922_latest.zip
+ARG ANDROID_SDK_SHA=124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf
+ARG ANDROID_API_LEVELS=android-30
+ARG ANDROID_BUILD_TOOLS_VERSION=30.0.2
 ARG NDK_VERSION=21.0.6113669
 ENV ANDROID_HOME /home/libsignal/android-sdk
 ENV NDK_HOME ${ANDROID_HOME}/ndk/${NDK_VERSION}
-ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
+ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
 
 RUN    wget -q https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} \
     && echo "${ANDROID_SDK_SHA} ${ANDROID_SDK_FILENAME}" | sha256sum -c - \
     && unzip -q ${ANDROID_SDK_FILENAME} -d android-sdk \
     && rm -rf ${ANDROID_SDK_FILENAME}
 
-RUN    echo y | ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "platforms;${ANDROID_API_LEVELS}" \
-    && ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
-    && ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "platform-tools" \
-    && ./android-sdk/tools/bin/sdkmanager --sdk_root=${ANDROID_HOME} "ndk;${NDK_VERSION}"
+RUN    yes | sdkmanager --sdk_root=${ANDROID_HOME} "platforms;${ANDROID_API_LEVELS}" "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" "platform-tools" "ndk;${NDK_VERSION}"
 
 # Rust setup...
 
@@ -75,8 +72,6 @@ RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linu
     && cargo install --version ${CARGO_NDK_VERSION} cargo-ndk
 
 # Pre-download Gradle.
-ENV GRADLE_OPTS=-Dorg.gradle.daemon=false
-
 COPY   java/gradle gradle
 COPY   java/gradlew gradlew
 RUN    ./gradlew --version

@@ -1,1 +1,26 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
+
 include ':java', ':android'
+
+def isReleaseBuild() {
+    return version.contains("SNAPSHOT") == false
+}
+
+def getReleaseRepositoryUrl() {
+    return hasProperty('sonatypeRepo') ? sonatypeRepo
+            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+}
+
+def getRepositoryUsername() {
+    return hasProperty('whisperSonatypeUsername') ? whisperSonatypeUsername : ""
+}
+
+def getRepositoryPassword() {
+    return hasProperty('whisperSonatypePassword') ? whisperSonatypePassword : ""
+}

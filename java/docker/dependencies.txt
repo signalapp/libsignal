@@ -1,1 +1,1 @@
-openjdk-8-jdk=8u252-b09-1
+openjdk-11-jdk=11.0.8+10-1
