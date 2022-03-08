@@ -84,7 +84,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - run: sudo apt-get install gcc-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib
 
     - name: Install Rust
       run: rustup +stable target add i686-unknown-linux-gnu
@@ -125,7 +125,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - run: sudo apt-get install gcc-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
