@@ -102,7 +102,7 @@ impl<T: Send + 'static> WeakFutureToken<T> {
         cx: &mut C,
     ) -> JsResult<'a, JsValue> {
         let settle = JsFunction::new(cx, settle_promise::<T, R>)?;
-        let bind_args = vec![cx.undefined().upcast(), cx.boxed(self.clone()).upcast()];
+        let bind_args = [cx.undefined().upcast(), cx.boxed(self.clone()).upcast()];
         call_method(cx, settle, "bind", bind_args)
     }
 }
@@ -178,7 +178,7 @@ impl<T: 'static + Send> JsFuture<T> {
         let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
         let bound_reject = settle_token.bind_settle_promise::<_, JsRejectedResult>(cx)?;
 
-        call_method(cx, promise, "then", vec![bound_fulfill, bound_reject])?;
+        call_method(cx, promise, "then", [bound_fulfill, bound_reject])?;
 
         Ok(future)
     }

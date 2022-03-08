@@ -94,7 +94,7 @@ impl log::Log for NodeLogger {
             log_fn.call(
                 &mut cx,
                 undef,
-                vec![level_arg, target_arg, file_arg, line_arg, message_arg],
+                [level_arg, target_arg, file_arg, line_arg, message_arg],
             )?;
             Ok(())
         });

@@ -40,7 +40,7 @@ fn new_js_error<'a>(
             None => cx.undefined().upcast(),
         };
 
-        let args: Vec<Handle<JsValue>> = vec![
+        let args: &[Handle<JsValue>] = &[
             cx.string(message).upcast(),
             name_arg,
             cx.string(operation).upcast(),

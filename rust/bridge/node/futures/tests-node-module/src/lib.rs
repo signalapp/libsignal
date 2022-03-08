@@ -38,7 +38,7 @@ fn increment_async(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             let undefined = cx.undefined();
             completion_callback
                 .into_inner(&mut cx)
-                .call(&mut cx, undefined, vec![new_value])
+                .call(&mut cx, undefined, [new_value])
                 .expect("call succeeds");
             Ok(())
         });

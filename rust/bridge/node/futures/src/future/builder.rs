@@ -44,7 +44,7 @@ where
                 let bound_fulfill = settle_token.bind_settle_promise::<_, JsFulfilledResult>(cx)?;
 
                 let promise = get_promise(cx)?;
-                call_method(cx, promise, "then", vec![bound_fulfill, bound_reject])?;
+                call_method(cx, promise, "then", [bound_fulfill, bound_reject])?;
 
                 Ok(())
             });
@@ -53,7 +53,7 @@ where
                     let undef = cx.undefined();
                     bound_reject
                         .downcast_or_throw::<JsFunction, _>(&mut cx)?
-                        .call(&mut cx, undef, vec![exception])?;
+                        .call(&mut cx, undef, [exception])?;
                 } else {
                     cx.throw(exception)?;
                 }
