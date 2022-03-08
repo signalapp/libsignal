@@ -48,7 +48,7 @@
     "eslint-plugin-mocha": "^8.0.0",
     "eslint-plugin-more": "^1.0.0",
     "mocha": "*",
-    "node-gyp": "^8.2.0",
+    "node-gyp": "^8.4.1",
     "prettier": "^1.19.1",
     "rimraf": "^3.0.1",
     "source-map-support": "^0.5.19",
