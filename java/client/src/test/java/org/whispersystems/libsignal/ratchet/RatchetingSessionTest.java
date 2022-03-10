@@ -10,7 +10,6 @@ import org.whispersystems.libsignal.ecc.ECKeyPair;
 import org.whispersystems.libsignal.ecc.ECPrivateKey;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.state.SessionRecord;
-import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.util.Arrays;
 

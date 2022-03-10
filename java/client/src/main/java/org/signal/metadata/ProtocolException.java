@@ -1,7 +1,8 @@
 package org.signal.libsignal.metadata;
 
 import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
-import org.whispersystems.libsignal.util.guava.Optional;
+
+import java.util.Optional;
 
 public abstract class ProtocolException extends Exception {
 
@@ -11,7 +12,7 @@ public abstract class ProtocolException extends Exception {
 
   public ProtocolException(Exception e, String sender, int senderDevice) {
     super(e);
-    this.content      = Optional.absent();
+    this.content      = Optional.empty();
     this.sender       = sender;
     this.senderDevice = senderDevice;
   }
@@ -46,6 +47,6 @@ public abstract class ProtocolException extends Exception {
     if (content.isPresent()) {
       return content.get().getGroupId();
     }
-    return Optional.<byte[]>absent();
+    return Optional.<byte[]>empty();
   }
 }

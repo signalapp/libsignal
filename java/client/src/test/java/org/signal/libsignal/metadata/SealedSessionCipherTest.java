@@ -37,10 +37,10 @@ import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.util.Hex;
 import org.whispersystems.libsignal.util.Pair;
-import org.whispersystems.libsignal.util.guava.Optional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.UUID;
 
 public class SealedSessionCipherTest extends TestCase {
@@ -345,7 +345,7 @@ public class SealedSessionCipherTest extends TestCase {
 
     DecryptionErrorMessage errorMessage = DecryptionErrorMessage.forOriginalMessage(bobMessage.serialize(), bobMessage.getType(), 408, bobAddress.getDeviceId());
     PlaintextContent errorMessageContent = new PlaintextContent(errorMessage);
-    UnidentifiedSenderMessageContent errorMessageUsmc = new UnidentifiedSenderMessageContent(errorMessageContent, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_IMPLICIT, Optional.<byte[]>absent());
+    UnidentifiedSenderMessageContent errorMessageUsmc = new UnidentifiedSenderMessageContent(errorMessageContent, senderCertificate, UnidentifiedSenderMessageContent.CONTENT_HINT_IMPLICIT, Optional.<byte[]>empty());
     byte[] errorMessageCiphertext = aliceCipher.encrypt(bobAddress, errorMessageUsmc);
 
     DecryptionResult result = bobCipher.decrypt(certificateValidator, errorMessageCiphertext, 31335);

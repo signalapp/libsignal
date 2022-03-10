@@ -7,7 +7,8 @@ import org.signal.libsignal.metadata.InvalidMetadataMessageException;
 import org.signal.libsignal.metadata.certificate.InvalidCertificateException;
 import org.signal.libsignal.metadata.certificate.SenderCertificate;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
-import org.whispersystems.libsignal.util.guava.Optional;
+
+import java.util.Optional;
 
 public class UnidentifiedSenderMessageContent implements NativeHandleGuard.Owner {
   // Must be kept in sync with sealed_sender.proto.
@@ -47,7 +48,7 @@ public class UnidentifiedSenderMessageContent implements NativeHandleGuard.Owner
         message,
         certificateGuard.nativeHandle(),
         contentHint,
-        groupId.orNull());
+        groupId.orElse(null));
     }
   }
 
@@ -83,7 +84,7 @@ public class UnidentifiedSenderMessageContent implements NativeHandleGuard.Owner
 
   public Optional<byte[]> getGroupId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Optional.fromNullable(Native.UnidentifiedSenderMessageContent_GetGroupId(guard.nativeHandle()));
+      return Optional.ofNullable(Native.UnidentifiedSenderMessageContent_GetGroupId(guard.nativeHandle()));
     }
   }
 }

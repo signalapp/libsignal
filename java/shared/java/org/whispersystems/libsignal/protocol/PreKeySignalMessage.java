@@ -13,7 +13,8 @@ import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.InvalidVersionException;
 import org.whispersystems.libsignal.LegacyMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.util.guava.Optional;
+
+import java.util.Optional;
 
 public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard.Owner {
 
@@ -56,7 +57,7 @@ public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       int pre_key = Native.PreKeySignalMessage_GetPreKeyId(guard.nativeHandle());
       if (pre_key < 0) {
-        return Optional.absent();
+        return Optional.empty();
       } else {
         return Optional.of(pre_key);
       }

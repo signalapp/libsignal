@@ -10,7 +10,6 @@ import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.InvalidVersionException;
-import org.whispersystems.libsignal.util.guava.Optional;
 
 public final class PlaintextContent implements CiphertextMessage, NativeHandleGuard.Owner {
 

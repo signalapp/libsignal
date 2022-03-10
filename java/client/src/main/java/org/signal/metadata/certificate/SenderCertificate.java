@@ -6,7 +6,8 @@ import org.signal.client.internal.NativeHandleGuard;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
 import org.whispersystems.libsignal.InvalidKeyException;
 import org.whispersystems.libsignal.InvalidMessageException;
-import org.whispersystems.libsignal.util.guava.Optional;
+
+import java.util.Optional;
 
 public class SenderCertificate implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
@@ -58,12 +59,12 @@ public class SenderCertificate implements NativeHandleGuard.Owner {
 
   public Optional<String> getSenderE164() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Optional.fromNullable(Native.SenderCertificate_GetSenderE164(guard.nativeHandle()));
+      return Optional.ofNullable(Native.SenderCertificate_GetSenderE164(guard.nativeHandle()));
     }
   }
 
   public String getSender() {
-    return getSenderE164().or(getSenderUuid());
+    return getSenderE164().orElseGet(this::getSenderUuid);
   }
 
   public long getExpiration() {

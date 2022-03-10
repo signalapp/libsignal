@@ -10,7 +10,6 @@ import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 import org.whispersystems.libsignal.state.SessionRecord;
-import org.whispersystems.libsignal.util.guava.Optional;
 import org.whispersystems.libsignal.util.Pair;
 
 import java.security.NoSuchAlgorithmException;

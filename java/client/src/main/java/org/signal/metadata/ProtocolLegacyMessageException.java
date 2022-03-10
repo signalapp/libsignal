@@ -2,7 +2,6 @@ package org.signal.libsignal.metadata;
 
 import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
 import org.whispersystems.libsignal.LegacyMessageException;
-import org.whispersystems.libsignal.util.guava.Optional;
 
 public class ProtocolLegacyMessageException extends ProtocolException {
   public ProtocolLegacyMessageException(LegacyMessageException e, String sender, int senderDeviceId) {

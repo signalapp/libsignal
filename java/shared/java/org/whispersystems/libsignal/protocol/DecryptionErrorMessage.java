@@ -10,7 +10,8 @@ import org.signal.client.internal.NativeHandleGuard;
 
 import org.whispersystems.libsignal.InvalidMessageException;
 import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.util.guava.Optional;
+
+import java.util.Optional;
 
 public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
 
@@ -48,7 +49,7 @@ public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       long keyHandle = Native.DecryptionErrorMessage_GetRatchetKey(guard.nativeHandle());
       if (keyHandle == 0) {
-        return Optional.absent();
+        return Optional.empty();
       } else {
         return Optional.of(new ECPublicKey(keyHandle));
       }

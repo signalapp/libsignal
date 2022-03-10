@@ -25,12 +25,12 @@ import org.whispersystems.libsignal.protocol.SenderKeyMessage;
 import org.whispersystems.libsignal.protocol.SignalMessage;
 import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
-import org.whispersystems.libsignal.util.guava.Optional;
 
 import org.signal.client.internal.Native;
 import org.signal.client.internal.NativeHandleGuard;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class SealedSessionCipher {
@@ -67,7 +67,7 @@ public class SealedSessionCipher {
         message,
         senderCertificate,
         UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT,
-        Optional.<byte[]>absent());
+        Optional.<byte[]>empty());
       return encrypt(destinationAddress, content);
     }
   }
@@ -149,7 +149,7 @@ public class SealedSessionCipher {
       throw new InvalidMetadataMessageException(e);
     }
 
-    boolean isLocalE164 = localE164Address != null && localE164Address.equals(content.getSenderCertificate().getSenderE164().orNull());
+    boolean isLocalE164 = localE164Address != null && localE164Address.equals(content.getSenderCertificate().getSenderE164().orElse(null));
     boolean isLocalUuid = localUuidAddress.equals(content.getSenderCertificate().getSenderUuid());
 
     if ((isLocalE164 || isLocalUuid) && content.getSenderCertificate().getSenderDeviceId() == localDeviceId) {
