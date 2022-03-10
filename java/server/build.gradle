@@ -6,8 +6,8 @@ plugins {
     id "de.undercouch.download" version "4.1.1"
 }
 
-sourceCompatibility = 1.7
-archivesBaseName = "signal-client-java"
+sourceCompatibility = 1.8
+archivesBaseName = "libsignal-server"
 version          = version_number
 group            = group_info
 
@@ -17,9 +17,13 @@ repositories {
 }
 
 sourceSets {
-    test {
+    main {
         java {
-            srcDirs = ['src/test/java/', '../tests/src/test/java']
+            // Include libsignal sources shared between the client and server
+            srcDir '../shared/java'
+        }
+        resources {
+            srcDir '../shared/resources'
         }
     }
     otherPlatformLibraries {}
@@ -50,7 +54,7 @@ tasks.register('testableJar', Jar) {
     from sourceSets.otherPlatformLibraries.resources
     classifier = 'testable'
 
-    onlyIf { gradle.taskGraph.hasTask(":java:publish") }
+    onlyIf { gradle.taskGraph.hasTask(":server:publish") }
 
     def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
     def extraResourcesDir = 'src/otherPlatformLibraries/resources'
@@ -67,6 +71,7 @@ tasks.register('testableJar', Jar) {
 }
 
 tasks.withType(JavaCompile) {
+    // TODO: Build a different variant of the JNI library for server.
     compileTask -> compileTask.dependsOn ':makeJniLibrariesDesktop'
 }
 
@@ -77,10 +82,13 @@ publishing {
         mavenJava(MavenPublication) {
             artifactId = archivesBaseName
             from components.java
-            artifact testableJar
+
+            if (gradle.taskGraph.hasTask(":server:testableJar")) {
+                artifact testableJar
+            }
 
             pom {
-                description = 'Signal Protocol cryptography library for Java'
+                description = 'Signal Protocol cryptography library for Java (server-side)'
                 url = 'https://github.com/signalapp/libsignal-client'
 
                 scm {
@@ -109,6 +117,6 @@ publishing {
 }
 
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask(":java:publish") }
+    required { isReleaseBuild() && gradle.taskGraph.hasTask(":server:publish") }
     sign publishing.publications.mavenJava
 }

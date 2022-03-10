@@ -32,7 +32,10 @@ android {
 
     sourceSets {
         androidTest {
-            java.srcDirs = ['src/androidTest/java', '../tests/src/test/java']
+            java {
+                // Also run all the Android-agnostic tests by default.
+                srcDir '../client/src/test/java'
+            }
         }
     }
 }
@@ -40,7 +43,7 @@ android {
 dependencies {
     androidTestImplementation "androidx.test:runner:1.4.0"
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    api project(':java')
+    api project(':client')
 }
 
 tasks.register('libsWithDebugSymbols', Zip) {

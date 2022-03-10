@@ -13,7 +13,7 @@ cd "${SCRIPT_DIR}"/..
 
 # These paths are relative to the root directory
 ANDROID_LIB_DIR=java/android/src/main/jniLibs
-DESKTOP_LIB_DIR=java/java/src/main/resources
+DESKTOP_LIB_DIR=java/shared/resources
 
 # Keep these settings in sync with .github/workflows/jni_artifacts.yml,
 # which builds for Windows as well.

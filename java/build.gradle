@@ -11,6 +11,10 @@ subprojects {
     }
 }
 
+def isReleaseBuild() {
+    return version.contains("SNAPSHOT") == false
+}
+
 task makeJniLibrariesAndroid(type:Exec) {
   group 'Rust'
   description 'Build the JNI libraries'
@@ -35,7 +39,7 @@ task clean(type: Delete) {
   delete fileTree('./android/src/main/jniLibs') {
     include '**/*.so'
   }
-  delete fileTree('./java/src/main/resources') {
+  delete fileTree('./shared/resources') {
     include '**/*.so'
     include '**/*.dylib'
     include '**/*.dll'

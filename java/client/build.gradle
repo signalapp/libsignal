@@ -1,0 +1,94 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+sourceCompatibility = 1.8
+archivesBaseName = "signal-client-java"
+version          = version_number
+group            = group_info
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+sourceSets {
+    main {
+        java {
+            // Include libsignal sources shared between the client and server
+            srcDir '../shared/java'
+        }
+        resources {
+            srcDir '../shared/resources'
+        }
+    }
+    otherPlatformLibraries {}
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.12'
+}
+
+test {
+    testLogging {
+        events 'passed'
+        showStandardStreams = true
+        showExceptions true
+        exceptionFormat 'full'
+        showCauses true
+        showStackTraces true
+    }
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn ':makeJniLibrariesDesktop'
+}
+
+// MARK: Publishing
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = archivesBaseName
+            from components.java
+
+            pom {
+                description = 'Signal Protocol cryptography library for Java'
+                url = 'https://github.com/signalapp/libsignal-client'
+
+                scm {
+                    url = 'scm:git@github.com:signalapp/libsignal-client.git'
+                    connection = 'scm:git@github.com:signalapp/libsignal-client.git'
+                    developerConnection = 'scm:git@github.com:signalapp/libsignal-client.git'
+                }
+
+                licenses {
+                    license {
+                        name = 'AGPLv3'
+                        url = 'https://www.gnu.org/licenses/agpl-3.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = 'Signal Messenger LLC'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+    }
+}
+
+signing {
+    required { isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
+    sign publishing.publications.mavenJava
+}

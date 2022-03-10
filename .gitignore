@@ -22,7 +22,7 @@ java/tests/build
 java/.gradle
 java/local.properties
 java/android/src/main/jniLibs
-java/java/src/main/resources
-java/java/src/otherPlatformLibraries/resources
+java/shared/resources
+java/server/src/otherPlatformLibraries/resources
 
 .DS_Store
