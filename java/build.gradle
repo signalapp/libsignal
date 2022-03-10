@@ -11,10 +11,6 @@ subprojects {
     }
 }
 
-def isReleaseBuild() {
-    return version.contains("SNAPSHOT") == false
-}
-
 task makeJniLibrariesAndroid(type:Exec) {
   group 'Rust'
   description 'Build the JNI libraries'
@@ -52,4 +48,23 @@ task makeAll() {
   description 'Build the native libraries'
 
   dependsOn 'makeJniLibrariesDesktop', 'makeJniLibrariesAndroid'
+}
+
+// PUBLISHING
+
+def isReleaseBuild() {
+    return version.contains("SNAPSHOT") == false
+}
+
+def getReleaseRepositoryUrl() {
+    return hasProperty('sonatypeRepo') ? sonatypeRepo
+            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+}
+
+def getRepositoryUsername() {
+    return hasProperty('whisperSonatypeUsername') ? whisperSonatypeUsername : ""
+}
+
+def getRepositoryPassword() {
+    return hasProperty('whisperSonatypePassword') ? whisperSonatypePassword : ""
 }
