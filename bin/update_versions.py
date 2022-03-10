@@ -29,7 +29,7 @@ def update_version(file, pattern, new_version):
 
 
 PODSPEC_PATTERN = re.compile(r"^(.*\.version\s+=\s+')(.*)(')")
-GRADLE_PATTERN = re.compile(r'^(\s+ext\.version_number\s+=\s+")(.*)(")')
+GRADLE_PATTERN = re.compile(r'^(def\s+version_number\s+=\s+")(.*)(")')
 NODE_PATTERN = re.compile(r'^(\s+"version": ")(.*)(")')
 CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 
@@ -39,6 +39,8 @@ def bridge_path(bridge):
 
 
 def main():
+    os.chdir(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
     if len(sys.argv) > 1:
         update_version('SignalClient.podspec', PODSPEC_PATTERN, sys.argv[1])
         update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, sys.argv[1])

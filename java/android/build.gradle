@@ -51,8 +51,8 @@ tasks.register('libsWithDebugSymbols', Zip) {
     classifier 'debug-symbols'
 }
 
-tasks.withType(JavaCompile) {
-    compileTask -> compileTask.dependsOn ':makeJniLibrariesAndroid'
+preBuild {
+    dependsOn ':makeJniLibrariesAndroid'
 }
 
 

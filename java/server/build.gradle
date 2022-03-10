@@ -2,8 +2,6 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-
-    id "de.undercouch.download" version "4.1.1"
 }
 
 sourceCompatibility = 1.8
@@ -26,7 +24,6 @@ sourceSets {
             srcDir '../shared/resources'
         }
     }
-    otherPlatformLibraries {}
 }
 
 dependencies {
@@ -49,30 +46,12 @@ java {
     withJavadocJar()
 }
 
-tasks.register('testableJar', Jar) {
-    from sourceSets.main.output
-    from sourceSets.otherPlatformLibraries.resources
-    classifier = 'testable'
-
-    onlyIf { gradle.taskGraph.hasTask(":server:publish") }
-
-    def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
-    def extraResourcesDir = 'src/otherPlatformLibraries/resources'
-
-    doFirst {
-        mkdir extraResourcesDir
-        extraResources.each { name ->
-            download {
-                src 'https://github.com/signalapp/libsignal-client/releases/download/v' + project.version + '/' + name
-                dest extraResourcesDir + '/' + name
-            }
-        }
-    }
-}
-
-tasks.withType(JavaCompile) {
+processResources {
     // TODO: Build a different variant of the JNI library for server.
-    compileTask -> compileTask.dependsOn ':makeJniLibrariesDesktop'
+    dependsOn ':makeJniLibrariesDesktop'
+    if (gradle.taskGraph.hasTask(":server:publish")) {
+        dependsOn ':downloadNonLinuxLibraries'
+    }
 }
 
 // MARK: Publishing
@@ -82,10 +61,6 @@ publishing {
         mavenJava(MavenPublication) {
             artifactId = archivesBaseName
             from components.java
-
-            if (gradle.taskGraph.hasTask(":server:testableJar")) {
-                artifact testableJar
-            }
 
             pom {
                 description = 'Signal Protocol cryptography library for Java (server-side)'

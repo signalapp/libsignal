@@ -24,7 +24,6 @@ sourceSets {
             srcDir '../shared/resources'
         }
     }
-    otherPlatformLibraries {}
 }
 
 dependencies {
@@ -47,8 +46,12 @@ java {
     withJavadocJar()
 }
 
-tasks.withType(JavaCompile) {
-    compileTask -> compileTask.dependsOn ':makeJniLibrariesDesktop'
+processResources {
+    // TODO: Build a different variant of the JNI library for server.
+    dependsOn ':makeJniLibrariesDesktop'
+    if (gradle.taskGraph.hasTask(":client:publish")) {
+        dependsOn ':downloadNonLinuxLibraries'
+    }
 }
 
 // MARK: Publishing

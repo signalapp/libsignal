@@ -1,5 +1,11 @@
+plugins {
+    id "de.undercouch.download" version "5.0.2"
+}
+
+def version_number = "0.13.0"
+
 subprojects {
-    ext.version_number     = "0.13.0"
+    ext.version_number     = version_number
     ext.group_info         = "org.whispersystems"
 
     if (JavaVersion.current().isJava8Compatible()) {
@@ -25,6 +31,13 @@ task makeJniLibrariesDesktop(type:Exec) {
   commandLine './build_jni.sh', 'desktop'
 }
 
+task makeAll() {
+  group 'Rust'
+  description 'Build the native libraries'
+
+  dependsOn 'makeJniLibrariesDesktop', 'makeJniLibrariesAndroid'
+}
+
 task cargoClean(type:Exec) {
   group 'Rust'
   commandLine 'cargo', 'clean'
@@ -43,11 +56,13 @@ task clean(type: Delete) {
 }
 clean.dependsOn(cargoClean)
 
-task makeAll() {
-  group 'Rust'
-  description 'Build the native libraries'
+task downloadNonLinuxLibraries(type: Download) {
+  def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
 
-  dependsOn 'makeJniLibrariesDesktop', 'makeJniLibrariesAndroid'
+  src(extraResources.collect {
+    'https://github.com/signalapp/libsignal-client/releases/download/v' + version_number + '/' + it
+  })
+  dest 'shared/resources'
 }
 
 // PUBLISHING
