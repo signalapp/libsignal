@@ -66,6 +66,7 @@ afterEvaluate {
                 artifact libsWithDebugSymbols
 
                 pom {
+                    name = archivesBaseName
                     packaging = 'aar'
                     description = 'Signal Protocol cryptography library for Android'
                     url = 'https://github.com/signalapp/libsignal-client'
