@@ -44,7 +44,7 @@ publish_java: docker_image
 		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
 		-v $(KEYRING_VOLUME):/home/libsignal/keyring \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew clean uploadArchives \
+		sh -c "cd src/java; ./gradlew clean publish \
 			-PwhisperSonatypeUsername='$(SONATYPE_USERNAME)' \
 			-PwhisperSonatypePassword='$(SONATYPE_PASSWORD)' \
 			-Psigning.secretKeyRingFile='/home/libsignal/keyring/$(KEYRING_FILE_ROOT)' \
