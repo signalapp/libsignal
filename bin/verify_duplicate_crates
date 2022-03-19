@@ -17,11 +17,11 @@
 EXPECTED="\
 getrandom v0.1.16
 
-getrandom v0.2.3
+getrandom v0.2.5
 
 rand v0.7.3
 
-rand v0.8.4
+rand v0.8.5
 
 rand_chacha v0.2.2
 
@@ -31,9 +31,9 @@ rand_core v0.5.1
 
 rand_core v0.6.3
 
-serde v1.0.130
+serde v1.0.136
 
-serde v1.0.130"
+serde v1.0.136"
 
 if [[ $(cargo tree -d -e normal --workspace --locked --depth 0) != "${EXPECTED}" ]]; then
     cargo tree -d -e normal --workspace --locked
