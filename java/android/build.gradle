@@ -4,7 +4,7 @@ plugins {
     id 'signing'
 }
 
-archivesBaseName = "signal-client-android"
+archivesBaseName = "libsignal-android"
 version          = version_number
 group            = group_info
 
@@ -69,12 +69,12 @@ afterEvaluate {
                     name = archivesBaseName
                     packaging = 'aar'
                     description = 'Signal Protocol cryptography library for Android'
-                    url = 'https://github.com/signalapp/libsignal-client'
+                    url = 'https://github.com/signalapp/libsignal'
 
                     scm {
-                        url = 'scm:git@github.com:signalapp/libsignal-client.git'
-                        connection = 'scm:git@github.com:signalapp/libsignal-client.git'
-                        developerConnection = 'scm:git@github.com:signalapp/libsignal-client.git'
+                        url = 'scm:git@github.com:signalapp/libsignal.git'
+                        connection = 'scm:git@github.com:signalapp/libsignal.git'
+                        developerConnection = 'scm:git@github.com:signalapp/libsignal.git'
                     }
 
                     licenses {

@@ -1,5 +1,5 @@
 // Disable arm64 simulator builds for `pod lib lint`.
-// Not only does SignalClient not support it yet,
+// Not only does LibSignalClient not support it yet,
 // but neither do some of its indirect dependencies.
 //
 // This *ought* to be limited to [sdk=iphonesimulator*],

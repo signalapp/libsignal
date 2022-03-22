@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import SignalClientTests
+@testable import LibSignalClientTests
 
 XCTMain([
     testCase(ClonableHandleOwnerTests.allTests),

@@ -5,7 +5,7 @@ plugins {
 }
 
 sourceCompatibility = 1.8
-archivesBaseName = "signal-client-java"
+archivesBaseName = "libsignal-client"
 version          = version_number
 group            = group_info
 
@@ -68,12 +68,12 @@ publishing {
             pom {
                 name = archivesBaseName
                 description = 'Signal Protocol cryptography library for Java'
-                url = 'https://github.com/signalapp/libsignal-client'
+                url = 'https://github.com/signalapp/libsignal'
 
                 scm {
-                    url = 'scm:git@github.com:signalapp/libsignal-client.git'
-                    connection = 'scm:git@github.com:signalapp/libsignal-client.git'
-                    developerConnection = 'scm:git@github.com:signalapp/libsignal-client.git'
+                    url = 'scm:git@github.com:signalapp/libsignal.git'
+                    connection = 'scm:git@github.com:signalapp/libsignal.git'
+                    developerConnection = 'scm:git@github.com:signalapp/libsignal.git'
                 }
 
                 licenses {

@@ -6,7 +6,7 @@ def version_number = "0.14.0"
 
 subprojects {
     ext.version_number     = version_number
-    ext.group_info         = "org.whispersystems"
+    ext.group_info         = "org.signal"
 
     if (JavaVersion.current().isJava8Compatible()) {
         allprojects {
@@ -63,7 +63,7 @@ task downloadNonLinuxLibraries(type: Download) {
   def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
 
   src(extraResources.collect {
-    'https://github.com/signalapp/libsignal-client/releases/download/v' + version_number + '/' + it
+    'https://github.com/signalapp/libsignal/releases/download/v' + version_number + '/' + it
   })
   dest 'shared/resources'
 }
@@ -80,9 +80,9 @@ def getReleaseRepositoryUrl() {
 }
 
 def getRepositoryUsername() {
-    return hasProperty('whisperSonatypeUsername') ? whisperSonatypeUsername : ""
+    return hasProperty('sonatypeUsername') ? sonatypeUsername : ""
 }
 
 def getRepositoryPassword() {
-    return hasProperty('whisperSonatypePassword') ? whisperSonatypePassword : ""
+    return hasProperty('sonatypePassword') ? sonatypePassword : ""
 }

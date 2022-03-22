@@ -98,13 +98,13 @@ pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogg
         Ok(_) => {
             log::set_max_level(log::Level::from(max_level).to_level_filter());
             log::info!(
-                "Initializing libsignal-client version:{}",
+                "Initializing libsignal version:{}",
                 env!("CARGO_PKG_VERSION")
             );
             log_panics::init();
         }
         Err(_) => {
-            log::warn!("logging already initialized for libsignal-client; ignoring later call");
+            log::warn!("logging already initialized for libsignal; ignoring later call");
         }
     }
 }

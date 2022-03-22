@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import SignalClient
+@testable import LibSignalClient
 
 private struct FakeHandle {
     // We're using the tuple to guarantee in-memory layout for this test.

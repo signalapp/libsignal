@@ -17,7 +17,7 @@
 #![warn(clippy::unwrap_used)]
 #![deny(unsafe_code)]
 
-// TODO(https://github.com/signalapp/libsignal-client/issues/285): it should be an aspiration to
+// TODO(https://github.com/signalapp/libsignal/issues/285): it should be an aspiration to
 // eventually warn and then error for public members without docstrings. Also see
 // https://doc.rust-lang.org/rustdoc/what-to-include.html for background.
 // #![warn(missing_docs)]

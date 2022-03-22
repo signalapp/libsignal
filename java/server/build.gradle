@@ -68,12 +68,12 @@ publishing {
             pom {
                 name = archivesBaseName
                 description = 'Signal Protocol cryptography library for Java (server-side)'
-                url = 'https://github.com/signalapp/libsignal-client'
+                url = 'https://github.com/signalapp/libsignal'
 
                 scm {
-                    url = 'scm:git@github.com:signalapp/libsignal-client.git'
-                    connection = 'scm:git@github.com:signalapp/libsignal-client.git'
-                    developerConnection = 'scm:git@github.com:signalapp/libsignal-client.git'
+                    url = 'scm:git@github.com:signalapp/libsignal.git'
+                    connection = 'scm:git@github.com:signalapp/libsignal.git'
+                    developerConnection = 'scm:git@github.com:signalapp/libsignal.git'
                 }
 
                 licenses {

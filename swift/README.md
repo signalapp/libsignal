@@ -5,27 +5,27 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
 
 # Use as CocoaPod
 
-1. Make sure you are using `use_frameworks!` in your Podfile. SignalClient is a Swift pod and as such cannot be compiled as a plain library.
+1. Make sure you are using `use_frameworks!` in your Podfile. LibSignalClient is a Swift pod and as such cannot be compiled as a plain library.
 
-2. Add 'SignalClient' and 'SignalCoreKit' as dependencies in your Podfile:
+2. Add 'LibSignalClient' and 'SignalCoreKit' as dependencies in your Podfile:
 
-        pod 'SignalClient', git: 'https://github.com/signalapp/libsignal-client.git'
+        pod 'LibSignalClient', git: 'https://github.com/signalapp/libsignal.git'
         pod 'SignalCoreKit', git: 'https://github.com/signalapp/SignalCoreKit.git'
 
 3. Use `pod install` or `pod update` to build the Rust library for all targets. You may be prompted to install Rust dependencies (`cbindgen`, `rust-src`, `xargo`).
 
-4. Build as usual. The Rust library will automatically be linked into the built SignalClient.framework.
+4. Build as usual. The Rust library will automatically be linked into the built LibSignalClient.framework.
 
 
 ## Development as a CocoaPod
 
-Instead of a git-based dependency, use a path-based dependency to treat SignalClient as a development pod. Since [`prepare_command`s][pc] are not run for path-based dependencies, you will need to build the Rust library yourself. (Xcode should prompt you to do this if you forget.)
+Instead of a git-based dependency, use a path-based dependency to treat LibSignalClient as a development pod. Since [`prepare_command`s][pc] are not run for path-based dependencies, you will need to build the Rust library yourself. (Xcode should prompt you to do this if you forget.)
 
     CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh --release
 
 The CocoaPod is configured to use the release build of the Rust library.
 
-If validating SignalClient locally, use the following invocation:
+If validating LibSignalClient locally, use the following invocation:
 
     XCODE_XCCONFIG_FILE=swift/PodLibLint.xcconfig pod lib lint \
       --platforms=ios \
@@ -33,7 +33,7 @@ If validating SignalClient locally, use the following invocation:
       --skip-import-validation \
       --verbose
 
-You will also need to have [SignalCoreKit][] checked out; the above command assumes you have checked it out as a sibling directory to libsignal-client.
+You will also need to have [SignalCoreKit][] checked out; the above command assumes you have checked it out as a sibling directory to libsignal.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.

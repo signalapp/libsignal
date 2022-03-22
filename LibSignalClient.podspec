@@ -1,17 +1,17 @@
 #
-# Copyright 2020-2021 Signal Messenger, LLC.
+# Copyright 2020-2022 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
 Pod::Spec.new do |s|
-  s.name             = 'SignalClient'
+  s.name             = 'LibSignalClient'
   s.version          = '0.14.0'
   s.summary          = 'A Swift wrapper library for communicating with the Signal messaging service.'
 
-  s.homepage         = 'https://github.com/signalapp/libsignal-client'
+  s.homepage         = 'https://github.com/signalapp/libsignal'
   s.license          = 'AGPL-3.0-only'
-  s.author           = { 'Jack Lloyd' => 'jack@signal.org', 'Jordan Rose' => 'jrose@signal.org' }
-  s.source           = { :git => 'https://github.com/signalapp/libsignal-client.git', :tag => "swift-#{s.version}" }
+  s.author           = { 'Signal Developers' => 'ios@signal.org' }
+  s.source           = { :git => 'https://github.com/signalapp/libsignal.git', :tag => "v#{s.version}" }
 
   s.swift_version    = '5'
   s.platform         = :ios, '10'

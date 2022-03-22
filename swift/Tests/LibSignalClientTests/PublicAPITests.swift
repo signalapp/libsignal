@@ -4,7 +4,7 @@
 //
 
 import XCTest
-import SignalClient
+import LibSignalClient
 
 class PublicAPITests: TestCaseBase {
     func testHkdfSimple() {

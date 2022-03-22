@@ -42,7 +42,7 @@ def main():
     os.chdir(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
     if len(sys.argv) > 1:
-        update_version('SignalClient.podspec', PODSPEC_PATTERN, sys.argv[1])
+        update_version('LibSignalClient.podspec', PODSPEC_PATTERN, sys.argv[1])
         update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, sys.argv[1])
         update_version(os.path.join('node', 'package.json'), NODE_PATTERN, sys.argv[1])
         update_version(bridge_path('ffi'), CARGO_PATTERN, sys.argv[1])
@@ -51,7 +51,7 @@ def main():
         return 0
 
     package_versions = {
-        'swift': read_version('SignalClient.podspec', PODSPEC_PATTERN),
+        'swift': read_version('LibSignalClient.podspec', PODSPEC_PATTERN),
         'java': read_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
         'node': read_version(os.path.join('node', 'package.json'), NODE_PATTERN)
     }

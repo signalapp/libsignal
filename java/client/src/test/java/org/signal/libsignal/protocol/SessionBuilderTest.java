@@ -334,7 +334,7 @@ public class SessionBuilderTest extends TestCase {
       plaintext = bobSessionCipher.decrypt(incomingMessage);
       throw new AssertionError("Decrypt should have failed!");
     } catch (InvalidKeyIdException e) {
-      throw new AssertionError("libsignal-client swallowed the exception");
+      throw new AssertionError("libsignal swallowed the exception");
     } catch (TestBadSignedPreKeysStore.CustomException e) {
       // success!
     }

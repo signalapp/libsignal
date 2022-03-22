@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-@testable import SignalClient
+@testable import LibSignalClient
 
 class BadStore: InMemorySignalProtocolStore {
     enum Error: Swift.Error {
@@ -16,5 +16,5 @@ class BadStore: InMemorySignalProtocolStore {
 
 // Wrapped here so that the test files don't need to use @testable import.
 func sealedSenderMultiRecipientMessageForSingleRecipient(_ message: [UInt8]) throws -> [UInt8] {
-    return try SignalClient.sealedSenderMultiRecipientMessageForSingleRecipient(message)
+    return try LibSignalClient.sealedSenderMultiRecipientMessageForSingleRecipient(message)
 }

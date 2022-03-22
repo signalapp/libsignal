@@ -4,7 +4,7 @@
 //
 
 import XCTest
-import SignalClient
+import LibSignalClient
 
 class SessionTests: TestCaseBase {
     fileprivate func initializeSessions(alice_store: InMemorySignalProtocolStore,

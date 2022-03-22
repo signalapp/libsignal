@@ -4,7 +4,7 @@
 //
 
 import XCTest
-import SignalClient
+import LibSignalClient
 
 class HsmEnclaveTests: TestCaseBase {
 

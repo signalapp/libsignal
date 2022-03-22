@@ -10,24 +10,24 @@ import PackageDescription
 let rustBuildDir = "../target/debug/"
 
 let package = Package(
-    name: "SignalClient",
+    name: "LibSignalClient",
     products: [
         .library(
-            name: "SignalClient",
-            targets: ["SignalClient"]
+            name: "LibSignalClient",
+            targets: ["LibSignalClient"]
         )
     ],
     dependencies: [],
     targets: [
         .systemLibrary(name: "SignalFfi"),
         .target(
-            name: "SignalClient",
+            name: "LibSignalClient",
             dependencies: ["SignalFfi"],
             exclude: ["Logging.m"]
         ),
         .testTarget(
-            name: "SignalClientTests",
-            dependencies: ["SignalClient"],
+            name: "LibSignalClientTests",
+            dependencies: ["LibSignalClient"],
             linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
         )
     ]

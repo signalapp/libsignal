@@ -9,7 +9,6 @@ version = "0.1.0"
 authors = ["Ehren Kret <ehren@signal.org>", "Jack Lloyd <jack@signal.org>"]
 edition = "2018"
 license = "AGPL-3.0-only"
-repository = "https://github.com/signalapp/libsignal-client"
 
 [dependencies]
 aes = { version = "0.7.4", features = ["ctr"] }
