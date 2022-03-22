@@ -1,7 +1,7 @@
 # Overview
 
-libsignal-client contains platform-agnostic APIs useful for Signal client apps, exposed as a Java,
-Swift, or TypeScript library. The underlying implementations are written in Rust:
+libsignal contains platform-agnostic APIs used by the official Signal clients and servers, exposed
+as a Java, Swift, or TypeScript library. The underlying implementations are written in Rust:
 
 - libsignal-protocol: Implements the Signal protocol, including the [Double Ratchet algorithm][]. A
   replacement for [libsignal-protocol-java][] and [libsignal-metadata-java][].
@@ -12,11 +12,12 @@ Swift, or TypeScript library. The underlying implementations are written in Rust
 - zkgroup: Functionality for [zero-knowledge groups][] and related features available in Signal.
 - poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
 
-This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]). Use
-outside of Signal is unsupported. In particular, the products of this repository are the Java,
-Swift, and TypeScript libraries that wrap the underlying Rust implementations. Those underlying
-implementations are subject to change without notice, as are the JNI, C, and Node add-on "bridge"
-layers.
+This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]) as well as
+server-side. Use outside of Signal is unsupported. In particular, the products of this repository
+are the Java, Swift, and TypeScript libraries that wrap the underlying Rust implementations. All
+APIs and implementations are subject to change without notice, as are the JNI, C, and Node add-on
+"bridge" layers. However, backwards-incompatible changes to the Java, Swift, TypeScript, and
+non-bridge Rust APIs will be reflected in the version number on a best-effort basis.
 
 [Double Ratchet algorithm]: https://signal.org/docs/
 [libsignal-protocol-java]: https://github.com/signalapp/libsignal-protocol-java
@@ -131,6 +132,6 @@ Administration Regulations, Section 740.13) for both object code and source code
 
 ## License
 
-Copyright 2020-2021 Signal Messenger, LLC.
+Copyright 2020-2022 Signal Messenger, LLC.
 
 Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
