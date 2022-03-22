@@ -49,8 +49,11 @@ java {
 processResources {
     // TODO: Build a different variant of the JNI library for server.
     dependsOn ':makeJniLibrariesDesktop'
-    if (gradle.taskGraph.hasTask(":server:publish")) {
-        dependsOn ':downloadNonLinuxLibraries'
+    dependsOn ':downloadNonLinuxLibraries'
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.hasTask(":server:publish")) {
+            tasks.getByPath(":downloadNonLinuxLibraries").enabled = true
+        }
     }
 }
 

@@ -57,6 +57,9 @@ task clean(type: Delete) {
 clean.dependsOn(cargoClean)
 
 task downloadNonLinuxLibraries(type: Download) {
+  // Must be explicitly enabled.
+  enabled false
+
   def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
 
   src(extraResources.collect {
