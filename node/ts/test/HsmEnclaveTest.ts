@@ -75,8 +75,8 @@ describe('HsmEnclaveClient', () => {
       assert.fail();
     } catch (e) {
       assert.instanceOf(e, Error);
-      assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-      const err = e as SignalClient.SignalClientError;
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
       assert.equal(err.operation, 'HsmEnclaveClient_New'); // the Rust entry point
     }
   });
@@ -98,8 +98,8 @@ describe('HsmEnclaveClient', () => {
       assert.fail();
     } catch (e) {
       assert.instanceOf(e, Error);
-      assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-      const err = e as SignalClient.SignalClientError;
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
       assert.equal(err.operation, 'HsmEnclaveClient_CompleteHandshake'); // the Rust entry point
     }
   });
@@ -121,8 +121,8 @@ describe('HsmEnclaveClient', () => {
       assert.fail();
     } catch (e) {
       assert.instanceOf(e, Error);
-      assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-      const err = e as SignalClient.SignalClientError;
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
       assert.equal(err.operation, 'HsmEnclaveClient_EstablishedSend'); // the Rust entry point
     }
   });
@@ -144,8 +144,8 @@ describe('HsmEnclaveClient', () => {
       assert.fail();
     } catch (e) {
       assert.instanceOf(e, Error);
-      assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-      const err = e as SignalClient.SignalClientError;
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
       assert.equal(err.operation, 'HsmEnclaveClient_EstablishedRecv'); // the Rust entry point
     }
   });

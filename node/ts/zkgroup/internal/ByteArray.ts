@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { SignalClientErrorBase } from '../../Errors';
+import { LibSignalErrorBase } from '../../Errors';
 
 export default class ByteArray {
   contents: Buffer;
@@ -18,7 +18,7 @@ export default class ByteArray {
   ): (contents: Buffer) => void {
     return contents => {
       if (contents.length !== expectedLength) {
-        throw new SignalClientErrorBase(
+        throw new LibSignalErrorBase(
           `Length of array supplied was ${contents.length} expected ${expectedLength}`,
           undefined,
           this.name

@@ -821,8 +821,8 @@ describe('SignalClient', () => {
       assert.fail();
     } catch (e) {
       assert.instanceOf(e, Error);
-      assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-      const err = e as SignalClient.SignalClientError;
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
       assert.equal(err.name, 'DuplicatedMessage');
       assert.equal(err.code, SignalClient.ErrorCode.DuplicatedMessage);
       assert.equal(err.operation, 'SessionCipher_DecryptPreKeySignalMessage'); // the Rust entry point
@@ -864,8 +864,8 @@ describe('SignalClient', () => {
       assert.fail();
     } catch (e) {
       assert.instanceOf(e, Error);
-      assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-      const err = e as SignalClient.SignalClientError;
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
       assert.equal(err.name, 'DuplicatedMessage');
       assert.equal(err.code, SignalClient.ErrorCode.DuplicatedMessage);
       assert.equal(err.operation, 'SessionCipher_DecryptSignalMessage'); // the Rust entry point
@@ -1202,8 +1202,8 @@ describe('SignalClient', () => {
         assert.fail();
       } catch (e) {
         assert.instanceOf(e, Error);
-        assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-        const err = e as SignalClient.SignalClientError;
+        assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+        const err = e as SignalClient.LibSignalError;
         assert.equal(err.name, 'SealedSenderSelfSend');
         assert.equal(err.code, SignalClient.ErrorCode.SealedSenderSelfSend);
         assert.equal(err.operation, 'SealedSender_DecryptMessage'); // the Rust entry point
@@ -1463,8 +1463,8 @@ describe('SignalClient', () => {
         assert.fail('should have thrown');
       } catch (e) {
         assert.instanceOf(e, Error);
-        assert.instanceOf(e, SignalClient.SignalClientErrorBase);
-        const err = e as SignalClient.SignalClientError;
+        assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+        const err = e as SignalClient.LibSignalError;
         assert.equal(err.name, 'InvalidRegistrationId');
         assert.equal(err.code, SignalClient.ErrorCode.InvalidRegistrationId);
         assert.exists(err.stack); // Make sure we're still getting the benefits of Error.

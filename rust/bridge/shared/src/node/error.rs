@@ -9,7 +9,7 @@ use paste::paste;
 use std::fmt;
 
 const ERRORS_PROPERTY_NAME: &str = "Errors";
-const ERROR_CLASS_NAME: &str = "SignalClientErrorBase";
+const ERROR_CLASS_NAME: &str = "LibSignalErrorBase";
 
 #[allow(non_snake_case)]
 fn node_registerErrors(mut cx: FunctionContext) -> JsResult<JsValue> {
@@ -53,7 +53,7 @@ fn new_js_error<'a>(
         Err(failure) => {
             log::warn!(
                 "could not construct {}: {}",
-                name.unwrap_or("SignalClientError"),
+                name.unwrap_or("LibSignalError"),
                 failure
                     .to_string(cx)
                     .map(|s| s.value(cx))
