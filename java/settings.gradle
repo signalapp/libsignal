@@ -6,4 +6,13 @@ pluginManagement {
     }
 }
 
-include ':client', ':android', ':server'
+include ':client', ':server'
+
+if (JavaVersion.current().isJava11Compatible()) {
+    include ':android'
+} else if (gradle.startParameter.getTaskNames().any { name -> name.contains('android:') }) {
+    throw new GradleException("building for Android requires JDK 11 or newer")
+} else if (gradle.startParameter.getTaskNames().any { name -> name.lastIndexOf(':') <= 0 }) {
+    // If there are any top-level tasks ("build" or ":build" but not ":client:build")...
+    throw new GradleException("building for Android requires JDK 11 or newer; use 'client:' or 'server:' to only build certain products")
+}
