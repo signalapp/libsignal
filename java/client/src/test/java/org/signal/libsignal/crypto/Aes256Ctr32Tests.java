@@ -7,8 +7,8 @@ package org.signal.libsignal.crypto;
 
 import java.io.IOException;
 import junit.framework.TestCase;
-import org.whispersystems.libsignal.InvalidKeyException;
-import org.whispersystems.libsignal.util.Hex;
+import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.util.Hex;
 
 public class Aes256Ctr32Tests extends TestCase {
 

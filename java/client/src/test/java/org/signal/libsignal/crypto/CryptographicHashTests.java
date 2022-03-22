@@ -6,7 +6,7 @@
 package org.signal.libsignal.crypto;
 import junit.framework.TestCase;
 import org.signal.libsignal.crypto.CryptographicHash;
-import org.whispersystems.libsignal.util.Hex;
+import org.signal.libsignal.protocol.util.Hex;
 
 public class CryptographicHashTests extends TestCase {
 

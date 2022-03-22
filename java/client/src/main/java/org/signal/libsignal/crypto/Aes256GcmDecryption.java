@@ -5,9 +5,9 @@
 
 package org.signal.libsignal.crypto;
 
-import org.signal.client.internal.Native;
-import org.signal.client.internal.NativeHandleGuard;
-import org.whispersystems.libsignal.InvalidKeyException;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
   public static final int TAG_SIZE_IN_BYTES = 16;

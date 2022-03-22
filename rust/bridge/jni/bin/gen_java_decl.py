@@ -58,7 +58,7 @@ for l in stderr.split('\n'):
 if unknown_warning:
     sys.exit(1)
 
-java_decl = re.compile(r'([a-zA-Z]+) Java_org_signal_client_internal_Native_([A-Z][a-zA-Z0-9]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+java_decl = re.compile(r'([a-zA-Z]+) Java_org_signal_libsignal_internal_Native_([A-Z][a-zA-Z0-9]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
 
 
 def translate_to_java(typ):
@@ -123,7 +123,7 @@ template_file = open(os.path.join(our_abs_dir, 'Native.java.in')).read()
 
 contents = template_file.replace('\n  // INSERT DECLS HERE', "\n".join(decls))
 
-native_java = os.path.join(our_abs_dir, '../../../../java/shared/java/org/signal/client/internal/Native.java')
+native_java = os.path.join(our_abs_dir, '../../../../java/shared/java/org/signal/libsignal/internal/Native.java')
 
 if not os.access(native_java, os.F_OK):
     raise Exception("Didn't find Native.java where it was expected")

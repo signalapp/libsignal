@@ -1,13 +1,13 @@
 package org.signal.libsignal.metadata;
 
 
-import org.whispersystems.libsignal.IdentityKey;
-import org.whispersystems.libsignal.IdentityKeyPair;
-import org.whispersystems.libsignal.ecc.Curve;
-import org.whispersystems.libsignal.ecc.ECKeyPair;
-import org.whispersystems.libsignal.state.SignedPreKeyRecord;
-import org.whispersystems.libsignal.state.impl.InMemorySignalProtocolStore;
-import org.whispersystems.libsignal.util.KeyHelper;
+import org.signal.libsignal.protocol.IdentityKey;
+import org.signal.libsignal.protocol.IdentityKeyPair;
+import org.signal.libsignal.protocol.ecc.Curve;
+import org.signal.libsignal.protocol.ecc.ECKeyPair;
+import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
+import org.signal.libsignal.protocol.state.impl.InMemorySignalProtocolStore;
+import org.signal.libsignal.protocol.util.KeyHelper;
 
 public class TestInMemorySignalProtocolStore extends InMemorySignalProtocolStore {
   public TestInMemorySignalProtocolStore() {

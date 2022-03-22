@@ -5,16 +5,16 @@
 
 // WARNING: this file was automatically generated
 
-package org.signal.client.internal;
+package org.signal.libsignal.internal;
 
-import org.whispersystems.libsignal.protocol.CiphertextMessage;
-import org.whispersystems.libsignal.state.IdentityKeyStore;
-import org.whispersystems.libsignal.state.SessionStore;
-import org.whispersystems.libsignal.state.PreKeyStore;
-import org.whispersystems.libsignal.state.SignedPreKeyStore;
-import org.whispersystems.libsignal.groups.state.SenderKeyStore;
-import org.whispersystems.libsignal.logging.Log;
-import org.whispersystems.libsignal.logging.SignalProtocolLogger;
+import org.signal.libsignal.protocol.message.CiphertextMessage;
+import org.signal.libsignal.protocol.state.IdentityKeyStore;
+import org.signal.libsignal.protocol.state.SessionStore;
+import org.signal.libsignal.protocol.state.PreKeyStore;
+import org.signal.libsignal.protocol.state.SignedPreKeyStore;
+import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
+import org.signal.libsignal.protocol.logging.Log;
+import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
 
 import java.io.File;
 import java.io.FileOutputStream;

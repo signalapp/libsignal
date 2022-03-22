@@ -5,9 +5,9 @@
 
 package org.signal.libsignal.hsmenclave;
 
-import org.signal.client.internal.Native;
-import org.signal.client.internal.NativeHandleGuard;
-import org.whispersystems.libsignal.InvalidKeyException;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

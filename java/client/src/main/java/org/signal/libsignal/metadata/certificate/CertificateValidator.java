@@ -1,11 +1,11 @@
 package org.signal.libsignal.metadata.certificate;
 
-import org.signal.client.internal.Native;
-import org.signal.client.internal.NativeHandleGuard;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
 
-import org.whispersystems.libsignal.ecc.Curve;
-import org.whispersystems.libsignal.ecc.ECPublicKey;
-import org.whispersystems.libsignal.InvalidKeyException;
+import org.signal.libsignal.protocol.ecc.Curve;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 public class CertificateValidator {
   private final ECPublicKey trustRoot;

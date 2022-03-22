@@ -368,7 +368,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                jni_class_name!(org.whispersystems.libsignal.protocol.SignalMessage),
+                jni_class_name!(org.signal.libsignal.protocol.message.SignalMessage),
                 Self::SignalMessage,
             )
             .transpose()
@@ -377,7 +377,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                jni_class_name!(org.whispersystems.libsignal.protocol.PreKeySignalMessage),
+                jni_class_name!(org.signal.libsignal.protocol.message.PreKeySignalMessage),
                 Self::PreKeySignalMessage,
             )
             .transpose()
@@ -386,7 +386,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                jni_class_name!(org.whispersystems.libsignal.protocol.SenderKeyMessage),
+                jni_class_name!(org.signal.libsignal.protocol.message.SenderKeyMessage),
                 Self::SenderKeyMessage,
             )
             .transpose()
@@ -395,7 +395,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             native_handle_from_message(
                 env,
                 foreign,
-                jni_class_name!(org.whispersystems.libsignal.protocol.PlaintextContent),
+                jni_class_name!(org.signal.libsignal.protocol.message.PlaintextContent),
                 Self::PlaintextContent,
             )
             .transpose()
@@ -637,22 +637,22 @@ impl ResultTypeInfo for CiphertextMessage {
         let obj = match self {
             CiphertextMessage::SignalMessage(m) => jobject_from_native_handle(
                 env,
-                jni_class_name!(org.whispersystems.libsignal.protocol.SignalMessage),
+                jni_class_name!(org.signal.libsignal.protocol.message.SignalMessage),
                 m.convert_into(env)?,
             ),
             CiphertextMessage::PreKeySignalMessage(m) => jobject_from_native_handle(
                 env,
-                jni_class_name!(org.whispersystems.libsignal.protocol.PreKeySignalMessage),
+                jni_class_name!(org.signal.libsignal.protocol.message.PreKeySignalMessage),
                 m.convert_into(env)?,
             ),
             CiphertextMessage::SenderKeyMessage(m) => jobject_from_native_handle(
                 env,
-                jni_class_name!(org.whispersystems.libsignal.protocol.SenderKeyMessage),
+                jni_class_name!(org.signal.libsignal.protocol.message.SenderKeyMessage),
                 m.convert_into(env)?,
             ),
             CiphertextMessage::PlaintextContent(m) => jobject_from_native_handle(
                 env,
-                jni_class_name!(org.whispersystems.libsignal.protocol.PlaintextContent),
+                jni_class_name!(org.signal.libsignal.protocol.message.PlaintextContent),
                 m.convert_into(env)?,
             ),
         };

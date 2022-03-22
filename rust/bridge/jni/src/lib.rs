@@ -17,7 +17,7 @@ use libsignal_protocol::*;
 pub mod logging;
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_1Deserialize(
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPair_1Deserialize(
     env: JNIEnv,
     _class: JClass,
     data: jbyteArray,
@@ -40,7 +40,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_IdentityKeyPair_
 ///
 /// cbindgen:ignore
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_keepAlive(
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
     _env: JNIEnv,
     _class: JClass,
     _obj: JObject,

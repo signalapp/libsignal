@@ -141,7 +141,7 @@ fn set_max_level_from_java_level(max_level: jint) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Logger_1Initialize(
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initialize(
     env: JNIEnv,
     _class: JClass,
     max_level: jint,
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Logger_1Initiali
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_client_internal_Native_Logger_1SetMaxLevel(
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1SetMaxLevel(
     _env: JNIEnv,
     _class: JClass,
     max_level: jint,

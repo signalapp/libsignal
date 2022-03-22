@@ -76,8 +76,8 @@
 //!
 //! - FFI: Convert the function's name to `lower_snake_case` and prepend `signal_`.
 //! - JNI: Escape any underscores in the function's name per the [JNI spec][], then prepend
-//!  `Java_org_signal_client_internal_Native_` to expose the function as a static method of the
-//!  class `org.signal.client.internal.Native`.
+//!  `Java_org_signal_libsignal_internal_Native_` to expose the function as a static method of the
+//!  class `org.signal.libsignal.internal.Native`.
 //! - Node: Use the original function's name.
 //!
 //! As such, the recommended naming scheme for `bridge_fn` functions is `ObjectOrGroup_Operation`.

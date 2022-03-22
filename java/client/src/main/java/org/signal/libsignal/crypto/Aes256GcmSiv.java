@@ -5,10 +5,10 @@
 
 package org.signal.libsignal.crypto;
 
-import org.signal.client.internal.Native;
-import org.signal.client.internal.NativeHandleGuard;
-import org.whispersystems.libsignal.InvalidMessageException;
-import org.whispersystems.libsignal.InvalidKeyException;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 class Aes256GcmSiv implements NativeHandleGuard.Owner {
   private final long unsafeHandle;

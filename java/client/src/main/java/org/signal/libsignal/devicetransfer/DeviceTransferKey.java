@@ -5,7 +5,7 @@
 
 package org.signal.libsignal.devicetransfer;
 
-import org.signal.client.internal.Native;
+import org.signal.libsignal.internal.Native;
 
 public class DeviceTransferKey {
   byte[] keyMaterial;

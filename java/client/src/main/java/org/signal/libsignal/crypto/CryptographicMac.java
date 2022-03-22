@@ -5,8 +5,8 @@
 
 package org.signal.libsignal.crypto;
 
-import org.signal.client.internal.Native;
-import org.signal.client.internal.NativeHandleGuard;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
 
 public class CryptographicMac implements NativeHandleGuard.Owner {
   private final long unsafeHandle;

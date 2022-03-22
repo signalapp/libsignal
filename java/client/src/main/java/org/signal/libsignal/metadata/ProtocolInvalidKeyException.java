@@ -1,7 +1,7 @@
 package org.signal.libsignal.metadata;
 
 import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
-import org.whispersystems.libsignal.InvalidKeyException;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 public class ProtocolInvalidKeyException extends ProtocolException {
   public ProtocolInvalidKeyException(InvalidKeyException e, String sender, int senderDevice) {
