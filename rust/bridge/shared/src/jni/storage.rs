@@ -65,10 +65,10 @@ impl<'a> JniIdentityKeyStore<'a> {
         identity: &IdentityKey,
     ) -> Result<bool, SignalJniError> {
         let address_jobject = protocol_address_to_jobject(self.env, address)?;
-        let key_jobject = jobject_from_serialized(
+        let key_jobject = jobject_from_native_handle(
             self.env,
             jni_class_name!(org.signal.libsignal.protocol.IdentityKey),
-            identity.serialize().as_ref(),
+            identity.public_key().convert_into(self.env)?,
         )?;
         let callback_args = jni_args!((
             address_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
@@ -86,10 +86,10 @@ impl<'a> JniIdentityKeyStore<'a> {
         direction: Direction,
     ) -> Result<bool, SignalJniError> {
         let address_jobject = protocol_address_to_jobject(self.env, address)?;
-        let key_jobject = jobject_from_serialized(
+        let key_jobject = jobject_from_native_handle(
             self.env,
             jni_class_name!(org.signal.libsignal.protocol.IdentityKey),
-            identity.serialize().as_ref(),
+            identity.public_key().convert_into(self.env)?,
         )?;
 
         let direction_class = self.env.find_class(
@@ -225,10 +225,10 @@ impl<'a> JniPreKeyStore<'a> {
         prekey_id: u32,
         record: &PreKeyRecord,
     ) -> Result<(), SignalJniError> {
-        let jobject_record = jobject_from_serialized(
+        let jobject_record = jobject_from_native_handle(
             self.env,
             jni_class_name!(org.signal.libsignal.protocol.state.PreKeyRecord),
-            &record.serialize()?,
+            record.clone().convert_into(self.env)?,
         )?;
         let callback_args = jni_args!((
             prekey_id.convert_into(self.env)? => int,
@@ -313,10 +313,10 @@ impl<'a> JniSignedPreKeyStore<'a> {
         prekey_id: u32,
         record: &SignedPreKeyRecord,
     ) -> Result<(), SignalJniError> {
-        let jobject_record = jobject_from_serialized(
+        let jobject_record = jobject_from_native_handle(
             self.env,
             jni_class_name!(org.signal.libsignal.protocol.state.SignedPreKeyRecord),
-            &record.serialize()?,
+            record.clone().convert_into(self.env)?,
         )?;
         let callback_args = jni_args!((
             prekey_id.convert_into(self.env)? => int,
@@ -382,10 +382,10 @@ impl<'a> JniSessionStore<'a> {
         record: &SessionRecord,
     ) -> Result<(), SignalJniError> {
         let address_jobject = protocol_address_to_jobject(self.env, address)?;
-        let session_jobject = jobject_from_serialized(
+        let session_jobject = jobject_from_native_handle(
             self.env,
             jni_class_name!(org.signal.libsignal.protocol.state.SessionRecord),
-            &record.serialize()?,
+            record.clone().convert_into(self.env)?,
         )?;
 
         let callback_args = jni_args!((

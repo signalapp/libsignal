@@ -471,21 +471,6 @@ pub fn jobject_from_native_handle<'a>(
     Ok(env.new_object(class_type, args.sig, &args.args)?)
 }
 
-/// Constructs a Java object from its serialized form.
-///
-/// Assumes there's a corresponding constructor that takes a single `byte[]`.
-pub fn jobject_from_serialized<'a>(
-    env: &'a JNIEnv,
-    class_name: &str,
-    serialized: &[u8],
-) -> Result<JObject<'a>, SignalJniError> {
-    let class_type = env.find_class(class_name)?;
-    let args = jni_args!((
-        env.byte_array_from_slice(serialized)? => [byte],
-    ) -> void);
-    Ok(env.new_object(class_type, args.sig, &args.args)?)
-}
-
 /// Constructs a Java SignalProtocolAddress from a ProtocolAddress value.
 ///
 /// A convenience wrapper around `jobject_from_native_handle` for SignalProtocolAddress.
