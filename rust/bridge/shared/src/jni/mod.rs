@@ -487,19 +487,17 @@ pub fn jobject_from_serialized<'a>(
 }
 
 /// Constructs a Java SignalProtocolAddress from a ProtocolAddress value.
+///
+/// A convenience wrapper around `jobject_from_native_handle` for SignalProtocolAddress.
 fn protocol_address_to_jobject<'a>(
     env: &'a JNIEnv,
     address: &ProtocolAddress,
 ) -> Result<JObject<'a>, SignalJniError> {
-    let address_class = env.find_class(jni_class_name!(
-        org.signal.libsignal.protocol.SignalProtocolAddress
-    ))?;
-    let args = jni_args!((
-        env.new_string(address.name())? => java.lang.String,
-        address.device_id().convert_into(env)? => int,
-    ) -> void);
-    let address_jobject = env.new_object(address_class, args.sig, &args.args)?;
-    Ok(address_jobject)
+    jobject_from_native_handle(
+        env,
+        jni_class_name!(org.signal.libsignal.protocol.SignalProtocolAddress),
+        address.clone().convert_into(env)?,
+    )
 }
 
 /// Verifies that a Java object is a non-`null` instance of the given class.
