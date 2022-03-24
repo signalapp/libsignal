@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM debian:stretch
+FROM debian:buster-slim
 
 COPY java/docker/ docker/
 COPY java/docker/apt.conf java/docker/sources.list /etc/apt/
@@ -15,14 +15,10 @@ RUN    apt-get update \
                build-essential \
                git \
                curl \
-               wget \
                gpg-agent \
+               openjdk-11-jdk \
                openssh-client \
                unzip
-
-# Install pinned dependencies
-RUN    apt-get install -y $(cat docker/dependencies.txt)
-RUN    docker/print-versions.sh docker/dependencies.txt
 
 ARG UID
 ARG GID
@@ -48,7 +44,7 @@ ENV ANDROID_HOME /home/libsignal/android-sdk
 ENV NDK_HOME ${ANDROID_HOME}/ndk/${NDK_VERSION}
 ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
 
-RUN    wget -q https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} \
+RUN    curl -O https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} \
     && echo "${ANDROID_SDK_SHA} ${ANDROID_SDK_FILENAME}" | sha256sum -c - \
     && unzip -q ${ANDROID_SDK_FILENAME} -d android-sdk \
     && rm -rf ${ANDROID_SDK_FILENAME}
