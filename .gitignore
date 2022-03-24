@@ -22,6 +22,8 @@ java/server/build
 java/.gradle
 java/local.properties
 java/android/src/main/jniLibs
-java/shared/resources
+java/shared/resources/*.dylib
+java/shared/resources/*.so
+java/shared/resources/*.dll
 
 .DS_Store
