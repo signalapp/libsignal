@@ -3,7 +3,7 @@
  *
  * Licensed according to the LICENSE file in this repository.
  */
-package org.signal.libsignal.protocol;
+package org.signal.libsignal.protocol.groups;
 
 import java.util.UUID;
 

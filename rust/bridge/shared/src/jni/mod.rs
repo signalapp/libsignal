@@ -132,8 +132,9 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                     ) -> void);
                     Ok(env.new_object(
                         jni_class_name!(
-                            org.whispersystems
+                            org.signal
                                 .libsignal
+                                .protocol
                                 .groups
                                 .InvalidSenderKeySessionException
                         ),
