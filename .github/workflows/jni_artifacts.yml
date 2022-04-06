@@ -12,6 +12,9 @@ jobs:
   build:
     name: Build
 
+    # Only run this in the public repository.
+    if: "!endsWith(github.repository, '-private')"
+
     runs-on: ${{ matrix.os }}
 
     strategy:
