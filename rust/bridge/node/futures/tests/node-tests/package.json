@@ -13,6 +13,6 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "microtime": "^3.0.0",
-    "mocha": "^8.4"
+    "mocha": "^9"
   }
 }
