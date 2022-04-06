@@ -12,10 +12,6 @@ import org.signal.libsignal.internal.Native;
 public final class ProfileKeyCiphertext extends ByteArray {
   public ProfileKeyCiphertext(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
       Native.ProfileKeyCiphertext_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
   }
 }

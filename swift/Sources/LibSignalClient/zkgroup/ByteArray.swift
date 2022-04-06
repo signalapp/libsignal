@@ -1,5 +1,5 @@
 //
-// Copyright 2019-2021 Signal Messenger, LLC.
+// Copyright 2019-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -9,10 +9,10 @@ import SignalFfi
 public class ByteArray {
     private let contents: [UInt8]
 
-    init<Serialized>(_ newContents: [UInt8], checkValid: (UnsafePointer<Serialized>) -> SignalFfiErrorRef?) throws {
+    init(_ newContents: [UInt8], checkValid: (SignalBorrowedBuffer) -> SignalFfiErrorRef?) throws {
         contents = newContents
-        try withUnsafePointerToSerialized { contents in
-            try checkError(checkValid(contents))
+        try withUnsafeBorrowedBuffer { buffer in
+            try checkError(checkValid(buffer))
         }
     }
 
@@ -58,5 +58,12 @@ public class ByteArray {
             let typedPointer = buffer.baseAddress!.assumingMemoryBound(to: Serialized.self)
             return try callback(typedPointer)
         }
+    }
+
+    /// Passes a pointer/length pair for the serialized contents to `callback`.
+    ///
+    /// Used for types that don't have a fixed-length representation.
+    func withUnsafeBorrowedBuffer<Result>(_ callback: (SignalBorrowedBuffer) throws -> Result) throws -> Result {
+        return try contents.withUnsafeBorrowedBuffer(callback)
     }
 }

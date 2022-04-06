@@ -21,6 +21,7 @@ hex = "0.4.0"
 aead = "0.4.0"
 aes-gcm-siv = "0.10.0"
 displaydoc = "0.2"
+lazy_static = "1.4.0"
 
 [dependencies.curve25519-dalek]
 features = ["serde"]

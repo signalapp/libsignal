@@ -285,7 +285,14 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
     }
 }
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupError> {
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupVerificationFailure> {
+    type ResultType = T::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        T::convert_into(self?)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupDeserializationFailure> {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         T::convert_into(self?)
@@ -437,8 +444,12 @@ where
 
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let array = unsafe { foreign.as_ref() }.ok_or(SignalFfiError::NullPointer)?;
-        let result: T =
-            bincode::deserialize(array.as_ref()).map_err(|_| SignalFfiError::InvalidType)?;
+        let result: T = bincode::deserialize(array.as_ref()).unwrap_or_else(|_| {
+            panic!(
+                "{} should have been validated on creation",
+                std::any::type_name::<T>()
+            )
+        });
         Ok(Serialized::from(result))
     }
 }

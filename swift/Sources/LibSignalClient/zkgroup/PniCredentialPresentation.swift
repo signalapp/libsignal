@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -13,25 +13,25 @@ public class PniCredentialPresentation: ByteArray {
   }
 
   public func getAciCiphertext() throws -> UuidCiphertext {
-    return try withUnsafePointerToSerialized { contents in
+    return try withUnsafeBorrowedBuffer { buffer in
       try invokeFnReturningSerialized {
-        signal_pni_credential_presentation_get_aci_ciphertext($0, contents)
+        signal_pni_credential_presentation_get_aci_ciphertext($0, buffer)
       }
     }
   }
 
   public func getPniCiphertext() throws -> UuidCiphertext {
-    return try withUnsafePointerToSerialized { contents in
+    return try withUnsafeBorrowedBuffer { buffer in
       try invokeFnReturningSerialized {
-        signal_pni_credential_presentation_get_pni_ciphertext($0, contents)
+        signal_pni_credential_presentation_get_pni_ciphertext($0, buffer)
       }
     }
   }
 
   public func getProfileKeyCiphertext() throws -> ProfileKeyCiphertext {
-    return try withUnsafePointerToSerialized { contents in
+    return try withUnsafeBorrowedBuffer { buffer in
       try invokeFnReturningSerialized {
-        signal_pni_credential_presentation_get_profile_key_ciphertext($0, contents)
+        signal_pni_credential_presentation_get_profile_key_ciphertext($0, buffer)
       }
     }
   }

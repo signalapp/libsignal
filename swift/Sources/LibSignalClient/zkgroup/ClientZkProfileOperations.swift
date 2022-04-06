@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -85,8 +85,8 @@ public class ClientZkProfileOperations {
       try randomness.withUnsafePointerToBytes { randomness in
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in
-            try invokeFnReturningSerialized {
-              signal_server_public_params_create_profile_key_credential_presentation_deterministic($0, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
+            try invokeFnReturningVariableLengthSerialized {
+              signal_server_public_params_create_profile_key_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
             }
           }
         }
@@ -103,8 +103,8 @@ public class ClientZkProfileOperations {
       try randomness.withUnsafePointerToBytes { randomness in
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try credential.withUnsafePointerToSerialized { credential in
-            try invokeFnReturningSerialized {
-              signal_server_public_params_create_pni_credential_presentation_deterministic($0, serverPublicParams, randomness, groupSecretParams, credential)
+            try invokeFnReturningVariableLengthSerialized {
+              signal_server_public_params_create_pni_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, credential)
             }
           }
         }

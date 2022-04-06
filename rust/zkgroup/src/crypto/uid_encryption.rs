@@ -13,7 +13,12 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
-use ZkGroupError::*;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref SYSTEM_PARAMS: SystemParams =
+        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
+}
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SystemParams {
@@ -51,7 +56,7 @@ impl SystemParams {
     }
 
     pub fn get_hardcoded() -> SystemParams {
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap()
+        *SYSTEM_PARAMS
     }
 
     const SYSTEM_HARDCODED: [u8; 64] = [
@@ -80,18 +85,21 @@ impl KeyPair {
         Ciphertext { E_A1, E_A2 }
     }
 
-    // Might return DecryptionFailure
-    pub fn decrypt(&self, ciphertext: Ciphertext) -> Result<uid_struct::UidStruct, ZkGroupError> {
+    // Might return VerificationFailure
+    pub fn decrypt(
+        &self,
+        ciphertext: Ciphertext,
+    ) -> Result<uid_struct::UidStruct, ZkGroupVerificationFailure> {
         if ciphertext.E_A1 == RISTRETTO_BASEPOINT_POINT {
-            return Err(DecryptionFailure);
+            return Err(ZkGroupVerificationFailure);
         }
         match uid_struct::UidStruct::from_M2(ciphertext.E_A2 - (self.a2 * ciphertext.E_A1)) {
-            Err(_) => Err(DecryptionFailure),
+            Err(_) => Err(ZkGroupVerificationFailure),
             Ok(decrypted_uid) => {
                 if ciphertext.E_A1 == self.calc_E_A1(decrypted_uid) {
                     Ok(decrypted_uid)
                 } else {
-                    Err(DecryptionFailure)
+                    Err(ZkGroupVerificationFailure)
                 }
             }
         }

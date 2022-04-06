@@ -25,19 +25,23 @@ public final class ServerSecretParams extends ByteArray {
 
     try {
       return new ServerSecretParams(newContents);
-    } catch (IllegalArgumentException e) {
+    } catch (InvalidInputException e) {
       throw new AssertionError(e);
     } 
   }
 
-  public ServerSecretParams(byte[] contents)  {
+  public ServerSecretParams(byte[] contents) throws InvalidInputException  {
     super(contents);
     Native.ServerSecretParams_CheckValidContents(contents);
   }
 
   public ServerPublicParams getPublicParams() {
     byte[] newContents = Native.ServerSecretParams_GetPublicParams(contents);
-    return new ServerPublicParams(newContents);
+    try {
+      return new ServerPublicParams(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    } 
   }
 
   public NotarySignature sign(byte[] message) {

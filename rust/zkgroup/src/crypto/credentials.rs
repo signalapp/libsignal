@@ -20,6 +20,13 @@ use crate::{
     NUM_AUTH_CRED_ATTRIBUTES, NUM_PROFILE_KEY_CRED_ATTRIBUTES, NUM_RECEIPT_CRED_ATTRIBUTES,
 };
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref SYSTEM_PARAMS: SystemParams =
+        bincode::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap();
+}
+
 const NUM_SUPPORTED_ATTRS: usize = 6;
 #[derive(Copy, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SystemParams {
@@ -265,7 +272,7 @@ impl SystemParams {
     }
 
     pub fn get_hardcoded() -> SystemParams {
-        bincode::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap()
+        *SYSTEM_PARAMS
     }
 
     const SYSTEM_HARDCODED: &'static [u8] = &[

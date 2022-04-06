@@ -9,7 +9,7 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
 
 public final class ServerPublicParams extends ByteArray {
-  public ServerPublicParams(byte[] contents)  {
+  public ServerPublicParams(byte[] contents) throws InvalidInputException {
     super(contents);
     Native.ServerPublicParams_CheckValidContents(contents);
   }

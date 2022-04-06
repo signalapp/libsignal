@@ -593,9 +593,15 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
         _env: &JNIEnv,
         stored: &'storage mut Self::StoredType,
     ) -> SignalJniResult<&'storage [u8; LEN]> {
-        unsafe { std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize) }
+        let slice = unsafe {
+            std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize)
+        };
+        slice
             .try_into()
-            .map_err(|_| SignalJniError::DeserializationFailed(std::any::type_name::<[u8; LEN]>()))
+            .map_err(|_| SignalJniError::IncorrectArrayLength {
+                expected: LEN,
+                actual: slice.len(),
+            })
     }
 }
 
@@ -706,7 +712,17 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
     }
 }
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupError> {
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupVerificationFailure> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupDeserializationFailure> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
@@ -838,16 +854,20 @@ where
     fn convert_from(env: &jni_crate::JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         let borrowed_array = env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?;
         let len = borrowed_array.size()? as usize;
-        if len != T::Array::LEN {
-            return Err(SignalJniError::DeserializationFailed(
-                std::any::type_name::<T>(),
-            ));
-        }
+        assert!(
+            len == T::Array::LEN,
+            "{} should have been validated on creation",
+            std::any::type_name::<T>()
+        );
         // Convert from i8 to u8.
         let bytes =
             unsafe { std::slice::from_raw_parts(borrowed_array.as_ptr() as *const u8, len) };
-        let result: T = bincode::deserialize(bytes)
-            .map_err(|_| SignalJniError::DeserializationFailed(std::any::type_name::<T>()))?;
+        let result: T = bincode::deserialize(bytes).unwrap_or_else(|_| {
+            panic!(
+                "{} should have been validated on creation",
+                std::any::type_name::<T>()
+            )
+        });
         Ok(Serialized::from(result))
     }
 }

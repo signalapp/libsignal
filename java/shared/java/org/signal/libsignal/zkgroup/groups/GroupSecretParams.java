@@ -26,7 +26,7 @@ public final class GroupSecretParams extends ByteArray {
 
     try {
       return new GroupSecretParams(newContents);
-    } catch (IllegalArgumentException e) {
+    } catch (InvalidInputException e) {
       throw new AssertionError(e);
     } 
   }
@@ -36,12 +36,12 @@ public final class GroupSecretParams extends ByteArray {
 
     try {
       return new GroupSecretParams(newContents);
-    } catch (IllegalArgumentException e) {
+    } catch (InvalidInputException e) {
       throw new AssertionError(e);
     } 
   }
 
-  public GroupSecretParams(byte[] contents)  {
+  public GroupSecretParams(byte[] contents) throws InvalidInputException  {
     super(contents);
     Native.GroupSecretParams_CheckValidContents(contents);
   }

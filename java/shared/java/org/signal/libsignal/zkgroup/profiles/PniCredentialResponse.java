@@ -12,10 +12,6 @@ import org.signal.libsignal.internal.Native;
 public final class PniCredentialResponse extends ByteArray {
   public PniCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.PniCredentialResponse_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.PniCredentialResponse_CheckValidContents(contents);
   }
 }

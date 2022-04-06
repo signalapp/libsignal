@@ -8,5 +8,7 @@ pub mod auth_credential_presentation;
 pub mod auth_credential_response;
 
 pub use auth_credential::AuthCredential;
-pub use auth_credential_presentation::AuthCredentialPresentation;
+pub use auth_credential_presentation::AnyAuthCredentialPresentation;
+pub use auth_credential_presentation::AuthCredentialPresentationV1;
+pub use auth_credential_presentation::AuthCredentialPresentationV2;
 pub use auth_credential_response::AuthCredentialResponse;

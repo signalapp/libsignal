@@ -12,10 +12,6 @@ import org.signal.libsignal.internal.Native;
 public final class UuidCiphertext extends ByteArray {
   public UuidCiphertext(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.UuidCiphertext_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.UuidCiphertext_CheckValidContents(contents);
   }
 }

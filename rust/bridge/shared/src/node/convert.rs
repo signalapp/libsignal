@@ -717,11 +717,17 @@ where
 
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let bytes = foreign.as_slice(cx);
-        if bytes.len() != T::Array::LEN {
-            return cx.throw_error("failed to deserialize");
-        }
-        let result: T =
-            bincode::deserialize(bytes).or_else(|_| cx.throw_error("failed to deserialize"))?;
+        assert!(
+            bytes.len() == T::Array::LEN,
+            "{} should have been validated on creation",
+            std::any::type_name::<T>()
+        );
+        let result: T = bincode::deserialize(bytes).unwrap_or_else(|_| {
+            panic!(
+                "{} should have been validated on creation",
+                std::any::type_name::<T>()
+            )
+        });
         Ok(Serialized::from(result))
     }
 }

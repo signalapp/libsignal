@@ -12,10 +12,6 @@ import org.signal.libsignal.internal.Native;
 public final class ProfileKeyCredentialResponse extends ByteArray {
   public ProfileKeyCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.ProfileKeyCredentialResponse_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.ProfileKeyCredentialResponse_CheckValidContents(contents);
   }
 }

@@ -12,8 +12,6 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
-use ZkGroupError::*;
-
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct KeyPair {
     pub(crate) signing_key: Scalar,
@@ -35,21 +33,17 @@ impl KeyPair {
         }
     }
 
-    // Could return SignatureVerificationFailure if public/private key are inconsistent
-    pub fn sign(&self, message: &[u8], sho: &mut Sho) -> Result<SignatureBytes, ZkGroupError> {
-        match poksho::sign(
+    pub fn sign(&self, message: &[u8], sho: &mut Sho) -> SignatureBytes {
+        let vec_bytes = poksho::sign(
             self.signing_key,
             self.public_key,
             message,
             &sho.squeeze(RANDOMNESS_LEN)[..],
-        ) {
-            Ok(vec_bytes) => {
-                let mut s: SignatureBytes = [0u8; SIGNATURE_LEN];
-                s.copy_from_slice(&vec_bytes[..]);
-                Ok(s)
-            }
-            Err(_) => Err(SignatureVerificationFailure),
-        }
+        )
+        .expect("signature failed to self-verify; bad public key?");
+        let mut s: SignatureBytes = [0u8; SIGNATURE_LEN];
+        s.copy_from_slice(&vec_bytes[..]);
+        s
     }
 
     pub fn get_public_key(&self) -> PublicKey {
@@ -60,10 +54,14 @@ impl KeyPair {
 }
 
 impl PublicKey {
-    // Might return SignatureVerificationFailure
-    pub fn verify(&self, message: &[u8], signature: SignatureBytes) -> Result<(), ZkGroupError> {
+    // Might return VerificationFailure
+    pub fn verify(
+        &self,
+        message: &[u8],
+        signature: SignatureBytes,
+    ) -> Result<(), ZkGroupVerificationFailure> {
         match poksho::verify_signature(&signature, self.public_key, message) {
-            Err(_) => Err(SignatureVerificationFailure),
+            Err(_) => Err(ZkGroupVerificationFailure),
             Ok(_) => Ok(()),
         }
     }
@@ -89,7 +87,7 @@ mod tests {
 
         let mut message = TEST_ARRAY_32_1;
 
-        let signature = key_pair.sign(&message, &mut sho).unwrap();
+        let signature = key_pair.sign(&message, &mut sho);
         key_pair2
             .get_public_key()
             .verify(&message, signature)
@@ -97,10 +95,10 @@ mod tests {
 
         // test signature failure
         message[0] ^= 1;
-        match key_pair2.get_public_key().verify(&message, signature) {
-            Err(SignatureVerificationFailure) => (),
-            _ => unreachable!(),
-        }
+        key_pair2
+            .get_public_key()
+            .verify(&message, signature)
+            .expect_err("signature verify should have failed");
 
         println!("signature = {:#x?}", &signature[..]);
         let signature_result = [

@@ -10,7 +10,8 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::ffi::CString;
-use zkgroup::ZkGroupError;
+use zkgroup::ZkGroupDeserializationFailure;
+use zkgroup::ZkGroupVerificationFailure;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -59,7 +60,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
     fn from(err: &SignalFfiError) -> Self {
         match err {
             SignalFfiError::NullPointer => SignalErrorCode::NullParameter,
-            SignalFfiError::InvalidType => SignalErrorCode::InvalidType,
 
             SignalFfiError::UnexpectedPanic(_)
             | SignalFfiError::DeviceTransfer(DeviceTransferError::InternalError(_))
@@ -158,19 +158,19 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError)
-            | SignalFfiError::SignalCrypto(_)
-            | SignalFfiError::ZkGroup(ZkGroupError::BadArgs) => SignalErrorCode::InvalidArgument,
+            | SignalFfiError::SignalCrypto(_) => SignalErrorCode::InvalidArgument,
 
             SignalFfiError::Signal(SignalProtocolError::ApplicationCallbackError(_, _)) => {
                 SignalErrorCode::CallbackError
             }
 
-            SignalFfiError::ZkGroup(
-                ZkGroupError::DecryptionFailure
-                | ZkGroupError::MacVerificationFailure
-                | ZkGroupError::ProofVerificationFailure
-                | ZkGroupError::SignatureVerificationFailure,
-            ) => SignalErrorCode::VerificationFailure,
+            SignalFfiError::ZkGroupVerificationFailure(ZkGroupVerificationFailure) => {
+                SignalErrorCode::VerificationFailure
+            }
+
+            SignalFfiError::ZkGroupDeserializationFailure(ZkGroupDeserializationFailure) => {
+                SignalErrorCode::InvalidType
+            }
         }
     }
 }

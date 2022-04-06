@@ -10,7 +10,8 @@ use device_transfer::Error as DeviceTransferError;
 use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use zkgroup::ZkGroupError;
+use zkgroup::ZkGroupDeserializationFailure;
+use zkgroup::ZkGroupVerificationFailure;
 
 use crate::support::describe_panic;
 
@@ -23,11 +24,11 @@ pub enum SignalFfiError {
     DeviceTransfer(DeviceTransferError),
     HsmEnclave(HsmEnclaveError),
     SignalCrypto(SignalCryptoError),
-    ZkGroup(ZkGroupError),
+    ZkGroupVerificationFailure(ZkGroupVerificationFailure),
+    ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
-    InvalidType,
 }
 
 impl fmt::Display for SignalFfiError {
@@ -43,9 +44,9 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::SignalCrypto(c) => {
                 write!(f, "Cryptographic operation failed: {}", c)
             }
-            SignalFfiError::ZkGroup(e) => write!(f, "{}", e),
+            SignalFfiError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
+            SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalFfiError::NullPointer => write!(f, "null pointer"),
-            SignalFfiError::InvalidType => write!(f, "invalid type"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
             SignalFfiError::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))
@@ -78,9 +79,15 @@ impl From<SignalCryptoError> for SignalFfiError {
     }
 }
 
-impl From<ZkGroupError> for SignalFfiError {
-    fn from(e: ZkGroupError) -> SignalFfiError {
-        SignalFfiError::ZkGroup(e)
+impl From<ZkGroupVerificationFailure> for SignalFfiError {
+    fn from(e: ZkGroupVerificationFailure) -> SignalFfiError {
+        SignalFfiError::ZkGroupVerificationFailure(e)
+    }
+}
+
+impl From<ZkGroupDeserializationFailure> for SignalFfiError {
+    fn from(e: ZkGroupDeserializationFailure) -> SignalFfiError {
+        SignalFfiError::ZkGroupDeserializationFailure(e)
     }
 }
 

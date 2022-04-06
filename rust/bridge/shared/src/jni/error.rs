@@ -11,7 +11,8 @@ use device_transfer::Error as DeviceTransferError;
 use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use zkgroup::ZkGroupError;
+use zkgroup::ZkGroupDeserializationFailure;
+use zkgroup::ZkGroupVerificationFailure;
 
 use crate::support::describe_panic;
 
@@ -24,13 +25,14 @@ pub enum SignalJniError {
     DeviceTransfer(DeviceTransferError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
-    ZkGroup(ZkGroupError),
+    ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
+    ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
-    DeserializationFailed(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
+    IncorrectArrayLength { expected: usize, actual: usize },
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
@@ -41,7 +43,8 @@ impl fmt::Display for SignalJniError {
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
             SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
-            SignalJniError::ZkGroup(e) => write!(f, "{}", e),
+            SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
+            SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -51,8 +54,12 @@ impl fmt::Display for SignalJniError {
             SignalJniError::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
             }
-            SignalJniError::DeserializationFailed(ty) => {
-                write!(f, "failed to deserialize {}", ty)
+            SignalJniError::IncorrectArrayLength { expected, actual } => {
+                write!(
+                    f,
+                    "expected array with length {} (was {})",
+                    expected, actual
+                )
             }
             SignalJniError::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))
@@ -85,9 +92,15 @@ impl From<SignalCryptoError> for SignalJniError {
     }
 }
 
-impl From<ZkGroupError> for SignalJniError {
-    fn from(e: ZkGroupError) -> SignalJniError {
-        SignalJniError::ZkGroup(e)
+impl From<ZkGroupVerificationFailure> for SignalJniError {
+    fn from(e: ZkGroupVerificationFailure) -> SignalJniError {
+        SignalJniError::ZkGroupVerificationFailure(e)
+    }
+}
+
+impl From<ZkGroupDeserializationFailure> for SignalJniError {
+    fn from(e: ZkGroupDeserializationFailure) -> SignalJniError {
+        SignalJniError::ZkGroupDeserializationFailure(e)
     }
 }
 

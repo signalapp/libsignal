@@ -18,7 +18,12 @@ use curve25519_dalek::subtle::Choice;
 use curve25519_dalek::subtle::ConditionallySelectable;
 use curve25519_dalek::subtle::ConstantTimeEq;
 
-use ZkGroupError::*;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref SYSTEM_PARAMS: SystemParams =
+        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
+}
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SystemParams {
@@ -56,7 +61,7 @@ impl SystemParams {
     }
 
     pub fn get_hardcoded() -> SystemParams {
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap()
+        *SYSTEM_PARAMS
     }
 
     const SYSTEM_HARDCODED: [u8; 64] = [
@@ -85,15 +90,14 @@ impl KeyPair {
         Ciphertext { E_B1, E_B2 }
     }
 
-    // Might return DecryptionFailure
     #[allow(clippy::needless_range_loop)]
     pub fn decrypt(
         &self,
         ciphertext: Ciphertext,
         uid_bytes: UidBytes,
-    ) -> Result<profile_key_struct::ProfileKeyStruct, ZkGroupError> {
+    ) -> Result<profile_key_struct::ProfileKeyStruct, ZkGroupVerificationFailure> {
         if ciphertext.E_B1 == RISTRETTO_BASEPOINT_POINT {
-            return Err(DecryptionFailure);
+            return Err(ZkGroupVerificationFailure);
         }
         let M4 = ciphertext.E_B2 - (self.b2 * ciphertext.E_B1);
         let (mask, candidates) = M4.decode_253_bits();
@@ -126,7 +130,7 @@ impl KeyPair {
         if n_found == 1 {
             Ok(retval)
         } else {
-            Err(DecryptionFailure)
+            Err(ZkGroupVerificationFailure)
         }
     }
 

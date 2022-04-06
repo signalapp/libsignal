@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -13,17 +13,17 @@ public class AuthCredentialPresentation: ByteArray {
   }
 
   public func getUuidCiphertext() throws -> UuidCiphertext {
-    return try withUnsafePointerToSerialized { contents in
+    return try withUnsafeBorrowedBuffer { buffer in
       try invokeFnReturningSerialized {
-        signal_auth_credential_presentation_get_uuid_ciphertext($0, contents)
+        signal_auth_credential_presentation_get_uuid_ciphertext($0, buffer)
       }
     }
   }
 
   public func getRedemptionTime() throws -> UInt32 {
-    return try withUnsafePointerToSerialized { contents in
+    return try withUnsafeBorrowedBuffer { buffer in
       try invokeFnReturningInteger {
-        signal_auth_credential_presentation_get_redemption_time($0, contents)
+        signal_auth_credential_presentation_get_redemption_time($0, buffer)
       }
     }
   }

@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -59,7 +59,7 @@ public class ServerZkProfileOperations {
   public func verifyProfileKeyCredentialPresentation(groupPublicParams: GroupPublicParams, profileKeyCredentialPresentation: ProfileKeyCredentialPresentation) throws {
     try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
-        try profileKeyCredentialPresentation.withUnsafePointerToSerialized { presentation in
+        try profileKeyCredentialPresentation.withUnsafeBorrowedBuffer { presentation in
           try checkError(signal_server_secret_params_verify_profile_key_credential_presentation(serverSecretParams, groupPublicParams, presentation))
         }
       }
@@ -69,7 +69,7 @@ public class ServerZkProfileOperations {
   public func verifyPniCredentialPresentation(groupPublicParams: GroupPublicParams, presentation: PniCredentialPresentation) throws {
     try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
-        try presentation.withUnsafePointerToSerialized { presentation in
+        try presentation.withUnsafeBorrowedBuffer { presentation in
           try checkError(signal_server_secret_params_verify_pni_credential_presentation(serverSecretParams, groupPublicParams, presentation))
         }
       }

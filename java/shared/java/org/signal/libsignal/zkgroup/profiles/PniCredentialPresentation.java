@@ -12,13 +12,12 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
 
 public final class PniCredentialPresentation extends ByteArray {
+
+  public enum Version {V1, V2, UNKNOWN};
+
   public PniCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.PniCredentialPresentation_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.PniCredentialPresentation_CheckValidContents(contents);
   }
 
   public UuidCiphertext getAciCiphertext() {
@@ -49,6 +48,16 @@ public final class PniCredentialPresentation extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
+  }
+
+  public Version getVersion() {
+      if (this.contents[0] == 0) {
+        return Version.V1;
+      } else if (this.contents[0] == 1) {
+        return Version.V2;
+      } else {
+        return Version.UNKNOWN;
+      }
   }
 
 }

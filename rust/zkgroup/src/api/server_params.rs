@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api;
+use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
@@ -70,11 +71,7 @@ impl ServerSecretParams {
         }
     }
 
-    pub fn sign(
-        &self,
-        randomness: RandomnessBytes,
-        message: &[u8],
-    ) -> Result<NotarySignatureBytes, ZkGroupError> {
+    pub fn sign(&self, randomness: RandomnessBytes, message: &[u8]) -> NotarySignatureBytes {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Random_ServerSecretParams_Sign",
             &randomness,
@@ -114,8 +111,47 @@ impl ServerSecretParams {
     pub fn verify_auth_credential_presentation(
         &self,
         group_public_params: api::groups::GroupPublicParams,
-        presentation: &api::auth::AuthCredentialPresentation,
-    ) -> Result<(), ZkGroupError> {
+        presentation: &api::auth::AnyAuthCredentialPresentation,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        match presentation {
+            api::auth::AnyAuthCredentialPresentation::V1(presentation_v1) => {
+                presentation_v1.proof.verify(
+                    self.auth_credentials_key_pair,
+                    group_public_params.uid_enc_public_key,
+                    presentation_v1.ciphertext,
+                    presentation_v1.redemption_time,
+                )
+            }
+
+            api::auth::AnyAuthCredentialPresentation::V2(presentation_v2) => {
+                presentation_v2.proof.verify(
+                    self.auth_credentials_key_pair,
+                    group_public_params.uid_enc_public_key,
+                    presentation_v2.ciphertext,
+                    presentation_v2.redemption_time,
+                )
+            }
+        }
+    }
+
+    pub fn verify_auth_credential_presentation_v1(
+        &self,
+        group_public_params: api::groups::GroupPublicParams,
+        presentation: &api::auth::AuthCredentialPresentationV1,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        presentation.proof.verify(
+            self.auth_credentials_key_pair,
+            group_public_params.uid_enc_public_key,
+            presentation.ciphertext,
+            presentation.redemption_time,
+        )
+    }
+
+    pub fn verify_auth_credential_presentation_v2(
+        &self,
+        group_public_params: api::groups::GroupPublicParams,
+        presentation: &api::auth::AuthCredentialPresentationV2,
+    ) -> Result<(), ZkGroupVerificationFailure> {
         presentation.proof.verify(
             self.auth_credentials_key_pair,
             group_public_params.uid_enc_public_key,
@@ -127,8 +163,57 @@ impl ServerSecretParams {
     pub fn verify_profile_key_credential_presentation(
         &self,
         group_public_params: api::groups::GroupPublicParams,
-        presentation: &api::profiles::ProfileKeyCredentialPresentation,
-    ) -> Result<(), ZkGroupError> {
+        presentation: &api::profiles::AnyProfileKeyCredentialPresentation,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        let credentials_key_pair = self.profile_key_credentials_key_pair;
+        let uid_enc_public_key = group_public_params.uid_enc_public_key;
+        let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
+        match presentation {
+            api::profiles::AnyProfileKeyCredentialPresentation::V1(presentation_v1) => {
+                presentation_v1.proof.verify(
+                    credentials_key_pair,
+                    presentation_v1.uid_enc_ciphertext,
+                    uid_enc_public_key,
+                    presentation_v1.profile_key_enc_ciphertext,
+                    profile_key_enc_public_key,
+                )
+            }
+
+            api::profiles::AnyProfileKeyCredentialPresentation::V2(presentation_v2) => {
+                presentation_v2.proof.verify(
+                    credentials_key_pair,
+                    presentation_v2.uid_enc_ciphertext,
+                    uid_enc_public_key,
+                    presentation_v2.profile_key_enc_ciphertext,
+                    profile_key_enc_public_key,
+                )
+            }
+        }
+    }
+
+    pub fn verify_profile_key_credential_presentation_v1(
+        &self,
+        group_public_params: api::groups::GroupPublicParams,
+        presentation: &api::profiles::ProfileKeyCredentialPresentationV1,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        let credentials_key_pair = self.profile_key_credentials_key_pair;
+        let uid_enc_public_key = group_public_params.uid_enc_public_key;
+        let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
+
+        presentation.proof.verify(
+            credentials_key_pair,
+            presentation.uid_enc_ciphertext,
+            uid_enc_public_key,
+            presentation.profile_key_enc_ciphertext,
+            profile_key_enc_public_key,
+        )
+    }
+
+    pub fn verify_profile_key_credential_presentation_v2(
+        &self,
+        group_public_params: api::groups::GroupPublicParams,
+        presentation: &api::profiles::ProfileKeyCredentialPresentationV2,
+    ) -> Result<(), ZkGroupVerificationFailure> {
         let credentials_key_pair = self.profile_key_credentials_key_pair;
         let uid_enc_public_key = group_public_params.uid_enc_public_key;
         let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
@@ -145,8 +230,60 @@ impl ServerSecretParams {
     pub fn verify_pni_credential_presentation(
         &self,
         group_public_params: api::groups::GroupPublicParams,
-        presentation: &api::profiles::PniCredentialPresentation,
-    ) -> Result<(), ZkGroupError> {
+        presentation: &api::profiles::AnyPniCredentialPresentation,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        let credentials_key_pair = self.pni_credentials_key_pair;
+        let uid_enc_public_key = group_public_params.uid_enc_public_key;
+        let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
+        match presentation {
+            api::profiles::AnyPniCredentialPresentation::V1(presentation_v1) => {
+                presentation_v1.proof.verify(
+                    credentials_key_pair,
+                    presentation_v1.aci_enc_ciphertext,
+                    uid_enc_public_key,
+                    presentation_v1.profile_key_enc_ciphertext,
+                    profile_key_enc_public_key,
+                    presentation_v1.pni_enc_ciphertext,
+                )
+            }
+
+            api::profiles::AnyPniCredentialPresentation::V2(presentation_v2) => {
+                presentation_v2.proof.verify(
+                    credentials_key_pair,
+                    presentation_v2.aci_enc_ciphertext,
+                    uid_enc_public_key,
+                    presentation_v2.profile_key_enc_ciphertext,
+                    profile_key_enc_public_key,
+                    presentation_v2.pni_enc_ciphertext,
+                )
+            }
+        }
+    }
+
+    pub fn verify_pni_credential_presentation_v1(
+        &self,
+        group_public_params: api::groups::GroupPublicParams,
+        presentation: &api::profiles::PniCredentialPresentationV1,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        let credentials_key_pair = self.pni_credentials_key_pair;
+        let uid_enc_public_key = group_public_params.uid_enc_public_key;
+        let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
+
+        presentation.proof.verify(
+            credentials_key_pair,
+            presentation.aci_enc_ciphertext,
+            uid_enc_public_key,
+            presentation.profile_key_enc_ciphertext,
+            profile_key_enc_public_key,
+            presentation.pni_enc_ciphertext,
+        )
+    }
+
+    pub fn verify_pni_credential_presentation_v2(
+        &self,
+        group_public_params: api::groups::GroupPublicParams,
+        presentation: &api::profiles::PniCredentialPresentationV2,
+    ) -> Result<(), ZkGroupVerificationFailure> {
         let credentials_key_pair = self.pni_credentials_key_pair;
         let uid_enc_public_key = group_public_params.uid_enc_public_key;
         let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
@@ -167,7 +304,7 @@ impl ServerSecretParams {
         request: &api::profiles::ProfileKeyCredentialRequest,
         uid_bytes: UidBytes,
         commitment: api::profiles::ProfileKeyCommitment,
-    ) -> Result<api::profiles::ProfileKeyCredentialResponse, ZkGroupError> {
+    ) -> Result<api::profiles::ProfileKeyCredentialResponse, ZkGroupVerificationFailure> {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Random_ServerSecretParams_IssueProfileKeyCredential",
             &randomness,
@@ -213,7 +350,7 @@ impl ServerSecretParams {
         uid_bytes: UidBytes,
         pni_bytes: UidBytes,
         commitment: api::profiles::ProfileKeyCommitment,
-    ) -> Result<api::profiles::PniCredentialResponse, ZkGroupError> {
+    ) -> Result<api::profiles::PniCredentialResponse, ZkGroupVerificationFailure> {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20211111_Random_ServerSecretParams_IssuePniCredential",
             &randomness,
@@ -298,7 +435,7 @@ impl ServerSecretParams {
     pub fn verify_receipt_credential_presentation(
         &self,
         presentation: &api::receipts::ReceiptCredentialPresentation,
-    ) -> Result<(), ZkGroupError> {
+    ) -> Result<(), ZkGroupVerificationFailure> {
         presentation.proof.verify(
             self.receipt_credentials_key_pair,
             presentation.get_receipt_struct(),
@@ -311,7 +448,7 @@ impl ServerPublicParams {
         &self,
         message: &[u8],
         signature: NotarySignatureBytes,
-    ) -> Result<(), ZkGroupError> {
+    ) -> Result<(), ZkGroupVerificationFailure> {
         self.sig_public_key.verify(message, signature)
     }
 
@@ -320,7 +457,7 @@ impl ServerPublicParams {
         uid_bytes: UidBytes,
         redemption_time: RedemptionTime,
         response: &api::auth::AuthCredentialResponse,
-    ) -> Result<api::auth::AuthCredential, ZkGroupError> {
+    ) -> Result<api::auth::AuthCredential, ZkGroupVerificationFailure> {
         let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
         response.proof.verify(
             self.auth_credentials_public_key,
@@ -342,7 +479,21 @@ impl ServerPublicParams {
         randomness: RandomnessBytes,
         group_secret_params: api::groups::GroupSecretParams,
         auth_credential: api::auth::AuthCredential,
-    ) -> api::auth::AuthCredentialPresentation {
+    ) -> api::auth::AnyAuthCredentialPresentation {
+        let presentation_v2 = self.create_auth_credential_presentation_v2(
+            randomness,
+            group_secret_params,
+            auth_credential,
+        );
+        api::auth::AnyAuthCredentialPresentation::V2(presentation_v2)
+    }
+
+    pub fn create_auth_credential_presentation_v1(
+        &self,
+        randomness: RandomnessBytes,
+        group_secret_params: api::groups::GroupSecretParams,
+        auth_credential: api::auth::AuthCredential,
+    ) -> api::auth::AuthCredentialPresentationV1 {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Random_ServerPublicParams_CreateAuthCredentialPresentation",
             &randomness,
@@ -350,7 +501,7 @@ impl ServerPublicParams {
 
         let uuid_ciphertext = group_secret_params.encrypt_uid_struct(auth_credential.uid);
 
-        let proof = crypto::proofs::AuthCredentialPresentationProof::new(
+        let proof = crypto::proofs::AuthCredentialPresentationProofV1::new(
             self.auth_credentials_public_key,
             group_secret_params.uid_enc_key_pair,
             auth_credential.credential,
@@ -360,8 +511,39 @@ impl ServerPublicParams {
             &mut sho,
         );
 
-        api::auth::AuthCredentialPresentation {
-            reserved: Default::default(),
+        api::auth::AuthCredentialPresentationV1 {
+            reserved: [PRESENTATION_VERSION_1],
+            proof,
+            ciphertext: uuid_ciphertext.ciphertext,
+            redemption_time: auth_credential.redemption_time,
+        }
+    }
+
+    pub fn create_auth_credential_presentation_v2(
+        &self,
+        randomness: RandomnessBytes,
+        group_secret_params: api::groups::GroupSecretParams,
+        auth_credential: api::auth::AuthCredential,
+    ) -> api::auth::AuthCredentialPresentationV2 {
+        let mut sho = Sho::new(
+            b"Signal_ZKGroup_20220120_Random_ServerPublicParams_CreateAuthCredentialPresentationV2",
+            &randomness,
+        );
+
+        let uuid_ciphertext = group_secret_params.encrypt_uid_struct(auth_credential.uid);
+
+        let proof = crypto::proofs::AuthCredentialPresentationProofV2::new(
+            self.auth_credentials_public_key,
+            group_secret_params.uid_enc_key_pair,
+            auth_credential.credential,
+            auth_credential.uid,
+            uuid_ciphertext.ciphertext,
+            auth_credential.redemption_time,
+            &mut sho,
+        );
+
+        api::auth::AuthCredentialPresentationV2 {
+            version: [PRESENTATION_VERSION_2],
             proof,
             ciphertext: uuid_ciphertext.ciphertext,
             redemption_time: auth_credential.redemption_time,
@@ -434,7 +616,7 @@ impl ServerPublicParams {
         &self,
         context: &api::profiles::ProfileKeyCredentialRequestContext,
         response: &api::profiles::ProfileKeyCredentialResponse,
-    ) -> Result<api::profiles::ProfileKeyCredential, ZkGroupError> {
+    ) -> Result<api::profiles::ProfileKeyCredential, ZkGroupVerificationFailure> {
         response.proof.verify(
             self.profile_key_credentials_public_key,
             context.key_pair.get_public_key(),
@@ -459,7 +641,7 @@ impl ServerPublicParams {
         &self,
         context: &api::profiles::PniCredentialRequestContext,
         response: &api::profiles::PniCredentialResponse,
-    ) -> Result<api::profiles::PniCredential, ZkGroupError> {
+    ) -> Result<api::profiles::PniCredential, ZkGroupVerificationFailure> {
         response.proof.verify(
             self.pni_credentials_public_key,
             context.key_pair.get_public_key(),
@@ -487,7 +669,21 @@ impl ServerPublicParams {
         randomness: RandomnessBytes,
         group_secret_params: api::groups::GroupSecretParams,
         profile_key_credential: api::profiles::ProfileKeyCredential,
-    ) -> api::profiles::ProfileKeyCredentialPresentation {
+    ) -> api::profiles::AnyProfileKeyCredentialPresentation {
+        let presentation_v2 = self.create_profile_key_credential_presentation_v2(
+            randomness,
+            group_secret_params,
+            profile_key_credential,
+        );
+        api::profiles::AnyProfileKeyCredentialPresentation::V2(presentation_v2)
+    }
+
+    pub fn create_profile_key_credential_presentation_v1(
+        &self,
+        randomness: RandomnessBytes,
+        group_secret_params: api::groups::GroupSecretParams,
+        profile_key_credential: api::profiles::ProfileKeyCredential,
+    ) -> api::profiles::ProfileKeyCredentialPresentationV1 {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Random_ServerPublicParams_CreateProfileKeyCredentialPresentation",
             &randomness,
@@ -503,7 +699,7 @@ impl ServerPublicParams {
             profile_key_credential.uid_bytes,
         );
 
-        let proof = crypto::proofs::ProfileKeyCredentialPresentationProof::new(
+        let proof = crypto::proofs::ProfileKeyCredentialPresentationProofV1::new(
             uid_enc_key_pair,
             profile_key_enc_key_pair,
             credentials_public_key,
@@ -515,8 +711,49 @@ impl ServerPublicParams {
             &mut sho,
         );
 
-        api::profiles::ProfileKeyCredentialPresentation {
-            reserved: Default::default(),
+        api::profiles::ProfileKeyCredentialPresentationV1 {
+            reserved: [PRESENTATION_VERSION_1],
+            proof,
+            uid_enc_ciphertext: uuid_ciphertext.ciphertext,
+            profile_key_enc_ciphertext: profile_key_ciphertext.ciphertext,
+        }
+    }
+
+    pub fn create_profile_key_credential_presentation_v2(
+        &self,
+        randomness: RandomnessBytes,
+        group_secret_params: api::groups::GroupSecretParams,
+        profile_key_credential: api::profiles::ProfileKeyCredential,
+    ) -> api::profiles::ProfileKeyCredentialPresentationV2 {
+        let mut sho = Sho::new(
+            b"Signal_ZKGroup_20220120_Random_ServerPublicParams_CreateProfileKeyCredentialPresentationV2",
+            &randomness,
+        );
+
+        let uid_enc_key_pair = group_secret_params.uid_enc_key_pair;
+        let profile_key_enc_key_pair = group_secret_params.profile_key_enc_key_pair;
+        let credentials_public_key = self.profile_key_credentials_public_key;
+
+        let uuid_ciphertext = group_secret_params.encrypt_uuid(profile_key_credential.uid_bytes);
+        let profile_key_ciphertext = group_secret_params.encrypt_profile_key_bytes(
+            profile_key_credential.profile_key_bytes,
+            profile_key_credential.uid_bytes,
+        );
+
+        let proof = crypto::proofs::ProfileKeyCredentialPresentationProofV2::new(
+            uid_enc_key_pair,
+            profile_key_enc_key_pair,
+            credentials_public_key,
+            profile_key_credential.credential,
+            uuid_ciphertext.ciphertext,
+            profile_key_ciphertext.ciphertext,
+            profile_key_credential.uid_bytes,
+            profile_key_credential.profile_key_bytes,
+            &mut sho,
+        );
+
+        api::profiles::ProfileKeyCredentialPresentationV2 {
+            version: [PRESENTATION_VERSION_2],
             proof,
             uid_enc_ciphertext: uuid_ciphertext.ciphertext,
             profile_key_enc_ciphertext: profile_key_ciphertext.ciphertext,
@@ -528,7 +765,21 @@ impl ServerPublicParams {
         randomness: RandomnessBytes,
         group_secret_params: api::groups::GroupSecretParams,
         pni_credential: api::profiles::PniCredential,
-    ) -> api::profiles::PniCredentialPresentation {
+    ) -> api::profiles::AnyPniCredentialPresentation {
+        let presentation_v2 = self.create_pni_credential_presentation_v2(
+            randomness,
+            group_secret_params,
+            pni_credential,
+        );
+        api::profiles::AnyPniCredentialPresentation::V2(presentation_v2)
+    }
+
+    pub fn create_pni_credential_presentation_v1(
+        &self,
+        randomness: RandomnessBytes,
+        group_secret_params: api::groups::GroupSecretParams,
+        pni_credential: api::profiles::PniCredential,
+    ) -> api::profiles::PniCredentialPresentationV1 {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20211111_Random_ServerPublicParams_CreatePniCredentialPresentation",
             &randomness,
@@ -543,7 +794,7 @@ impl ServerPublicParams {
         let profile_key_ciphertext = group_secret_params
             .encrypt_profile_key_bytes(pni_credential.profile_key_bytes, pni_credential.aci_bytes);
 
-        let proof = crypto::proofs::PniCredentialPresentationProof::new(
+        let proof = crypto::proofs::PniCredentialPresentationProofV1::new(
             uid_enc_key_pair,
             profile_key_enc_key_pair,
             credentials_public_key,
@@ -557,8 +808,51 @@ impl ServerPublicParams {
             &mut sho,
         );
 
-        api::profiles::PniCredentialPresentation {
-            reserved: Default::default(),
+        api::profiles::PniCredentialPresentationV1 {
+            reserved: [PRESENTATION_VERSION_1],
+            proof,
+            aci_enc_ciphertext: aci_ciphertext.ciphertext,
+            pni_enc_ciphertext: pni_ciphertext.ciphertext,
+            profile_key_enc_ciphertext: profile_key_ciphertext.ciphertext,
+        }
+    }
+
+    pub fn create_pni_credential_presentation_v2(
+        &self,
+        randomness: RandomnessBytes,
+        group_secret_params: api::groups::GroupSecretParams,
+        pni_credential: api::profiles::PniCredential,
+    ) -> api::profiles::PniCredentialPresentationV2 {
+        let mut sho = Sho::new(
+            b"Signal_ZKGroup_20220120_Random_ServerPublicParams_CreatePniCredentialPresentationV2",
+            &randomness,
+        );
+
+        let uid_enc_key_pair = group_secret_params.uid_enc_key_pair;
+        let profile_key_enc_key_pair = group_secret_params.profile_key_enc_key_pair;
+        let credentials_public_key = self.pni_credentials_public_key;
+
+        let aci_ciphertext = group_secret_params.encrypt_uuid(pni_credential.aci_bytes);
+        let pni_ciphertext = group_secret_params.encrypt_uuid(pni_credential.pni_bytes);
+        let profile_key_ciphertext = group_secret_params
+            .encrypt_profile_key_bytes(pni_credential.profile_key_bytes, pni_credential.aci_bytes);
+
+        let proof = crypto::proofs::PniCredentialPresentationProofV2::new(
+            uid_enc_key_pair,
+            profile_key_enc_key_pair,
+            credentials_public_key,
+            pni_credential.credential,
+            aci_ciphertext.ciphertext,
+            pni_ciphertext.ciphertext,
+            profile_key_ciphertext.ciphertext,
+            pni_credential.aci_bytes,
+            pni_credential.pni_bytes,
+            pni_credential.profile_key_bytes,
+            &mut sho,
+        );
+
+        api::profiles::PniCredentialPresentationV2 {
+            version: [PRESENTATION_VERSION_2],
             proof,
             aci_enc_ciphertext: aci_ciphertext.ciphertext,
             pni_enc_ciphertext: pni_ciphertext.ciphertext,
@@ -591,7 +885,7 @@ impl ServerPublicParams {
         &self,
         context: &api::receipts::ReceiptCredentialRequestContext,
         response: &api::receipts::ReceiptCredentialResponse,
-    ) -> Result<api::receipts::ReceiptCredential, ZkGroupError> {
+    ) -> Result<api::receipts::ReceiptCredential, ZkGroupVerificationFailure> {
         let receipt_struct = crypto::receipt_struct::ReceiptStruct::new(
             context.receipt_serial_bytes,
             response.receipt_expiration_time,

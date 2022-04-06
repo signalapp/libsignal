@@ -12,10 +12,6 @@ import org.signal.libsignal.internal.Native;
 public final class ProfileKeyCommitment extends ByteArray {
   public ProfileKeyCommitment(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.ProfileKeyCommitment_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.ProfileKeyCommitment_CheckValidContents(contents);
   }
 }

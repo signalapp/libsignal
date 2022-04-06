@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -33,7 +33,7 @@ public class ServerZkAuthOperations {
   public func verifyAuthCredentialPresentation(groupPublicParams: GroupPublicParams, authCredentialPresentation: AuthCredentialPresentation) throws {
     try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
-        try authCredentialPresentation.withUnsafePointerToSerialized { authCredentialPresentation in
+        try authCredentialPresentation.withUnsafeBorrowedBuffer { authCredentialPresentation in
           try checkError(signal_server_secret_params_verify_auth_credential_presentation(serverSecretParams, groupPublicParams, authCredentialPresentation))
         }
       }

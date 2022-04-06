@@ -8,6 +8,7 @@ package org.signal.libsignal.zkgroup.integrationtests;
 import java.io.UnsupportedEncodingException;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
+import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.NotarySignature;
 import org.signal.libsignal.zkgroup.SecureRandomTest;
@@ -40,7 +41,6 @@ import org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialRequestContext;
 import org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialResponse;
 import org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion;
 import org.signal.libsignal.zkgroup.profiles.ServerZkProfileOperations;
-import org.signal.libsignal.protocol.util.Hex;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -72,14 +72,36 @@ public final class ZkGroupTest extends SecureRandomTest {
 
   private static final byte[] TEST_ARRAY_32_5 = Hex.fromStringCondensedAssert("030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122");
 
-  private static final byte[] authPresentationResult = Hex.fromStringCondensedAssert(
+
+  private static final byte[] authPresentationResultV1 = Hex.fromStringCondensedAssert(
 "000cde979737ed30bbeb16362e4e076945ce02069f727b0ed4c3c33c011e82546e1cdf081fbdf37c03a851ad060bdcbf6378cb4cb16dc3154d08de5439b5323203729d1841b517033af2fd177d30491c138ae723655734f6e5cc01c00696f4e92096d8c33df26ba2a820d42e9735d30f8eeef96d399079073c099f7035523bfe716638659319d3c36ad34c00ef8850f663c4d93030235074312a8878b6a5c5df4fbc7d32935278bfa5996b44ab75d6f06f4c30b98640ad5de74742656c8977567de000000000000000fde69f82ad2dcb4909650ac6b2573841af568fef822b32b45f625a764691a704d11b6f385261468117ead57fa623338e21c66ed846ab65809fcac158066d8e0e444077b99540d886e7dc09555dd6faea2cd3697f1e089f82d54e5d0fe4a185008b5cbc3979391ad71686bc03be7b00ea7e42c08d9f1d75c3a56c27ae2467b80636c0b5343eda7cd578ba88ddb7a0766568477fed63cf531862122c6c15b4a707973d41782cfc0ef4fe6c3115988a2e339015938d2df0a5d30237a2592cc10c05a9e4ef6b695bca99736b1a49ea39606a381ecfb05efe60d28b54823ec5a3680c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100");
 
-private static final byte[] profileKeyPresentationResult = Hex.fromStringCondensedAssert(
+private static final byte[] profileKeyPresentationResultV1 = Hex.fromStringCondensedAssert(
 "00c4d19bca1ae844585168869da4133e0e0bb59f2ce17b7ac65bff5da9610eca103429d8022a94bae2b5b1057b5595b8ad70bfc2d0e1ad662cb75e6bae0782be6f00e3db793bc28561f0196c2e74da6f303fa8bcb70c94096671b73f7b3a95fb002200d5b9180fa0ef7d3014d01344145b4d38480d72ff25c24294e305e5705072e0d32cc4e84f5caf31486089a4b934c80c92eba43472ff23a5af93c397535d33801f0e6fc6eb2ee0d117f03bb4fd38a8b9c88d94708131f38742ca804a3cfc4f9476bc2d03f53d17001c36478afbe9cc535a224b2df6b2b08bef06cbc7d4dc42ccfc3459f7ac5c4419ae9f3c8a161d554d047778943216240858da3b1101984c40010000000000007a01eea6b2adad14d71ab8b8e411bef3c596e954b70e4031570cb1abd7e932083241f1caca3116708fa4319fbbdfe351376c23644ae09a42f0155db4996c9d0c7ffc8521c1914c0e1a20ae51e65df64dd5e6e5985b3d9d31732046d2d77f9c08aaccf056b84026073976eec6164cbdaee5d9e76e497f0c290af681cabd5c5101282abb26c3680d6087ce053310fe8a94f59d8ae23caac5fc0ed0c379888abf028a6f29f89d4fe2acc1706341b2245ba1885bca57e1e27ccf7ed79371500965009f960c2ba00fad3e93383b87ce119cac0b3360eb99284ce78e2cbed680f7960373e0ab75c190254160c2353614109489e653c9b2e1c93f92c7c5ad583d987a04bd3541b24485c33ea49bac43c87c4ab3efde2e2d7ec10a40be544199f925b20b2c55542bc56410571e41cd8e0286f609a66768b5061ccb4777af32309928dd09765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
 
-private static final byte[] pniPresentationResult = Hex.fromStringCondensedAssert(
+private static final byte[] pniPresentationResultV1 = Hex.fromStringCondensedAssert(
 "00fecc5f71d40dbd45912d0de9c1ed033c7eb1c4755e19cb6241ede6a6a99f65545e870a806854c5000d436db601a89f72b9b399f0efa277473716e8bc20c984766250937555604f2d2fcdd263c60f2f72b5a04d9bbbc6f95c78085f81aaf07d3316a2dbd1ef85bb642d5da6d00d03fed8097276bf17a113a44018d773c9116c33ac86837d4f5c41fb70153f3d655c0b68982fae01113460db75ea7099ef7e910cbe0bd606870df55522f9d0b1bee1b1ab2f3b9cd3563a422684ebcfdb1fdada27acb4d48c7db9c6b1389c6742a8f8257bb70f5430feb4a438007fb33e7910da3b9a0997d7d35c6c93a8d45949d01f88b497c822b0127b3fc57cfaee90bcf7d41914f6f0f8fa0acd82e004caaad1c9feec2fb67f58936ae7a92a285dc15b23486a0272e864f3ae9769d650fdd0898739ad28e259e8dae73907caa8ff69a53a851e4001000000000000f26c704b8daf38a464810eca8589541521e053221dd830866bf77da025cdc2041e33f73e42c70387709acbac0df46d0155e6bf6f7952ddc3289a16ca682e740df7403cc12cbe0cd54a7b0de08eec4f7cdce52996880ef5db74bcc4e8e78d620da4d21ff137b29df3a1a08d14b9224c91ef05a1ac0a7cfe142b227853c90bb90db0cf3d6311560e49ca52983f9efc54ecb61f552d6a85088871ef4d0f5862dd04aff93fd97b7816181d38bcb30f71eaeb9eff2ba630916eac355f45703a8c780e8579b2793d4fb72e001d15e23bedcb3c827fc559ef7adb6da2ec33291b86bf0db2ad4a3a0cb9233d3af967d9301505b88d157b3436ae6122696718d812b27002cdce4c807610f2de7cec4a03933da64a6319eab4ac0630c99d0e62779974e8038ff5053275378c1b41dd7bb5f8f4c11daa4cd19fdec4d0222850c606857c990e765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474fe74409060615679fc115473683d63abd9ced46c7f2ad736046de5a2c7d2522f122895597049cfd7cc5beb6dc72aa990ae9a62ec8e256a1cbf5f3f284233bb0748c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
+
+
+  private static final byte[] authPresentationResultV2 = Hex.      fromStringCondensedAssert("01322f9100de0734550a81dc81724a81dbd3b1b43dbc1d552d53455911c2772f34a6356ca17c6d34d858391456af55d0ef841fbe1fa8c4ee810f21e0bb9f4ace4c5c48c72ebbeb2ccda5f7aa49aee6bc0051cdde166e0f8c5f1febd53a4437c570ee1aa223f5eb937db98f34e3653d85ec163f39847222a2dec4235ea41c47bb62028aae30945857ee77663079bcc4923d14a43ad4f6bc33715046f7bde52715375ca9f89be0e630d4bdaa211156d0306723f543b06f5e998447b962c8e9729b4cc00000000000000074d0eae8e4311a6ae3d2970ef198c398110462be47dd2f26e6559209ef6cc20001a05a0b319a172dbeb2293cc1e0e191cefb23e24cf0d6b4b5373a30044be10cb033674d631e17dfce09398f234e9d62e118a6077caea0ef8bf67d7d723db70fecf2098fa041317b7be9fdbb68b0f25f5c479d68bd917fc6f187c5bf7a58910231921fc43565232466325c039212362b6d1203ccaedf831dc7f9060dcaaffa02624042171f5f0e780b9f74cfa88a147f3f1c082f9ca8638af1788e7899cbae0c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100");
+
+
+
+private static final byte[] profileKeyPresentationResultV2 = Hex.fromStringCondensedAssert(
+"01e0f49cef4f25c31d1bfdc4a328fd508d2222b6decee2a253cf71e8821e97cc3f86824f79b1884b43c67f854717b1a47f56c8ff50a1c07fddbf4f6e857027d548583b54079dd61d54cdd39cd4acae5f8b3bbfa2bb6b3502b69b36da77addddc145ef254a16f2baec1e3d7e8dc80730bc608fcd0e4d8cfef3330a496380c7ac648686b9c5b914d0a77ee84848aa970b2404450179b4022eef003387f6bdbcba30344cadfd5e3f1677caa2c785f4fefe042a1b2adf4f4b8fa6023e41d704bda901d3a697904770ac46e0e304cf19f91ce9ab0ed1ccad8a6febd72313455f139b9222e9a30a2265c6cd22ee5b907fc95967417a0d8ca338a5ee4d51bba78039c314e4001000000000000749d54772b8137e570157c068a5cfebb464b6c1133c72d9abfda72db421cd00561ac4eecb94313c6912013e32c322ea36743b01814fe919ca84b9aea9c78b10ba021506f7ad8c6625e87e07ce32b559036af6b67e2c0383a643cb93cdc2b9800e90588a18fcc449cd466c28c6db73507d8282dd00808b5927fee3336ed0a2202dfb1e176fece6a4104caa2a866c475209967638ea2f1466847da7301a77b9007dfb332a30e9bbfae8a8398165ec9dd4778214e0d6ed35a34071bdf3b3b19510ff2a617bc53eb0e6b0ddc501db027bb47e4f4127d7a0104945f3d3dc7ec1741038b9b80e2c7f131c519ee26ffcb7cb9d3556cd35a12bef1d4b376fc513197ba00ce8f012a0b374164222ba79a39e74e150813474ca6f87ba705c0f06e7b7068039c5edd9dd1a5ab6793ac211989907686b45650221187d4d59ae492679f3b4308765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
+
+private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAssert(
+"01f887f403db1a80fa04043413233f56bf6c53bb078c16d24df93a219d7785696856d8f197a01c6e223d4aceed1d60b90b713f4556ab39403b84c51d724ca9aa44886d73be15fcebc933f835fc0f3210f8d7b8fa7940bf9069d50dc4ba83da8a0ed86d6c33cd99a25fe46906d655a7fec5fee500527a56ea5689d1765396907b153a86e40eb27b8120661dfe59bb17af1024ebd697c2c36c46f3a85f8dc6f92761b29c84256847b5f420386ac41d6d81f8e65a195f2ab7003c0fc22fd969870e2c5c4ad4a9de38a8bde73509c41e85accef59db69930972b1c3fcb9c9abd4c884a3e91b4c25b8fde3b5cac7c55442f996b3fd3712110c7dd71c847be552122b947402136b1c16fe18acba2e6a277dc57172ac79d189246060d50db1a7dc531d075ec9414f86e31a1b0406ce173b09c1eabbef2de117749b3c512499d5f91e4694e4001000000000000769c0c6c310ed2b8f4a1d1e6b853d83f5da8136e36605fd631979cc618d0e102cc82e9056d2031379de3e57c04530b20617d0b2418b8950c8a2394355c6d400f0e4f69b75942032067382ae244870f5859a35782cb81b1106c5aae58df1f110dbf761c3a52ad5e3a872f385c3056bf2be3d67826cf33bc743c1c25eed0eda20f21de773906657b26e09cf388da2333db60f768865e2405f4df4f48b640295e027625678a810dbf8111918f7b127fd9fb0b332531ec52069b98abf95bb4ae7307d96b9d50b6e734ff8af92d2c8417919795a46b97df7a692df4ea9b63810ef70dca68693bbec7e1f52409430da61cac9249ca02216a77b1f08e5951a50783ca088fa5992b5ecaf1413dfe45f9ef23b3c120994118b325763d66e60c9647cc380248a9da79e46c17b6bb03a23c3987cea86ac158d45b78f1f9b923472521ecb30e765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474fe74409060615679fc115473683d63abd9ced46c7f2ad736046de5a2c7d2522f122895597049cfd7cc5beb6dc72aa990ae9a62ec8e256a1cbf5f3f284233bb0748c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
+
+  // 32 bytes of 0xFF is an invalid Ristretto point, so this should invalidate all the
+  // the serialized zkgroup structures, since almost everything contains a Ristretto point
+  private static final byte[] makeBadArray(byte[] a) {
+      byte[] temp = a.clone();
+      for (int count=0; count < temp.length; count++) {
+          temp[count] = (byte)0xFF;
+      }
+      return temp;
+  }
 
   @Test
   public void testAuthIntegration() throws VerificationFailedException, InvalidInputException, InvalidRedemptionTimeException {
@@ -93,6 +115,31 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     // SERVER
     ServerSecretParams serverSecretParams = ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
     ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+
+    // SERVER - deserialize test
+    {
+        new ServerSecretParams(serverSecretParams.serialize());
+        new ServerPublicParams(serverPublicParams.serialize());
+        try {
+            byte[] temp = new byte[32];  // wrong length
+            new ServerSecretParams(temp);
+            throw new AssertionError("Failed to catch invalid ServerSecretParams deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new ServerSecretParams(makeBadArray(serverSecretParams.serialize()));
+            throw new AssertionError("Failed to catch invalid ServerSecretParams deserialize 2");
+        } catch (InvalidInputException e) {}
+        try {
+            byte[] temp = new byte[32];  // wrong length
+            new ServerPublicParams(temp);
+            throw new AssertionError("Failed to catch invalid ServerPublicParams deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new ServerPublicParams(makeBadArray(serverPublicParams.serialize()));
+            throw new AssertionError("Failed to catch invalid ServerPublicParams deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
+
     ServerZkAuthOperations serverZkAuth       = new ServerZkAuthOperations(serverSecretParams);
 
     // CLIENT
@@ -102,6 +149,35 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     assertArrayEquals(groupSecretParams.getMasterKey().serialize(), masterKey.serialize());
 
     GroupPublicParams groupPublicParams = groupSecretParams.getPublicParams();
+
+    // CLIENT - deserialize test
+    {
+        new GroupSecretParams(groupSecretParams.serialize());
+        new GroupPublicParams(groupPublicParams.serialize());
+        try {
+            byte[] temp = new byte[10];  // wrong length
+            new GroupMasterKey(temp);
+            throw new AssertionError("Failed to catch invalid GroupMasterKey deserialize");
+        } catch (InvalidInputException e) {}
+        try {
+            byte[] temp = new byte[10];  // wrong length
+            new GroupSecretParams(temp);
+            throw new AssertionError("Failed to catch invalid GroupSecretParams deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new GroupSecretParams(makeBadArray(groupSecretParams.serialize()));
+            throw new AssertionError("Failed to catch invalid GroupSecretParams deserialize 2");
+        } catch (InvalidInputException e) {}
+        try {
+            byte[] temp = new byte[10];  // wrong length
+            new GroupPublicParams(temp);
+            throw new AssertionError("Failed to catch invalid GroupPublicParams deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new GroupPublicParams(makeBadArray(groupPublicParams.serialize()));
+            throw new AssertionError("Failed to catch invalid GroupPublicParams deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
 
     // SERVER
     // Issue credential
@@ -113,15 +189,88 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     ClientZkGroupCipher    clientZkGroupCipher = new ClientZkGroupCipher   (groupSecretParams );
     AuthCredential         authCredential      = clientZkAuthCipher.receiveAuthCredential(uuid, redemptionTime, authCredentialResponse);
 
+    // CLIENT - deserialize test
+    {
+        new AuthCredentialResponse(authCredentialResponse.serialize());
+        try {
+            byte[] temp = new byte[10];
+            new AuthCredentialResponse(temp);
+            throw new AssertionError("Failed to catch invalid AuthCredentialResponse deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new AuthCredentialResponse(makeBadArray(authCredentialResponse.serialize()));
+            throw new AssertionError("Failed to catch invalid AuthCredentialResponse deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
+
+    // CLIENT - verify test
+    {
+        UUID badUuid = TEST_UUID_1;
+        try {
+            clientZkAuthCipher.receiveAuthCredential(badUuid, redemptionTime, authCredentialResponse);
+            throw new AssertionError("Failed to catch invalid AuthCredential 1");
+        } catch (VerificationFailedException e) {}
+
+        byte[] temp = authCredentialResponse.serialize();
+        temp[1]++;
+        AuthCredentialResponse badResponse = new AuthCredentialResponse(temp);  
+        try {
+            clientZkAuthCipher.receiveAuthCredential(uuid, redemptionTime, badResponse);
+            throw new AssertionError("Failed to catch invalid AuthCredential 2");
+        } catch (VerificationFailedException e) {}
+    }
+
     // Create and decrypt user entry
     UuidCiphertext uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
     UUID           plaintext      = clientZkGroupCipher.decryptUuid(uuidCiphertext);
     assertEquals(uuid, plaintext);
 
-    // Create presentation
-    AuthCredentialPresentation presentation = clientZkAuthCipher.createAuthCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
+    // CLIENT - deserialize test
+    {
+        new UuidCiphertext(uuidCiphertext.serialize());
+        try {
+            byte[] temp = new byte[10];
+            new UuidCiphertext(temp);
+            throw new AssertionError("Failed to catch invalid UuidCiphertext deserialize 1");
+        } catch (InvalidInputException e) {}
 
-    // Verify presentation, using times at the edge of the acceptable window
+        try {
+            new UuidCiphertext(makeBadArray(uuidCiphertext.serialize()));
+            throw new AssertionError("Failed to catch invalid UuidCiphertext deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
+
+    // CLIENT - verify test
+    {
+        byte[] temp = uuidCiphertext.serialize();
+        temp[3]++; // We need a bad ciphertext that passes deserialization, this seems to work
+        try {
+            clientZkGroupCipher.decryptUuid(new UuidCiphertext(temp));
+            throw new AssertionError("Failed to catch invalid UuidCiphertext decrypt");
+        } catch (VerificationFailedException e) {}
+    }
+
+    // CLIENT - Create presentation
+    AuthCredentialPresentation presentation = clientZkAuthCipher.createAuthCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
+    assertEquals(presentation.serialize()[0], 1); // Check V2
+    assertEquals(presentation.getVersion(), AuthCredentialPresentation.Version.V2);
+    assertArrayEquals(presentation.serialize(), authPresentationResultV2);
+
+    // CLIENT - deserialize test
+    {
+        new AuthCredentialPresentation(presentation.serialize());
+        byte[] temp = new byte[10];
+        try {
+            new AuthCredentialPresentation(temp);
+            throw new AssertionError("Failed to catch invalid AuthCredentialPresentation deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new AuthCredentialPresentation(makeBadArray(presentation.serialize()));
+            throw new AssertionError("Failed to catch invalid AuthCredentialPresentation deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
+
+    // SERVER - Verify presentation, using times at the edge of the acceptable window
     UuidCiphertext uuidCiphertextRecv = presentation.getUuidCiphertext();
     assertArrayEquals(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize());
     assertEquals(presentation.getRedemptionTime(), redemptionTime);
@@ -143,8 +292,39 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
       // good
     }
 
+    try {
+        byte[] temp = presentation.serialize();
+        temp[3]++;  // We need a bad presentation that passes deserialization, this seems to work
+        AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
+        serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentationTemp, TimeUnit.MILLISECONDS.convert(123455L, TimeUnit.DAYS));
+        throw new AssertionError("verifyAuthCredentialPresentation should fail #3!");
+    } catch (VerificationFailedException e) {}
 
-    assertArrayEquals(presentation.serialize(), authPresentationResult);
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 0; // This interprets a V2 as V1, so should fail
+        AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
+        serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentationTemp, TimeUnit.MILLISECONDS.convert(123455L, TimeUnit.DAYS));
+        throw new AssertionError("verifyAuthCredentialPresentation should fail #4");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 2; // This interprets a V2 as a non-existent version, so should fail
+        AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
+        serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentationTemp, TimeUnit.MILLISECONDS.convert(123455L, TimeUnit.DAYS));
+        throw new AssertionError("verifyAuthCredentialPresentation should fail #5");
+    } catch (InvalidInputException e) {}
+
+    {
+        // Test that V1 presentation verifies successfully
+        AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(authPresentationResultV1);
+        assertEquals(presentationTemp.serialize()[0], 0); // Check V1
+        assertEquals(presentationTemp.getVersion(), AuthCredentialPresentation.Version.V1);
+        serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentationTemp, TimeUnit.MILLISECONDS.convert(123455L, TimeUnit.DAYS));
+        assertArrayEquals(presentationTemp.serialize(), authPresentationResultV1);
+    }
+
   }
 
 
@@ -249,8 +429,33 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     ProfileKeyCredentialRequestContext context = clientZkProfileCipher.createProfileKeyCredentialRequestContext(createSecureRandom(TEST_ARRAY_32_3), uuid, profileKey);
     ProfileKeyCredentialRequest        request = context.getRequest();
 
+    // CLIENT - deserialize test
+    {
+        new ProfileKeyCredentialRequestContext(context.serialize());
+        try {
+            byte[] temp = new byte[10];
+            new ProfileKeyCredentialRequestContext(temp);
+            throw new AssertionError("Failed to catch invalid ProfileKeyCredentialResponse deserialize 1");
+        } catch (InvalidInputException e) {}
+        try {
+            new ProfileKeyCredentialRequestContext(makeBadArray(context.serialize()));
+            throw new AssertionError("Failed to catch invalid ProfileKeyCredentialRequestContext deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
+
     // SERVER 
     ProfileKeyCredentialResponse response = serverZkProfile.issueProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), request, uuid, profileKeyCommitment);
+
+    // SERVER - verification test
+    {
+        byte[] temp = request.serialize();
+        temp[4]++;  // We need a bad presentation that passes deserialization, this seems to work
+        ProfileKeyCredentialRequest badRequest = new ProfileKeyCredentialRequest(temp);
+        try {
+            serverZkProfile.issueProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), badRequest, uuid, profileKeyCommitment);
+            throw new AssertionError("Failed to catch invalid ProfileKeyCredentialRequest");
+        } catch (VerificationFailedException e) {}
+    }
    
     // CLIENT
     // Gets stored profile credential
@@ -266,9 +471,35 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     ProfileKey           decryptedProfileKey    = clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext, uuid);
     assertArrayEquals(profileKey.serialize(), decryptedProfileKey.serialize());
 
-    ProfileKeyCredentialPresentation presentation = clientZkProfileCipher.createProfileKeyCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, profileKeyCredential);
+    // CLIENT - deserialize test
+    {
+        new ProfileKeyCiphertext(profileKeyCiphertext.serialize());
+        try {
+            byte[] temp = new byte[10];
+            new ProfileKeyCiphertext(temp);
+            throw new AssertionError("Failed to catch invalid ProfileKeyCiphertext deserialize 1");
+        } catch (InvalidInputException e) {}
 
-    assertArrayEquals(presentation.serialize(), profileKeyPresentationResult);
+        try {
+            new ProfileKeyCiphertext(makeBadArray(profileKeyCiphertext.serialize()));
+            throw new AssertionError("Failed to catch invalid ProfileKeyCiphertext deserialize 2");
+        } catch (InvalidInputException e) {}
+    }
+
+    // CLIENT - verify test
+    {
+        byte[] temp = profileKeyCiphertext.serialize();
+        temp[2]++; // We need a bad ciphertext that passes deserialization, this seems to work
+        try {
+            clientZkGroupCipher.decryptProfileKey(new ProfileKeyCiphertext(temp), uuid);
+            throw new AssertionError("Failed to catch invalid ProfileKeyCiphertext decrypt");
+        } catch (VerificationFailedException e) {}
+    }
+
+    ProfileKeyCredentialPresentation presentation = clientZkProfileCipher.createProfileKeyCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, profileKeyCredential);
+    assertEquals(presentation.serialize()[0], 1); // Check V2
+    assertEquals(presentation.getVersion(), ProfileKeyCredentialPresentation.Version.V2);
+    assertArrayEquals(presentation.serialize(), profileKeyPresentationResultV2);
 
     // Verify presentation
     serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentation);
@@ -279,6 +510,40 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     ProfileKeyVersion pkvC = new ProfileKeyVersion(pkvB.serialize());
     if (!pkvB.serialize().equals(pkvC.serialize()))
       throw new AssertionError();
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[2]++;  // We need a bad presentation that passes deserializaton, this seems to work
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 1");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 0; // This interprets a V2 as V1, so should fail
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 2");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 2; // This interprets a V2 as a non-existent version, so should fail
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 3");
+    } catch (InvalidInputException e) {}
+
+    {
+        // Test that V1 presentation verifies successfully
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(profileKeyPresentationResultV1);
+        assertEquals(presentationTemp.serialize()[0], 0); // Check V1
+        assertEquals(presentationTemp.getVersion(), ProfileKeyCredentialPresentation.Version.V1);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        assertArrayEquals(presentationTemp.serialize(), profileKeyPresentationResultV1);
+    }
+
   }
 
   @Test
@@ -320,8 +585,10 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     PniCredential       pniCredential       = clientZkProfileCipher.receivePniCredential(context, response);
 
     PniCredentialPresentation presentation = clientZkProfileCipher.createPniCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, pniCredential);
+    assertEquals(presentation.serialize()[0], 1); // Check V2
+    assertEquals(presentation.getVersion(), PniCredentialPresentation.Version.V2);
 
-    assertArrayEquals(presentation.serialize(), pniPresentationResult);
+    assertArrayEquals(presentation.serialize(), pniPresentationResultV2);
 
     // Verify presentation
     serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentation);
@@ -329,6 +596,39 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     assertArrayEquals(clientZkGroupCipher.encryptUuid(aci).serialize(), aciCiphertextRecv.serialize());
     UuidCiphertext pniCiphertextRecv = presentation.getPniCiphertext();
     assertArrayEquals(clientZkGroupCipher.encryptUuid(pni).serialize(), pniCiphertextRecv.serialize());
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[2]++;  // We need a bad presentation that passes deserializaton, this seems to work
+        PniCredentialPresentation presentationTemp = new PniCredentialPresentation(temp);
+        serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyPniCredentialPresentation should fail 1");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 0; // This interprets a V2 as V1, so should fail
+        PniCredentialPresentation presentationTemp = new PniCredentialPresentation(temp);
+        serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyPniCredentialPresentation should fail 2");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 2; // This interprets a V2 as a non-existent version, so should fail
+        PniCredentialPresentation presentationTemp = new PniCredentialPresentation(temp);
+        serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyPniCredentialPresentation should fail 3");
+    } catch (InvalidInputException e) {}
+
+    {
+        // Test that V1 presentation verifies successfully
+        PniCredentialPresentation presentationTemp = new PniCredentialPresentation(pniPresentationResultV1);
+        assertEquals(presentationTemp.serialize()[0], 0); // Check V1
+        assertEquals(presentationTemp.getVersion(), PniCredentialPresentation.Version.V1);
+        serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
+        assertArrayEquals(presentationTemp.serialize(), pniPresentationResultV1);
+    }
   }
 
   @Test
@@ -370,8 +670,8 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     GroupPublicParams groupSecretParams = new GroupPublicParams(ckp);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testInvalidSerializedInfallible() {
+  @Test(expected = InvalidInputException.class)
+  public void testInvalidSerializedInfallible() throws InvalidInputException {
 
     byte[] ckp = new byte[289]; // right size, wrong contents
     Arrays.fill(ckp, (byte) -127);
@@ -388,8 +688,8 @@ private static final byte[] pniPresentationResult = Hex.fromStringCondensedAsser
     GroupPublicParams groupSecretParams = new GroupPublicParams(ckp);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testWrongSizeSerializedInfallible() {
+  @Test(expected = InvalidInputException.class)
+  public void testWrongSizeSerializedInfallible() throws InvalidInputException {
 
     byte[] ckp = new byte[5]; // right size, wrong contents
     Arrays.fill(ckp, (byte) -127);

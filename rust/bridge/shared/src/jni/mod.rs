@@ -15,7 +15,6 @@ use signal_crypto::Error as SignalCryptoError;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt::Display;
-use zkgroup::ZkGroupError;
 
 pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
 pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jstring};
@@ -208,7 +207,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
-        | SignalJniError::DeserializationFailed(_) => {
+        | SignalJniError::IncorrectArrayLength { .. } => {
             jni_class_name!(java.lang.IllegalArgumentException)
         }
 
@@ -306,15 +305,13 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(java.lang.IllegalStateException)
         }
 
-        SignalJniError::ZkGroup(ZkGroupError::BadArgs) => {
+        SignalJniError::ZkGroupDeserializationFailure(_) => {
             jni_class_name!(org.signal.libsignal.zkgroup.InvalidInputException)
         }
-        SignalJniError::ZkGroup(
-            ZkGroupError::DecryptionFailure
-            | ZkGroupError::MacVerificationFailure
-            | ZkGroupError::ProofVerificationFailure
-            | ZkGroupError::SignatureVerificationFailure,
-        ) => jni_class_name!(org.signal.libsignal.zkgroup.VerificationFailedException),
+
+        SignalJniError::ZkGroupVerificationFailure(_) => {
+            jni_class_name!(org.signal.libsignal.zkgroup.VerificationFailedException)
+        }
     };
 
     if let Err(e) = env.throw_new(exception_type, error.to_string()) {

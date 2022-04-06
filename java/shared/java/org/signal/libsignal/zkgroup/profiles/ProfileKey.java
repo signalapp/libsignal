@@ -15,11 +15,7 @@ public final class ProfileKey extends ByteArray {
 
   public ProfileKey(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.ProfileKey_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.ProfileKey_CheckValidContents(contents);
   }
 
   public ProfileKeyCommitment getCommitment(UUID uuid) {

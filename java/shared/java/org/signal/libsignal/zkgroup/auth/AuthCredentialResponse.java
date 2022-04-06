@@ -12,10 +12,6 @@ import org.signal.libsignal.internal.Native;
 public final class AuthCredentialResponse extends ByteArray {
   public AuthCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.AuthCredentialResponse_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.AuthCredentialResponse_CheckValidContents(contents);
   }
 }

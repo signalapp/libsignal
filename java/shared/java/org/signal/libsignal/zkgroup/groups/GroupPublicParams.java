@@ -13,11 +13,7 @@ public final class GroupPublicParams extends ByteArray {
 
   public GroupPublicParams(byte[] contents) throws InvalidInputException {
     super(contents);
-    try {
-      Native.GroupPublicParams_CheckValidContents(contents);
-    } catch (IllegalArgumentException e) {
-      throw new InvalidInputException(e.getMessage());
-    }
+    Native.GroupPublicParams_CheckValidContents(contents);
   }
 
   public GroupIdentifier getGroupIdentifier() {

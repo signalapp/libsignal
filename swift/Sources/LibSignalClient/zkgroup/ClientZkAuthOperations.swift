@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -35,8 +35,8 @@ public class ClientZkAuthOperations {
       try randomness.withUnsafePointerToBytes { randomness in
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try authCredential.withUnsafePointerToSerialized { authCredential in
-            try invokeFnReturningSerialized {
-              signal_server_public_params_create_auth_credential_presentation_deterministic($0, contents, randomness, groupSecretParams, authCredential)
+            try invokeFnReturningVariableLengthSerialized {
+              signal_server_public_params_create_auth_credential_presentation_deterministic($0, $1, contents, randomness, groupSecretParams, authCredential)
             }
           }
         }

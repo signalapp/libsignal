@@ -13,6 +13,13 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref SYSTEM_PARAMS: SystemParams =
+        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
+}
+
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SystemParams {
     pub(crate) G_j1: RistrettoPoint,
@@ -48,7 +55,7 @@ impl SystemParams {
     }
 
     pub fn get_hardcoded() -> SystemParams {
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap()
+        *SYSTEM_PARAMS
     }
 
     const SYSTEM_HARDCODED: [u8; 96] = [

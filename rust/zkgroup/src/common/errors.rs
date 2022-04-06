@@ -4,15 +4,9 @@
 //
 
 #[derive(Debug, displaydoc::Display)]
-pub enum ZkGroupError {
-    /// Bad arguments were passed to the function
-    BadArgs,
-    /// Decryption failed
-    DecryptionFailure,
-    /// MAC verification failed
-    MacVerificationFailure,
-    /// Proof verification failed
-    ProofVerificationFailure,
-    /// Signature verification failed
-    SignatureVerificationFailure,
-}
+/// Verification failure in zkgroup
+pub struct ZkGroupVerificationFailure;
+
+#[derive(Debug, displaydoc::Display)]
+/// Deserialization failure in zkgroup
+pub struct ZkGroupDeserializationFailure;
