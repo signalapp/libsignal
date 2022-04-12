@@ -251,12 +251,8 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       working-directory: node
 
-    - name: Run yarn test
-      uses: GabrielBB/xvfb-action@v1.4
-      with:
-        # The tests use an Electron-based runner, so we need to set up a dummy display for them.
-        run: yarn test
-        working-directory: node
+    - run: yarn test
+      working-directory: node
 
   swift_package:
     name: Swift Package
