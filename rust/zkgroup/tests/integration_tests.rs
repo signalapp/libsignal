@@ -729,3 +729,22 @@ fn test_blob_encryption() {
     }
     assert!(calc_ciphertext_vec == ciphertext_vec);
 }
+
+/// Check that older clients can still retrieve the UUID and profile key ciphertexts from a v2
+/// presentation.
+///
+/// This only matters for ProfileKeyCredentialPresentations; other presentation kinds are only
+/// presented to the server.
+#[test]
+fn test_profile_key_credential_presentation_v2_as_v1() {
+    let v2 = zkgroup::profiles::AnyProfileKeyCredentialPresentation::new(
+        &PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_RESULT,
+    )
+    .unwrap();
+    let v2_as_v1 = bincode::deserialize::<zkgroup::profiles::ProfileKeyCredentialPresentationV1>(
+        &PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_RESULT,
+    )
+    .unwrap();
+    assert!(v2.get_uuid_ciphertext() == v2_as_v1.get_uuid_ciphertext());
+    assert!(v2.get_profile_key_ciphertext() == v2_as_v1.get_profile_key_ciphertext());
+}
