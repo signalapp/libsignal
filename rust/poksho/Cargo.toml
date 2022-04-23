@@ -1,5 +1,5 @@
 #
-# Copyright 2020 Signal Messenger, LLC.
+# Copyright 2020-2022 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -11,7 +11,7 @@ edition = "2018"
 license = "AGPL-3.0-only"
 
 [dependencies]
-curve25519-dalek = { version = "3.0", features = ["serde"] }
+curve25519-dalek = "3.0"
 sha2 = "0.9"
 hmac = "0.11"
 
