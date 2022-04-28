@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM debian:buster-slim
+FROM debian:buster-20220316-slim@sha256:957293d0717a906c3c7b29c72eb5ba1c69359025ee3eee6ca6ce4b375256ff5b
 
 COPY java/docker/ docker/
 COPY java/docker/apt.conf java/docker/sources.list /etc/apt/
