@@ -458,8 +458,8 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "3.0.0"
-source = "git+https://github.com/signalapp/curve25519-dalek?branch=3.0.0-lizard2#b3329ed05ce7ffae5b7c18b9b6e1fd3588eaf468"
+version = "3.2.1"
+source = "git+https://github.com/signalapp/curve25519-dalek?branch=lizard2#4f0aa6653c51598daa0a2f53b8ba54ce0eedfbdd"
 dependencies = [
  "byteorder",
  "digest",

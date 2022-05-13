@@ -1,5 +1,5 @@
 #
-# Copyright 2020-2021 Signal Messenger, LLC.
+# Copyright 2020-2022 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -27,7 +27,7 @@ lazy_static = "1.4.0"
 features = ["serde"]
 version = "3.0.0"
 git = "https://github.com/signalapp/curve25519-dalek.git"
-branch = "3.0.0-lizard2"
+branch = "lizard2"
 
 # Below is for benchmarking:
 
