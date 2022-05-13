@@ -6,8 +6,9 @@
 use std::convert::TryFrom;
 use std::fmt;
 
+use attest::cds2::Error as Cds2Error;
+use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use zkgroup::ZkGroupDeserializationFailure;
@@ -23,6 +24,7 @@ pub enum SignalFfiError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
     HsmEnclave(HsmEnclaveError),
+    Cds2(Cds2Error),
     SignalCrypto(SignalCryptoError),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
@@ -40,6 +42,9 @@ impl fmt::Display for SignalFfiError {
             }
             SignalFfiError::HsmEnclave(e) => {
                 write!(f, "HSM enclave operation failed: {}", e)
+            }
+            SignalFfiError::Cds2(e) => {
+                write!(f, "CDS2 operation failed: {}", e)
             }
             SignalFfiError::SignalCrypto(c) => {
                 write!(f, "Cryptographic operation failed: {}", c)
@@ -70,6 +75,12 @@ impl From<DeviceTransferError> for SignalFfiError {
 impl From<HsmEnclaveError> for SignalFfiError {
     fn from(e: HsmEnclaveError) -> SignalFfiError {
         SignalFfiError::HsmEnclave(e)
+    }
+}
+
+impl From<Cds2Error> for SignalFfiError {
+    fn from(e: Cds2Error) -> SignalFfiError {
+        SignalFfiError::Cds2(e)
     }
 }
 

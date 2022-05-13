@@ -1,16 +1,16 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-
-use hsm_enclave::*;
-const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";
+use attest::client_connection;
+use attest::hsm_enclave::*;
 
 #[test]
 fn test_hsm_enclave_happy_path() -> Result<()> {
     // Spin up a handshake for the server-side.
-    let keypair = snow::Builder::new(NOISE_PATTERN.parse()?).generate_keypair()?;
-    let mut server_hs = snow::Builder::new(NOISE_PATTERN.parse()?)
+    let keypair =
+        snow::Builder::new(client_connection::NOISE_PATTERN.parse()?).generate_keypair()?;
+    let mut server_hs = snow::Builder::new(client_connection::NOISE_PATTERN.parse()?)
         .local_private_key(&keypair.private)
         .build_responder()?;
 
@@ -55,8 +55,9 @@ fn test_hsm_enclave_happy_path() -> Result<()> {
 #[test]
 fn test_hsm_enclave_codehash_mismatch() -> Result<()> {
     // Spin up a handshake for the server-side.
-    let keypair = snow::Builder::new(NOISE_PATTERN.parse()?).generate_keypair()?;
-    let mut server_hs = snow::Builder::new(NOISE_PATTERN.parse()?)
+    let keypair =
+        snow::Builder::new(client_connection::NOISE_PATTERN.parse()?).generate_keypair()?;
+    let mut server_hs = snow::Builder::new(client_connection::NOISE_PATTERN.parse()?)
         .local_private_key(&keypair.private)
         .build_responder()?;
 

@@ -146,6 +146,7 @@ typedef enum {
   SignalErrorCode_SealedSenderSelfSend = 31,
   SignalErrorCode_InvalidKey = 40,
   SignalErrorCode_InvalidSignature = 41,
+  SignalErrorCode_InvalidAttestationData = 42,
   SignalErrorCode_FingerprintVersionMismatch = 51,
   SignalErrorCode_FingerprintParsingError = 52,
   SignalErrorCode_UntrustedIdentity = 60,
@@ -169,6 +170,8 @@ typedef struct SignalAes256GcmDecryption SignalAes256GcmDecryption;
 typedef struct SignalAes256GcmEncryption SignalAes256GcmEncryption;
 
 typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
+
+typedef struct SignalCds2ClientState SignalCds2ClientState;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
@@ -1075,6 +1078,31 @@ SignalFfiError *signal_device_transfer_generate_certificate(const unsigned char 
                                                             SignalBorrowedBuffer private_key,
                                                             const char *name,
                                                             uint32_t days_to_expire);
+
+SignalFfiError *signal_cds2_client_state_destroy(SignalCds2ClientState *p);
+
+SignalFfiError *signal_cds2_client_state_new(SignalCds2ClientState **out,
+                                             SignalBorrowedBuffer mrenclave,
+                                             SignalBorrowedBuffer ca_cert,
+                                             SignalBorrowedBuffer attestation_msg,
+                                             uint64_t earliest_valid_timestamp);
+
+SignalFfiError *signal_cds2_client_state_initial_request(const unsigned char **out,
+                                                         size_t *out_len,
+                                                         const SignalCds2ClientState *obj);
+
+SignalFfiError *signal_cds2_client_state_complete_handshake(SignalCds2ClientState *cli,
+                                                            SignalBorrowedBuffer handshake_received);
+
+SignalFfiError *signal_cds2_client_state_established_send(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          SignalCds2ClientState *cli,
+                                                          SignalBorrowedBuffer plaintext_to_send);
+
+SignalFfiError *signal_cds2_client_state_established_recv(const unsigned char **out,
+                                                          size_t *out_len,
+                                                          SignalCds2ClientState *cli,
+                                                          SignalBorrowedBuffer received_ciphertext);
 
 SignalFfiError *signal_hsm_enclave_client_destroy(SignalHsmEnclaveClient *p);
 

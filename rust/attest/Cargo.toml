@@ -1,0 +1,34 @@
+#
+# Copyright (C) 2022 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "attest"
+version = "0.1.0"
+authors = ["Amit Assaf <amit@siginal.org", "Graeme Connell <gram@signal.org>", "Chris Eager <chris@signal.org>"]
+edition = "2018"
+license = "AGPL-3.0-only"
+
+[dependencies]
+chacha20poly1305 = "0.8.2"
+displaydoc = "0.2"
+ecdsa = { version = "0.13.4", features = ["serde"] }
+log = "0.4"
+num_enum = "0.5.1"
+p256 = { version = "0.10.1", features = ["ecdsa"] }
+prost = "0.9"
+rand_core = { version = "0.6", features = ["getrandom"] }
+sha2 = "0.9"
+snow = { version = "0.8.0", default-features = false }
+static_assertions = "1.1"
+variant_count = "1.1"
+x25519-dalek = "1.1"
+
+[dev-dependencies]
+hex = "0.4.3"
+hex-literal = "0.3.4"
+snow = { version = "0.8.0", features = ["default-resolver"] }
+
+[build-dependencies]
+prost-build = "0.9"

@@ -7,8 +7,8 @@ use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use std::fmt;
 
+use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use zkgroup::ZkGroupDeserializationFailure;
@@ -25,6 +25,7 @@ pub enum SignalJniError {
     DeviceTransfer(DeviceTransferError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
+    Cds2(Cds2Error),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     Jni(jni::errors::Error),
@@ -42,6 +43,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
+            SignalJniError::Cds2(e) => write!(f, "{}", e),
             SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
@@ -83,6 +85,12 @@ impl From<DeviceTransferError> for SignalJniError {
 impl From<HsmEnclaveError> for SignalJniError {
     fn from(e: HsmEnclaveError) -> SignalJniError {
         SignalJniError::HsmEnclave(e)
+    }
+}
+
+impl From<Cds2Error> for SignalJniError {
+    fn from(e: Cds2Error) -> SignalJniError {
+        SignalJniError::Cds2(e)
     }
 }
 

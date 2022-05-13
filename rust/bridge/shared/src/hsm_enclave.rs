@@ -5,16 +5,17 @@
 
 use std::panic::RefUnwindSafe;
 
-use ::hsm_enclave;
+use ::attest::client_connection;
+use ::attest::hsm_enclave;
 use libsignal_bridge_macros::*;
 
+use self::hsm_enclave::Result;
 use crate::support::*;
 use crate::*;
-use hsm_enclave::Result;
 
 pub enum HsmEnclaveClient {
     ConnectionEstablishment(hsm_enclave::ClientConnectionEstablishment),
-    Connection(hsm_enclave::ClientConnection),
+    Connection(client_connection::ClientConnection),
     InvalidConnectionState,
 }
 
@@ -62,14 +63,20 @@ impl HsmEnclaveClient {
 
     pub fn established_send(&mut self, plaintext_to_send: &[u8]) -> Result<Vec<u8>> {
         match self {
-            HsmEnclaveClient::Connection(c) => c.send(plaintext_to_send),
+            HsmEnclaveClient::Connection(c) => match c.send(plaintext_to_send) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(hsm_enclave::Error::HSMCommunicationError(e)),
+            },
             _ => Err(hsm_enclave::Error::InvalidBridgeStateError),
         }
     }
 
     pub fn established_recv(&mut self, received_ciphertext: &[u8]) -> Result<Vec<u8>> {
         match self {
-            HsmEnclaveClient::Connection(c) => c.recv(received_ciphertext),
+            HsmEnclaveClient::Connection(c) => match c.recv(received_ciphertext) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(hsm_enclave::Error::HSMCommunicationError(e)),
+            },
             _ => Err(hsm_enclave::Error::InvalidBridgeStateError),
         }
     }

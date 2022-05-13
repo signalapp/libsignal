@@ -32,6 +32,8 @@ pub mod protocol;
 #[cfg(any(feature = "jni", feature = "ffi"))]
 pub mod device_transfer;
 
-pub mod hsm_enclave;
+mod cds2;
+
+mod hsm_enclave;
 
 pub mod zkgroup;

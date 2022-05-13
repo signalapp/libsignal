@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use attest::cds2::Error as Cds2Error;
+use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use hsm_enclave::Error as HsmEnclaveError;
 use libc::c_char;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
@@ -36,6 +37,7 @@ pub enum SignalErrorCode {
 
     InvalidKey = 40,
     InvalidSignature = 41,
+    InvalidAttestationData = 42,
 
     FingerprintVersionMismatch = 51,
     FingerprintParsingError = 52,
@@ -100,6 +102,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidKey
             }
 
+            SignalFfiError::Cds2(Cds2Error::AttestationDataError { .. }) => {
+                SignalErrorCode::InvalidAttestationData
+            }
+
             SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_))
             | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
                 SignalErrorCode::SessionNotFound
@@ -130,6 +136,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
+            | SignalFfiError::Cds2(Cds2Error::DcapError(_))
+            | SignalFfiError::Cds2(Cds2Error::NoiseError(_))
+            | SignalFfiError::Cds2(Cds2Error::NoiseHandshakeError(_))
+            | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
                 SignalErrorCode::InvalidMessage
             }
@@ -144,6 +154,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
+            | SignalFfiError::Cds2(Cds2Error::InvalidBridgeStateError)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState
             }

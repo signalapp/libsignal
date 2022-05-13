@@ -1,8 +1,8 @@
 [workspace]
 members = [
+    "rust/attest",
     "rust/crypto",
     "rust/device-transfer",
-    "rust/hsm-enclave",
     "rust/poksho",
     "rust/protocol",
     "rust/zkgroup",

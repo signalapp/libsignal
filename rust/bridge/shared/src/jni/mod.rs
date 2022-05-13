@@ -8,8 +8,9 @@ extern crate jni_crate as jni;
 use jni::objects::{JThrowable, JValue};
 use jni::sys::jobject;
 
+use attest::cds2::Error as Cds2Error;
+use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use hsm_enclave::Error as HsmEnclaveError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::convert::{TryFrom, TryInto};
@@ -286,7 +287,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             unreachable!("already handled in prior match")
         }
 
-        SignalJniError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
+        SignalJniError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))
+        | SignalJniError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
             jni_class_name!(
                 org.signal
                     .libsignal
@@ -302,6 +304,20 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(java.lang.IllegalArgumentException)
         }
         SignalJniError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
+            jni_class_name!(java.lang.IllegalStateException)
+        }
+
+        SignalJniError::Cds2(Cds2Error::NoiseHandshakeError(_))
+        | SignalJniError::Cds2(Cds2Error::NoiseError(_)) => {
+            jni_class_name!(org.signal.libsignal.cds2.Cds2CommunicationFailureException)
+        }
+        SignalJniError::Cds2(Cds2Error::DcapError(_)) => {
+            jni_class_name!(org.signal.libsignal.cds2.DcapException)
+        }
+        SignalJniError::Cds2(Cds2Error::AttestationDataError { .. }) => {
+            jni_class_name!(org.signal.libsignal.cds2.AttestationDataException)
+        }
+        SignalJniError::Cds2(Cds2Error::InvalidBridgeStateError) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
 

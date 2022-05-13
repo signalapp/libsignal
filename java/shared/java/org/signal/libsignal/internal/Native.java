@@ -112,6 +112,13 @@ public final class Native {
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer);
 
+  public static native void Cds2ClientState_CompleteHandshake(long cli, byte[] handshakeReceived);
+  public static native void Cds2ClientState_Destroy(long handle);
+  public static native byte[] Cds2ClientState_EstablishedRecv(long cli, byte[] receivedCiphertext);
+  public static native byte[] Cds2ClientState_EstablishedSend(long cli, byte[] plaintextToSend);
+  public static native byte[] Cds2ClientState_InitialRequest(long obj);
+  public static native long Cds2ClientState_New(byte[] mrenclave, byte[] caCert, byte[] attestationMsg, long earliestValidTimestamp);
+
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);
   public static native long CryptographicHash_New(String algo);

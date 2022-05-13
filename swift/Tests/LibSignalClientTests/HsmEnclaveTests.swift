@@ -20,7 +20,7 @@ class HsmEnclaveTests: TestCaseBase {
             0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
         ])
         let hsmEnclaveClient = try! HsmEnclaveClient(publicKey: validKey.keyBytes, codeHashes: hashes)
-        let initialMessage = try! hsmEnclaveClient.initialRequest()
+        let initialMessage = hsmEnclaveClient.initialRequest()
         XCTAssertEqual(112, initialMessage.count)
     }
 

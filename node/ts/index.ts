@@ -1457,6 +1457,46 @@ export async function sealedSenderDecryptToUsmc(
   return UnidentifiedSenderMessageContent._fromNativeHandle(usmc);
 }
 
+export class Cds2Client {
+  readonly _nativeHandle: Native.Cds2ClientState;
+
+  private constructor(nativeHandle: Native.Cds2ClientState) {
+    this._nativeHandle = nativeHandle;
+  }
+
+  static new_NOT_FOR_PRODUCTION(
+    mrenclave: Buffer,
+    trustedCaCert: Buffer,
+    attestationMsg: Buffer,
+    earliestValidTimestamp: Date
+  ): Cds2Client {
+    return new Cds2Client(
+      Native.Cds2ClientState_New(
+        mrenclave,
+        trustedCaCert,
+        attestationMsg,
+        earliestValidTimestamp.getTime()
+      )
+    );
+  }
+
+  initialRequest(): Buffer {
+    return Native.Cds2ClientState_InitialRequest(this);
+  }
+
+  completeHandshake(buffer: Buffer): void {
+    return Native.Cds2ClientState_CompleteHandshake(this, buffer);
+  }
+
+  establishedSend(buffer: Buffer): Buffer {
+    return Native.Cds2ClientState_EstablishedSend(this, buffer);
+  }
+
+  establishedRecv(buffer: Buffer): Buffer {
+    return Native.Cds2ClientState_EstablishedRecv(this, buffer);
+  }
+}
+
 export class HsmEnclaveClient {
   readonly _nativeHandle: Native.HsmEnclaveClient;
 

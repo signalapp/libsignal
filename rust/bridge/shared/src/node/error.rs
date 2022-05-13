@@ -181,7 +181,9 @@ impl SignalNodeError for SignalProtocolError {
 
 impl SignalNodeError for device_transfer::Error {}
 
-impl SignalNodeError for hsm_enclave::Error {}
+impl SignalNodeError for attest::hsm_enclave::Error {}
+
+impl SignalNodeError for attest::cds2::Error {}
 
 impl SignalNodeError for signal_crypto::Error {}
 

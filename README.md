@@ -8,7 +8,7 @@ as a Java, Swift, or TypeScript library. The underlying implementations are writ
 - signal-crypto: Cryptographic primitives such as AES-GCM. We use [RustCrypto][]'s where we can
   but sometimes have differing needs.
 - device-transfer: Support logic for Signal's device-to-device transfer feature.
-- hsm-enclave: A wrapper around the [Noise protocol][] used to securely communicate with server-side [HSMs][].
+- attest: Functionality for remote attestation of [SGX enclaves][] and server-side [HSMs][].
 - zkgroup: Functionality for [zero-knowledge groups][] and related features available in Signal.
 - poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
 
@@ -24,6 +24,7 @@ non-bridge Rust APIs will be reflected in the version number on a best-effort ba
 [libsignal-metadata-java]: https://github.com/signalapp/libsignal-metadata-java
 [RustCrypto]: https://github.com/RustCrypto
 [Noise protocol]: http://noiseprotocol.org/
+[SGX enclaves]: https://www.intel.com/content/www/us/en/architecture-and-technology/software-guard-extensions.html
 [HSMs]: https://en.wikipedia.org/wiki/Hardware_security_module
 [zero-knowledge groups]: https://signal.org/blog/signal-private-group-system/
 [Android]: https://github.com/signalapp/Signal-Android

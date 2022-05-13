@@ -70,10 +70,12 @@ public class HsmEnclaveClient: NativeHandleOwner {
     }
 
     /// Initial request to send to HSM enclave, to begin handshake.
-    public func initialRequest() throws -> [UInt8] {
-        return try withNativeHandle { nativeHandle in
-            try invokeFnReturningArray {
-                signal_hsm_enclave_client_initial_request($0, $1, nativeHandle)
+    public func initialRequest() -> [UInt8] {
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_hsm_enclave_client_initial_request($0, $1, nativeHandle)
+                }
             }
         }
     }
