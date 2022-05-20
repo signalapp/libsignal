@@ -10,7 +10,6 @@ import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.PreKeyBundle;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
-import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import org.signal.libsignal.protocol.util.Pair;
@@ -459,27 +458,5 @@ public class SessionBuilderTest extends TestCase {
     }
   }
 
-  public void testNeedsPniSignature() throws InvalidKeyException, NoSessionException, UntrustedIdentityException {
-    SignalProtocolStore aliceStore          = new TestInMemorySignalProtocolStore();
-    SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
 
-    final SignalProtocolStore bobStore                 = new TestInMemorySignalProtocolStore();
-          ECKeyPair    bobPreKeyPair            = Curve.generateKeyPair();
-          ECKeyPair    bobSignedPreKeyPair      = Curve.generateKeyPair();
-          byte[]       bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                           bobSignedPreKeyPair.getPublicKey().serialize());
-
-    PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
-                                              31337, bobPreKeyPair.getPublicKey(),
-                                              22, bobSignedPreKeyPair.getPublicKey(),
-                                              bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
-
-    aliceSessionBuilder.process(bobPreKey);
-
-    SessionRecord session = aliceStore.loadSession(BOB_ADDRESS);
-    assertFalse(session.needsPniSignature());
-    session.setNeedsPniSignature(true);
-    assertTrue(session.needsPniSignature());
-  }
 }

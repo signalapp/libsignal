@@ -586,25 +586,6 @@ export class SessionRecord {
     return Native.SessionRecord_HasCurrentState(this);
   }
 
-  /**
-   * Returns true if this session was marked as needing a PNI signature and has not received a
-   * reply.
-   *
-   * Precondition: `this.hasCurrentState()`
-   */
-  needsPniSignature(): boolean {
-    return Native.SessionRecord_NeedsPniSignature(this);
-  }
-
-  /**
-   * Marks whether this session needs a PNI signature included in outgoing messages.
-   *
-   * Precondition: `this.hasCurrentState()`
-   */
-  setNeedsPniSignature(needsPniSignature: boolean): void {
-    Native.SessionRecord_SetNeedsPniSignature(this, needsPniSignature);
-  }
-
   currentRatchetKeyMatches(key: PublicKey): boolean {
     return Native.SessionRecord_CurrentRatchetKeyMatches(this, key);
   }
