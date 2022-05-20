@@ -232,7 +232,6 @@ impl SessionState {
             sender_ratchet_key_private: vec![],
             chain_key: Some(chain_key),
             message_keys: vec![],
-            needs_pni_signature: false,
         };
 
         self.session.receiver_chains.push(chain);
@@ -259,7 +258,6 @@ impl SessionState {
             sender_ratchet_key_private: sender.private_key.serialize().to_vec(),
             chain_key: Some(chain_key),
             message_keys: vec![],
-            needs_pni_signature: false,
         };
 
         self.session.sender_chain = Some(new_chain);
@@ -302,7 +300,6 @@ impl SessionState {
                 sender_ratchet_key_private: vec![],
                 chain_key: Some(chain_key),
                 message_keys: vec![],
-                needs_pni_signature: false,
             },
             Some(mut c) => {
                 c.chain_key = Some(chain_key);
@@ -448,26 +445,6 @@ impl SessionState {
 
     pub(crate) fn local_registration_id(&self) -> u32 {
         self.session.local_registration_id
-    }
-
-    pub(crate) fn needs_pni_signature(&self) -> bool {
-        self.session
-            .sender_chain
-            .as_ref()
-            .map_or(false, |chain| chain.needs_pni_signature)
-    }
-
-    pub(crate) fn set_needs_pni_signature(
-        &mut self,
-        needs_pni_signature: bool,
-    ) -> Result<(), InvalidSessionError> {
-        let chain = &mut self
-            .session
-            .sender_chain
-            .as_mut()
-            .ok_or(InvalidSessionError("missing sender chain"))?;
-        chain.needs_pni_signature = needs_pni_signature;
-        Ok(())
     }
 }
 
@@ -686,33 +663,6 @@ impl SessionRecord {
             Some(session) => Ok(session.has_sender_chain()?),
             None => Ok(false),
         }
-    }
-
-    pub fn needs_pni_signature(&self) -> Result<bool, SignalProtocolError> {
-        Ok(self
-            .session_state()
-            .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
-                    "needs_pni_signature",
-                    "No current session".into(),
-                )
-            })?
-            .needs_pni_signature())
-    }
-
-    pub fn set_needs_pni_signature(
-        &mut self,
-        needs_pni_signature: bool,
-    ) -> Result<(), SignalProtocolError> {
-        Ok(self
-            .session_state_mut()
-            .ok_or_else(|| {
-                SignalProtocolError::InvalidState(
-                    "set_needs_pni_signature",
-                    "No current session".into(),
-                )
-            })?
-            .set_needs_pni_signature(needs_pni_signature)?)
     }
 
     pub fn alice_base_key(&self) -> Result<&[u8], SignalProtocolError> {

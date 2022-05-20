@@ -27,10 +27,6 @@ message SessionStructure {
     }
 
     repeated MessageKey message_keys = 4;
-
-    // This is inside the sender chain so it automatically gets cleared on ratchet.
-    // It should never be set on a receiver chain.
-    bool needs_pni_signature = 5;
   }
 
   message PendingPreKey {

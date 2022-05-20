@@ -31,7 +31,6 @@ fn derive_keys(secret_input: &[u8]) -> (RootKey, ChainKey) {
 
 pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     parameters: &AliceSignalProtocolParameters,
-
     mut csprng: &mut R,
 ) -> Result<SessionState> {
     let local_identity = parameters.our_identity_key_pair().identity_key();
