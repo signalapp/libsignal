@@ -35,6 +35,7 @@ serde v1.0.136
 
 serde v1.0.136"
 
-if [[ $(cargo tree -d -e normal --workspace --locked --depth 0) != "${EXPECTED}" ]]; then
+if [[ "$(cargo tree -d -e normal --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
     cargo tree -d -e normal --workspace --locked
+    exit 1
 fi
