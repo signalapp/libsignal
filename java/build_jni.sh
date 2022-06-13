@@ -31,6 +31,9 @@ then
     copy_built_library target/release signal_jni $DESKTOP_LIB_DIR/
 elif [ "$1" = 'android' ];
 then
+    # Use small BoringSSL curve tables to reduce binary size on Android.
+    export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}"
+
     echo_then_run cargo ndk --target armv7-linux-androideabi --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/armeabi-v7a
     echo_then_run cargo ndk --target aarch64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/arm64-v8a
     echo_then_run cargo ndk --target i686-linux-android --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86

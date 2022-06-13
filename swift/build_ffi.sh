@@ -13,6 +13,7 @@ cd "${SCRIPT_DIR}"/..
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export CARGO_PROFILE_RELEASE_LTO=fat # use fat LTO to reduce binary size
+export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
 
 usage() {
   cat >&2 <<END
