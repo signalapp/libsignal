@@ -7,16 +7,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::crypto;
 use crate::crypto::receipt_struct::ReceiptStruct;
-use crate::ReceiptExpirationTime;
 use crate::ReceiptLevel;
 use crate::ReceiptSerialBytes;
 use crate::ReservedBytes;
+use crate::Timestamp;
 
 #[derive(Serialize, Deserialize)]
 pub struct ReceiptCredentialPresentation {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: crypto::proofs::ReceiptCredentialPresentationProof,
-    pub(crate) receipt_expiration_time: ReceiptExpirationTime,
+    pub(crate) receipt_expiration_time: Timestamp,
     pub(crate) receipt_level: ReceiptLevel,
     pub(crate) receipt_serial_bytes: ReceiptSerialBytes,
 }
@@ -30,7 +30,7 @@ impl ReceiptCredentialPresentation {
         }
     }
 
-    pub fn get_receipt_expiration_time(&self) -> ReceiptExpirationTime {
+    pub fn get_receipt_expiration_time(&self) -> Timestamp {
         self.receipt_expiration_time
     }
 

@@ -17,15 +17,22 @@ pub type NotarySignatureBytes = [u8; SIGNATURE_LEN];
 pub type GroupIdentifierBytes = [u8; GROUP_IDENTIFIER_LEN];
 pub type ProfileKeyVersionBytes = [u8; PROFILE_KEY_VERSION_LEN];
 pub type ProfileKeyVersionEncodedBytes = [u8; PROFILE_KEY_VERSION_ENCODED_LEN];
-pub type RedemptionTime = u32;
+
+/// Measured in days past the epoch.
+///
+/// Clients should check that this is within a day of the current date.
+pub type CoarseRedemptionTime = u32;
 
 // A random UUID that the receipt issuing server will blind authorize to redeem a given receipt
 // level within a certain time frame.
 pub type ReceiptSerialBytes = [u8; RECEIPT_SERIAL_LEN];
 
-// Seconds past the epoch; clients should only accept round multiples of 86400 within a couple of
-// days into the future.
-pub type ReceiptExpirationTime = u64;
+/// Measured in seconds past the epoch.
+///
+/// Clients should only accept round multiples of 86400 to avoid fingerprinting by the server.
+/// For expirations, the timestamp should be within a couple of days into the future;
+/// for redemption times, it should be within a day of the current date.
+pub type Timestamp = u64;
 
 // Used to tell the server handling receipt redemptions what to redeem the receipt for. Clients
 // should validate this matches their expectations.

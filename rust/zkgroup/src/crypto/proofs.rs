@@ -170,7 +170,7 @@ impl AuthCredentialIssuanceProof {
         key_pair: credentials::KeyPair<credentials::AuthCredential>,
         credential: credentials::AuthCredential,
         uid: uid_struct::UidStruct,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
         sho: &mut Sho,
     ) -> Self {
         let system = credentials::SystemParams::get_hardcoded();
@@ -219,7 +219,7 @@ impl AuthCredentialIssuanceProof {
         public_key: credentials::PublicKey,
         credential: credentials::AuthCredential,
         uid_struct: uid_struct::UidStruct,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let system = credentials::SystemParams::get_hardcoded();
 
@@ -630,7 +630,7 @@ impl ReceiptCredentialIssuanceProof {
         request_public_key: receipt_credential_request::PublicKey,
         request: receipt_credential_request::Ciphertext,
         blinded_credential: credentials::BlindedReceiptCredentialWithSecretNonce,
-        receipt_expiration_time: ReceiptExpirationTime,
+        receipt_expiration_time: Timestamp,
         receipt_level: ReceiptLevel,
         sho: &mut Sho,
     ) -> Self {
@@ -732,7 +732,7 @@ impl AuthCredentialPresentationProofV1 {
         credential: credentials::AuthCredential,
         uid: uid_struct::UidStruct,
         uid_ciphertext: uid_encryption::Ciphertext,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
         sho: &mut Sho,
     ) -> Self {
         let credentials_system = credentials::SystemParams::get_hardcoded();
@@ -809,7 +809,7 @@ impl AuthCredentialPresentationProofV1 {
         credentials_key_pair: credentials::KeyPair<credentials::AuthCredential>,
         uid_enc_public_key: uid_encryption::PublicKey,
         uid_ciphertext: uid_encryption::Ciphertext,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let enc_system = uid_encryption::SystemParams::get_hardcoded();
         let credentials_system = credentials::SystemParams::get_hardcoded();
@@ -884,7 +884,7 @@ impl AuthCredentialPresentationProofV2 {
         credential: credentials::AuthCredential,
         uid: uid_struct::UidStruct,
         uid_ciphertext: uid_encryption::Ciphertext,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
         sho: &mut Sho,
     ) -> Self {
         let credentials_system = credentials::SystemParams::get_hardcoded();
@@ -958,7 +958,7 @@ impl AuthCredentialPresentationProofV2 {
         credentials_key_pair: credentials::KeyPair<credentials::AuthCredential>,
         uid_enc_public_key: uid_encryption::PublicKey,
         uid_ciphertext: uid_encryption::Ciphertext,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let enc_system = uid_encryption::SystemParams::get_hardcoded();
         let credentials_system = credentials::SystemParams::get_hardcoded();

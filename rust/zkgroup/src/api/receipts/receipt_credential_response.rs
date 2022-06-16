@@ -11,7 +11,7 @@ use crate::crypto;
 #[derive(Serialize, Deserialize)]
 pub struct ReceiptCredentialResponse {
     pub(crate) reserved: ReservedBytes,
-    pub(crate) receipt_expiration_time: ReceiptExpirationTime,
+    pub(crate) receipt_expiration_time: Timestamp,
     pub(crate) receipt_level: ReceiptLevel,
     pub(crate) blinded_credential: crypto::credentials::BlindedReceiptCredential,
     pub(crate) proof: crypto::proofs::ReceiptCredentialIssuanceProof,

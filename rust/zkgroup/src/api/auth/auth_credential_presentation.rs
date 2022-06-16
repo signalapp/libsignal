@@ -16,7 +16,7 @@ pub struct AuthCredentialPresentationV1 {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: crypto::proofs::AuthCredentialPresentationProofV1,
     pub(crate) ciphertext: crypto::uid_encryption::Ciphertext,
-    pub(crate) redemption_time: RedemptionTime,
+    pub(crate) redemption_time: CoarseRedemptionTime,
 }
 
 impl AuthCredentialPresentationV1 {
@@ -27,7 +27,7 @@ impl AuthCredentialPresentationV1 {
         }
     }
 
-    pub fn get_redemption_time(&self) -> RedemptionTime {
+    pub fn get_redemption_time(&self) -> CoarseRedemptionTime {
         self.redemption_time
     }
 }
@@ -37,7 +37,7 @@ pub struct AuthCredentialPresentationV2 {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::AuthCredentialPresentationProofV2,
     pub(crate) ciphertext: crypto::uid_encryption::Ciphertext,
-    pub(crate) redemption_time: RedemptionTime,
+    pub(crate) redemption_time: CoarseRedemptionTime,
 }
 
 impl AuthCredentialPresentationV2 {
@@ -48,7 +48,7 @@ impl AuthCredentialPresentationV2 {
         }
     }
 
-    pub fn get_redemption_time(&self) -> RedemptionTime {
+    pub fn get_redemption_time(&self) -> CoarseRedemptionTime {
         self.redemption_time
     }
 }
@@ -88,7 +88,7 @@ impl AnyAuthCredentialPresentation {
         }
     }
 
-    pub fn get_redemption_time(&self) -> RedemptionTime {
+    pub fn get_redemption_time(&self) -> CoarseRedemptionTime {
         match self {
             AnyAuthCredentialPresentation::V1(presentation_v1) => {
                 presentation_v1.get_redemption_time()

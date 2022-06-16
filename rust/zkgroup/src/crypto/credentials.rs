@@ -201,7 +201,7 @@ pub struct BlindedReceiptCredential {
 
 pub(crate) fn convert_to_points_uid_struct(
     uid: uid_struct::UidStruct,
-    redemption_time: RedemptionTime,
+    redemption_time: CoarseRedemptionTime,
 ) -> Vec<RistrettoPoint> {
     let system = SystemParams::get_hardcoded();
     let redemption_time_scalar = encode_redemption_time(redemption_time);
@@ -386,7 +386,7 @@ impl KeyPair<AuthCredential> {
     pub fn create_auth_credential(
         &self,
         uid: uid_struct::UidStruct,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
         sho: &mut Sho,
     ) -> AuthCredential {
         let M = convert_to_points_uid_struct(uid, redemption_time);
@@ -454,7 +454,7 @@ impl KeyPair<ReceiptCredential> {
         &self,
         public_key: receipt_credential_request::PublicKey,
         ciphertext: receipt_credential_request::Ciphertext,
-        receipt_expiration_time: ReceiptExpirationTime,
+        receipt_expiration_time: Timestamp,
         receipt_level: ReceiptLevel,
         sho: &mut Sho,
     ) -> BlindedReceiptCredentialWithSecretNonce {

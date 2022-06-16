@@ -83,7 +83,7 @@ impl ServerSecretParams {
         &self,
         randomness: RandomnessBytes,
         uid_bytes: UidBytes,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
     ) -> api::auth::AuthCredentialResponse {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Random_ServerSecretParams_IssueAuthCredential",
@@ -394,7 +394,7 @@ impl ServerSecretParams {
         &self,
         randomness: RandomnessBytes,
         request: &api::receipts::ReceiptCredentialRequest,
-        receipt_expiration_time: ReceiptExpirationTime,
+        receipt_expiration_time: Timestamp,
         receipt_level: ReceiptLevel,
     ) -> api::receipts::ReceiptCredentialResponse {
         let mut sho = Sho::new(
@@ -455,7 +455,7 @@ impl ServerPublicParams {
     pub fn receive_auth_credential(
         &self,
         uid_bytes: UidBytes,
-        redemption_time: RedemptionTime,
+        redemption_time: CoarseRedemptionTime,
         response: &api::auth::AuthCredentialResponse,
     ) -> Result<api::auth::AuthCredential, ZkGroupVerificationFailure> {
         let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
