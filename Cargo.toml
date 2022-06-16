@@ -22,9 +22,4 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 [patch.crates-io]
 # Use our fork of curve25519-dalek for eventual zkgroup support.
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', branch = 'lizard2' }
-
-# Use a num-bigint-dig that supports -Zbuild-std.
-num-bigint-dig = { git = 'https://github.com/dignifiedquire/num-bigint', rev = '56576b592fea6341b7e1711a1629e4cc1bfc419c' }
-
-[profile.dev.package.num-bigint-dig]
-opt-level = 2 # too slow otherwise!
+boring = { git = 'https://github.com/signalapp/boring', branch = 'libsignal'}

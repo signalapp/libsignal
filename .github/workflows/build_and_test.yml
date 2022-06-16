@@ -8,6 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CBINDGEN_VERSION: 0.20.0
+  NDK_VERSION: 21.0.6113669
 
 jobs:
   changes:
@@ -85,7 +86,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
 
     - name: Install Rust
       run: rustup +stable target add i686-unknown-linux-gnu
@@ -126,7 +127,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -153,10 +154,8 @@ jobs:
       run: cargo test --all --verbose -- -Z unstable-options --include-ignored
 
     - name: Run tests (32-bit)
-      # Exclude device-transfer because OpenSSL, used for reference results,
-      # doesn't support the --target option.
       # Exclude signal-neon-futures because those tests run Node
-      run: cargo test --all --verbose --target i686-unknown-linux-gnu --exclude device-transfer --exclude signal-neon-futures -- -Z unstable-options --include-ignored
+      run: cargo test --all --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- -Z unstable-options --include-ignored
 
     - name: Build benches
       run: cargo build --benches --verbose
@@ -176,8 +175,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install NDK 21.0.6113669
-      run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;21.0.6113669"
+    - name: Install NDK
+      run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+
+    - name: Install boring cross-compile dependencies
+      run: sudo apt-get update && sudo apt-get install gcc-multilib
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -199,7 +201,7 @@ jobs:
     - run: ./gradlew build
       working-directory: java
       env:
-        ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk-bundle
+        ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/${{ env.NDK_VERSION }}
 
     - run: java/check_code_size.py
 
@@ -228,6 +230,12 @@ jobs:
       id: get-nvm-version
       shell: bash
       run: echo "::set-output name=node-version::$(cat .nvmrc)"
+
+    # install nasm compiler for boring
+    - name: Install nasm
+      if: startsWith(matrix.os, 'windows')
+      run: choco install nasm
+      shell: cmd
 
     - uses: actions/setup-node@v2
       with:
@@ -317,4 +325,3 @@ jobs:
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
         env:
           XCODE_XCCONFIG_FILE: swift/PodLibLint.xcconfig
-
