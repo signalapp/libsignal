@@ -8,6 +8,7 @@ import * as Native from '../../../Native';
 import ReceiptSerial from './ReceiptSerial';
 
 export default class ReceiptCredentialPresentation extends ByteArray {
+  private readonly __type?: never;
   static SIZE = 329;
 
   constructor(contents: Buffer) {

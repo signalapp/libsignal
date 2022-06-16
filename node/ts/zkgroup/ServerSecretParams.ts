@@ -12,6 +12,8 @@ import ServerPublicParams from './ServerPublicParams';
 import NotarySignature from './NotarySignature';
 
 export default class ServerSecretParams extends ByteArray {
+  private readonly __type?: never;
+
   static generate(): ServerSecretParams {
     const random = randomBytes(RANDOM_LENGTH);
 

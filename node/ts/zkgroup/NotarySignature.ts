@@ -6,6 +6,7 @@
 import ByteArray from './internal/ByteArray';
 
 export default class NotarySignature extends ByteArray {
+  private readonly __type?: never;
   static SIZE = 64;
 
   constructor(contents: Buffer) {

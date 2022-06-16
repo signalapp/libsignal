@@ -8,6 +8,8 @@ import * as Native from '../../../Native';
 import GroupIdentifier from './GroupIdentifier';
 
 export default class GroupPublicParams extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.GroupPublicParams_CheckValidContents);
   }

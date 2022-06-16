@@ -6,6 +6,7 @@
 import ByteArray from '../internal/ByteArray';
 
 export default class GroupIdentifier extends ByteArray {
+  private readonly __type?: never;
   static SIZE = 32;
 
   constructor(contents: Buffer) {

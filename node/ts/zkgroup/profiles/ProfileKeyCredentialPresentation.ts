@@ -9,6 +9,8 @@ import UuidCiphertext from '../groups/UuidCiphertext';
 import ProfileKeyCiphertext from '../groups/ProfileKeyCiphertext';
 
 export default class ProfileKeyCredentialPresentation extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.ProfileKeyCredentialPresentation_CheckValidContents);
   }

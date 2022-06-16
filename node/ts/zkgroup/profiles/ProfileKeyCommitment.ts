@@ -7,6 +7,8 @@ import ByteArray from '../internal/ByteArray';
 import * as Native from '../../../Native';
 
 export default class ProfileKeyCommitment extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.ProfileKeyCommitment_CheckValidContents);
   }

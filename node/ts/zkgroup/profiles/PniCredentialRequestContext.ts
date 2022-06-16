@@ -8,6 +8,8 @@ import * as Native from '../../../Native';
 import ProfileKeyCredentialRequest from './ProfileKeyCredentialRequest';
 
 export default class PniCredentialRequestContext extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.PniCredentialRequestContext_CheckValidContents);
   }

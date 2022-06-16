@@ -8,6 +8,8 @@ import * as Native from '../../../Native';
 import UuidCiphertext from '../groups/UuidCiphertext';
 
 export default class AuthCredentialPresentation extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.AuthCredentialPresentation_CheckValidContents);
   }

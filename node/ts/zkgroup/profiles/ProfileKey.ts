@@ -10,6 +10,7 @@ import ProfileKeyVersion from './ProfileKeyVersion';
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
 
 export default class ProfileKey extends ByteArray {
+  private readonly __type?: never;
   static SIZE = 32;
 
   constructor(contents: Buffer) {

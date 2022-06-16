@@ -5,7 +5,10 @@
 
 import ByteArray from '../internal/ByteArray';
 import * as Native from '../../../Native';
+
 export default class AuthCredentialResponse extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.AuthCredentialResponse_CheckValidContents);
   }

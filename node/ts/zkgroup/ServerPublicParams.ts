@@ -8,6 +8,8 @@ import * as Native from '../../Native';
 import NotarySignature from './NotarySignature';
 
 export default class ServerPublicParams extends ByteArray {
+  private readonly __type?: never;
+
   constructor(contents: Buffer) {
     super(contents, Native.ServerPublicParams_CheckValidContents);
   }

@@ -12,6 +12,8 @@ import GroupMasterKey from './GroupMasterKey';
 import GroupPublicParams from './GroupPublicParams';
 
 export default class GroupSecretParams extends ByteArray {
+  private readonly __type?: never;
+
   static generate(): GroupSecretParams {
     const random = randomBytes(RANDOM_LENGTH);
 
