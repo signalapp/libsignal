@@ -115,7 +115,6 @@ pub struct ExpiringProfileKeyCredentialPresentationProof {
     C_y4: RistrettoPoint,
     C_y5: RistrettoPoint,
     C_V: RistrettoPoint,
-    C_z: RistrettoPoint,
     poksho_proof: Vec<u8>,
 }
 
@@ -1602,7 +1601,6 @@ impl ProfileKeyCredentialPresentationProofV2 {
 impl ExpiringProfileKeyCredentialPresentationProof {
     pub fn get_poksho_statement() -> poksho::Statement {
         let mut st = poksho::Statement::new();
-        st.add("C_z", &[("z", "G_z")]);
         st.add("Z", &[("z", "I")]);
         st.add("C_x1", &[("t", "C_x0"), ("z0", "G_x0"), ("z", "G_x1")]);
         st.add(
@@ -1652,7 +1650,6 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         let C_x0 = z * credentials_system.G_x0 + credential.U;
         let C_V = z * credentials_system.G_V + credential.V;
         let C_x1 = z * credentials_system.G_x1 + credential.t * credential.U;
-        let C_z = z * credentials_system.G_z;
 
         let z0 = -z * credential.t;
         let z1 = -z * uid_enc_key_pair.a1;
@@ -1675,8 +1672,6 @@ impl ExpiringProfileKeyCredentialPresentationProof {
 
         // Points listed in order of stmts for debugging
         let mut point_args = poksho::PointArgs::new();
-        point_args.add("C_z", C_z);
-        point_args.add("G_z", credentials_system.G_z);
         point_args.add("Z", Z);
         point_args.add("I", I);
 
@@ -1724,7 +1719,6 @@ impl ExpiringProfileKeyCredentialPresentationProof {
             C_x0,
             C_x1,
             C_V,
-            C_z,
             poksho_proof,
         }
     }
@@ -1751,12 +1745,11 @@ impl ExpiringProfileKeyCredentialPresentationProof {
             C_y4,
             C_y5,
             C_V,
-            C_z,
             poksho_proof,
         } = self;
 
-        let (C_x0, C_x1, C_y1, C_y2, C_y3, C_y4, C_V, C_z) =
-            (*C_x0, *C_x1, *C_y1, *C_y2, *C_y3, *C_y4, *C_V, *C_z);
+        let (C_x0, C_x1, C_y1, C_y2, C_y3, C_y4, C_V) =
+            (*C_x0, *C_x1, *C_y1, *C_y2, *C_y3, *C_y4, *C_V);
 
         let credentials::KeyPair {
             W,
@@ -1783,8 +1776,6 @@ impl ExpiringProfileKeyCredentialPresentationProof {
 
         // Points listed in order of stmts for debugging
         let mut point_args = poksho::PointArgs::new();
-        point_args.add("C_z", C_z);
-        point_args.add("G_z", credentials_system.G_z);
         point_args.add("Z", Z);
         point_args.add("I", I);
         point_args.add("C_x1", C_x1);

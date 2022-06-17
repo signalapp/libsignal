@@ -642,7 +642,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
         ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
         serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
         throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 2");
-    } catch (InvalidInputException e) {}
+    } catch (VerificationFailedException e) {}
 
     try {
         byte[] temp = presentation.serialize();
