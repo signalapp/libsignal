@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -258,6 +258,20 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
             return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
         }
         Ok(Self::from_millis(value as u64))
+    }
+}
+
+/// Converts non-negative numbers up to [`Number.MAX_SAFE_INTEGER`][].
+///
+/// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
+    type ArgType = JsNumber;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let value = foreign.value(cx);
+        if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
+            return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
+        }
+        Ok(Self::from_seconds(value as u64))
     }
 }
 
@@ -543,6 +557,23 @@ impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
             cx.throw_range_error(format!(
                 "precision loss during conversion of {} to f64",
                 self.as_millis()
+            ))?;
+        }
+        Ok(cx.number(result))
+    }
+}
+
+/// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
+///
+/// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+impl<'a> ResultTypeInfo<'a> for crate::zkgroup::Timestamp {
+    type ResultType = JsNumber;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        let result = self.as_seconds() as f64;
+        if result > MAX_SAFE_JS_INTEGER {
+            cx.throw_range_error(format!(
+                "precision loss during conversion of {} to f64",
+                self.as_seconds()
             ))?;
         }
         Ok(cx.number(result))

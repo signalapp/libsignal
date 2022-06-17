@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -299,6 +299,117 @@ describe('ZKGroup', () => {
     assertArrayEquals(pkvB.serialize(), pkvC.serialize());
   });
 
+  it('testExpiringProfileKeyIntegration', () => {
+    const uuid = toUUID(TEST_ARRAY_16);
+
+    // Generate keys (client's are per-group, server's are not)
+    // ---
+
+    // SERVER
+    const serverSecretParams = ServerSecretParams.generateWithRandom(
+      TEST_ARRAY_32
+    );
+    const serverPublicParams = serverSecretParams.getPublicParams();
+    const serverZkProfile = new ServerZkProfileOperations(serverSecretParams);
+
+    // CLIENT
+    const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+    const groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
+
+    const groupPublicParams = groupSecretParams.getPublicParams();
+    const clientZkProfileCipher = new ClientZkProfileOperations(
+      serverPublicParams
+    );
+
+    const profileKey = new ProfileKey(TEST_ARRAY_32_1);
+    const profileKeyCommitment = profileKey.getCommitment(uuid);
+
+    // Create context and request
+    const context = clientZkProfileCipher.createProfileKeyCredentialRequestContextWithRandom(
+      TEST_ARRAY_32_3,
+      uuid,
+      profileKey
+    );
+    const request = context.getRequest();
+
+    // SERVER
+    const now = Math.floor(Date.now() / 1000);
+    const startOfDay = now - (now % 86400);
+    const expiration = startOfDay + 5 * 86400;
+    const response = serverZkProfile.issueExpiringProfileKeyCredentialWithRandom(
+      TEST_ARRAY_32_4,
+      request,
+      uuid,
+      profileKeyCommitment,
+      expiration
+    );
+
+    // CLIENT
+    // Gets stored profile credential
+    const clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
+    const profileKeyCredential = clientZkProfileCipher.receiveExpiringProfileKeyCredential(
+      context,
+      response
+    );
+
+    // Create encrypted UID and profile key
+    const uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
+    const plaintext = clientZkGroupCipher.decryptUuid(uuidCiphertext);
+    assert.strictEqual(plaintext, uuid);
+
+    const profileKeyCiphertext = clientZkGroupCipher.encryptProfileKey(
+      profileKey,
+      uuid
+    );
+    const decryptedProfileKey = clientZkGroupCipher.decryptProfileKey(
+      profileKeyCiphertext,
+      uuid
+    );
+    assertArrayEquals(profileKey.serialize(), decryptedProfileKey.serialize());
+    assert.deepEqual(
+      profileKeyCredential.getExpirationTime(),
+      new Date(expiration * 1000)
+    );
+
+    const presentation = clientZkProfileCipher.createExpiringProfileKeyCredentialPresentationWithRandom(
+      TEST_ARRAY_32_5,
+      groupSecretParams,
+      profileKeyCredential
+    );
+
+    // Verify presentation
+    serverZkProfile.verifyProfileKeyCredentialPresentation(
+      groupPublicParams,
+      presentation
+    );
+    serverZkProfile.verifyProfileKeyCredentialPresentation(
+      groupPublicParams,
+      presentation,
+      new Date(expiration * 1000 - 5)
+    );
+    const uuidCiphertextRecv = presentation.getUuidCiphertext();
+    assertArrayEquals(
+      uuidCiphertext.serialize(),
+      uuidCiphertextRecv.serialize()
+    );
+
+    // Test expiration
+    assert.throws(() =>
+      serverZkProfile.verifyProfileKeyCredentialPresentation(
+        groupPublicParams,
+        presentation,
+        new Date(expiration * 1000)
+      )
+    );
+    assert.throws(() =>
+      serverZkProfile.verifyProfileKeyCredentialPresentation(
+        groupPublicParams,
+        presentation,
+        new Date(expiration * 1000 + 5)
+      )
+    );
+  });
+
   it('testPniIntegration', () => {
     const aci = toUUID(TEST_ARRAY_16);
     const pni = toUUID(TEST_ARRAY_16_1);
@@ -488,7 +599,7 @@ describe('ZKGroup', () => {
     const request = context.getRequest();
 
     // issuance server
-    const receiptExpirationTime = BigInt('31337');
+    const receiptExpirationTime = 31337;
     const receiptLevel = BigInt('3');
     const response = serverOps.issueReceiptCredential(
       request,

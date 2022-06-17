@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -28,6 +28,8 @@ import org.signal.libsignal.zkgroup.groups.GroupSecretParams;
 import org.signal.libsignal.zkgroup.groups.ProfileKeyCiphertext;
 import org.signal.libsignal.zkgroup.groups.UuidCiphertext;
 import org.signal.libsignal.zkgroup.profiles.ClientZkProfileOperations;
+import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredential;
+import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredentialResponse;
 import org.signal.libsignal.zkgroup.profiles.PniCredential;
 import org.signal.libsignal.zkgroup.profiles.PniCredentialPresentation;
 import org.signal.libsignal.zkgroup.profiles.PniCredentialRequestContext;
@@ -42,7 +44,8 @@ import org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialResponse;
 import org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion;
 import org.signal.libsignal.zkgroup.profiles.ServerZkProfileOperations;
 
-import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -403,7 +406,6 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
   public void testProfileKeyIntegration() throws VerificationFailedException, InvalidInputException, UnsupportedEncodingException {
 
     UUID uuid           = TEST_UUID;
-    int  redemptionTime = 1234567;
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -547,6 +549,119 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
   }
 
   @Test
+  public void testExpiringProfileKeyIntegration() throws VerificationFailedException, InvalidInputException, UnsupportedEncodingException {
+
+    UUID uuid           = TEST_UUID;
+
+    // Generate keys (client's are per-group, server's are not)
+    // ---
+
+    // SERVER
+    ServerSecretParams serverSecretParams = ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
+    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+    ServerZkProfileOperations serverZkProfile    = new ServerZkProfileOperations(serverSecretParams);
+
+    // CLIENT
+    GroupMasterKey    masterKey         = new GroupMasterKey(TEST_ARRAY_32_1);
+    GroupSecretParams groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
+
+    assertArrayEquals(groupSecretParams.getMasterKey().serialize(), masterKey.serialize());
+
+    GroupPublicParams     groupPublicParams     = groupSecretParams.getPublicParams();
+    ClientZkProfileOperations clientZkProfileCipher = new ClientZkProfileOperations(serverPublicParams);
+
+    ProfileKey           profileKey             = new ProfileKey(TEST_ARRAY_32_1);
+    ProfileKeyCommitment profileKeyCommitment = profileKey.getCommitment(uuid);
+
+    // Create context and request
+    ProfileKeyCredentialRequestContext context = clientZkProfileCipher.createProfileKeyCredentialRequestContext(createSecureRandom(TEST_ARRAY_32_3), uuid, profileKey);
+    ProfileKeyCredentialRequest        request = context.getRequest();
+
+    // SERVER 
+    Instant expiration = Instant.now().truncatedTo(ChronoUnit.DAYS).plus(5, ChronoUnit.DAYS);
+    ExpiringProfileKeyCredentialResponse response = serverZkProfile.issueExpiringProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), request, uuid, profileKeyCommitment, expiration);
+
+    // SERVER - verification test
+    {
+        byte[] temp = request.serialize();
+        temp[4]++;  // We need a bad presentation that passes deserialization, this seems to work
+        ProfileKeyCredentialRequest badRequest = new ProfileKeyCredentialRequest(temp);
+        try {
+            serverZkProfile.issueExpiringProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), badRequest, uuid, profileKeyCommitment, expiration);
+            throw new AssertionError("Failed to catch invalid ProfileKeyCredentialRequest");
+        } catch (VerificationFailedException e) {}
+    }
+   
+    // CLIENT
+    // Gets stored profile credential
+    ClientZkGroupCipher          clientZkGroupCipher  = new ClientZkGroupCipher(groupSecretParams);
+    ExpiringProfileKeyCredential profileKeyCredential = clientZkProfileCipher.receiveExpiringProfileKeyCredential(context, response);
+
+    // Create encrypted UID and profile key
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
+    UUID           plaintext      = clientZkGroupCipher.decryptUuid(uuidCiphertext);
+    assertEquals(plaintext, uuid);
+
+    ProfileKeyCiphertext profileKeyCiphertext   = clientZkGroupCipher.encryptProfileKey(profileKey, uuid);
+    ProfileKey           decryptedProfileKey    = clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext, uuid);
+    assertArrayEquals(profileKey.serialize(), decryptedProfileKey.serialize());
+
+    assertEquals(expiration, profileKeyCredential.getExpirationTime());
+
+    ProfileKeyCredentialPresentation presentation = clientZkProfileCipher.createProfileKeyCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, profileKeyCredential);
+    assertEquals(presentation.serialize()[0], 2); // Check V3
+    assertEquals(presentation.getVersion(), ProfileKeyCredentialPresentation.Version.V3);
+
+    // Verify presentation
+    serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentation);
+    serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentation, expiration.minusSeconds(5));
+    UuidCiphertext uuidCiphertextRecv = presentation.getUuidCiphertext();
+    assertArrayEquals(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize());
+
+    try {
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentation, expiration);
+        throw new AssertionError("credential expired 1");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentation, expiration.plusSeconds(5));
+        throw new AssertionError("credential expired 2");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[2] += 8;  // We need a bad presentation that passes deserializaton, this seems to work
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 1");
+    } catch (VerificationFailedException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 0; // This interprets a V3 as V1, so should fail
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 2");
+    } catch (InvalidInputException e) {}
+
+    try {
+        byte[] temp = presentation.serialize();
+        temp[0] = 40; // This interprets a V3 as a non-existent version, so should fail
+        ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(temp);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 3");
+    } catch (InvalidInputException e) {}
+
+    // Test that we can encode as a V1 presentation, even though it won't verify.
+    ProfileKeyCredentialPresentation v1Presentation = new ProfileKeyCredentialPresentation(presentation.getStructurallyValidV1PresentationBytes());
+    assertEquals(v1Presentation.getUuidCiphertext(), presentation.getUuidCiphertext());
+    assertEquals(v1Presentation.getProfileKeyCiphertext(), presentation.getProfileKeyCiphertext());
+    try {
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, v1Presentation);
+    } catch (VerificationFailedException e) {}
+  }
+
+  @Test
   public void testPniIntegration() throws VerificationFailedException, InvalidInputException, UnsupportedEncodingException {
 
     UUID aci            = TEST_UUID;
@@ -615,7 +730,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
 
     try {
         byte[] temp = presentation.serialize();
-        temp[0] = 2; // This interprets a V2 as a non-existent version, so should fail
+        temp[0] = 40; // This interprets a V2 as a non-existent version, so should fail
         PniCredentialPresentation presentationTemp = new PniCredentialPresentation(temp);
         serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
         throw new AssertionError("verifyPniCredentialPresentation should fail 3");

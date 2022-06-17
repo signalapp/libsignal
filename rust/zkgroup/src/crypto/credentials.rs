@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -14,6 +14,7 @@ use crate::common::array_utils::{ArrayLike, OneBased};
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::receipt_struct::ReceiptStruct;
+use crate::crypto::timestamp_struct::TimestampStruct;
 use crate::crypto::uid_struct;
 use crate::crypto::{profile_key_credential_request, receipt_credential_request, receipt_struct};
 use crate::{
@@ -39,6 +40,7 @@ pub struct SystemParams {
     pub(crate) G_m2: RistrettoPoint,
     pub(crate) G_m3: RistrettoPoint,
     pub(crate) G_m4: RistrettoPoint,
+    pub(crate) G_m5: RistrettoPoint,
     pub(crate) G_V: RistrettoPoint,
     pub(crate) G_z: RistrettoPoint,
 }
@@ -68,6 +70,9 @@ impl AttrScalars for ProfileKeyCredential {
     // Store four scalars for backwards compatibility.
     type Storage = [Scalar; 4];
     const NUM_ATTRS: usize = NUM_PROFILE_KEY_CRED_ATTRIBUTES;
+}
+impl AttrScalars for ExpiringProfileKeyCredential {
+    type Storage = [Scalar; 5];
 }
 impl AttrScalars for ReceiptCredential {
     // Store four scalars for backwards compatibility.
@@ -135,6 +140,7 @@ pub struct ProfileKeyCredential {
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
+
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlindedProfileKeyCredentialWithSecretNonce {
     pub(crate) rprime: Scalar,
@@ -146,6 +152,30 @@ pub struct BlindedProfileKeyCredentialWithSecretNonce {
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlindedProfileKeyCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) S1: RistrettoPoint,
+    pub(crate) S2: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExpiringProfileKeyCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) V: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlindedExpiringProfileKeyCredentialWithSecretNonce {
+    pub(crate) rprime: Scalar,
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) S1: RistrettoPoint,
+    pub(crate) S2: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlindedExpiringProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) S1: RistrettoPoint,
@@ -256,6 +286,8 @@ impl SystemParams {
         let G_y5 = sho.get_point();
         let G_y6 = sho.get_point();
 
+        let G_m5 = sho.get_point();
+
         SystemParams {
             G_w,
             G_wprime,
@@ -266,6 +298,7 @@ impl SystemParams {
             G_m2,
             G_m3,
             G_m4,
+            G_m5,
             G_V,
             G_z,
         }
@@ -305,11 +338,14 @@ impl SystemParams {
         0xbb, 0xd, 0xea, 0x65, 0x53, 0x12, 0x52, 0xac, 0x70, 0xd5, 0x8a, 0x4a, 0x8, 0x10, 0xd6,
         0x82, 0xa0, 0xe7, 0x9, 0xc9, 0x22, 0x7b, 0x30, 0xef, 0x6c, 0x8e, 0x17, 0xc5, 0x91, 0x5d,
         0x52, 0x72, 0x21, 0xbb, 0x0, 0xda, 0x81, 0x75, 0xcd, 0x64, 0x89, 0xaa, 0x8a, 0xa4, 0x92,
-        0xa5, 0x0, 0xf9, 0xab, 0xee, 0x56, 0x90, 0xb9, 0xdf, 0xca, 0x88, 0x55, 0x4, 0xb6, 0x16,
-        0xc7, 0x6, 0xc8, 0xc, 0x75, 0x6c, 0x11, 0xa3, 0x1, 0x6b, 0xbf, 0xb6, 0x9, 0x77, 0xf4, 0x64,
-        0x8b, 0x5f, 0x23, 0x95, 0xa4, 0xb4, 0x28, 0xb7, 0x21, 0x19, 0x40, 0x81, 0x3e, 0x3a, 0xfd,
-        0xe2, 0xb8, 0x7a, 0xa9, 0xc2, 0xc3, 0x7b, 0xf7, 0x16, 0xe2, 0x57, 0x8f, 0x95, 0x65, 0x6d,
-        0xf1, 0x2c, 0x2f, 0xb6, 0xf5, 0xd0, 0x63, 0x1f, 0x6f, 0x71, 0xe2, 0xc3, 0x19, 0x3f, 0x6d,
+        0xa5, 0x0, 0xf9, 0xab, 0xee, 0x56, 0x90, 0xb9, 0xdf, 0xca, 0x88, 0x55, 0xdc, 0xb, 0xd0,
+        0x2a, 0x7f, 0x27, 0x7a, 0xdd, 0x24, 0xf, 0x63, 0x9a, 0xc1, 0x68, 0x1, 0xe8, 0x15, 0x74,
+        0xaf, 0xb4, 0x68, 0x3e, 0xdf, 0xf6, 0x3b, 0x9a, 0x1, 0xe9, 0x3d, 0xbd, 0x86, 0x7a, 0x4,
+        0xb6, 0x16, 0xc7, 0x6, 0xc8, 0xc, 0x75, 0x6c, 0x11, 0xa3, 0x1, 0x6b, 0xbf, 0xb6, 0x9, 0x77,
+        0xf4, 0x64, 0x8b, 0x5f, 0x23, 0x95, 0xa4, 0xb4, 0x28, 0xb7, 0x21, 0x19, 0x40, 0x81, 0x3e,
+        0x3a, 0xfd, 0xe2, 0xb8, 0x7a, 0xa9, 0xc2, 0xc3, 0x7b, 0xf7, 0x16, 0xe2, 0x57, 0x8f, 0x95,
+        0x65, 0x6d, 0xf1, 0x2c, 0x2f, 0xb6, 0xf5, 0xd0, 0x63, 0x1f, 0x6f, 0x71, 0xe2, 0xc3, 0x19,
+        0x3f, 0x6d,
     ];
 }
 
@@ -421,6 +457,39 @@ impl KeyPair<ProfileKeyCredential> {
     }
 }
 
+impl KeyPair<ExpiringProfileKeyCredential> {
+    pub fn create_blinded_expiring_profile_key_credential(
+        &self,
+        uid: uid_struct::UidStruct,
+        public_key: profile_key_credential_request::PublicKey,
+        ciphertext: profile_key_credential_request::Ciphertext,
+        credential_expiration_time: Timestamp,
+        sho: &mut Sho,
+    ) -> BlindedExpiringProfileKeyCredentialWithSecretNonce {
+        let M = [uid.M1, uid.M2];
+
+        let (t, U, Vprime) = self.credential_core(&M, sho);
+
+        let params = SystemParams::get_hardcoded();
+        let m5 = TimestampStruct::calc_m_from(credential_expiration_time);
+        let M5 = m5 * params.G_m5;
+        let Vprime_with_expiration = Vprime + (self.y[5] * M5);
+
+        let rprime = sho.get_scalar();
+        let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
+        let R2 = rprime * public_key.Y + Vprime_with_expiration;
+        let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
+        let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
+        BlindedExpiringProfileKeyCredentialWithSecretNonce {
+            rprime,
+            t,
+            U,
+            S1,
+            S2,
+        }
+    }
+}
+
 impl KeyPair<PniCredential> {
     pub fn create_blinded_pni_credential(
         &self,
@@ -481,6 +550,19 @@ impl KeyPair<ReceiptCredential> {
 impl BlindedProfileKeyCredentialWithSecretNonce {
     pub fn get_blinded_profile_key_credential(&self) -> BlindedProfileKeyCredential {
         BlindedProfileKeyCredential {
+            t: self.t,
+            U: self.U,
+            S1: self.S1,
+            S2: self.S2,
+        }
+    }
+}
+
+impl BlindedExpiringProfileKeyCredentialWithSecretNonce {
+    pub fn get_blinded_expiring_profile_key_credential(
+        &self,
+    ) -> BlindedExpiringProfileKeyCredential {
+        BlindedExpiringProfileKeyCredential {
             t: self.t,
             U: self.U,
             S1: self.S1,

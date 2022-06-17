@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -282,6 +282,68 @@ class ZKGroupTests: TestCaseBase {
     let pkvB = try profileKey.getProfileKeyVersion(uuid: uuid)
     let pkvC = try ProfileKeyVersion(contents: pkvB.serialize())
     XCTAssertEqual(pkvB.serialize(), pkvC.serialize())
+  }
+
+  func testExpiringProfileKeyIntegration() throws {
+
+    let uuid: UUID             = TEST_ARRAY_16
+    // Generate keys (client's are per-group, server's are not)
+    // ---
+
+    // SERVER
+    let serverSecretParams = try ServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = try serverSecretParams.getPublicParams()
+    let serverZkProfile    = ServerZkProfileOperations(serverSecretParams: serverSecretParams)
+
+    // CLIENT
+    let masterKey         = try GroupMasterKey(contents: TEST_ARRAY_32_1)
+    let groupSecretParams = try GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+    XCTAssertEqual(try groupSecretParams.getMasterKey().serialize(), masterKey.serialize())
+
+    let groupPublicParams = try groupSecretParams.getPublicParams()
+    let clientZkProfileCipher = ClientZkProfileOperations(serverPublicParams: serverPublicParams)
+
+    let profileKey  = try ProfileKey(contents: TEST_ARRAY_32_1)
+    let profileKeyCommitment = try profileKey.getCommitment(uuid: uuid)
+
+    // Create context and request
+    let context = try clientZkProfileCipher.createProfileKeyCredentialRequestContext(randomness: TEST_ARRAY_32_3, uuid: uuid, profileKey: profileKey)
+    let request = try context.getRequest()
+
+    // SERVER
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % 86400)
+    let expiration = startOfDay + 5 * 86400
+    let response = try serverZkProfile.issueExpiringProfileKeyCredential(randomness: TEST_ARRAY_32_4, profileKeyCredentialRequest: request, uuid: uuid, profileKeyCommitment: profileKeyCommitment, expiration: expiration)
+
+    // CLIENT
+    // Gets stored profile credential
+    let clientZkGroupCipher  = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
+    let profileKeyCredential = try clientZkProfileCipher.receiveExpiringProfileKeyCredential(profileKeyCredentialRequestContext: context, profileKeyCredentialResponse: response)
+
+    // Create encrypted UID and profile key
+    let uuidCiphertext = try clientZkGroupCipher.encryptUuid(uuid: uuid)
+    let plaintext      = try clientZkGroupCipher.decryptUuid(uuidCiphertext: uuidCiphertext)
+
+    XCTAssertEqual(plaintext, uuid)
+
+    let profileKeyCiphertext   = try clientZkGroupCipher.encryptProfileKey(profileKey: profileKey, uuid: uuid)
+    let decryptedProfileKey    = try clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext: profileKeyCiphertext, uuid: uuid)
+    XCTAssertEqual(profileKey.serialize(), decryptedProfileKey.serialize())
+
+    XCTAssertEqual(Date(timeIntervalSince1970: TimeInterval(expiration)), profileKeyCredential.expirationTime)
+
+    let presentation = try clientZkProfileCipher.createProfileKeyCredentialPresentation(randomness: TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, profileKeyCredential: profileKeyCredential)
+
+    // Verify presentation
+    try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation)
+    try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(expiration - 5)))
+    XCTAssertThrowsError(try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(expiration))))
+    XCTAssertThrowsError(try serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams: groupPublicParams, profileKeyCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(expiration + 5))))
+
+    let uuidCiphertextRecv = try presentation.getUuidCiphertext()
+    XCTAssertEqual(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize())
   }
 
   func testPniIntegration() throws {

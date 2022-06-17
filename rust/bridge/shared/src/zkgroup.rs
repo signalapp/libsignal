@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -50,6 +50,8 @@ macro_rules! fixed_length_serializable {
 
 fixed_length_serializable!(AuthCredential);
 fixed_length_serializable!(AuthCredentialResponse);
+fixed_length_serializable!(ExpiringProfileKeyCredential);
+fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
 fixed_length_serializable!(GroupMasterKey);
 fixed_length_serializable!(GroupPublicParams);
 fixed_length_serializable!(GroupSecretParams);
@@ -71,6 +73,25 @@ fixed_length_serializable!(ReceiptCredentialResponse);
 fixed_length_serializable!(ServerPublicParams);
 fixed_length_serializable!(ServerSecretParams);
 fixed_length_serializable!(UuidCiphertext);
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Timestamp(u64);
+
+impl Timestamp {
+    pub(crate) fn from_seconds(seconds: u64) -> Self {
+        Self(seconds)
+    }
+
+    pub(crate) fn as_seconds(self) -> u64 {
+        self.0
+    }
+}
+
+impl From<u64> for Timestamp {
+    fn from(seconds: u64) -> Self {
+        Self::from_seconds(seconds)
+    }
+}
 
 #[bridge_fn]
 fn ProfileKey_GetCommitment(
@@ -273,6 +294,22 @@ fn ServerPublicParams_ReceiveProfileKeyCredential(
 }
 
 #[bridge_fn]
+fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
+    server_public_params: Serialized<ServerPublicParams>,
+    request_context: Serialized<ProfileKeyCredentialRequestContext>,
+    response: Serialized<ExpiringProfileKeyCredentialResponse>,
+    current_time_in_seconds: Timestamp,
+) -> Result<Serialized<ExpiringProfileKeyCredential>, ZkGroupVerificationFailure> {
+    Ok(server_public_params
+        .receive_expiring_profile_key_credential(
+            &request_context,
+            &response,
+            current_time_in_seconds.as_seconds(),
+        )?
+        .into())
+}
+
+#[bridge_fn]
 fn ServerPublicParams_ReceivePniCredential(
     server_public_params: Serialized<ServerPublicParams>,
     request_context: Serialized<PniCredentialRequestContext>,
@@ -292,6 +329,23 @@ fn ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
 ) -> Vec<u8> {
     bincode::serialize(
         &server_public_params.create_profile_key_credential_presentation(
+            *randomness,
+            group_secret_params.into_inner(),
+            profile_key_credential.into_inner(),
+        ),
+    )
+    .expect("can serialize")
+}
+
+#[bridge_fn_buffer]
+fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
+    server_public_params: Serialized<ServerPublicParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    group_secret_params: Serialized<GroupSecretParams>,
+    profile_key_credential: Serialized<ExpiringProfileKeyCredential>,
+) -> Vec<u8> {
+    bincode::serialize(
+        &server_public_params.create_expiring_profile_key_credential_presentation(
             *randomness,
             group_secret_params.into_inner(),
             profile_key_credential.into_inner(),
@@ -391,6 +445,26 @@ fn ServerSecretParams_IssueProfileKeyCredentialDeterministic(
 }
 
 #[bridge_fn]
+fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
+    server_secret_params: Serialized<ServerSecretParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    request: Serialized<ProfileKeyCredentialRequest>,
+    uuid: Uuid,
+    commitment: Serialized<ProfileKeyCommitment>,
+    expiration_in_seconds: Timestamp,
+) -> Result<Serialized<ExpiringProfileKeyCredentialResponse>, ZkGroupVerificationFailure> {
+    Ok(server_secret_params
+        .issue_expiring_profile_key_credential(
+            *randomness,
+            &request,
+            *uuid.as_bytes(),
+            commitment.into_inner(),
+            expiration_in_seconds.as_seconds(),
+        )?
+        .into())
+}
+
+#[bridge_fn]
 fn ServerSecretParams_IssuePniCredentialDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -415,11 +489,15 @@ fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
     group_public_params: Serialized<GroupPublicParams>,
     presentation_bytes: &[u8],
+    current_time_in_seconds: Timestamp,
 ) -> Result<(), ZkGroupVerificationFailure> {
     let presentation = AnyProfileKeyCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
-    server_secret_params
-        .verify_profile_key_credential_presentation(group_public_params.into_inner(), &presentation)
+    server_secret_params.verify_profile_key_credential_presentation(
+        group_public_params.into_inner(),
+        &presentation,
+        current_time_in_seconds.as_seconds(),
+    )
 }
 
 #[bridge_fn_void]
@@ -439,14 +517,14 @@ fn ServerSecretParams_IssueReceiptCredentialDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
     request: Serialized<ReceiptCredentialRequest>,
-    receipt_expiration_time: u64,
+    receipt_expiration_time: Timestamp,
     receipt_level: u64,
 ) -> Serialized<ReceiptCredentialResponse> {
     server_secret_params
         .issue_receipt_credential(
             *randomness,
             &request,
-            receipt_expiration_time,
+            receipt_expiration_time.as_seconds(),
             receipt_level,
         )
         .into()
@@ -517,6 +595,14 @@ fn PniCredentialRequestContext_GetRequest(
     context.get_request().into()
 }
 
+// FIXME: bridge_get
+#[bridge_fn]
+fn ExpiringProfileKeyCredential_GetExpirationTime(
+    credential: Serialized<ExpiringProfileKeyCredential>,
+) -> Timestamp {
+    credential.get_expiration_time().into()
+}
+
 #[bridge_fn_void]
 fn ProfileKeyCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
@@ -541,6 +627,16 @@ fn ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
     let presentation = AnyProfileKeyCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
     presentation.get_profile_key_ciphertext().into()
+}
+
+// Only used by the server.
+#[bridge_fn_buffer(ffi = false, node = false)]
+fn ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(
+    presentation_bytes: &[u8],
+) -> Vec<u8> {
+    let presentation = AnyProfileKeyCredentialPresentation::new(presentation_bytes)
+        .expect("should have been parsed previously");
+    presentation.to_structurally_valid_v1_presentation_bytes()
 }
 
 #[bridge_fn_void]
@@ -590,8 +686,8 @@ fn ReceiptCredentialRequestContext_GetRequest(
 #[bridge_fn]
 fn ReceiptCredential_GetReceiptExpirationTime(
     receipt_credential: Serialized<ReceiptCredential>,
-) -> u64 {
-    receipt_credential.get_receipt_expiration_time()
+) -> Timestamp {
+    receipt_credential.get_receipt_expiration_time().into()
 }
 
 // FIXME: bridge_get
@@ -604,8 +700,8 @@ fn ReceiptCredential_GetReceiptLevel(receipt_credential: Serialized<ReceiptCrede
 #[bridge_fn]
 fn ReceiptCredentialPresentation_GetReceiptExpirationTime(
     presentation: Serialized<ReceiptCredentialPresentation>,
-) -> u64 {
-    presentation.get_receipt_expiration_time()
+) -> Timestamp {
+    presentation.get_receipt_expiration_time().into()
 }
 
 // FIXME: bridge_get

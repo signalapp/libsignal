@@ -24,6 +24,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalPRESENTATION_VERSION_2 1
 
+#define SignalPRESENTATION_VERSION_3 2
+
 #define SignalAES_KEY_LEN 32
 
 #define SignalAESGCM_NONCE_LEN 12
@@ -64,6 +66,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalPROFILE_KEY_CREDENTIAL_LEN 145
 
+#define SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN 153
+
 #define SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_V1_LEN 713
 
 #define SignalPROFILE_KEY_CREDENTIAL_PRESENTATION_V2_LEN 713
@@ -73,6 +77,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 #define SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN 473
 
 #define SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN 457
+
+#define SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN 497
 
 #define SignalPROFILE_KEY_VERSION_LEN 32
 
@@ -92,9 +98,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalRESERVED_LEN 1
 
-#define SignalSERVER_SECRET_PARAMS_LEN 1537
+#define SignalSERVER_SECRET_PARAMS_LEN 1921
 
-#define SignalSERVER_PUBLIC_PARAMS_LEN 289
+#define SignalSERVER_PUBLIC_PARAMS_LEN 353
 
 #define SignalUUID_CIPHERTEXT_LEN 65
 
@@ -1125,6 +1131,10 @@ SignalFfiError *signal_auth_credential_check_valid_contents(SignalBorrowedBuffer
 
 SignalFfiError *signal_auth_credential_response_check_valid_contents(SignalBorrowedBuffer buffer);
 
+SignalFfiError *signal_expiring_profile_key_credential_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_expiring_profile_key_credential_response_check_valid_contents(SignalBorrowedBuffer buffer);
+
 SignalFfiError *signal_group_master_key_check_valid_contents(SignalBorrowedBuffer buffer);
 
 SignalFfiError *signal_group_public_params_check_valid_contents(SignalBorrowedBuffer buffer);
@@ -1259,6 +1269,12 @@ SignalFfiError *signal_server_public_params_receive_profile_key_credential(unsig
                                                                            const unsigned char (*request_context)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN],
                                                                            const unsigned char (*response)[SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN]);
 
+SignalFfiError *signal_server_public_params_receive_expiring_profile_key_credential(unsigned char (*out)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN],
+                                                                                    const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                    const unsigned char (*request_context)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN],
+                                                                                    const unsigned char (*response)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN],
+                                                                                    uint64_t current_time_in_seconds);
+
 SignalFfiError *signal_server_public_params_receive_pni_credential(unsigned char (*out)[SignalPNI_CREDENTIAL_LEN],
                                                                    const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
                                                                    const unsigned char (*request_context)[SignalPNI_CREDENTIAL_REQUEST_CONTEXT_LEN],
@@ -1270,6 +1286,13 @@ SignalFfiError *signal_server_public_params_create_profile_key_credential_presen
                                                                                                      const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
                                                                                                      const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN],
                                                                                                      const unsigned char (*profile_key_credential)[SignalPROFILE_KEY_CREDENTIAL_LEN]);
+
+SignalFfiError *signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic(const unsigned char **out,
+                                                                                                              size_t *out_len,
+                                                                                                              const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN],
+                                                                                                              const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                                              const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN],
+                                                                                                              const unsigned char (*profile_key_credential)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN]);
 
 SignalFfiError *signal_server_public_params_create_pni_credential_presentation_deterministic(const unsigned char **out,
                                                                                              size_t *out_len,
@@ -1310,6 +1333,14 @@ SignalFfiError *signal_server_secret_params_issue_profile_key_credential_determi
                                                                                        const uint8_t (*uuid)[16],
                                                                                        const unsigned char (*commitment)[SignalPROFILE_KEY_COMMITMENT_LEN]);
 
+SignalFfiError *signal_server_secret_params_issue_expiring_profile_key_credential_deterministic(unsigned char (*out)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN],
+                                                                                                const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
+                                                                                                const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
+                                                                                                const unsigned char (*request)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN],
+                                                                                                const uint8_t (*uuid)[16],
+                                                                                                const unsigned char (*commitment)[SignalPROFILE_KEY_COMMITMENT_LEN],
+                                                                                                uint64_t expiration_in_seconds);
+
 SignalFfiError *signal_server_secret_params_issue_pni_credential_deterministic(unsigned char (*out)[SignalPNI_CREDENTIAL_RESPONSE_LEN],
                                                                                const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                                const uint8_t (*randomness)[SignalRANDOMNESS_LEN],
@@ -1320,7 +1351,8 @@ SignalFfiError *signal_server_secret_params_issue_pni_credential_deterministic(u
 
 SignalFfiError *signal_server_secret_params_verify_profile_key_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                                        const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN],
-                                                                                       SignalBorrowedBuffer presentation_bytes);
+                                                                                       SignalBorrowedBuffer presentation_bytes,
+                                                                                       uint64_t current_time_in_seconds);
 
 SignalFfiError *signal_server_secret_params_verify_pni_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                                const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN],
@@ -1356,6 +1388,9 @@ SignalFfiError *signal_profile_key_credential_request_context_get_request(unsign
 
 SignalFfiError *signal_pni_credential_request_context_get_request(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN],
                                                                   const unsigned char (*context)[SignalPNI_CREDENTIAL_REQUEST_CONTEXT_LEN]);
+
+SignalFfiError *signal_expiring_profile_key_credential_get_expiration_time(uint64_t *out,
+                                                                           const unsigned char (*credential)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN]);
 
 SignalFfiError *signal_profile_key_credential_presentation_check_valid_contents(SignalBorrowedBuffer presentation_bytes);
 

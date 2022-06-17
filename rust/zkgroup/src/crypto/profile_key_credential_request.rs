@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -7,7 +7,8 @@
 
 use crate::common::sho::*;
 use crate::crypto::credentials::{
-    BlindedPniCredential, BlindedProfileKeyCredential, PniCredential, ProfileKeyCredential,
+    BlindedExpiringProfileKeyCredential, BlindedPniCredential, BlindedProfileKeyCredential,
+    ExpiringProfileKeyCredential, PniCredential, ProfileKeyCredential,
 };
 use crate::crypto::profile_key_struct;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
@@ -89,6 +90,19 @@ impl KeyPair {
         ProfileKeyCredential {
             t: blinded_profile_key_credential.t,
             U: blinded_profile_key_credential.U,
+            V,
+        }
+    }
+
+    pub fn decrypt_blinded_expiring_profile_key_credential(
+        &self,
+        blinded_expiring_profile_key_credential: BlindedExpiringProfileKeyCredential,
+    ) -> ExpiringProfileKeyCredential {
+        let V = blinded_expiring_profile_key_credential.S2
+            - self.y * blinded_expiring_profile_key_credential.S1;
+        ExpiringProfileKeyCredential {
+            t: blinded_expiring_profile_key_credential.t,
+            U: blinded_expiring_profile_key_credential.U,
             V,
         }
     }

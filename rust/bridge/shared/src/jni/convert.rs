@@ -1,5 +1,5 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -186,6 +186,23 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::protocol::Timestamp {
             )));
         }
         Ok(Self::from_millis(foreign as u64))
+    }
+}
+
+/// Supports values `0..=Long.MAX_VALUE`.
+///
+/// Negative `long` values are *not* reinterpreted as large `u64` values.
+/// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
+impl<'a> SimpleArgTypeInfo<'a> for crate::zkgroup::Timestamp {
+    type ArgType = jlong;
+    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
+        if foreign < 0 {
+            return Err(SignalJniError::IntegerOverflow(format!(
+                "{} to Timestamp (u64)",
+                foreign
+            )));
+        }
+        Ok(Self::from_seconds(foreign as u64))
     }
 }
 
@@ -466,6 +483,20 @@ impl ResultTypeInfo for crate::protocol::Timestamp {
     fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         // Note that we don't check bounds here.
         Ok(self.as_millis() as jlong)
+    }
+    fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        JObject::null()
+    }
+}
+
+/// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
+///
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
+impl ResultTypeInfo for crate::zkgroup::Timestamp {
+    type ResultType = jlong;
+    fn convert_into(self, _env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        // Note that we don't check bounds here.
+        Ok(self.as_seconds() as jlong)
     }
     fn convert_into_jobject(_signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
         JObject::null()

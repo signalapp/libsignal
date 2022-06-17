@@ -1,11 +1,13 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 package org.signal.libsignal.zkgroup.profiles;
 
 import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
@@ -40,6 +42,31 @@ public class ServerZkProfileOperations {
     }
   }
 
+  public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
+    return issueExpiringProfileKeyCredential(new SecureRandom(), profileKeyCredentialRequest, uuid, profileKeyCommitment, expiration);
+  }
+
+  /**
+   * Issues an ExpiringProfileKeyCredential.
+   *
+   * @param expiration Must be a round number of days. Use {@link java.time.Instant#truncatedTo} to
+   * ensure this.
+   */
+  public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(SecureRandom secureRandom, ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
+    assert expiration.equals(expiration.truncatedTo(ChronoUnit.DAYS));
+
+    byte[] random      = new byte[RANDOM_LENGTH];
+    secureRandom.nextBytes(random);
+
+    byte[] newContents = Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, profileKeyCredentialRequest.getInternalContentsForJNI(), uuid, profileKeyCommitment.getInternalContentsForJNI(), expiration.getEpochSecond());
+
+    try {
+      return new ExpiringProfileKeyCredentialResponse(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public PniCredentialResponse issuePniCredential(ProfileKeyCredentialRequest request, UUID aci, UUID pni, ProfileKeyCommitment profileKeyCommitment) throws VerificationFailedException {
     return issuePniCredential(new SecureRandom(), request, aci, pni, profileKeyCommitment);
   }
@@ -58,7 +85,11 @@ public class ServerZkProfileOperations {
   }
 
   public void verifyProfileKeyCredentialPresentation(GroupPublicParams groupPublicParams, ProfileKeyCredentialPresentation profileKeyCredentialPresentation) throws VerificationFailedException {
-    Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), profileKeyCredentialPresentation.getInternalContentsForJNI());
+    verifyProfileKeyCredentialPresentation(groupPublicParams, profileKeyCredentialPresentation, Instant.now());
+  }
+
+  public void verifyProfileKeyCredentialPresentation(GroupPublicParams groupPublicParams, ProfileKeyCredentialPresentation profileKeyCredentialPresentation, Instant now) throws VerificationFailedException {
+    Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), profileKeyCredentialPresentation.getInternalContentsForJNI(), now.getEpochSecond());
   }
 
   public void verifyPniCredentialPresentation(GroupPublicParams groupPublicParams, PniCredentialPresentation presentation) throws VerificationFailedException {

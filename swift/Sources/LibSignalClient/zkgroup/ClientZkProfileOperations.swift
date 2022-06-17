@@ -64,6 +64,22 @@ public class ClientZkProfileOperations {
     }
   }
 
+  public func receiveExpiringProfileKeyCredential(
+    profileKeyCredentialRequestContext: ProfileKeyCredentialRequestContext,
+    profileKeyCredentialResponse: ExpiringProfileKeyCredentialResponse,
+    now: Date = Date()
+  ) throws -> ExpiringProfileKeyCredential {
+    return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+      try profileKeyCredentialRequestContext.withUnsafePointerToSerialized { requestContext in
+        try profileKeyCredentialResponse.withUnsafePointerToSerialized { response in
+          try invokeFnReturningSerialized {
+            signal_server_public_params_receive_expiring_profile_key_credential($0, serverPublicParams, requestContext, response, UInt64(now.timeIntervalSince1970))
+          }
+        }
+      }
+    }
+  }
+
   public func receivePniCredential(requestContext: PniCredentialRequestContext, response: PniCredentialResponse) throws -> PniCredential {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
       try requestContext.withUnsafePointerToSerialized { requestContext in
@@ -87,6 +103,24 @@ public class ClientZkProfileOperations {
           try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in
             try invokeFnReturningVariableLengthSerialized {
               signal_server_public_params_create_profile_key_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public func createProfileKeyCredentialPresentation(groupSecretParams: GroupSecretParams, profileKeyCredential: ExpiringProfileKeyCredential) throws -> ProfileKeyCredentialPresentation {
+    return try createProfileKeyCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, profileKeyCredential: profileKeyCredential)
+  }
+
+  public func createProfileKeyCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, profileKeyCredential: ExpiringProfileKeyCredential) throws -> ProfileKeyCredentialPresentation {
+    return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
+          try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in
+            try invokeFnReturningVariableLengthSerialized {
+              signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
             }
           }
         }

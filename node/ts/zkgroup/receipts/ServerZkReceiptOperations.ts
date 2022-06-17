@@ -21,7 +21,7 @@ export default class ServerZkReceiptOperations {
 
   issueReceiptCredential(
     receiptCredentialRequest: ReceiptCredentialRequest,
-    receiptExpirationTime: bigint,
+    receiptExpirationTime: number,
     receiptLevel: bigint
   ): ReceiptCredentialResponse {
     const random = randomBytes(RANDOM_LENGTH);
@@ -36,7 +36,7 @@ export default class ServerZkReceiptOperations {
   issueReceiptCredentialWithRandom(
     random: Buffer,
     receiptCredentialRequest: ReceiptCredentialRequest,
-    receiptExpirationTime: bigint,
+    receiptExpirationTime: number,
     receiptLevel: bigint
   ): ReceiptCredentialResponse {
     return new ReceiptCredentialResponse(
@@ -44,7 +44,7 @@ export default class ServerZkReceiptOperations {
         this.serverSecretParams.getContents(),
         random,
         receiptCredentialRequest.getContents(),
-        bufferFromBigUInt64BE(receiptExpirationTime),
+        receiptExpirationTime,
         bufferFromBigUInt64BE(receiptLevel)
       )
     );

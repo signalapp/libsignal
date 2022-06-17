@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -13,7 +13,7 @@ import org.signal.libsignal.internal.Native;
 
 public final class ProfileKeyCredentialPresentation extends ByteArray {
 
-  public enum Version {V1, V2, UNKNOWN};
+  public enum Version {V1, V2, V3, UNKNOWN};
 
   public ProfileKeyCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
@@ -40,14 +40,17 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
     }
   }
 
+  public byte[] getStructurallyValidV1PresentationBytes() {
+    return Native.ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(contents);
+  }
+
   public Version getVersion() {
-      if (this.contents[0] == 0) {
-        return Version.V1;
-      } else if (this.contents[0] == 1) {
-        return Version.V2;
-      } else {
-        return Version.UNKNOWN;
-      }
+    switch (this.contents[0]) {
+    case 0: return Version.V1;
+    case 1: return Version.V2;
+    case 2: return Version.V3;
+    default: return Version.UNKNOWN;
+    }
   }
 
 }

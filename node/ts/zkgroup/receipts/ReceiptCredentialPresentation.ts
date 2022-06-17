@@ -14,10 +14,10 @@ export default class ReceiptCredentialPresentation extends ByteArray {
     super(contents, Native.ReceiptCredentialPresentation_CheckValidContents);
   }
 
-  getReceiptExpirationTime(): bigint {
+  getReceiptExpirationTime(): number {
     return Native.ReceiptCredentialPresentation_GetReceiptExpirationTime(
       this.contents
-    ).readBigUInt64BE();
+    );
   }
 
   getReceiptLevel(): bigint {

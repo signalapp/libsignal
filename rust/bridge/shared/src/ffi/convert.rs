@@ -363,6 +363,20 @@ impl ResultTypeInfo for crate::protocol::Timestamp {
     }
 }
 
+impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
+    type ArgType = u64;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(Self::from_seconds(foreign))
+    }
+}
+
+impl ResultTypeInfo for crate::zkgroup::Timestamp {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self.as_seconds())
+    }
+}
+
 /// A marker for Rust objects exposed as opaque pointers.
 ///
 /// When we do this, we hand the lifetime over to the app. Since we don't know how long the object

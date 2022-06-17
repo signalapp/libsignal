@@ -1,11 +1,14 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 // WARNING: this file was automatically generated
 
 type Uuid = Buffer;
+
+/// A Native.Timestamp may be measured in seconds or in milliseconds;
+/// what's important is that it's an integer less than Number.MAX_SAFE_INTEGER.
 type Timestamp = number;
 
 export abstract class IdentityKeyStore {
