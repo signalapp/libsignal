@@ -44,6 +44,12 @@ jobs:
         profile: minimal
         target: ${{ matrix.additional-rust-target }}
 
+    # install nasm compiler for boring
+    - name: Install nasm
+      if: startsWith(matrix.os, 'windows')
+      run: choco install nasm
+      shell: cmd
+
     - run: cargo build --release -p libsignal-jni
 
     - run: cargo build --release -p libsignal-jni --target aarch64-apple-darwin

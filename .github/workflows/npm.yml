@@ -42,6 +42,12 @@ jobs:
         profile: minimal
         target: ${{ matrix.arm64-rust-target }}
 
+    # install nasm compiler for boring
+    - name: Install nasm
+      if: startsWith(matrix.os, 'windows')
+      run: choco install nasm
+      shell: cmd
+
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
