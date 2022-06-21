@@ -50,6 +50,8 @@ macro_rules! fixed_length_serializable {
 
 fixed_length_serializable!(AuthCredential);
 fixed_length_serializable!(AuthCredentialResponse);
+fixed_length_serializable!(AuthCredentialWithPni);
+fixed_length_serializable!(AuthCredentialWithPniResponse);
 fixed_length_serializable!(ExpiringProfileKeyCredential);
 fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
 fixed_length_serializable!(GroupMasterKey);
@@ -233,6 +235,24 @@ fn ServerPublicParams_ReceiveAuthCredential(
         .into())
 }
 
+#[bridge_fn]
+fn ServerPublicParams_ReceiveAuthCredentialWithPni(
+    params: Serialized<ServerPublicParams>,
+    aci: Uuid,
+    pni: Uuid,
+    redemption_time: Timestamp,
+    response: Serialized<AuthCredentialWithPniResponse>,
+) -> Result<Serialized<AuthCredentialWithPni>, ZkGroupVerificationFailure> {
+    Ok(params
+        .receive_auth_credential_with_pni(
+            *aci.as_bytes(),
+            *pni.as_bytes(),
+            redemption_time.as_seconds(),
+            &response,
+        )?
+        .into())
+}
+
 #[bridge_fn_buffer]
 fn ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
@@ -245,6 +265,23 @@ fn ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
         group_secret_params.into_inner(),
         auth_credential.into_inner(),
     ))
+    .expect("can serialize")
+}
+
+#[bridge_fn_buffer]
+fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
+    server_public_params: Serialized<ServerPublicParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    group_secret_params: Serialized<GroupSecretParams>,
+    auth_credential: Serialized<AuthCredentialWithPni>,
+) -> Vec<u8> {
+    bincode::serialize(
+        &server_public_params.create_auth_credential_with_pni_presentation(
+            *randomness,
+            group_secret_params.into_inner(),
+            auth_credential.into_inner(),
+        ),
+    )
     .expect("can serialize")
 }
 
@@ -414,6 +451,24 @@ fn ServerSecretParams_IssueAuthCredentialDeterministic(
         .into()
 }
 
+#[bridge_fn]
+fn ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
+    server_secret_params: Serialized<ServerSecretParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    aci: Uuid,
+    pni: Uuid,
+    redemption_time: Timestamp,
+) -> Serialized<AuthCredentialWithPniResponse> {
+    server_secret_params
+        .issue_auth_credential_with_pni(
+            *randomness,
+            *aci.as_bytes(),
+            *pni.as_bytes(),
+            redemption_time.as_seconds(),
+        )
+        .into()
+}
+
 #[bridge_fn_void]
 fn ServerSecretParams_VerifyAuthCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
@@ -572,11 +627,20 @@ fn AuthCredentialPresentation_GetUuidCiphertext(
     presentation.get_uuid_ciphertext().into()
 }
 
-#[bridge_fn]
-fn AuthCredentialPresentation_GetRedemptionTime(presentation_bytes: &[u8]) -> u32 {
+#[bridge_fn_buffer]
+fn AuthCredentialPresentation_GetPniCiphertext(presentation_bytes: &[u8]) -> Option<Vec<u8>> {
     let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
-    presentation.get_redemption_time()
+    presentation
+        .get_pni_ciphertext()
+        .map(|ciphertext| bincode::serialize(&ciphertext).expect("can serialize"))
+}
+
+#[bridge_fn]
+fn AuthCredentialPresentation_GetRedemptionTime(presentation_bytes: &[u8]) -> Timestamp {
+    let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
+        .expect("should have been parsed previously");
+    Timestamp::from_seconds(presentation.get_redemption_time())
 }
 
 // FIXME: bridge_get

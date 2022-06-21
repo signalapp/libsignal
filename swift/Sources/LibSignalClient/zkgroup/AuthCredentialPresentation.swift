@@ -20,12 +20,21 @@ public class AuthCredentialPresentation: ByteArray {
     }
   }
 
-  public func getRedemptionTime() throws -> UInt32 {
+  public func getPniCiphertext() throws -> UuidCiphertext? {
     return try withUnsafeBorrowedBuffer { buffer in
+      try invokeFnReturningOptionalVariableLengthSerialized {
+        signal_auth_credential_presentation_get_pni_ciphertext($0, $1, buffer)
+      }
+    }
+  }
+
+  public func getRedemptionTime() throws -> Date {
+    let secondsSinceEpoch = try withUnsafeBorrowedBuffer { buffer in
       try invokeFnReturningInteger {
         signal_auth_credential_presentation_get_redemption_time($0, buffer)
       }
     }
+    return Date(timeIntervalSince1970: TimeInterval(secondsSinceEpoch))
   }
 
 }

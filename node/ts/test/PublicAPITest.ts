@@ -700,28 +700,25 @@ describe('SignalClient', () => {
     assert.deepEqual(aDPlaintext, bMessage);
 
     const session = await bSess.getSession(aAddress);
+    assert(session !== null);
 
-    if (session != null) {
-      assert(session.serialize().length > 0);
-      assert.deepEqual(session.localRegistrationId(), 5);
-      assert.deepEqual(session.remoteRegistrationId(), 5);
-      assert(session.hasCurrentState());
-      assert(
-        !session.currentRatchetKeyMatches(
-          SignalClient.PrivateKey.generate().getPublicKey()
-        )
-      );
+    assert(session.serialize().length > 0);
+    assert.deepEqual(session.localRegistrationId(), 5);
+    assert.deepEqual(session.remoteRegistrationId(), 5);
+    assert(session.hasCurrentState());
+    assert(
+      !session.currentRatchetKeyMatches(
+        SignalClient.PrivateKey.generate().getPublicKey()
+      )
+    );
 
-      session.archiveCurrentState();
-      assert(!session.hasCurrentState());
-      assert(
-        !session.currentRatchetKeyMatches(
-          SignalClient.PrivateKey.generate().getPublicKey()
-        )
-      );
-    } else {
-      assert.fail('no session found');
-    }
+    session.archiveCurrentState();
+    assert(!session.hasCurrentState());
+    assert(
+      !session.currentRatchetKeyMatches(
+        SignalClient.PrivateKey.generate().getPublicKey()
+      )
+    );
   });
   it('handles duplicated messages', async () => {
     const aKeys = new InMemoryIdentityKeyStore();
@@ -985,13 +982,10 @@ describe('SignalClient', () => {
       );
 
       assert(bPlaintext != null);
-
-      if (bPlaintext != null) {
-        assert.deepEqual(bPlaintext.message(), aPlaintext);
-        assert.deepEqual(bPlaintext.senderE164(), aE164);
-        assert.deepEqual(bPlaintext.senderUuid(), aUuid);
-        assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
-      }
+      assert.deepEqual(bPlaintext.message(), aPlaintext);
+      assert.deepEqual(bPlaintext.senderE164(), aE164);
+      assert.deepEqual(bPlaintext.senderUuid(), aUuid);
+      assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
 
       const innerMessage = await SignalClient.signalEncrypt(
         aPlaintext,

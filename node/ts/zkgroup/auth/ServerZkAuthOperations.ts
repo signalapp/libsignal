@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -10,6 +10,7 @@ import * as Native from '../../../Native';
 import ServerSecretParams from '../ServerSecretParams';
 import AuthCredentialResponse from './AuthCredentialResponse';
 import AuthCredentialPresentation from './AuthCredentialPresentation';
+import AuthCredentialWithPniResponse from './AuthCredentialWithPniResponse';
 import GroupPublicParams from '../groups/GroupPublicParams';
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
 
@@ -39,6 +40,38 @@ export default class ServerZkAuthOperations {
         this.serverSecretParams.getContents(),
         random,
         fromUUID(uuid),
+        redemptionTime
+      )
+    );
+  }
+
+  issueAuthCredentialWithPni(
+    aci: UUIDType,
+    pni: UUIDType,
+    redemptionTime: number
+  ): AuthCredentialWithPniResponse {
+    const random = randomBytes(RANDOM_LENGTH);
+
+    return this.issueAuthCredentialWithPniWithRandom(
+      random,
+      aci,
+      pni,
+      redemptionTime
+    );
+  }
+
+  issueAuthCredentialWithPniWithRandom(
+    random: Buffer,
+    aci: UUIDType,
+    pni: UUIDType,
+    redemptionTime: number
+  ): AuthCredentialWithPniResponse {
+    return new AuthCredentialWithPniResponse(
+      Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
+        this.serverSecretParams.getContents(),
+        random,
+        fromUUID(aci),
+        fromUUID(pni),
         redemptionTime
       )
     );

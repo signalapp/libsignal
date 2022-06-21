@@ -56,6 +56,11 @@ internal func invokeFnReturningVariableLengthSerialized<Result: ByteArray>(fn: (
     return try Result(contents: output)
 }
 
+internal func invokeFnReturningOptionalVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> Result? {
+    let output = try invokeFnReturningOptionalArray(fn: fn)
+    return try output.map { try Result(contents: $0) }
+}
+
 internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> SignalFfiErrorRef?) throws -> UUID {
     var output: uuid_t = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     try checkError(fn(&output))

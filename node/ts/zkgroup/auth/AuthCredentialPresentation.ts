@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -20,7 +20,19 @@ export default class AuthCredentialPresentation extends ByteArray {
     );
   }
 
-  getRedemptionTime(): number {
-    return Native.AuthCredentialPresentation_GetRedemptionTime(this.contents);
+  getPniCiphertext(): UuidCiphertext | null {
+    const ciphertextBytes = Native.AuthCredentialPresentation_GetPniCiphertext(
+      this.contents
+    );
+    if (ciphertextBytes === null) {
+      return null;
+    }
+    return new UuidCiphertext(ciphertextBytes);
+  }
+
+  getRedemptionTime(): Date {
+    return new Date(
+      1000 * Native.AuthCredentialPresentation_GetRedemptionTime(this.contents)
+    );
   }
 }

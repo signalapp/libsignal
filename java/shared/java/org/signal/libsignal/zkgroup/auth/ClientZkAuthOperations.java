@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -33,6 +33,21 @@ public class ClientZkAuthOperations {
     }
   }
 
+  /**
+   * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse.
+   * 
+   * @param redemptionTime This is provided by the server as an integer, and should be passed through directly.
+   */
+  public AuthCredentialWithPni receiveAuthCredentialWithPni(UUID aci, UUID pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
+    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPni(serverPublicParams.getInternalContentsForJNI(), aci, pni, redemptionTime, authCredentialResponse.getInternalContentsForJNI());
+
+    try {
+      return new AuthCredentialWithPni(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public AuthCredentialPresentation createAuthCredentialPresentation(GroupSecretParams groupSecretParams, AuthCredential authCredential) {
     return createAuthCredentialPresentation(new SecureRandom(), groupSecretParams, authCredential);
   }
@@ -50,4 +65,20 @@ public class ClientZkAuthOperations {
     }
   }
 
+  public AuthCredentialPresentation createAuthCredentialPresentation(GroupSecretParams groupSecretParams, AuthCredentialWithPni authCredential) {
+    return createAuthCredentialPresentation(new SecureRandom(), groupSecretParams, authCredential);
+  }
+
+  public AuthCredentialPresentation createAuthCredentialPresentation(SecureRandom secureRandom, GroupSecretParams groupSecretParams, AuthCredentialWithPni authCredential) {
+    byte[] random      = new byte[RANDOM_LENGTH];
+    secureRandom.nextBytes(random);
+
+    byte[] newContents = Native.ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(serverPublicParams.getInternalContentsForJNI(), random, groupSecretParams.getInternalContentsForJNI(), authCredential.getInternalContentsForJNI());
+
+    try {
+      return new AuthCredentialPresentation(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
 }

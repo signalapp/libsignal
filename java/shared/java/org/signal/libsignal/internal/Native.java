@@ -105,10 +105,15 @@ public final class Native {
   public static native long Aes256GcmSiv_New(byte[] key);
 
   public static native void AuthCredentialPresentation_CheckValidContents(byte[] presentationBytes);
-  public static native int AuthCredentialPresentation_GetRedemptionTime(byte[] presentationBytes);
+  public static native byte[] AuthCredentialPresentation_GetPniCiphertext(byte[] presentationBytes);
+  public static native long AuthCredentialPresentation_GetRedemptionTime(byte[] presentationBytes);
   public static native byte[] AuthCredentialPresentation_GetUuidCiphertext(byte[] presentationBytes);
 
   public static native void AuthCredentialResponse_CheckValidContents(byte[] buffer);
+
+  public static native void AuthCredentialWithPniResponse_CheckValidContents(byte[] buffer);
+
+  public static native void AuthCredentialWithPni_CheckValidContents(byte[] buffer);
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer);
 
@@ -358,6 +363,7 @@ public final class Native {
 
   public static native void ServerPublicParams_CheckValidContents(byte[] buffer);
   public static native byte[] ServerPublicParams_CreateAuthCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
+  public static native byte[] ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
   public static native byte[] ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);
   public static native byte[] ServerPublicParams_CreatePniCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] pniCredential);
   public static native byte[] ServerPublicParams_CreatePniCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, UUID aci, UUID pni, byte[] profileKey);
@@ -366,6 +372,7 @@ public final class Native {
   public static native byte[] ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptCredential);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptSerial);
   public static native byte[] ServerPublicParams_ReceiveAuthCredential(byte[] params, UUID uuid, int redemptionTime, byte[] response);
+  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPni(byte[] params, UUID aci, UUID pni, long redemptionTime, byte[] response);
   public static native byte[] ServerPublicParams_ReceiveExpiringProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response, long currentTimeInSeconds);
   public static native byte[] ServerPublicParams_ReceivePniCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
   public static native byte[] ServerPublicParams_ReceiveProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
@@ -376,6 +383,7 @@ public final class Native {
   public static native byte[] ServerSecretParams_GenerateDeterministic(byte[] randomness);
   public static native byte[] ServerSecretParams_GetPublicParams(byte[] params);
   public static native byte[] ServerSecretParams_IssueAuthCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, UUID uuid, int redemptionTime);
+  public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniDeterministic(byte[] serverSecretParams, byte[] randomness, UUID aci, UUID pni, long redemptionTime);
   public static native byte[] ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment, long expirationInSeconds);
   public static native byte[] ServerSecretParams_IssuePniCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID aci, UUID pni, byte[] commitment);
   public static native byte[] ServerSecretParams_IssueProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment);

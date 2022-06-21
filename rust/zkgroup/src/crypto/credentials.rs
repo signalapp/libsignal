@@ -66,6 +66,9 @@ impl AttrScalars for AuthCredential {
     type Storage = [Scalar; 4];
     const NUM_ATTRS: usize = NUM_AUTH_CRED_ATTRIBUTES;
 }
+impl AttrScalars for AuthCredentialWithPni {
+    type Storage = [Scalar; 5];
+}
 impl AttrScalars for ProfileKeyCredential {
     // Store four scalars for backwards compatibility.
     type Storage = [Scalar; 4];
@@ -129,6 +132,13 @@ pub struct PublicKey {
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AuthCredential {
+    pub(crate) t: Scalar,
+    pub(crate) U: RistrettoPoint,
+    pub(crate) V: RistrettoPoint,
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AuthCredentialWithPni {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
@@ -236,6 +246,22 @@ pub(crate) fn convert_to_points_uid_struct(
     let system = SystemParams::get_hardcoded();
     let redemption_time_scalar = encode_redemption_time(redemption_time);
     vec![uid.M1, uid.M2, redemption_time_scalar * system.G_m3]
+}
+
+pub(crate) fn convert_to_points_aci_pni_timestamp(
+    aci: uid_struct::UidStruct,
+    pni: uid_struct::UidStruct,
+    redemption_time: Timestamp,
+) -> Vec<RistrettoPoint> {
+    let system = SystemParams::get_hardcoded();
+    let redemption_time_scalar = TimestampStruct::calc_m_from(redemption_time);
+    vec![
+        aci.M1,
+        aci.M2,
+        pni.M1,
+        pni.M2,
+        redemption_time_scalar * system.G_m5,
+    ]
 }
 
 pub(crate) fn convert_to_points_receipt_struct(
@@ -428,6 +454,20 @@ impl KeyPair<AuthCredential> {
         let M = convert_to_points_uid_struct(uid, redemption_time);
         let (t, U, V) = self.credential_core(&M, sho);
         AuthCredential { t, U, V }
+    }
+}
+
+impl KeyPair<AuthCredentialWithPni> {
+    pub fn create_auth_credential_with_pni(
+        &self,
+        aci: uid_struct::UidStruct,
+        pni: uid_struct::UidStruct,
+        redemption_time: Timestamp,
+        sho: &mut Sho,
+    ) -> AuthCredentialWithPni {
+        let M = convert_to_points_aci_pni_timestamp(aci, pni, redemption_time);
+        let (t, U, V) = self.credential_core(&M, sho);
+        AuthCredentialWithPni { t, U, V }
     }
 }
 

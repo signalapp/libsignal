@@ -26,6 +26,23 @@ public class ClientZkAuthOperations {
     }
   }
 
+  /// Produces the `AuthCredentialWithPni` from a server-generated `AuthCredentialWithPniResponse`.
+  ///
+  /// - parameter redemptionTime: This is provided by the server as an integer, and should be passed through directly.
+  public func receiveAuthCredentialWithPni(aci: UUID, pni: UUID, redemptionTime: UInt64, authCredentialResponse: AuthCredentialWithPniResponse) throws -> AuthCredentialWithPni {
+    return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+      try withUnsafePointer(to: aci.uuid) { aci in
+        try withUnsafePointer(to: pni.uuid) { pni in
+          try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
+            try invokeFnReturningSerialized {
+              signal_server_public_params_receive_auth_credential_with_pni($0, serverPublicParams, aci, pni, redemptionTime, authCredentialResponse)
+            }
+          }
+        }
+      }
+    }
+  }
+
   public func createAuthCredentialPresentation(groupSecretParams: GroupSecretParams, authCredential: AuthCredential) throws -> AuthCredentialPresentation {
     return try createAuthCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, authCredential: authCredential)
   }
@@ -37,6 +54,24 @@ public class ClientZkAuthOperations {
           try authCredential.withUnsafePointerToSerialized { authCredential in
             try invokeFnReturningVariableLengthSerialized {
               signal_server_public_params_create_auth_credential_presentation_deterministic($0, $1, contents, randomness, groupSecretParams, authCredential)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public func createAuthCredentialPresentation(groupSecretParams: GroupSecretParams, authCredential: AuthCredentialWithPni) throws -> AuthCredentialPresentation {
+    return try createAuthCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, authCredential: authCredential)
+  }
+
+  public func createAuthCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, authCredential: AuthCredentialWithPni) throws -> AuthCredentialPresentation {
+    return try serverPublicParams.withUnsafePointerToSerialized { contents in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
+          try authCredential.withUnsafePointerToSerialized { authCredential in
+            try invokeFnReturningVariableLengthSerialized {
+              signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic($0, $1, contents, randomness, groupSecretParams, authCredential)
             }
           }
         }

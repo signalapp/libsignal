@@ -22,6 +22,8 @@ pub const AUTH_CREDENTIAL_LEN: usize = 181;
 pub const AUTH_CREDENTIAL_PRESENTATION_V1_LEN: usize = 493;
 pub const AUTH_CREDENTIAL_PRESENTATION_V2_LEN: usize = 461;
 pub const AUTH_CREDENTIAL_RESPONSE_LEN: usize = 361;
+pub const AUTH_CREDENTIAL_WITH_PNI_LEN: usize = 265;
+pub const AUTH_CREDENTIAL_WITH_PNI_RESPONSE_LEN: usize = 425;
 pub const PNI_CREDENTIAL_LEN: usize = 161;
 pub const PNI_CREDENTIAL_PRESENTATION_V1_LEN: usize = 841;
 pub const PNI_CREDENTIAL_PRESENTATION_V2_LEN: usize = 841;
@@ -47,12 +49,15 @@ pub const RECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN: usize = 177;
 pub const RECEIPT_CREDENTIAL_RESPONSE_LEN: usize = 409;
 pub const RECEIPT_SERIAL_LEN: usize = 16;
 pub const RESERVED_LEN: usize = 1;
-pub const SERVER_SECRET_PARAMS_LEN: usize = 1921;
-pub const SERVER_PUBLIC_PARAMS_LEN: usize = 353;
+pub const SERVER_SECRET_PARAMS_LEN: usize = 2305;
+pub const SERVER_PUBLIC_PARAMS_LEN: usize = 417;
 pub const UUID_CIPHERTEXT_LEN: usize = 65;
 pub const RANDOMNESS_LEN: usize = 32;
 pub const SIGNATURE_LEN: usize = 64;
 pub const UUID_LEN: usize = 16;
+
+/// Seconds in a 24-hour cycle (ignoring leap seconds).
+pub const SECONDS_PER_DAY: u64 = 86400;
 
 pub const TEST_ARRAY_16: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 

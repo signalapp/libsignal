@@ -1,13 +1,14 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 package org.signal.libsignal.zkgroup.auth;
 
 import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -43,15 +44,34 @@ public class ServerZkAuthOperations {
     }
   }
 
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(UUID aci, UUID pni, Instant redemptionTime) {
+    return issueAuthCredentialWithPni(new SecureRandom(), aci, pni, redemptionTime);
+  }
+
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(SecureRandom secureRandom, UUID aci, UUID pni, Instant redemptionTime) {
+    byte[] random      = new byte[RANDOM_LENGTH];
+
+    secureRandom.nextBytes(random);
+
+    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci, pni, redemptionTime.getEpochSecond());
+
+    try {
+      return new AuthCredentialWithPniResponse(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation) throws VerificationFailedException, InvalidRedemptionTimeException {
-       verifyAuthCredentialPresentation(groupPublicParams, authCredentialPresentation, System.currentTimeMillis());
+       verifyAuthCredentialPresentation(groupPublicParams, authCredentialPresentation, Instant.now());
      }
 
-  public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation, long currentTimeMillis) throws VerificationFailedException, InvalidRedemptionTimeException {
-    long acceptableStartTime = TimeUnit.MILLISECONDS.convert(authCredentialPresentation.getRedemptionTime()-1, TimeUnit.DAYS);
-    long acceptableEndTime = TimeUnit.MILLISECONDS.convert(authCredentialPresentation.getRedemptionTime()+2, TimeUnit.DAYS);
+  public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation, Instant currentTime) throws VerificationFailedException, InvalidRedemptionTimeException {
+    // TODO: Move this check down to Rust.
+    Instant acceptableStartTime = authCredentialPresentation.getRedemptionTime().minus(1, ChronoUnit.DAYS);
+    Instant acceptableEndTime = acceptableStartTime.plus(3, ChronoUnit.DAYS);
 
-    if (currentTimeMillis < acceptableStartTime || currentTimeMillis > acceptableEndTime) {
+    if (currentTime.isBefore(acceptableStartTime) || currentTime.isAfter(acceptableEndTime)) {
         throw new InvalidRedemptionTimeException();
     }
 
