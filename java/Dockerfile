@@ -13,12 +13,9 @@ RUN    apt-get update \
     && apt-get install -y \
                apt-transport-https \
                build-essential \
-               cmake \
-               curl \
-               gcc-multilib \
                git \
+               curl \
                gpg-agent \
-               libclang-dev \
                openjdk-11-jdk \
                openssh-client \
                unzip
@@ -44,7 +41,7 @@ ARG ANDROID_API_LEVELS=android-30
 ARG ANDROID_BUILD_TOOLS_VERSION=30.0.2
 ARG NDK_VERSION=21.0.6113669
 ENV ANDROID_HOME /home/libsignal/android-sdk
-ENV ANDROID_NDK_HOME ${ANDROID_HOME}/ndk/${NDK_VERSION}
+ENV NDK_HOME ${ANDROID_HOME}/ndk/${NDK_VERSION}
 ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
 
 RUN    curl -O https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} \

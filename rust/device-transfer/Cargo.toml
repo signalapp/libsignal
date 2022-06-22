@@ -6,8 +6,9 @@ edition = "2018"
 license = "AGPL-3.0-only"
 
 [dependencies]
-boring = "2.0.0"
-libc = "0.2"
+picky = { version = "6", default-features = false, features = ["x509"] }
+chrono = "0.4"
 
 [dev-dependencies]
+openssl = "0.10"
 hex = "0.4"

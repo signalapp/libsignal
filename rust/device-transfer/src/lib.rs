@@ -8,16 +8,12 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
-use std::convert::TryInto;
+use chrono::{Datelike, Duration, Utc};
+use picky::key::PrivateKey;
+use picky::x509::name::{DirectoryName, NameAttr};
+use picky::x509::{certificate::CertificateBuilder, date::UTCDate};
+use picky::{hash::HashAlgorithm, signature::SignatureAlgorithm};
 use std::fmt;
-use std::time::{Duration, SystemTime};
-
-use boring::asn1::Asn1Time;
-use boring::error::ErrorStack;
-use boring::hash::MessageDigest;
-use boring::pkey::{PKey, Private};
-use boring::rsa::Rsa;
-use boring::x509::{X509Builder, X509Name, X509NameBuilder, X509};
 
 /// Error types for device transfer.
 #[derive(Copy, Clone, Debug)]
@@ -39,11 +35,9 @@ impl fmt::Display for Error {
 
 /// Generate a private key of size `bits` and export to PKCS8 format.
 pub fn create_rsa_private_key(bits: usize) -> Result<Vec<u8>, Error> {
-    let rsa = Rsa::generate(bits as u32)
+    let key = PrivateKey::generate_rsa(bits)
         .map_err(|_| Error::InternalError("RSA key generation failed"))?;
-    let key =
-        PKey::from_rsa(rsa).map_err(|_| Error::InternalError("Private key generation failed"))?;
-    key.private_key_to_der()
+    key.to_pkcs8()
         .map_err(|_| Error::InternalError("Exporting to PKCS8 failed"))
 }
 
@@ -55,54 +49,33 @@ pub fn create_self_signed_cert(
     name: &str,
     days_to_expire: u32,
 ) -> Result<Vec<u8>, Error> {
-    let rsa_key =
-        PKey::private_key_from_der(rsa_key_pkcs8).map_err(|_| Error::KeyDecodingFailed)?;
+    let rsa_key = PrivateKey::from_pkcs8(rsa_key_pkcs8).map_err(|_| Error::KeyDecodingFailed)?;
 
-    let valid_after_timestamp: libc::time_t = (SystemTime::now()
-        - Duration::from_secs(60 * 60 * 24))
-    .duration_since(SystemTime::UNIX_EPOCH)
-    .map_err(|_| Error::InternalError("Could not generate valid start timestamp"))?
-    .as_secs()
-    .try_into()
-    .map_err(|_| Error::InternalError("Could not generate valid start timestamp"))?;
+    let mut dn = DirectoryName::new_common_name(name);
+    dn.add_attr(NameAttr::OrganizationName, "Signal Foundation");
+    dn.add_attr(NameAttr::OrganizationalUnitName, "Device Transfer");
 
-    let cert = build_cert(rsa_key, name, valid_after_timestamp, days_to_expire)
+    let now = Utc::now();
+    let expires = now + Duration::days(days_to_expire.into());
+
+    let started_at = UTCDate::ymd(now.year() as u16, now.month() as u8, now.day() as u8)
+        .ok_or(Error::InternalError("Cannot map current time to UTCDate"))?;
+    let ends_at = UTCDate::ymd(
+        expires.year() as u16,
+        expires.month() as u8,
+        expires.day() as u8,
+    )
+    .ok_or(Error::InternalError(
+        "Cannot map expiration time to UTCDate",
+    ))?;
+
+    let cert = CertificateBuilder::new()
+        .validity(started_at, ends_at)
+        .self_signed(dn, &rsa_key)
+        .signature_hash_type(SignatureAlgorithm::RsaPkcs1v15(HashAlgorithm::SHA2_256))
+        .build()
         .map_err(|_| Error::InternalError("Creating certificate failed"))?;
 
     cert.to_der()
         .map_err(|_| Error::InternalError("Converting cert to DER failed"))
-}
-
-fn build_cert(
-    rsa_key: PKey<Private>,
-    name: &str,
-    valid_after_timestamp: libc::time_t,
-    days_to_expire: u32,
-) -> Result<X509, ErrorStack> {
-    let mut cert_builder = X509Builder::new()?;
-
-    let issuer_name = build_self_signed_name(name)?;
-    let subject_name = build_self_signed_name(name)?;
-    cert_builder.set_issuer_name(&issuer_name)?;
-    cert_builder.set_subject_name(&subject_name)?;
-
-    let started_at = Asn1Time::from_unix(valid_after_timestamp)?;
-    let ends_at = Asn1Time::days_from_now(days_to_expire)?;
-
-    cert_builder.set_not_before(&started_at)?;
-    cert_builder.set_not_after(&ends_at)?;
-
-    cert_builder.set_pubkey(&rsa_key)?;
-    cert_builder.sign(&rsa_key, MessageDigest::sha256())?;
-
-    Ok(cert_builder.build())
-}
-
-fn build_self_signed_name(name: &str) -> Result<X509Name, ErrorStack> {
-    let mut name_builder = X509NameBuilder::new()?;
-    name_builder.append_entry_by_text("CN", name)?;
-    name_builder.append_entry_by_text("O", "Signal Foundation")?;
-    name_builder.append_entry_by_text("OU", "Device Transfer")?;
-
-    Ok(name_builder.build())
 }
