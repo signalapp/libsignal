@@ -18,7 +18,7 @@ use crate::common::simple_types::Timestamp;
 ///
 /// Clients must do validation on the returned receipt_expiration_time and receipt_level to ensure
 /// no tagging has occurred.
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReceiptStruct {
     pub(crate) receipt_serial_bytes: ReceiptSerialBytes,
     pub(crate) receipt_expiration_time: Timestamp,

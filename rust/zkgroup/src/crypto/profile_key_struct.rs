@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use curve25519_dalek::subtle::Choice;
 use curve25519_dalek::subtle::ConditionallySelectable;
 
-#[derive(Copy, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileKeyStruct {
     pub(crate) bytes: ProfileKeyBytes,
     pub(crate) M3: RistrettoPoint,

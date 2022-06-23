@@ -16,7 +16,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyPair {
     // private
     pub(crate) y: Scalar,
@@ -25,12 +25,12 @@ pub struct KeyPair {
     pub(crate) Y: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKey {
     pub(crate) Y: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CiphertextWithSecretNonce {
     pub(crate) r1: Scalar,
     pub(crate) r2: Scalar,
@@ -40,7 +40,7 @@ pub struct CiphertextWithSecretNonce {
     pub(crate) E2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ciphertext {
     pub(crate) D1: RistrettoPoint,
     pub(crate) D2: RistrettoPoint,

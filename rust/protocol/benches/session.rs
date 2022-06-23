@@ -236,12 +236,12 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
     Ok(())
 }
 
-pub fn session_encrypt(mut c: &mut Criterion) {
-    session_encrypt_result(&mut c).expect("success");
+pub fn session_encrypt(c: &mut Criterion) {
+    session_encrypt_result(c).expect("success");
 }
 
-pub fn session_encrypt_decrypt(mut c: &mut Criterion) {
-    session_encrypt_decrypt_result(&mut c).expect("success");
+pub fn session_encrypt_decrypt(c: &mut Criterion) {
+    session_encrypt_decrypt_result(c).expect("success");
 }
 
 criterion_group!(benches, session_encrypt, session_encrypt_decrypt);

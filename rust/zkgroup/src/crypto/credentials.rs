@@ -29,7 +29,7 @@ lazy_static! {
 }
 
 const NUM_SUPPORTED_ATTRS: usize = 6;
-#[derive(Copy, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemParams {
     pub(crate) G_w: RistrettoPoint,
     pub(crate) G_wprime: RistrettoPoint,
@@ -124,34 +124,34 @@ impl<S: AttrScalars> PartialEq for KeyPair<S> {
 }
 impl<S: AttrScalars> Eq for KeyPair<S> {}
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKey {
     pub(crate) C_W: RistrettoPoint,
     pub(crate) I: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthCredentialWithPni {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedProfileKeyCredentialWithSecretNonce {
     pub(crate) rprime: Scalar,
     pub(crate) t: Scalar,
@@ -160,7 +160,7 @@ pub struct BlindedProfileKeyCredentialWithSecretNonce {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -168,14 +168,14 @@ pub struct BlindedProfileKeyCredential {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExpiringProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedExpiringProfileKeyCredentialWithSecretNonce {
     pub(crate) rprime: Scalar,
     pub(crate) t: Scalar,
@@ -184,7 +184,7 @@ pub struct BlindedExpiringProfileKeyCredentialWithSecretNonce {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedExpiringProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -192,13 +192,13 @@ pub struct BlindedExpiringProfileKeyCredential {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PniCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedPniCredentialWithSecretNonce {
     pub(crate) rprime: Scalar,
     pub(crate) t: Scalar,
@@ -207,7 +207,7 @@ pub struct BlindedPniCredentialWithSecretNonce {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedPniCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -215,14 +215,14 @@ pub struct BlindedPniCredential {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReceiptCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedReceiptCredentialWithSecretNonce {
     pub(crate) rprime: Scalar,
     pub(crate) t: Scalar,
@@ -231,7 +231,7 @@ pub struct BlindedReceiptCredentialWithSecretNonce {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlindedReceiptCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,

@@ -16,7 +16,7 @@ use crate::crypto::credentials::BlindedReceiptCredential;
 use crate::crypto::credentials::ReceiptCredential;
 use crate::ReceiptSerialBytes;
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyPair {
     // private
     pub(crate) y: Scalar,
@@ -25,19 +25,19 @@ pub struct KeyPair {
     pub(crate) Y: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PublicKey {
     pub(crate) Y: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CiphertextWithSecretNonce {
     pub(crate) r1: Scalar,
     pub(crate) D1: RistrettoPoint,
     pub(crate) D2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ciphertext {
     pub(crate) D1: RistrettoPoint,
     pub(crate) D2: RistrettoPoint,

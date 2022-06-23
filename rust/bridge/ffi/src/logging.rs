@@ -73,7 +73,7 @@ impl log::Log for FfiLogger {
             .file()
             .map(|file| CString::new(file).expect("no 0 bytes in file"));
         let message = CString::new(record.args().to_string()).unwrap_or_else(|_| {
-            CString::new(record.args().to_string().replace("\0", "\\0"))
+            CString::new(record.args().to_string().replace('\0', "\\0"))
                 .expect("We escaped any NULLs")
         });
         (self.log)(

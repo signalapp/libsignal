@@ -94,8 +94,8 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     Ok(())
 }
 
-pub fn ratchet_forward(mut c: &mut Criterion) {
-    ratchet_forward_result(&mut c).expect("success");
+pub fn ratchet_forward(c: &mut Criterion) {
+    ratchet_forward_result(c).expect("success");
 }
 
 criterion_group!(ratchet, ratchet_forward);

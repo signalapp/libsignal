@@ -12,7 +12,6 @@ use std::convert::TryFrom;
 use support::*;
 
 #[test]
-#[allow(clippy::eval_order_dependence)]
 fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
     async {
         let mut csprng = OsRng;
@@ -257,7 +256,6 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
 
 #[test]
 #[ignore = "slow to run locally"]
-#[allow(clippy::eval_order_dependence)]
 fn chain_jump_over_limit() -> Result<(), SignalProtocolError> {
     async {
         let mut csprng = OsRng;
@@ -346,7 +344,6 @@ fn chain_jump_over_limit() -> Result<(), SignalProtocolError> {
 
 #[test]
 #[ignore = "slow to run locally"]
-#[allow(clippy::eval_order_dependence)]
 fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
     async {
         let mut csprng = OsRng;
@@ -442,7 +439,6 @@ fn chain_jump_over_limit_with_self() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
-#[allow(clippy::eval_order_dependence)]
 fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
     async {
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1);
@@ -523,7 +519,6 @@ fn test_bad_signed_pre_key_signature() -> Result<(), SignalProtocolError> {
 // testRepeatBundleMessageV2 cannot be represented
 
 #[test]
-#[allow(clippy::eval_order_dependence)]
 fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
     async {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
@@ -657,7 +652,6 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
-#[allow(clippy::eval_order_dependence)]
 fn bad_message_bundle() -> Result<(), SignalProtocolError> {
     async {
         let mut csprng = OsRng;
@@ -780,7 +774,6 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
-#[allow(clippy::eval_order_dependence)]
 fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
     async {
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1);
@@ -1125,7 +1118,6 @@ async fn run_interaction(
     Ok(())
 }
 
-#[allow(clippy::eval_order_dependence)]
 async fn is_session_id_equal(
     alice_store: &dyn ProtocolStore,
     alice_address: &ProtocolAddress,

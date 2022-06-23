@@ -147,6 +147,7 @@ impl<'a> ArgTypeInfo<'a> for &'a mut [u8] {
 
 impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
     type ArgType = *mut [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(input: Self::ArgType) -> SignalFfiResult<Self> {
         unsafe { input.as_mut() }.ok_or(SignalFfiError::NullPointer)
     }
@@ -201,6 +202,7 @@ impl SimpleArgTypeInfo for Context {
 
 impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = *const [u8; 16];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         match unsafe { foreign.as_ref() } {
             Some(array) => Ok(uuid::Uuid::from_bytes(*array)),
@@ -237,6 +239,7 @@ macro_rules! store {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
                 type ArgType = *const [<Ffi $name Struct>];
                 type StoredType = &'a [<Ffi $name Struct>];
+                #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
                     match unsafe { foreign.as_ref() } {
                         None => Err(SignalFfiError::NullPointer),

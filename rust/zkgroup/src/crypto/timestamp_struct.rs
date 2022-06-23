@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::sho::Sho;
 use crate::common::simple_types::Timestamp;
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimestampStruct {
     pub(crate) timestamp: Timestamp,
 }

@@ -20,14 +20,14 @@ lazy_static! {
         bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemParams {
     pub(crate) G_j1: RistrettoPoint,
     pub(crate) G_j2: RistrettoPoint,
     pub(crate) G_j3: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommitmentWithSecretNonce {
     pub(crate) J1: RistrettoPoint,
     pub(crate) J2: RistrettoPoint,
@@ -35,7 +35,7 @@ pub struct CommitmentWithSecretNonce {
     pub(crate) j3: Scalar,
 }
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Commitment {
     pub(crate) J1: RistrettoPoint,
     pub(crate) J2: RistrettoPoint,

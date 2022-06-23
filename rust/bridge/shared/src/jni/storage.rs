@@ -234,12 +234,12 @@ impl<'a> JniPreKeyStore<'a> {
             prekey_id.convert_into(self.env)? => int,
             jobject_record => org.signal.libsignal.protocol.state.PreKeyRecord
         ) -> void);
-        let _: () = call_method_checked(self.env, self.store, "storePreKey", callback_args)?;
+        call_method_checked(self.env, self.store, "storePreKey", callback_args)?;
         Ok(())
     }
 
     fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
-        let _: () = call_method_checked(
+        call_method_checked(
             self.env,
             self.store,
             "removePreKey",
@@ -322,7 +322,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
             prekey_id.convert_into(self.env)? => int,
             jobject_record => org.signal.libsignal.protocol.state.SignedPreKeyRecord
         ) -> void);
-        let _: () = call_method_checked(self.env, self.store, "storeSignedPreKey", callback_args)?;
+        call_method_checked(self.env, self.store, "storeSignedPreKey", callback_args)?;
         Ok(())
     }
 }
@@ -392,7 +392,7 @@ impl<'a> JniSessionStore<'a> {
             address_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
             session_jobject => org.signal.libsignal.protocol.state.SessionRecord,
         ) -> void);
-        let _: () = call_method_checked(self.env, self.store, "storeSession", callback_args)?;
+        call_method_checked(self.env, self.store, "storeSession", callback_args)?;
         Ok(())
     }
 }
@@ -453,7 +453,7 @@ impl<'a> JniSenderKeyStore<'a> {
             distribution_id_jobject => java.util.UUID,
             sender_key_record_jobject => org.signal.libsignal.protocol.groups.state.SenderKeyRecord,
         ) -> void);
-        let _: () = call_method_checked(self.env, self.store, "storeSenderKey", callback_args)?;
+        call_method_checked(self.env, self.store, "storeSenderKey", callback_args)?;
 
         Ok(())
     }

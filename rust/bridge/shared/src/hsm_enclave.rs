@@ -13,6 +13,9 @@ use self::hsm_enclave::Result;
 use crate::support::*;
 use crate::*;
 
+// It's okay to have a large enum because this type will be boxed for bridging after it's been
+// created.
+#[allow(clippy::large_enum_variant)]
 pub enum HsmEnclaveClient {
     ConnectionEstablishment(hsm_enclave::ClientConnectionEstablishment),
     Connection(client_connection::ClientConnection),

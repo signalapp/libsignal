@@ -92,5 +92,5 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
 }
 
 pub(crate) fn name_from_ident(ident: &Ident) -> String {
-    ident.to_string().replace("_", "_1")
+    ident.to_string().replace('_', "_1")
 }

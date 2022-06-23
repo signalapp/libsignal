@@ -14,6 +14,9 @@ use crate::*;
 use ::attest::cds2::Result;
 use ::attest::client_connection;
 
+// It's okay to have a large enum because this type will be boxed for bridging after it's been
+// created.
+#[allow(clippy::large_enum_variant)]
 pub enum Cds2ClientState {
     ConnectionEstablishment(cds2::ClientConnectionEstablishment),
     Connection(client_connection::ClientConnection),

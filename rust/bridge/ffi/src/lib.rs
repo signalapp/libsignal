@@ -29,7 +29,7 @@ pub unsafe extern "C" fn signal_free_string(buf: *const c_char) {
     if buf.is_null() {
         return;
     }
-    CString::from_raw(buf as _);
+    drop(CString::from_raw(buf as _));
 }
 
 #[no_mangle]

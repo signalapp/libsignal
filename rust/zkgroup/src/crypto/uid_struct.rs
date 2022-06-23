@@ -11,7 +11,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UidStruct {
     pub(crate) bytes: UidBytes,
     pub(crate) M1: RistrettoPoint,
