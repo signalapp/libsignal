@@ -81,6 +81,21 @@ def main(args=None):
         # Link it statically to avoid propagating that dependency.
         cargo_env['RUSTFLAGS'] = '-C target-feature=+crt-static'
 
+        abs_build_dir = os.path.abspath(options.cargo_build_dir)
+        if 'GITHUB_WORKSPACE' in cargo_env and len(abs_build_dir) > 100:
+            # Avoid long build directory paths on GitHub Actions,
+            # breaking the old Win32 limit of 260 characters.
+            # (https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation)
+            # We don't do this everywhere because it breaks cleaning.
+            #
+            # In the long run, Visual Studio's CLI tools will become long-path aware and this should
+            # become unnecessary.
+            # It would be nice if using extended-length path syntax `\\?\` was sufficient,
+            # but that also isn't accepted by all of Visual Studio's CLI tools.
+            tmpdir = cargo_env['RUNNER_TEMP']
+            if len(tmpdir) < len(abs_build_dir):
+                cargo_env['CARGO_BUILD_TARGET_DIR'] = os.path.join(tmpdir, "libsignal")
+
     cmd = subprocess.Popen(cmdline, env=cargo_env)
     cmd.wait()
 
@@ -88,7 +103,7 @@ def main(args=None):
         print('ERROR: cargo failed')
         return 1
 
-    libs_in = os.path.join(options.cargo_build_dir,
+    libs_in = os.path.join(cargo_env['CARGO_BUILD_TARGET_DIR'],
                            cargo_target,
                            configuration_name.lower())
 
