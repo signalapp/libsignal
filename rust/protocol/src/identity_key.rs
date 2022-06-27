@@ -7,8 +7,7 @@
 
 #![warn(missing_docs)]
 
-use crate::proto;
-use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{proto, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use rand::{CryptoRng, Rng};
 use std::convert::TryFrom;

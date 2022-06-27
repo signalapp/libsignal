@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::proto;
-use crate::{IdentityKey, Result, SignalProtocolError};
+use crate::{proto, IdentityKey, Result, SignalProtocolError};
 use prost::Message;
-use sha2::{digest::Digest, Sha512};
+use sha2::digest::Digest;
+use sha2::Sha512;
 use std::fmt;
 use std::fmt::Write;
 use subtle::ConstantTimeEq;

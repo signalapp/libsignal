@@ -16,16 +16,12 @@ use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
-use crate::crypto::credentials;
-use crate::crypto::profile_key_commitment;
-use crate::crypto::profile_key_credential_request;
-use crate::crypto::profile_key_encryption;
-use crate::crypto::profile_key_struct;
-use crate::crypto::receipt_credential_request;
 use crate::crypto::receipt_struct::ReceiptStruct;
 use crate::crypto::timestamp_struct::TimestampStruct;
-use crate::crypto::uid_encryption;
-use crate::crypto::uid_struct;
+use crate::crypto::{
+    credentials, profile_key_commitment, profile_key_credential_request, profile_key_encryption,
+    profile_key_struct, receipt_credential_request, uid_encryption, uid_struct,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AuthCredentialIssuanceProof {

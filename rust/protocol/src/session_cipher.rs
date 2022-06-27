@@ -10,10 +10,9 @@ use crate::{
 };
 
 use crate::consts::MAX_FORWARD_JUMPS;
-use crate::crypto;
 use crate::ratchet::{ChainKey, MessageKeys};
-use crate::session;
 use crate::state::{InvalidSessionError, SessionState};
+use crate::{crypto, session};
 
 use rand::{CryptoRng, Rng};
 

@@ -5,8 +5,7 @@
 
 use arrayref::array_ref;
 
-use crate::crypto;
-use crate::{PrivateKey, PublicKey, Result};
+use crate::{crypto, PrivateKey, PublicKey, Result};
 use std::fmt;
 
 pub(crate) struct MessageKeys {

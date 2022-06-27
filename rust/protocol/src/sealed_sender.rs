@@ -10,10 +10,7 @@ use crate::{
     SignalProtocolError, SignedPreKeyStore,
 };
 
-use crate::crypto;
-use crate::curve;
-use crate::proto;
-use crate::session_cipher;
+use crate::{crypto, curve, proto, session_cipher};
 
 use aes_gcm_siv::aead::{AeadInPlace, NewAead};
 use aes_gcm_siv::Aes256GcmSiv;

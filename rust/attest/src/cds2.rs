@@ -7,10 +7,8 @@ use displaydoc::Display;
 use prost::Message;
 use std::convert::From;
 
-use crate::client_connection;
-use crate::dcap;
 use crate::proto::cds2;
-use crate::snow_resolver;
+use crate::{client_connection, dcap, snow_resolver};
 
 /// Error types for CDS2.
 #[derive(Display, Debug)]

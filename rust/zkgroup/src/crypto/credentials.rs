@@ -15,8 +15,9 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::receipt_struct::ReceiptStruct;
 use crate::crypto::timestamp_struct::TimestampStruct;
-use crate::crypto::uid_struct;
-use crate::crypto::{profile_key_credential_request, receipt_credential_request, receipt_struct};
+use crate::crypto::{
+    profile_key_credential_request, receipt_credential_request, receipt_struct, uid_struct,
+};
 use crate::{
     NUM_AUTH_CRED_ATTRIBUTES, NUM_PROFILE_KEY_CRED_ATTRIBUTES, NUM_RECEIPT_CRED_ATTRIBUTES,
 };

@@ -5,10 +5,9 @@
 
 use zkgroup::api::receipts::ReceiptCredentialPresentation;
 use zkgroup::common::sho::Sho;
-use zkgroup::crypto::credentials;
 use zkgroup::crypto::proofs::{ReceiptCredentialIssuanceProof, ReceiptCredentialPresentationProof};
-use zkgroup::crypto::receipt_credential_request;
 use zkgroup::crypto::receipt_struct::ReceiptStruct;
+use zkgroup::crypto::{credentials, receipt_credential_request};
 use zkgroup::{
     RandomnessBytes, ReceiptLevel, ReceiptSerialBytes, ServerSecretParams, Timestamp,
     RANDOMNESS_LEN, RECEIPT_SERIAL_LEN,

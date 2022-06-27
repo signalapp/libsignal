@@ -5,9 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::api;
 use crate::common::simple_types::*;
-use crate::crypto;
+use crate::{api, crypto};
 
 #[derive(Serialize, Deserialize)]
 pub struct ReceiptCredentialRequestContext {

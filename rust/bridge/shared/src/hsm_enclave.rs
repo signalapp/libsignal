@@ -5,8 +5,7 @@
 
 use std::panic::RefUnwindSafe;
 
-use ::attest::client_connection;
-use ::attest::hsm_enclave;
+use ::attest::{client_connection, hsm_enclave};
 use libsignal_bridge_macros::*;
 
 use self::hsm_enclave::Result;

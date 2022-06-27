@@ -12,8 +12,7 @@ use log::*;
 use std::convert::From;
 use std::fmt;
 
-use crate::client_connection;
-use crate::snow_resolver;
+use crate::{client_connection, snow_resolver};
 
 /// Error types for HSM enclave.
 #[derive(Debug)]

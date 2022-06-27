@@ -11,8 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use zkgroup::ZkGroupDeserializationFailure;
-use zkgroup::ZkGroupVerificationFailure;
+use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::support::describe_panic;
 
