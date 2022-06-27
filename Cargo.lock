@@ -245,7 +245,7 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 [[package]]
 name = "boring"
 version = "2.0.0"
-source = "git+https://github.com/signalapp/boring?branch=libsignal#ceb140105bf34a163903539ed079f128d155f006"
+source = "git+https://github.com/signalapp/boring?branch=libsignal#ea59de35428b7360a58d1fd6a186ec939f5cbaae"
 dependencies = [
  "bitflags",
  "boring-sys",
@@ -257,7 +257,7 @@ dependencies = [
 [[package]]
 name = "boring-sys"
 version = "2.0.0"
-source = "git+https://github.com/signalapp/boring?branch=libsignal#ceb140105bf34a163903539ed079f128d155f006"
+source = "git+https://github.com/signalapp/boring?branch=libsignal#ea59de35428b7360a58d1fd6a186ec939f5cbaae"
 dependencies = [
  "bindgen",
  "cmake",

@@ -60,15 +60,26 @@ jobs:
       working-directory: node
 
     - name: Install crossbuild for Linux arm64
-      run: |
-        sudo apt-get update && sudo apt-get install -y crossbuild-essential-arm64
-        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      run: sudo apt-get update && sudo apt-get install -y crossbuild-essential-arm64
       if: matrix.os == 'ubuntu-latest'
 
-    - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+    - name: Build for arm64 (Linux)
+      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
+      env:
+        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc"
+        CC: "aarch64-linux-gnu-gcc"
+        CXX: "aarch64-linux-gnu-g++"
+        CPATH: "/usr/aarch64-linux-gnu/include"
+      if: matrix.os == 'ubuntu-latest'
 
-    - run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
+    - name: Build for arm64 (other platforms)
+      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+      working-directory: node
+      if: matrix.os != 'ubuntu-latest'
+
+    - name: Build for the host (should be x64)
+      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
 
     - name: Upload library
