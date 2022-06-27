@@ -7,9 +7,7 @@ use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
 use crate::common::sho::Sho;
-use crate::common::simple_types::ReceiptLevel;
-use crate::common::simple_types::ReceiptSerialBytes;
-use crate::common::simple_types::Timestamp;
+use crate::common::simple_types::{ReceiptLevel, ReceiptSerialBytes, Timestamp};
 
 /// The full set of information known by the client after receiving the credential response from
 /// the issuing server. It will all be shared with the credential presentation. Initially the

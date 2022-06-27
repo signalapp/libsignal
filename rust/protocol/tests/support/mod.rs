@@ -4,7 +4,8 @@
 //
 
 use libsignal_protocol::*;
-use rand::{rngs::OsRng, CryptoRng, Rng};
+use rand::rngs::OsRng;
+use rand::{CryptoRng, Rng};
 
 pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, SignalProtocolError> {
     let mut csprng = OsRng;

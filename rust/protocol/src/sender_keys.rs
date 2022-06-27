@@ -9,10 +9,9 @@ use std::convert::TryFrom;
 use itertools::Itertools;
 use prost::Message;
 
-use crate::consts;
 use crate::crypto::hmac_sha256;
 use crate::proto::storage as storage_proto;
-use crate::{PrivateKey, PublicKey, SignalProtocolError};
+use crate::{consts, PrivateKey, PublicKey, SignalProtocolError};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]

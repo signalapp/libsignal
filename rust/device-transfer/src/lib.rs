@@ -9,10 +9,12 @@
 #![warn(missing_docs)]
 
 use chrono::{Datelike, Duration, Utc};
+use picky::hash::HashAlgorithm;
 use picky::key::PrivateKey;
+use picky::signature::SignatureAlgorithm;
+use picky::x509::certificate::CertificateBuilder;
+use picky::x509::date::UTCDate;
 use picky::x509::name::{DirectoryName, NameAttr};
-use picky::x509::{certificate::CertificateBuilder, date::UTCDate};
-use picky::{hash::HashAlgorithm, signature::SignatureAlgorithm};
 use std::fmt;
 
 /// Error types for device transfer.

@@ -14,9 +14,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
-use curve25519_dalek::subtle::Choice;
-use curve25519_dalek::subtle::ConditionallySelectable;
-use curve25519_dalek::subtle::ConstantTimeEq;
+use curve25519_dalek::subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use lazy_static::lazy_static;
 

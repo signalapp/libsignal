@@ -5,12 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::crypto;
 use crate::crypto::receipt_struct::ReceiptStruct;
-use crate::ReceiptLevel;
-use crate::ReceiptSerialBytes;
-use crate::ReservedBytes;
-use crate::Timestamp;
+use crate::{crypto, ReceiptLevel, ReceiptSerialBytes, ReservedBytes, Timestamp};
 
 #[derive(Serialize, Deserialize)]
 pub struct ReceiptCredentialPresentation {

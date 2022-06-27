@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::api;
 use crate::common::constants::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
-use crate::crypto;
+use crate::{api, crypto};
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize)]

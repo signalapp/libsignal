@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::consts;
-use crate::crypto;
+use crate::{consts, crypto};
 
 use crate::{
     CiphertextMessageType, Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage,

@@ -13,8 +13,7 @@ use crate::ratchet::{ChainKey, MessageKeys, RootKey};
 use crate::{IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
 
 use crate::consts;
-use crate::proto::storage::session_structure;
-use crate::proto::storage::{RecordStructure, SessionStructure};
+use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
 use crate::state::{PreKeyId, SignedPreKeyId};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.

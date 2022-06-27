@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::common::sho::Sho;
 use crate::crypto::credentials;
-use crate::crypto::credentials::BlindedReceiptCredential;
-use crate::crypto::credentials::ReceiptCredential;
+use crate::crypto::credentials::{BlindedReceiptCredential, ReceiptCredential};
 use crate::ReceiptSerialBytes;
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]

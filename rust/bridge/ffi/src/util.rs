@@ -11,8 +11,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::ffi::CString;
-use zkgroup::ZkGroupDeserializationFailure;
-use zkgroup::ZkGroupVerificationFailure;
+use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 #[derive(Debug)]
 #[repr(C)]

@@ -10,5 +10,4 @@ pub mod receipts;
 
 pub mod server_params;
 
-pub use server_params::ServerPublicParams;
-pub use server_params::ServerSecretParams;
+pub use server_params::{ServerPublicParams, ServerSecretParams};
