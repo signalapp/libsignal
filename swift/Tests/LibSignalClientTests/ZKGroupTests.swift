@@ -398,6 +398,7 @@ class ZKGroupTests: TestCaseBase {
     XCTAssertEqual(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize())
   }
 
+  @available(*, deprecated)
   func testPniIntegration() throws {
     let aci: UUID = TEST_ARRAY_16
     let pni: UUID = TEST_ARRAY_16_1

@@ -317,6 +317,7 @@ impl ServerSecretParams {
         Ok(())
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn verify_pni_credential_presentation(
         &self,
         group_public_params: api::groups::GroupPublicParams,
@@ -350,6 +351,7 @@ impl ServerSecretParams {
         }
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn verify_pni_credential_presentation_v1(
         &self,
         group_public_params: api::groups::GroupPublicParams,
@@ -369,6 +371,7 @@ impl ServerSecretParams {
         )
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn verify_pni_credential_presentation_v2(
         &self,
         group_public_params: api::groups::GroupPublicParams,
@@ -483,6 +486,7 @@ impl ServerSecretParams {
         })
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn issue_pni_credential(
         &self,
         randomness: RandomnessBytes,
@@ -790,6 +794,7 @@ impl ServerPublicParams {
         }
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn create_pni_credential_request_context(
         &self,
         randomness: RandomnessBytes,
@@ -877,6 +882,7 @@ impl ServerPublicParams {
         })
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn receive_pni_credential(
         &self,
         context: &api::profiles::PniCredentialRequestContext,
@@ -1043,12 +1049,14 @@ impl ServerPublicParams {
         }
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn create_pni_credential_presentation(
         &self,
         randomness: RandomnessBytes,
         group_secret_params: api::groups::GroupSecretParams,
         pni_credential: api::profiles::PniCredential,
     ) -> api::profiles::AnyPniCredentialPresentation {
+        #[allow(deprecated)]
         let presentation_v2 = self.create_pni_credential_presentation_v2(
             randomness,
             group_secret_params,
@@ -1057,6 +1065,7 @@ impl ServerPublicParams {
         api::profiles::AnyPniCredentialPresentation::V2(presentation_v2)
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn create_pni_credential_presentation_v1(
         &self,
         randomness: RandomnessBytes,
@@ -1100,6 +1109,7 @@ impl ServerPublicParams {
         }
     }
 
+    #[deprecated = "superseded by AuthCredentialWithPni + ProfileKeyCredential"]
     pub fn create_pni_credential_presentation_v2(
         &self,
         randomness: RandomnessBytes,

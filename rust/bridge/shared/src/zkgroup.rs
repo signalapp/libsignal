@@ -302,6 +302,7 @@ fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
 }
 
 #[bridge_fn]
+#[allow(deprecated)]
 fn ServerPublicParams_CreatePniCredentialRequestContextDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -347,6 +348,7 @@ fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
 }
 
 #[bridge_fn]
+#[allow(deprecated)]
 fn ServerPublicParams_ReceivePniCredential(
     server_public_params: Serialized<ServerPublicParams>,
     request_context: Serialized<PniCredentialRequestContext>,
@@ -392,6 +394,7 @@ fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministi
 }
 
 #[bridge_fn_buffer]
+#[allow(deprecated)]
 fn ServerPublicParams_CreatePniCredentialPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -520,6 +523,7 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
 }
 
 #[bridge_fn]
+#[allow(deprecated)]
 fn ServerSecretParams_IssuePniCredentialDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -556,6 +560,7 @@ fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
 }
 
 #[bridge_fn_void]
+#[allow(deprecated)]
 fn ServerSecretParams_VerifyPniCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
     group_public_params: Serialized<GroupPublicParams>,

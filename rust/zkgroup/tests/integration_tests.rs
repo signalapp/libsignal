@@ -874,6 +874,7 @@ fn test_integration_expiring_profile() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_integration_pni() {
     // SERVER
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);

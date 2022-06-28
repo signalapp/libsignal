@@ -60,6 +60,9 @@ export default class ClientZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   createPniCredentialRequestContext(
     aci: UUIDType,
     pni: UUIDType,
@@ -75,6 +78,9 @@ export default class ClientZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   createPniCredentialRequestContextWithRandom(
     random: Buffer,
     aci: UUIDType,
@@ -120,6 +126,9 @@ export default class ClientZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   receivePniCredential(
     requestContext: PniCredentialRequestContext,
     response: PniCredentialResponse
@@ -189,6 +198,9 @@ export default class ClientZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   createPniCredentialPresentation(
     groupSecretParams: GroupSecretParams,
     credential: PniCredential
@@ -202,6 +214,9 @@ export default class ClientZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   createPniCredentialPresentationWithRandom(
     random: Buffer,
     groupSecretParams: GroupSecretParams,

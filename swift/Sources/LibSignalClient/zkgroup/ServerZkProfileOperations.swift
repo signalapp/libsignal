@@ -54,10 +54,12 @@ public class ServerZkProfileOperations {
     }
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func issuePniCredential(profileKeyCredentialRequest: ProfileKeyCredentialRequest, aci: UUID, pni: UUID, profileKeyCommitment: ProfileKeyCommitment) throws -> PniCredentialResponse {
     return try issuePniCredential(randomness: Randomness.generate(), profileKeyCredentialRequest: profileKeyCredentialRequest, aci: aci, pni: pni, profileKeyCommitment: profileKeyCommitment)
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func issuePniCredential(randomness: Randomness, profileKeyCredentialRequest: ProfileKeyCredentialRequest, aci: UUID, pni: UUID, profileKeyCommitment: ProfileKeyCommitment) throws -> PniCredentialResponse {
     return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
@@ -90,6 +92,7 @@ public class ServerZkProfileOperations {
     }
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func verifyPniCredentialPresentation(groupPublicParams: GroupPublicParams, presentation: PniCredentialPresentation) throws {
     try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in

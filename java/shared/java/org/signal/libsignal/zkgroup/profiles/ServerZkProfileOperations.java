@@ -67,10 +67,18 @@ public class ServerZkProfileOperations {
     }
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredentialResponse issuePniCredential(ProfileKeyCredentialRequest request, UUID aci, UUID pni, ProfileKeyCommitment profileKeyCommitment) throws VerificationFailedException {
     return issuePniCredential(new SecureRandom(), request, aci, pni, profileKeyCommitment);
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredentialResponse issuePniCredential(SecureRandom secureRandom, ProfileKeyCredentialRequest request, UUID aci, UUID pni, ProfileKeyCommitment profileKeyCommitment) throws VerificationFailedException {
     byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
@@ -92,6 +100,10 @@ public class ServerZkProfileOperations {
     Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), profileKeyCredentialPresentation.getInternalContentsForJNI(), now.getEpochSecond());
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public void verifyPniCredentialPresentation(GroupPublicParams groupPublicParams, PniCredentialPresentation presentation) throws VerificationFailedException {
     Native.ServerSecretParams_VerifyPniCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), presentation.getInternalContentsForJNI());
   }
