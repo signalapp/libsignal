@@ -41,10 +41,18 @@ public class ClientZkProfileOperations {
     }
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredentialRequestContext createPniCredentialRequestContext(UUID aci, UUID pni, ProfileKey profileKey) {
     return createPniCredentialRequestContext(new SecureRandom(), aci, pni, profileKey);
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredentialRequestContext createPniCredentialRequestContext(SecureRandom secureRandom, UUID aci, UUID pni, ProfileKey profileKey) {
     byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
@@ -90,6 +98,10 @@ public class ClientZkProfileOperations {
     }
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredential receivePniCredential(PniCredentialRequestContext requestContext, PniCredentialResponse response) throws VerificationFailedException {
     if (response == null) {
       throw new VerificationFailedException();
@@ -138,10 +150,18 @@ public class ClientZkProfileOperations {
     }
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredentialPresentation createPniCredentialPresentation(GroupSecretParams groupSecretParams, PniCredential credential) {
     return createPniCredentialPresentation(new SecureRandom(), groupSecretParams, credential);
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential.
+   */
+  @Deprecated
   public PniCredentialPresentation createPniCredentialPresentation(SecureRandom secureRandom, GroupSecretParams groupSecretParams, PniCredential credential) {
     byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);

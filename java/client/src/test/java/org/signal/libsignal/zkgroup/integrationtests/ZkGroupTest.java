@@ -896,7 +896,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
     }
   }
 
-  @Test
+  @Test @SuppressWarnings("deprecation")
   public void testPniIntegration() throws VerificationFailedException, InvalidInputException, UnsupportedEncodingException {
 
     UUID aci            = TEST_UUID;

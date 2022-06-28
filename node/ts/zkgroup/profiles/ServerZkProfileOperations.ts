@@ -95,6 +95,9 @@ export default class ServerZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   issuePniCredential(
     profileKeyCredentialRequest: ProfileKeyCredentialRequest,
     aci: UUIDType,
@@ -112,6 +115,9 @@ export default class ServerZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   issuePniCredentialWithRandom(
     random: Buffer,
     profileKeyCredentialRequest: ProfileKeyCredentialRequest,
@@ -144,6 +150,9 @@ export default class ServerZkProfileOperations {
     );
   }
 
+  /**
+   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
+   */
   verifyPniCredentialPresentation(
     groupPublicParams: GroupPublicParams,
     presentation: PniCredentialPresentation

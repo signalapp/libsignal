@@ -32,10 +32,12 @@ public class ClientZkProfileOperations {
     }
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func createPniCredentialRequestContext(aci: UUID, pni: UUID, profileKey: ProfileKey) throws -> PniCredentialRequestContext {
     return try createPniCredentialRequestContext(randomness: Randomness.generate(), aci: aci, pni: pni, profileKey: profileKey)
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func createPniCredentialRequestContext(randomness: Randomness, aci: UUID, pni: UUID, profileKey: ProfileKey) throws -> PniCredentialRequestContext {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
       try randomness.withUnsafePointerToBytes { randomness in
@@ -80,6 +82,7 @@ public class ClientZkProfileOperations {
     }
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func receivePniCredential(requestContext: PniCredentialRequestContext, response: PniCredentialResponse) throws -> PniCredential {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
       try requestContext.withUnsafePointerToSerialized { requestContext in
@@ -128,10 +131,12 @@ public class ClientZkProfileOperations {
     }
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func createPniCredentialPresentation(groupSecretParams: GroupSecretParams, credential: PniCredential) throws -> PniCredentialPresentation {
     return try createPniCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, credential: credential)
   }
 
+  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
   public func createPniCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, credential: PniCredential) throws -> PniCredentialPresentation {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
       try randomness.withUnsafePointerToBytes { randomness in
