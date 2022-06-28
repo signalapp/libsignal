@@ -47,7 +47,7 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray());
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.HsmEnclaveClient_Destroy(this.unsafeHandle);
   }

@@ -17,7 +17,7 @@ public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
 
   final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.DecryptionErrorMessage_Destroy(this.unsafeHandle);
   }

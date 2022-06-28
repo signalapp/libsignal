@@ -16,7 +16,7 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.SignedPreKeyRecord_Destroy(this.unsafeHandle);
   }

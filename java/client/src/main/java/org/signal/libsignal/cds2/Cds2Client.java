@@ -46,7 +46,7 @@ public class Cds2Client implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.Cds2ClientState_New(mrenclave, caCert, attestationMsg, earliestValidInstant.toEpochMilli());
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.Cds2ClientState_Destroy(this.unsafeHandle);
   }

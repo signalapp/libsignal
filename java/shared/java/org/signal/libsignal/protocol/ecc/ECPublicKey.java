@@ -38,7 +38,7 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.ECPublicKey_Destroy(this.unsafeHandle);
   }

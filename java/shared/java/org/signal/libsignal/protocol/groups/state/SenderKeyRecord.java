@@ -18,7 +18,7 @@ import org.signal.libsignal.protocol.InvalidMessageException;
 public class SenderKeyRecord implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.SenderKeyRecord_Destroy(this.unsafeHandle);
   }

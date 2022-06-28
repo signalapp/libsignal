@@ -19,7 +19,7 @@ public class SignalProtocolAddress implements NativeHandleGuard.Owner {
     this.unsafeHandle = unsafeHandle;
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.ProtocolAddress_Destroy(this.unsafeHandle);
   }

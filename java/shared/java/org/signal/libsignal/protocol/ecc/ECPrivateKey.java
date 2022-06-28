@@ -27,7 +27,7 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.ECPrivateKey_Destroy(this.unsafeHandle);
   }

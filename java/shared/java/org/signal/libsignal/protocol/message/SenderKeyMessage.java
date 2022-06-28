@@ -22,7 +22,7 @@ public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Ow
 
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.SenderKeyMessage_Destroy(this.unsafeHandle);
   }

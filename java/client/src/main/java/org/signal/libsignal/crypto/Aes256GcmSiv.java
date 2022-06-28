@@ -17,7 +17,7 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.Aes256GcmSiv_New(key);
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.Aes256GcmSiv_Destroy(this.unsafeHandle);
   }

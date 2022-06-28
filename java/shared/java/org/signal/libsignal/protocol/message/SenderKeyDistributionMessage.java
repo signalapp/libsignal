@@ -20,7 +20,7 @@ public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
 
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.SenderKeyDistributionMessage_Destroy(this.unsafeHandle);
   }

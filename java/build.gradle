@@ -15,6 +15,12 @@ subprojects {
             }
         }
     }
+
+    allprojects {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
+        }
+    }
 }
 
 task makeJniLibrariesAndroid(type:Exec) {

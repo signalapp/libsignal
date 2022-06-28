@@ -16,13 +16,13 @@ public class InMemorySenderKeyStore implements SenderKeyStore {
 
   @Override
   public void storeSenderKey(SignalProtocolAddress sender, UUID distributionId, SenderKeyRecord record) {
-    store.put(new Pair(sender, distributionId), record);
+    store.put(new Pair<>(sender, distributionId), record);
   }
 
   @Override
   public SenderKeyRecord loadSenderKey(SignalProtocolAddress sender, UUID distributionId) {
     try {
-      SenderKeyRecord record = store.get(new Pair(sender, distributionId));
+      SenderKeyRecord record = store.get(new Pair<>(sender, distributionId));
 
       if (record == null) {
         return null;

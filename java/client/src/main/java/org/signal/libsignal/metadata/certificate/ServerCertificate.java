@@ -11,7 +11,7 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 public class ServerCertificate implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.ServerCertificate_Destroy(this.unsafeHandle);
   }

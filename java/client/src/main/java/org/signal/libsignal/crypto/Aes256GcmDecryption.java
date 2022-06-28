@@ -18,7 +18,7 @@ public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.Aes256GcmDecryption_New(key, nonce, associatedData);
   }
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.Aes256GcmDecryption_Destroy(this.unsafeHandle);
   }

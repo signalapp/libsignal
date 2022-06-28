@@ -20,7 +20,7 @@ public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard
 
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.PreKeySignalMessage_Destroy(this.unsafeHandle);
   }

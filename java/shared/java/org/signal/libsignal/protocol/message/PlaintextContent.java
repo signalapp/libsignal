@@ -15,7 +15,7 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
 
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.PlaintextContent_Destroy(this.unsafeHandle);
   }

@@ -20,7 +20,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override
+  @Override @SuppressWarnings("deprecation")
   protected void finalize() {
      Native.SignalMessage_Destroy(this.unsafeHandle);
   }
