@@ -3,9 +3,6 @@ name: Publish to NPM
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Git ref (tag)'
-        required: true
       npm_tag:
         description: 'NPM tag'
         required: true
@@ -33,8 +30,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.inputs.ref }}
 
     - name: Install nightly rust
       uses: actions-rs/toolchain@v1
@@ -91,8 +86,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.inputs.ref }}
 
     - name: Get Node version from .nvmrc
       id: get-nvm-version
