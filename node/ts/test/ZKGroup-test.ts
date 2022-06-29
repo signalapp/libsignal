@@ -6,19 +6,21 @@
 import { assert } from 'chai';
 import { toUUID } from '../zkgroup/internal/UUIDUtil';
 
-import ServerSecretParams from '../zkgroup/ServerSecretParams';
-import ServerZkAuthOperations from '../zkgroup/auth/ServerZkAuthOperations';
-import GroupMasterKey from '../zkgroup/groups/GroupMasterKey';
-import GroupSecretParams from '../zkgroup/groups/GroupSecretParams';
-import ClientZkAuthOperations from '../zkgroup/auth/ClientZkAuthOperations';
-import ClientZkGroupCipher from '../zkgroup/groups/ClientZkGroupCipher';
-import ServerZkProfileOperations from '../zkgroup/profiles/ServerZkProfileOperations';
-import ClientZkProfileOperations from '../zkgroup/profiles/ClientZkProfileOperations';
-import ProfileKey from '../zkgroup/profiles/ProfileKey';
-import ProfileKeyVersion from '../zkgroup/profiles/ProfileKeyVersion';
-import ClientZkReceiptOperations from '../zkgroup/receipts/ClientZkReceiptOperations';
-import ServerZkReceiptOperations from '../zkgroup/receipts/ServerZkReceiptOperations';
-import ReceiptSerial from '../zkgroup/receipts/ReceiptSerial';
+import {
+  ServerSecretParams,
+  ServerZkAuthOperations,
+  GroupMasterKey,
+  GroupSecretParams,
+  ClientZkAuthOperations,
+  ClientZkGroupCipher,
+  ServerZkProfileOperations,
+  ClientZkProfileOperations,
+  ProfileKey,
+  ProfileKeyVersion,
+  ClientZkReceiptOperations,
+  ServerZkReceiptOperations,
+  ReceiptSerial,
+} from '../zkgroup/';
 
 function hexToBuffer(hex: string) {
   return Buffer.from(hex, 'hex');
