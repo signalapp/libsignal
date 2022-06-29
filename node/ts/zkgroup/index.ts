@@ -17,6 +17,9 @@ export { default as AuthCredential } from './auth/AuthCredential';
 export { default as AuthCredentialResponse } from './auth/AuthCredentialResponse';
 export { default as AuthCredentialPresentation } from './auth/AuthCredentialPresentation';
 
+export { default as AuthCredentialWithPni } from './auth/AuthCredentialWithPni';
+export { default as AuthCredentialWithPniResponse } from './auth/AuthCredentialWithPniResponse';
+
 // Groups
 export { default as ClientZkGroupCipher } from './groups/ClientZkGroupCipher';
 
@@ -39,6 +42,9 @@ export { default as ProfileKeyCredentialRequest } from './profiles/ProfileKeyCre
 export { default as ProfileKeyCredentialRequestContext } from './profiles/ProfileKeyCredentialRequestContext';
 export { default as ProfileKeyCredentialResponse } from './profiles/ProfileKeyCredentialResponse';
 export { default as ProfileKeyVersion } from './profiles/ProfileKeyVersion';
+
+export { default as ExpiringProfileKeyCredential } from './profiles/ExpiringProfileKeyCredential';
+export { default as ExpiringProfileKeyCredentialResponse } from './profiles/ExpiringProfileKeyCredentialResponse';
 
 export { default as PniCredential } from './profiles/PniCredential';
 export { default as PniCredentialPresentation } from './profiles/PniCredentialPresentation';
