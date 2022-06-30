@@ -1,21 +1,22 @@
 //
-// Copyright 2020 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 use crate::proto;
 use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
-use rand::{CryptoRng, Rng};
-use std::convert::TryFrom;
-
 use prost::Message;
+use rand::{CryptoRng, Rng};
+use subtle_ng_derive::{ConstEq, ConstOrd, ConstantTimeEq, ConstantTimeGreater};
+
+use std::convert::TryFrom;
 
 // Used for domain separation between alternate-identity signatures and other key-to-key signatures.
 const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_1: &[u8] = &[0xFF; 32];
 const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_2: &[u8] = b"Signal_PNI_Signature";
 
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, ConstEq, ConstOrd, ConstantTimeEq, ConstantTimeGreater, Clone, Copy)]
 pub struct IdentityKey {
     public_key: PublicKey,
 }

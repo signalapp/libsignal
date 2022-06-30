@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -7,50 +7,82 @@ pub(crate) mod curve25519;
 
 use crate::{Result, SignalProtocolError};
 
-use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 
 use arrayref::array_ref;
+use displaydoc::Display;
+use num_enum;
 use rand::{CryptoRng, Rng};
-use subtle::ConstantTimeEq;
+use subtle::{self, Convertible, IteratedEq, IteratedGreater, IteratedOperation};
+use subtle_ng_derive::{ConstEq, ConstOrd, ConstantTimeEq, ConstantTimeGreater};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Debug,
+    Display,
+    Copy,
+    Clone,
+    ConstEq,
+    ConstOrd,
+    num_enum::TryFromPrimitive,
+    num_enum::IntoPrimitive,
+)]
+#[repr(u8)]
 pub enum KeyType {
-    Djb,
+    /// <curve25519 key type>
+    Djb = 0x05u8,
 }
 
-impl fmt::Display for KeyType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+impl Convertible for KeyType {
+    type To = u8;
+    fn for_constant_operation(&self) -> u8 {
+        (*self).into()
     }
 }
 
-impl KeyType {
-    fn value(&self) -> u8 {
-        match &self {
-            KeyType::Djb => 0x05u8,
-        }
-    }
-}
-
-impl TryFrom<u8> for KeyType {
-    type Error = SignalProtocolError;
-
-    fn try_from(x: u8) -> Result<Self> {
-        match x {
-            0x05u8 => Ok(KeyType::Djb),
-            t => Err(SignalProtocolError::BadKeyType(t)),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, ConstEq, ConstOrd)]
 enum PublicKeyData {
     DjbPublicKey([u8; curve25519::PUBLIC_KEY_LENGTH]),
 }
 
-#[derive(Clone, Copy, Eq)]
+impl PublicKeyData {
+    pub(crate) fn key_type(&self) -> KeyType {
+        match self {
+            Self::DjbPublicKey(_) => KeyType::Djb,
+        }
+    }
+    pub(crate) fn key_data(&self) -> &[u8] {
+        match self {
+            Self::DjbPublicKey(ref k) => k.as_ref(),
+        }
+    }
+}
+
+impl subtle::ConstantTimeEq for PublicKeyData {
+    /// A constant-time comparison as long as the two keys have a matching type.
+    ///
+    /// If the two keys have different types, the comparison short-circuits,
+    /// much like comparing two slices of different lengths.
+    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+        let mut x = IteratedEq::initiate();
+        x.apply_eq(&self.key_type(), &other.key_type());
+        x.apply_eq(self.key_data(), other.key_data());
+        x.extract_result()
+    }
+}
+
+impl subtle::ConstantTimeGreater for PublicKeyData {
+    fn ct_gt(&self, other: &Self) -> subtle::Choice {
+        let mut x = IteratedGreater::initiate();
+        x.apply_gt(&self.key_type(), &other.key_type());
+        x.apply_gt(self.key_data(), other.key_data());
+        x.extract_result()
+    }
+}
+
+impl subtle::ConstantTimeLess for PublicKeyData {}
+
+#[derive(Clone, Copy, ConstEq, ConstOrd, ConstantTimeEq, ConstantTimeGreater)]
 pub struct PublicKey {
     key: PublicKeyData,
 }
@@ -64,7 +96,8 @@ impl PublicKey {
         if value.is_empty() {
             return Err(SignalProtocolError::NoKeyTypeIdentifier);
         }
-        let key_type = KeyType::try_from(value[0])?;
+        let key_type =
+            KeyType::try_from(value[0]).map_err(|e| SignalProtocolError::BadKeyType(e.number))?;
         match key_type {
             KeyType::Djb => {
                 // We allow trailing data after the public key (why?)
@@ -100,7 +133,7 @@ impl PublicKey {
             PublicKeyData::DjbPublicKey(v) => v.len(),
         };
         let mut result = Vec::with_capacity(1 + value_len);
-        result.push(self.key_type().value());
+        result.push(self.key.key_type().into());
         match &self.key {
             PublicKeyData::DjbPublicKey(v) => result.extend_from_slice(v),
         }
@@ -129,18 +162,6 @@ impl PublicKey {
             }
         }
     }
-
-    fn key_data(&self) -> &[u8] {
-        match &self.key {
-            PublicKeyData::DjbPublicKey(ref k) => k.as_ref(),
-        }
-    }
-
-    pub fn key_type(&self) -> KeyType {
-        match &self.key {
-            PublicKeyData::DjbPublicKey(_) => KeyType::Djb,
-        }
-    }
 }
 
 impl From<PublicKeyData> for PublicKey {
@@ -157,58 +178,23 @@ impl TryFrom<&[u8]> for PublicKey {
     }
 }
 
-impl subtle::ConstantTimeEq for PublicKey {
-    /// A constant-time comparison as long as the two keys have a matching type.
-    ///
-    /// If the two keys have different types, the comparison short-circuits,
-    /// much like comparing two slices of different lengths.
-    fn ct_eq(&self, other: &PublicKey) -> subtle::Choice {
-        if self.key_type() != other.key_type() {
-            return 0.ct_eq(&1);
-        }
-        self.key_data().ct_eq(other.key_data())
-    }
-}
-
-impl PartialEq for PublicKey {
-    fn eq(&self, other: &PublicKey) -> bool {
-        bool::from(self.ct_eq(other))
-    }
-}
-
-impl Ord for PublicKey {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.key_type() != other.key_type() {
-            return self.key_type().cmp(&other.key_type());
-        }
-
-        crate::utils::constant_time_cmp(self.key_data(), other.key_data())
-    }
-}
-
-impl PartialOrd for PublicKey {
-    fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 impl fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "PublicKey {{ key_type={}, serialize={:?} }}",
-            self.key_type(),
+            self.key.key_type(),
             self.serialize()
         )
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 enum PrivateKeyData {
     DjbPrivateKey([u8; curve25519::PRIVATE_KEY_LENGTH]),
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy)]
 pub struct PrivateKey {
     key: PrivateKeyData,
 }

@@ -39,7 +39,6 @@ mod session;
 mod session_cipher;
 mod state;
 mod storage;
-mod utils;
 
 use error::Result;
 

@@ -1014,7 +1014,8 @@ dependencies = [
  "prost-build",
  "rand 0.7.3",
  "sha2",
- "subtle",
+ "subtle-ng",
+ "subtle-ng-derive",
  "thiserror",
  "uuid",
  "x25519-dalek",
@@ -2035,6 +2036,22 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
+
+[[package]]
+name = "subtle-ng"
+version = "2.5.0"
+source = "git+https://github.com/cosmicexplorer/subtle?rev=287f4ead34b0cdd4185083bdd0cd37a38b0954a4#287f4ead34b0cdd4185083bdd0cd37a38b0954a4"
+
+[[package]]
+name = "subtle-ng-derive"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d00ace24986956f69866a3ac7279e9545b22d84a35a0c8132910fcbb27200670"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "syn"
