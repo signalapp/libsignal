@@ -206,7 +206,8 @@ describe('ZKGroup', () => {
     );
     serverZkAuth.verifyAuthCredentialPresentation(
       groupPublicParams,
-      presentation
+      presentation,
+      new Date(redemptionTime * 86400 * 1000)
     );
 
     assertArrayEquals(presentation.serialize(), authPresentationResult);
@@ -291,7 +292,8 @@ describe('ZKGroup', () => {
     );
     serverZkAuth.verifyAuthCredentialPresentation(
       groupPublicParams,
-      presentation
+      presentation,
+      new Date(1000 * redemptionTime)
     );
   });
 

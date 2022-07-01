@@ -79,12 +79,14 @@ export default class ServerZkAuthOperations {
 
   verifyAuthCredentialPresentation(
     groupPublicParams: GroupPublicParams,
-    authCredentialPresentation: AuthCredentialPresentation
+    authCredentialPresentation: AuthCredentialPresentation,
+    now: Date = new Date()
   ): void {
     Native.ServerSecretParams_VerifyAuthCredentialPresentation(
       this.serverSecretParams.getContents(),
       groupPublicParams.getContents(),
-      authCredentialPresentation.getContents()
+      authCredentialPresentation.getContents(),
+      Math.floor(now.getTime() / 1000)
     );
   }
 }

@@ -7,12 +7,10 @@ package org.signal.libsignal.zkgroup.auth;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
-import org.signal.libsignal.zkgroup.InvalidRedemptionTimeException;
 import org.signal.libsignal.zkgroup.groups.GroupPublicParams;
 import org.signal.libsignal.internal.Native;
 
@@ -62,20 +60,12 @@ public class ServerZkAuthOperations {
     }
   }
 
-  public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation) throws VerificationFailedException, InvalidRedemptionTimeException {
+  public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation) throws VerificationFailedException {
        verifyAuthCredentialPresentation(groupPublicParams, authCredentialPresentation, Instant.now());
      }
 
-  public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation, Instant currentTime) throws VerificationFailedException, InvalidRedemptionTimeException {
-    // TODO: Move this check down to Rust.
-    Instant acceptableStartTime = authCredentialPresentation.getRedemptionTime().minus(1, ChronoUnit.DAYS);
-    Instant acceptableEndTime = acceptableStartTime.plus(3, ChronoUnit.DAYS);
-
-    if (currentTime.isBefore(acceptableStartTime) || currentTime.isAfter(acceptableEndTime)) {
-        throw new InvalidRedemptionTimeException();
-    }
-
-    Native.ServerSecretParams_VerifyAuthCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), authCredentialPresentation.getInternalContentsForJNI());
+  public void verifyAuthCredentialPresentation(GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation, Instant currentTime) throws VerificationFailedException {
+    Native.ServerSecretParams_VerifyAuthCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), groupPublicParams.getInternalContentsForJNI(), authCredentialPresentation.getInternalContentsForJNI(), currentTime.getEpochSecond());
   }
 
 }

@@ -77,7 +77,11 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     c.bench_function("verify_auth_credential_presentation_v1", |b| {
         b.iter(|| {
             server_secret_params
-                .verify_auth_credential_presentation_v1(group_public_params, &presentation)
+                .verify_auth_credential_presentation_v1(
+                    group_public_params,
+                    &presentation,
+                    redemption_time,
+                )
                 .unwrap();
         })
     });
@@ -108,7 +112,11 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     c.bench_function("verify_auth_credential_presentation_v2", |b| {
         b.iter(|| {
             server_secret_params
-                .verify_auth_credential_presentation_v2(group_public_params, &presentation_v2)
+                .verify_auth_credential_presentation_v2(
+                    group_public_params,
+                    &presentation_v2,
+                    redemption_time,
+                )
                 .unwrap();
         })
     });

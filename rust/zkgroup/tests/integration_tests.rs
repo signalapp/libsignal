@@ -455,19 +455,51 @@ fn test_integration_auth() {
     assert!(presentation_v2_parsed.get_pni_ciphertext().is_none());
 
     server_secret_params
-        .verify_auth_credential_presentation(group_public_params, &presentation_v1_parsed)
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_v1_parsed,
+            u64::from(redemption_time) * SECONDS_PER_DAY,
+        )
         .unwrap();
 
     server_secret_params
-        .verify_auth_credential_presentation(group_public_params, &presentation_v2_parsed)
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_v2_parsed,
+            u64::from(redemption_time) * SECONDS_PER_DAY,
+        )
         .unwrap();
 
     server_secret_params
-        .verify_auth_credential_presentation_v1(group_public_params, &presentation_v1)
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_v1_parsed,
+            u64::from(redemption_time - 1) * SECONDS_PER_DAY - 1,
+        )
+        .unwrap_err();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_v2_parsed,
+            u64::from(redemption_time + 2) * SECONDS_PER_DAY + 2,
+        )
+        .unwrap_err();
+
+    server_secret_params
+        .verify_auth_credential_presentation_v1(
+            group_public_params,
+            &presentation_v1,
+            redemption_time,
+        )
         .unwrap();
 
     server_secret_params
-        .verify_auth_credential_presentation_v2(group_public_params, &presentation_v2)
+        .verify_auth_credential_presentation_v2(
+            group_public_params,
+            &presentation_v2,
+            redemption_time,
+        )
         .unwrap();
 
     // test encoding
@@ -564,12 +596,36 @@ fn test_integration_auth_with_pni() {
     assert!(presentation_any.get_pni_ciphertext().is_some());
 
     server_secret_params
-        .verify_auth_credential_with_pni_presentation(group_public_params, &presentation_parsed)
+        .verify_auth_credential_with_pni_presentation(
+            group_public_params,
+            &presentation_parsed,
+            redemption_time,
+        )
         .unwrap();
 
     server_secret_params
-        .verify_auth_credential_presentation(group_public_params, &presentation_any)
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time,
+        )
         .unwrap();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time - SECONDS_PER_DAY - 1,
+        )
+        .unwrap_err();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time + 2 * SECONDS_PER_DAY + 2,
+        )
+        .unwrap_err();
 
     // test encoding
     // these tests will also discover if the serialized sizes change,

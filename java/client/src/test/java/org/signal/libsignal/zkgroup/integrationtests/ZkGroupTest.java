@@ -14,7 +14,6 @@ import org.signal.libsignal.zkgroup.SecureRandomTest;
 import org.signal.libsignal.zkgroup.ServerPublicParams;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
-import org.signal.libsignal.zkgroup.InvalidRedemptionTimeException;
 import org.signal.libsignal.zkgroup.auth.AuthCredential;
 import org.signal.libsignal.zkgroup.auth.AuthCredentialPresentation;
 import org.signal.libsignal.zkgroup.auth.AuthCredentialResponse;
@@ -109,7 +108,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
   }
 
   @Test
-  public void testAuthIntegration() throws VerificationFailedException, InvalidInputException, InvalidRedemptionTimeException {
+  public void testAuthIntegration() throws VerificationFailedException, InvalidInputException {
 
     UUID uuid           = TEST_UUID;
     int  redemptionTime = 123456;
@@ -324,14 +323,14 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
     try {
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentation, redemptionInstant.minus(1, ChronoUnit.DAYS).minus(1, ChronoUnit.SECONDS));
         throw new AssertionError("verifyAuthCredentialPresentation should fail #1!");
-    } catch (InvalidRedemptionTimeException e) {
+    } catch (VerificationFailedException e) {
       // good
     }
 
     try {
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentation, redemptionInstant.plus(2, ChronoUnit.DAYS).plus(1, ChronoUnit.SECONDS));
         throw new AssertionError("verifyAuthCredentialPresentation should fail #2!");
-    } catch (InvalidRedemptionTimeException e) {
+    } catch (VerificationFailedException e) {
       // good
     }
 
@@ -378,7 +377,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
 
 
   @Test
-  public void testAuthIntegrationCurrentTime() throws VerificationFailedException, InvalidInputException, InvalidRedemptionTimeException {
+  public void testAuthIntegrationCurrentTime() throws VerificationFailedException, InvalidInputException {
 
     // This test is mostly the same as testAuthIntegration() except instead of using a hardcoded
     // redemption date to compare against test vectors, it uses the current time
@@ -435,20 +434,20 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
     try {
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentation, redemptionInstant.minus(1, ChronoUnit.DAYS).minus(1, ChronoUnit.SECONDS));
         throw new AssertionError("verifyAuthCredentialPresentation should fail #1!");
-    } catch (InvalidRedemptionTimeException e) {
+    } catch (VerificationFailedException e) {
       // good
     }
 
     try {
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentation, redemptionInstant.plus(2, ChronoUnit.DAYS).plus(1, ChronoUnit.SECONDS));
         throw new AssertionError("verifyAuthCredentialPresentation should fail #2!");
-    } catch (InvalidRedemptionTimeException e) {
+    } catch (VerificationFailedException e) {
       // good
     }
   }
 
   @Test
-  public void testAuthWithPniIntegration() throws VerificationFailedException, InvalidInputException, InvalidRedemptionTimeException {
+  public void testAuthWithPniIntegration() throws VerificationFailedException, InvalidInputException {
 
     UUID aci               = TEST_UUID;
     UUID pni               = TEST_UUID_1;
@@ -562,14 +561,14 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
     try {
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentation, redemptionTime.minus(1, ChronoUnit.DAYS).minus(1, ChronoUnit.SECONDS));
         throw new AssertionError("verifyAuthCredentialPresentation should fail #1!");
-    } catch (InvalidRedemptionTimeException e) {
+    } catch (VerificationFailedException e) {
       // good
     }
 
     try {
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentation, redemptionTime.plus(2, ChronoUnit.DAYS).plus(1, ChronoUnit.SECONDS));
         throw new AssertionError("verifyAuthCredentialPresentation should fail #2!");
-    } catch (InvalidRedemptionTimeException e) {
+    } catch (VerificationFailedException e) {
       // good
     }
 

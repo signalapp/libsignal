@@ -477,11 +477,15 @@ fn ServerSecretParams_VerifyAuthCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
     group_public_params: Serialized<GroupPublicParams>,
     presentation_bytes: &[u8],
+    current_time_in_seconds: Timestamp,
 ) -> Result<(), ZkGroupVerificationFailure> {
     let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
-    server_secret_params
-        .verify_auth_credential_presentation(group_public_params.into_inner(), &presentation)
+    server_secret_params.verify_auth_credential_presentation(
+        group_public_params.into_inner(),
+        &presentation,
+        current_time_in_seconds.as_seconds(),
+    )
 }
 
 #[bridge_fn]

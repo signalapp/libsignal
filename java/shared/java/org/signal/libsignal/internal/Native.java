@@ -392,7 +392,7 @@ public final class Native {
   public static native byte[] ServerSecretParams_IssueProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment);
   public static native byte[] ServerSecretParams_IssueReceiptCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, long receiptExpirationTime, long receiptLevel);
   public static native byte[] ServerSecretParams_SignDeterministic(byte[] params, byte[] randomness, byte[] message);
-  public static native void ServerSecretParams_VerifyAuthCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes);
+  public static native void ServerSecretParams_VerifyAuthCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes, long currentTimeInSeconds);
   public static native void ServerSecretParams_VerifyPniCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes);
   public static native void ServerSecretParams_VerifyProfileKeyCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes, long currentTimeInSeconds);
   public static native void ServerSecretParams_VerifyReceiptCredentialPresentation(byte[] serverSecretParams, byte[] presentation);

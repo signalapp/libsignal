@@ -221,8 +221,8 @@ class ZKGroupTests: TestCaseBase {
     XCTAssertEqual(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize())
     XCTAssertNil(try presentation.getPniCiphertext())
     XCTAssertEqual(try presentation.getRedemptionTime(),
-                   Date(timeIntervalSince1970: TimeInterval(UInt64(redemptionTime) * 86400)))
-    try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation)
+                   Date(timeIntervalSince1970: TimeInterval(redemptionTime) * 86400))
+    try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime) * 86400))
 
     XCTAssertEqual(presentation.serialize(), authPresentationResult)
   }
@@ -274,7 +274,7 @@ class ZKGroupTests: TestCaseBase {
     XCTAssertEqual(aciCiphertext.serialize(), uuidCiphertextRecv.serialize())
     XCTAssertEqual(pniCiphertext.serialize(), try presentation.getPniCiphertext()?.serialize())
     XCTAssertEqual(try presentation.getRedemptionTime(), Date(timeIntervalSince1970: TimeInterval(redemptionTime)))
-    try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation)
+    try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime)))
   }
 
   func testProfileKeyIntegration() throws {

@@ -1357,7 +1357,8 @@ SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_deter
 
 SignalFfiError *signal_server_secret_params_verify_auth_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
                                                                                 const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN],
-                                                                                SignalBorrowedBuffer presentation_bytes);
+                                                                                SignalBorrowedBuffer presentation_bytes,
+                                                                                uint64_t current_time_in_seconds);
 
 SignalFfiError *signal_server_secret_params_issue_profile_key_credential_deterministic(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_RESPONSE_LEN],
                                                                                        const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN],
