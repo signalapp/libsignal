@@ -101,7 +101,7 @@ pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogg
                 "Initializing libsignal version:{}",
                 env!("CARGO_PKG_VERSION")
             );
-            log_panics::init();
+            std::panic::set_hook(Box::new(libsignal_bridge::log_panic))
         }
         Err(_) => {
             log::warn!("logging already initialized for libsignal; ignoring later call");

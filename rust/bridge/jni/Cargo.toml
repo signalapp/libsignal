@@ -26,7 +26,6 @@ async-trait = "0.1.41"
 jni = "0.19"
 rand = "0.7.3"
 log = "0.4"
-log-panics = { version = "2.0.0", features = ["with-backtrace"] }
 
 [target.aarch64-linux-android.dependencies]
 cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto
