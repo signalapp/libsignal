@@ -31,3 +31,4 @@ futures-util = "0.3"
 libc = "0.2"
 rand = "0.7.3"
 log = "0.4"
+log-panics = { version = "2.0.0", features = ["with-backtrace"] }

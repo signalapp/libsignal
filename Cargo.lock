@@ -981,7 +981,6 @@ dependencies = [
  "aes-gcm-siv",
  "async-trait",
  "attest",
- "backtrace",
  "bincode",
  "device-transfer",
  "futures-util",
@@ -1030,6 +1029,7 @@ dependencies = [
  "libsignal-bridge",
  "libsignal-protocol",
  "log",
+ "log-panics",
  "rand 0.7.3",
  "signal-crypto",
  "zkgroup",
@@ -1045,6 +1045,7 @@ dependencies = [
  "libsignal-bridge",
  "libsignal-protocol",
  "log",
+ "log-panics",
  "rand 0.7.3",
  "signal-crypto",
 ]

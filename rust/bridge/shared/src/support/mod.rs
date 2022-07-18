@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ops::Deref;
-
 pub(crate) use paste::paste;
 
 mod serialized;
@@ -14,47 +12,13 @@ mod transform_helper;
 pub(crate) use transform_helper::*;
 
 // See https://github.com/rust-lang/rfcs/issues/1389
-//
-// Has a funny signature to accept both `&dyn std::any::Any + Send` and
-// `&Box<dyn std::any::Any + Send>` without accidentally coercing the Box
-// into `dyn Any`.
-pub fn describe_panic(any: &dyn Deref<Target = dyn std::any::Any + Send>) -> String {
+pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
     if let Some(msg) = any.downcast_ref::<&str>() {
         msg.to_string()
     } else if let Some(msg) = any.downcast_ref::<String>() {
         msg.to_string()
     } else {
         "(break on rust_panic to debug)".to_string()
-    }
-}
-
-/// A panic hook similar to that provided by the log-panics crate,
-/// but without symbolicated backtraces.
-// Replace this if/when https://github.com/sfackler/rust-log-panics/pull/11 goes in.
-pub fn log_panic(info: &std::panic::PanicInfo) {
-    let thread = std::thread::current();
-    let thread = thread.name().unwrap_or("<unnamed>");
-
-    let msg = describe_panic(&info.payload());
-    let backtrace = backtrace::Backtrace::new_unresolved();
-
-    match info.location() {
-        Some(location) => log::error!(
-            target: "panic",
-            "thread '{}' panicked at '{}': {}:{}\n{:?}",
-            thread,
-            msg,
-            location.file(),
-            location.line(),
-            backtrace
-        ),
-        None => log::error!(
-            target: "panic",
-            "thread '{}' panicked at '{}'\n{:?}",
-            thread,
-            msg,
-            backtrace
-        ),
     }
 }
 

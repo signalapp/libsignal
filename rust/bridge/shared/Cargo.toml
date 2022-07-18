@@ -19,7 +19,6 @@ zkgroup = { path = "../../zkgroup" }
 libsignal-bridge-macros = { path = "macros" }
 aes-gcm-siv = "0.10.1"
 async-trait = "0.1.41"
-backtrace = "0.3.64"
 bincode = "1.0"
 futures-util = "0.3.7"
 hkdf = "0.11"
