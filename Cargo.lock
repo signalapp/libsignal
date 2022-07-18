@@ -1040,6 +1040,7 @@ name = "libsignal-jni"
 version = "0.18.1"
 dependencies = [
  "async-trait",
+ "cfg-if",
  "cpufeatures",
  "jni",
  "libsignal-bridge",
@@ -1124,9 +1125,9 @@ dependencies = [
 
 [[package]]
 name = "log-panics"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae0136257df209261daa18d6c16394757c63e032e27aafd8b07788b051082bef"
+checksum = "68f9dd8546191c1850ecf67d22f5ff00a935b890d0e84713159a55495cc2ac5f"
 dependencies = [
  "backtrace",
  "log",

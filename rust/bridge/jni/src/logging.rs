@@ -157,7 +157,18 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initi
                     "Initializing libsignal version:{}",
                     env!("CARGO_PKG_VERSION")
                 );
-                log_panics::init();
+                let backtrace_mode = {
+                    cfg_if::cfg_if! {
+                        if #[cfg(target_os = "android")] {
+                            log_panics::BacktraceMode::Unresolved
+                        } else {
+                            log_panics::BacktraceMode::Resolved
+                        }
+                    }
+                };
+                log_panics::Config::new()
+                    .backtrace_mode(backtrace_mode)
+                    .install_panic_hook();
             }
             Err(_) => {
                 log::warn!("logging already initialized for libsignal; ignoring later call");
