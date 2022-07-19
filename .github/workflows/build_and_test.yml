@@ -9,6 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   CBINDGEN_VERSION: 0.20.0
   NDK_VERSION: 21.0.6113669
+  RUST_BACKTRACE: 1
 
 jobs:
   changes:
