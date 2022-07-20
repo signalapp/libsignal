@@ -104,6 +104,7 @@ export function HsmEnclaveClient_EstablishedRecv(cli: Wrapper<HsmEnclaveClient>,
 export function HsmEnclaveClient_EstablishedSend(cli: Wrapper<HsmEnclaveClient>, plaintextToSend: Buffer): Buffer;
 export function HsmEnclaveClient_InitialRequest(obj: Wrapper<HsmEnclaveClient>): Buffer;
 export function HsmEnclaveClient_New(trustedPublicKey: Buffer, trustedCodeHashes: Buffer): HsmEnclaveClient;
+export function IdentityKeyPair_Deserialize(buffer: Buffer): {publicKey:PublicKey,privateKey:PrivateKey};
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Buffer;
 export function IdentityKeyPair_SignAlternateIdentity(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>, otherIdentity: Wrapper<PublicKey>): Buffer;
 export function IdentityKey_VerifyAlternateIdentity(publicKey: Wrapper<PublicKey>, otherIdentity: Wrapper<PublicKey>, signature: Buffer): boolean;

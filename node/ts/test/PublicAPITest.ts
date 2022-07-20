@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -1659,6 +1659,15 @@ describe('SignalClient', () => {
     assert.deepEqual(anotherKey.compare(pub), -1);
 
     assert.lengthOf(pub.getPublicKeyBytes(), 32);
+
+    const keyPair = new SignalClient.IdentityKeyPair(pub, priv);
+    const keyPairBytes = keyPair.serialize();
+    const roundTripKeyPair = SignalClient.IdentityKeyPair.deserialize(
+      keyPairBytes
+    );
+    assert.equal(roundTripKeyPair.publicKey.compare(pub), 0);
+    const roundTripKeyPairBytes = roundTripKeyPair.serialize();
+    assert.deepEqual(keyPairBytes, roundTripKeyPairBytes);
   });
 
   it('decoding invalid ECC key throws an error', () => {
