@@ -122,7 +122,7 @@ public final class Native {
   public static native byte[] Cds2ClientState_EstablishedRecv(long cli, byte[] receivedCiphertext);
   public static native byte[] Cds2ClientState_EstablishedSend(long cli, byte[] plaintextToSend);
   public static native byte[] Cds2ClientState_InitialRequest(long obj);
-  public static native long Cds2ClientState_New(byte[] mrenclave, byte[] caCert, byte[] attestationMsg, long earliestValidTimestamp);
+  public static native long Cds2ClientState_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);

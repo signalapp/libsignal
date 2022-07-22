@@ -4,10 +4,34 @@
 //
 
 use std::convert::TryInto;
+use std::time::SystemTime;
+
+use boring::asn1::Asn1Time;
+use libc::time_t;
 
 /// Removes a trailing null byte, if one exists
 pub(crate) fn strip_trailing_null_byte(bytes: &mut &[u8]) {
     *bytes = bytes.strip_suffix(&[0]).unwrap_or(bytes);
+}
+
+/// Reads a little-endian u16 from the slice and advances it by 2 bytes.
+///
+/// Note: Caller must ensure the slice is large enough
+pub(crate) fn read_u16_le(bytes: &mut &[u8]) -> u16 {
+    let (u16_bytes, remainder) = bytes.split_at(2);
+    *bytes = remainder;
+
+    u16::from_le_bytes(u16_bytes.try_into().expect("correct size"))
+}
+
+/// Reads a little-endian u32 from the slice and advances it by 4 bytes.
+///
+/// Note: Caller must ensure the slice is large enough
+pub(crate) fn read_u32_le(bytes: &mut &[u8]) -> u32 {
+    let (u32_bytes, remainder) = bytes.split_at(4);
+    *bytes = remainder;
+
+    u32::from_le_bytes(u32_bytes.try_into().expect("correct size"))
 }
 
 /// Reads a little-endian u64 from the slice and advances it by 8 bytes.
@@ -23,10 +47,22 @@ pub(crate) fn read_u64_le(bytes: &mut &[u8]) -> u64 {
 /// Removes a slice of `size` from the front of `bytes` and returns it
 ///
 /// Note: Caller must ensure that the slice is large enough
-pub(crate) fn read_bytes<'a>(bytes: &'a mut &[u8], size: usize) -> &'a [u8] {
+pub(crate) fn read_bytes<'a>(bytes: &mut &'a [u8], size: usize) -> &'a [u8] {
     let (front, rest) = bytes.split_at(size);
     *bytes = rest;
     front
+}
+
+/// Removes a slice of `N` from the front of `bytes` and copies
+/// it into an owned `[u8; N]`
+///
+/// Note: Caller must ensure the slice is large enough
+pub(crate) fn read_array<const N: usize>(bytes: &mut &[u8]) -> [u8; N] {
+    let mut res = [0u8; N];
+    let (front, rest) = bytes.split_at(N);
+    res.copy_from_slice(front);
+    *bytes = rest;
+    res
 }
 
 #[cfg(test)]
@@ -66,4 +102,22 @@ mod test {
         assert_eq!(&[0u8, 1], front);
         assert_eq!(&[2u8, 3, 4, 5], slice);
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct FailedToConvertToAsn1Time;
+
+pub(crate) fn system_time_to_asn1_time(
+    timestamp: SystemTime,
+) -> Result<Asn1Time, FailedToConvertToAsn1Time> {
+    let epoch_duration = timestamp
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map_err(|_| FailedToConvertToAsn1Time)?;
+
+    let t: time_t = epoch_duration
+        .as_secs()
+        .try_into()
+        .map_err(|_| FailedToConvertToAsn1Time)?;
+
+    Asn1Time::from_unix(t).map_err(|_| FailedToConvertToAsn1Time)
 }

@@ -10,5 +10,6 @@ pub mod hsm_enclave;
 mod proto;
 
 mod endian;
+mod error;
 mod snow_resolver;
 mod util;

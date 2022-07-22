@@ -65,7 +65,7 @@ export function Cds2ClientState_CompleteHandshake(cli: Wrapper<Cds2ClientState>,
 export function Cds2ClientState_EstablishedRecv(cli: Wrapper<Cds2ClientState>, receivedCiphertext: Buffer): Buffer;
 export function Cds2ClientState_EstablishedSend(cli: Wrapper<Cds2ClientState>, plaintextToSend: Buffer): Buffer;
 export function Cds2ClientState_InitialRequest(obj: Wrapper<Cds2ClientState>): Buffer;
-export function Cds2ClientState_New(mrenclave: Buffer, caCert: Buffer, attestationMsg: Buffer, earliestValidTimestamp: Timestamp): Cds2ClientState;
+export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): Cds2ClientState;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;

@@ -1455,18 +1455,16 @@ export class Cds2Client {
     this._nativeHandle = nativeHandle;
   }
 
-  static new_NOT_FOR_PRODUCTION(
+  static new(
     mrenclave: Buffer,
-    trustedCaCert: Buffer,
     attestationMsg: Buffer,
-    earliestValidTimestamp: Date
+    currentTimestamp: Date
   ): Cds2Client {
     return new Cds2Client(
       Native.Cds2ClientState_New(
         mrenclave,
-        trustedCaCert,
         attestationMsg,
-        earliestValidTimestamp.getTime()
+        currentTimestamp.getTime()
       )
     );
   }

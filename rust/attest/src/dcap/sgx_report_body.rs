@@ -17,6 +17,8 @@ use crate::endian::*;
 const SGX_CPUSVN_SIZE: usize = 16;
 const SGX_HASH_SIZE: usize = 32;
 
+pub type MREnclave = [u8; SGX_HASH_SIZE];
+
 #[derive(Debug)]
 #[repr(C, packed)]
 // sgx_report_body_t
@@ -27,7 +29,7 @@ pub(crate) struct SgxReportBody {
 
     //     /* (16) Selector for which fields are defined in SSA.MISC */
     //     uint32_t miscselect;
-    _miscselect: UInt32LE,
+    pub miscselect: UInt32LE,
 
     //     /* (20) Reserved */
     //     uint8_t reserved1[12];
@@ -40,11 +42,11 @@ pub(crate) struct SgxReportBody {
     //
     //     /* (48) Enclave attributes */
     //     sgx_attributes_t attributes;
-    _sgx_attributes: [u8; 16],
+    pub sgx_attributes: [u8; 16],
     //
     //     /* (64) Enclave measurement */
     //     uint8_t mrenclave[SGX_HASH_SIZE];
-    _mrenclave: [u8; SGX_HASH_SIZE],
+    pub mrenclave: MREnclave,
 
     //
     //     /* (96) Reserved */
@@ -54,7 +56,7 @@ pub(crate) struct SgxReportBody {
     //
     //     /* (128) The value of the enclave's SIGNER measurement */
     //     uint8_t mrsigner[SGX_HASH_SIZE];
-    _mrsigner: [u8; SGX_HASH_SIZE],
+    pub mrsigner: [u8; SGX_HASH_SIZE],
 
     //     /* (160) Reserved */
     //     uint8_t reserved3[32];
@@ -66,11 +68,11 @@ pub(crate) struct SgxReportBody {
 
     //     /* (256) Enclave product ID */
     //     uint16_t isvprodid;
-    _isvprodid: UInt16LE,
+    pub isvprodid: UInt16LE,
 
     //     /* (258) Enclave security version */
     //     uint16_t isvsvn;
-    _isvsvn: UInt16LE,
+    pub isvsvn: UInt16LE,
 
     //     /* (260) Enclave Configuration Security Version*/
     //     uint16_t configsvn;
@@ -86,7 +88,7 @@ pub(crate) struct SgxReportBody {
 
     //     /* (320) User report data */
     //     sgx_report_data_t report_data;  // unsigned char field[64];
-    _sgx_report_data_bytes: [u8; 64],
+    pub sgx_report_data_bytes: [u8; 64],
 }
 
 static_assertions::const_assert_eq!(384, std::mem::size_of::<SgxReportBody>());

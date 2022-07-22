@@ -11,23 +11,30 @@ edition = "2018"
 license = "AGPL-3.0-only"
 
 [dependencies]
+boring = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
+
+asn1 = "0.9.1"
 chacha20poly1305 = "0.8.2"
+chrono = { version = "0.4", features = ["serde"] }
 displaydoc = "0.2"
-ecdsa = { version = "0.13.4", features = ["serde"] }
+hex = { version = "0.4", features = ["serde"] }
+hex-literal = "0.3.4"
+lazy_static = "1.4.0"
+libc = "0.2"
 log = "0.4"
 num_enum = "0.5.1"
-p256 = { version = "0.10.1", features = ["ecdsa"] }
 prost = "0.9"
 rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["raw_value"] }
 sha2 = "0.9"
 snow = { version = "0.8.0", default-features = false }
 static_assertions = "1.1"
+uuid = "1.1.2"
 variant_count = "1.1"
 x25519-dalek = "1.1"
 
 [dev-dependencies]
-hex = "0.4.3"
-hex-literal = "0.3.4"
 snow = { version = "0.8.0", features = ["default-resolver"] }
 
 [build-dependencies]

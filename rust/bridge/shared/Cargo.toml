@@ -29,7 +29,7 @@ scopeguard = "1.0"
 serde = "1.0"
 sha2 = "0.9"
 static_assertions = "1.1"
-uuid = "0.8"
+uuid = "1.1.2"
 
 libc = { version = "0.2", optional = true }
 jni_crate = { version = "0.19", package = "jni", optional = true }

@@ -4,17 +4,21 @@
 //
 
 use displaydoc::Display;
+use hex_literal::hex;
+use lazy_static::lazy_static;
 use prost::Message;
-use std::convert::From;
+use std::convert::{From, TryInto};
 
+use crate::dcap::MREnclave;
 use crate::proto::cds2;
 use crate::{client_connection, dcap, snow_resolver};
+use std::collections::HashMap;
 
 /// Error types for CDS2.
 #[derive(Display, Debug)]
 pub enum Error {
     /// failure to attest remote SGX enclave code: {0:?}
-    DcapError(dcap::Error),
+    DcapError(dcap::AttestationError),
     /// failure to communicate on established Noise channel to CDS service: {0}
     NoiseError(client_connection::Error),
     /// failure to complete Noise handshake to CDS service: {0}
@@ -26,7 +30,6 @@ pub enum Error {
 }
 
 const INVALID_MRENCLAVE: &str = "MREnclave value does not fit expected format";
-const INVALID_CA_CERT: &str = "CA certificate does not fit expected format";
 const INVALID_EVIDENCE: &str = "Evidence does not fit expected format";
 const INVALID_ENDORSEMENT: &str = "Endorsement does not fit expected format";
 const INVALID_CLAIMS: &str = "Claims do not fit expected format";
@@ -40,8 +43,8 @@ impl From<snow::Error> for Error {
     }
 }
 
-impl From<dcap::Error> for Error {
-    fn from(err: dcap::Error) -> Error {
+impl From<dcap::AttestationError> for Error {
+    fn from(err: dcap::AttestationError) -> Error {
         Error::DcapError(err)
     }
 }
@@ -66,7 +69,7 @@ impl From<prost::DecodeError> for Error {
 ///   let websocket = ... open websocket ...
 ///   let attestation_msg = websocket.recv();
 ///   let mut client_conn_establishment = ClientConnectionEstablishment::new(
-///       mrenclave, ca_cert, attestation_msg)?;
+///       mrenclave, attestation_msg)?;
 ///   websocket.send(client_conn_establishment.initial_request());
 ///   let initial_response = websocket.recv(...);
 ///   let conn = client_conn_establishment.complete(initial_response);
@@ -76,23 +79,32 @@ pub struct ClientConnectionEstablishment {
     initial_request: Vec<u8>,
 }
 
+lazy_static! {
+    /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
+    /// build with that MREnclave value
+    static ref ACCEPTABLE_SW_ADVISORIES: HashMap<MREnclave, &'static [&'static str]> = {
+        HashMap::from([
+            (hex!("7b75dd6e862decef9b37132d54be082441917a7790e82fe44f9cf653de03a75f"), &[] as &[&str]),
+        ])
+    };
+}
+
+/// SW advisories known to be mitigated by default. If an MREnclave is provided that
+/// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
+const DEFAULT_SW_ADVISORIES: &[&str] = &[];
+
 impl ClientConnectionEstablishment {
     pub fn new(
         mrenclave: &[u8],
-        ca_cert: &[u8],
         attestation_msg: &[u8],
-        earliest_valid_time: std::time::SystemTime,
+        current_time: std::time::SystemTime,
     ) -> Result<Self> {
-        if mrenclave.is_empty() {
-            return Err(Error::AttestationDataError {
-                reason: String::from(INVALID_MRENCLAVE),
-            });
-        }
-        if ca_cert.is_empty() {
-            return Err(Error::AttestationDataError {
-                reason: String::from(INVALID_CA_CERT),
-            });
-        }
+        let mrenclave: MREnclave =
+            mrenclave
+                .try_into()
+                .map_err(|_| Error::AttestationDataError {
+                    reason: String::from(INVALID_MRENCLAVE),
+                })?;
 
         // Deserialize attestation handshake start.
         let handshake_start = cds2::ClientHandshakeStart::decode(attestation_msg)?;
@@ -109,12 +121,14 @@ impl ClientConnectionEstablishment {
         }
 
         // DCAP.
-        let claims = dcap::NOT_FOR_PRODUCTION_verify_remote_attestation(
+        let claims = dcap::verify_remote_attestation(
             &handshake_start.evidence,
             &handshake_start.endorsement,
-            mrenclave,
-            ca_cert,
-            earliest_valid_time,
+            &mrenclave,
+            ACCEPTABLE_SW_ADVISORIES
+                .get(&mrenclave)
+                .unwrap_or(&DEFAULT_SW_ADVISORIES),
+            current_time,
         )?;
 
         if claims.len() != 1 {
@@ -176,7 +190,6 @@ mod tests {
 
     fn handshake_from_tests_data() -> Result<ClientConnectionEstablishment> {
         // Read test data files, de-hex-stringing as necessary.
-        let trusted_ca_cert = read_test_file("tests/data/trustedRootCaCert.pem");
         let evidence_bytes = read_test_file("tests/data/cds2_test.evidence");
         let endorsement_bytes = read_test_file("tests/data/cds2_test.endorsements");
         let mut mrenclave_bytes = vec![0u8; 32];
@@ -190,13 +203,8 @@ mod tests {
             ..Default::default()
         };
         let attestation_vec = attestation_msg.encode_to_vec();
-        let earliest_valid_time = SystemTime::now() - Duration::from_secs(60 * 60 * 24);
-        ClientConnectionEstablishment::new(
-            &mrenclave_bytes,
-            &trusted_ca_cert,
-            &attestation_vec,
-            earliest_valid_time,
-        )
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
+        ClientConnectionEstablishment::new(&mrenclave_bytes, &attestation_vec, current_time)
     }
 
     #[test]

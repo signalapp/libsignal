@@ -8,10 +8,10 @@ import LibSignalClient
 
 class Cds2Tests: TestCaseBase {
 
-    let mrenclave = Data(repeating: 1, count: 32)
-    let caCert = Data(repeating: 2, count: 32)
+    // echo 92a47851c79f22f85ee1e164cc0963e35c8debc6c8bc1dafca235c79f801a57e | xxd -r -p | base64
+    let mrenclave = Data(base64Encoded: "OdePF/iqmo6c2vFllZR6BXusIfAU0av9apmy39ThjR0=")!
     var attestationMessage = Data(repeating: 0, count: 0)
-    let earliestValidDate = Date().addingTimeInterval(-TimeInterval(60 * 60 * 24))
+    let currentDate = Date(timeIntervalSince1970: 1655857680)
 
     override func setUp() {
         super.setUp()
@@ -20,34 +20,29 @@ class Cds2Tests: TestCaseBase {
     }
 
     func testCreateClient() {
-        let cds2Client = try! Cds2Client.create_NOT_FOR_PRODUCTION(mrenclave, trustedCaCertBytes: caCert, attestationMessage: attestationMessage, earliestValidDate: earliestValidDate)
+        let cds2Client = try! Cds2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         let initialMessage = cds2Client.initialRequest()
         XCTAssertEqual(48, initialMessage.count)
     }
 
     func testCreateClientFailsWithInvalidMrenclave() {
         let invalidMrenclave = Data(repeating: 0, count: 0)
-        XCTAssertThrowsError(try Cds2Client.create_NOT_FOR_PRODUCTION(invalidMrenclave, trustedCaCertBytes: caCert, attestationMessage: attestationMessage, earliestValidDate: earliestValidDate))
-    }
-
-    func testCreateClientFailsWithInvalidCert() {
-        let invalidCert = Data(repeating: 0, count: 0)
-        XCTAssertThrowsError(try Cds2Client.create_NOT_FOR_PRODUCTION(mrenclave, trustedCaCertBytes: invalidCert, attestationMessage: attestationMessage, earliestValidDate: earliestValidDate))
+        XCTAssertThrowsError(try Cds2Client(mrenclave: invalidMrenclave, attestationMessage: attestationMessage, currentDate: currentDate))
     }
 
     func testCreateClientFailsWithInvalidMessage() {
         let invalidMessage = Data(repeating: 0, count: 0)
-        XCTAssertThrowsError(try Cds2Client.create_NOT_FOR_PRODUCTION(mrenclave, trustedCaCertBytes: caCert, attestationMessage: invalidMessage, earliestValidDate: earliestValidDate))
+        XCTAssertThrowsError(try Cds2Client(mrenclave: mrenclave, attestationMessage: invalidMessage, currentDate: currentDate))
     }
 
     func testEstablishedSendFailsPriorToEstablishment() {
-        let cds2Client = try! Cds2Client.create_NOT_FOR_PRODUCTION(mrenclave, trustedCaCertBytes: caCert, attestationMessage: attestationMessage, earliestValidDate: earliestValidDate)
+        let cds2Client = try! Cds2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         let receivedCiphertext: [UInt8] = [0x01, 0x02, 0x03]
         XCTAssertThrowsError(try cds2Client.establishedSend(receivedCiphertext))
     }
 
     func testEstablishedRecvFailsPriorToEstablishment() {
-        let cds2Client = try! Cds2Client.create_NOT_FOR_PRODUCTION(mrenclave, trustedCaCertBytes: caCert, attestationMessage: attestationMessage, earliestValidDate: earliestValidDate)
+        let cds2Client = try! Cds2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         let receivedCiphertext: [UInt8] = [0x01, 0x02, 0x03]
         XCTAssertThrowsError(try cds2Client.establishedRecv(receivedCiphertext))
     }

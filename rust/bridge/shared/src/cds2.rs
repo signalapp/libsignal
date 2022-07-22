@@ -28,17 +28,11 @@ impl RefUnwindSafe for Cds2ClientState {}
 impl Cds2ClientState {
     pub fn new(
         mrenclave: &[u8],
-        ca_cert: &[u8],
         attestation_msg: &[u8],
-        earliest_valid_time: std::time::SystemTime,
+        current_time: std::time::SystemTime,
     ) -> Result<Self> {
         Ok(Cds2ClientState::ConnectionEstablishment(
-            cds2::ClientConnectionEstablishment::new(
-                mrenclave,
-                ca_cert,
-                attestation_msg,
-                earliest_valid_time,
-            )?,
+            cds2::ClientConnectionEstablishment::new(mrenclave, attestation_msg, current_time)?,
         ))
     }
 
@@ -84,16 +78,14 @@ bridge_handle!(Cds2ClientState, clone = false, mut = true);
 #[bridge_fn]
 fn Cds2ClientState_New(
     mrenclave: &[u8],
-    ca_cert: &[u8],
     attestation_msg: &[u8],
-    earliest_valid_timestamp: Timestamp,
+    current_timestamp: Timestamp,
 ) -> Result<Cds2ClientState> {
     Cds2ClientState::new(
         mrenclave,
-        ca_cert,
         attestation_msg,
         std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_millis(earliest_valid_timestamp.as_millis()),
+            + std::time::Duration::from_millis(current_timestamp.as_millis()),
     )
 }
 

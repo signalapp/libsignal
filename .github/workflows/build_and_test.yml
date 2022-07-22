@@ -140,12 +140,20 @@ jobs:
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       if: matrix.version == 'nightly'
 
-    - name: Check that the fuzz target still builds
-      # We do this on stable because the fuzz target doesn't have a lockfile,
-      # and crates don't generally support arbitrary nightly versions.
-      # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
+    # We check the fuzz targets on stable because they don't have lockfiles,
+    # and crates don't generally support arbitrary nightly versions.
+    # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
+
+    - name: Check that the protocol fuzz target still builds
       run: cargo +stable check --all-targets
       working-directory: rust/protocol/fuzz
+      env:
+        RUSTFLAGS: --cfg fuzzing
+      if: matrix.version == 'stable'
+
+    - name: Check that the attest fuzz target still builds
+      run: cargo +stable check --all-targets
+      working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'

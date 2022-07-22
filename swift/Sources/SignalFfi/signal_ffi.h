@@ -1092,9 +1092,8 @@ SignalFfiError *signal_cds2_client_state_destroy(SignalCds2ClientState *p);
 
 SignalFfiError *signal_cds2_client_state_new(SignalCds2ClientState **out,
                                              SignalBorrowedBuffer mrenclave,
-                                             SignalBorrowedBuffer ca_cert,
                                              SignalBorrowedBuffer attestation_msg,
-                                             uint64_t earliest_valid_timestamp);
+                                             uint64_t current_timestamp);
 
 SignalFfiError *signal_cds2_client_state_initial_request(const unsigned char **out,
                                                          size_t *out_len,

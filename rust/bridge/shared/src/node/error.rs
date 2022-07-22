@@ -155,7 +155,7 @@ impl SignalNodeError for SignalProtocolError {
             SignalProtocolError::InvalidSenderKeySession { distribution_id } => {
                 let props = cx.empty_object();
                 let distribution_id_str =
-                    cx.string(format!("{:x}", distribution_id.to_hyphenated_ref()));
+                    cx.string(format!("{:x}", distribution_id.as_hyphenated()));
                 props.set(cx, "distribution_id", distribution_id_str)?;
                 new_js_error(
                     cx,

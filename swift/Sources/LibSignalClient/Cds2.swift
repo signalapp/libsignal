@@ -28,19 +28,16 @@ import Foundation
 ///
 public class Cds2Client: NativeHandleOwner {
 
-    private convenience init<MrenclaveBytes, CertBytes, AttestationBytes>(mrenclave: MrenclaveBytes, trustedCaCert: CertBytes, attestationMessage: AttestationBytes, earliestValidDate: Date) throws
-        where MrenclaveBytes: ContiguousBytes, CertBytes: ContiguousBytes, AttestationBytes: ContiguousBytes {
+    public convenience init<MrenclaveBytes, AttestationBytes>(mrenclave: MrenclaveBytes, attestationMessage: AttestationBytes, currentDate: Date) throws
+        where MrenclaveBytes: ContiguousBytes, AttestationBytes: ContiguousBytes {
         let handle: OpaquePointer? = try attestationMessage.withUnsafeBorrowedBuffer { attestationMessageBuffer in
-            try trustedCaCert.withUnsafeBorrowedBuffer { trustedCaCertBuffer in
-                try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBuffer in
-                    var result: OpaquePointer?
-                    try checkError(signal_cds2_client_state_new(&result,
-                            mrenclaveBuffer,
-                            trustedCaCertBuffer,
-                            attestationMessageBuffer,
-                            UInt64(earliestValidDate.timeIntervalSince1970 * 1000)))
-                    return result
-                }
+            try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBuffer in
+                var result: OpaquePointer?
+                try checkError(signal_cds2_client_state_new(&result,
+                        mrenclaveBuffer,
+                        attestationMessageBuffer,
+                        UInt64(currentDate.timeIntervalSince1970 * 1000)))
+                return result
             }
         }
 
@@ -49,11 +46,6 @@ public class Cds2Client: NativeHandleOwner {
 
     internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_cds2_client_state_destroy(handle)
-    }
-
-    /// Until attestation verification is fully implemented, this client must not be used in production builds
-    public static func create_NOT_FOR_PRODUCTION<Bytes1: ContiguousBytes, Bytes2: ContiguousBytes, Bytes3: ContiguousBytes>(_ mrenclave: Bytes1, trustedCaCertBytes: Bytes2, attestationMessage: Bytes3, earliestValidDate: Date) throws -> Cds2Client {
-        return try Cds2Client(mrenclave: mrenclave, trustedCaCert: trustedCaCertBytes, attestationMessage: attestationMessage, earliestValidDate: earliestValidDate)
     }
 
     /// Initial request to send to CDS 2, which begins post-attestation handshake.
