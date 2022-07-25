@@ -2,7 +2,7 @@
 
 ## 0. Make sure all CI tests are passing on the latest commit
 
-Check GitHub to see if the latest commit has all tests passing. If not, fix the tests before releasing!
+Check GitHub to see if the latest commit has all tests passing, including the nightly "Slow Tests". If not, fix the tests before releasing! (You can run the Slow Tests manually under the repository Actions tab on GitHub.)
 
 ## 1. Update the library version
 
