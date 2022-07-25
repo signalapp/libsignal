@@ -173,9 +173,6 @@ jobs:
     - name: Install NDK
       run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;${NDK_VERSION}"
 
-    - name: Install boring cross-compile dependencies
-      run: sudo apt-get update && sudo apt-get install gcc-multilib
-
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
