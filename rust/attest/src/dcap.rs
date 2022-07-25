@@ -151,7 +151,6 @@ pub fn verify_remote_attestation(
 pub(crate) struct Attestation {
     tcb_standing: TcbStanding,
     mrenclave: MREnclave,
-    _last_attest_time: SystemTime,
     claims: HashMap<String, Vec<u8>>,
 }
 
@@ -200,7 +199,6 @@ fn attest_impl(
     Ok(Attestation {
         tcb_standing,
         mrenclave: evidence.quote.quote_body.report_body.mrenclave,
-        _last_attest_time: current_time, // TODO
         claims: evidence.claims.map,
     })
 }
