@@ -1,0 +1,33 @@
+name: Slow Tests
+
+on:
+  schedule:
+    # "High load times include the start of every hour.
+    #  To decrease the chance of delay, schedule your workflow to run
+    #  at a different time of the hour."
+    # We pick 8:25 UTC, aiming for "later than PST/UTC-8 night work" and
+    # "earlier than ADT/UTC-3 morning work".
+    - cron: '25 8 * * *'
+  workflow_dispatch: {} # no parameters
+
+jobs:
+  check-up-to-date:
+    name: Already up to date?
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' }}
+    outputs:
+      has-changes: ${{ steps.check.outputs.has-changes }}
+    steps:
+    - uses: actions/checkout@v2
+    - run: git log --after '24 hours ago' --exit-code || echo '::set-output name=has-changes::true'
+      id: check
+
+  java-docker:
+    name: Java (Docker)
+    runs-on: ubuntu-latest
+    needs: [check-up-to-date]
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - run: make -C java java_test
