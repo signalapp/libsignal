@@ -1,5 +1,5 @@
 #
-# Copyright 2020-2021 Signal Messenger, LLC.
+# Copyright 2020-2022 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -44,6 +44,11 @@ RUN    curl -O https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} 
 
 RUN    yes | sdkmanager --sdk_root=${ANDROID_HOME} "platforms;${ANDROID_API_LEVELS}" "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" "platform-tools" "ndk;${NDK_VERSION}"
 
+# Pre-download Gradle.
+COPY   java/gradle gradle
+COPY   java/gradlew gradlew
+RUN    ./gradlew --version
+
 # Rust setup...
 
 COPY rust-toolchain rust-toolchain
@@ -72,14 +77,6 @@ RUN    apt-get install -y \
                libclang-dev \
                make
 USER libsignal
-
-# Install cargo-ndk
-RUN    cargo install --version ${CARGO_NDK_VERSION} cargo-ndk
-
-# Pre-download Gradle.
-COPY   java/gradle gradle
-COPY   java/gradlew gradlew
-RUN    ./gradlew --version
 
 # Convert ssh to https for git dependency access without a key.
 RUN    git config --global url."https://github".insteadOf ssh://git@github

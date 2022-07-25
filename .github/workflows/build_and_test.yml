@@ -181,9 +181,6 @@ jobs:
     - name: Install Android toolchains
       run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
 
-    - name: Install NDK tool
-      run: cargo install --version=1.0.0 cargo-ndk
-
     - name: Install pinned cbindgen
       run: cargo +stable install cbindgen --version ${CBINDGEN_VERSION}
 

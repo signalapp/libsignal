@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# Copyright (C) 2020 Signal Messenger, LLC.
+# Copyright (C) 2020-2022 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -28,16 +28,24 @@ export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 if [ "$1" = 'desktop' ];
 then
     echo_then_run cargo build -p libsignal-jni --release
-    copy_built_library target/release signal_jni $DESKTOP_LIB_DIR/
+    copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
 elif [ "$1" = 'android' ];
 then
     # Use small BoringSSL curve tables to reduce binary size on Android.
-    export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}"
+    export CFLAGS="-DOPENSSL_SMALL -flto=thin ${CFLAGS:-}"
 
-    echo_then_run cargo ndk --target armv7-linux-androideabi --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/armeabi-v7a
-    echo_then_run cargo ndk --target aarch64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/arm64-v8a
-    echo_then_run cargo ndk --target i686-linux-android --platform 19 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86
-    echo_then_run cargo ndk --target x86_64-linux-android --platform 21 -- build -Z unstable-options -p libsignal-jni --release --out-dir=$ANDROID_LIB_DIR/x86_64
+    # Use the Android NDK's prebuilt Clang+lld as Rust's linker.
+    ANDROID_TOOLCHAIN_DIR="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/"
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/aarch64-linux-android21-clang"
+    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="${ANDROID_TOOLCHAIN_DIR}/armv7a-linux-androideabi19-clang"
+    export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/x86_64-linux-android21-clang"
+    export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/i686-linux-android19-clang"
+    export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
+
+    echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target aarch64-linux-android --out-dir "${ANDROID_LIB_DIR}/arm64-v8a"
+    echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target armv7-linux-androideabi --out-dir "${ANDROID_LIB_DIR}/armeabi-v7a"
+    echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target x86_64-linux-android --out-dir "${ANDROID_LIB_DIR}/x86_64"
+    echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target i686-linux-android --out-dir "${ANDROID_LIB_DIR}/x86"
 else
     echo "Unknown target (use 'desktop' or 'android')"
 fi
