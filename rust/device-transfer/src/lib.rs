@@ -43,7 +43,7 @@ pub fn create_rsa_private_key(bits: usize) -> Result<Vec<u8>, Error> {
         .map_err(|_| Error::InternalError("RSA key generation failed"))?;
     let key =
         PKey::from_rsa(rsa).map_err(|_| Error::InternalError("Private key generation failed"))?;
-    key.private_key_to_der()
+    key.private_key_to_der_pkcs8()
         .map_err(|_| Error::InternalError("Exporting to PKCS8 failed"))
 }
 
