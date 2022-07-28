@@ -13,6 +13,7 @@ use crate::dcap::MREnclave;
 use crate::proto::cds2;
 use crate::{client_connection, dcap, snow_resolver};
 use std::collections::HashMap;
+use std::time::Duration;
 
 /// Error types for CDS2.
 #[derive(Display, Debug)]
@@ -89,6 +90,10 @@ lazy_static! {
     };
 }
 
+/// How much to offset when checking for time-based validity checks
+/// to adjust for clock skew on clients
+const SKEW_ADJUSTMENT: Duration = Duration::from_secs(24 * 60 * 60);
+
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
 const DEFAULT_SW_ADVISORIES: &[&str] = &[];
@@ -128,7 +133,7 @@ impl ClientConnectionEstablishment {
             ACCEPTABLE_SW_ADVISORIES
                 .get(&mrenclave)
                 .unwrap_or(&DEFAULT_SW_ADVISORIES),
-            current_time,
+            current_time + SKEW_ADJUSTMENT,
         )?;
 
         if claims.len() != 1 {
@@ -205,6 +210,50 @@ mod tests {
         let attestation_vec = attestation_msg.encode_to_vec();
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
         ClientConnectionEstablishment::new(&mrenclave_bytes, &attestation_vec, current_time)
+    }
+
+    #[test]
+    fn test_cds2_clock_skew() {
+        let evidence_bytes = read_test_file("tests/data/cds2_test.evidence");
+        let endorsement_bytes = read_test_file("tests/data/cds2_test.endorsements");
+        let mut mrenclave_bytes = vec![0u8; 32];
+        let mrenclave_str = read_test_file("tests/data/cds2_test.mrenclave");
+        hex::decode_to_slice(mrenclave_str, &mut mrenclave_bytes)
+            .expect("Failed to decode mrenclave from hex string");
+
+        let attestation_msg = cds2::ClientHandshakeStart {
+            evidence: evidence_bytes,
+            endorsement: endorsement_bytes,
+            ..Default::default()
+        };
+        let attestation_vec = attestation_msg.encode_to_vec();
+
+        let test = |time: SystemTime, expect_success: bool| {
+            let result =
+                ClientConnectionEstablishment::new(&mrenclave_bytes, &attestation_vec, time);
+            assert_eq!(result.is_ok(), expect_success);
+        };
+
+        // the test pck crl starts being valid at Jun 21 21:15:11 2022 GMT
+        let valid_start = SystemTime::UNIX_EPOCH + Duration::from_secs(1655846111);
+
+        // and expires 30 days later on Jul 21 21:15:11 2022 GMT
+        let valid_end = valid_start + Duration::from_secs(30 * 24 * 60 * 60);
+
+        // a request from slightly earlier should succeed
+        test(valid_start - SKEW_ADJUSTMENT, true);
+
+        // a request from more than the skew before should fail
+        test(
+            valid_start - SKEW_ADJUSTMENT - Duration::from_secs(1),
+            false,
+        );
+
+        // an request within a day of expiration will fail from the skew adjustment
+        test(valid_end - SKEW_ADJUSTMENT, false);
+
+        // earlier than that is fine
+        test(valid_end - SKEW_ADJUSTMENT - Duration::from_secs(1), true);
     }
 
     #[test]
