@@ -72,8 +72,10 @@ Pod::Spec.new do |s|
     CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
-    CARGO_BUILD_TARGET=x86_64-apple-ios-macabi swift/build_ffi.sh --release --build-std
-    CARGO_BUILD_TARGET=aarch64-apple-ios-macabi swift/build_ffi.sh --release --build-std
+    if [[ "${SKIP_CATALYST:-0}" != "1" ]]; then
+      CARGO_BUILD_TARGET=x86_64-apple-ios-macabi swift/build_ffi.sh --release --build-std
+      CARGO_BUILD_TARGET=aarch64-apple-ios-macabi swift/build_ffi.sh --release --build-std
+    fi
   )
 
   s.test_spec 'Tests' do |test_spec|

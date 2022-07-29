@@ -304,7 +304,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          components: rust-src
 
       - name: Add iOS targets
         run: rustup target add x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
@@ -313,4 +312,4 @@ jobs:
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
         env:
-          XCODE_XCCONFIG_FILE: swift/PodLibLint.xcconfig
+          SKIP_CATALYST: 1
