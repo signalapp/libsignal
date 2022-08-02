@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.UUID;
+import java.util.Map;
 
 public final class Native {
   private static void copyToTempFileAndLoad(InputStream in, String extension) throws IOException {
@@ -123,6 +124,8 @@ public final class Native {
   public static native byte[] Cds2ClientState_EstablishedSend(long cli, byte[] plaintextToSend);
   public static native byte[] Cds2ClientState_InitialRequest(long obj);
   public static native long Cds2ClientState_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
+
+  public static native Map Cds2Metrics_extract(byte[] attestationMsg);
 
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);

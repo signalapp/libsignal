@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{JObject, JString};
+use jni::objects::{JMap, JObject, JString};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
@@ -411,6 +411,37 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             .transpose()
         })
         .unwrap_or(Err(SignalJniError::BadJniParameter("CiphertextMessage")))
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+impl ResultTypeInfo for crate::cds2::Cds2Metrics {
+    type ResultType = jobject;
+
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        let map_args = jni_args!(() -> void);
+        let jobj = env.new_object(
+            env.find_class(jni_class_name!(java.util.HashMap))?,
+            map_args.sig,
+            &map_args.args,
+        )?;
+        let jmap = JMap::from_env(env, jobj)?;
+
+        let long_class = env.find_class(jni_class_name!(java.lang.Long))?;
+        for (k, v) in self.0 {
+            let args = jni_args!((v => long) -> void);
+            jmap.put(
+                String::convert_into_jobject(&k.convert_into(env)),
+                env.new_object(long_class, args.sig, &args.args)?,
+            )?;
+        }
+        Ok(jmap.into_inner())
+    }
+
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -1124,6 +1155,9 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         jni::jbyteArray
+    };
+    (Cds2Metrics) => {
+        jni::JavaReturnMap
     };
     ([u8; $len:expr]) => {
         jni::jbyteArray

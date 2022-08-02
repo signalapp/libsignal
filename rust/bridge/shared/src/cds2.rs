@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#[cfg(all(not(target_os = "android"), feature = "jni"))]
+use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 
 use ::attest::cds2;
@@ -115,4 +117,13 @@ fn Cds2ClientState_EstablishedRecv(
     received_ciphertext: &[u8],
 ) -> Result<Vec<u8>> {
     cli.established_recv(received_ciphertext)
+}
+
+#[cfg(all(not(target_os = "android"), feature = "jni"))]
+pub struct Cds2Metrics(pub HashMap<String, i64>);
+
+#[cfg(not(target_os = "android"))]
+#[bridge_fn(ffi = false, node = false)]
+fn Cds2Metrics_extract(attestation_msg: &[u8]) -> Result<Cds2Metrics> {
+    cds2::extract_metrics(attestation_msg).map(Cds2Metrics)
 }

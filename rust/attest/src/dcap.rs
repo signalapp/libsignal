@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::time::SystemTime;
 
+use boring::asn1::{Asn1Time, Asn1TimeRef};
 use boring::bn::BigNumContext;
 use boring::ec::*;
 use boring::error::ErrorStack;
@@ -140,6 +141,81 @@ pub fn verify_remote_attestation(
     }
 
     Ok(attestation.claims)
+}
+
+/// Parses evidence/endorsements and builds a map of metrics
+pub fn attestation_metrics(
+    evidence_bytes: &[u8],
+    endorsement_bytes: &[u8],
+) -> std::result::Result<HashMap<String, i64>, AttestationError> {
+    let evidence = evidence::Evidence::try_from(evidence_bytes).context("evidence")?;
+    let endorsements =
+        endorsements::SgxEndorsements::try_from(endorsement_bytes).context("endorsements")?;
+
+    fn asn2unix(ts: &Asn1TimeRef) -> std::result::Result<i64, AttestationError> {
+        let diff = Asn1Time::from_unix(0)
+            .expect("0 is valid unix time")
+            .diff(ts)
+            .map_err(|e| Error::from(e).context("converting attestation timestamps"))?;
+
+        const DAY_SECS: i64 = 24 * 60 * 60;
+        let secs: i64 = diff.days as i64 * DAY_SECS + diff.secs as i64;
+        Ok(secs)
+    }
+    let pck_crl = endorsements.pck_issuer_crl.crl();
+    let root_crl = endorsements.root_crl.crl();
+
+    let ret = [
+        (
+            "pck_not_before_ts",
+            asn2unix(evidence.quote.support.pck_cert_chain.leaf().not_before())?,
+        ),
+        (
+            "pck_not_after_ts",
+            asn2unix(evidence.quote.support.pck_cert_chain.leaf().not_after())?,
+        ),
+        (
+            "tcb_signer_not_before_ts",
+            asn2unix(endorsements.tcb_issuer_chain.leaf().not_before())?,
+        ),
+        (
+            "tcb_signer_not_after_ts",
+            asn2unix(endorsements.tcb_issuer_chain.leaf().not_after())?,
+        ),
+        (
+            "root_not_before_ts",
+            asn2unix(endorsements.tcb_issuer_chain.root().not_before())?,
+        ),
+        (
+            "root_not_after_ts",
+            asn2unix(endorsements.tcb_issuer_chain.root().not_after())?,
+        ),
+        (
+            "pck_crl_last_update_ts",
+            pck_crl.last_update().map_or(Ok(0), asn2unix)?,
+        ),
+        (
+            "pck_crl_next_update_ts",
+            pck_crl.next_update().map_or(Ok(0), asn2unix)?,
+        ),
+        (
+            "root_crl_last_update_ts",
+            root_crl.last_update().map_or(Ok(0), asn2unix)?,
+        ),
+        (
+            "root_crl_next_update_ts",
+            root_crl.next_update().map_or(Ok(0), asn2unix)?,
+        ),
+        (
+            "tcb_info_expiration_ts",
+            endorsements.tcb_info.next_update.timestamp(),
+        ),
+        (
+            "qe_identity_expiration_ts",
+            endorsements.qe_id_info.next_update.timestamp(),
+        ),
+    ];
+    Ok(ret.iter().map(|(k, v)| (k.to_string(), *v)).collect())
 }
 
 /// Enclave information returned by an intel-trusted
@@ -625,6 +701,28 @@ mod test {
     }
 
     #[test]
+    fn test_attestation_metrics() {
+        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
+        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
+        let metrics = attestation_metrics(&evidence_bytes, &endorsements_bytes).unwrap();
+        // 2022-08-14 02:31:29 UTC
+        assert_eq!(
+            *metrics.get("tcb_info_expiration_ts").unwrap(),
+            1660444289_i64
+        );
+        // May 21 10:50:10 2018 GMT
+        assert_eq!(
+            *metrics.get("tcb_signer_not_before_ts").unwrap(),
+            1526899810_i64
+        );
+        // May 21 10:50:10 2025 GMT
+        assert_eq!(
+            *metrics.get("tcb_signer_not_after_ts").unwrap(),
+            1747824610_i64
+        );
+    }
+
+    #[test]
     fn test_verify_remote_attestation_expired_attestation() {
         let current_time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(1652744306000);
@@ -645,7 +743,6 @@ mod test {
     #[test]
     fn tcb_fmspc_mismatch() {
         let mut builder = FakeAttestation::builder();
-        println!("{:?}", hex::encode(builder.uendorsements.tcb_info.fmspc));
         builder.uendorsements.tcb_info.fmspc = [0; 6];
         assert!(builder.sign().attest().is_err());
     }

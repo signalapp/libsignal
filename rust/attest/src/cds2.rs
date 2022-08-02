@@ -181,6 +181,26 @@ impl ClientConnectionEstablishment {
     }
 }
 
+/// Extracts attestation metrics from a `ClientHandshakeStart` message
+pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
+    let handshake_start = cds2::ClientHandshakeStart::decode(attestation_msg)?;
+
+    if handshake_start.evidence.is_empty() {
+        return Err(Error::AttestationDataError {
+            reason: "No evidence provided on handshake start".to_owned(),
+        });
+    }
+    if handshake_start.endorsement.is_empty() {
+        return Err(Error::AttestationDataError {
+            reason: "No endorsements provided on handshake start".to_owned(),
+        });
+    }
+    Ok(dcap::attestation_metrics(
+        &handshake_start.evidence,
+        &handshake_start.endorsement,
+    )?)
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;

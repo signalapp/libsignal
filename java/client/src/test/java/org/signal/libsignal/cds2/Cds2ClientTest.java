@@ -27,13 +27,9 @@ public class Cds2ClientTest extends TestCase {
 
         try (InputStream stream = getClass().getResourceAsStream("clienthandshakestart.data")) {
             assert stream != null;
-
-            int offset = 0;
-            int read = stream.read(attestationMsg, offset, attestationMsg.length) - offset;
-
-            // Make sure we don't need to bump up the static array size
-            assert read < attestationMsg.length;
-
+            int read = stream.read(attestationMsg);
+            // should be empty
+            assert(stream.read() == -1);
             attestationMsg = Arrays.copyOf(attestationMsg, read);
         }
     }

@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.UUID;
+import java.util.Map;
 
 public final class Native {
   private static void copyToTempFileAndLoad(InputStream in, String extension) throws IOException {
