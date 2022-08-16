@@ -45,6 +45,7 @@ use crate::dcap::endorsements::{
 };
 use crate::dcap::evidence::Evidence;
 pub use crate::dcap::sgx_report_body::MREnclave;
+use crate::dcap::sgx_report_body::SgxFlags;
 use crate::dcap::sgx_x509::SgxPckExtension;
 use crate::error::{Context, ContextError};
 
@@ -271,6 +272,14 @@ fn attest_impl(
     // everything in the quote is verified. lastly, check the custom claims hash matches
     // the report data, and then return the claims map
     verify_claims_hash(&evidence)?;
+
+    // clients should only trust MRENCLAVE values from a non-debug
+    // build. But, as an extra precaution, verify that the remote
+    // enclave is not running in debug mode
+    let report = &evidence.quote.quote_body.report_body;
+    if report.has_flag(SgxFlags::DEBUG) {
+        return Err(Error::new("Application enclave in debug mode"));
+    }
 
     Ok(Attestation {
         tcb_standing,
@@ -738,6 +747,18 @@ mod test {
             current_time,
         )
         .is_err());
+    }
+
+    #[test]
+    fn debug_flag() {
+        let mut builder = FakeAttestation::builder();
+        builder
+            .uevidence
+            .quote
+            .quote_body
+            .report_body
+            .sgx_attributes[0] |= 0x2;
+        assert!(builder.sign().attest().is_err());
     }
 
     #[test]

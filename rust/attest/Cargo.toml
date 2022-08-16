@@ -14,6 +14,7 @@ license = "AGPL-3.0-only"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
 
 asn1 = "0.9.1"
+bitflags = "1.3.2"
 chacha20poly1305 = "0.8.2"
 chrono = { version = "0.4", features = ["serde"] }
 displaydoc = "0.2"

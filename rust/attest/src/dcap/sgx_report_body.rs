@@ -5,7 +5,8 @@
 
 //! SGX report body, ported from Open Enclave headers in v0.17.7.
 
-use std::convert::TryFrom;
+use bitflags::bitflags;
+use std::convert::{TryFrom, TryInto};
 use std::intrinsics::transmute;
 
 use crate::endian::*;
@@ -92,6 +93,28 @@ pub(crate) struct SgxReportBody {
 }
 
 static_assertions::const_assert_eq!(384, std::mem::size_of::<SgxReportBody>());
+
+bitflags! {
+    /// SGX enclave flags
+    ///
+    /// Defined in https://github.com/intel/linux-sgx/blob/master/common/inc/sgx_attributes.h
+    pub struct SgxFlags : u64 {
+        const INITED = 0b00000001;
+        const DEBUG = 0b00000010;
+        const MODE64BIT = 0b00000100;
+        const PROVISION_KEY = 0b00001000;
+        const EINITTOKEN_KEY = 0b00100000;
+        const KSS = 0b10000000;
+    }
+}
+
+impl SgxReportBody {
+    pub fn has_flag(&self, flag: SgxFlags) -> bool {
+        // first 8 bytes are little endian SGX flags
+        let bytes: [u8; 8] = self.sgx_attributes[0..8].try_into().unwrap();
+        SgxFlags::from_bits_truncate(u64::from_le_bytes(bytes)).contains(flag)
+    }
+}
 
 impl TryFrom<[u8; std::mem::size_of::<SgxReportBody>()]> for SgxReportBody {
     type Error = super::Error;
