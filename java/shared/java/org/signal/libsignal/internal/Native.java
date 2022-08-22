@@ -49,8 +49,14 @@ public final class Native {
   private static void loadLibrary() {
     try {
       String  osName    = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT);
-      boolean isMacOs   = osName.startsWith("mac os");
-      String  extension = isMacOs ? ".dylib" : ".so";
+      String extension;
+      if (osName.startsWith("mac os")) {
+        extension = ".dylib";
+      } else if(osName.contains("win")) {
+        extension = ".dll";
+      } else {
+        extension = ".so";
+      }
 
       try (InputStream in = Native.class.getResourceAsStream("/libsignal_jni" + extension)) {
         if (in != null) {
