@@ -12,6 +12,7 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
+boring-sys = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false, features = ["android-api-19"] }
 
 asn1 = "0.9.1"
 bitflags = "1.3.2"

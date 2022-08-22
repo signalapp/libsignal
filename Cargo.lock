@@ -128,6 +128,7 @@ dependencies = [
  "asn1",
  "bitflags",
  "boring",
+ "boring-sys",
  "chacha20poly1305",
  "chrono",
  "displaydoc",
@@ -261,7 +262,7 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 [[package]]
 name = "boring"
 version = "2.0.0"
-source = "git+https://github.com/signalapp/boring?branch=libsignal#e1c719c0964ba37e6935355e9bf19821b072797e"
+source = "git+https://github.com/signalapp/boring?branch=libsignal#b95cb545b97395cdf5da36814f7dfb6e3856a99c"
 dependencies = [
  "bitflags",
  "boring-sys",
@@ -273,7 +274,7 @@ dependencies = [
 [[package]]
 name = "boring-sys"
 version = "2.0.0"
-source = "git+https://github.com/signalapp/boring?branch=libsignal#e1c719c0964ba37e6935355e9bf19821b072797e"
+source = "git+https://github.com/signalapp/boring?branch=libsignal#b95cb545b97395cdf5da36814f7dfb6e3856a99c"
 dependencies = [
  "bindgen",
  "cmake",
