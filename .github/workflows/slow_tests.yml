@@ -31,6 +31,71 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: make -C java java_test
+    - name: Upload JNI libraries
+      uses: actions/upload-artifact@v3
+      with:
+        name: jniLibs
+        path: java/android/src/main/jniLibs/*
+        retention-days: 2
+
+  android-emulator-tests:
+    name: Android Emulator Tests
+    # For hardware acceleration; see https://github.com/ReactiveCircus/android-emulator-runner/issues/46
+    runs-on: macos-latest
+    needs: [java-docker]
+    if: ${{ always() && needs.java-docker.result == 'success' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x86_64]
+        include:
+        - arch: x86
+          api-level: 19
+        - arch: x86_64
+          api-level: 21
+
+    steps:
+      - run: 'echo "JAVA_HOME=$JAVA_HOME_11_X64" >> "$GITHUB_ENV"'
+
+      - uses: actions/checkout@v2
+
+      - name: Download JNI libraries
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          name: jniLibs
+          path: java/android/src/main/jniLibs/
+
+      # From reactivecircus/android-emulator-runner
+      - name: AVD cache
+        uses: actions/cache@v3
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.arch }}-${{ matrix.api-level }}
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2.25.0
+        with:
+          arch: ${{ matrix.arch }}
+          api-level: ${{ matrix.api-level }}
+          force-avd-creation: false
+          emulator-options: -no-window -noaudio -no-boot-anim
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run tests
+        uses: reactivecircus/android-emulator-runner@v2.25.0
+        with:
+          arch: ${{ matrix.arch }}
+          api-level: ${{ matrix.api-level }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
+          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x makeJniLibrariesAndroid
+          working-directory: java
 
   node-docker:
     name: Node (Ubuntu via Docker)
