@@ -13,11 +13,16 @@ cd "${SCRIPT_DIR}"/..
 
 DOCKER_IMAGE=libsignal-node-builder
 
+IS_TTY=""
+if [[ -t 0 ]]; then
+    IS_TTY="yes"
+fi
+
 docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" -t ${DOCKER_IMAGE} -f node/Dockerfile .
 
 # We build both architectures in the same run action to save on intermediates
 # (including downloading dependencies)
-docker run --rm -v "${PWD}":/home/libsignal/src ${DOCKER_IMAGE} sh -c '
+docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_IMAGE} sh -c '
     cd ~/src/node &&
     env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
         CC=aarch64-linux-gnu-gcc \

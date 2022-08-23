@@ -10,18 +10,19 @@ DOCKER ?= docker
 default: java_build
 
 DOCKER_IMAGE := libsignal-builder
+DOCKER_TTY_FLAG := $$(test -t 0 && echo -it)
 
 docker_image:
 	cd .. && $(DOCKER) build --build-arg UID=$$(id -u) --build-arg GID=$$(id -g) -t $(DOCKER_IMAGE) -f java/Dockerfile .
 
 java_build: DOCKER_EXTRA=$(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 java_build: docker_image
-	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
+	$(DOCKER) run $(DOCKER_TTY_FLAG) --init --rm --user $$(id -u):$$(id -g) \
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
 		sh -c "cd src/java; ./gradlew build"
 
 java_test: java_build
-	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
+	$(DOCKER) run $(DOCKER_TTY_FLAG) --init --rm --user $$(id -u):$$(id -g) \
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
 		sh -c "cd src/java; ./gradlew test"
 
