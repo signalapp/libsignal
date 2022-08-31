@@ -6,7 +6,7 @@
 [package]
 name = "attest"
 version = "0.1.0"
-authors = ["Amit Assaf <amit@siginal.org", "Graeme Connell <gram@signal.org>", "Chris Eager <chris@signal.org>"]
+authors = ["Amit Assaf <amit@signal.org", "Graeme Connell <gram@signal.org>", "Chris Eager <chris@signal.org>"]
 edition = "2018"
 license = "AGPL-3.0-only"
 
