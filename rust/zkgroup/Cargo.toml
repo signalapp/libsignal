@@ -36,7 +36,7 @@ branch = "lizard2"
 # Below is for benchmarking:
 
 [dev-dependencies]
-criterion = "0.3.1"
+criterion = "0.4"
 
 [[bench]]
 name = "zkgroup_benchmarks"

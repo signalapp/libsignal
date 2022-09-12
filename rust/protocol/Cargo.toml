@@ -36,7 +36,7 @@ thiserror = "1.0.30"
 armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 futures-util = "0.3.7"
 
 [build-dependencies]
