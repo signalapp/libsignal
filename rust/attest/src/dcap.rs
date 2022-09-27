@@ -603,6 +603,13 @@ fn verify_claims_hash(evidence: &Evidence) -> Result<()> {
         return Err(Error::new("custom claims hash mismatch"));
     }
 
+    // OpenEnclave exposes the ability for hosts to request a valid report that
+    // contains all zeros in the report_data via an ECALL, and if someone manages
+    // to find claims that hash to all zeros, we still want to reject them.
+    if report_sha256 == [0u8; 32] {
+        return Err(Error::new("valid claims sha256 is all zeros, rejecting"));
+    }
+
     Ok(())
 }
 
