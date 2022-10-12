@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{JMap, JObject, JString};
+use jni::objects::{JObject, JString};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
@@ -425,7 +425,8 @@ impl ResultTypeInfo for crate::cds2::Cds2Metrics {
             map_args.sig,
             &map_args.args,
         )?;
-        let jmap = JMap::from_env(env, jobj)?;
+        // Fully-qualified so that we don't need to conditionalize the `use`.
+        let jmap = jni::objects::JMap::from_env(env, jobj)?;
 
         let long_class = env.find_class(jni_class_name!(java.lang.Long))?;
         for (k, v) in self.0 {
