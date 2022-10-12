@@ -6,7 +6,7 @@
 [package]
 name = "poksho"
 version = "0.7.0"
-authors = ["Trevor Perrin <trevp@signal.org>"]
+authors = ["Signal Messenger LLC"]
 edition = "2018"
 license = "AGPL-3.0-only"
 

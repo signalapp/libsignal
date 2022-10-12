@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
 
   s.homepage         = 'https://github.com/signalapp/libsignal'
   s.license          = 'AGPL-3.0-only'
-  s.author           = { 'Signal Developers' => 'ios@signal.org' }
+  s.author           = 'Signal Messenger LLC'
   s.source           = { :git => 'https://github.com/signalapp/libsignal.git', :tag => "v#{s.version}" }
 
   s.swift_version    = '5'

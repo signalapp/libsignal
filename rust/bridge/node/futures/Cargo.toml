@@ -6,7 +6,7 @@
 [package]
 name = "signal-neon-futures"
 version = "0.1.0"
-authors = ["Jordan Rose <jrose@signal.org>"]
+authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 edition = "2018"
 
