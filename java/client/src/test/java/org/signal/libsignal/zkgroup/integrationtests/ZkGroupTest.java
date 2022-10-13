@@ -76,15 +76,8 @@ public final class ZkGroupTest extends SecureRandomTest {
 
   private static final byte[] TEST_ARRAY_32_5 = Hex.fromStringCondensedAssert("030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122");
 
-
-  private static final byte[] authPresentationResultV1 = Hex.fromStringCondensedAssert(
-"000cde979737ed30bbeb16362e4e076945ce02069f727b0ed4c3c33c011e82546e1cdf081fbdf37c03a851ad060bdcbf6378cb4cb16dc3154d08de5439b5323203729d1841b517033af2fd177d30491c138ae723655734f6e5cc01c00696f4e92096d8c33df26ba2a820d42e9735d30f8eeef96d399079073c099f7035523bfe716638659319d3c36ad34c00ef8850f663c4d93030235074312a8878b6a5c5df4fbc7d32935278bfa5996b44ab75d6f06f4c30b98640ad5de74742656c8977567de000000000000000fde69f82ad2dcb4909650ac6b2573841af568fef822b32b45f625a764691a704d11b6f385261468117ead57fa623338e21c66ed846ab65809fcac158066d8e0e444077b99540d886e7dc09555dd6faea2cd3697f1e089f82d54e5d0fe4a185008b5cbc3979391ad71686bc03be7b00ea7e42c08d9f1d75c3a56c27ae2467b80636c0b5343eda7cd578ba88ddb7a0766568477fed63cf531862122c6c15b4a707973d41782cfc0ef4fe6c3115988a2e339015938d2df0a5d30237a2592cc10c05a9e4ef6b695bca99736b1a49ea39606a381ecfb05efe60d28b54823ec5a3680c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100");
-
 private static final byte[] profileKeyPresentationResultV1 = Hex.fromStringCondensedAssert(
 "00c4d19bca1ae844585168869da4133e0e0bb59f2ce17b7ac65bff5da9610eca103429d8022a94bae2b5b1057b5595b8ad70bfc2d0e1ad662cb75e6bae0782be6f00e3db793bc28561f0196c2e74da6f303fa8bcb70c94096671b73f7b3a95fb002200d5b9180fa0ef7d3014d01344145b4d38480d72ff25c24294e305e5705072e0d32cc4e84f5caf31486089a4b934c80c92eba43472ff23a5af93c397535d33801f0e6fc6eb2ee0d117f03bb4fd38a8b9c88d94708131f38742ca804a3cfc4f9476bc2d03f53d17001c36478afbe9cc535a224b2df6b2b08bef06cbc7d4dc42ccfc3459f7ac5c4419ae9f3c8a161d554d047778943216240858da3b1101984c40010000000000007a01eea6b2adad14d71ab8b8e411bef3c596e954b70e4031570cb1abd7e932083241f1caca3116708fa4319fbbdfe351376c23644ae09a42f0155db4996c9d0c7ffc8521c1914c0e1a20ae51e65df64dd5e6e5985b3d9d31732046d2d77f9c08aaccf056b84026073976eec6164cbdaee5d9e76e497f0c290af681cabd5c5101282abb26c3680d6087ce053310fe8a94f59d8ae23caac5fc0ed0c379888abf028a6f29f89d4fe2acc1706341b2245ba1885bca57e1e27ccf7ed79371500965009f960c2ba00fad3e93383b87ce119cac0b3360eb99284ce78e2cbed680f7960373e0ab75c190254160c2353614109489e653c9b2e1c93f92c7c5ad583d987a04bd3541b24485c33ea49bac43c87c4ab3efde2e2d7ec10a40be544199f925b20b2c55542bc56410571e41cd8e0286f609a66768b5061ccb4777af32309928dd09765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
-
-private static final byte[] pniPresentationResultV1 = Hex.fromStringCondensedAssert(
-"00fecc5f71d40dbd45912d0de9c1ed033c7eb1c4755e19cb6241ede6a6a99f65545e870a806854c5000d436db601a89f72b9b399f0efa277473716e8bc20c984766250937555604f2d2fcdd263c60f2f72b5a04d9bbbc6f95c78085f81aaf07d3316a2dbd1ef85bb642d5da6d00d03fed8097276bf17a113a44018d773c9116c33ac86837d4f5c41fb70153f3d655c0b68982fae01113460db75ea7099ef7e910cbe0bd606870df55522f9d0b1bee1b1ab2f3b9cd3563a422684ebcfdb1fdada27acb4d48c7db9c6b1389c6742a8f8257bb70f5430feb4a438007fb33e7910da3b9a0997d7d35c6c93a8d45949d01f88b497c822b0127b3fc57cfaee90bcf7d41914f6f0f8fa0acd82e004caaad1c9feec2fb67f58936ae7a92a285dc15b23486a0272e864f3ae9769d650fdd0898739ad28e259e8dae73907caa8ff69a53a851e4001000000000000f26c704b8daf38a464810eca8589541521e053221dd830866bf77da025cdc2041e33f73e42c70387709acbac0df46d0155e6bf6f7952ddc3289a16ca682e740df7403cc12cbe0cd54a7b0de08eec4f7cdce52996880ef5db74bcc4e8e78d620da4d21ff137b29df3a1a08d14b9224c91ef05a1ac0a7cfe142b227853c90bb90db0cf3d6311560e49ca52983f9efc54ecb61f552d6a85088871ef4d0f5862dd04aff93fd97b7816181d38bcb30f71eaeb9eff2ba630916eac355f45703a8c780e8579b2793d4fb72e001d15e23bedcb3c827fc559ef7adb6da2ec33291b86bf0db2ad4a3a0cb9233d3af967d9301505b88d157b3436ae6122696718d812b27002cdce4c807610f2de7cec4a03933da64a6319eab4ac0630c99d0e62779974e8038ff5053275378c1b41dd7bb5f8f4c11daa4cd19fdec4d0222850c606857c990e765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474fe74409060615679fc115473683d63abd9ced46c7f2ad736046de5a2c7d2522f122895597049cfd7cc5beb6dc72aa990ae9a62ec8e256a1cbf5f3f284233bb0748c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
 
 
   private static final byte[] authPresentationResultV2 = Hex.      fromStringCondensedAssert("01322f9100de0734550a81dc81724a81dbd3b1b43dbc1d552d53455911c2772f34a6356ca17c6d34d858391456af55d0ef841fbe1fa8c4ee810f21e0bb9f4ace4c5c48c72ebbeb2ccda5f7aa49aee6bc0051cdde166e0f8c5f1febd53a4437c570ee1aa223f5eb937db98f34e3653d85ec163f39847222a2dec4235ea41c47bb62028aae30945857ee77663079bcc4923d14a43ad4f6bc33715046f7bde52715375ca9f89be0e630d4bdaa211156d0306723f543b06f5e998447b962c8e9729b4cc00000000000000074d0eae8e4311a6ae3d2970ef198c398110462be47dd2f26e6559209ef6cc20001a05a0b319a172dbeb2293cc1e0e191cefb23e24cf0d6b4b5373a30044be10cb033674d631e17dfce09398f234e9d62e118a6077caea0ef8bf67d7d723db70fecf2098fa041317b7be9fdbb68b0f25f5c479d68bd917fc6f187c5bf7a58910231921fc43565232466325c039212362b6d1203ccaedf831dc7f9060dcaaffa02624042171f5f0e780b9f74cfa88a147f3f1c082f9ca8638af1788e7899cbae0c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100");
@@ -350,7 +343,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
         AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
         serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentationTemp, redemptionInstant);
         throw new AssertionError("verifyAuthCredentialPresentation should fail #4");
-    } catch (VerificationFailedException e) {
+    } catch (InvalidInputException e) {
         // expected
     }
 
@@ -362,15 +355,6 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
         throw new AssertionError("verifyAuthCredentialPresentation should fail #5");
     } catch (InvalidInputException e) {
         // expected
-    }
-
-    {
-        // Test that V1 presentation verifies successfully
-        AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(authPresentationResultV1);
-        assertEquals(presentationTemp.serialize()[0], 0); // Check V1
-        assertEquals(presentationTemp.getVersion(), AuthCredentialPresentation.Version.V1);
-        serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams, presentationTemp, redemptionInstant);
-        assertArrayEquals(presentationTemp.serialize(), authPresentationResultV1);
     }
 
   }
@@ -757,13 +741,16 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
         // expected
     }
 
-    {
-        // Test that V1 presentation verifies successfully
+    try {
+        // Test that V1 presentation parses successfully
         ProfileKeyCredentialPresentation presentationTemp = new ProfileKeyCredentialPresentation(profileKeyPresentationResultV1);
         assertEquals(presentationTemp.serialize()[0], 0); // Check V1
         assertEquals(presentationTemp.getVersion(), ProfileKeyCredentialPresentation.Version.V1);
-        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
         assertArrayEquals(presentationTemp.serialize(), profileKeyPresentationResultV1);
+        serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+        throw new AssertionError("verifyProfileKeyCredentialPresentation should fail on v1");
+    } catch (VerificationFailedException e) {
+        // expected
     }
 
   }
@@ -962,7 +949,7 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
         PniCredentialPresentation presentationTemp = new PniCredentialPresentation(temp);
         serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
         throw new AssertionError("verifyPniCredentialPresentation should fail 2");
-    } catch (VerificationFailedException e) {
+    } catch (InvalidInputException e) {
         // expected
     }
 
@@ -976,14 +963,6 @@ private static final byte[] pniPresentationResultV2 = Hex.fromStringCondensedAss
         // expected
     }
 
-    {
-        // Test that V1 presentation verifies successfully
-        PniCredentialPresentation presentationTemp = new PniCredentialPresentation(pniPresentationResultV1);
-        assertEquals(presentationTemp.serialize()[0], 0); // Check V1
-        assertEquals(presentationTemp.getVersion(), PniCredentialPresentation.Version.V1);
-        serverZkProfile.verifyPniCredentialPresentation(groupPublicParams, presentationTemp);
-        assertArrayEquals(presentationTemp.serialize(), pniPresentationResultV1);
-    }
   }
 
   @Test

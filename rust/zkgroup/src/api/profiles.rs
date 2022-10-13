@@ -21,9 +21,7 @@ pub mod profile_key_version;
 pub use expiring_profile_key_credential::ExpiringProfileKeyCredential;
 pub use expiring_profile_key_credential_response::ExpiringProfileKeyCredentialResponse;
 pub use pni_credential::PniCredential;
-pub use pni_credential_presentation::{
-    AnyPniCredentialPresentation, PniCredentialPresentationV1, PniCredentialPresentationV2,
-};
+pub use pni_credential_presentation::{AnyPniCredentialPresentation, PniCredentialPresentationV2};
 pub use pni_credential_request_context::PniCredentialRequestContext;
 pub use pni_credential_response::PniCredentialResponse;
 pub use profile_key::ProfileKey;

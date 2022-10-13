@@ -13,8 +13,7 @@ fn test_lizard() {
     let data_out = p.lizard_decode::<Sha256>();
     assert!(data_out.unwrap() == zkgroup::common::constants::TEST_ARRAY_16);
 }
-pub const AUTH_CREDENTIAL_PRESENTATION_V1_RESULT: [u8;
-    zkgroup::AUTH_CREDENTIAL_PRESENTATION_V1_LEN] = [
+pub const AUTH_CREDENTIAL_PRESENTATION_V1: &[u8] = &[
     0x00, 0x0c, 0xde, 0x97, 0x97, 0x37, 0xed, 0x30, 0xbb, 0xeb, 0x16, 0x36, 0x2e, 0x4e, 0x07, 0x69,
     0x45, 0xce, 0x02, 0x06, 0x9f, 0x72, 0x7b, 0x0e, 0xd4, 0xc3, 0xc3, 0x3c, 0x01, 0x1e, 0x82, 0x54,
     0x6e, 0x1c, 0xdf, 0x08, 0x1f, 0xbd, 0xf3, 0x7c, 0x03, 0xa8, 0x51, 0xad, 0x06, 0x0b, 0xdc, 0xbf,
@@ -124,8 +123,7 @@ pub const AUTH_CREDENTIAL_PRESENTATION_V3_RESULT: &[u8] = &[
     0x00,
 ];
 
-pub const PROFILE_KEY_CREDENTIAL_PRESENTATION_V1_RESULT: [u8;
-    zkgroup::PROFILE_KEY_CREDENTIAL_PRESENTATION_V1_LEN] = [
+pub const PROFILE_KEY_CREDENTIAL_PRESENTATION_V1: &[u8] = &[
     0x00, 0xc4, 0xd1, 0x9b, 0xca, 0x1a, 0xe8, 0x44, 0x58, 0x51, 0x68, 0x86, 0x9d, 0xa4, 0x13, 0x3e,
     0x0e, 0x0b, 0xb5, 0x9f, 0x2c, 0xe1, 0x7b, 0x7a, 0xc6, 0x5b, 0xff, 0x5d, 0xa9, 0x61, 0x0e, 0xca,
     0x10, 0x34, 0x29, 0xd8, 0x02, 0x2a, 0x94, 0xba, 0xe2, 0xb5, 0xb1, 0x05, 0x7b, 0x55, 0x95, 0xb8,
@@ -271,7 +269,7 @@ pub const PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT: &[u8] = &[
     0x00,
 ];
 
-pub const PNI_CREDENTIAL_PRESENTATION_V1_RESULT: [u8; zkgroup::PNI_CREDENTIAL_PRESENTATION_V1_LEN] = [
+pub const PNI_CREDENTIAL_PRESENTATION_V1: &[u8] = &[
     0x00, 0xfe, 0xcc, 0x5f, 0x71, 0xd4, 0x0d, 0xbd, 0x45, 0x91, 0x2d, 0x0d, 0xe9, 0xc1, 0xed, 0x03,
     0x3c, 0x7e, 0xb1, 0xc4, 0x75, 0x5e, 0x19, 0xcb, 0x62, 0x41, 0xed, 0xe6, 0xa6, 0xa9, 0x9f, 0x65,
     0x54, 0x5e, 0x87, 0x0a, 0x80, 0x68, 0x54, 0xc5, 0x00, 0x0d, 0x43, 0x6d, 0xb6, 0x01, 0xa8, 0x9f,
@@ -416,12 +414,6 @@ fn test_integration_auth() {
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation_v1 = server_public_params.create_auth_credential_presentation_v1(
-        randomness,
-        group_secret_params,
-        auth_credential,
-    );
-
     let presentation_v2 = server_public_params.create_auth_credential_presentation_v2(
         randomness,
         group_secret_params,
@@ -434,7 +426,6 @@ fn test_integration_auth() {
         auth_credential,
     );
 
-    let presentation_v1_bytes = &bincode::serialize(&presentation_v1).unwrap();
     let presentation_v2_bytes = &bincode::serialize(&presentation_v2).unwrap();
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
@@ -442,25 +433,13 @@ fn test_integration_auth() {
     //    print!("0x{:02x}, ", b);
     //}
 
-    assert!(AUTH_CREDENTIAL_PRESENTATION_V1_RESULT[..] == presentation_v1_bytes[..]);
     assert!(AUTH_CREDENTIAL_PRESENTATION_V2_RESULT[..] == presentation_v2_bytes[..]);
     assert!(AUTH_CREDENTIAL_PRESENTATION_V2_RESULT[..] == presentation_any_bytes[..]);
 
-    let presentation_v1_parsed =
-        zkgroup::auth::AnyAuthCredentialPresentation::new(presentation_v1_bytes).unwrap();
     let presentation_v2_parsed =
         zkgroup::auth::AnyAuthCredentialPresentation::new(presentation_v2_bytes).unwrap();
 
-    assert!(presentation_v1_parsed.get_pni_ciphertext().is_none());
     assert!(presentation_v2_parsed.get_pni_ciphertext().is_none());
-
-    server_secret_params
-        .verify_auth_credential_presentation(
-            group_public_params,
-            &presentation_v1_parsed,
-            u64::from(redemption_time) * SECONDS_PER_DAY,
-        )
-        .unwrap();
 
     server_secret_params
         .verify_auth_credential_presentation(
@@ -469,14 +448,6 @@ fn test_integration_auth() {
             u64::from(redemption_time) * SECONDS_PER_DAY,
         )
         .unwrap();
-
-    server_secret_params
-        .verify_auth_credential_presentation(
-            group_public_params,
-            &presentation_v1_parsed,
-            u64::from(redemption_time - 1) * SECONDS_PER_DAY - 1,
-        )
-        .unwrap_err();
 
     server_secret_params
         .verify_auth_credential_presentation(
@@ -485,14 +456,6 @@ fn test_integration_auth() {
             u64::from(redemption_time + 2) * SECONDS_PER_DAY + 2,
         )
         .unwrap_err();
-
-    server_secret_params
-        .verify_auth_credential_presentation_v1(
-            group_public_params,
-            &presentation_v1,
-            redemption_time,
-        )
-        .unwrap();
 
     server_secret_params
         .verify_auth_credential_presentation_v2(
@@ -515,8 +478,6 @@ fn test_integration_auth() {
     let mut auth_credential_response_bytes =
         [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_RESPONSE_LEN];
     let mut auth_credential_bytes = [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_LEN];
-    let mut auth_credential_presentation_v1_bytes =
-        [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_PRESENTATION_V1_LEN];
     let mut auth_credential_presentation_v2_bytes =
         [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_PRESENTATION_V2_LEN];
     let mut uuid_ciphertext_bytes = [0u8; zkgroup::common::constants::UUID_CIPHERTEXT_LEN];
@@ -531,13 +492,18 @@ fn test_integration_auth() {
     auth_credential_response_bytes
         .copy_from_slice(&bincode::serialize(&auth_credential_response).unwrap());
     auth_credential_bytes.copy_from_slice(&bincode::serialize(&auth_credential).unwrap());
-    auth_credential_presentation_v1_bytes
-        .copy_from_slice(&bincode::serialize(&presentation_v1).unwrap());
     auth_credential_presentation_v2_bytes
         .copy_from_slice(&bincode::serialize(&presentation_v2).unwrap());
     uuid_ciphertext_bytes.copy_from_slice(&bincode::serialize(&uuid_ciphertext).unwrap());
     uid_bytes.copy_from_slice(&bincode::serialize(&uid).unwrap());
     randomness_bytes.copy_from_slice(&bincode::serialize(&randomness).unwrap());
+}
+
+#[test]
+fn test_auth_credential_presentation_v1_is_rejected() {
+    assert!(
+        zkgroup::auth::AnyAuthCredentialPresentation::new(AUTH_CREDENTIAL_PRESENTATION_V1).is_err()
+    );
 }
 
 #[test]
@@ -704,12 +670,6 @@ fn test_integration_profile() {
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation_v1 = server_public_params.create_profile_key_credential_presentation_v1(
-        randomness,
-        group_secret_params,
-        profile_key_credential,
-    );
-
     let presentation_v2 = server_public_params.create_profile_key_credential_presentation_v2(
         randomness,
         group_secret_params,
@@ -722,7 +682,6 @@ fn test_integration_profile() {
         profile_key_credential,
     );
 
-    let presentation_v1_bytes = &bincode::serialize(&presentation_v1).unwrap();
     let presentation_v2_bytes = &bincode::serialize(&presentation_v2).unwrap();
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
@@ -730,25 +689,14 @@ fn test_integration_profile() {
     //    print!("0x{:02x}, ", b);
     //}
 
-    assert!(PROFILE_KEY_CREDENTIAL_PRESENTATION_V1_RESULT[..] == presentation_v1_bytes[..]);
     assert!(PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_RESULT[..] == presentation_v2_bytes[..]);
     assert!(PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_RESULT[..] == presentation_any_bytes[..]);
 
-    let presentation_v1_parsed =
-        zkgroup::profiles::AnyProfileKeyCredentialPresentation::new(presentation_v1_bytes).unwrap();
     let presentation_v2_parsed =
         zkgroup::profiles::AnyProfileKeyCredentialPresentation::new(presentation_v2_bytes).unwrap();
 
     server_secret_params
-        .verify_profile_key_credential_presentation(group_public_params, &presentation_v1_parsed, 0)
-        .unwrap();
-
-    server_secret_params
         .verify_profile_key_credential_presentation(group_public_params, &presentation_v2_parsed, 0)
-        .unwrap();
-
-    server_secret_params
-        .verify_profile_key_credential_presentation_v1(group_public_params, &presentation_v1)
         .unwrap();
 
     server_secret_params
@@ -763,8 +711,6 @@ fn test_integration_profile() {
         [0u8; zkgroup::common::constants::PROFILE_KEY_COMMITMENT_LEN];
     let mut profile_key_credential_bytes =
         [0u8; zkgroup::common::constants::PROFILE_KEY_CREDENTIAL_LEN];
-    let mut profile_key_credential_presentation_v1_bytes =
-        [0u8; zkgroup::common::constants::PROFILE_KEY_CREDENTIAL_PRESENTATION_V1_LEN];
     let mut profile_key_credential_presentation_v2_bytes =
         [0u8; zkgroup::common::constants::PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_LEN];
     let mut profile_key_credential_request_bytes =
@@ -778,8 +724,6 @@ fn test_integration_profile() {
         .copy_from_slice(&bincode::serialize(&profile_key_commitment).unwrap());
     profile_key_credential_bytes
         .copy_from_slice(&bincode::serialize(&profile_key_credential).unwrap());
-    profile_key_credential_presentation_v1_bytes
-        .copy_from_slice(&bincode::serialize(&presentation_v1).unwrap());
     profile_key_credential_presentation_v2_bytes
         .copy_from_slice(&bincode::serialize(&presentation_v2).unwrap());
     profile_key_credential_request_bytes.copy_from_slice(&bincode::serialize(&request).unwrap());
@@ -975,12 +919,6 @@ fn test_integration_pni() {
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation_v1 = server_public_params.create_pni_credential_presentation_v1(
-        randomness,
-        group_secret_params,
-        pni_credential,
-    );
-
     let presentation_v2 = server_public_params.create_pni_credential_presentation_v2(
         randomness,
         group_secret_params,
@@ -993,7 +931,6 @@ fn test_integration_pni() {
         pni_credential,
     );
 
-    let presentation_v1_bytes = &bincode::serialize(&presentation_v1).unwrap();
     let presentation_v2_bytes = &bincode::serialize(&presentation_v2).unwrap();
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
@@ -1001,25 +938,14 @@ fn test_integration_pni() {
     //    print!("0x{:02x}, ", b);
     //}
 
-    assert!(PNI_CREDENTIAL_PRESENTATION_V1_RESULT[..] == presentation_v1_bytes[..]);
     assert!(PNI_CREDENTIAL_PRESENTATION_V2_RESULT[..] == presentation_v2_bytes[..]);
     assert!(PNI_CREDENTIAL_PRESENTATION_V2_RESULT[..] == presentation_any_bytes[..]);
 
-    let presentation_v1_parsed =
-        zkgroup::profiles::AnyPniCredentialPresentation::new(presentation_v1_bytes).unwrap();
     let presentation_v2_parsed =
         zkgroup::profiles::AnyPniCredentialPresentation::new(presentation_v2_bytes).unwrap();
 
     server_secret_params
-        .verify_pni_credential_presentation(group_public_params, &presentation_v1_parsed)
-        .unwrap();
-
-    server_secret_params
         .verify_pni_credential_presentation(group_public_params, &presentation_v2_parsed)
-        .unwrap();
-
-    server_secret_params
-        .verify_pni_credential_presentation_v1(group_public_params, &presentation_v1)
         .unwrap();
 
     server_secret_params
@@ -1031,8 +957,6 @@ fn test_integration_pni() {
     //   necessitating an update to the LEN constants
 
     let mut pni_credential_bytes = [0u8; zkgroup::common::constants::PNI_CREDENTIAL_LEN];
-    let mut pni_credential_presentation_v1_bytes =
-        [0u8; zkgroup::common::constants::PNI_CREDENTIAL_PRESENTATION_V1_LEN];
     let mut pni_credential_presentation_v2_bytes =
         [0u8; zkgroup::common::constants::PNI_CREDENTIAL_PRESENTATION_V2_LEN];
     let mut pni_credential_request_context_bytes =
@@ -1041,12 +965,18 @@ fn test_integration_pni() {
         [0u8; zkgroup::common::constants::PNI_CREDENTIAL_RESPONSE_LEN];
 
     pni_credential_bytes.copy_from_slice(&bincode::serialize(&pni_credential).unwrap());
-    pni_credential_presentation_v1_bytes
-        .copy_from_slice(&bincode::serialize(&presentation_v1).unwrap());
     pni_credential_presentation_v2_bytes
         .copy_from_slice(&bincode::serialize(&presentation_v2).unwrap());
     pni_credential_request_context_bytes.copy_from_slice(&bincode::serialize(&context).unwrap());
     pni_credential_response_bytes.copy_from_slice(&bincode::serialize(&response).unwrap());
+}
+
+#[test]
+fn test_pni_credential_presentation_v1_is_rejected() {
+    assert!(
+        zkgroup::profiles::AnyPniCredentialPresentation::new(PNI_CREDENTIAL_PRESENTATION_V1)
+            .is_err()
+    );
 }
 
 #[test]
@@ -1143,4 +1073,31 @@ fn test_profile_key_credential_presentation_expiring_as_v1() {
         presentation.get_profile_key_ciphertext()
             == presentation_as_v1.get_profile_key_ciphertext()
     );
+}
+
+#[test]
+fn test_profile_key_credential_presentation_v1_does_not_verify() {
+    // Originally from test_integration_profile.
+    // SERVER
+    let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
+
+    // CLIENT
+    let master_key = zkgroup::groups::GroupMasterKey::new(zkgroup::TEST_ARRAY_32_1);
+    let group_secret_params =
+        zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
+    let group_public_params = group_secret_params.get_public_params();
+
+    let redemption_time = 123456 * SECONDS_PER_DAY;
+
+    let presentation = zkgroup::profiles::AnyProfileKeyCredentialPresentation::new(
+        PROFILE_KEY_CREDENTIAL_PRESENTATION_V1,
+    )
+    .unwrap();
+    assert!(server_secret_params
+        .verify_profile_key_credential_presentation(
+            group_public_params,
+            &presentation,
+            redemption_time + 60
+        )
+        .is_err());
 }

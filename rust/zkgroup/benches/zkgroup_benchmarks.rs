@@ -51,41 +51,6 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation = server_public_params.create_auth_credential_presentation_v1(
-        randomness,
-        group_secret_params,
-        auth_credential,
-    );
-
-    c.bench_function("create_auth_credential_presentation_v1", |b| {
-        b.iter(|| {
-            server_public_params.create_auth_credential_presentation_v1(
-                randomness,
-                group_secret_params,
-                auth_credential,
-            )
-        })
-    });
-
-    let _presentation_bytes = &bincode::serialize(&presentation).unwrap();
-
-    //for b in presentation_bytes.iter() {
-    //    print!("0x{:02x}, ", b);
-    //}
-    //assert!(AUTH_CREDENTIAL_PRESENTATION_RESULT[..] == presentation_bytes[..]);
-
-    c.bench_function("verify_auth_credential_presentation_v1", |b| {
-        b.iter(|| {
-            server_secret_params
-                .verify_auth_credential_presentation_v1(
-                    group_public_params,
-                    &presentation,
-                    redemption_time,
-                )
-                .unwrap();
-        })
-    });
-
     let presentation_v2 = server_public_params.create_auth_credential_presentation_v2(
         randomness,
         group_secret_params,
@@ -225,34 +190,6 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
 
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
-
-    let presentation = server_public_params.create_profile_key_credential_presentation_v1(
-        randomness,
-        group_secret_params,
-        profile_key_credential,
-    );
-
-    c.bench_function("create_profile_key_credential_presentation_v1", |b| {
-        b.iter(|| {
-            server_public_params.create_profile_key_credential_presentation_v1(
-                randomness,
-                group_secret_params,
-                profile_key_credential,
-            )
-        })
-    });
-
-    // SERVER
-    server_secret_params
-        .verify_profile_key_credential_presentation_v1(group_public_params, &presentation)
-        .unwrap();
-
-    c.bench_function("verify_profile_key_credential_presentation_v1", |b| {
-        b.iter(|| {
-            server_secret_params
-                .verify_profile_key_credential_presentation_v1(group_public_params, &presentation)
-        })
-    });
 
     let presentation_v2 = server_public_params.create_profile_key_credential_presentation_v2(
         randomness,
