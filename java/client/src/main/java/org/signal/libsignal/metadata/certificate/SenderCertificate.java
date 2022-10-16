@@ -64,7 +64,7 @@ public class SenderCertificate implements NativeHandleGuard.Owner {
   }
 
   public String getSender() {
-    return getSenderE164().orElseGet(this::getSenderUuid);
+    return this.getSenderUuid();
   }
 
   public long getExpiration() {

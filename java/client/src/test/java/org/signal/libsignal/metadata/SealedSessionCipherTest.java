@@ -313,7 +313,7 @@ public class SealedSessionCipherTest extends TestCase {
       bobCipher.decrypt(new CertificateValidator(trustRoot.getPublicKey()), bobMessage, 31335);
       fail("should have thrown");
     } catch (ProtocolNoSessionException e) {
-      assertEquals(e.getSender(), "+14151111111");
+      assertEquals(e.getSender(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
       assertEquals(e.getSenderDevice(), 1);
       assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_RESENDABLE);
       assertEquals(Hex.toStringCondensed(e.getGroupId().get()), Hex.toStringCondensed(new byte[]{42, 1}));
