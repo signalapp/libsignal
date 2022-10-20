@@ -717,6 +717,29 @@ mod test {
     }
 
     #[test]
+    fn test_verify_remote_attestation_accepted_sw_advisories_not_present() {
+        let current_time: SystemTime =
+            SystemTime::UNIX_EPOCH + Duration::from_millis(1657856984000);
+
+        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
+        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
+
+        let pubkey = verify_remote_attestation(
+            evidence_bytes.as_ref(),
+            endorsements_bytes.as_ref(),
+            &EXPECTED_MRENCLAVE,
+            &["INTEL-SA-1234"],
+            current_time,
+        )
+        .unwrap()
+        .get("pk")
+        .unwrap()
+        .to_owned();
+
+        assert_eq!(PUBKEY, pubkey.as_slice());
+    }
+
+    #[test]
     fn test_attestation_metrics() {
         let evidence_bytes = read_test_file("tests/data/dcap.evidence");
         let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");

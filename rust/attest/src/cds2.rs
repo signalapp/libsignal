@@ -85,7 +85,7 @@ lazy_static! {
     /// build with that MREnclave value
     static ref ACCEPTABLE_SW_ADVISORIES: HashMap<MREnclave, &'static [&'static str]> = {
         HashMap::from([
-            (hex!("7b75dd6e862decef9b37132d54be082441917a7790e82fe44f9cf653de03a75f"), &[] as &[&str]),
+            (hex!("7b75dd6e862decef9b37132d54be082441917a7790e82fe44f9cf653de03a75f"), &["INTEL-SA-00657"] as &[&str]),
         ])
     };
 }
