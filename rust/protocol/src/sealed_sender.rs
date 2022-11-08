@@ -7,7 +7,7 @@ use crate::{
     message_encrypt, CiphertextMessageType, Context, DeviceId, Direction, IdentityKey,
     IdentityKeyPair, IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey,
     ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
-    SignalProtocolError, SignedPreKeyStore,
+    SignalProtocolError, SignedPreKeyStore, SenderKeyStore, group_decrypt,
 };
 
 use crate::{crypto, curve, proto, session_cipher};
@@ -1603,6 +1603,7 @@ pub async fn sealed_sender_decrypt(
     session_store: &mut dyn SessionStore,
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
+    sender_key_store: &mut dyn SenderKeyStore,
     ctx: Context,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store, ctx).await?;
@@ -1654,6 +1655,15 @@ pub async fn sealed_sender_decrypt(
                 pre_key_store,
                 signed_pre_key_store,
                 &mut rng,
+                ctx,
+            )
+            .await?
+        }
+        CiphertextMessageType::SenderKey => {
+            group_decrypt(
+                usmc.contents()?,
+                sender_key_store,
+                &remote_address,
                 ctx,
             )
             .await?
