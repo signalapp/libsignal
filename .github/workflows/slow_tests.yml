@@ -18,8 +18,8 @@ jobs:
     outputs:
       has-changes: ${{ steps.check.outputs.has-changes }}
     steps:
-    - uses: actions/checkout@v2
-    - run: git log --after '24 hours ago' --exit-code || echo '::set-output name=has-changes::true'
+    - uses: actions/checkout@v3
+    - run: git log --after '24 hours ago' --exit-code || echo 'has-changes=true' >> $GITHUB_OUTPUT
       id: check
 
   java-docker:
@@ -29,7 +29,7 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - run: make -C java java_test
     - name: Upload JNI libraries
       uses: actions/upload-artifact@v3
@@ -58,7 +58,7 @@ jobs:
     steps:
       - run: 'echo "JAVA_HOME=$JAVA_HOME_11_X64" >> "$GITHUB_ENV"'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download JNI libraries
         id: download
@@ -79,7 +79,7 @@ jobs:
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2.25.0
+        uses: reactivecircus/android-emulator-runner@50986b1464923454c95e261820bc626f38490ec0 # v2.27.0
         with:
           arch: ${{ matrix.arch }}
           api-level: ${{ matrix.api-level }}
@@ -88,7 +88,7 @@ jobs:
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
-        uses: reactivecircus/android-emulator-runner@v2.25.0
+        uses: reactivecircus/android-emulator-runner@50986b1464923454c95e261820bc626f38490ec0 # v2.27.0
         with:
           arch: ${{ matrix.arch }}
           api-level: ${{ matrix.api-level }}
@@ -104,7 +104,7 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - run: node/docker-prebuildify.sh
 
   swift_cocoapod:
@@ -114,22 +114,15 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Check out SignalCoreKit
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: signalapp/SignalCoreKit
           path: SignalCoreKit
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          components: rust-src
-
-      - name: Add iOS targets
-        run: rustup target add x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
+      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).

@@ -28,13 +28,9 @@ jobs:
         # Ubuntu binaries are built using Docker, below
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install nightly rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        target: ${{ matrix.arm64-rust-target }}
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.arm64-rust-target }}
 
     # install nasm compiler for boring
     - name: (Windows) Install nasm
@@ -45,11 +41,11 @@ jobs:
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
-      run: echo "::set-output name=node-version::$(cat .nvmrc)"
+      run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
 
-    - uses: actions/setup-node@v2
+    - uses: actions/setup-node@v3
       with:
-        node-version: ${{ steps.get-nvm-version.outputs.node-version }}
+        node-version-file: '.nvmrc'
 
     - run: npx yarn install --ignore-scripts --frozen-lockfile
       working-directory: node
@@ -63,7 +59,7 @@ jobs:
       working-directory: node
 
     - name: Upload library
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: libsignal_client (${{matrix.os}})
         path: node/prebuilds/*
@@ -74,12 +70,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - run: node/docker-prebuildify.sh
 
     - name: Upload library
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: libsignal_client (ubuntu-docker)
         path: node/prebuilds/*
@@ -89,12 +85,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install nightly rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
@@ -107,20 +100,16 @@ jobs:
     needs: [build, build-docker, verify-rust]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Get Node version from .nvmrc
-      id: get-nvm-version
-      shell: bash
-      run: echo "::set-output name=node-version::$(cat .nvmrc)"
-
-    - uses: actions/setup-node@v2
+    - uses: actions/setup-node@v3
       with:
-        node-version: ${{ steps.get-nvm-version.outputs.node-version }}
+        node-version-file: '.nvmrc'
+        registry-url: 'https://registry.npmjs.org/'
 
     - name: Download built libraries
       id: download
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         path: artifacts
 
@@ -144,10 +133,7 @@ jobs:
       env:
         PREBUILDS_ONLY: 1
 
-    - name: Publish to NPM
-      uses: JS-DevTools/npm-publish@v1
-      with:
-        token: ${{ secrets.NPM_TOKEN }}
-        tag: ${{ github.event.inputs.npm_tag }}
-        package: node/package.json
-        access: "public"
+    - run: npm publish --tag ${{ github.event.inputs.npm_tag }} --access public
+      working-directory: node
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - v*
+  workflow_dispatch: {} # no parameters
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,8 +13,8 @@ jobs:
   build:
     name: Build
 
-    # Only run this in the public repository.
-    if: "!endsWith(github.repository, '-private')"
+    # Only run this in the public repository unless manually invoked.
+    if: ${{ github.event_name == 'workflow_dispatch' || !endsWith(github.repository, '-private') }}
 
     runs-on: ${{ matrix.os }}
 
@@ -36,13 +37,12 @@ jobs:
       CARGO_PROFILE_RELEASE_OPT_LEVEL: s
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install nightly rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        target: ${{ matrix.additional-rust-target }}
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+
+    - run: rustup target add ${{ matrix.additional-rust-target }}
+      if: ${{ matrix.additional-rust-target != '' }}
 
     # install nasm compiler for boring
     - name: Install nasm
@@ -62,9 +62,8 @@ jobs:
       if: matrix.os == 'macos-latest'
 
     - name: Upload
-      uses: svenstaro/upload-release-action@2.2.0
+      uses: ncipollo/release-action@4c75f0f2e4ae5f3c807cf0904605408e319dcaac # v1.11.1
       with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/release/${{ matrix.library }}
-        tag: ${{ github.ref }}
-        overwrite: true
+        allowUpdates: true
+        artifactErrorsFailBuild: true
+        artifacts: target/release/${{ matrix.library }}

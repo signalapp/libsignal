@@ -25,9 +25,9 @@ jobs:
       rust_ios: ${{ steps.filter.outputs.rust_ios }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - uses: dorny/paths-filter@v2
+    - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2.11.1
       id: filter
       with:
         filters: |
@@ -93,16 +93,11 @@ jobs:
             toolchain: "+stable"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
 
-    - name: Install Rust (nightly)
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        components: rustfmt, clippy
-        target: i686-unknown-linux-gnu
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --component rustfmt,clippy --target i686-unknown-linux-gnu
       if: matrix.version == 'nightly'
 
     - name: Install Rust (stable)
@@ -168,18 +163,12 @@ jobs:
     if: ${{ needs.changes.outputs.java == 'true' }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Install NDK
       run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;${NDK_VERSION}"
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-
-    - name: Install Android toolchains
-      run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
     - name: Install pinned cbindgen
       run: cargo +stable install cbindgen --version ${CBINDGEN_VERSION}
@@ -208,17 +197,9 @@ jobs:
     if: ${{ needs.changes.outputs.node == 'true' }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install nightly rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-
-    - name: Get Node version from .nvmrc
-      id: get-nvm-version
-      shell: bash
-      run: echo "::set-output name=node-version::$(cat .nvmrc)"
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
     # install nasm compiler for boring
     - name: Install nasm
@@ -226,9 +207,9 @@ jobs:
       run: choco install nasm
       shell: cmd
 
-    - uses: actions/setup-node@v2
+    - uses: actions/setup-node@v3
       with:
-        node-version: ${{ steps.get-nvm-version.outputs.node-version }}
+        node-version-file: '.nvmrc'
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
@@ -261,12 +242,9 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
     - name: Install pinned cbindgen
       run: cargo +stable install cbindgen --version ${CBINDGEN_VERSION}
@@ -288,25 +266,19 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Run lint
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
       - name: Check out SignalCoreKit
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: signalapp/SignalCoreKit
           path: SignalCoreKit
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-
-      - name: Add iOS targets
-        run: rustup target add x86_64-apple-ios aarch64-apple-ios aarch64-apple-ios-sim
+      - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
