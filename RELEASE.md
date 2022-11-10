@@ -46,7 +46,19 @@ v0.8.3
 
 Note that both the tag *and* the branch need to be pushed.
 
-## 5. Submit to package repositories as needed
+## 5. Tag signalapp/boring if needed
+
+If the depended-on version of `boring` has changed (check Cargo.lock), tag the commit in the public [signalapp/boring][] repository.
+
+```
+# In the checkout for signalapp/boring
+git tag -a libsignal-v0.x.y -m 'libsignal v0.x.y' BORING_COMMIT_HASH
+git push origin libsignal-v0.x.y
+```
+
+[signalapp/boring]: https://github.com/signalapp/boring
+
+## 6. Submit to package repositories as needed
 
 ### Android: Sonatype
 
