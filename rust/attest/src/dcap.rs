@@ -245,7 +245,7 @@ fn attest(
     let evidence = evidence::Evidence::try_from(evidence_bytes).context("evidence")?;
     let endorsements =
         endorsements::SgxEndorsements::try_from(endorsement_bytes).context("endorsements")?;
-    attest_impl(evidence, endorsements, &*INTEL_PKEY, current_time)
+    attest_impl(evidence, endorsements, &INTEL_PKEY, current_time)
 }
 
 fn attest_impl(

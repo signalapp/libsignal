@@ -475,7 +475,7 @@ unsafe impl Send for PersistentAssumedImmutableBuffer {}
 /// Logs an error (but does not panic) if the buffer's contents have changed.
 impl Finalize for PersistentAssumedImmutableBuffer {
     fn finalize<'a, C: Context<'a>>(self, cx: &mut C) {
-        if self.hash != calculate_checksum_for_immutable_buffer(&*self) {
+        if self.hash != calculate_checksum_for_immutable_buffer(&self) {
             log::error!("buffer modified while in use");
         }
         self.owner.finalize(cx)
@@ -889,7 +889,7 @@ where
     ) -> NeonResult<Self> {
         let js_boxed_bridge_handle: Handle<'a, DefaultJsBox<JsBoxContentsFor<Borrowed::Target>>> =
             wrapper.get(cx, NATIVE_HANDLE_PROPERTY)?;
-        let js_box_contents: &JsBoxContentsFor<Borrowed::Target> = &*js_boxed_bridge_handle;
+        let js_box_contents: &JsBoxContentsFor<Borrowed::Target> = &js_boxed_bridge_handle;
         // FIXME: Workaround for https://github.com/neon-bindings/neon/issues/678
         // The lifetime of the boxed contents is necessarily longer than the lifetime of any handles
         // referring to it, i.e. longer than 'a. However, Deref'ing a Handle can only give us a

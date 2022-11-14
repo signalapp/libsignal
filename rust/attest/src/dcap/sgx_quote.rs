@@ -299,7 +299,8 @@ impl<'a> SgxQuoteSupport<'a> {
     /// SHA256(ECDSA Attestation Key || QE Authentication Data) || 32- 0x00’s
     pub fn verify_qe_report(&self) -> super::Result<()> {
         let mut h = sha2::Sha256::new();
-        h.update(&self.attest_pub_key);
+        // Explicitly pass a slice to avoid generating another copy of update().
+        h.update(&self.attest_pub_key[..]);
         h.update(self.auth_data);
         let digest = h.finalize();
         assert_eq!(digest.len(), 32);

@@ -187,21 +187,21 @@ impl CryptoResolver for Resolver {
 
     fn resolve_dh(&self, choice: &DHChoice) -> Option<Box<dyn Dh>> {
         match choice {
-            DHChoice::Curve25519 => Some(Box::new(Dh25519::default())),
+            DHChoice::Curve25519 => Some(Box::<Dh25519>::default()),
             _ => panic!("{:?} not supported", choice),
         }
     }
 
     fn resolve_hash(&self, choice: &HashChoice) -> Option<Box<dyn Hash>> {
         match choice {
-            HashChoice::SHA256 => Some(Box::new(HashSHA256::default())),
+            HashChoice::SHA256 => Some(Box::<HashSHA256>::default()),
             _ => panic!("{:?} not supported", choice),
         }
     }
 
     fn resolve_cipher(&self, choice: &CipherChoice) -> Option<Box<dyn Cipher>> {
         match choice {
-            CipherChoice::ChaChaPoly => Some(Box::new(CipherChaChaPoly::default())),
+            CipherChoice::ChaChaPoly => Some(Box::<CipherChaChaPoly>::default()),
             _ => panic!("{:?} not supported", choice),
         }
     }

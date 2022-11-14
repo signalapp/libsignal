@@ -27,6 +27,6 @@ fn main() {
     let new_public = new_secret.get_public_params();
     let serialized_public = bincode::serialize(&new_public).unwrap();
 
-    println!("server_secret: {}", base64::encode(&serialized_secret));
-    println!("server_public: {}", base64::encode(&serialized_public));
+    println!("server_secret: {}", base64::encode(&serialized_secret[..]));
+    println!("server_public: {}", base64::encode(&serialized_public[..]));
 }

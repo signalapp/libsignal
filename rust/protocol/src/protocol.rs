@@ -125,12 +125,12 @@ impl SignalMessage {
 
     #[inline]
     pub fn serialized(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 
     #[inline]
     pub fn body(&self) -> &[u8] {
-        &*self.ciphertext
+        &self.ciphertext
     }
 
     pub fn verify_mac(
@@ -181,7 +181,7 @@ impl SignalMessage {
 
 impl AsRef<[u8]> for SignalMessage {
     fn as_ref(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 
@@ -317,13 +317,13 @@ impl PreKeySignalMessage {
 
     #[inline]
     pub fn serialized(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 
 impl AsRef<[u8]> for PreKeySignalMessage {
     fn as_ref(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 
@@ -456,18 +456,18 @@ impl SenderKeyMessage {
 
     #[inline]
     pub fn ciphertext(&self) -> &[u8] {
-        &*self.ciphertext
+        &self.ciphertext
     }
 
     #[inline]
     pub fn serialized(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 
 impl AsRef<[u8]> for SenderKeyMessage {
     fn as_ref(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 
@@ -596,13 +596,13 @@ impl SenderKeyDistributionMessage {
 
     #[inline]
     pub fn serialized(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 
 impl AsRef<[u8]> for SenderKeyDistributionMessage {
     fn as_ref(&self) -> &[u8] {
-        &*self.serialized
+        &self.serialized
     }
 }
 

@@ -138,7 +138,7 @@ macro_rules! ffi_bridge_destroy {
             ) -> *mut ffi::SignalFfiError {
                 ffi::run_ffi_safe(|| {
                     if !p.is_null() {
-                        Box::from_raw(p);
+                        drop(Box::from_raw(p));
                     }
                     Ok(())
                 })

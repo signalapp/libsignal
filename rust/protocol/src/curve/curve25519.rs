@@ -72,8 +72,9 @@ impl PrivateKey {
             0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
             0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
         ];
-        hash1.update(&hash_prefix);
-        hash1.update(&key_data);
+        // Explicitly pass a slice to avoid generating multiple versions of update().
+        hash1.update(&hash_prefix[..]);
+        hash1.update(&key_data[..]);
         for message_piece in message {
             hash1.update(message_piece);
         }
@@ -123,7 +124,8 @@ impl PrivateKey {
         let minus_cap_a = -ed_pub_key_point;
 
         let mut hash = Sha512::new();
-        hash.update(&cap_r);
+        // Explicitly pass a slice to avoid generating multiple versions of update().
+        hash.update(&cap_r[..]);
         hash.update(cap_a.as_bytes());
         for message_piece in message {
             hash.update(message_piece);

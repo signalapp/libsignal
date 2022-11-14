@@ -68,6 +68,8 @@ where
                     // If we get a panic downstream, it is entirely possible the JavaScript context won't be usable anymore.
                     // However, the only thing we're going to do with the context after a panic is throw an error.
                     let mut cx = AssertUnwindSafe(&mut cx);
+                    // Auto-deref does not actually kick in here.
+                    #[allow(clippy::explicit_auto_deref)]
                     catch_unwind(move || settle(*cx))
                 }
                 Ok(Err(exception)) => {

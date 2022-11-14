@@ -167,7 +167,7 @@ impl GroupSecretParams {
         let mut ciphertext_vec =
             self.encrypt_blob_aesgcmsiv(&self.blob_key, &nonce_vec[..], plaintext);
         ciphertext_vec.extend(nonce_vec);
-        ciphertext_vec.extend(&[0u8]); // reserved byte
+        ciphertext_vec.extend([0u8]); // reserved byte
         ciphertext_vec
     }
 

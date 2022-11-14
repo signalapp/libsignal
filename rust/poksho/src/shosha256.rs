@@ -40,8 +40,9 @@ impl ShoApi for ShoSha256 {
 
     fn absorb(&mut self, input: &[u8]) {
         if let Mode::RATCHETED = self.mode {
-            self.hasher.update(&[0u8; BLOCK_LEN]);
-            self.hasher.update(&self.cv);
+            // Explicitly pass a slice to avoid generating multiple versions of update().
+            self.hasher.update(&[0u8; BLOCK_LEN][..]);
+            self.hasher.update(&self.cv[..]);
             self.mode = Mode::ABSORBING;
         }
         self.hasher.update(input);
@@ -65,8 +66,9 @@ impl ShoApi for ShoSha256 {
         }
         let mut output = Vec::<u8>::new();
         let mut output_hasher_prefix = Sha256::new();
-        output_hasher_prefix.update(&[0u8; BLOCK_LEN - 1]);
-        output_hasher_prefix.update(&[1u8]); // domain separator byte
+        // Explicitly pass a slice to avoid generating multiple versions of update().
+        output_hasher_prefix.update(&[0u8; BLOCK_LEN - 1][..]);
+        output_hasher_prefix.update(&[1u8][..]); // domain separator byte
         output_hasher_prefix.update(self.cv);
         let mut i = 0;
         while i * HASH_LEN < outlen {
@@ -79,8 +81,8 @@ impl ShoApi for ShoSha256 {
         }
 
         let mut next_hasher = Sha256::new();
-        next_hasher.update(&[0u8; BLOCK_LEN - 1]);
-        next_hasher.update(&[2u8]); // domain separator byte
+        next_hasher.update(&[0u8; BLOCK_LEN - 1][..]);
+        next_hasher.update(&[2u8][..]); // domain separator byte
         next_hasher.update(self.cv);
         next_hasher.update((outlen as u64).to_be_bytes());
         self.cv.copy_from_slice(&next_hasher.finalize()[..]);
