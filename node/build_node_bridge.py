@@ -82,7 +82,7 @@ def main(args=None):
         cargo_env['RUSTFLAGS'] = '-C target-feature=+crt-static'
 
         abs_build_dir = os.path.abspath(options.cargo_build_dir)
-        if 'GITHUB_WORKSPACE' in cargo_env and len(abs_build_dir) > 100:
+        if 'GITHUB_WORKSPACE' in cargo_env:
             # Avoid long build directory paths on GitHub Actions,
             # breaking the old Win32 limit of 260 characters.
             # (https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation)
