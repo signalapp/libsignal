@@ -68,6 +68,7 @@ jobs:
           - 'LICENSE'
           - '*.md'
           - '.github/FUNDING.yml'
+          - '.github/stale.yml'
           - '.github/workflows/**'
           - '.gitignore'
 
