@@ -15,10 +15,7 @@
 \#*\#
 .\#*
 
-java/build
-java/android/build/
-java/client/build
-java/server/build
+java/**/build
 java/.gradle
 java/local.properties
 java/android/src/main/jniLibs
