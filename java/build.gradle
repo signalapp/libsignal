@@ -27,7 +27,8 @@ task makeJniLibrariesDesktop(type:Exec) {
   group 'Rust'
   description 'Build the JNI libraries'
 
-  commandLine './build_jni.sh', 'desktop'
+  // Explicitly specify 'bash' for Windows compatibility.
+  commandLine 'bash', './build_jni.sh', 'desktop'
 }
 
 task cargoClean(type:Exec) {

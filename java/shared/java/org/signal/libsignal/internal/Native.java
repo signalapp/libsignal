@@ -26,8 +26,8 @@ import java.util.UUID;
 import java.util.Map;
 
 public final class Native {
-  private static void copyToTempFileAndLoad(InputStream in, String extension) throws IOException {
-    File tempFile = Files.createTempFile("resource", extension).toFile();
+  private static void copyToTempFileAndLoad(InputStream in, String name) throws IOException {
+    File tempFile = Files.createTempFile(null, name).toFile();
     tempFile.deleteOnExit();
 
     try (OutputStream out = new FileOutputStream(tempFile)) {
@@ -42,19 +42,16 @@ public final class Native {
   }
 
   /*
-  If a .so and/or .dylib is embedded within this jar as a resource file, attempt
+  If libsignal_jni is embedded within this jar as a resource file, attempt
   to copy it to a temporary file and then load it. This allows the jar to be
-  used even without a libsignal_jni shared library existing on the filesystem.
+  used even without a shared library existing on the filesystem.
   */
   private static void loadLibrary() {
     try {
-      String  osName    = System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT);
-      boolean isMacOs   = osName.startsWith("mac os");
-      String  extension = isMacOs ? ".dylib" : ".so";
-
-      try (InputStream in = Native.class.getResourceAsStream("/libsignal_jni" + extension)) {
+      String libraryName = System.mapLibraryName("signal_jni");
+      try (InputStream in = Native.class.getResourceAsStream("/" + libraryName)) {
         if (in != null) {
-          copyToTempFileAndLoad(in, extension);
+          copyToTempFileAndLoad(in, libraryName);
         } else {
           System.loadLibrary("signal_jni");
         }
