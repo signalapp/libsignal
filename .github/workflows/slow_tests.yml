@@ -94,7 +94,7 @@ jobs:
           api-level: ${{ matrix.api-level }}
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
-          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x makeJniLibrariesAndroid
+          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
           working-directory: java
 
   node-docker:

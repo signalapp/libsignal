@@ -34,7 +34,6 @@ ARG ANDROID_API_LEVELS=android-30
 ARG ANDROID_BUILD_TOOLS_VERSION=30.0.2
 ARG NDK_VERSION=25.1.8937393
 ENV ANDROID_HOME /home/libsignal/android-sdk
-ENV ANDROID_NDK_HOME ${ANDROID_HOME}/ndk/${NDK_VERSION}
 ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
 
 RUN    curl -O https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} \
@@ -53,7 +52,6 @@ RUN    ./gradlew --version
 
 COPY rust-toolchain rust-toolchain
 ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
-ARG CARGO_NDK_VERSION=1.0.0
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
 
 RUN    curl -f https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init \

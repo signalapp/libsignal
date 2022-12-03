@@ -178,8 +178,6 @@ jobs:
 
     - run: ./gradlew build
       working-directory: java
-      env:
-        ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/${{ env.NDK_VERSION }}
 
     - run: java/check_code_size.py
 

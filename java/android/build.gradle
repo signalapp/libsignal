@@ -58,9 +58,16 @@ tasks.register('libsWithDebugSymbols', Zip) {
 }
 
 preBuild {
-    dependsOn ':makeJniLibrariesAndroid'
+    dependsOn 'makeJniLibraries'
 }
 
+task makeJniLibraries(type:Exec) {
+  group 'Rust'
+  description 'Build the JNI libraries'
+
+  commandLine '../build_jni.sh', 'android'
+  environment 'ANDROID_NDK_HOME', android.ndkDirectory
+}
 
 // MARK: Publication
 afterEvaluate {
