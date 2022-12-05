@@ -21,11 +21,15 @@ public struct ScannableFingerprint {
         self.encoding = encoding
     }
 
-    public func compare(against other: ScannableFingerprint) throws -> Bool {
+    /// Returns `true` if this fingerprint matches the fingerprint encoding `other`, `false` if not.
+    ///
+    /// Throws an error if `other` is not a valid fingerprint encoding, or if it uses an
+    /// incompatible encoding version.
+    public func compare<Other: ContiguousBytes>(againstEncoding other: Other) throws -> Bool {
         var result: Bool = false
         try encoding.withUnsafeBorrowedBuffer { encodingBuffer in
-            try other.encoding.withUnsafeBorrowedBuffer { otherEncodingBuffer in
-                try checkError(signal_fingerprint_compare(&result, encodingBuffer, otherEncodingBuffer))
+            try other.withUnsafeBorrowedBuffer { otherBuffer in
+                try checkError(signal_fingerprint_compare(&result, encodingBuffer, otherBuffer))
             }
         }
         return result
