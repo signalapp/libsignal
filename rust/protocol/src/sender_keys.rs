@@ -9,8 +9,8 @@ use std::convert::TryFrom;
 use itertools::Itertools;
 use prost::Message;
 
-use crate::consts::limits::{MAX_MESSAGE_KEYS, MAX_SENDER_KEY_STATES};
 use crate::crypto::hmac_sha256;
+use crate::limits::{MAX_MESSAGE_KEYS, MAX_SENDER_KEY_STATES};
 use crate::proto::storage as storage_proto;
 use crate::{PrivateKey, PublicKey, SignalProtocolError};
 

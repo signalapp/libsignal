@@ -9,7 +9,7 @@ use crate::{
     SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
 };
 
-use crate::consts::limits::MAX_FORWARD_JUMPS;
+use crate::limits::MAX_FORWARD_JUMPS;
 use crate::ratchet::{ChainKey, MessageKeys};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{crypto, session};

@@ -14,7 +14,7 @@ use crate::{
     IdentityKey, KeyPair, PreKeyId, PrivateKey, PublicKey, SignalProtocolError, SignedPreKeyId,
 };
 
-use crate::consts::limits::{ARCHIVED_STATES_MAX_LENGTH, MAX_MESSAGE_KEYS, MAX_RECEIVER_CHAINS};
+use crate::limits::{ARCHIVED_STATES_MAX_LENGTH, MAX_MESSAGE_KEYS, MAX_RECEIVER_CHAINS};
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.

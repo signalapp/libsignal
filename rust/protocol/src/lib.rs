@@ -1,5 +1,5 @@
 //
-// Copyright 2020-2021 Signal Messenger, LLC.
+// Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -23,13 +23,13 @@
 // #![warn(missing_docs)]
 
 mod address;
-mod consts;
 mod crypto;
 mod curve;
 pub mod error;
 mod fingerprint;
 mod group_cipher;
 mod identity_key;
+mod limits;
 mod proto;
 mod protocol;
 mod ratchet;
