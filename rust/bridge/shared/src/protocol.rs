@@ -1,5 +1,5 @@
 //
-// Copyright 2021-2022 Signal Messenger, LLC.
+// Copyright 2021-2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -117,11 +117,8 @@ bridge_get!(ProtocolAddress::name as Name -> &str, ffi = "address_get_name");
 
 #[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
 fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
-    match key1.cmp(key2) {
-        std::cmp::Ordering::Less => -1,
-        std::cmp::Ordering::Equal => 0,
-        std::cmp::Ordering::Greater => 1,
-    }
+    // Rust encodes Ordering::{Less,Equal,Greater} as {-1,0,+1}.
+    key1.cmp(key2) as i32
 }
 
 #[bridge_fn(ffi = "publickey_verify", node = "PublicKey_Verify")]
