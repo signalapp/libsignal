@@ -14,17 +14,14 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/signalapp/libsignal.git', :tag => "v#{s.version}" }
 
   s.swift_version    = '5'
-  # We use this to set IPHONEOS_DEPLOYMENT_TARGET below.
-  # The Rust compiler driver expects this to always be in the form 'major.minor'.
-  min_deployment_target = '12.2'
-  s.platform         = :ios, min_deployment_target
+  s.platform         = :ios, '12.2'
 
   s.dependency 'SignalCoreKit'
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
-    'target/*/release/libsignal_ffi.a',
     'swift/Sources/SignalFfi',
+    'bin/fetch_archive.py',
   ]
 
   s.pod_target_xcconfig = {
@@ -32,10 +29,17 @@ Pod::Spec.new do |s|
       # Duplicate this here to make sure the search path is passed on to Swift dependencies.
       'SWIFT_INCLUDE_PATHS' => '$(HEADER_SEARCH_PATHS)',
 
+      'LIBSIGNAL_FFI_BUILD_PATH' => 'target/$(CARGO_BUILD_TARGET)/release',
+      # Store libsignal_ffi.a builds in a project-wide directory
+      # because we keep simulator and device builds next to each other.
+      'LIBSIGNAL_FFI_TEMP_DIR' => '$(PROJECT_TEMP_DIR)/libsignal_ffi',
+      'LIBSIGNAL_FFI_LIB_TO_LINK' => '$(LIBSIGNAL_FFI_TEMP_DIR)/$(LIBSIGNAL_FFI_BUILD_PATH)/libsignal_ffi.a',
+
       # Make sure we link the static library, not a dynamic one.
-      # Use an extra level of indirection because CocoaPods messes with OTHER_LDFLAGS too.
-      'LIBSIGNAL_FFI_LIB_IF_NEEDED' => '$(PODS_TARGET_SRCROOT)/target/$(CARGO_BUILD_TARGET)/release/libsignal_ffi.a',
-      'OTHER_LDFLAGS' => '$(LIBSIGNAL_FFI_LIB_IF_NEEDED)',
+      'OTHER_LDFLAGS' => '$(LIBSIGNAL_FFI_LIB_TO_LINK)',
+
+      'LIBSIGNAL_FFI_PREBUILD_ARCHIVE' => "libsignal-client-ios-build-v#{s.version}.tar.gz",
+      'LIBSIGNAL_FFI_PREBUILD_CHECKSUM' => ENV.fetch('LIBSIGNAL_FFI_PREBUILD_CHECKSUM', ''),
 
       'CARGO_BUILD_TARGET[sdk=iphonesimulator*][arch=arm64]' => 'aarch64-apple-ios-sim',
       'CARGO_BUILD_TARGET[sdk=iphonesimulator*][arch=*]' => 'x86_64-apple-ios',
@@ -55,37 +59,47 @@ Pod::Spec.new do |s|
   }
 
   s.script_phases = [
-    { :name => 'Check libsignal-ffi',
-      :execution_position => :before_compile,
-      :script => %q(
-        test -e "${LIBSIGNAL_FFI_LIB_IF_NEEDED}" && exit 0
-        if test -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh"; then
-          echo 'error: libsignal_ffi.a not built; run the following to build it:' >&2
-          echo "CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET} \"${PODS_TARGET_SRCROOT}/swift/build_ffi.sh\" --release" >&2
-        else
-          echo 'error: libsignal_ffi.a not built; try re-running `pod install`' >&2
+    { name: 'Download and cache libsignal-ffi',
+      execution_position: :before_compile,
+      script: %q(
+        set -euo pipefail
+        if [ -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh" ]; then
+          # Local development
+          exit 0
         fi
-        false
+        "${PODS_TARGET_SRCROOT}"/bin/fetch_archive.py -u "https://build-artifacts.signal.org/libraries/${LIBSIGNAL_FFI_PREBUILD_ARCHIVE}" -c "${LIBSIGNAL_FFI_PREBUILD_CHECKSUM}" -o "${USER_LIBRARY_DIR}/Caches/org.signal.libsignal"
+      ),
+    },
+    { name: 'Extract libsignal-ffi prebuild',
+      execution_position: :before_compile,
+      input_files: ['$(USER_LIBRARY_DIR)/Caches/org.signal.libsignal/$(LIBSIGNAL_FFI_PREBUILD_ARCHIVE)'],
+      output_files: ['$(LIBSIGNAL_FFI_LIB_TO_LINK)'],
+      script: %q(
+        set -euo pipefail
+        rm -rf "${LIBSIGNAL_FFI_TEMP_DIR}"
+        if [ -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh" ]; then
+          # Local development
+          ln -fhs "${PODS_TARGET_SRCROOT}" "${LIBSIGNAL_FFI_TEMP_DIR}"
+        elif [ -e "${SCRIPT_INPUT_FILE_0}" ]; then
+          mkdir -p "${LIBSIGNAL_FFI_TEMP_DIR}"
+          cd "${LIBSIGNAL_FFI_TEMP_DIR}"
+          tar --modification-time -x -f "${SCRIPT_INPUT_FILE_0}"
+        else
+          echo 'error: could not download libsignal_ffi.a; please provide LIBSIGNAL_FFI_PREBUILD_CHECKSUM' >&2
+          exit 1
+        fi
       ),
     }
   ]
 
-  s.prepare_command = %Q(
-    set -euo pipefail
-    export IPHONEOS_DEPLOYMENT_TARGET=#{min_deployment_target}
-    CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
-    CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh --release
-    CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
-    if [[ "${SKIP_CATALYST:-0}" != "1" ]]; then
-      CARGO_BUILD_TARGET=x86_64-apple-ios-macabi swift/build_ffi.sh --release --build-std
-      CARGO_BUILD_TARGET=aarch64-apple-ios-macabi swift/build_ffi.sh --release --build-std
-    fi
-  )
-
   s.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'swift/Tests/*/*.swift'
+    test_spec.preserve_paths = [
+      'swift/Tests/*/Resources',
+    ]
     test_spec.pod_target_xcconfig = {
-      'LIBSIGNAL_FFI_LIB_IF_NEEDED' => '',
+      # Don't also link into the test target.
+      'LIBSIGNAL_FFI_LIB_TO_LINK' => '',
     }
   end
 end

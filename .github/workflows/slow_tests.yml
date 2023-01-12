@@ -124,6 +124,31 @@ jobs:
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
+      - name: Build for x86_64-apple-ios
+        run: swift/build_ffi.sh --release
+        env:
+          CARGO_BUILD_TARGET: x86_64-apple-ios
+
+      - name: Build for aarch64-apple-ios
+        run: swift/build_ffi.sh --release
+        env:
+          CARGO_BUILD_TARGET: aarch64-apple-ios
+
+      - name: Build for aarch64-apple-ios-sim
+        run: swift/build_ffi.sh --release
+        env:
+          CARGO_BUILD_TARGET: aarch64-apple-ios-sim
+
+      - name: Build for x86_64-apple-ios-macabi
+        run: swift/build_ffi.sh --release --build-std
+        env:
+          CARGO_BUILD_TARGET: x86_64-apple-ios-macabi
+
+      - name: Build for aarch64-apple-ios-macabi
+        run: swift/build_ffi.sh --release --build-std
+        env:
+          CARGO_BUILD_TARGET: aarch64-apple-ios-macabi
+
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
