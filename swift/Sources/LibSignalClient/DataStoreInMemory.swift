@@ -44,7 +44,7 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
 
     public func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {
         if publicKeys.updateValue(identity, forKey: address) == nil {
-            return false; // newly created
+            return false // newly created
         } else {
             return true
         }
