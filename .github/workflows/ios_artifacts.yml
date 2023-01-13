@@ -1,0 +1,67 @@
+name: Build iOS Artifacts
+
+on:
+  workflow_dispatch: {} # no parameters
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build
+
+    # Needed for google-github-actions/auth.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - id: archive-name
+      run: echo name=libsignal-client-ios-build-v$(sed -En "s/${VERSION_REGEX}/\1/p" LibSignalClient.podspec).tar.gz >> $GITHUB_OUTPUT
+      env:
+        VERSION_REGEX: "^.*[.]version += '(.+)'$"
+
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
+
+    - name: Build for x86_64-apple-ios
+      run: swift/build_ffi.sh --release
+      env:
+        CARGO_BUILD_TARGET: x86_64-apple-ios
+
+    - name: Build for aarch64-apple-ios
+      run: swift/build_ffi.sh --release
+      env:
+        CARGO_BUILD_TARGET: aarch64-apple-ios
+
+    - name: Build for aarch64-apple-ios-sim
+      run: swift/build_ffi.sh --release
+      env:
+        CARGO_BUILD_TARGET: aarch64-apple-ios-sim
+
+    - name: Build for x86_64-apple-ios-macabi
+      run: swift/build_ffi.sh --release --build-std
+      env:
+        CARGO_BUILD_TARGET: x86_64-apple-ios-macabi
+
+    - name: Build for aarch64-apple-ios-macabi
+      run: swift/build_ffi.sh --release --build-std
+      env:
+        CARGO_BUILD_TARGET: aarch64-apple-ios-macabi
+
+    - run: tar -c --auto-compress --no-mac-metadata -f ${{ steps.archive-name.outputs.name }} target/*/release/libsignal_ffi.a
+
+    - run: 'sha256sum ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY'
+
+    - uses: google-github-actions/auth@v1
+      with:
+        workload_identity_provider: 'projects/741367068918/locations/global/workloadIdentityPools/github/providers/github-actions'
+        service_account: 'github-actions@signal-build-artifacts.iam.gserviceaccount.com'
+
+    - uses: google-github-actions/upload-cloud-storage@v1
+      with:
+        path: ${{ steps.archive-name.outputs.name }}
+        destination: build-artifacts.signal.org/libraries
