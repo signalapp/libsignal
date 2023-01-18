@@ -297,6 +297,7 @@ impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHe
 
 #[cfg(test)]
 mod tests {
+    use hex_literal::hex;
     use std::convert::{TryFrom, TryInto};
     use std::fs;
     use std::path::Path;
@@ -334,6 +335,42 @@ mod tests {
         assert_eq!(2, header.enclave_type.value()) // oe_enclave_type_t (include/openenclave/bits/types.h)
     }
 
+    #[test]
+    fn parse_tcb_info_v3() {
+        let data = read_test_file("tests/data/tcb_info_v3.json");
+        let tcb_info: TcbInfo = serde_json::from_slice(&data).unwrap();
+        assert_eq!(TcbInfoVersion::V3, tcb_info.version);
+        assert_eq!(hex!("00606A000000"), tcb_info.fmspc);
+        assert_eq!(
+            TcbStatus::SWHardeningNeeded,
+            tcb_info.tcb_levels[0].tcb_status
+        );
+        assert!(tcb_info.tcb_levels[0]
+            .advisory_ids
+            .contains(&"INTEL-SA-00657".to_owned()));
+        assert_eq!(
+            [7, 9, 3, 3, 255, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            tcb_info.tcb_levels[0].tcb.components()
+        );
+    }
+
+    #[test]
+    fn parse_tcb_info_v2() {
+        let data = read_test_file("tests/data/tcb_info_v2.json");
+        let tcb_info: TcbInfo = serde_json::from_slice(&data).unwrap();
+        assert_eq!(TcbInfoVersion::V2, tcb_info.version);
+        assert_eq!(hex!("00606A000000"), tcb_info.fmspc);
+        assert_eq!(
+            TcbStatus::SWHardeningNeeded,
+            tcb_info.tcb_levels[0].tcb_status
+        );
+        assert!(tcb_info.tcb_levels[0].advisory_ids.is_empty());
+        assert_eq!(
+            [7, 9, 3, 3, 255, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            tcb_info.tcb_levels[0].tcb.components()
+        );
+    }
+
     fn read_test_file(path: &str) -> Vec<u8> {
         fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("failed to read file")
     }
@@ -362,9 +399,14 @@ impl TcbInfoAndSignature<'_> {
         self.verify_signature(public_key).context("tcb info")?;
         let tcb_info: TcbInfo = serde_json::from_str(self.tcb_info_raw.get())
             .map_err(|e| Error::from(e).context("tcb info"))?;
-        if tcb_info.version != TCB_INFO_V2 {
+
+        if tcb_info
+            .tcb_levels
+            .iter()
+            .any(|e| e.tcb.version() != tcb_info.version)
+        {
             return Err(Error::new(format!(
-                "unsupported tcb info version {}",
+                "mismatched tcb info versions, should all be {:?}",
                 tcb_info.version,
             )));
         }
@@ -382,13 +424,33 @@ impl TcbInfoAndSignature<'_> {
 }
 
 /// Version of the TcbInfo JSON structure
-/// current valid versions are 2/3, 3 is TDX only.
-const TCB_INFO_V2: u16 = 2;
+///
+/// In the PCS V3 API the TcbInfo version is V2, in the PCS V4 API the TcbInfo
+/// version is V3. The V3 API includes advisoryIDs and changes the format of
+/// the TcbLevel
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[serde(try_from = "u16")]
+pub(crate) enum TcbInfoVersion {
+    V2 = 2,
+    V3 = 3,
+}
+
+impl TryFrom<u16> for TcbInfoVersion {
+    type Error = &'static str;
+
+    fn try_from(value: u16) -> std::result::Result<Self, Self::Error> {
+        match value {
+            2 => Ok(TcbInfoVersion::V2),
+            3 => Ok(TcbInfoVersion::V3),
+            _ => Err("Unsupported TCB Info version"),
+        }
+    }
+}
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TcbInfo {
-    version: u16,
+    version: TcbInfoVersion,
     _issue_date: chrono::DateTime<Utc>,
     pub next_update: chrono::DateTime<Utc>,
     #[serde(with = "hex")]
@@ -424,29 +486,36 @@ pub(crate) struct TcbLevel {
 impl TcbLevel {
     /// Test only TcbLevel constructor
     pub(crate) fn from_parts(
+        version: TcbInfoVersion,
         tcbcompsvn: [u8; 16],
         pcesvn: u16,
         tcb_status: TcbStatus,
         advisory_ids: Vec<String>,
     ) -> TcbLevel {
-        let tcb = Tcb {
-            sgxtcbcomp01svn: tcbcompsvn[0],
-            sgxtcbcomp02svn: tcbcompsvn[1],
-            sgxtcbcomp03svn: tcbcompsvn[2],
-            sgxtcbcomp04svn: tcbcompsvn[3],
-            sgxtcbcomp05svn: tcbcompsvn[4],
-            sgxtcbcomp06svn: tcbcompsvn[5],
-            sgxtcbcomp07svn: tcbcompsvn[6],
-            sgxtcbcomp08svn: tcbcompsvn[7],
-            sgxtcbcomp09svn: tcbcompsvn[8],
-            sgxtcbcomp10svn: tcbcompsvn[9],
-            sgxtcbcomp11svn: tcbcompsvn[10],
-            sgxtcbcomp12svn: tcbcompsvn[11],
-            sgxtcbcomp13svn: tcbcompsvn[12],
-            sgxtcbcomp14svn: tcbcompsvn[13],
-            sgxtcbcomp15svn: tcbcompsvn[14],
-            sgxtcbcomp16svn: tcbcompsvn[15],
-            pcesvn,
+        let tcb = match version {
+            TcbInfoVersion::V2 => Tcb::V2(TcbV2 {
+                sgxtcbcomp01svn: tcbcompsvn[0],
+                sgxtcbcomp02svn: tcbcompsvn[1],
+                sgxtcbcomp03svn: tcbcompsvn[2],
+                sgxtcbcomp04svn: tcbcompsvn[3],
+                sgxtcbcomp05svn: tcbcompsvn[4],
+                sgxtcbcomp06svn: tcbcompsvn[5],
+                sgxtcbcomp07svn: tcbcompsvn[6],
+                sgxtcbcomp08svn: tcbcompsvn[7],
+                sgxtcbcomp09svn: tcbcompsvn[8],
+                sgxtcbcomp10svn: tcbcompsvn[9],
+                sgxtcbcomp11svn: tcbcompsvn[10],
+                sgxtcbcomp12svn: tcbcompsvn[11],
+                sgxtcbcomp13svn: tcbcompsvn[12],
+                sgxtcbcomp14svn: tcbcompsvn[13],
+                sgxtcbcomp15svn: tcbcompsvn[14],
+                sgxtcbcomp16svn: tcbcompsvn[15],
+                pcesvn,
+            }),
+            TcbInfoVersion::V3 => Tcb::V3(TcbV3 {
+                sgxtcbcomponents: tcbcompsvn.map(|x| TcbComponentV3 { svn: x }),
+                pcesvn,
+            }),
         };
         Self {
             tcb,
@@ -457,7 +526,7 @@ impl TcbLevel {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Deserialize)]
 pub(crate) enum TcbStatus {
     UpToDate,
     OutOfDate,
@@ -468,8 +537,36 @@ pub(crate) enum TcbStatus {
     Revoked,
 }
 
+/// Contains information identifying a TcbLevel.
 #[derive(Deserialize, Debug)]
-pub(crate) struct Tcb {
+#[serde(untagged)]
+pub(crate) enum Tcb {
+    V2(TcbV2),
+    V3(TcbV3),
+}
+
+impl Tcb {
+    fn version(&self) -> TcbInfoVersion {
+        match self {
+            Tcb::V2(_) => TcbInfoVersion::V2,
+            Tcb::V3(_) => TcbInfoVersion::V3,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct TcbV3 {
+    sgxtcbcomponents: [TcbComponentV3; 16],
+    pcesvn: u16,
+}
+
+#[derive(Deserialize, Debug, Clone, Copy)]
+pub(crate) struct TcbComponentV3 {
+    svn: u8,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct TcbV2 {
     sgxtcbcomp01svn: u8,
     sgxtcbcomp02svn: u8,
     sgxtcbcomp03svn: u8,
@@ -486,29 +583,39 @@ pub(crate) struct Tcb {
     sgxtcbcomp14svn: u8,
     sgxtcbcomp15svn: u8,
     sgxtcbcomp16svn: u8,
-    pub pcesvn: u16,
+    pcesvn: u16,
 }
 
 impl Tcb {
+    pub fn pcesvn(&self) -> u16 {
+        match self {
+            Self::V2(v2) => v2.pcesvn,
+            Self::V3(v3) => v3.pcesvn,
+        }
+    }
+
     pub fn components(&self) -> [u8; 16] {
-        [
-            self.sgxtcbcomp01svn,
-            self.sgxtcbcomp02svn,
-            self.sgxtcbcomp03svn,
-            self.sgxtcbcomp04svn,
-            self.sgxtcbcomp05svn,
-            self.sgxtcbcomp06svn,
-            self.sgxtcbcomp07svn,
-            self.sgxtcbcomp08svn,
-            self.sgxtcbcomp09svn,
-            self.sgxtcbcomp10svn,
-            self.sgxtcbcomp11svn,
-            self.sgxtcbcomp12svn,
-            self.sgxtcbcomp13svn,
-            self.sgxtcbcomp14svn,
-            self.sgxtcbcomp15svn,
-            self.sgxtcbcomp16svn,
-        ]
+        match self {
+            Self::V2(v2) => [
+                v2.sgxtcbcomp01svn,
+                v2.sgxtcbcomp02svn,
+                v2.sgxtcbcomp03svn,
+                v2.sgxtcbcomp04svn,
+                v2.sgxtcbcomp05svn,
+                v2.sgxtcbcomp06svn,
+                v2.sgxtcbcomp07svn,
+                v2.sgxtcbcomp08svn,
+                v2.sgxtcbcomp09svn,
+                v2.sgxtcbcomp10svn,
+                v2.sgxtcbcomp11svn,
+                v2.sgxtcbcomp12svn,
+                v2.sgxtcbcomp13svn,
+                v2.sgxtcbcomp14svn,
+                v2.sgxtcbcomp15svn,
+                v2.sgxtcbcomp16svn,
+            ],
+            Self::V3(v3) => v3.sgxtcbcomponents.map(|comp| comp.svn),
+        }
     }
 }
 

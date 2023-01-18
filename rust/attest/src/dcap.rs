@@ -667,7 +667,7 @@ impl TcbStanding {
             .iter()
             .zip(level.tcb.components())
             .all(|(&p, l)| p >= l)
-            && pck_extension.tcb.pcesvn >= level.tcb.pcesvn
+            && pck_extension.tcb.pcesvn >= level.tcb.pcesvn()
     }
 }
 
@@ -678,25 +678,22 @@ mod test {
     use std::path::Path;
     use std::time::{Duration, SystemTime};
 
-    use crate::dcap::endorsements::QeTcbLevel;
+    use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
     use crate::dcap::fakes::FakeAttestation;
     use boring::bn::BigNum;
     use hex_literal::hex;
 
     use super::*;
 
-    const PUBKEY: [u8; 32] =
-        hex!("cb2ebba835c72942c685a0c2ed6e8e2ba8de23427c460fb4e53d1941e1d15518");
-
     const EXPECTED_MRENCLAVE: MREnclave =
-        hex!("e5eaa62da3514e8b37ccabddb87e52e7f319ccf5120a13f9e1b42b87ec9dd3dd");
+        hex!("337ac97ce088a132daeb1308ea3159f807de4a827e875b2c90ce21bf4751196f");
 
-    const ACCEPTED_SW_ADVISORIES: &[&str] = &[];
+    const ACCEPTED_SW_ADVISORIES: &[&str] = &["INTEL-SA-00615", "INTEL-SA-00657"];
 
     #[test]
     fn test_verify_remote_attestation() {
         let current_time: SystemTime =
-            SystemTime::UNIX_EPOCH + Duration::from_millis(1657856984000);
+            SystemTime::UNIX_EPOCH + Duration::from_millis(1674105089000);
 
         let evidence_bytes = read_test_file("tests/data/dcap.evidence");
         let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
@@ -713,22 +710,25 @@ mod test {
         .unwrap()
         .to_owned();
 
-        assert_eq!(PUBKEY, pubkey.as_slice());
+        let expected_pubkey = hex::decode(read_test_file("tests/data/dcap.pubkey")).unwrap();
+        assert_eq!(&expected_pubkey, pubkey.as_slice());
     }
 
     #[test]
-    fn test_verify_remote_attestation_accepted_sw_advisories_not_present() {
+    fn test_verify_remote_attestation_v3() {
+        // Verify with collateral from the V3 PCS API (current version is V4)
+
         let current_time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(1657856984000);
 
-        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
-        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
+        let evidence_bytes = read_test_file("tests/data/dcap_v3.evidence");
+        let endorsements_bytes = read_test_file("tests/data/dcap_v3.endorsements");
 
         let pubkey = verify_remote_attestation(
             evidence_bytes.as_ref(),
             endorsements_bytes.as_ref(),
-            &EXPECTED_MRENCLAVE,
-            &["INTEL-SA-1234"],
+            &hex!("e5eaa62da3514e8b37ccabddb87e52e7f319ccf5120a13f9e1b42b87ec9dd3dd"),
+            &[],
             current_time,
         )
         .unwrap()
@@ -736,7 +736,34 @@ mod test {
         .unwrap()
         .to_owned();
 
-        assert_eq!(PUBKEY, pubkey.as_slice());
+        let expected_pubkey = hex::decode(read_test_file("tests/data/dcap_v3.pubkey")).unwrap();
+        assert_eq!(&expected_pubkey, pubkey.as_slice());
+    }
+
+    #[test]
+    fn test_verify_remote_attestation_accepted_sw_advisories_not_present() {
+        let current_time: SystemTime =
+            SystemTime::UNIX_EPOCH + Duration::from_millis(1674105089000);
+
+        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
+        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
+
+        let sw_advisories = &[ACCEPTED_SW_ADVISORIES, &["INTEL-SA-1234"]].concat();
+
+        let pubkey = verify_remote_attestation(
+            evidence_bytes.as_ref(),
+            endorsements_bytes.as_ref(),
+            &EXPECTED_MRENCLAVE,
+            sw_advisories,
+            current_time,
+        )
+        .unwrap()
+        .get("pk")
+        .unwrap()
+        .to_owned();
+
+        let expected_pubkey = hex::decode(read_test_file("tests/data/dcap.pubkey")).unwrap();
+        assert_eq!(expected_pubkey, pubkey.as_slice());
     }
 
     #[test]
@@ -744,10 +771,10 @@ mod test {
         let evidence_bytes = read_test_file("tests/data/dcap.evidence");
         let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
         let metrics = attestation_metrics(&evidence_bytes, &endorsements_bytes).unwrap();
-        // 2022-08-14 02:31:29 UTC
+        // 2023-02-17 21:56:09 UTC
         assert_eq!(
             *metrics.get("tcb_info_expiration_ts").unwrap(),
-            1660444289_i64
+            1676670969_i64
         );
         // May 21 10:50:10 2018 GMT
         assert_eq!(
@@ -972,12 +999,36 @@ mod test {
     }
 
     #[test]
+    fn v2_tcb_level() {
+        let mut builder = FakeAttestation::builder();
+
+        // identical tcb levels, just using the TCB v2 format (which comes from the PCS v3 API)
+        builder.uendorsements.tcb_info.tcb_levels = builder
+            .uendorsements
+            .tcb_info
+            .tcb_levels
+            .iter()
+            .map(|level| {
+                TcbLevel::from_parts(
+                    TcbInfoVersion::V2,
+                    level.tcb.components(),
+                    level.tcb.pcesvn(),
+                    level.tcb_status,
+                    Vec::new(),
+                )
+            })
+            .collect();
+        builder.sign().attest().unwrap();
+    }
+
+    #[test]
     fn unsupported_tcb_level() {
         let mut level_compsvn = [0u8; 16];
         level_compsvn[0] = 1u8;
 
         let mut builder = FakeAttestation::builder();
         builder.uendorsements.tcb_info.tcb_levels = vec![TcbLevel::from_parts(
+            TcbInfoVersion::V3,
             level_compsvn,
             0,
             TcbStatus::SWHardeningNeeded,
@@ -997,6 +1048,7 @@ mod test {
 
         let mut builder = FakeAttestation::builder();
         builder.uendorsements.tcb_info.tcb_levels = vec![TcbLevel::from_parts(
+            TcbInfoVersion::V3,
             level_compsvn,
             0,
             TcbStatus::SWHardeningNeeded,
