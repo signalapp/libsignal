@@ -49,7 +49,7 @@ use crate::dcap::sgx_report_body::SgxFlags;
 use crate::dcap::sgx_x509::SgxPckExtension;
 use crate::error::{Context, ContextError};
 
-mod cert_chain;
+pub(crate) mod cert_chain;
 mod ecdsa;
 mod endorsements;
 mod evidence;
@@ -379,7 +379,7 @@ fn root_trust_store(
 }
 
 /// Create a trust store from previously validated certificates and crls
-fn from_trusted(
+pub(crate) fn from_trusted(
     trusted_certs: &[&X509Ref],
     trusted_crls: &[&X509CRLRef],
     current_time: SystemTime,

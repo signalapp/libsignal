@@ -7,6 +7,7 @@ pub mod cds2;
 pub mod client_connection;
 pub mod dcap;
 pub mod hsm_enclave;
+pub mod ias;
 mod proto;
 
 mod endian;

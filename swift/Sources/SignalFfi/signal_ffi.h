@@ -1468,6 +1468,12 @@ SignalFfiError *signal_receipt_credential_presentation_get_receipt_level(uint64_
 SignalFfiError *signal_receipt_credential_presentation_get_receipt_serial(uint8_t (*out)[SignalRECEIPT_SERIAL_LEN],
                                                                           const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
 
+SignalFfiError *signal_verify_signature(bool *out,
+                                        SignalBorrowedBuffer cert_pem,
+                                        SignalBorrowedBuffer body,
+                                        SignalBorrowedBuffer signature,
+                                        uint64_t current_timestamp);
+
 SignalFfiError *signal_username_hash(const unsigned char **out,
                                      size_t *out_len,
                                      const char *username);

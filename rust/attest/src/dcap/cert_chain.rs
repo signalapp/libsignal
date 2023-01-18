@@ -5,12 +5,12 @@
 
 use boring::ec::EcKey;
 use boring::pkey::Public;
-use std::time::SystemTime;
-
 use boring::stack::{Stack, Stackable};
 use boring::x509::crl::X509CRLRef;
 use boring::x509::store::X509StoreRef;
 use boring::x509::{X509StoreContext, X509VerifyResult, X509};
+
+use std::time::SystemTime;
 
 use crate::dcap::{Error, Expireable, Result};
 

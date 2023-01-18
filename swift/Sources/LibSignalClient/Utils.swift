@@ -89,6 +89,12 @@ internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMut
     return output
 }
 
+internal func invokeFnReturningBool(fn: (UnsafeMutablePointer<Bool>?) -> SignalFfiErrorRef?) throws -> Bool {
+    var output: Bool = false
+    try checkError(fn(&output))
+    return output
+}
+
 internal func invokeFnReturningNativeHandle<Owner: NativeHandleOwner>(fn: (UnsafeMutablePointer<OpaquePointer?>?) -> SignalFfiErrorRef?) throws -> Owner {
     var handle: OpaquePointer?
     try checkError(fn(&handle))
