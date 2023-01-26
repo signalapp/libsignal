@@ -13,7 +13,7 @@ android {
     compileSdkVersion 31
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 30
         multiDexEnabled true
     }

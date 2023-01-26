@@ -37,9 +37,9 @@ then
     # Use the Android NDK's prebuilt Clang+lld as Rust's linker.
     ANDROID_TOOLCHAIN_DIR=$(echo "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt"/*/bin/)
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/aarch64-linux-android21-clang"
-    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="${ANDROID_TOOLCHAIN_DIR}/armv7a-linux-androideabi19-clang"
+    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="${ANDROID_TOOLCHAIN_DIR}/armv7a-linux-androideabi21-clang"
     export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/x86_64-linux-android21-clang"
-    export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/i686-linux-android19-clang"
+    export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/i686-linux-android21-clang"
     export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
 
     echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target aarch64-linux-android --out-dir "${ANDROID_LIB_DIR}/arm64-v8a"
