@@ -11,6 +11,7 @@ as a Java, Swift, or TypeScript library. The underlying implementations are writ
 - attest: Functionality for remote attestation of [SGX enclaves][] and server-side [HSMs][].
 - zkgroup: Functionality for [zero-knowledge groups][] and related features available in Signal.
 - poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
+- usernames: Functionality for username generation, hashing, and proofs.
 
 This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]) as well as
 server-side. Use outside of Signal is unsupported. In particular, the products of this repository
@@ -136,6 +137,6 @@ Administration Regulations, Section 740.13) for both object code and source code
 
 ## License
 
-Copyright 2020-2022 Signal Messenger, LLC.
+Copyright 2020-2023 Signal Messenger, LLC.
 
 Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
