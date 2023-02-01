@@ -252,9 +252,8 @@ export class IdentityKeyPair {
   }
 
   static deserialize(buffer: Buffer): IdentityKeyPair {
-    const { privateKey, publicKey } = Native.IdentityKeyPair_Deserialize(
-      buffer
-    );
+    const { privateKey, publicKey } =
+      Native.IdentityKeyPair_Deserialize(buffer);
     return new IdentityKeyPair(
       PublicKey._fromNativeHandle(publicKey),
       PrivateKey._fromNativeHandle(privateKey)
@@ -1494,7 +1493,7 @@ export class HsmEnclaveClient {
   }
 
   static new(public_key: Buffer, code_hashes: Buffer[]): HsmEnclaveClient {
-    code_hashes.forEach(hash => {
+    code_hashes.forEach((hash) => {
       if (hash.length != 32) {
         throw new Error('code hash length must be 32');
       }

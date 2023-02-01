@@ -45,7 +45,7 @@ class InMemorySessionStore extends SignalClient.SessionStore {
   async getExistingSessions(
     addresses: SignalClient.ProtocolAddress[]
   ): Promise<SignalClient.SessionRecord[]> {
-    return addresses.map(address => {
+    return addresses.map((address) => {
       const idx = address.name() + '::' + address.deviceId();
       const serialized = this.state.get(idx);
       if (!serialized) {
@@ -232,10 +232,7 @@ describe('SignalClient', () => {
     );
 
     assert.deepEqual(
-      aFprint1
-        .scannableFingerprint()
-        .toBuffer()
-        .toString('hex'),
+      aFprint1.scannableFingerprint().toBuffer().toString('hex'),
       '080112220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d'
     );
 
@@ -254,10 +251,7 @@ describe('SignalClient', () => {
     );
 
     assert.deepEqual(
-      bFprint1
-        .scannableFingerprint()
-        .toBuffer()
-        .toString('hex'),
+      bFprint1.scannableFingerprint().toBuffer().toString('hex'),
       '080112220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df'
     );
     assert.deepEqual(
@@ -422,12 +416,12 @@ describe('SignalClient', () => {
       const messagePromise = SignalClient.SenderKeyDistributionMessage.create(
         sender,
         distributionId,
-        (undefined as unknown) as SignalClient.SenderKeyStore
+        undefined as unknown as SignalClient.SenderKeyStore
       );
       await assert.isRejected(messagePromise, TypeError);
 
       const messagePromise2 = SignalClient.SenderKeyDistributionMessage.create(
-        ({} as unknown) as SignalClient.ProtocolAddress,
+        {} as unknown as SignalClient.ProtocolAddress,
         distributionId,
         aSenderKeyStore
       );
@@ -533,7 +527,8 @@ describe('SignalClient', () => {
     const counter = 9;
     const previousCounter = 8;
     const senderIdentityKey = SignalClient.PrivateKey.generate().getPublicKey();
-    const receiverIdentityKey = SignalClient.PrivateKey.generate().getPublicKey();
+    const receiverIdentityKey =
+      SignalClient.PrivateKey.generate().getPublicKey();
     const ciphertext = Buffer.from('01020304', 'hex');
 
     const sm = SignalClient.SignalMessage._new(
@@ -1259,16 +1254,18 @@ describe('SignalClient', () => {
         Buffer.from([42])
       );
 
-      const aSealedSenderMessage = await SignalClient.sealedSenderMultiRecipientEncrypt(
-        aUsmc,
-        [bAddress],
-        aKeys,
-        aSess
-      );
+      const aSealedSenderMessage =
+        await SignalClient.sealedSenderMultiRecipientEncrypt(
+          aUsmc,
+          [bAddress],
+          aKeys,
+          aSess
+        );
 
-      const bSealedSenderMessage = SignalClient.sealedSenderMultiRecipientMessageForSingleRecipient(
-        aSealedSenderMessage
-      );
+      const bSealedSenderMessage =
+        SignalClient.sealedSenderMultiRecipientMessageForSingleRecipient(
+          aSealedSenderMessage
+        );
 
       const bUsmc = await SignalClient.sealedSenderDecryptToUsmc(
         bSealedSenderMessage,
@@ -1397,7 +1394,8 @@ describe('SignalClient', () => {
         assert.equal(err.name, 'InvalidRegistrationId');
         assert.equal(err.code, SignalClient.ErrorCode.InvalidRegistrationId);
         assert.exists(err.stack); // Make sure we're still getting the benefits of Error.
-        const registrationIdErr = err as SignalClient.InvalidRegistrationIdError;
+        const registrationIdErr =
+          err as SignalClient.InvalidRegistrationIdError;
         assert.equal(registrationIdErr.addr.name(), bAddress.name());
         assert.equal(registrationIdErr.addr.deviceId(), bAddress.deviceId());
       }
@@ -1555,9 +1553,10 @@ describe('SignalClient', () => {
     const bErrorContent = SignalClient.PlaintextContent.deserialize(
       bErrorUSMC.contents()
     );
-    const bErrorMessage = SignalClient.DecryptionErrorMessage.extractFromSerializedBody(
-      bErrorContent.body()
-    );
+    const bErrorMessage =
+      SignalClient.DecryptionErrorMessage.extractFromSerializedBody(
+        bErrorContent.body()
+      );
     assert.equal(bErrorMessage.timestamp(), 45);
     assert.equal(bErrorMessage.deviceId(), bAddress.deviceId());
 
@@ -1662,9 +1661,8 @@ describe('SignalClient', () => {
 
     const keyPair = new SignalClient.IdentityKeyPair(pub, priv);
     const keyPairBytes = keyPair.serialize();
-    const roundTripKeyPair = SignalClient.IdentityKeyPair.deserialize(
-      keyPairBytes
-    );
+    const roundTripKeyPair =
+      SignalClient.IdentityKeyPair.deserialize(keyPairBytes);
     assert.equal(roundTripKeyPair.publicKey.compare(pub), 0);
     const roundTripKeyPairBytes = roundTripKeyPair.serialize();
     assert.deepEqual(keyPairBytes, roundTripKeyPairBytes);

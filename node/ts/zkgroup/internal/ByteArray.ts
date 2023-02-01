@@ -16,7 +16,7 @@ export default class ByteArray {
   protected static checkLength(
     expectedLength: number
   ): (contents: Buffer) => void {
-    return contents => {
+    return (contents) => {
       if (contents.length !== expectedLength) {
         throw new LibSignalErrorBase(
           `Length of array supplied was ${contents.length} expected ${expectedLength}`,

@@ -56,72 +56,12 @@ describe('ZKGroup', () => {
     'c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7'
   );
   const TEST_ARRAY_32_3 = Buffer.from([
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22,
-    23,
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
   ]);
   const TEST_ARRAY_32_4 = Buffer.from([
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22,
-    23,
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
+    2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+    23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
   ]);
   const TEST_ARRAY_32_5 = hexToBuffer(
     '030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122'
@@ -146,9 +86,8 @@ describe('ZKGroup', () => {
     // ---
 
     // SERVER
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
     const serverZkAuth = new ServerZkAuthOperations(serverSecretParams);
 
@@ -187,11 +126,12 @@ describe('ZKGroup', () => {
     assert.strictEqual(uuid, plaintext);
 
     // Create presentation
-    const presentation = clientZkAuthCipher.createAuthCredentialPresentationWithRandom(
-      TEST_ARRAY_32_5,
-      groupSecretParams,
-      authCredential
-    );
+    const presentation =
+      clientZkAuthCipher.createAuthCredentialPresentationWithRandom(
+        TEST_ARRAY_32_5,
+        groupSecretParams,
+        authCredential
+      );
 
     // Verify presentation
     const uuidCiphertextRecv = presentation.getUuidCiphertext();
@@ -222,9 +162,8 @@ describe('ZKGroup', () => {
     // ---
 
     // SERVER
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
     const serverZkAuth = new ServerZkAuthOperations(serverSecretParams);
 
@@ -241,12 +180,13 @@ describe('ZKGroup', () => {
 
     // SERVER
     // Issue credential
-    const authCredentialResponse = serverZkAuth.issueAuthCredentialWithPniWithRandom(
-      TEST_ARRAY_32_2,
-      aci,
-      pni,
-      redemptionTime
-    );
+    const authCredentialResponse =
+      serverZkAuth.issueAuthCredentialWithPniWithRandom(
+        TEST_ARRAY_32_2,
+        aci,
+        pni,
+        redemptionTime
+      );
 
     // CLIENT
     // Receive credential
@@ -268,11 +208,12 @@ describe('ZKGroup', () => {
     assert.strictEqual(pni, pniPlaintext);
 
     // Create presentation
-    const presentation = clientZkAuthCipher.createAuthCredentialWithPniPresentationWithRandom(
-      TEST_ARRAY_32_5,
-      groupSecretParams,
-      authCredential
-    );
+    const presentation =
+      clientZkAuthCipher.createAuthCredentialWithPniPresentationWithRandom(
+        TEST_ARRAY_32_5,
+        groupSecretParams,
+        authCredential
+      );
 
     // Verify presentation
     assertArrayEquals(
@@ -304,9 +245,8 @@ describe('ZKGroup', () => {
     // ---
 
     // SERVER
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
     const serverZkProfile = new ServerZkProfileOperations(serverSecretParams);
 
@@ -328,11 +268,12 @@ describe('ZKGroup', () => {
     const profileKeyCommitment = profileKey.getCommitment(uuid);
 
     // Create context and request
-    const context = clientZkProfileCipher.createProfileKeyCredentialRequestContextWithRandom(
-      TEST_ARRAY_32_3,
-      uuid,
-      profileKey
-    );
+    const context =
+      clientZkProfileCipher.createProfileKeyCredentialRequestContextWithRandom(
+        TEST_ARRAY_32_3,
+        uuid,
+        profileKey
+      );
     const request = context.getRequest();
 
     // SERVER
@@ -346,10 +287,8 @@ describe('ZKGroup', () => {
     // CLIENT
     // Gets stored profile credential
     const clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    const profileKeyCredential = clientZkProfileCipher.receiveProfileKeyCredential(
-      context,
-      response
-    );
+    const profileKeyCredential =
+      clientZkProfileCipher.receiveProfileKeyCredential(context, response);
 
     // Create encrypted UID and profile key
     const uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
@@ -366,11 +305,12 @@ describe('ZKGroup', () => {
     );
     assertArrayEquals(profileKey.serialize(), decryptedProfileKey.serialize());
 
-    const presentation = clientZkProfileCipher.createProfileKeyCredentialPresentationWithRandom(
-      TEST_ARRAY_32_5,
-      groupSecretParams,
-      profileKeyCredential
-    );
+    const presentation =
+      clientZkProfileCipher.createProfileKeyCredentialPresentationWithRandom(
+        TEST_ARRAY_32_5,
+        groupSecretParams,
+        profileKeyCredential
+      );
 
     assertArrayEquals(presentation.serialize(), profileKeyPresentationResult);
 
@@ -397,9 +337,8 @@ describe('ZKGroup', () => {
     // ---
 
     // SERVER
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
     const serverZkProfile = new ServerZkProfileOperations(serverSecretParams);
 
@@ -416,32 +355,35 @@ describe('ZKGroup', () => {
     const profileKeyCommitment = profileKey.getCommitment(uuid);
 
     // Create context and request
-    const context = clientZkProfileCipher.createProfileKeyCredentialRequestContextWithRandom(
-      TEST_ARRAY_32_3,
-      uuid,
-      profileKey
-    );
+    const context =
+      clientZkProfileCipher.createProfileKeyCredentialRequestContextWithRandom(
+        TEST_ARRAY_32_3,
+        uuid,
+        profileKey
+      );
     const request = context.getRequest();
 
     // SERVER
     const now = Math.floor(Date.now() / 1000);
     const startOfDay = now - (now % 86400);
     const expiration = startOfDay + 5 * 86400;
-    const response = serverZkProfile.issueExpiringProfileKeyCredentialWithRandom(
-      TEST_ARRAY_32_4,
-      request,
-      uuid,
-      profileKeyCommitment,
-      expiration
-    );
+    const response =
+      serverZkProfile.issueExpiringProfileKeyCredentialWithRandom(
+        TEST_ARRAY_32_4,
+        request,
+        uuid,
+        profileKeyCommitment,
+        expiration
+      );
 
     // CLIENT
     // Gets stored profile credential
     const clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    const profileKeyCredential = clientZkProfileCipher.receiveExpiringProfileKeyCredential(
-      context,
-      response
-    );
+    const profileKeyCredential =
+      clientZkProfileCipher.receiveExpiringProfileKeyCredential(
+        context,
+        response
+      );
 
     // Create encrypted UID and profile key
     const uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
@@ -462,11 +404,12 @@ describe('ZKGroup', () => {
       new Date(expiration * 1000)
     );
 
-    const presentation = clientZkProfileCipher.createExpiringProfileKeyCredentialPresentationWithRandom(
-      TEST_ARRAY_32_5,
-      groupSecretParams,
-      profileKeyCredential
-    );
+    const presentation =
+      clientZkProfileCipher.createExpiringProfileKeyCredentialPresentationWithRandom(
+        TEST_ARRAY_32_5,
+        groupSecretParams,
+        profileKeyCredential
+      );
 
     // Verify presentation
     serverZkProfile.verifyProfileKeyCredentialPresentation(
@@ -509,9 +452,8 @@ describe('ZKGroup', () => {
     // ---
 
     // SERVER
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
     const serverZkProfile = new ServerZkProfileOperations(serverSecretParams);
 
@@ -533,12 +475,13 @@ describe('ZKGroup', () => {
     const profileKeyCommitment = profileKey.getCommitment(aci);
 
     // Create context and request
-    const context = clientZkProfileCipher.createPniCredentialRequestContextWithRandom(
-      TEST_ARRAY_32_3,
-      aci,
-      pni,
-      profileKey
-    );
+    const context =
+      clientZkProfileCipher.createPniCredentialRequestContextWithRandom(
+        TEST_ARRAY_32_3,
+        aci,
+        pni,
+        profileKey
+      );
     const request = context.getRequest();
 
     // SERVER
@@ -558,11 +501,12 @@ describe('ZKGroup', () => {
       response
     );
 
-    const presentation = clientZkProfileCipher.createPniCredentialPresentationWithRandom(
-      TEST_ARRAY_32_5,
-      groupSecretParams,
-      pniCredential
-    );
+    const presentation =
+      clientZkProfileCipher.createPniCredentialPresentationWithRandom(
+        TEST_ARRAY_32_5,
+        groupSecretParams,
+        pniCredential
+      );
 
     assertArrayEquals(presentation.serialize(), pniPresentationResult);
 
@@ -584,9 +528,8 @@ describe('ZKGroup', () => {
   });
 
   it('testServerSignatures', () => {
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
 
     const message = TEST_ARRAY_32_1;
@@ -615,9 +558,8 @@ describe('ZKGroup', () => {
   });
 
   it('testGroupIdentifier', () => {
-    const groupSecretParams = GroupSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const groupSecretParams =
+      GroupSecretParams.generateWithRandom(TEST_ARRAY_32);
     const _groupPublicParams = groupSecretParams.getPublicParams();
     // assertByteArray('31f2c60f86f4c5996e9e2568355591d9', groupPublicParams.getGroupIdentifier().serialize());
   });
@@ -673,9 +615,8 @@ describe('ZKGroup', () => {
   });
 
   it('testReceiptFlow', () => {
-    const serverSecretParams = ServerSecretParams.generateWithRandom(
-      TEST_ARRAY_32
-    );
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
     const serverPublicParams = serverSecretParams.getPublicParams();
     const serverOps = new ServerZkReceiptOperations(serverSecretParams);
     const clientOps = new ClientZkReceiptOperations(serverPublicParams);
@@ -684,9 +625,8 @@ describe('ZKGroup', () => {
     );
 
     // client
-    const context = clientOps.createReceiptCredentialRequestContext(
-      receiptSerial
-    );
+    const context =
+      clientOps.createReceiptCredentialRequestContext(receiptSerial);
     const request = context.getRequest();
 
     // issuance server
@@ -702,9 +642,8 @@ describe('ZKGroup', () => {
     const credential = clientOps.receiveReceiptCredential(context, response);
     assert(receiptExpirationTime == credential.getReceiptExpirationTime());
     assert(receiptLevel == credential.getReceiptLevel());
-    const presentation = clientOps.createReceiptCredentialPresentation(
-      credential
-    );
+    const presentation =
+      clientOps.createReceiptCredentialPresentation(credential);
 
     // redemption server
     serverOps.verifyReceiptCredentialPresentation(presentation);
