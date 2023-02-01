@@ -35,6 +35,13 @@ public enum SignalError: Error {
     case invalidSenderKeySession(distributionId: UUID, message: String)
     case duplicatedMessage(String)
     case verificationFailed(String)
+    case cannotBeEmpty(String)
+    case cannotStartWithDigit(String)
+    case missingSeparator(String)
+    case badDiscriminator(String)
+    case badNicknameCharacter(String)
+    case nicknameTooShort(String)
+    case nicknameTooLong(String)
     case callbackError(String)
     case unknown(UInt32, String)
 }
@@ -106,6 +113,20 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.duplicatedMessage(errStr)
     case SignalErrorCode_VerificationFailure:
         throw SignalError.verificationFailed(errStr)
+    case SignalErrorCode_UsernameCannotBeEmpty:
+        throw SignalError.cannotBeEmpty(errStr)
+    case SignalErrorCode_UsernameCannotStartWithDigit:
+        throw SignalError.cannotStartWithDigit(errStr)
+    case SignalErrorCode_UsernameMissingSeparator:
+        throw SignalError.missingSeparator(errStr)
+    case SignalErrorCode_UsernameBadDiscriminator:
+        throw SignalError.badDiscriminator(errStr)
+    case SignalErrorCode_UsernameBadCharacter:
+        throw SignalError.badNicknameCharacter(errStr)
+    case SignalErrorCode_UsernameTooShort:
+        throw SignalError.nicknameTooShort(errStr)
+    case SignalErrorCode_UsernameTooLong:
+        throw SignalError.nicknameTooLong(errStr)
     case SignalErrorCode_CallbackError:
         throw SignalError.callbackError(errStr)
     default:

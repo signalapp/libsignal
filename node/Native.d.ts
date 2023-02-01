@@ -293,6 +293,10 @@ export function UnidentifiedSenderMessageContent_GetMsgType(m: Wrapper<Unidentif
 export function UnidentifiedSenderMessageContent_GetSenderCert(m: Wrapper<UnidentifiedSenderMessageContent>): SenderCertificate;
 export function UnidentifiedSenderMessageContent_New(message: Wrapper<CiphertextMessage>, sender: Wrapper<SenderCertificate>, contentHint: number, groupId: Buffer | null): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_Serialize(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
+export function Username_CandidatesFrom(nickname: string, minLen: number, maxLen: number): string;
+export function Username_Hash(username: string): Buffer;
+export function Username_Proof(username: string, randomness: Buffer): Buffer;
+export function Username_Verify(proof: Buffer, hash: Buffer): void;
 export function UuidCiphertext_CheckValidContents(buffer: Buffer): void;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }

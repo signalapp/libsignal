@@ -34,6 +34,7 @@ pub use error::*;
 
 mod storage;
 pub use storage::*;
+use usernames::UsernameError;
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
@@ -328,6 +329,43 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
 
         SignalJniError::ZkGroupVerificationFailure(_) => {
             jni_class_name!(org.signal.libsignal.zkgroup.VerificationFailedException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::CannotBeEmpty) => {
+            jni_class_name!(org.signal.libsignal.usernames.CannotBeEmptyException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::CannotStartWithDigit) => {
+            jni_class_name!(org.signal.libsignal.usernames.CannotStartWithDigitException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::MissingSeparator) => {
+            jni_class_name!(org.signal.libsignal.usernames.MissingSeparatorException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::BadDiscriminator) => {
+            jni_class_name!(org.signal.libsignal.usernames.BadDiscriminatorException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::BadNicknameCharacter) => {
+            jni_class_name!(org.signal.libsignal.usernames.BadNicknameCharacterException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::NicknameTooShort) => {
+            jni_class_name!(org.signal.libsignal.usernames.NicknameTooShortException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::NicknameTooLong) => {
+            jni_class_name!(org.signal.libsignal.usernames.NicknameTooLongException)
+        }
+
+        SignalJniError::UsernameError(UsernameError::ProofVerificationFailure) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .ProofVerificationFailureException
+            )
         }
     };
 

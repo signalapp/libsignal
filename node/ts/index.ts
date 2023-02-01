@@ -11,6 +11,8 @@ export * from './Errors';
 import { ProtocolAddress } from './Address';
 export * from './Address';
 
+export * as usernames from './usernames';
+
 import * as Native from '../Native';
 
 Native.registerErrors(Errors);

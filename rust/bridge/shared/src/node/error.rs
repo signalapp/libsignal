@@ -191,6 +191,36 @@ impl SignalNodeError for zkgroup::ZkGroupVerificationFailure {}
 
 impl SignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
 
+impl SignalNodeError for usernames::UsernameError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let name = match &self {
+            Self::BadNicknameCharacter => Some("BadNicknameCharacter"),
+            Self::NicknameTooShort => Some("NicknameTooShort"),
+            Self::NicknameTooLong => Some("NicknameTooLong"),
+            Self::CannotBeEmpty => Some("CannotBeEmpty"),
+            Self::CannotStartWithDigit => Some("CannotStartWithDigit"),
+            Self::MissingSeparator => Some("MissingSeparator"),
+            // These don't get a dedicated error code
+            // because clients won't need to distinguish them from other errors.
+            Self::BadDiscriminator => None,
+            Self::ProofVerificationFailure => None,
+        };
+        let message = self.to_string();
+        match new_js_error(cx, module, name, &message, operation_name, None) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(message)
+            }
+        }
+    }
+}
+
 /// Represents an error returned by a callback.
 #[derive(Debug)]
 struct CallbackError {

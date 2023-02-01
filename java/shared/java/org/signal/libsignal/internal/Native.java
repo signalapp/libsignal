@@ -449,5 +449,10 @@ public final class Native {
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long obj);
   public static native long UnidentifiedSenderMessageContent_New(CiphertextMessage message, long sender, int contentHint, byte[] groupId);
 
+  public static native String Username_CandidatesFrom(String nickname, int minLen, int maxLen);
+  public static native byte[] Username_Hash(String username);
+  public static native byte[] Username_Proof(String username, byte[] randomness);
+  public static native void Username_Verify(byte[] proof, byte[] hash);
+
   public static native void UuidCiphertext_CheckValidContents(byte[] buffer);
 }

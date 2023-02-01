@@ -11,6 +11,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use std::ffi::CString;
+use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 #[derive(Debug)]
@@ -55,6 +56,14 @@ pub enum SignalErrorCode {
     CallbackError = 100,
 
     VerificationFailure = 110,
+
+    UsernameCannotBeEmpty = 120,
+    UsernameCannotStartWithDigit = 121,
+    UsernameMissingSeparator = 122,
+    UsernameBadDiscriminator = 123,
+    UsernameBadCharacter = 124,
+    UsernameTooShort = 125,
+    UsernameTooLong = 126,
 }
 
 impl From<&SignalFfiError> for SignalErrorCode {
@@ -180,6 +189,38 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::ZkGroupDeserializationFailure(ZkGroupDeserializationFailure) => {
                 SignalErrorCode::InvalidType
+            }
+
+            SignalFfiError::UsernameError(UsernameError::CannotBeEmpty) => {
+                SignalErrorCode::UsernameCannotBeEmpty
+            }
+
+            SignalFfiError::UsernameError(UsernameError::CannotStartWithDigit) => {
+                SignalErrorCode::UsernameCannotStartWithDigit
+            }
+
+            SignalFfiError::UsernameError(UsernameError::MissingSeparator) => {
+                SignalErrorCode::UsernameMissingSeparator
+            }
+
+            SignalFfiError::UsernameError(UsernameError::BadDiscriminator) => {
+                SignalErrorCode::UsernameBadDiscriminator
+            }
+
+            SignalFfiError::UsernameError(UsernameError::BadNicknameCharacter) => {
+                SignalErrorCode::UsernameBadCharacter
+            }
+
+            SignalFfiError::UsernameError(UsernameError::NicknameTooShort) => {
+                SignalErrorCode::UsernameTooShort
+            }
+
+            SignalFfiError::UsernameError(UsernameError::NicknameTooLong) => {
+                SignalErrorCode::UsernameTooLong
+            }
+
+            SignalFfiError::UsernameError(UsernameError::ProofVerificationFailure) => {
+                SignalErrorCode::VerificationFailure
             }
         }
     }

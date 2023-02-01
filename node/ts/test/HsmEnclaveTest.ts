@@ -6,19 +6,10 @@
 import { assert, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as SignalClient from '../index';
+import * as util from './util';
 
 use(chaiAsPromised);
-
-SignalClient.initLogger(
-  SignalClient.LogLevel.Trace,
-  (level, target, fileOrNull, lineOrNull, message) => {
-    const targetPrefix = target ? '[' + target + '] ' : '';
-    const file = fileOrNull ?? '<unknown>';
-    const line = lineOrNull ?? 0;
-    // eslint-disable-next-line no-console
-    console.log(targetPrefix + file + ':' + line + ': ' + message);
-  }
-);
+util.initLogger();
 
 describe('HsmEnclaveClient', () => {
   const validKey = Buffer.from(

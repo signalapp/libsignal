@@ -976,6 +976,7 @@ dependencies = [
  "signal-crypto",
  "signal-neon-futures",
  "static_assertions",
+ "usernames",
  "uuid",
  "zkgroup",
 ]
@@ -1008,6 +1009,7 @@ dependencies = [
  "log-panics",
  "rand 0.7.3",
  "signal-crypto",
+ "usernames",
  "zkgroup",
 ]
 
@@ -2013,6 +2015,7 @@ name = "usernames"
 version = "0.1.0"
 dependencies = [
  "curve25519-dalek",
+ "displaydoc",
  "lazy_static",
  "poksho",
  "proptest",

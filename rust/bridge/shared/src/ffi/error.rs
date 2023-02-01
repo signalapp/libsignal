@@ -11,6 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::support::describe_panic;
@@ -27,6 +28,7 @@ pub enum SignalFfiError {
     SignalCrypto(SignalCryptoError),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
+    UsernameError(UsernameError),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -50,6 +52,7 @@ impl fmt::Display for SignalFfiError {
             }
             SignalFfiError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
+            SignalFfiError::UsernameError(e) => write!(f, "{}", e),
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
             SignalFfiError::UnexpectedPanic(e) => {
@@ -98,6 +101,12 @@ impl From<ZkGroupVerificationFailure> for SignalFfiError {
 impl From<ZkGroupDeserializationFailure> for SignalFfiError {
     fn from(e: ZkGroupDeserializationFailure) -> SignalFfiError {
         SignalFfiError::ZkGroupDeserializationFailure(e)
+    }
+}
+
+impl From<UsernameError> for SignalFfiError {
+    fn from(e: UsernameError) -> SignalFfiError {
+        SignalFfiError::UsernameError(e)
     }
 }
 

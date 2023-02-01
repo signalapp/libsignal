@@ -16,6 +16,13 @@ export enum ErrorCode {
   VerificationFailed,
   InvalidSession,
   InvalidSenderKeySession,
+
+  CannotBeEmpty,
+  CannotStartWithDigit,
+  MissingSeparator,
+  BadNicknameCharacter,
+  NicknameTooShort,
+  NicknameTooLong,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -101,6 +108,28 @@ export type InvalidSenderKeySessionError = LibSignalErrorCommon & {
   distributionId: string;
 };
 
+export type CannotBeEmptyError = LibSignalErrorCommon & {
+  code: ErrorCode.CannotBeEmpty;
+};
+export type CannotStartWithDigitError = LibSignalErrorCommon & {
+  code: ErrorCode.CannotStartWithDigit;
+};
+export type MissingSeparatorError = LibSignalErrorCommon & {
+  code: ErrorCode.MissingSeparator;
+};
+
+export type BadNicknameCharacterError = LibSignalErrorCommon & {
+  code: ErrorCode.BadNicknameCharacter;
+};
+
+export type NicknameTooShortError = LibSignalErrorCommon & {
+  code: ErrorCode.NicknameTooShort;
+};
+
+export type NicknameTooLongError = LibSignalErrorCommon & {
+  code: ErrorCode.NicknameTooLong;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -109,4 +138,10 @@ export type LibSignalError =
   | InvalidRegistrationIdError
   | VerificationFailedError
   | InvalidSessionError
-  | InvalidSenderKeySessionError;
+  | InvalidSenderKeySessionError
+  | CannotBeEmptyError
+  | CannotStartWithDigitError
+  | MissingSeparatorError
+  | BadNicknameCharacterError
+  | NicknameTooShortError
+  | NicknameTooLongError;

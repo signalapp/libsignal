@@ -62,12 +62,12 @@ pub struct NicknameLimits(RangeInclusive<usize>);
 
 impl Default for NicknameLimits {
     fn default() -> Self {
-        NicknameLimits::new(3, 32).unwrap()
+        NicknameLimits::new(3, 32)
     }
 }
 
 impl NicknameLimits {
-    pub fn new(min_len: usize, max_len: usize) -> Result<Self, UsernameError> {
+    pub fn new(min_len: usize, max_len: usize) -> Self {
         assert!(
             max_len <= MAX_NICKNAME_LENGTH,
             "Long nicknames are not supported. The maximum supported length is {}",
@@ -79,7 +79,7 @@ impl NicknameLimits {
             min_len,
             max_len
         );
-        Ok(NicknameLimits(min_len..=max_len))
+        NicknameLimits(min_len..=max_len)
     }
 
     pub fn validate(&self, n: usize) -> Result<(), UsernameError> {
@@ -96,8 +96,9 @@ impl NicknameLimits {
 impl Username {
     pub fn new(s: &str) -> Result<Self, UsernameError> {
         let (original_nickname, suffix) =
-            s.rsplit_once('.').ok_or(UsernameError::BadUsernameFormat)?;
+            s.rsplit_once('.').ok_or(UsernameError::MissingSeparator)?;
         let nickname = original_nickname.to_ascii_lowercase();
+        validate_prefix(&nickname)?;
         let discriminator = validate_discriminator(suffix)?;
 
         let scalars = make_scalars(&nickname, discriminator)?;
@@ -244,6 +245,7 @@ fn validate_discriminator<T: FromStr + PartialOrd + From<u8>>(
 }
 
 fn validate_nickname(nickname: &str, limits: &NicknameLimits) -> Result<(), UsernameError> {
+    validate_prefix(nickname)?;
     let maybe_bytes: Option<Vec<_>> = nickname
         .to_ascii_lowercase()
         .chars()
@@ -251,8 +253,15 @@ fn validate_nickname(nickname: &str, limits: &NicknameLimits) -> Result<(), User
         .collect();
 
     let bytes = maybe_bytes.ok_or(UsernameError::BadNicknameCharacter)?;
-
     limits.validate(bytes.len())
+}
+
+fn validate_prefix(s: &str) -> Result<(), UsernameError> {
+    match s.chars().next() {
+        None => Err(UsernameError::CannotBeEmpty),
+        Some(ch) if ch.is_ascii_digit() => Err(UsernameError::CannotStartWithDigit),
+        _ => Ok(()),
+    }
 }
 
 fn random_discriminators<R: Rng>(
@@ -301,6 +310,7 @@ mod test {
             "zeropad.001",
             "short.1",
             "short_zero.0",
+            "0start.01",
         ] {
             assert!(
                 Username::new(username).map(|n| n.hash()).is_err(),
@@ -399,7 +409,7 @@ mod test {
     #[test]
     fn nickname_limits() {
         NicknameLimits::default(); // should not panic
-        NicknameLimits::new(0, 42).unwrap().validate(13).unwrap();
+        NicknameLimits::new(0, 42).validate(13).unwrap();
     }
 
     #[test]

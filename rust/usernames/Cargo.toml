@@ -15,6 +15,7 @@ license = "AGPL-3.0-only"
 poksho = { path = "../poksho" }
 
 sha2 = "0.9.0"
+displaydoc = "0.2"
 lazy_static = "1.4.0"
 rand = "0.7.3"
 

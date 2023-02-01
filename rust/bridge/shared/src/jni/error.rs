@@ -11,6 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::support::describe_panic;
@@ -27,6 +28,7 @@ pub enum SignalJniError {
     Cds2(Cds2Error),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
+    UsernameError(UsernameError),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -46,6 +48,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
+            SignalJniError::UsernameError(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -108,6 +111,12 @@ impl From<ZkGroupVerificationFailure> for SignalJniError {
 impl From<ZkGroupDeserializationFailure> for SignalJniError {
     fn from(e: ZkGroupDeserializationFailure) -> SignalJniError {
         SignalJniError::ZkGroupDeserializationFailure(e)
+    }
+}
+
+impl From<UsernameError> for SignalJniError {
+    fn from(e: UsernameError) -> Self {
+        SignalJniError::UsernameError(e)
     }
 }
 

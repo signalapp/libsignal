@@ -37,3 +37,5 @@ mod cds2;
 mod hsm_enclave;
 
 pub mod zkgroup;
+
+pub mod usernames;
