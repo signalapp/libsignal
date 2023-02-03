@@ -103,7 +103,7 @@ fn Cds2ClientState_CompleteHandshake(
     cli.complete_handshake(handshake_received)
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn Cds2ClientState_EstablishedSend(
     cli: &mut Cds2ClientState,
     plaintext_to_send: &[u8],
@@ -111,7 +111,7 @@ fn Cds2ClientState_EstablishedSend(
     cli.established_send(plaintext_to_send)
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn Cds2ClientState_EstablishedRecv(
     cli: &mut Cds2ClientState,
     received_ciphertext: &[u8],

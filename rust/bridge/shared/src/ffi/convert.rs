@@ -351,6 +351,21 @@ impl ResultTypeInfo for Option<&str> {
         }
     }
 }
+
+impl ResultTypeInfo for Vec<u8> {
+    type ResultType = OwnedBufferOf<libc::c_uchar>;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(OwnedBufferOf::from(self.into_boxed_slice()))
+    }
+}
+
+impl ResultTypeInfo for &[u8] {
+    type ResultType = OwnedBufferOf<libc::c_uchar>;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.to_vec().convert_into()
+    }
+}
+
 /// `u32::MAX` (`UINT_MAX`, `~0u`) is used to represent `None` here.
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
@@ -613,6 +628,8 @@ macro_rules! ffi_result_type {
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
     ([u8; $len:expr]) => ([u8; $len]);
+    (&[u8]) => (ffi::OwnedBufferOf<libc::c_uchar>);
+    (Vec<u8>) => (ffi::OwnedBufferOf<libc::c_uchar>);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

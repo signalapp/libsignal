@@ -28,7 +28,7 @@ public class SessionRecord: ClonableHandleOwner {
         return self.withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_session_record_serialize($0, $1, nativeHandle)
+                    signal_session_record_serialize($0, nativeHandle)
                 }
             }
         }

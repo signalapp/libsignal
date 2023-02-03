@@ -181,7 +181,7 @@ fn GroupSecretParams_DecryptProfileKey(
         .into())
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn GroupSecretParams_EncryptBlobWithPaddingDeterministic(
     params: Serialized<GroupSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -191,7 +191,7 @@ fn GroupSecretParams_EncryptBlobWithPaddingDeterministic(
     params.encrypt_blob_with_padding(*randomness, plaintext, padding_len)
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn GroupSecretParams_DecryptBlobWithPadding(
     params: Serialized<GroupSecretParams>,
     ciphertext: &[u8],
@@ -253,7 +253,7 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPni(
         .into())
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -268,7 +268,7 @@ fn ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
     .expect("can serialize")
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -359,7 +359,7 @@ fn ServerPublicParams_ReceivePniCredential(
         .into())
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -376,7 +376,7 @@ fn ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
     .expect("can serialize")
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -393,7 +393,7 @@ fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministi
     .expect("can serialize")
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 #[allow(deprecated)]
 fn ServerPublicParams_CreatePniCredentialPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
@@ -636,13 +636,23 @@ fn AuthCredentialPresentation_GetUuidCiphertext(
     presentation.get_uuid_ciphertext().into()
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn(ffi = false)]
 fn AuthCredentialPresentation_GetPniCiphertext(presentation_bytes: &[u8]) -> Option<Vec<u8>> {
     let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
     presentation
         .get_pni_ciphertext()
         .map(|ciphertext| bincode::serialize(&ciphertext).expect("can serialize"))
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn AuthCredentialPresentation_GetPniCiphertextOrEmpty(presentation_bytes: &[u8]) -> Vec<u8> {
+    let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
+        .expect("should have been parsed previously");
+    presentation
+        .get_pni_ciphertext()
+        .map(|ciphertext| bincode::serialize(&ciphertext).expect("can serialize"))
+        .unwrap_or_default()
 }
 
 #[bridge_fn]
@@ -703,7 +713,7 @@ fn ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
 }
 
 // Only used by the server.
-#[bridge_fn_buffer(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(
     presentation_bytes: &[u8],
 ) -> Vec<u8> {

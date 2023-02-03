@@ -22,7 +22,7 @@ public class PreKeySignalMessage: NativeHandleOwner {
     public func serialize() throws -> [UInt8] {
         return try withNativeHandle { nativeHandle in
             try invokeFnReturningArray {
-                signal_pre_key_signal_message_serialize($0, $1, nativeHandle)
+                signal_pre_key_signal_message_serialize($0, nativeHandle)
             }
         }
     }

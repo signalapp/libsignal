@@ -115,20 +115,24 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_unidentified_sender_message_content_get_contents($0, $1, nativeHandle)
+                    signal_unidentified_sender_message_content_get_contents($0, nativeHandle)
                 }
             }
         }
     }
 
     public var groupId: [UInt8]? {
-        return withNativeHandle { nativeHandle in
+        let result = withNativeHandle { nativeHandle in
             failOnError {
-                try invokeFnReturningOptionalArray {
-                    signal_unidentified_sender_message_content_get_group_id($0, $1, nativeHandle)
+                try invokeFnReturningArray {
+                    signal_unidentified_sender_message_content_get_group_id_or_empty($0, nativeHandle)
                 }
             }
         }
+        if result.isEmpty {
+            return nil
+        }
+        return result
     }
 
     public var contentHint: ContentHint {
@@ -151,7 +155,7 @@ public func sealedSenderEncrypt(_ content: UnidentifiedSenderMessageContent,
         try context.withOpaquePointer { context in
             try withIdentityKeyStore(identityStore) { ffiIdentityStore in
                 try invokeFnReturningArray {
-                    signal_sealed_session_cipher_encrypt($0, $1,
+                    signal_sealed_session_cipher_encrypt($0,
                                                          recipientHandle,
                                                          contentHandle,
                                                          ffiIdentityStore, context)
@@ -180,7 +184,7 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
                     return try context.withOpaquePointer { context in
                         try withIdentityKeyStore(identityStore) { ffiIdentityStore in
                             try invokeFnReturningArray {
-                                signal_sealed_sender_multi_recipient_encrypt($0, $1,
+                                signal_sealed_sender_multi_recipient_encrypt($0,
                                                                              recipientHandlesBuffer,
                                                                              sessionHandlesBuffer,
                                                                              contentHandle,
@@ -198,7 +202,7 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
 internal func sealedSenderMultiRecipientMessageForSingleRecipient(_ message: [UInt8]) throws -> [UInt8] {
     return try message.withUnsafeBorrowedBuffer { message in
         try invokeFnReturningArray {
-            signal_sealed_sender_multi_recipient_message_for_single_recipient($0, $1, message)
+            signal_sealed_sender_multi_recipient_message_for_single_recipient($0, message)
         }
     }
 }
@@ -243,7 +247,6 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
                                 try invokeFnReturningArray {
                                     signal_sealed_session_cipher_decrypt(
                                         $0,
-                                        $1,
                                         &senderE164,
                                         &senderUUID,
                                         &senderDeviceId,

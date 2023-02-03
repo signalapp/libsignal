@@ -105,7 +105,7 @@ public class ClientZkProfileOperations {
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in
             try invokeFnReturningVariableLengthSerialized {
-              signal_server_public_params_create_profile_key_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
+              signal_server_public_params_create_profile_key_credential_presentation_deterministic($0, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
             }
           }
         }
@@ -123,7 +123,7 @@ public class ClientZkProfileOperations {
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in
             try invokeFnReturningVariableLengthSerialized {
-              signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
+              signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic($0, serverPublicParams, randomness, groupSecretParams, profileKeyCredential)
             }
           }
         }
@@ -143,7 +143,7 @@ public class ClientZkProfileOperations {
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try credential.withUnsafePointerToSerialized { credential in
             try invokeFnReturningVariableLengthSerialized {
-              signal_server_public_params_create_pni_credential_presentation_deterministic($0, $1, serverPublicParams, randomness, groupSecretParams, credential)
+              signal_server_public_params_create_pni_credential_presentation_deterministic($0, serverPublicParams, randomness, groupSecretParams, credential)
             }
           }
         }

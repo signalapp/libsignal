@@ -36,7 +36,7 @@ public func signalDecrypt(message: SignalMessage,
             try withSessionStore(sessionStore) { ffiSessionStore in
                 try withIdentityKeyStore(identityStore) { ffiIdentityStore in
                     try invokeFnReturningArray {
-                        signal_decrypt_message($0, $1, messageHandle, addressHandle, ffiSessionStore, ffiIdentityStore, context)
+                        signal_decrypt_message($0, messageHandle, addressHandle, ffiSessionStore, ffiIdentityStore, context)
                     }
                 }
             }
@@ -58,7 +58,7 @@ public func signalDecryptPreKey(message: PreKeySignalMessage,
                     try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
                         try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
                             try invokeFnReturningArray {
-                                signal_decrypt_pre_key_message($0, $1, messageHandle, addressHandle, ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, context)
+                                signal_decrypt_pre_key_message($0, messageHandle, addressHandle, ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, context)
                             }
                         }
                     }
@@ -113,7 +113,7 @@ public func groupDecrypt<Bytes: ContiguousBytes>(_ message: Bytes,
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try withSenderKeyStore(store) { ffiStore in
                     try invokeFnReturningArray {
-                        signal_group_decrypt_message($0, $1, senderHandle, messageBuffer, ffiStore, context)
+                        signal_group_decrypt_message($0, senderHandle, messageBuffer, ffiStore, context)
                     }
                 }
             }

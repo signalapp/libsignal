@@ -28,7 +28,7 @@ public class SenderKeyRecord: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_key_record_serialize($0, $1, nativeHandle)
+                    signal_sender_key_record_serialize($0, nativeHandle)
                 }
             }
         }

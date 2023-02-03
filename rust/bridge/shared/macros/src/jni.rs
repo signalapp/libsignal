@@ -19,14 +19,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
         (ResultKind::Regular, ReturnType::Default) => quote!(),
         (ResultKind::Regular, ReturnType::Type(_, ty)) => quote!(-> jni_result_type!(#ty)),
         (ResultKind::Void, _) => quote!(),
-        (ResultKind::Buffer, ReturnType::Type(_, _)) => quote!(-> jni::jbyteArray),
-        (ResultKind::Buffer, ReturnType::Default) => {
-            return Error::new(
-                sig.paren_token.span,
-                "missing result type for bridge_fn_buffer",
-            )
-            .to_compile_error()
-        }
     };
 
     let await_if_needed = sig.asyncness.map(|_| {

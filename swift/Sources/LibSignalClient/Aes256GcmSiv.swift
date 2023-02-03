@@ -35,7 +35,6 @@ public class Aes256GcmSiv: NativeHandleOwner {
                     try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                         try invokeFnReturningArray {
                             signal_aes256_gcm_siv_encrypt($0,
-                                                          $1,
                                                           nativeHandle,
                                                           messageBuffer,
                                                           nonceBuffer,
@@ -61,7 +60,6 @@ public class Aes256GcmSiv: NativeHandleOwner {
                     try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                         try invokeFnReturningArray {
                             signal_aes256_gcm_siv_decrypt($0,
-                                                          $1,
                                                           nativeHandle,
                                                           messageBuffer,
                                                           nonceBuffer,

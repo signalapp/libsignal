@@ -60,6 +60,22 @@ impl<T> BorrowedMutableSliceOf<T> {
     }
 }
 
+#[repr(C)]
+pub struct OwnedBufferOf<T> {
+    base: *mut T,
+    length: usize,
+}
+
+impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
+    fn from(value: Box<[T]>) -> Self {
+        let raw = unsafe { Box::into_raw(value).as_mut().expect("just created") };
+        Self {
+            base: raw.as_mut_ptr(),
+            length: raw.len(),
+        }
+    }
+}
+
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,
 ) -> *mut SignalFfiError {

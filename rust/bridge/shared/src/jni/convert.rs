@@ -1176,6 +1176,9 @@ macro_rules! jni_result_type {
     (Option<$typ:tt>) => {
         jni_result_type!($typ)
     };
+    (Option<$typ:tt<$($args:tt),+> >) => {
+        jni_result_type!($typ<$($args),+>)
+    };
     (CiphertextMessage) => {
         jni::JavaReturnCiphertextMessage
     };

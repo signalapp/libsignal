@@ -57,7 +57,7 @@ impl From<u64> for Timestamp {
     }
 }
 
-#[bridge_fn_buffer(ffi = false)]
+#[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(
     output_length: u32,
     ikm: &[u8],
@@ -152,24 +152,24 @@ fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey> {
     k.public_key()
 }
 
-#[bridge_fn_buffer(ffi = "privatekey_sign", node = "PrivateKey_Sign")]
+#[bridge_fn(ffi = "privatekey_sign", node = "PrivateKey_Sign")]
 fn ECPrivateKey_Sign(key: &PrivateKey, message: &[u8]) -> Result<Vec<u8>> {
     let mut rng = rand::rngs::OsRng;
     Ok(key.calculate_signature(message, &mut rng)?.into_vec())
 }
 
-#[bridge_fn_buffer(ffi = "privatekey_agree", node = "PrivateKey_Agree")]
+#[bridge_fn(ffi = "privatekey_agree", node = "PrivateKey_Agree")]
 fn ECPrivateKey_Agree(private_key: &PrivateKey, public_key: &PublicKey) -> Result<Vec<u8>> {
     Ok(private_key.calculate_agreement(public_key)?.into_vec())
 }
 
-#[bridge_fn_buffer(ffi = "identitykeypair_serialize")]
+#[bridge_fn(ffi = "identitykeypair_serialize")]
 fn IdentityKeyPair_Serialize(public_key: &PublicKey, private_key: &PrivateKey) -> Vec<u8> {
     let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(*public_key), *private_key);
     identity_key_pair.serialize().into_vec()
 }
 
-#[bridge_fn_buffer(ffi = "identitykeypair_sign_alternate_identity")]
+#[bridge_fn(ffi = "identitykeypair_sign_alternate_identity")]
 fn IdentityKeyPair_SignAlternateIdentity(
     public_key: &PublicKey,
     private_key: &PrivateKey,
@@ -236,7 +236,7 @@ fn NumericFingerprintGenerator_New(
     )
 }
 
-#[bridge_fn_buffer(jni = "NumericFingerprintGenerator_1GetScannableEncoding")]
+#[bridge_fn(jni = "NumericFingerprintGenerator_1GetScannableEncoding")]
 fn Fingerprint_ScannableEncoding(obj: &Fingerprint) -> Result<Vec<u8>> {
     obj.scannable.serialize()
 }
@@ -478,7 +478,7 @@ fn PlaintextContent_FromDecryptionErrorMessage(m: &DecryptionErrorMessage) -> Pl
 /// Save an allocation by decrypting all in one go.
 ///
 /// Only useful for APIs that *do* decrypt all in one go, which is currently just Java.
-#[bridge_fn_buffer(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn PlaintextContent_DeserializeAndGetContent(bytes: &[u8]) -> Result<Vec<u8>> {
     Ok(PlaintextContent::try_from(bytes)?.body().to_vec())
 }
@@ -645,7 +645,14 @@ bridge_get_buffer!(
     jni = "UnidentifiedSenderMessageContent_1GetSerialized"
 );
 bridge_get_buffer!(UnidentifiedSenderMessageContent::contents -> &[u8]);
-bridge_get_buffer!(UnidentifiedSenderMessageContent::group_id -> Option<&[u8]>);
+bridge_get_buffer!(UnidentifiedSenderMessageContent::group_id -> Option<&[u8]>, ffi = false);
+
+#[bridge_fn(jni = false, node = false)]
+fn UnidentifiedSenderMessageContent_GetGroupIdOrEmpty(
+    m: &UnidentifiedSenderMessageContent,
+) -> Result<&[u8]> {
+    Ok(m.group_id()?.unwrap_or_default())
+}
 
 #[bridge_fn]
 fn UnidentifiedSenderMessageContent_GetSenderCert(
@@ -848,7 +855,7 @@ bridge_get_buffer!(
     ffi = false,
     node = false
 );
-#[bridge_fn_buffer(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn SessionRecord_GetReceiverChainKeyValue(
     session_state: &SessionRecord,
     key: &PublicKey,
@@ -965,7 +972,7 @@ async fn SessionCipher_EncryptMessage(
     .await
 }
 
-#[bridge_fn_buffer(ffi = "decrypt_message")]
+#[bridge_fn(ffi = "decrypt_message")]
 async fn SessionCipher_DecryptSignalMessage(
     message: &SignalMessage,
     protocol_address: &ProtocolAddress,
@@ -985,7 +992,7 @@ async fn SessionCipher_DecryptSignalMessage(
     .await
 }
 
-#[bridge_fn_buffer(ffi = "decrypt_pre_key_message")]
+#[bridge_fn(ffi = "decrypt_pre_key_message")]
 async fn SessionCipher_DecryptPreKeySignalMessage(
     message: &PreKeySignalMessage,
     protocol_address: &ProtocolAddress,
@@ -1009,7 +1016,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
     .await
 }
 
-#[bridge_fn_buffer(node = "SealedSender_Encrypt")]
+#[bridge_fn(node = "SealedSender_Encrypt")]
 async fn SealedSessionCipher_Encrypt(
     destination: &ProtocolAddress,
     content: &UnidentifiedSenderMessageContent,
@@ -1020,7 +1027,7 @@ async fn SealedSessionCipher_Encrypt(
     sealed_sender_encrypt_from_usmc(destination, content, identity_key_store, ctx, &mut rng).await
 }
 
-#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientEncrypt", node = false)]
+#[bridge_fn(jni = "SealedSessionCipher_1MultiRecipientEncrypt", node = false)]
 async fn SealedSender_MultiRecipientEncrypt(
     recipients: &[&ProtocolAddress],
     recipient_sessions: &[&SessionRecord],
@@ -1041,7 +1048,7 @@ async fn SealedSender_MultiRecipientEncrypt(
 }
 
 // Node can't support the `&[&Foo]` type, so we clone the sessions instead.
-#[bridge_fn_buffer(ffi = false, jni = false, node = "SealedSender_MultiRecipientEncrypt")]
+#[bridge_fn(ffi = false, jni = false, node = "SealedSender_MultiRecipientEncrypt")]
 async fn SealedSender_MultiRecipientEncryptNode(
     recipients: &[&ProtocolAddress],
     recipient_sessions: &[SessionRecord],
@@ -1061,7 +1068,7 @@ async fn SealedSender_MultiRecipientEncryptNode(
     .await
 }
 
-#[bridge_fn_buffer(jni = "SealedSessionCipher_1MultiRecipientMessageForSingleRecipient")]
+#[bridge_fn(jni = "SealedSessionCipher_1MultiRecipientMessageForSingleRecipient")]
 fn SealedSender_MultiRecipientMessageForSingleRecipient(
     encoded_multi_recipient_message: &[u8],
 ) -> Result<Vec<u8>> {
@@ -1149,7 +1156,7 @@ async fn GroupCipher_EncryptMessage(
     Ok(CiphertextMessage::SenderKeyMessage(ctext))
 }
 
-#[bridge_fn_buffer(ffi = "group_decrypt_message")]
+#[bridge_fn(ffi = "group_decrypt_message")]
 async fn GroupCipher_DecryptMessage(
     sender: &ProtocolAddress,
     message: &[u8],

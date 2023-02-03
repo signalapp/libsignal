@@ -149,8 +149,7 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
-    out: *mut *const c_uchar,
-    out_len: *mut size_t,
+    out: *mut OwnedBufferOf<c_uchar>,
     sender_e164: *mut *const c_char,
     sender_uuid: *mut *const c_char,
     sender_device_id: *mut u32,
@@ -198,6 +197,6 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
         write_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
         write_result_to(sender_device_id, u32::from(decrypted.device_id))?;
-        write_bytearray_to(out, out_len, Some(decrypted.message))
+        write_result_to(out, decrypted.message)
     })
 }

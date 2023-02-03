@@ -144,7 +144,7 @@ macro_rules! bridge_deserialize {
 macro_rules! bridge_get_buffer {
     ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)*) => {
         paste! {
-            #[bridge_fn_buffer($($param = $val),*)]
+            #[bridge_fn($($param = $val),*)]
             fn [<$typ _ $name>](obj: &$typ) -> Result<$result> {
                 let result = TransformHelper($typ::$method(obj));
                 Ok(result.ok_if_needed()?.into_vec_if_needed().0)

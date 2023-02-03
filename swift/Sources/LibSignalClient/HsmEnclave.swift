@@ -74,7 +74,7 @@ public class HsmEnclaveClient: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_initial_request($0, $1, nativeHandle)
+                    signal_hsm_enclave_client_initial_request($0, nativeHandle)
                 }
             }
         }
@@ -94,7 +94,7 @@ public class HsmEnclaveClient: NativeHandleOwner {
         return try withNativeHandle { nativeHandle in
             try plaintextToSend.withUnsafeBorrowedBuffer { buffer in
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_established_send($0, $1, nativeHandle, buffer)
+                    signal_hsm_enclave_client_established_send($0, nativeHandle, buffer)
                 }
             }
         }
@@ -105,7 +105,7 @@ public class HsmEnclaveClient: NativeHandleOwner {
         return try withNativeHandle { nativeHandle in
             try receivedCiphertext.withUnsafeBorrowedBuffer { buffer in
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_established_recv($0, $1, nativeHandle, buffer)
+                    signal_hsm_enclave_client_established_recv($0, nativeHandle, buffer)
                 }
             }
         }

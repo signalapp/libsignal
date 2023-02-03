@@ -22,7 +22,7 @@ public struct Username {
                 try withUnsafeBytes(of: randomness.bytes) { randBytes in
                     try randBytes.withUnsafeBorrowedBuffer { randPtr in
                         try invokeFnReturningArray {
-                            signal_username_proof($0, $1, strPtr, randPtr)
+                            signal_username_proof($0, strPtr, randPtr)
                         }
                     }
                 }
@@ -61,8 +61,8 @@ extension Username: CustomStringConvertible {
 
 private func generateHash(_ s: String) throws -> [UInt8] {
     try s.withCString { strPtr in
-        try invokeFnReturningArray {
-            signal_username_hash($0, $1, strPtr)
+        try invokeFnReturningFixedLengthArray {
+            signal_username_hash($0, strPtr)
         }
     }
 }

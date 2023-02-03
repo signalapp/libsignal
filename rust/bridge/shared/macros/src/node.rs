@@ -140,14 +140,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
         (ResultKind::Regular, ReturnType::Default) => result_type_format(&"()"),
         (ResultKind::Regular, ReturnType::Type(_, ty)) => result_type_format(&quote!(#ty)),
         (ResultKind::Void, _) => result_type_format(&"()"),
-        (ResultKind::Buffer, ReturnType::Type(_, _)) => result_type_format(&"Buffer"),
-        (ResultKind::Buffer, ReturnType::Default) => {
-            return Error::new(
-                sig.paren_token.span,
-                "missing result type for bridge_fn_buffer",
-            )
-            .to_compile_error()
-        }
     };
 
     let input_args: Result<Vec<_>> = sig

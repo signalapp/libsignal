@@ -44,7 +44,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_signed_pre_key_record_serialize($0, $1, nativeHandle)
+                    signal_signed_pre_key_record_serialize($0, nativeHandle)
                 }
             }
         }
@@ -94,7 +94,7 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_signed_pre_key_record_get_signature($0, $1, nativeHandle)
+                    signal_signed_pre_key_record_get_signature($0, nativeHandle)
                 }
             }
         }

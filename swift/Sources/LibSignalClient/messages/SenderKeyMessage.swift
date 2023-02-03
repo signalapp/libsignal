@@ -53,7 +53,7 @@ public class SenderKeyMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_key_message_serialize($0, $1, nativeHandle)
+                    signal_sender_key_message_serialize($0, nativeHandle)
                 }
             }
         }
@@ -63,7 +63,7 @@ public class SenderKeyMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_key_message_get_cipher_text($0, $1, nativeHandle)
+                    signal_sender_key_message_get_cipher_text($0, nativeHandle)
                 }
             }
         }

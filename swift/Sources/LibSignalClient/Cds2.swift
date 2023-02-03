@@ -53,7 +53,7 @@ public class Cds2Client: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_cds2_client_state_initial_request($0, $1, nativeHandle)
+                    signal_cds2_client_state_initial_request($0, nativeHandle)
                 }
             }
         }
@@ -73,7 +73,7 @@ public class Cds2Client: NativeHandleOwner {
         return try withNativeHandle { nativeHandle in
             try plaintextToSend.withUnsafeBorrowedBuffer { buffer in
                 try invokeFnReturningArray {
-                    signal_cds2_client_state_established_send($0, $1, nativeHandle, buffer)
+                    signal_cds2_client_state_established_send($0, nativeHandle, buffer)
                 }
             }
         }
@@ -84,7 +84,7 @@ public class Cds2Client: NativeHandleOwner {
         return try withNativeHandle { nativeHandle in
             try receivedCiphertext.withUnsafeBorrowedBuffer { buffer in
                 try invokeFnReturningArray {
-                    signal_cds2_client_state_established_recv($0, $1, nativeHandle, buffer)
+                    signal_cds2_client_state_established_recv($0, nativeHandle, buffer)
                 }
             }
         }

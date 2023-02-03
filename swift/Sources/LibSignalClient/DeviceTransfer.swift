@@ -18,7 +18,7 @@ public struct DeviceTransferKey {
     public static func generate(formattedAs keyFormat: KeyFormat = .pkcs8) -> Self {
         let privateKey = failOnError {
             try invokeFnReturningArray {
-                signal_device_transfer_generate_private_key_with_format($0, $1, keyFormat.rawValue)
+                signal_device_transfer_generate_private_key_with_format($0, keyFormat.rawValue)
             }
         }
 
@@ -33,7 +33,7 @@ public struct DeviceTransferKey {
         return privateKey.withUnsafeBorrowedBuffer { privateKeyBuffer in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_device_transfer_generate_certificate($0, $1,
+                    signal_device_transfer_generate_certificate($0,
                                                                 privateKeyBuffer,
                                                                 name,
                                                                 UInt32(daysTilExpire))

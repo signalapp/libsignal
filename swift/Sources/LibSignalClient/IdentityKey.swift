@@ -63,7 +63,7 @@ public struct IdentityKeyPair {
         return withNativeHandles(publicKey, privateKey) { publicKey, privateKey in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_identitykeypair_serialize($0, $1, publicKey, privateKey)
+                    signal_identitykeypair_serialize($0, publicKey, privateKey)
                 }
             }
         }
@@ -77,7 +77,7 @@ public struct IdentityKeyPair {
         return withNativeHandles(publicKey, privateKey, other.publicKey) { publicKey, privateKey, other in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_identitykeypair_sign_alternate_identity($0, $1, publicKey, privateKey, other)
+                    signal_identitykeypair_sign_alternate_identity($0, publicKey, privateKey, other)
                 }
             }
         }

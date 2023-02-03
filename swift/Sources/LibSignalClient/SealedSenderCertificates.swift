@@ -43,7 +43,7 @@ public class ServerCertificate: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_server_certificate_get_serialized($0, $1, nativeHandle)
+                    signal_server_certificate_get_serialized($0, nativeHandle)
                 }
             }
         }
@@ -53,7 +53,7 @@ public class ServerCertificate: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_server_certificate_get_certificate($0, $1, nativeHandle)
+                    signal_server_certificate_get_certificate($0, nativeHandle)
                 }
             }
         }
@@ -63,7 +63,7 @@ public class ServerCertificate: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_server_certificate_get_signature($0, $1, nativeHandle)
+                    signal_server_certificate_get_signature($0, nativeHandle)
                 }
             }
         }
@@ -134,7 +134,7 @@ public class SenderCertificate: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_certificate_get_serialized($0, $1, nativeHandle)
+                    signal_sender_certificate_get_serialized($0, nativeHandle)
                 }
             }
         }
@@ -144,7 +144,7 @@ public class SenderCertificate: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_certificate_get_certificate($0, $1, nativeHandle)
+                    signal_sender_certificate_get_certificate($0, nativeHandle)
                 }
             }
         }
@@ -154,7 +154,7 @@ public class SenderCertificate: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_certificate_get_signature($0, $1, nativeHandle)
+                    signal_sender_certificate_get_signature($0, nativeHandle)
                 }
             }
         }

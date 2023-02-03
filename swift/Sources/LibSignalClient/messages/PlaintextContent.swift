@@ -31,7 +31,7 @@ public class PlaintextContent: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_plaintext_content_serialize($0, $1, nativeHandle)
+                    signal_plaintext_content_serialize($0, nativeHandle)
                 }
             }
         }
@@ -41,7 +41,7 @@ public class PlaintextContent: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_plaintext_content_get_body($0, $1, nativeHandle)
+                    signal_plaintext_content_get_body($0, nativeHandle)
                 }
             }
         }
@@ -82,7 +82,7 @@ public class DecryptionErrorMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_decryption_error_message_serialize($0, $1, nativeHandle)
+                    signal_decryption_error_message_serialize($0, nativeHandle)
                 }
             }
         }

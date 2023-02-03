@@ -10,12 +10,12 @@ use crate::*;
 
 use ::usernames::{NicknameLimits, Username, UsernameError};
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 pub fn Username_Hash(username: String) -> Result<[u8; 32], UsernameError> {
     Username::new(&username).map(|un| un.hash())
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 pub fn Username_Proof(username: String, randomness: &[u8]) -> Result<Vec<u8>, UsernameError> {
     Username::new(&username)?.proof(randomness)
 }

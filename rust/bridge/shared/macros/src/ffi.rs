@@ -23,19 +23,6 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
             quote!(ffi::write_result_to(out, __result)?),
         ),
         (ResultKind::Void, ReturnType::Type(_, _)) => (quote!(), quote!(__result?;)),
-        (ResultKind::Buffer, ReturnType::Type(_, _)) => (
-            quote!(
-                out: *mut *const libc::c_uchar,
-                out_len: *mut libc::size_t, // note the trailing comma
-            ),
-            quote! {
-                let __result = support::TransformHelper(__result)
-                    .ok_if_needed()?
-                    .some_if_needed()
-                    .map(|helper| helper.0);
-                ffi::write_bytearray_to(out, out_len, __result)?
-            },
-        ),
     };
 
     let await_if_needed = sig.asyncness.map(|_| {

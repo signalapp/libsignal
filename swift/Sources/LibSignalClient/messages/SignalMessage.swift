@@ -33,7 +33,7 @@ public class SignalMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_message_get_body($0, $1, nativeHandle)
+                    signal_message_get_body($0, nativeHandle)
                 }
             }
         }
@@ -43,7 +43,7 @@ public class SignalMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_message_get_serialized($0, $1, nativeHandle)
+                    signal_message_get_serialized($0, nativeHandle)
                 }
             }
         }

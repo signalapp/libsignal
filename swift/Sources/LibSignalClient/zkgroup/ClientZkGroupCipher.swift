@@ -67,7 +67,7 @@ public class ClientZkGroupCipher {
       try randomness.withUnsafePointerToBytes { randomness in
         try plaintext.withUnsafeBorrowedBuffer { plaintext in
           try invokeFnReturningArray {
-            signal_group_secret_params_encrypt_blob_with_padding_deterministic($0, $1, groupSecretParams, randomness, plaintext, 0)
+            signal_group_secret_params_encrypt_blob_with_padding_deterministic($0, groupSecretParams, randomness, plaintext, 0)
           }
         }
       }
@@ -76,9 +76,9 @@ public class ClientZkGroupCipher {
 
   public func decryptBlob(blobCiphertext: [UInt8]) throws -> [UInt8] {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
-      try blobCiphertext.withUnsafeBorrowedBuffer { blobCiphertext in
+      try blobCiphertext.withUnsafeBorrowedBuffer { blobCiphertext in
         try invokeFnReturningArray {
-          signal_group_secret_params_decrypt_blob_with_padding($0, $1, groupSecretParams, blobCiphertext)
+          signal_group_secret_params_decrypt_blob_with_padding($0, groupSecretParams, blobCiphertext)
         }
       }
     }

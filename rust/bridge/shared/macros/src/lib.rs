@@ -181,7 +181,6 @@ fn name_for_meta_key(
 #[derive(Clone, Copy)]
 enum ResultKind {
     Regular,
-    Buffer,
     Void,
 }
 
@@ -252,34 +251,6 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
 #[proc_macro_attribute]
 pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     bridge_fn_impl(attr, item, ResultKind::Regular)
-}
-
-/// Generates C, Java, and Node entry points for a Rust function that returns a buffer.
-///
-/// Because the C bindings conventions represent buffers as a pointer/length pair,
-/// the function will have multiple output parameters, which must be annotated specially.
-///
-/// Prefer returning a slice to `Vec<u8>` or similar to avoid unnecessary copies.
-///
-/// See the [crate-level documentation](crate) for more information.
-///
-/// # Example
-///
-/// ```ignore
-/// // Produces a JNI function manually named "Cipher_Rot13" (with JNI "_1" mangling)
-/// // and a TypeScript function named "Rot13",
-/// // with the FFI entry point disabled.
-/// # #[cfg(ignore_even_when_running_all_tests)]
-/// #[bridge_fn_buffer(ffi = false, jni = "Cipher_1Rot13")]
-/// fn Rot13(buffer: &[u8]) -> Vec<u8> {
-///   let mut output = buffer.to_vec();
-///   // ...
-///   output
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn bridge_fn_buffer(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(attr, item, ResultKind::Buffer)
 }
 
 /// Generates C, Java, and Node entry points for a Rust function that returns `Result<(), _>`.

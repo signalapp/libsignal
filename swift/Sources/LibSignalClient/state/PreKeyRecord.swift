@@ -42,7 +42,7 @@ public class PreKeyRecord: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_pre_key_record_serialize($0, $1, nativeHandle)
+                    signal_pre_key_record_serialize($0, nativeHandle)
                 }
             }
         }

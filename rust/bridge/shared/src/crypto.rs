@@ -122,7 +122,7 @@ fn Aes256GcmEncryption_Update(
     Ok(())
 }
 
-#[bridge_fn_buffer(node = false)]
+#[bridge_fn(node = false)]
 fn Aes256GcmEncryption_ComputeTag(gcm: &mut Aes256GcmEncryption) -> Result<Vec<u8>> {
     gcm.compute_tag()
 }
@@ -161,7 +161,7 @@ fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv> {
     ))
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn Aes256GcmSiv_Encrypt(
     aes_gcm_siv_obj: &Aes256GcmSiv,
     ptext: &[u8],
@@ -185,7 +185,7 @@ fn Aes256GcmSiv_Encrypt(
     Ok(buf)
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn Aes256GcmSiv_Decrypt(
     aes_gcm_siv: &Aes256GcmSiv,
     ctext: &[u8],
@@ -227,7 +227,7 @@ fn CryptographicHash_UpdateWithOffset(
     hash.update(&input[offset..(offset + len)])
 }
 
-#[bridge_fn_buffer(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn CryptographicHash_Finalize(hash: &mut CryptographicHash) -> Result<Vec<u8>> {
     hash.finalize()
 }
@@ -254,7 +254,7 @@ fn CryptographicMac_UpdateWithOffset(
     mac.update(&input[offset..(offset + len)])
 }
 
-#[bridge_fn_buffer(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn CryptographicMac_Finalize(mac: &mut CryptographicMac) -> Result<Vec<u8>> {
     mac.finalize()
 }

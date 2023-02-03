@@ -53,7 +53,7 @@ public class ClientZkAuthOperations {
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try authCredential.withUnsafePointerToSerialized { authCredential in
             try invokeFnReturningVariableLengthSerialized {
-              signal_server_public_params_create_auth_credential_presentation_deterministic($0, $1, contents, randomness, groupSecretParams, authCredential)
+              signal_server_public_params_create_auth_credential_presentation_deterministic($0, contents, randomness, groupSecretParams, authCredential)
             }
           }
         }
@@ -71,7 +71,7 @@ public class ClientZkAuthOperations {
         try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
           try authCredential.withUnsafePointerToSerialized { authCredential in
             try invokeFnReturningVariableLengthSerialized {
-              signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic($0, $1, contents, randomness, groupSecretParams, authCredential)
+              signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic($0, contents, randomness, groupSecretParams, authCredential)
             }
           }
         }

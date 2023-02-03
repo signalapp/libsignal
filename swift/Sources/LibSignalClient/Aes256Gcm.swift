@@ -123,7 +123,7 @@ public class Aes256GcmEncryption: NativeHandleOwner {
     public func computeTag() throws -> Data {
         return try withNativeHandle { nativeHandle in
             try invokeFnReturningData {
-                signal_aes256_gcm_encryption_compute_tag($0, $1, nativeHandle)
+                signal_aes256_gcm_encryption_compute_tag($0, nativeHandle)
             }
         }
     }

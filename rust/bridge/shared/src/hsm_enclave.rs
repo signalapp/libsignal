@@ -106,7 +106,7 @@ fn HsmEnclaveClient_CompleteHandshake(
     cli.complete_handshake(handshake_received)
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn HsmEnclaveClient_EstablishedSend(
     cli: &mut HsmEnclaveClient,
     plaintext_to_send: &[u8],
@@ -114,7 +114,7 @@ fn HsmEnclaveClient_EstablishedSend(
     cli.established_send(plaintext_to_send)
 }
 
-#[bridge_fn_buffer]
+#[bridge_fn]
 fn HsmEnclaveClient_EstablishedRecv(
     cli: &mut HsmEnclaveClient,
     received_ciphertext: &[u8],

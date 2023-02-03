@@ -46,7 +46,7 @@ public class CiphertextMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_ciphertext_message_serialize($0, $1, nativeHandle)
+                    signal_ciphertext_message_serialize($0, nativeHandle)
                 }
             }
         }

@@ -54,7 +54,7 @@ export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Bu
 export function Aes256GcmSiv_Encrypt(aesGcmSivObj: Wrapper<Aes256GcmSiv>, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;
 export function AuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
-export function AuthCredentialPresentation_GetPniCiphertext(presentationBytes: Buffer): Buffer;
+export function AuthCredentialPresentation_GetPniCiphertext(presentationBytes: Buffer): Buffer | null;
 export function AuthCredentialPresentation_GetRedemptionTime(presentationBytes: Buffer): Timestamp;
 export function AuthCredentialPresentation_GetUuidCiphertext(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function AuthCredentialResponse_CheckValidContents(buffer: Buffer): void;
@@ -288,7 +288,7 @@ export function SignedPreKeyRecord_Serialize(obj: Wrapper<SignedPreKeyRecord>): 
 export function UnidentifiedSenderMessageContent_Deserialize(data: Buffer): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_GetContentHint(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetContents(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
-export function UnidentifiedSenderMessageContent_GetGroupId(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
+export function UnidentifiedSenderMessageContent_GetGroupId(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer | null;
 export function UnidentifiedSenderMessageContent_GetMsgType(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetSenderCert(m: Wrapper<UnidentifiedSenderMessageContent>): SenderCertificate;
 export function UnidentifiedSenderMessageContent_New(message: Wrapper<CiphertextMessage>, sender: Wrapper<SenderCertificate>, contentHint: number, groupId: Buffer | null): UnidentifiedSenderMessageContent;

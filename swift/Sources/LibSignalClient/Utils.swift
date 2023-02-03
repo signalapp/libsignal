@@ -25,56 +25,48 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
-internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
-    return try invokeFnReturningOptionalArray(fn: fn)!
-}
-
-internal func invokeFnReturningOptionalArray(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> [UInt8]? {
-    var output: UnsafePointer<UInt8>?
-    var output_len = 0
-    try checkError(fn(&output, &output_len))
-    if output == nil {
-        return nil
-    }
-    let result = Array(UnsafeBufferPointer(start: output, count: output_len))
-    signal_free_buffer(output, output_len)
+internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
+    var output = SignalOwnedBuffer()
+    try checkError(fn(&output))
+    let result = Array(UnsafeBufferPointer(start: output.base, count: Int(output.length)))
+    signal_free_buffer(output.base, Int(output.length))
     return result
 }
 
-internal func invokeFnReturningData(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> Data {
-    return try invokeFnReturningOptionalData(fn: fn)!
+internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data {
+    var output = SignalOwnedBuffer()
+    try checkError(fn(&output))
+    let result = Data(UnsafeBufferPointer(start: output.base, count: Int(output.length)))
+    signal_free_buffer(output.base, Int(output.length))
+    return result
 }
 
-internal func invokeFnReturningOptionalData(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> Data? {
-    var output: UnsafePointer<UInt8>?
-    var output_len = 0
-    try checkError(fn(&output, &output_len))
-    if output == nil {
-        return nil
+internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(fn: (UnsafeMutablePointer<ResultAsTuple>) -> SignalFfiErrorRef?) throws -> [UInt8] {
+    precondition(MemoryLayout<ResultAsTuple>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
+    var output = Array(repeating: 0 as UInt8, count: MemoryLayout<ResultAsTuple>.size)
+    try output.withUnsafeMutableBytes { buffer -> Void in
+        let typedPointer = buffer.baseAddress!.assumingMemoryBound(to: ResultAsTuple.self)
+        return try checkError(fn(typedPointer))
     }
-    let result = Data(UnsafeBufferPointer(start: output, count: output_len))
-    signal_free_buffer(output, output_len)
-    return result
+    return output
 }
 
 internal func invokeFnReturningSerialized<Result: ByteArray, SerializedResult>(fn: (UnsafeMutablePointer<SerializedResult>) -> SignalFfiErrorRef?) throws -> Result {
-    precondition(MemoryLayout<SerializedResult>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
-    var output = Array(repeating: 0 as UInt8, count: MemoryLayout<SerializedResult>.size)
-    try output.withUnsafeMutableBytes { buffer -> Void in
-        let typedPointer = buffer.baseAddress!.assumingMemoryBound(to: SerializedResult.self)
-        return try checkError(fn(typedPointer))
-    }
+    let output = try invokeFnReturningFixedLengthArray(fn: fn)
     return try Result(contents: output)
 }
 
-internal func invokeFnReturningVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> Result {
+internal func invokeFnReturningVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Result {
     let output = try invokeFnReturningArray(fn: fn)
     return try Result(contents: output)
 }
 
-internal func invokeFnReturningOptionalVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<UnsafePointer<UInt8>?>?, UnsafeMutablePointer<Int>?) -> SignalFfiErrorRef?) throws -> Result? {
-    let output = try invokeFnReturningOptionalArray(fn: fn)
-    return try output.map { try Result(contents: $0) }
+internal func invokeFnReturningOptionalVariableLengthSerialized<Result: ByteArray>(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Result? {
+    let output = try invokeFnReturningArray(fn: fn)
+    if output.isEmpty {
+        return nil
+    }
+    return try Result(contents: output)
 }
 
 internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> SignalFfiErrorRef?) throws -> UUID {

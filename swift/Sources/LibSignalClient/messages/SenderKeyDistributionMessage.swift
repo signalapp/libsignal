@@ -83,7 +83,7 @@ public class SenderKeyDistributionMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_key_distribution_message_serialize($0, $1, nativeHandle)
+                    signal_sender_key_distribution_message_serialize($0, nativeHandle)
                 }
             }
         }
@@ -93,7 +93,7 @@ public class SenderKeyDistributionMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sender_key_distribution_message_get_chain_key($0, $1, nativeHandle)
+                    signal_sender_key_distribution_message_get_chain_key($0, nativeHandle)
                 }
             }
         }

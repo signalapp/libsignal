@@ -36,7 +36,7 @@ public class PrivateKey: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_privatekey_serialize($0, $1, nativeHandle)
+                    signal_privatekey_serialize($0, nativeHandle)
                 }
             }
         }
@@ -47,7 +47,7 @@ public class PrivateKey: ClonableHandleOwner {
             message.withUnsafeBorrowedBuffer { messageBuffer in
                 failOnError {
                     try invokeFnReturningArray {
-                        signal_privatekey_sign($0, $1, nativeHandle, messageBuffer)
+                        signal_privatekey_sign($0, nativeHandle, messageBuffer)
                     }
                 }
             }
@@ -58,7 +58,7 @@ public class PrivateKey: ClonableHandleOwner {
         return withNativeHandles(self, other) { nativeHandle, otherHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_privatekey_agree($0, $1, nativeHandle, otherHandle)
+                    signal_privatekey_agree($0, nativeHandle, otherHandle)
                 }
             }
         }

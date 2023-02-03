@@ -28,7 +28,7 @@ public class PublicKey: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_publickey_get_public_key_bytes($0, $1, nativeHandle)
+                    signal_publickey_get_public_key_bytes($0, nativeHandle)
                 }
             }
         }
@@ -38,7 +38,7 @@ public class PublicKey: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_publickey_serialize($0, $1, nativeHandle)
+                    signal_publickey_serialize($0, nativeHandle)
                 }
             }
         }

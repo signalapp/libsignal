@@ -143,7 +143,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_pre_key_bundle_get_signed_pre_key_signature($0, $1, nativeHandle)
+                    signal_pre_key_bundle_get_signed_pre_key_signature($0, nativeHandle)
                 }
             }
         }
