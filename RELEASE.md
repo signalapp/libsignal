@@ -70,8 +70,8 @@ Note that Sonatype is pretty slow; even after the build completes it might take 
 
 ### Node: NPM
 
-In the signalapp/libsignal repository on GitHub, run the "Publish to NPM" action. Use the tag you just made as the "Git Tag" and leave the "NPM Tag" as "latest".
+In the signalapp/libsignal repository on GitHub, run the "Publish to NPM" action on the tag you just made. Leave the "NPM Tag" as "latest".
 
-### iOS: Let the iOS team know
+### iOS: Build Artifacts
 
-They build all their CocoaPods on a dedicated build server, including libsignal.
+In the signalapp/libsignal repository on GitHub, run the "Build iOS Artifacts" action on the tag you just made. Share the resulting checksum with whoever will update the iOS app repository.
