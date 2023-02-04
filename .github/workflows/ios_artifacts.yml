@@ -54,7 +54,7 @@ jobs:
 
     - run: tar -c --auto-compress --no-mac-metadata -f ${{ steps.archive-name.outputs.name }} target/*/release/libsignal_ffi.a
 
-    - run: 'sha256sum ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY'
+    - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY'
 
     - uses: google-github-actions/auth@v1
       with:
