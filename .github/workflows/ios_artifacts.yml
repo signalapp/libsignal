@@ -54,7 +54,7 @@ jobs:
 
     - run: tar -c --auto-compress --no-mac-metadata -f ${{ steps.archive-name.outputs.name }} target/*/release/libsignal_ffi.a
 
-    - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY'
+    - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY ${{ steps.archive-name.outputs.name }}.sha256'
 
     - uses: google-github-actions/auth@v1
       with:
@@ -65,3 +65,11 @@ jobs:
       with:
         path: ${{ steps.archive-name.outputs.name }}
         destination: build-artifacts.signal.org/libraries
+
+    # This step is expected to fail if not run on a tag.
+    - name: Upload checksum to release
+      uses: ncipollo/release-action@4c75f0f2e4ae5f3c807cf0904605408e319dcaac # v1.11.1
+      with:
+        allowUpdates: true
+        artifactErrorsFailBuild: true
+        artifacts: ${{ steps.archive-name.outputs.name }}.sha256

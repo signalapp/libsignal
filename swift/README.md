@@ -7,7 +7,7 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
 
 1. Make sure you are using `use_frameworks!` in your Podfile. LibSignalClient is a Swift pod and as such cannot be compiled as a plain library.
 
-2. Add 'LibSignalClient' and 'SignalCoreKit' as dependencies in your Podfile, as well as the prebuild checksum for the latest release. You can find this in [Signal-iOS's Podfile][].
+2. Add 'LibSignalClient' and 'SignalCoreKit' as dependencies in your Podfile, as well as the prebuild checksum for the latest release. You can find the checksum in the [GitHub Releases][] for the project.
 
         pod 'LibSignalClient', git: 'https://github.com/signalapp/libsignal.git'
         pod 'SignalCoreKit', git: 'https://github.com/signalapp/SignalCoreKit.git'
@@ -17,7 +17,7 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
 
 4. Build as usual. The Rust library will automatically be linked into the built LibSignalClient.framework.
 
-[Signal-iOS's Podfile]: https://github.com/signalapp/Signal-iOS/blob/main/Podfile
+[GitHub Releases]: https://github.com/signalapp/libsignal/releases
 
 
 ## Development as a CocoaPod
