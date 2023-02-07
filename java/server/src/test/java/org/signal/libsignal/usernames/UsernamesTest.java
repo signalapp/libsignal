@@ -5,21 +5,19 @@
 
 package org.signal.libsignal.usernames;
 
-import org.signal.libsignal.usernames.Username;
-
-import java.util.List;
-
 import junit.framework.TestCase;
 import org.signal.libsignal.protocol.util.Hex;
+
+import java.util.List;
 
 public class UsernamesTest extends TestCase {
 
     public void testUsernameGeneration() throws BaseUsernameException {
         String nickname = "SiGNAl";
-        List<String> usernames = Username.generateCandidates(nickname, 3, 32);
+        List<Username> usernames = Username.candidatesFrom(nickname, 3, 32);
         assertFalse("Non-zero number of usernames expected", usernames.size() == 0);
-        for (String name : usernames) {
-            assertTrue(String.format("%s does not start with %s", name, nickname), name.startsWith(nickname));
+        for (Username name : usernames) {
+            assertTrue(String.format("%s does not start with %s", name, nickname), name.getUsername().startsWith(nickname));
         }
     }
 
@@ -27,7 +25,7 @@ public class UsernamesTest extends TestCase {
         List<String> invalidNicknames = List.of("hi", "way_too_long_to_be_a_reasonable_nickname", "I⍰Unicode", "s p a c e s", "0zerostart");
         for (String nickname : invalidNicknames) {
             try {
-                Username.generateCandidates(nickname, 3, 32);
+                Username.candidatesFrom(nickname, 3, 32);
                 fail(String.format("'%s' should not be considered valid", nickname));
             } catch (BaseUsernameException ex) {
                 // this is fine
@@ -38,28 +36,25 @@ public class UsernamesTest extends TestCase {
 
     public void testValidUsernameHashing() throws BaseUsernameException {
         String username = "he110.42";
-        byte[] hash = Username.hash(username);
+        byte[] hash = new Username(username).getHash();
         assertEquals(32, hash.length);
         assertEquals("f63f0521eb3adfe1d936f4b626b89558483507fbdb838fc554af059111cf322e", Hex.toStringCondensed(hash));
     }
 
     public void testToTheProofAndBack() throws BaseUsernameException {
-        String username = "hello_signal.42";
-        byte[] hash = Username.hash(username);
-        assertNotNull(hash);
-        byte[] randomness = new byte[32];
-        byte[] proof = Username.generateProof(username, randomness);
+        Username username = new Username("hello_signal.42");
+        assertNotNull(username.getHash());
+        byte[] proof = username.generateProof();
         assertNotNull(proof);
         assertEquals(128, proof.length);
-        Username.verifyProof(proof, hash);
+        Username.verifyProof(proof, username.getHash());
     }
 
     public void testInvalidHash() throws BaseUsernameException {
-        String username = "hello_signal.42";
-        byte[] hash = Username.hash(username);
-        byte[] proof = Username.generateProof(username, new byte[32]);
+        Username username = new Username("hello_signal.42");
+        byte[] hash = username.getHash();
+        byte[] proof = username.generateProof();
         hash[0] = 0;
-
         try {
             Username.verifyProof(proof, hash);
         } catch (BaseUsernameException ex) {
@@ -69,7 +64,7 @@ public class UsernamesTest extends TestCase {
 
     public void testInvalidRandomness() throws BaseUsernameException {
         try {
-            Username.generateProof("valid_name.01", new byte[31]);
+            new Username("valid_name.01").generateProofWithRandomness(new byte[31]);
         } catch (Error err) {
             assertTrue(err.getMessage().contains("Failed to create proof"));
         }
@@ -79,7 +74,7 @@ public class UsernamesTest extends TestCase {
         List<String> usernames = List.of("0zerostart.01", "zero.00", "short_zero.0", "short_one.1");
         for (String name : usernames) {
             try {
-                Username.hash(name);
+                new Username(name);
                 fail(String.format("'%s' should not be valid", name));
             } catch (BaseUsernameException ex) {
                 // this is fine
@@ -87,7 +82,7 @@ public class UsernamesTest extends TestCase {
         }
         for (String name : usernames) {
             try {
-                Username.generateProof(name, new byte[32]);
+                new Username(name).generateProof();
                 fail(String.format("'%s' should not be valid", name));
             } catch (BaseUsernameException ex) {
                 // this is fine

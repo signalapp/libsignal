@@ -1,10 +1,10 @@
 //
-// Copyright 2021 Signal Messenger, LLC.
+// Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 import XCTest
-@testable import LibSignalClient
+import LibSignalClient
 
 class UsernameTests: TestCaseBase {
 
