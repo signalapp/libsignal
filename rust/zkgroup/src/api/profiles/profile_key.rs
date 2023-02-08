@@ -8,6 +8,7 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 use serde::{Deserialize, Serialize};
+use signal_crypto::Aes256GcmEncryption;
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct ProfileKey {
@@ -58,6 +59,54 @@ impl ProfileKey {
         pkv_hex_array.copy_from_slice(pkv_hex_string.as_bytes());
         api::profiles::ProfileKeyVersion {
             bytes: pkv_hex_array,
+        }
+    }
+
+    pub fn derive_access_key(&self) -> [u8; 16] {
+        let nonce = &[0u8; 12];
+        let mut cipher = Aes256GcmEncryption::new(&self.bytes, nonce, &[]).unwrap();
+        let mut buf = [0u8; 16];
+        cipher.encrypt(&mut buf[..]).unwrap();
+        buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn access_key_kat() {
+        // Pairs of profile keys and derived access keys
+        let kat = [
+            (
+                [
+                    0xb9, 0x50, 0x42, 0xa2, 0xc2, 0xd9, 0xe5, 0xb3, 0xbb, 0x9, 0x30, 0xe, 0xe4,
+                    0x8, 0xa1, 0x72, 0xfa, 0xcd, 0x96, 0xe9, 0x1b, 0x50, 0x4e, 0x4, 0x3a, 0x5a,
+                    0x2, 0x3d, 0xc4, 0xcf, 0xf3, 0x59,
+                ],
+                [
+                    0x24, 0xfb, 0x96, 0xd4, 0xa5, 0xe3, 0x33, 0xe9, 0xd4, 0x45, 0x12, 0x5, 0xb9,
+                    0xe2, 0xfa, 0xed,
+                ],
+            ),
+            (
+                [
+                    0x26, 0x19, 0x7b, 0x17, 0xe5, 0xa2, 0xc3, 0x6d, 0x8c, 0x95, 0x18, 0xc3, 0x53,
+                    0x58, 0xf1, 0x23, 0xc4, 0x76, 0x0, 0xd, 0xb6, 0xda, 0x75, 0x65, 0xc0, 0xd4,
+                    0x1f, 0x66, 0x74, 0x46, 0x2c, 0x4d,
+                ],
+                [
+                    0xe8, 0x95, 0xc3, 0xc, 0xf7, 0x80, 0x75, 0x7d, 0x22, 0xf7, 0xa1, 0x79, 0x70,
+                    0x8b, 0x14, 0xa1,
+                ],
+            ),
+        ];
+
+        for (pk, ak) in kat {
+            let profile_key = ProfileKey::create(pk);
+            let access_key = profile_key.derive_access_key();
+            assert_eq!(ak, access_key);
         }
     }
 }

@@ -2349,6 +2349,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "sha2",
+ "signal-crypto",
  "subtle",
  "zkcredential",
 ]
