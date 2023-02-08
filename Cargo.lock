@@ -2014,6 +2014,7 @@ checksum = "99c0ec316ab08201476c032feb2f94a5c8ece5b209765c1fbc4430dd6e931ad6"
 name = "usernames"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "curve25519-dalek",
  "displaydoc",
  "lazy_static",

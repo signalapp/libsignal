@@ -28,3 +28,8 @@ branch = "lizard2"
 [dev-dependencies]
 zkgroup = { path = "../zkgroup" }
 proptest = "1.0"
+criterion = "0.4"
+
+[[bench]]
+name = "usernames_benchmarks"
+harness = false
