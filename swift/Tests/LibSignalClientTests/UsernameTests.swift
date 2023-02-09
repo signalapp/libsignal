@@ -17,7 +17,7 @@ class UsernameTests: TestCaseBase {
 
         try Username.verify(proof: proof, forHash: username.hash)
         var hash = username.hash
-        hash.swapAt(0, 1)
+        hash.shuffle()
         XCTAssertThrowsError(
             try Username.verify(proof: proof, forHash: hash)
         )
@@ -59,7 +59,7 @@ class UsernameTests: TestCaseBase {
         var hash = username.hash
         let proof = username.generateProof()
 
-        hash.swapAt(0, 31)
+        hash.shuffle()
         XCTAssertThrowsError(try Username.verify(proof: proof, forHash: hash))
     }
 

@@ -37,7 +37,7 @@ class IasTests: TestCaseBase {
 
     func testBadSignature() throws {
         var signatureData = Data(base64Encoded: goodSignature)!
-        signatureData.swapAt(0, 1)
+        signatureData.reverse()
         let messageData = Data(base64Encoded: goodMessage)!
         let pemBytes = Array(goodPem.utf8)
 

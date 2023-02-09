@@ -8,6 +8,7 @@ package org.signal.libsignal.usernames;
 import junit.framework.TestCase;
 import org.signal.libsignal.protocol.util.Hex;
 
+import java.security.SecureRandom;
 import java.util.List;
 
 public class UsernamesTest extends TestCase {
@@ -52,11 +53,14 @@ public class UsernamesTest extends TestCase {
 
     public void testInvalidHash() throws BaseUsernameException {
         Username username = new Username("hello_signal.42");
-        byte[] hash = username.getHash();
         byte[] proof = username.generateProof();
-        hash[0] = 0;
+
+        SecureRandom r = new SecureRandom();
+        byte[] badHash = new byte[32];
+        r.nextBytes(badHash);
+
         try {
-            Username.verifyProof(proof, hash);
+            Username.verifyProof(proof, badHash);
         } catch (BaseUsernameException ex) {
             assertTrue(ex.getMessage().contains("Username could not be verified"));
         }
