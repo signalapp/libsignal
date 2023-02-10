@@ -1083,6 +1083,10 @@ SignalFfiError *signal_group_decrypt_message(const unsigned char **out,
 SignalFfiError *signal_device_transfer_generate_private_key(const unsigned char **out,
                                                             size_t *out_len);
 
+SignalFfiError *signal_device_transfer_generate_private_key_with_format(const unsigned char **out,
+                                                                        size_t *out_len,
+                                                                        uint8_t key_format);
+
 SignalFfiError *signal_device_transfer_generate_certificate(const unsigned char **out,
                                                             size_t *out_len,
                                                             SignalBorrowedBuffer private_key,

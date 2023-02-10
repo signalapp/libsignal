@@ -6,13 +6,19 @@
 import SignalFfi
 import Foundation
 
+public enum KeyFormat: UInt8, CaseIterable {
+    // PKCS#8 is the default for backward compatibility
+    case pkcs8 = 0
+    case keySpecific = 1
+}
+
 public struct DeviceTransferKey {
     public let privateKey: [UInt8]
 
-    public static func generate() -> Self {
+    public static func generate(formattedAs keyFormat: KeyFormat = .pkcs8) -> Self {
         let privateKey = failOnError {
             try invokeFnReturningArray {
-                signal_device_transfer_generate_private_key($0, $1)
+                signal_device_transfer_generate_private_key_with_format($0, $1, keyFormat.rawValue)
             }
         }
 

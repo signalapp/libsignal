@@ -37,14 +37,42 @@ impl fmt::Display for Error {
     }
 }
 
-/// Generate a private key of size `bits` and export to PKCS8 format.
-pub fn create_rsa_private_key(bits: usize) -> Result<Vec<u8>, Error> {
+/// Key serialization format.
+#[derive(Copy, Clone, Debug)]
+pub enum KeyFormat {
+    /// DER-encoded PKCS8 PrivateKeyInfo format
+    Pkcs8,
+    /// DER-encoded key type specific format
+    KeySpecific,
+}
+
+impl From<u8> for KeyFormat {
+    fn from(value: u8) -> Self {
+        match value {
+            0u8 => KeyFormat::Pkcs8,
+            _ => KeyFormat::KeySpecific,
+        }
+    }
+}
+
+/// Generate a private key of size `bits` and export to a specified format.
+pub fn create_rsa_private_key(bits: usize, key_format: KeyFormat) -> Result<Vec<u8>, Error> {
     let rsa = Rsa::generate(bits as u32)
         .map_err(|_| Error::InternalError("RSA key generation failed"))?;
     let key =
         PKey::from_rsa(rsa).map_err(|_| Error::InternalError("Private key generation failed"))?;
-    key.private_key_to_der_pkcs8()
-        .map_err(|_| Error::InternalError("Exporting to PKCS8 failed"))
+    private_key_to_der(key, key_format)
+}
+
+fn private_key_to_der(key: PKey<Private>, format: KeyFormat) -> Result<Vec<u8>, Error> {
+    match format {
+        KeyFormat::KeySpecific => key
+            .private_key_to_der()
+            .map_err(|_| Error::InternalError("Exporting to a key specific format failed")),
+        KeyFormat::Pkcs8 => key
+            .private_key_to_der_pkcs8()
+            .map_err(|_| Error::InternalError("Exporting to PKCS8 failed")),
+    }
 }
 
 /// Generate a self-signed certificate of name `name`, expiring in `days_to_expire`.
