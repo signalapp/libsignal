@@ -10,9 +10,10 @@ jobs:
   build:
     name: Build
 
-    # Needed for google-github-actions/auth.
     permissions:
-      contents: 'read'
+      # Needed for ncipollo/release-action.
+      contents: 'write'
+      # Needed for google-github-actions/auth.
       id-token: 'write'
 
     runs-on: macos-latest
