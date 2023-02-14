@@ -25,6 +25,7 @@ attest = { path = "../../attest" }
 signal-crypto = { path = "../../crypto" }
 zkgroup = { path = "../../zkgroup" }
 usernames = { path = "../../usernames" }
+signal-pin = { path = "../../pin" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.

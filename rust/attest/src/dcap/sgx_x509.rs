@@ -380,10 +380,8 @@ impl<'a> TryFrom<SequenceOf<'a, SgxExtension<'a>>> for Configuration {
 
 #[cfg(test)]
 mod test {
-    use std::fs;
-    use std::path::Path;
-
     use super::*;
+    use crate::util::testio::read_test_file;
 
     #[test]
     fn test_deserialization() {
@@ -394,9 +392,5 @@ mod test {
         assert_eq!(ext.pceid, [0u8, 0u8]);
         assert_eq!(ext.tcb.pcesvn, 11);
         assert_eq!(ext.tcb.compsvn[0], 4);
-    }
-
-    fn read_test_file(path: &str) -> Vec<u8> {
-        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("failed to read file")
     }
 }

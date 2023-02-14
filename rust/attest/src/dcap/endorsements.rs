@@ -297,10 +297,9 @@ impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHe
 
 #[cfg(test)]
 mod tests {
+    use crate::util::testio::read_test_file;
     use hex_literal::hex;
     use std::convert::{TryFrom, TryInto};
-    use std::fs;
-    use std::path::Path;
 
     use super::*;
 
@@ -369,10 +368,6 @@ mod tests {
             [7, 9, 3, 3, 255, 255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             tcb_info.tcb_levels[0].tcb.components()
         );
-    }
-
-    fn read_test_file(path: &str) -> Vec<u8> {
-        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("failed to read file")
     }
 }
 

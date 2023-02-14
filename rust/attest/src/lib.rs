@@ -8,9 +8,11 @@ pub mod client_connection;
 pub mod dcap;
 pub mod hsm_enclave;
 pub mod ias;
-mod proto;
+pub mod sgx_session;
+pub mod svr2;
 
 mod endian;
 mod error;
+mod proto;
 mod snow_resolver;
 mod util;

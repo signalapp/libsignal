@@ -3,6 +3,7 @@ members = [
     "rust/attest",
     "rust/crypto",
     "rust/device-transfer",
+    "rust/pin",
     "rust/poksho",
     "rust/protocol",
     "rust/usernames",
@@ -14,6 +15,7 @@ members = [
 default-members = [
     "rust/crypto",
     "rust/device-transfer",
+    "rust/pin",
     "rust/poksho",
     "rust/protocol",
     "rust/usernames",
@@ -25,3 +27,6 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 # Use our fork of curve25519-dalek for eventual zkgroup support.
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', branch = 'lizard2' }
 boring = { git = 'https://github.com/signalapp/boring', branch = 'libsignal'}
+
+[profile.dev.package.argon2]
+opt-level = 2 # signal-signal-pin unit tests are too slow with an unoptimized argon2

@@ -17,6 +17,7 @@ device-transfer = { path = "../../device-transfer" }
 attest = { path = "../../attest" }
 zkgroup = { path = "../../zkgroup" }
 usernames = { path = "../../usernames" }
+signal-pin = { path = "../../pin" }
 libsignal-bridge-macros = { path = "macros" }
 aes-gcm-siv = "0.10.1"
 async-trait = "0.1.41"

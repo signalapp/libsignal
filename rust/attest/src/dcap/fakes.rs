@@ -33,9 +33,9 @@ use std::time::SystemTime;
 
 lazy_static! {
     static ref EVIDENCE_BYTES: Vec<u8> =
-        crate::dcap::test::read_test_file("tests/data/dcap.evidence");
+        crate::util::testio::read_test_file("tests/data/dcap.evidence");
     static ref ENDORSEMENT_BYTES: Vec<u8> =
-        crate::dcap::test::read_test_file("tests/data/dcap.endorsements");
+        crate::util::testio::read_test_file("tests/data/dcap.endorsements");
 }
 
 pub(crate) struct SigningInfo {

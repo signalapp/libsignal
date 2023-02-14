@@ -1,4 +1,4 @@
-package org.signal.libsignal.cds2;
+package org.signal.libsignal.attest;
 
 public class AttestationDataException extends Exception {
     public AttestationDataException(String msg) { super(msg); }

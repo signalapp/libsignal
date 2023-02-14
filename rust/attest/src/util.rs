@@ -121,3 +121,16 @@ pub(crate) fn system_time_to_asn1_time(
 
     Asn1Time::from_unix(t).map_err(|_| FailedToConvertToAsn1Time)
 }
+
+#[cfg(test)]
+pub(crate) mod testio {
+    use std::fs;
+    use std::path::Path;
+
+    /// Read a file to bytes, panicking on errors or if the file does not exist
+    ///
+    /// `path` should be relative to the package root directory
+    pub(crate) fn read_test_file(path: &str) -> Vec<u8> {
+        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("Failed to read file")
+    }
+}

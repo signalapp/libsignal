@@ -8,11 +8,12 @@ extern crate jni_crate as jni;
 use jni::objects::{JThrowable, JValue};
 use jni::sys::jobject;
 
-use attest::cds2::Error as Cds2Error;
 use attest::hsm_enclave::Error as HsmEnclaveError;
+use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use signal_pin::Error as PinError;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt::Display;
@@ -309,18 +310,23 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(java.lang.IllegalStateException)
         }
 
-        SignalJniError::Cds2(Cds2Error::NoiseHandshakeError(_))
-        | SignalJniError::Cds2(Cds2Error::NoiseError(_)) => {
-            jni_class_name!(org.signal.libsignal.cds2.Cds2CommunicationFailureException)
+        SignalJniError::Sgx(SgxError::NoiseHandshakeError(_))
+        | SignalJniError::Sgx(SgxError::NoiseError(_)) => {
+            jni_class_name!(org.signal.libsignal.attest.SgxCommunicationFailureException)
         }
-        SignalJniError::Cds2(Cds2Error::DcapError(_)) => {
-            jni_class_name!(org.signal.libsignal.cds2.DcapException)
+        SignalJniError::Sgx(SgxError::DcapError(_)) => {
+            jni_class_name!(org.signal.libsignal.attest.DcapException)
         }
-        SignalJniError::Cds2(Cds2Error::AttestationDataError { .. }) => {
-            jni_class_name!(org.signal.libsignal.cds2.AttestationDataException)
+        SignalJniError::Sgx(SgxError::AttestationDataError { .. }) => {
+            jni_class_name!(org.signal.libsignal.attest.AttestationDataException)
         }
-        SignalJniError::Cds2(Cds2Error::InvalidBridgeStateError) => {
+        SignalJniError::Sgx(SgxError::InvalidBridgeStateError) => {
             jni_class_name!(java.lang.IllegalStateException)
+        }
+
+        SignalJniError::Pin(PinError::Argon2Error(_))
+        | SignalJniError::Pin(PinError::DecodingError(_)) => {
+            jni_class_name!(java.lang.IllegalArgumentException)
         }
 
         SignalJniError::ZkGroupDeserializationFailure(_) => {

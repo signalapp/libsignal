@@ -138,6 +138,8 @@ mod test {
     use chrono::DateTime;
     use std::time::Duration;
 
+    use crate::util::testio::read_test_file;
+
     use super::*;
 
     #[test]
@@ -179,12 +181,6 @@ mod test {
         let mut string = source.to_string();
         string.retain(|c| !c.is_whitespace());
         decode_block(string.as_str()).unwrap()
-    }
-
-    // copied verbatim from dcap::fakes::test
-    fn read_test_file(path: &str) -> Vec<u8> {
-        std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(path))
-            .expect("failed to read file")
     }
 
     lazy_static! {

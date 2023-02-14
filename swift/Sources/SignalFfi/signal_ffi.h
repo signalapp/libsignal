@@ -187,8 +187,6 @@ typedef struct SignalAes256GcmEncryption SignalAes256GcmEncryption;
 
 typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
-typedef struct SignalCds2ClientState SignalCds2ClientState;
-
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
 typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
@@ -196,6 +194,8 @@ typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
 typedef struct SignalFingerprint SignalFingerprint;
 
 typedef struct SignalHsmEnclaveClient SignalHsmEnclaveClient;
+
+typedef struct SignalPinHash SignalPinHash;
 
 typedef struct SignalPlaintextContent SignalPlaintextContent;
 
@@ -226,6 +226,8 @@ typedef struct SignalServerCertificate SignalServerCertificate;
 
 typedef struct SignalSessionRecord SignalSessionRecord;
 
+typedef struct SignalSgxClientState SignalSgxClientState;
+
 /**
  * The top-level error type (opaquely) returned to C clients when something goes wrong.
  */
@@ -234,6 +236,8 @@ typedef struct SignalFfiError SignalFfiError;
 typedef struct SignalMessage SignalMessage;
 
 typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
+
+typedef struct SignalSvr2Client SignalSvr2Client;
 
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
 
@@ -1047,26 +1051,26 @@ SignalFfiError *signal_device_transfer_generate_certificate(SignalOwnedBuffer *o
                                                             const char *name,
                                                             uint32_t days_to_expire);
 
-SignalFfiError *signal_cds2_client_state_destroy(SignalCds2ClientState *p);
-
-SignalFfiError *signal_cds2_client_state_new(SignalCds2ClientState **out,
+SignalFfiError *signal_cds2_client_state_new(SignalSgxClientState **out,
                                              SignalBorrowedBuffer mrenclave,
                                              SignalBorrowedBuffer attestation_msg,
                                              uint64_t current_timestamp);
 
-SignalFfiError *signal_cds2_client_state_initial_request(SignalOwnedBuffer *out,
-                                                         const SignalCds2ClientState *obj);
+SignalFfiError *signal_sgx_client_state_destroy(SignalSgxClientState *p);
 
-SignalFfiError *signal_cds2_client_state_complete_handshake(SignalCds2ClientState *cli,
-                                                            SignalBorrowedBuffer handshake_received);
+SignalFfiError *signal_sgx_client_state_initial_request(SignalOwnedBuffer *out,
+                                                        const SignalSgxClientState *obj);
 
-SignalFfiError *signal_cds2_client_state_established_send(SignalOwnedBuffer *out,
-                                                          SignalCds2ClientState *cli,
-                                                          SignalBorrowedBuffer plaintext_to_send);
+SignalFfiError *signal_sgx_client_state_complete_handshake(SignalSgxClientState *cli,
+                                                           SignalBorrowedBuffer handshake_received);
 
-SignalFfiError *signal_cds2_client_state_established_recv(SignalOwnedBuffer *out,
-                                                          SignalCds2ClientState *cli,
-                                                          SignalBorrowedBuffer received_ciphertext);
+SignalFfiError *signal_sgx_client_state_established_send(SignalOwnedBuffer *out,
+                                                         SignalSgxClientState *cli,
+                                                         SignalBorrowedBuffer plaintext_to_send);
+
+SignalFfiError *signal_sgx_client_state_established_recv(SignalOwnedBuffer *out,
+                                                         SignalSgxClientState *cli,
+                                                         SignalBorrowedBuffer received_ciphertext);
 
 SignalFfiError *signal_hsm_enclave_client_destroy(SignalHsmEnclaveClient *p);
 
@@ -1417,6 +1421,41 @@ SignalFfiError *signal_verify_signature(bool *out,
                                         SignalBorrowedBuffer body,
                                         SignalBorrowedBuffer signature,
                                         uint64_t current_timestamp);
+
+SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
+
+SignalFfiError *signal_pin_hash_clone(SignalPinHash **new_obj, const SignalPinHash *obj);
+
+SignalFfiError *signal_pin_hash_encryption_key(uint8_t (*out)[32], const SignalPinHash *ph);
+
+SignalFfiError *signal_pin_hash_access_key(uint8_t (*out)[32], const SignalPinHash *ph);
+
+SignalFfiError *signal_pin_hash_from_salt(SignalPinHash **out,
+                                          SignalBorrowedBuffer pin,
+                                          const uint8_t (*salt)[32]);
+
+SignalFfiError *signal_pin_hash_from_username_group_id(SignalPinHash **out,
+                                                       SignalBorrowedBuffer pin,
+                                                       SignalBorrowedBuffer username,
+                                                       uint64_t groupid);
+
+SignalFfiError *signal_pin_local_hash(const char **out, SignalBorrowedBuffer pin);
+
+SignalFfiError *signal_pin_verify_local_hash(bool *out,
+                                             const char *encoded_hash,
+                                             SignalBorrowedBuffer pin);
+
+SignalFfiError *signal_svr2_client_destroy(SignalSvr2Client *p);
+
+SignalFfiError *signal_svr2_client_take_sgx_client_state(SignalSgxClientState **out,
+                                                         SignalSvr2Client *svr2_client);
+
+SignalFfiError *signal_svr2_client_group_id(uint64_t *out, const SignalSvr2Client *svr2_client);
+
+SignalFfiError *signal_svr2_client_new(SignalSvr2Client **out,
+                                       SignalBorrowedBuffer mrenclave,
+                                       SignalBorrowedBuffer attestation_msg,
+                                       uint64_t current_timestamp);
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 

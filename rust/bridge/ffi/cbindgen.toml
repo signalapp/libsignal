@@ -51,7 +51,7 @@ sort_by = "None"
 
 [parse]
 parse_deps = true
-include = ["libsignal-protocol", "signal-crypto", "zkgroup"]
+include = ["libsignal-protocol", "signal-crypto", "signal-pin", "zkgroup"]
 extra_bindings = ["libsignal-bridge", "zkgroup"]
 
 [parse.expand]

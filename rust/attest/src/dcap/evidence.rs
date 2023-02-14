@@ -140,10 +140,9 @@ impl CustomClaims<'_> {
 mod test {
     use super::*;
     use crate::dcap::MREnclave;
+    use crate::util::testio::read_test_file;
     use hex_literal::hex;
     use std::convert::TryFrom;
-    use std::fs;
-    use std::path::Path;
 
     const EXPECTED_MRENCLAVE: MREnclave =
         hex!("337ac97ce088a132daeb1308ea3159f807de4a827e875b2c90ce21bf4751196f");
@@ -223,9 +222,5 @@ mod test {
     fn empty_claims() {
         let buf = serialize(&HashMap::new());
         assert!(CustomClaims::try_from(&*buf).unwrap().map.is_empty())
-    }
-
-    fn read_test_file(path: &str) -> Vec<u8> {
-        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("failed to read file")
     }
 }

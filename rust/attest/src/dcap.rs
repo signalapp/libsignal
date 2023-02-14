@@ -674,12 +674,11 @@ impl TcbStanding {
 #[cfg(test)]
 mod test {
     use std::convert::TryInto;
-    use std::fs;
-    use std::path::Path;
     use std::time::{Duration, SystemTime};
 
     use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
     use crate::dcap::fakes::FakeAttestation;
+    use crate::util::testio::read_test_file;
     use boring::bn::BigNum;
     use hex_literal::hex;
 
@@ -1062,9 +1061,5 @@ mod test {
         assert!(
             matches!(attest.tcb_standing, TcbStanding::SWHardeningNeeded {advisory_ids} if advisory_ids == expected_ids)
         )
-    }
-
-    pub(crate) fn read_test_file(path: &str) -> Vec<u8> {
-        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("failed to read file")
     }
 }

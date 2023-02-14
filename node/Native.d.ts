@@ -61,11 +61,7 @@ export function AuthCredentialResponse_CheckValidContents(buffer: Buffer): void;
 export function AuthCredentialWithPniResponse_CheckValidContents(buffer: Buffer): void;
 export function AuthCredentialWithPni_CheckValidContents(buffer: Buffer): void;
 export function AuthCredential_CheckValidContents(buffer: Buffer): void;
-export function Cds2ClientState_CompleteHandshake(cli: Wrapper<Cds2ClientState>, handshakeReceived: Buffer): void;
-export function Cds2ClientState_EstablishedRecv(cli: Wrapper<Cds2ClientState>, receivedCiphertext: Buffer): Buffer;
-export function Cds2ClientState_EstablishedSend(cli: Wrapper<Cds2ClientState>, plaintextToSend: Buffer): Buffer;
-export function Cds2ClientState_InitialRequest(obj: Wrapper<Cds2ClientState>): Buffer;
-export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): Cds2ClientState;
+export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): SgxClientState;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -270,6 +266,10 @@ export function SessionRecord_GetLocalRegistrationId(obj: Wrapper<SessionRecord>
 export function SessionRecord_GetRemoteRegistrationId(obj: Wrapper<SessionRecord>): number;
 export function SessionRecord_HasCurrentState(obj: Wrapper<SessionRecord>): boolean;
 export function SessionRecord_Serialize(obj: Wrapper<SessionRecord>): Buffer;
+export function SgxClientState_CompleteHandshake(cli: Wrapper<SgxClientState>, handshakeReceived: Buffer): void;
+export function SgxClientState_EstablishedRecv(cli: Wrapper<SgxClientState>, receivedCiphertext: Buffer): Buffer;
+export function SgxClientState_EstablishedSend(cli: Wrapper<SgxClientState>, plaintextToSend: Buffer): Buffer;
+export function SgxClientState_InitialRequest(obj: Wrapper<SgxClientState>): Buffer;
 export function SignalMessage_Deserialize(data: Buffer): SignalMessage;
 export function SignalMessage_GetBody(obj: Wrapper<SignalMessage>): Buffer;
 export function SignalMessage_GetCounter(obj: Wrapper<SignalMessage>): number;
@@ -304,7 +304,6 @@ interface AuthCredential { readonly __type: unique symbol; }
 interface AuthCredentialResponse { readonly __type: unique symbol; }
 interface AuthCredentialWithPni { readonly __type: unique symbol; }
 interface AuthCredentialWithPniResponse { readonly __type: unique symbol; }
-interface Cds2ClientState { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }
@@ -345,6 +344,7 @@ interface ServerCertificate { readonly __type: unique symbol; }
 interface ServerPublicParams { readonly __type: unique symbol; }
 interface ServerSecretParams { readonly __type: unique symbol; }
 interface SessionRecord { readonly __type: unique symbol; }
+interface SgxClientState { readonly __type: unique symbol; }
 interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
 interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }

@@ -1,0 +1,30 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "signal-pin"
+authors = ["Signal Messenger LLC"]
+version = "0.1.0"
+edition = "2018"
+description = "A library for operating on signal pins"
+license = "AGPL-3.0-only"
+
+[dependencies]
+argon2 = "0.5.0"
+displaydoc = "0.2"
+hkdf = "0.11"
+rand_core = { version = "0.6", features = ["getrandom"] }
+sha2 = "0.9"
+static_assertions = "1.1"
+
+[dev-dependencies]
+hex-literal = "0.3.4"
+hmac = "0.11"
+criterion = "0.4"
+
+
+[[bench]]
+name = "hash"
+harness = false

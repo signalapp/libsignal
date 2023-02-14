@@ -5,10 +5,13 @@
 
 package org.signal.libsignal.cds2;
 
+import org.signal.libsignal.attest.AttestationDataException;
+
 import junit.framework.TestCase;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.Arrays;
+
 
 public class Cds2MetricsTest extends TestCase {
     private byte[] attestationMsg;

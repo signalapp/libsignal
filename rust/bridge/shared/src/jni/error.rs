@@ -11,6 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
@@ -25,7 +26,8 @@ pub enum SignalJniError {
     DeviceTransfer(DeviceTransferError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
-    Cds2(Cds2Error),
+    Sgx(SgxError),
+    Pin(PinError),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     UsernameError(UsernameError),
@@ -44,7 +46,8 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
-            SignalJniError::Cds2(e) => write!(f, "{}", e),
+            SignalJniError::Sgx(e) => write!(f, "{}", e),
+            SignalJniError::Pin(e) => write!(f, "{}", e),
             SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
@@ -90,9 +93,15 @@ impl From<HsmEnclaveError> for SignalJniError {
     }
 }
 
-impl From<Cds2Error> for SignalJniError {
-    fn from(e: Cds2Error) -> SignalJniError {
-        SignalJniError::Cds2(e)
+impl From<SgxError> for SignalJniError {
+    fn from(e: SgxError) -> SignalJniError {
+        SignalJniError::Sgx(e)
+    }
+}
+
+impl From<PinError> for SignalJniError {
+    fn from(e: PinError) -> SignalJniError {
+        SignalJniError::Pin(e)
     }
 }
 

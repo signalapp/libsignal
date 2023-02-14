@@ -14,14 +14,25 @@
 # serde:
 #   num_enum_derive indirectly uses serde in a proc-macro;
 #   unfortunately that shows up as a repeat here
+# block-buffer + digest:
+#  argon2 uses digest 0.10, all of the other rust-crypto dependencies are still based
+#  on digest 0.9. 
 EXPECTED="\
+block-buffer v0.9.0
+
+block-buffer v0.10.4
+
+digest v0.9.0
+
+digest v0.10.6
+
 getrandom v0.1.16
 
 getrandom v0.2.5
 
 rand_core v0.5.1
 
-rand_core v0.6.3
+rand_core v0.6.4
 
 serde v1.0.136
 

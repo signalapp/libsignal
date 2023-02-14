@@ -3,6 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+//! Provides encryption / decryption of messages for an already established Noise protocol session.
+//!
+//! Once a noise handshake has already completed (using the constant pattern provided below),
+//! messages can be encrypted into one or more noise transport messages for sending
+//! with [ClientConnection::send]. Likewise a single received message consisting internally
+//! of one or more noise transport messages can be decrypted with [ClientConnection::recv]
+
 use std::fmt;
 
 pub const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";

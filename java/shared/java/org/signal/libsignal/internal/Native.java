@@ -115,11 +115,6 @@ public final class Native {
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer);
 
-  public static native void Cds2ClientState_CompleteHandshake(long cli, byte[] handshakeReceived);
-  public static native void Cds2ClientState_Destroy(long handle);
-  public static native byte[] Cds2ClientState_EstablishedRecv(long cli, byte[] receivedCiphertext);
-  public static native byte[] Cds2ClientState_EstablishedSend(long cli, byte[] plaintextToSend);
-  public static native byte[] Cds2ClientState_InitialRequest(long obj);
   public static native long Cds2ClientState_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
   public static native Map Cds2Metrics_extract(byte[] attestationMsg);
@@ -213,6 +208,15 @@ public final class Native {
   public static native String NumericFingerprintGenerator_GetDisplayString(long obj);
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long obj);
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey);
+
+  public static native byte[] PinHash_AccessKey(long ph);
+  public static native void PinHash_Destroy(long handle);
+  public static native byte[] PinHash_EncryptionKey(long ph);
+  public static native long PinHash_FromSalt(byte[] pin, byte[] salt);
+  public static native long PinHash_FromUsernameGroupId(byte[] pin, byte[] username, long groupid);
+
+  public static native String Pin_LocalHash(byte[] pin);
+  public static native boolean Pin_VerifyLocalHash(String encodedHash, byte[] pin);
 
   public static native long PlaintextContent_Deserialize(byte[] data);
   public static native byte[] PlaintextContent_DeserializeAndGetContent(byte[] bytes);
@@ -419,6 +423,12 @@ public final class Native {
   public static native long SessionRecord_NewFresh();
   public static native byte[] SessionRecord_Serialize(long obj);
 
+  public static native void SgxClientState_CompleteHandshake(long cli, byte[] handshakeReceived);
+  public static native void SgxClientState_Destroy(long handle);
+  public static native byte[] SgxClientState_EstablishedRecv(long cli, byte[] receivedCiphertext);
+  public static native byte[] SgxClientState_EstablishedSend(long cli, byte[] plaintextToSend);
+  public static native byte[] SgxClientState_InitialRequest(long obj);
+
   public static native long SignalMessage_Deserialize(byte[] data);
   public static native void SignalMessage_Destroy(long handle);
   public static native byte[] SignalMessage_GetBody(long obj);
@@ -438,6 +448,11 @@ public final class Native {
   public static native byte[] SignedPreKeyRecord_GetSignature(long obj);
   public static native long SignedPreKeyRecord_GetTimestamp(long obj);
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
+
+  public static native void Svr2Client_Destroy(long handle);
+  public static native long Svr2Client_GroupId(long svr2Client);
+  public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
+  public static native long Svr2Client_TakeSgxClientState(long svr2Client);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);

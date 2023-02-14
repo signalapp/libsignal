@@ -1450,9 +1450,9 @@ export async function sealedSenderDecryptToUsmc(
 }
 
 export class Cds2Client {
-  readonly _nativeHandle: Native.Cds2ClientState;
+  readonly _nativeHandle: Native.SgxClientState;
 
-  private constructor(nativeHandle: Native.Cds2ClientState) {
+  private constructor(nativeHandle: Native.SgxClientState) {
     this._nativeHandle = nativeHandle;
   }
 
@@ -1471,19 +1471,19 @@ export class Cds2Client {
   }
 
   initialRequest(): Buffer {
-    return Native.Cds2ClientState_InitialRequest(this);
+    return Native.SgxClientState_InitialRequest(this);
   }
 
   completeHandshake(buffer: Buffer): void {
-    return Native.Cds2ClientState_CompleteHandshake(this, buffer);
+    return Native.SgxClientState_CompleteHandshake(this, buffer);
   }
 
   establishedSend(buffer: Buffer): Buffer {
-    return Native.Cds2ClientState_EstablishedSend(this, buffer);
+    return Native.SgxClientState_EstablishedSend(this, buffer);
   }
 
   establishedRecv(buffer: Buffer): Buffer {
-    return Native.Cds2ClientState_EstablishedRecv(this, buffer);
+    return Native.SgxClientState_EstablishedRecv(this, buffer);
   }
 }
 

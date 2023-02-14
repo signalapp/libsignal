@@ -1,4 +1,4 @@
-package org.signal.libsignal.cds2;
+package org.signal.libsignal.attest;
 
 public class DcapException extends Exception {
     public DcapException(String msg) { super(msg); }

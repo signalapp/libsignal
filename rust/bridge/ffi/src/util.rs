@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use attest::cds2::Error as Cds2Error;
 use attest::hsm_enclave::Error as HsmEnclaveError;
+use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
@@ -108,9 +109,12 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidKey
             }
 
-            SignalFfiError::Cds2(Cds2Error::AttestationDataError { .. }) => {
+            SignalFfiError::Sgx(SgxError::AttestationDataError { .. }) => {
                 SignalErrorCode::InvalidAttestationData
             }
+
+            SignalFfiError::Pin(PinError::Argon2Error(_))
+            | SignalFfiError::Pin(PinError::DecodingError(_)) => SignalErrorCode::InvalidArgument,
 
             SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_))
             | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
@@ -142,9 +146,9 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
-            | SignalFfiError::Cds2(Cds2Error::DcapError(_))
-            | SignalFfiError::Cds2(Cds2Error::NoiseError(_))
-            | SignalFfiError::Cds2(Cds2Error::NoiseHandshakeError(_))
+            | SignalFfiError::Sgx(SgxError::DcapError(_))
+            | SignalFfiError::Sgx(SgxError::NoiseError(_))
+            | SignalFfiError::Sgx(SgxError::NoiseHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
                 SignalErrorCode::InvalidMessage
@@ -160,7 +164,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
-            | SignalFfiError::Cds2(Cds2Error::InvalidBridgeStateError)
+            | SignalFfiError::Sgx(SgxError::InvalidBridgeStateError)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState
             }

@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.cds2;
 
+import org.signal.libsignal.attest.AttestationDataException;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
