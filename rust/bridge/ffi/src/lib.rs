@@ -53,7 +53,7 @@ pub unsafe extern "C" fn signal_error_get_message(
             return Err(SignalFfiError::NullPointer);
         }
         let msg = format!("{}", *err);
-        write_cstr_to(out, Ok(msg))
+        write_result_to(out, msg)
     })();
 
     match result {
@@ -194,9 +194,10 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         .now_or_never()
         .expect("synchronous")?;
 
-        write_optional_cstr_to(sender_e164, Ok(decrypted.sender_e164))?;
-        write_cstr_to(sender_uuid, Ok(decrypted.sender_uuid))?;
+        write_result_to(sender_e164, decrypted.sender_e164)?;
+        write_result_to(sender_uuid, decrypted.sender_uuid)?;
         write_result_to(sender_device_id, u32::from(decrypted.device_id))?;
-        write_result_to(out, decrypted.message)
+        write_result_to(out, decrypted.message)?;
+        Ok(())
     })
 }

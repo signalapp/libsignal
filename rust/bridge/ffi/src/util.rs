@@ -6,11 +6,9 @@
 use attest::cds2::Error as Cds2Error;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use libc::c_char;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use std::ffi::CString;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
@@ -223,35 +221,5 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::VerificationFailure
             }
         }
-    }
-}
-
-pub(crate) unsafe fn write_cstr_to(
-    out: *mut *const c_char,
-    value: Result<impl Into<Vec<u8>>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    write_optional_cstr_to(out, value.map(Some))
-}
-
-pub(crate) unsafe fn write_optional_cstr_to(
-    out: *mut *const c_char,
-    value: Result<Option<impl Into<Vec<u8>>>, SignalProtocolError>,
-) -> Result<(), SignalFfiError> {
-    if out.is_null() {
-        return Err(SignalFfiError::NullPointer);
-    }
-
-    match value {
-        Ok(Some(value)) => {
-            let cstr =
-                CString::new(value).expect("No NULL characters in string being returned to C");
-            *out = cstr.into_raw();
-            Ok(())
-        }
-        Ok(None) => {
-            *out = std::ptr::null();
-            Ok(())
-        }
-        Err(e) => Err(SignalFfiError::Signal(e)),
     }
 }
