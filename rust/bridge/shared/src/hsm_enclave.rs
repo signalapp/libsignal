@@ -94,7 +94,7 @@ fn HsmEnclaveClient_New(
     HsmEnclaveClient::new(trusted_public_key, trusted_code_hashes)
 }
 
-bridge_get_buffer!(
+bridge_get!(
     HsmEnclaveClient::initial_request as InitialRequest -> &[u8]
 );
 

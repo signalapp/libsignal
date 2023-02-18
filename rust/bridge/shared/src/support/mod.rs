@@ -120,44 +120,6 @@ macro_rules! bridge_deserialize {
     };
 }
 
-/// Exposes a buffer-returning getter to the bridges.
-///
-/// Example:
-///
-/// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge_macros;
-/// # struct Foo;
-/// # impl Foo {
-/// #     fn payload(&self) -> Result<Vec<u8>, ()> {
-/// #         Err(())
-/// #     }
-/// # }
-/// #
-/// # #[cfg(ignore_even_when_running_all_tests)]
-/// bridge_get_buffer!(Foo::payload -> Vec<u8>); // generates Foo_GetPayload
-/// ```
-///
-/// As a special case, accessors that produce `Box<[u8]>` can be converted to returning `Vec<u8>`.
-///
-/// Like `bridge_fn`, the `ffi`, `jni`, and `node` parameters allow customizing the name of the
-/// resulting entry points; they can also be `false` to disable a particular entry point.
-macro_rules! bridge_get_buffer {
-    ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)*) => {
-        paste! {
-            #[bridge_fn($($param = $val),*)]
-            fn [<$typ _ $name>](obj: &$typ) -> Result<$result> {
-                let result = TransformHelper($typ::$method(obj));
-                Ok(result.ok_if_needed()?.into_vec_if_needed().0)
-            }
-        }
-    };
-    ($typ:ident :: $method:ident -> $result:ty $(, $param:ident = $val:tt)*) => {
-        paste! {
-            bridge_get_buffer!($typ::$method as [<Get $method:camel>] -> $result $(, $param = $val)*);
-        }
-    };
-}
-
 /// Exposes a getter method as a `bridge_fn`.
 ///
 /// Full form:

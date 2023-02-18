@@ -91,7 +91,7 @@ fn Cds2ClientState_New(
     )
 }
 
-bridge_get_buffer!(
+bridge_get!(
     Cds2ClientState::initial_request as InitialRequest -> &[u8]
 );
 
