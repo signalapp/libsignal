@@ -266,16 +266,26 @@ fn validate_prefix(s: &str) -> Result<(), UsernameError> {
 
 fn random_discriminators<R: Rng>(
     rng: &mut R,
-    count_per_range: &[u8],
-    ranges: &[Range<u32>],
-) -> Result<Vec<u32>, UsernameError> {
+    count_per_range: &[usize],
+    ranges: &[Range<usize>],
+) -> Result<Vec<usize>, UsernameError> {
     assert!(count_per_range.len() <= ranges.len(), "Not enough ranges");
-    let total_count: u8 = count_per_range.iter().sum();
-    let mut results = Vec::with_capacity(total_count as usize);
+    let total_count: usize = count_per_range.iter().sum();
+    let mut results = Vec::with_capacity(total_count);
     for (n, range) in count_per_range.iter().zip(ranges) {
-        results.extend((0..*n).map(|_| rng.gen_range(range.start, range.end)));
+        results.extend(gen_range(rng, range, *n));
     }
     Ok(results)
+}
+
+fn gen_range<'a, R: Rng>(
+    rng: &mut R,
+    range: &'a Range<usize>,
+    amount: usize,
+) -> impl Iterator<Item = usize> + 'a {
+    let length = range.end - range.start;
+    let indices = rand::seq::index::sample(rng, length, amount);
+    indices.into_iter().map(move |i| range.start + i)
 }
 
 #[cfg(test)]
@@ -402,7 +412,7 @@ mod test {
     #[should_panic]
     fn too_few_ranges() {
         let mut rng = rand::thread_rng();
-        let counts: Vec<u8> = (0u8..DISCRIMINATOR_RANGES.len() as u8 + 1).collect();
+        let counts: Vec<usize> = (0usize..DISCRIMINATOR_RANGES.len() + 1).collect();
         let _ = random_discriminators(&mut rng, &counts, &DISCRIMINATOR_RANGES);
     }
 
