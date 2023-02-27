@@ -17,16 +17,16 @@ public class CiphertextMessage: NativeHandleOwner {
         }
 
         public static var whisper: Self {
-            return Self(SignalCiphertextMessageType_Whisper)
+            return Self(SignalCiphertextMessageTypeWhisper)
         }
         public static var preKey: Self {
-            return Self(SignalCiphertextMessageType_PreKey)
+            return Self(SignalCiphertextMessageTypePreKey)
         }
         public static var senderKey: Self {
-            return Self(SignalCiphertextMessageType_SenderKey)
+            return Self(SignalCiphertextMessageTypeSenderKey)
         }
         public static var plaintext: Self {
-            return Self(SignalCiphertextMessageType_Plaintext)
+            return Self(SignalCiphertextMessageTypePlaintext)
         }
     }
 

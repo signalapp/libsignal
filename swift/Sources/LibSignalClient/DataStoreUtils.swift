@@ -122,9 +122,9 @@ internal func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (U
             defer { cloneOrForgetAsNeeded(&public_key) }
             let direction: Direction
             switch SignalDirection(raw_direction) {
-            case SignalDirection_Sending:
+            case SignalDirectionSending:
                 direction = .sending
-            case SignalDirection_Receiving:
+            case SignalDirectionReceiving:
                 direction = .receiving
             default:
                 assertionFailure("unexpected direction value")

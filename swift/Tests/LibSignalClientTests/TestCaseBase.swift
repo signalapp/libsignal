@@ -16,7 +16,7 @@ class TestCaseBase: XCTestCase {
 #if canImport(SignalCoreKit)
         DDLog.add(DDOSLogger.sharedInstance)
 #else
-        signal_init_logger(SignalLogLevel_Trace, .init(
+        signal_init_logger(SignalLogLevelTrace, .init(
             enabled: { _, _ in true },
             log: { _, level, file, line, message in
                 let file = file.map { String(cString: $0) } ?? "<unknown>"

@@ -9,15 +9,15 @@
 static bool isEnabled(const char *_Nonnull target, SignalLogLevel level)
 {
     switch (level) {
-        case SignalLogLevel_Error:
+        case SignalLogLevelError:
             return ShouldLogError();
-        case SignalLogLevel_Warn:
+        case SignalLogLevelWarn:
             return ShouldLogWarning();
-        case SignalLogLevel_Info:
+        case SignalLogLevelInfo:
             return ShouldLogInfo();
-        case SignalLogLevel_Debug:
+        case SignalLogLevelDebug:
             return ShouldLogDebug();
-        case SignalLogLevel_Trace:
+        case SignalLogLevelTrace:
             return ShouldLogVerbose();
         default:
             return ShouldLogError();
@@ -43,19 +43,19 @@ static void logMessage(const char *_Nonnull target,
     }
 
     switch (level) {
-        case SignalLogLevel_Error:
+        case SignalLogLevelError:
             [OWSLogger error:formattedMessage];
             break;
-        case SignalLogLevel_Warn:
+        case SignalLogLevelWarn:
             [OWSLogger warn:formattedMessage];
             break;
-        case SignalLogLevel_Info:
+        case SignalLogLevelInfo:
             [OWSLogger info:formattedMessage];
             break;
-        case SignalLogLevel_Debug:
+        case SignalLogLevelDebug:
             [OWSLogger debug:formattedMessage];
             break;
-        case SignalLogLevel_Trace:
+        case SignalLogLevelTrace:
             [OWSLogger verbose:formattedMessage];
             break;
         default:
@@ -72,7 +72,7 @@ static void flush()
 __attribute__((constructor)) static void initLogging()
 {
     @autoreleasepool {
-        SignalLogLevel logLevel = ShouldLogDebug() ? SignalLogLevel_Trace : SignalLogLevel_Info;
+        SignalLogLevel logLevel = ShouldLogDebug() ? SignalLogLevelTrace : SignalLogLevelInfo;
         signal_init_logger(logLevel, (SignalFfiLogger) { .enabled = isEnabled, .log = logMessage, .flush = flush });
     }
 }

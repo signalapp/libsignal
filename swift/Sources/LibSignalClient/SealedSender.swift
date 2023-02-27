@@ -39,13 +39,13 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner {
         }
 
         public static var `default`: Self {
-            return Self(SignalContentHint_Default)
+            return Self(SignalContentHintDefault)
         }
         public static var resendable: Self {
-            return Self(SignalContentHint_Resendable)
+            return Self(SignalContentHintResendable)
         }
         public static var implicit: Self {
-            return Self(SignalContentHint_Implicit)
+            return Self(SignalContentHintImplicit)
         }
     }
 

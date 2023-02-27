@@ -59,75 +59,75 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     defer { signal_error_free(error) }
 
     switch SignalErrorCode(errType) {
-    case SignalErrorCode_InvalidState:
+    case SignalErrorCodeInvalidState:
         throw SignalError.invalidState(errStr)
-    case SignalErrorCode_InternalError:
+    case SignalErrorCodeInternalError:
         throw SignalError.internalError(errStr)
-    case SignalErrorCode_NullParameter:
+    case SignalErrorCodeNullParameter:
         throw SignalError.nullParameter(errStr)
-    case SignalErrorCode_InvalidArgument:
+    case SignalErrorCodeInvalidArgument:
         throw SignalError.invalidArgument(errStr)
-    case SignalErrorCode_InvalidType:
+    case SignalErrorCodeInvalidType:
         throw SignalError.invalidType(errStr)
-    case SignalErrorCode_InvalidUtf8String:
+    case SignalErrorCodeInvalidUtf8String:
         throw SignalError.invalidUtf8String(errStr)
-    case SignalErrorCode_ProtobufError:
+    case SignalErrorCodeProtobufError:
         throw SignalError.protobufError(errStr)
-    case SignalErrorCode_LegacyCiphertextVersion:
+    case SignalErrorCodeLegacyCiphertextVersion:
         throw SignalError.legacyCiphertextVersion(errStr)
-    case SignalErrorCode_UnknownCiphertextVersion:
+    case SignalErrorCodeUnknownCiphertextVersion:
         throw SignalError.unknownCiphertextVersion(errStr)
-    case SignalErrorCode_UnrecognizedMessageVersion:
+    case SignalErrorCodeUnrecognizedMessageVersion:
         throw SignalError.unrecognizedMessageVersion(errStr)
-    case SignalErrorCode_InvalidMessage:
+    case SignalErrorCodeInvalidMessage:
         throw SignalError.invalidMessage(errStr)
-    case SignalErrorCode_FingerprintParsingError:
+    case SignalErrorCodeFingerprintParsingError:
         throw SignalError.fingerprintParsingError(errStr)
-    case SignalErrorCode_SealedSenderSelfSend:
+    case SignalErrorCodeSealedSenderSelfSend:
         throw SignalError.sealedSenderSelfSend(errStr)
-    case SignalErrorCode_InvalidKey:
+    case SignalErrorCodeInvalidKey:
         throw SignalError.invalidKey(errStr)
-    case SignalErrorCode_InvalidSignature:
+    case SignalErrorCodeInvalidSignature:
         throw SignalError.invalidSignature(errStr)
-    case SignalErrorCode_FingerprintVersionMismatch:
+    case SignalErrorCodeFingerprintVersionMismatch:
         throw SignalError.fingerprintVersionMismatch(errStr)
-    case SignalErrorCode_UntrustedIdentity:
+    case SignalErrorCodeUntrustedIdentity:
         throw SignalError.untrustedIdentity(errStr)
-    case SignalErrorCode_InvalidKeyIdentifier:
+    case SignalErrorCodeInvalidKeyIdentifier:
         throw SignalError.invalidKeyIdentifier(errStr)
-    case SignalErrorCode_SessionNotFound:
+    case SignalErrorCodeSessionNotFound:
         throw SignalError.sessionNotFound(errStr)
-    case SignalErrorCode_InvalidSession:
+    case SignalErrorCodeInvalidSession:
         throw SignalError.invalidSession(errStr)
-    case SignalErrorCode_InvalidRegistrationId:
+    case SignalErrorCodeInvalidRegistrationId:
         let address: ProtocolAddress = try invokeFnReturningNativeHandle {
             signal_error_get_address(error, $0)
         }
         throw SignalError.invalidRegistrationId(address: address, message: errStr)
-    case SignalErrorCode_InvalidSenderKeySession:
+    case SignalErrorCodeInvalidSenderKeySession:
         let distributionId = try invokeFnReturningUuid {
             signal_error_get_uuid(error, $0)
         }
         throw SignalError.invalidSenderKeySession(distributionId: distributionId, message: errStr)
-    case SignalErrorCode_DuplicatedMessage:
+    case SignalErrorCodeDuplicatedMessage:
         throw SignalError.duplicatedMessage(errStr)
-    case SignalErrorCode_VerificationFailure:
+    case SignalErrorCodeVerificationFailure:
         throw SignalError.verificationFailed(errStr)
-    case SignalErrorCode_UsernameCannotBeEmpty:
+    case SignalErrorCodeUsernameCannotBeEmpty:
         throw SignalError.cannotBeEmpty(errStr)
-    case SignalErrorCode_UsernameCannotStartWithDigit:
+    case SignalErrorCodeUsernameCannotStartWithDigit:
         throw SignalError.cannotStartWithDigit(errStr)
-    case SignalErrorCode_UsernameMissingSeparator:
+    case SignalErrorCodeUsernameMissingSeparator:
         throw SignalError.missingSeparator(errStr)
-    case SignalErrorCode_UsernameBadDiscriminator:
+    case SignalErrorCodeUsernameBadDiscriminator:
         throw SignalError.badDiscriminator(errStr)
-    case SignalErrorCode_UsernameBadCharacter:
+    case SignalErrorCodeUsernameBadCharacter:
         throw SignalError.badNicknameCharacter(errStr)
-    case SignalErrorCode_UsernameTooShort:
+    case SignalErrorCodeUsernameTooShort:
         throw SignalError.nicknameTooShort(errStr)
-    case SignalErrorCode_UsernameTooLong:
+    case SignalErrorCodeUsernameTooLong:
         throw SignalError.nicknameTooLong(errStr)
-    case SignalErrorCode_CallbackError:
+    case SignalErrorCodeCallbackError:
         throw SignalError.callbackError(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
