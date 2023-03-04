@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+/* eslint @typescript-eslint/no-shadow: ["error", { "allow": ["hash"] }] */
+
 import { randomBytes } from 'crypto';
 import { RANDOM_LENGTH } from './zkgroup/internal/Constants';
 import * as Native from '../Native';

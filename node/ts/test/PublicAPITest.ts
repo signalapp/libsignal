@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+/* eslint-disable @typescript-eslint/require-await */
+
 import { assert, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as SignalClient from '../index';
@@ -17,30 +19,28 @@ class InMemorySessionStore extends SignalClient.SessionStore {
     name: SignalClient.ProtocolAddress,
     record: SignalClient.SessionRecord
   ): Promise<void> {
-    const idx = name.name() + '::' + name.deviceId();
-    Promise.resolve(this.state.set(idx, record.serialize()));
+    const idx = `${name.name()}::${name.deviceId()}`;
+    this.state.set(idx, record.serialize());
   }
   async getSession(
     name: SignalClient.ProtocolAddress
   ): Promise<SignalClient.SessionRecord | null> {
-    const idx = name.name() + '::' + name.deviceId();
+    const idx = `${name.name()}::${name.deviceId()}`;
     const serialized = this.state.get(idx);
     if (serialized) {
-      return Promise.resolve(
-        SignalClient.SessionRecord.deserialize(serialized)
-      );
+      return SignalClient.SessionRecord.deserialize(serialized);
     } else {
-      return Promise.resolve(null);
+      return null;
     }
   }
   async getExistingSessions(
     addresses: SignalClient.ProtocolAddress[]
   ): Promise<SignalClient.SessionRecord[]> {
     return addresses.map((address) => {
-      const idx = address.name() + '::' + address.deviceId();
+      const idx = `${address.name()}::${address.deviceId()}`;
       const serialized = this.state.get(idx);
       if (!serialized) {
-        throw 'no session for ' + idx;
+        throw `no session for ${idx}`;
       }
       return SignalClient.SessionRecord.deserialize(serialized);
     });
@@ -48,7 +48,7 @@ class InMemorySessionStore extends SignalClient.SessionStore {
 }
 
 class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
-  private idKeys = new Map();
+  private idKeys = new Map<string, SignalClient.PublicKey>();
   private localRegistrationId: number;
   private identityKey: SignalClient.PrivateKey;
 
@@ -59,10 +59,10 @@ class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
   }
 
   async getIdentityKey(): Promise<SignalClient.PrivateKey> {
-    return Promise.resolve(this.identityKey);
+    return this.identityKey;
   }
   async getLocalRegistrationId(): Promise<number> {
-    return Promise.resolve(this.localRegistrationId);
+    return this.localRegistrationId;
   }
 
   async isTrustedIdentity(
@@ -70,12 +70,12 @@ class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
     key: SignalClient.PublicKey,
     _direction: SignalClient.Direction
   ): Promise<boolean> {
-    const idx = name.name() + '::' + name.deviceId();
-    if (this.idKeys.has(idx)) {
-      const currentKey = this.idKeys.get(idx);
-      return Promise.resolve(currentKey.compare(key) == 0);
+    const idx = `${name.name()}::${name.deviceId()}`;
+    const currentKey = this.idKeys.get(idx);
+    if (currentKey) {
+      return currentKey.compare(key) == 0;
     } else {
-      return Promise.resolve(true);
+      return true;
     }
   }
 
@@ -83,86 +83,78 @@ class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
     name: SignalClient.ProtocolAddress,
     key: SignalClient.PublicKey
   ): Promise<boolean> {
-    const idx = name.name() + '::' + name.deviceId();
-    const seen = this.idKeys.has(idx);
-    if (seen) {
-      const currentKey = this.idKeys.get(idx);
+    const idx = `${name.name()}::${name.deviceId()}`;
+    const currentKey = this.idKeys.get(idx);
+    if (currentKey) {
       const changed = currentKey.compare(key) != 0;
       this.idKeys.set(idx, key);
-      return Promise.resolve(changed);
+      return changed;
     }
 
     this.idKeys.set(idx, key);
-    return Promise.resolve(false);
+    return false;
   }
   async getIdentity(
     name: SignalClient.ProtocolAddress
   ): Promise<SignalClient.PublicKey | null> {
-    const idx = name.name() + '::' + name.deviceId();
-    if (this.idKeys.has(idx)) {
-      return Promise.resolve(this.idKeys.get(idx));
-    } else {
-      return Promise.resolve(null);
-    }
+    const idx = `${name.name()}::${name.deviceId()}`;
+    return this.idKeys.get(idx) ?? null;
   }
 }
 
 class InMemoryPreKeyStore extends SignalClient.PreKeyStore {
-  private state = new Map();
+  private state = new Map<number, Buffer>();
   async savePreKey(
     id: number,
     record: SignalClient.PreKeyRecord
   ): Promise<void> {
-    Promise.resolve(this.state.set(id, record.serialize()));
+    this.state.set(id, record.serialize());
   }
   async getPreKey(id: number): Promise<SignalClient.PreKeyRecord> {
-    return Promise.resolve(
-      SignalClient.PreKeyRecord.deserialize(this.state.get(id))
-    );
+    const record = this.state.get(id);
+    if (!record) {
+      throw new Error(`pre-key ${id} not found`);
+    }
+    return SignalClient.PreKeyRecord.deserialize(record);
   }
   async removePreKey(id: number): Promise<void> {
     this.state.delete(id);
-    return Promise.resolve();
   }
 }
 
 class InMemorySignedPreKeyStore extends SignalClient.SignedPreKeyStore {
-  private state = new Map();
+  private state = new Map<number, Buffer>();
   async saveSignedPreKey(
     id: number,
     record: SignalClient.SignedPreKeyRecord
   ): Promise<void> {
-    Promise.resolve(this.state.set(id, record.serialize()));
+    this.state.set(id, record.serialize());
   }
   async getSignedPreKey(id: number): Promise<SignalClient.SignedPreKeyRecord> {
-    return Promise.resolve(
-      SignalClient.SignedPreKeyRecord.deserialize(this.state.get(id))
-    );
+    const record = this.state.get(id);
+    if (!record) {
+      throw new Error(`pre-key ${id} not found`);
+    }
+    return SignalClient.SignedPreKeyRecord.deserialize(record);
   }
 }
 
 class InMemorySenderKeyStore extends SignalClient.SenderKeyStore {
-  private state = new Map();
+  private state = new Map<string, SignalClient.SenderKeyRecord>();
   async saveSenderKey(
     sender: SignalClient.ProtocolAddress,
     distributionId: SignalClient.Uuid,
     record: SignalClient.SenderKeyRecord
   ): Promise<void> {
-    const idx =
-      distributionId + '::' + sender.name() + '::' + sender.deviceId();
-    Promise.resolve(this.state.set(idx, record));
+    const idx = `${distributionId}::${sender.name()}::${sender.deviceId()}`;
+    this.state.set(idx, record);
   }
   async getSenderKey(
     sender: SignalClient.ProtocolAddress,
     distributionId: SignalClient.Uuid
   ): Promise<SignalClient.SenderKeyRecord | null> {
-    const idx =
-      distributionId + '::' + sender.name() + '::' + sender.deviceId();
-    if (this.state.has(idx)) {
-      return Promise.resolve(this.state.get(idx));
-    } else {
-      return Promise.resolve(null);
-    }
+    const idx = `${distributionId}::${sender.name()}::${sender.deviceId()}`;
+    return this.state.get(idx) ?? null;
   }
 }
 
@@ -610,7 +602,7 @@ describe('SignalClient', () => {
       bPreKey.getPublicKey(),
       bPreKey
     );
-    bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+    await bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
 
     const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
       bSignedPreKeyId,
@@ -619,7 +611,7 @@ describe('SignalClient', () => {
       bSPreKey,
       bSignedPreKeySig
     );
-    bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+    await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
@@ -747,7 +739,7 @@ describe('SignalClient', () => {
       bPreKey.getPublicKey(),
       bPreKey
     );
-    bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+    await bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
 
     const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
       bSignedPreKeyId,
@@ -756,7 +748,7 @@ describe('SignalClient', () => {
       bSPreKey,
       bSignedPreKeySig
     );
-    bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+    await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
     await SignalClient.processPreKeyBundle(
       bPreKeyBundle,
@@ -925,7 +917,7 @@ describe('SignalClient', () => {
         bPreKey.getPublicKey(),
         bPreKey
       );
-      bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+      await bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
 
       const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
         bSignedPreKeyId,
@@ -934,7 +926,7 @@ describe('SignalClient', () => {
         bSPreKey,
         bSignedPreKeySig
       );
-      bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+      await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
       const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
       await SignalClient.processPreKeyBundle(
@@ -1069,7 +1061,7 @@ describe('SignalClient', () => {
         bPreKey.getPublicKey(),
         bPreKey
       );
-      bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+      await bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
 
       const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
         bSignedPreKeyId,
@@ -1078,7 +1070,7 @@ describe('SignalClient', () => {
         bSPreKey,
         bSignedPreKeySig
       );
-      bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+      await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
       const sharedAddress = SignalClient.ProtocolAddress.new(
         sharedUuid,
@@ -1193,7 +1185,7 @@ describe('SignalClient', () => {
         bPreKey.getPublicKey(),
         bPreKey
       );
-      bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+      await bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
 
       const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
         bSignedPreKeyId,
@@ -1202,7 +1194,7 @@ describe('SignalClient', () => {
         bSPreKey,
         bSignedPreKeySig
       );
-      bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+      await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
       const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
       await SignalClient.processPreKeyBundle(
@@ -1461,7 +1453,7 @@ describe('SignalClient', () => {
       bPreKey.getPublicKey(),
       bPreKey
     );
-    bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
+    await bPreK.savePreKey(bPreKeyId, bPreKeyRecord);
 
     const bSPreKeyRecord = SignalClient.SignedPreKeyRecord.new(
       bSignedPreKeyId,
@@ -1470,7 +1462,7 @@ describe('SignalClient', () => {
       bSPreKey,
       bSignedPreKeySig
     );
-    bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+    await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
 
     // Set up the session with a message from A to B.
 

@@ -1586,7 +1586,7 @@ export function initLogger(
             'signal-client',
             'index.ts',
             0,
-            'unknown log level ' + nativeLevel + '; treating as error'
+            `unknown log level ${nativeLevel}; treating as error`
           );
           level = LogLevel.Error;
           break;

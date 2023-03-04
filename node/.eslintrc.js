@@ -18,6 +18,7 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
     'plugin:import/errors',
     'plugin:import/warnings',
     'plugin:import/typescript',
@@ -64,6 +65,14 @@ module.exports = {
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
 
+    // Overrides recommended by typescript-eslint
+    //   https://github.com/typescript-eslint/typescript-eslint/releases/tag/v4.0.0
+    '@typescript-eslint/no-redeclare': 'error',
+    '@typescript-eslint/no-shadow': ['error', { ignoreOnInitialization: true }],
+    '@typescript-eslint/no-useless-constructor': ['error'],
+    'no-shadow': 'off',
+    'no-useless-constructor': 'off',
+
     // though we have a logger, we still remap console to log to disk
     'no-console': 'error',
 
@@ -79,8 +88,13 @@ module.exports = {
     // We prefer named exports
     'import/prefer-default-export': 'off',
 
+    'prefer-template': 'error',
+
     '@typescript-eslint/no-require-imports': 'error',
     '@typescript-eslint/consistent-type-assertions': 'error',
     '@typescript-eslint/explicit-module-boundary-types': 'error',
+
+    // Errors are valid in templates, but this rule doesn't know that.
+    '@typescript-eslint/restrict-template-expressions': 'off',
   },
 };
