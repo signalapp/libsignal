@@ -1,3 +1,5 @@
+-- VULNERABILTY REPORTING
+
 If you've found a security vulnerability in Signal, please report it via email to
 <security@signal.org>.
 
