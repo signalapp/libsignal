@@ -6,6 +6,7 @@
 use super::*;
 
 use paste::paste;
+use signal_media::sanitize;
 use std::fmt;
 
 const ERRORS_PROPERTY_NAME: &str = "Errors";
@@ -81,6 +82,10 @@ pub trait SignalNodeError: Sized + fmt::Display {
         }
     }
 }
+
+const IO_ERROR: &str = "IoError";
+const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
+const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
 
 impl SignalNodeError for neon::result::Throw {
     fn throw<'a>(
@@ -216,6 +221,36 @@ impl SignalNodeError for usernames::UsernameError {
             None => {
                 // Make sure we still throw something.
                 cx.throw_error(message)
+            }
+        }
+    }
+}
+
+impl SignalNodeError for sanitize::Error {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let name = match &self {
+            sanitize::Error::Io(_) => Some(IO_ERROR),
+            sanitize::Error::Parse(err) => match err.kind {
+                sanitize::ParseError::InvalidBoxLayout => Some(INVALID_MEDIA_INPUT),
+                sanitize::ParseError::InvalidInput => Some(INVALID_MEDIA_INPUT),
+                sanitize::ParseError::MissingRequiredBox(_) => Some(INVALID_MEDIA_INPUT),
+                sanitize::ParseError::TruncatedBox => Some(INVALID_MEDIA_INPUT),
+                sanitize::ParseError::UnsupportedBox(_) => Some(UNSUPPORTED_MEDIA_INPUT),
+                sanitize::ParseError::UnsupportedBoxLayout => Some(UNSUPPORTED_MEDIA_INPUT),
+                sanitize::ParseError::UnsupportedFormat(_) => Some(UNSUPPORTED_MEDIA_INPUT),
+            },
+        };
+        let message = self.to_string();
+        match new_js_error(cx, module, name, &message, operation_name, None) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(&message)
             }
         }
     }

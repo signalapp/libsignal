@@ -6,11 +6,15 @@
 use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use std::fmt;
+use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use signal_media::sanitize::{
+    Error as MediaSanitizeError, ParseErrorReport as MediaSanitizeParseErrorReport,
+};
 use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
@@ -31,6 +35,8 @@ pub enum SignalJniError {
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     UsernameError(UsernameError),
+    Io(IoError),
+    MediaSanitizeParse(MediaSanitizeParseErrorReport),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -52,6 +58,8 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalJniError::UsernameError(e) => write!(f, "{}", e),
+            SignalJniError::Io(e) => write!(f, "{}", e),
+            SignalJniError::MediaSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -129,6 +137,21 @@ impl From<UsernameError> for SignalJniError {
     }
 }
 
+impl From<IoError> for SignalJniError {
+    fn from(e: IoError) -> SignalJniError {
+        Self::Io(e)
+    }
+}
+
+impl From<MediaSanitizeError> for SignalJniError {
+    fn from(e: MediaSanitizeError) -> Self {
+        match e {
+            MediaSanitizeError::Io(e) => Self::Io(e.into()),
+            MediaSanitizeError::Parse(e) => Self::MediaSanitizeParse(e),
+        }
+    }
+}
+
 impl From<jni::errors::Error> for SignalJniError {
     fn from(e: jni::errors::Error) -> SignalJniError {
         SignalJniError::Jni(e)
@@ -144,6 +167,15 @@ impl From<SignalJniError> for SignalProtocolError {
                 SignalProtocolError::InvalidArgument(m.to_string())
             }
             _ => SignalProtocolError::FfiBindingError(format!("{}", err)),
+        }
+    }
+}
+
+impl From<SignalJniError> for IoError {
+    fn from(err: SignalJniError) -> Self {
+        match err {
+            SignalJniError::Io(e) => e,
+            e => IoError::new(IoErrorKind::Other, e.to_string()),
         }
     }
 }

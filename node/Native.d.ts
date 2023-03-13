@@ -40,6 +40,11 @@ export abstract class SenderKeyStore {
   _getSenderKey(sender: ProtocolAddress, distributionId: Uuid): Promise<SenderKeyRecord | null>;
 }
 
+export abstract class InputStream {
+  _read(amount: number): Promise<Buffer>;
+  _skip(amount: number): Promise<void>;
+}
+
 interface Wrapper<T> {
   readonly _nativeHandle: T
 }
@@ -132,6 +137,7 @@ export function IdentityKeyPair_Deserialize(buffer: Buffer): {publicKey:PublicKe
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Buffer;
 export function IdentityKeyPair_SignAlternateIdentity(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>, otherIdentity: Wrapper<PublicKey>): Buffer;
 export function IdentityKey_VerifyAlternateIdentity(publicKey: Wrapper<PublicKey>, otherIdentity: Wrapper<PublicKey>, signature: Buffer): boolean;
+export function Mp4Sanitizer_Sanitize(input: InputStream, len: Buffer): Promise<SanitizedMetadata>;
 export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;
 export function PlaintextContent_GetBody(obj: Wrapper<PlaintextContent>): Buffer;
@@ -195,6 +201,9 @@ export function ReceiptCredentialResponse_CheckValidContents(buffer: Buffer): vo
 export function ReceiptCredential_CheckValidContents(buffer: Buffer): void;
 export function ReceiptCredential_GetReceiptExpirationTime(receiptCredential: Serialized<ReceiptCredential>): Timestamp;
 export function ReceiptCredential_GetReceiptLevel(receiptCredential: Serialized<ReceiptCredential>): Buffer;
+export function SanitizedMetadata_GetDataLen(sanitized: Wrapper<SanitizedMetadata>): Buffer;
+export function SanitizedMetadata_GetDataOffset(sanitized: Wrapper<SanitizedMetadata>): Buffer;
+export function SanitizedMetadata_GetMetadata(sanitized: Wrapper<SanitizedMetadata>): Buffer;
 export function ScannableFingerprint_Compare(fprint1: Buffer, fprint2: Buffer): boolean;
 export function SealedSenderDecryptionResult_GetDeviceId(obj: Wrapper<SealedSenderDecryptionResult>): number;
 export function SealedSenderDecryptionResult_GetSenderE164(obj: Wrapper<SealedSenderDecryptionResult>): string | null;
@@ -341,6 +350,7 @@ interface ReceiptCredentialPresentation { readonly __type: unique symbol; }
 interface ReceiptCredentialRequest { readonly __type: unique symbol; }
 interface ReceiptCredentialRequestContext { readonly __type: unique symbol; }
 interface ReceiptCredentialResponse { readonly __type: unique symbol; }
+interface SanitizedMetadata { readonly __type: unique symbol; }
 interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }
 interface SenderKeyDistributionMessage { readonly __type: unique symbol; }

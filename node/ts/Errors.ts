@@ -23,6 +23,11 @@ export enum ErrorCode {
   BadNicknameCharacter,
   NicknameTooShort,
   NicknameTooLong,
+
+  IoError,
+
+  InvalidMediaInput,
+  UnsupportedMediaInput,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -130,6 +135,18 @@ export type NicknameTooLongError = LibSignalErrorCommon & {
   code: ErrorCode.NicknameTooLong;
 };
 
+export type IoError = LibSignalErrorCommon & {
+  code: ErrorCode.IoError;
+};
+
+export type InvalidMediaInputError = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidMediaInput;
+};
+
+export type UnsupportedMediaInputError = LibSignalErrorCommon & {
+  code: ErrorCode.UnsupportedMediaInput;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -144,4 +161,7 @@ export type LibSignalError =
   | MissingSeparatorError
   | BadNicknameCharacterError
   | NicknameTooShortError
-  | NicknameTooLongError;
+  | NicknameTooLongError
+  | IoError
+  | InvalidMediaInputError
+  | UnsupportedMediaInputError;

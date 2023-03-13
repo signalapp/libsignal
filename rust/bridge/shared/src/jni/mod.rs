@@ -33,6 +33,9 @@ pub use convert::*;
 mod error;
 pub use error::*;
 
+mod io;
+pub use io::*;
+
 mod storage;
 pub use storage::*;
 use usernames::UsernameError;
@@ -372,6 +375,14 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                     .usernames
                     .ProofVerificationFailureException
             )
+        }
+
+        SignalJniError::Io(_) => {
+            jni_class_name!(java.io.IOException)
+        }
+
+        SignalJniError::MediaSanitizeParse(_) => {
+            jni_class_name!(org.signal.libsignal.media.ParseException)
         }
     };
 

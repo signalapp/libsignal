@@ -13,6 +13,10 @@ export * from './Address';
 
 export * as usernames from './usernames';
 
+export * as io from './io';
+
+export * as Mp4Sanitizer from './Mp4Sanitizer';
+
 import * as Native from '../Native';
 
 Native.registerErrors(Errors);

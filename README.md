@@ -14,6 +14,7 @@ as a Java, Swift, or TypeScript library. The underlying implementations are writ
 - poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
 - pin: Functionality for consistently using [PINs][] as passwords in Signal's Secure Value Recovery system.
 - usernames: Functionality for username generation, hashing, and proofs.
+- media: Utilities for manipulating media.
 
 This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]) as well as
 server-side. Use outside of Signal is unsupported. In particular, the products of this repository

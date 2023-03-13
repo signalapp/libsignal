@@ -5,12 +5,16 @@
 
 use std::convert::TryFrom;
 use std::fmt;
+use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
+use signal_media::sanitize::{
+    Error as MediaSanitizeError, ParseErrorReport as MediaSanitizeParseError,
+};
 use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
@@ -31,6 +35,8 @@ pub enum SignalFfiError {
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     UsernameError(UsernameError),
+    Io(IoError),
+    MediaSanitizeParse(MediaSanitizeParseError),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -56,6 +62,10 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalFfiError::UsernameError(e) => write!(f, "{}", e),
+            SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
+            SignalFfiError::MediaSanitizeParse(e) => {
+                write!(f, "Media sanitizer failed to parse media file: {}", e)
+            }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
             SignalFfiError::UnexpectedPanic(e) => {
@@ -119,9 +129,33 @@ impl From<UsernameError> for SignalFfiError {
     }
 }
 
+impl From<IoError> for SignalFfiError {
+    fn from(e: IoError) -> SignalFfiError {
+        Self::Io(e)
+    }
+}
+
+impl From<MediaSanitizeError> for SignalFfiError {
+    fn from(e: MediaSanitizeError) -> SignalFfiError {
+        match e {
+            MediaSanitizeError::Io(e) => Self::Io(e.into()),
+            MediaSanitizeError::Parse(e) => Self::MediaSanitizeParse(e),
+        }
+    }
+}
+
 impl From<NullPointerError> for SignalFfiError {
     fn from(_: NullPointerError) -> SignalFfiError {
         SignalFfiError::NullPointer
+    }
+}
+
+impl From<SignalFfiError> for IoError {
+    fn from(e: SignalFfiError) -> Self {
+        match e {
+            SignalFfiError::Io(e) => e,
+            e => IoError::new(IoErrorKind::Other, e.to_string()),
+        }
     }
 }
 

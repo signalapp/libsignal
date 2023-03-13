@@ -13,36 +13,6 @@ extension StoreContext {
     }
 }
 
-/// Wraps a store while providing a place to hang on to any user-thrown errors.
-private struct ErrorHandlingContext<Store> {
-    var store: Store
-    var error: Error? = nil
-
-    init(_ store: Store) {
-        self.store = store
-    }
-
-    mutating func catchCallbackErrors(_ body: (Store) throws -> Int32) -> Int32 {
-        do {
-            return try body(self.store)
-        } catch {
-            self.error = error
-            return -1
-        }
-    }
-}
-
-private func rethrowCallbackErrors<Store, Result>(_ store: Store, _ body: (UnsafeMutablePointer<ErrorHandlingContext<Store>>) throws -> Result) rethrows -> Result {
-    var context = ErrorHandlingContext(store)
-    do {
-        return try withUnsafeMutablePointer(to: &context) {
-            try body($0)
-        }
-    } catch SignalError.callbackError(_) where context.error != nil {
-        throw context.error!
-    }
-}
-
 internal func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ body: (UnsafePointer<SignalIdentityKeyStore>) throws -> Result) throws -> Result {
     func ffiShimGetIdentityKeyPair(store_ctx: UnsafeMutableRawPointer?,
                                    keyp: UnsafeMutablePointer<OpaquePointer?>?,

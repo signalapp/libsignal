@@ -244,6 +244,8 @@ public final class Native {
   public static native void Logger_Initialize(int maxLevel, Class loggerClass);
   public static native void Logger_SetMaxLevel(int maxLevel);
 
+  public static native long Mp4Sanitizer_Sanitize(InputStream input, long len);
+
   public static native void NumericFingerprintGenerator_Destroy(long handle);
   public static native String NumericFingerprintGenerator_GetDisplayString(long obj);
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long obj);
@@ -335,6 +337,11 @@ public final class Native {
   public static native void ReceiptCredential_CheckValidContents(byte[] buffer);
   public static native long ReceiptCredential_GetReceiptExpirationTime(byte[] receiptCredential);
   public static native long ReceiptCredential_GetReceiptLevel(byte[] receiptCredential);
+
+  public static native void SanitizedMetadata_Destroy(long handle);
+  public static native long SanitizedMetadata_GetDataLen(long sanitized);
+  public static native long SanitizedMetadata_GetDataOffset(long sanitized);
+  public static native byte[] SanitizedMetadata_GetMetadata(long sanitized);
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 

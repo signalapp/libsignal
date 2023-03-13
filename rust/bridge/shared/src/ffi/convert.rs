@@ -6,10 +6,12 @@
 use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
 use paste::paste;
+use signal_media::sanitize;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ops::Deref;
 
+use crate::io::InputStream;
 use crate::support::{FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -236,7 +238,7 @@ impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
 macro_rules! store {
     ($name:ident) => {
         paste! {
-            impl<'a> ArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
+            impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
                 type ArgType = *const [<Ffi $name Struct>];
                 type StoredType = &'a [<Ffi $name Struct>];
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -259,6 +261,7 @@ store!(PreKeyStore);
 store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
+store!(InputStream);
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
     type ResultType = T::ResultType;
@@ -289,6 +292,13 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_pin::Error> {
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        T::convert_into(self?)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, sanitize::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         T::convert_into(self?)

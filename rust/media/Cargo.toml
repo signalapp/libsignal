@@ -1,0 +1,17 @@
+[package]
+name = "signal-media"
+version = "0.1.0"
+authors = ["Signal Messenger LLC"]
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[dependencies]
+futures-util = "0.3.7"
+thiserror = "1.0.38"
+
+[target.'cfg(not(nightly))'.dependencies]
+mp4san = "0.1.4"
+
+[target.'cfg(nightly)'.dependencies]
+# NB: disabling mp4san's "error-stack-std" feature requires nightly.
+mp4san = { version = "0.1.4", default-features = false }

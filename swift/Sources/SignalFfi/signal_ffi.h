@@ -14,6 +14,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdint.h>
 #include <stdlib.h>
 
+#define SignalBoxHeader_MAX_SIZE 32
+
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
@@ -164,6 +166,9 @@ typedef enum {
   SignalErrorCodeUsernameBadCharacter = 124,
   SignalErrorCodeUsernameTooShort = 125,
   SignalErrorCodeUsernameTooLong = 126,
+  SignalErrorCodeIoError = 130,
+  SignalErrorCodeInvalidMediaInput = 131,
+  SignalErrorCodeUnsupportedMediaInput = 132,
 } SignalErrorCode;
 
 /**
@@ -203,6 +208,11 @@ typedef struct SignalPrivateKey SignalPrivateKey;
 typedef struct SignalProtocolAddress SignalProtocolAddress;
 
 typedef struct SignalPublicKey SignalPublicKey;
+
+/**
+ * Sanitized metadata returned by the sanitizer.
+ */
+typedef struct SignalSanitizedMetadata SignalSanitizedMetadata;
 
 typedef struct SignalSenderCertificate SignalSenderCertificate;
 
@@ -329,6 +339,16 @@ typedef struct {
   SignalLoadSenderKey load_sender_key;
   SignalStoreSenderKey store_sender_key;
 } SignalSenderKeyStore;
+
+typedef int (*SignalRead)(void *ctx, uint8_t *buf, uintptr_t buf_len, uintptr_t *amount_read);
+
+typedef int (*SignalSkip)(void *ctx, uint64_t amount);
+
+typedef struct {
+  void *ctx;
+  SignalRead read;
+  SignalSkip skip;
+} SignalInputStream;
 
 typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
 
@@ -1492,5 +1512,23 @@ SignalFfiError *signal_username_candidates_from(const char **out,
                                                 const char *nickname,
                                                 uint32_t min_len,
                                                 uint32_t max_len);
+
+SignalFfiError *signal_mp4_sanitizer_sanitize(SignalSanitizedMetadata **out,
+                                              const SignalInputStream *input,
+                                              uint64_t len);
+
+SignalFfiError *signal_sanitized_metadata_destroy(SignalSanitizedMetadata *p);
+
+SignalFfiError *signal_sanitized_metadata_clone(SignalSanitizedMetadata **new_obj,
+                                                const SignalSanitizedMetadata *obj);
+
+SignalFfiError *signal_sanitized_metadata_get_metadata(SignalOwnedBuffer *out,
+                                                       const SignalSanitizedMetadata *sanitized);
+
+SignalFfiError *signal_sanitized_metadata_get_data_offset(uint64_t *out,
+                                                          const SignalSanitizedMetadata *sanitized);
+
+SignalFfiError *signal_sanitized_metadata_get_data_len(uint64_t *out,
+                                                       const SignalSanitizedMetadata *sanitized);
 
 #endif /* SIGNAL_FFI_H_ */

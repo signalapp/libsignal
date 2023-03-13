@@ -40,6 +40,11 @@ export abstract class SenderKeyStore {
   _getSenderKey(sender: ProtocolAddress, distributionId: Uuid): Promise<SenderKeyRecord | null>;
 }
 
+export abstract class InputStream {
+  _read(amount: number): Promise<Buffer>;
+  _skip(amount: number): Promise<void>;
+}
+
 interface Wrapper<T> {
   readonly _nativeHandle: T
 }
