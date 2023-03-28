@@ -43,6 +43,10 @@ futures-util = "0.3.7"
 prost-build = "0.9"
 
 [[bench]]
+name = "curve"
+harness = false
+
+[[bench]]
 name = "session"
 harness = false
 
