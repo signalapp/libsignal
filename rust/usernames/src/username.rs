@@ -234,11 +234,23 @@ fn to_base_37_scalar(bytes: &[u8]) -> Scalar {
 fn validate_discriminator<T: FromStr + PartialOrd + From<u8>>(
     discriminator: &str,
 ) -> Result<T, UsernameError> {
+    if discriminator.is_empty() {
+        return Err(UsernameError::BadDiscriminator);
+    }
+    let first_ascii_char = discriminator.as_bytes()[0];
+    if !(b'0'..=b'9').contains(&first_ascii_char) {
+        // "+123" is allowed by Rust u*::from_str, but not by us.
+        return Err(UsernameError::BadDiscriminator);
+    }
+
     let n = T::from_str(discriminator).unwrap_or_else(|_| T::from(0));
     if n == T::from(0) {
         return Err(UsernameError::BadDiscriminator);
     }
     if n < T::from(10) && discriminator.len() != 2 {
+        return Err(UsernameError::BadDiscriminator);
+    }
+    if n >= T::from(10) && !(b'1'..=b'9').contains(&first_ascii_char) {
         return Err(UsernameError::BadDiscriminator);
     }
     Ok(n)
@@ -314,13 +326,18 @@ mod test {
     fn invalid_usernames() {
         for username in [
             "no_discriminator",
+            "no_discriminator.",
             "🦀.42",
             "s p a c e s.01",
             "zero.00",
             "zeropad.001",
+            "zeropad.0123",
             "short.1",
             "short_zero.0",
             "0start.01",
+            "plus.+1",
+            "plus.+01",
+            "plus.+123",
         ] {
             assert!(
                 Username::new(username).map(|n| n.hash()).is_err(),
