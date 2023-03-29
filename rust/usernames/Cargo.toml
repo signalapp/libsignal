@@ -14,16 +14,11 @@ license = "AGPL-3.0-only"
 [dependencies]
 poksho = { path = "../poksho" }
 
+curve25519-dalek = "3.2"
 sha2 = "0.9.0"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
 rand = "0.7.3"
-
-[dependencies.curve25519-dalek]
-features = ["serde"]
-version = "3.0.0"
-git = "https://github.com/signalapp/curve25519-dalek.git"
-branch = "lizard2"
 
 [dev-dependencies]
 zkgroup = { path = "../zkgroup" }
