@@ -19,6 +19,7 @@ java/**/build
 java/.gradle
 java/local.properties
 java/android/src/main/jniLibs
+java/android/src/main/assets/acknowledgments
 java/shared/resources/*.dylib
 java/shared/resources/*.so
 java/shared/resources/*.dll

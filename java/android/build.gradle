@@ -61,6 +61,7 @@ tasks.register('libsWithDebugSymbols', Zip) {
 
 preBuild {
     dependsOn 'makeJniLibraries'
+    dependsOn 'collectAssets'
 }
 
 task makeJniLibraries(type:Exec) {
@@ -70,6 +71,13 @@ task makeJniLibraries(type:Exec) {
   // Explicitly specify 'bash' for Windows compatibility.
   commandLine 'bash', '../build_jni.sh', 'android'
   environment 'ANDROID_NDK_HOME', android.ndkDirectory
+}
+
+task collectAssets(type:Copy) {
+    from('../../acknowledgments/acknowledgments.md') {
+        rename 'acknowledgments.md', 'libsignal.md'
+    }
+    into 'src/main/assets/acknowledgments'
 }
 
 // MARK: Publication
