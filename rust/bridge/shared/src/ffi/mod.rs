@@ -75,6 +75,7 @@ impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
     }
 }
 
+#[inline(always)]
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,
 ) -> *mut SignalFfiError {

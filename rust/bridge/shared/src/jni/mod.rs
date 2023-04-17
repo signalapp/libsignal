@@ -413,6 +413,7 @@ impl JniDummyValue for () {
     fn dummy_value() -> Self {}
 }
 
+#[inline(always)]
 pub fn run_ffi_safe<F: FnOnce() -> Result<R, SignalJniError> + std::panic::UnwindSafe, R>(
     env: &JNIEnv,
     f: F,

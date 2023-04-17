@@ -221,6 +221,7 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
     quote!(
         #[allow(non_snake_case)]
         #[cfg(any(#(#feature_list,)*))]
+        #[inline(always)]
         #function
 
         #ffi_fn
