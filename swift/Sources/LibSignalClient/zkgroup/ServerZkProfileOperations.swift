@@ -54,30 +54,6 @@ public class ServerZkProfileOperations {
     }
   }
 
-  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
-  public func issuePniCredential(profileKeyCredentialRequest: ProfileKeyCredentialRequest, aci: UUID, pni: UUID, profileKeyCommitment: ProfileKeyCommitment) throws -> PniCredentialResponse {
-    return try issuePniCredential(randomness: Randomness.generate(), profileKeyCredentialRequest: profileKeyCredentialRequest, aci: aci, pni: pni, profileKeyCommitment: profileKeyCommitment)
-  }
-
-  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
-  public func issuePniCredential(randomness: Randomness, profileKeyCredentialRequest: ProfileKeyCredentialRequest, aci: UUID, pni: UUID, profileKeyCommitment: ProfileKeyCommitment) throws -> PniCredentialResponse {
-    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
-      try randomness.withUnsafePointerToBytes { randomness in
-        try profileKeyCredentialRequest.withUnsafePointerToSerialized { request in
-          try withUnsafePointer(to: aci.uuid) { aci in
-            try withUnsafePointer(to: pni.uuid) { pni in
-              try profileKeyCommitment.withUnsafePointerToSerialized { commitment in
-                try invokeFnReturningSerialized {
-                  signal_server_secret_params_issue_pni_credential_deterministic($0, serverSecretParams, randomness, request, aci, pni, commitment)
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   public func verifyProfileKeyCredentialPresentation(
     groupPublicParams: GroupPublicParams,
     profileKeyCredentialPresentation: ProfileKeyCredentialPresentation,
@@ -87,17 +63,6 @@ public class ServerZkProfileOperations {
       try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
         try profileKeyCredentialPresentation.withUnsafeBorrowedBuffer { presentation in
           try checkError(signal_server_secret_params_verify_profile_key_credential_presentation(serverSecretParams, groupPublicParams, presentation, UInt64(now.timeIntervalSince1970)))
-        }
-      }
-    }
-  }
-
-  @available(*, deprecated, message: "superseded by AuthCredentialWithPni + ProfileKeyCredential")
-  public func verifyPniCredentialPresentation(groupPublicParams: GroupPublicParams, presentation: PniCredentialPresentation) throws {
-    try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
-      try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
-        try presentation.withUnsafeBorrowedBuffer { presentation in
-          try checkError(signal_server_secret_params_verify_pni_credential_presentation(serverSecretParams, groupPublicParams, presentation))
         }
       }
     }

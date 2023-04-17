@@ -11,8 +11,6 @@ import ServerSecretParams from '../ServerSecretParams';
 import GroupPublicParams from '../groups/GroupPublicParams';
 
 import ExpiringProfileKeyCredentialResponse from './ExpiringProfileKeyCredentialResponse';
-import PniCredentialPresentation from './PniCredentialPresentation';
-import PniCredentialResponse from './PniCredentialResponse';
 import ProfileKeyCommitment from './ProfileKeyCommitment';
 import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation';
 import ProfileKeyCredentialResponse from './ProfileKeyCredentialResponse';
@@ -95,48 +93,6 @@ export default class ServerZkProfileOperations {
     );
   }
 
-  /**
-   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
-   */
-  issuePniCredential(
-    profileKeyCredentialRequest: ProfileKeyCredentialRequest,
-    aci: UUIDType,
-    pni: UUIDType,
-    profileKeyCommitment: ProfileKeyCommitment
-  ): PniCredentialResponse {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.issuePniCredentialWithRandom(
-      random,
-      profileKeyCredentialRequest,
-      aci,
-      pni,
-      profileKeyCommitment
-    );
-  }
-
-  /**
-   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
-   */
-  issuePniCredentialWithRandom(
-    random: Buffer,
-    profileKeyCredentialRequest: ProfileKeyCredentialRequest,
-    aci: UUIDType,
-    pni: UUIDType,
-    profileKeyCommitment: ProfileKeyCommitment
-  ): PniCredentialResponse {
-    return new PniCredentialResponse(
-      Native.ServerSecretParams_IssuePniCredentialDeterministic(
-        this.serverSecretParams.getContents(),
-        random,
-        profileKeyCredentialRequest.getContents(),
-        fromUUID(aci),
-        fromUUID(pni),
-        profileKeyCommitment.getContents()
-      )
-    );
-  }
-
   verifyProfileKeyCredentialPresentation(
     groupPublicParams: GroupPublicParams,
     profileKeyCredentialPresentation: ProfileKeyCredentialPresentation,
@@ -147,20 +103,6 @@ export default class ServerZkProfileOperations {
       groupPublicParams.getContents(),
       profileKeyCredentialPresentation.getContents(),
       Math.floor(now.getTime() / 1000)
-    );
-  }
-
-  /**
-   * @deprecated Superseded by AuthCredentialWithPni + ProfileKeyCredential
-   */
-  verifyPniCredentialPresentation(
-    groupPublicParams: GroupPublicParams,
-    presentation: PniCredentialPresentation
-  ): void {
-    Native.ServerSecretParams_VerifyPniCredentialPresentation(
-      this.serverSecretParams.getContents(),
-      groupPublicParams.getContents(),
-      presentation.getContents()
     );
   }
 }

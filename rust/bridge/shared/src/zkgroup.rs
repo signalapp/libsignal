@@ -57,9 +57,6 @@ fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
 fixed_length_serializable!(GroupMasterKey);
 fixed_length_serializable!(GroupPublicParams);
 fixed_length_serializable!(GroupSecretParams);
-fixed_length_serializable!(PniCredential);
-fixed_length_serializable!(PniCredentialRequestContext);
-fixed_length_serializable!(PniCredentialResponse);
 fixed_length_serializable!(ProfileKey);
 fixed_length_serializable!(ProfileKeyCiphertext);
 fixed_length_serializable!(ProfileKeyCommitment);
@@ -302,25 +299,6 @@ fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
 }
 
 #[bridge_fn]
-#[allow(deprecated)]
-fn ServerPublicParams_CreatePniCredentialRequestContextDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    aci: Uuid,
-    pni: Uuid,
-    profile_key: Serialized<ProfileKey>,
-) -> Serialized<PniCredentialRequestContext> {
-    server_public_params
-        .create_pni_credential_request_context(
-            *randomness,
-            *aci.as_bytes(),
-            *pni.as_bytes(),
-            profile_key.into_inner(),
-        )
-        .into()
-}
-
-#[bridge_fn]
 fn ServerPublicParams_ReceiveProfileKeyCredential(
     server_public_params: Serialized<ServerPublicParams>,
     request_context: Serialized<ProfileKeyCredentialRequestContext>,
@@ -344,18 +322,6 @@ fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
             &response,
             current_time_in_seconds.as_seconds(),
         )?
-        .into())
-}
-
-#[bridge_fn]
-#[allow(deprecated)]
-fn ServerPublicParams_ReceivePniCredential(
-    server_public_params: Serialized<ServerPublicParams>,
-    request_context: Serialized<PniCredentialRequestContext>,
-    response: Serialized<PniCredentialResponse>,
-) -> Result<Serialized<PniCredential>, ZkGroupVerificationFailure> {
-    Ok(server_public_params
-        .receive_pni_credential(&request_context, &response)?
         .into())
 }
 
@@ -390,22 +356,6 @@ fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministi
             profile_key_credential.into_inner(),
         ),
     )
-    .expect("can serialize")
-}
-
-#[bridge_fn]
-#[allow(deprecated)]
-fn ServerPublicParams_CreatePniCredentialPresentationDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    group_secret_params: Serialized<GroupSecretParams>,
-    pni_credential: Serialized<PniCredential>,
-) -> Vec<u8> {
-    bincode::serialize(&server_public_params.create_pni_credential_presentation(
-        *randomness,
-        group_secret_params.into_inner(),
-        pni_credential.into_inner(),
-    ))
     .expect("can serialize")
 }
 
@@ -526,27 +476,6 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
         .into())
 }
 
-#[bridge_fn]
-#[allow(deprecated)]
-fn ServerSecretParams_IssuePniCredentialDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    request: Serialized<ProfileKeyCredentialRequest>,
-    aci: Uuid,
-    pni: Uuid,
-    commitment: Serialized<ProfileKeyCommitment>,
-) -> Result<Serialized<PniCredentialResponse>, ZkGroupVerificationFailure> {
-    Ok(server_secret_params
-        .issue_pni_credential(
-            *randomness,
-            &request,
-            *aci.as_bytes(),
-            *pni.as_bytes(),
-            commitment.into_inner(),
-        )?
-        .into())
-}
-
 #[bridge_fn_void]
 fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
@@ -561,19 +490,6 @@ fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
         &presentation,
         current_time_in_seconds.as_seconds(),
     )
-}
-
-#[bridge_fn_void]
-#[allow(deprecated)]
-fn ServerSecretParams_VerifyPniCredentialPresentation(
-    server_secret_params: Serialized<ServerSecretParams>,
-    group_public_params: Serialized<GroupPublicParams>,
-    presentation_bytes: &[u8],
-) -> Result<(), ZkGroupVerificationFailure> {
-    let presentation = AnyPniCredentialPresentation::new(presentation_bytes)
-        .expect("should have been parsed previously");
-    server_secret_params
-        .verify_pni_credential_presentation(group_public_params.into_inner(), &presentation)
 }
 
 #[bridge_fn]
@@ -672,14 +588,6 @@ fn ProfileKeyCredentialRequestContext_GetRequest(
 
 // FIXME: bridge_get
 #[bridge_fn]
-fn PniCredentialRequestContext_GetRequest(
-    context: Serialized<PniCredentialRequestContext>,
-) -> Serialized<ProfileKeyCredentialRequest> {
-    context.get_request().into()
-}
-
-// FIXME: bridge_get
-#[bridge_fn]
 fn ExpiringProfileKeyCredential_GetExpirationTime(
     credential: Serialized<ExpiringProfileKeyCredential>,
 ) -> Timestamp {
@@ -720,41 +628,6 @@ fn ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(
     let presentation = AnyProfileKeyCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
     presentation.to_structurally_valid_v1_presentation_bytes()
-}
-
-#[bridge_fn_void]
-fn PniCredentialPresentation_CheckValidContents(
-    presentation_bytes: &[u8],
-) -> Result<(), ZkGroupDeserializationFailure> {
-    AnyPniCredentialPresentation::new(presentation_bytes)?;
-    Ok(())
-}
-
-#[bridge_fn]
-fn PniCredentialPresentation_GetAciCiphertext(
-    presentation_bytes: &[u8],
-) -> Serialized<UuidCiphertext> {
-    let presentation = AnyPniCredentialPresentation::new(presentation_bytes)
-        .expect("should have been parsed previously");
-    presentation.get_aci_ciphertext().into()
-}
-
-#[bridge_fn]
-fn PniCredentialPresentation_GetPniCiphertext(
-    presentation_bytes: &[u8],
-) -> Serialized<UuidCiphertext> {
-    let presentation = AnyPniCredentialPresentation::new(presentation_bytes)
-        .expect("should have been parsed previously");
-    presentation.get_pni_ciphertext().into()
-}
-
-#[bridge_fn]
-fn PniCredentialPresentation_GetProfileKeyCiphertext(
-    presentation_bytes: &[u8],
-) -> Serialized<ProfileKeyCiphertext> {
-    let presentation = AnyPniCredentialPresentation::new(presentation_bytes)
-        .expect("should have been parsed previously");
-    presentation.get_profile_key_ciphertext().into()
 }
 
 // FIXME: bridge_get

@@ -74,10 +74,6 @@ describe('ZKGroup', () => {
     '01e0f49cef4f25c31d1bfdc4a328fd508d2222b6decee2a253cf71e8821e97cc3f86824f79b1884b43c67f854717b1a47f56c8ff50a1c07fddbf4f6e857027d548583b54079dd61d54cdd39cd4acae5f8b3bbfa2bb6b3502b69b36da77addddc145ef254a16f2baec1e3d7e8dc80730bc608fcd0e4d8cfef3330a496380c7ac648686b9c5b914d0a77ee84848aa970b2404450179b4022eef003387f6bdbcba30344cadfd5e3f1677caa2c785f4fefe042a1b2adf4f4b8fa6023e41d704bda901d3a697904770ac46e0e304cf19f91ce9ab0ed1ccad8a6febd72313455f139b9222e9a30a2265c6cd22ee5b907fc95967417a0d8ca338a5ee4d51bba78039c314e4001000000000000749d54772b8137e570157c068a5cfebb464b6c1133c72d9abfda72db421cd00561ac4eecb94313c6912013e32c322ea36743b01814fe919ca84b9aea9c78b10ba021506f7ad8c6625e87e07ce32b559036af6b67e2c0383a643cb93cdc2b9800e90588a18fcc449cd466c28c6db73507d8282dd00808b5927fee3336ed0a2202dfb1e176fece6a4104caa2a866c475209967638ea2f1466847da7301a77b9007dfb332a30e9bbfae8a8398165ec9dd4778214e0d6ed35a34071bdf3b3b19510ff2a617bc53eb0e6b0ddc501db027bb47e4f4127d7a0104945f3d3dc7ec1741038b9b80e2c7f131c519ee26ffcb7cb9d3556cd35a12bef1d4b376fc513197ba00ce8f012a0b374164222ba79a39e74e150813474ca6f87ba705c0f06e7b7068039c5edd9dd1a5ab6793ac211989907686b45650221187d4d59ae492679f3b4308765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746'
   );
 
-  const pniPresentationResult = hexToBuffer(
-    '01f887f403db1a80fa04043413233f56bf6c53bb078c16d24df93a219d7785696856d8f197a01c6e223d4aceed1d60b90b713f4556ab39403b84c51d724ca9aa44886d73be15fcebc933f835fc0f3210f8d7b8fa7940bf9069d50dc4ba83da8a0ed86d6c33cd99a25fe46906d655a7fec5fee500527a56ea5689d1765396907b153a86e40eb27b8120661dfe59bb17af1024ebd697c2c36c46f3a85f8dc6f92761b29c84256847b5f420386ac41d6d81f8e65a195f2ab7003c0fc22fd969870e2c5c4ad4a9de38a8bde73509c41e85accef59db69930972b1c3fcb9c9abd4c884a3e91b4c25b8fde3b5cac7c55442f996b3fd3712110c7dd71c847be552122b947402136b1c16fe18acba2e6a277dc57172ac79d189246060d50db1a7dc531d075ec9414f86e31a1b0406ce173b09c1eabbef2de117749b3c512499d5f91e4694e4001000000000000769c0c6c310ed2b8f4a1d1e6b853d83f5da8136e36605fd631979cc618d0e102cc82e9056d2031379de3e57c04530b20617d0b2418b8950c8a2394355c6d400f0e4f69b75942032067382ae244870f5859a35782cb81b1106c5aae58df1f110dbf761c3a52ad5e3a872f385c3056bf2be3d67826cf33bc743c1c25eed0eda20f21de773906657b26e09cf388da2333db60f768865e2405f4df4f48b640295e027625678a810dbf8111918f7b127fd9fb0b332531ec52069b98abf95bb4ae7307d96b9d50b6e734ff8af92d2c8417919795a46b97df7a692df4ea9b63810ef70dca68693bbec7e1f52409430da61cac9249ca02216a77b1f08e5951a50783ca088fa5992b5ecaf1413dfe45f9ef23b3c120994118b325763d66e60c9647cc380248a9da79e46c17b6bb03a23c3987cea86ac158d45b78f1f9b923472521ecb30e765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474fe74409060615679fc115473683d63abd9ced46c7f2ad736046de5a2c7d2522f122895597049cfd7cc5beb6dc72aa990ae9a62ec8e256a1cbf5f3f284233bb0748c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746'
-  );
-
   it('testAuthIntegration', () => {
     const uuid = toUUID(TEST_ARRAY_16);
     const redemptionTime = 123456;
@@ -441,89 +437,6 @@ describe('ZKGroup', () => {
         presentation,
         new Date(expiration * 1000 + 5)
       )
-    );
-  });
-
-  it('testPniIntegration', () => {
-    const aci = toUUID(TEST_ARRAY_16);
-    const pni = toUUID(TEST_ARRAY_16_1);
-
-    // Generate keys (client's are per-group, server's are not)
-    // ---
-
-    // SERVER
-    const serverSecretParams =
-      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
-    const serverPublicParams = serverSecretParams.getPublicParams();
-    const serverZkProfile = new ServerZkProfileOperations(serverSecretParams);
-
-    // CLIENT
-    const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
-    const groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
-
-    assertArrayEquals(
-      groupSecretParams.getMasterKey().serialize(),
-      masterKey.serialize()
-    );
-
-    const groupPublicParams = groupSecretParams.getPublicParams();
-    const clientZkProfileCipher = new ClientZkProfileOperations(
-      serverPublicParams
-    );
-
-    const profileKey = new ProfileKey(TEST_ARRAY_32_1);
-    const profileKeyCommitment = profileKey.getCommitment(aci);
-
-    // Create context and request
-    const context =
-      clientZkProfileCipher.createPniCredentialRequestContextWithRandom(
-        TEST_ARRAY_32_3,
-        aci,
-        pni,
-        profileKey
-      );
-    const request = context.getRequest();
-
-    // SERVER
-    const response = serverZkProfile.issuePniCredentialWithRandom(
-      TEST_ARRAY_32_4,
-      request,
-      aci,
-      pni,
-      profileKeyCommitment
-    );
-
-    // CLIENT
-    // Gets stored profile credential
-    const clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    const pniCredential = clientZkProfileCipher.receivePniCredential(
-      context,
-      response
-    );
-
-    const presentation =
-      clientZkProfileCipher.createPniCredentialPresentationWithRandom(
-        TEST_ARRAY_32_5,
-        groupSecretParams,
-        pniCredential
-      );
-
-    assertArrayEquals(presentation.serialize(), pniPresentationResult);
-
-    // Verify presentation
-    serverZkProfile.verifyPniCredentialPresentation(
-      groupPublicParams,
-      presentation
-    );
-    const aciCiphertextRecv = presentation.getAciCiphertext();
-    assertArrayEquals(
-      clientZkGroupCipher.encryptUuid(aci).serialize(),
-      aciCiphertextRecv.serialize()
-    );
-    const pniCiphertextRecv = presentation.getPniCiphertext();
-    assertArrayEquals(
-      clientZkGroupCipher.encryptUuid(pni).serialize(),
-      pniCiphertextRecv.serialize()
     );
   });
 
