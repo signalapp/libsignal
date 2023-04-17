@@ -13,7 +13,7 @@ use crate::shoapi::ShoApi;
 pub const BLOCK_LEN: usize = 64;
 pub const HASH_LEN: usize = 32;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 enum Mode {
     ABSORBING,
@@ -51,7 +51,7 @@ impl ShoApi for ShoSha256 {
     // called after absorb() only; streaming squeeze not yet supported
     fn ratchet(&mut self) {
         if let Mode::RATCHETED = self.mode {
-            panic!();
+            return;
         }
 
         // Double hash
@@ -61,9 +61,7 @@ impl ShoApi for ShoSha256 {
     }
 
     fn squeeze_and_ratchet(&mut self, outlen: usize) -> Vec<u8> {
-        if let Mode::ABSORBING = self.mode {
-            panic!();
-        }
+        assert!(self.mode == Mode::RATCHETED);
         let mut output = Vec::<u8>::new();
         let mut output_hasher_prefix = Sha256::new();
         // Explicitly pass a slice to avoid generating multiple versions of update().

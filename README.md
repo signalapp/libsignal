@@ -10,7 +10,9 @@ as a Java, Swift, or TypeScript library. The underlying implementations are writ
 - device-transfer: Support logic for Signal's device-to-device transfer feature.
 - attest: Functionality for remote attestation of [SGX enclaves][] and server-side [HSMs][].
 - zkgroup: Functionality for [zero-knowledge groups][] and related features available in Signal.
+- zkcredential: An abstraction for the sort of zero-knowledge credentials used by zkgroup, based on the paper "[The Signal Private Group System][]" by Chase, Perrin, and Zaverucha.
 - poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
+- pin: Functionality for consistently using [PINs][] as passwords in Signal's Secure Value Recovery system.
 - usernames: Functionality for username generation, hashing, and proofs.
 
 This repository is used by the Signal client apps ([Android][], [iOS][], and [Desktop][]) as well as
@@ -28,6 +30,8 @@ non-bridge Rust APIs will be reflected in the version number on a best-effort ba
 [SGX enclaves]: https://www.intel.com/content/www/us/en/architecture-and-technology/software-guard-extensions.html
 [HSMs]: https://en.wikipedia.org/wiki/Hardware_security_module
 [zero-knowledge groups]: https://signal.org/blog/signal-private-group-system/
+[The Signal Private Group System]: https://eprint.iacr.org/2019/1416.pdf
+[PINs]: https://signal.org/blog/signal-pins/
 [Android]: https://github.com/signalapp/Signal-Android
 [iOS]: https://github.com/signalapp/Signal-iOS
 [Desktop]: https://github.com/signalapp/Signal-Desktop

@@ -18,6 +18,10 @@ impl Sho {
         Sho { internal_sho: sho }
     }
 
+    pub fn absorb_and_ratchet(&mut self, data: &[u8]) {
+        self.internal_sho.absorb_and_ratchet(data)
+    }
+
     pub fn squeeze(&mut self, outlen: usize) -> Vec<u8> {
         self.internal_sho.squeeze_and_ratchet(outlen)
     }

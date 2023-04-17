@@ -7,6 +7,7 @@ members = [
     "rust/poksho",
     "rust/protocol",
     "rust/usernames",
+    "rust/zkcredential",
     "rust/zkgroup",
     "rust/bridge/ffi",
     "rust/bridge/jni",
@@ -19,6 +20,7 @@ default-members = [
     "rust/poksho",
     "rust/protocol",
     "rust/usernames",
+    "rust/zkcredential",
     "rust/zkgroup",
 ]
 resolver = "2" # so that our dev-dependency features don't leak into products

@@ -1,0 +1,26 @@
+#
+# Copyright 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "zkcredential"
+version = "0.1.0"
+authors = ["Signal Messenger LLC"]
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[dependencies]
+poksho = { path = "../poksho" }
+
+curve25519-dalek = { version = "3.0", features = ["serde"] }
+displaydoc = "0.2"
+lazy_static = "1.4.0"
+serde = { version = "1.0.106", features = ["derive"] }
+
+[dev-dependencies]
+bincode = "1.2.1"
+hex = "0.4"
+
+# Many of zkcredential's tests live in the zkgroup crate,
+# since zkcredential was designed to work with existing verifiably encrypted attribute types.

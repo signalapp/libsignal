@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-pub trait ShoApi
-where
-    Self: Sized,
-{
-    fn shohash(label: &[u8], input: &[u8], outlen: usize) -> Vec<u8> {
+pub trait ShoApi {
+    fn shohash(label: &[u8], input: &[u8], outlen: usize) -> Vec<u8>
+    where
+        Self: Sized,
+    {
         let mut sho = Self::new(label);
         sho.absorb_and_ratchet(input);
         sho.squeeze_and_ratchet(outlen)
@@ -18,7 +18,9 @@ where
         self.ratchet();
     }
 
-    fn new(label: &[u8]) -> Self;
+    fn new(label: &[u8]) -> Self
+    where
+        Self: Sized;
 
     fn absorb(&mut self, input: &[u8]);
 

@@ -12,7 +12,7 @@ use crate::shoapi::ShoApi;
 pub const BLOCK_LEN: usize = 64;
 pub const HASH_LEN: usize = 32;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
 enum Mode {
     ABSORBING,
@@ -50,7 +50,7 @@ impl ShoApi for ShoHmacSha256 {
     // called after absorb() only; streaming squeeze not yet supported
     fn ratchet(&mut self) {
         if let Mode::RATCHETED = self.mode {
-            panic!();
+            return;
         }
         self.hasher.update(&[0x00]);
         self.cv
@@ -60,9 +60,7 @@ impl ShoApi for ShoHmacSha256 {
     }
 
     fn squeeze_and_ratchet(&mut self, outlen: usize) -> Vec<u8> {
-        if let Mode::ABSORBING = self.mode {
-            panic!();
-        }
+        assert!(self.mode == Mode::RATCHETED);
         let mut output = Vec::<u8>::new();
         let output_hasher_prefix =
             Hmac::<Sha256>::new_from_slice(&self.cv).expect("HMAC accepts 256-bit keys");

@@ -2302,6 +2302,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkcredential"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "curve25519-dalek",
+ "displaydoc",
+ "hex",
+ "lazy_static",
+ "poksho",
+ "serde",
+]
+
+[[package]]
 name = "zkgroup"
 version = "0.9.0"
 dependencies = [
@@ -2318,4 +2331,5 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "sha2",
+ "zkcredential",
 ]
