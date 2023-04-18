@@ -16,7 +16,6 @@ import {
   ServerZkProfileOperations,
   ClientZkProfileOperations,
   ProfileKey,
-  ProfileKeyVersion,
   ClientZkReceiptOperations,
   ServerZkReceiptOperations,
   ReceiptSerial,
@@ -68,10 +67,6 @@ describe('ZKGroup', () => {
   );
   const authPresentationResult = hexToBuffer(
     '01322f9100de0734550a81dc81724a81dbd3b1b43dbc1d552d53455911c2772f34a6356ca17c6d34d858391456af55d0ef841fbe1fa8c4ee810f21e0bb9f4ace4c5c48c72ebbeb2ccda5f7aa49aee6bc0051cdde166e0f8c5f1febd53a4437c570ee1aa223f5eb937db98f34e3653d85ec163f39847222a2dec4235ea41c47bb62028aae30945857ee77663079bcc4923d14a43ad4f6bc33715046f7bde52715375ca9f89be0e630d4bdaa211156d0306723f543b06f5e998447b962c8e9729b4cc00000000000000074d0eae8e4311a6ae3d2970ef198c398110462be47dd2f26e6559209ef6cc20001a05a0b319a172dbeb2293cc1e0e191cefb23e24cf0d6b4b5373a30044be10cb033674d631e17dfce09398f234e9d62e118a6077caea0ef8bf67d7d723db70fecf2098fa041317b7be9fdbb68b0f25f5c479d68bd917fc6f187c5bf7a58910231921fc43565232466325c039212362b6d1203ccaedf831dc7f9060dcaaffa02624042171f5f0e780b9f74cfa88a147f3f1c082f9ca8638af1788e7899cbae0c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100'
-  );
-
-  const profileKeyPresentationResult = hexToBuffer(
-    '01e0f49cef4f25c31d1bfdc4a328fd508d2222b6decee2a253cf71e8821e97cc3f86824f79b1884b43c67f854717b1a47f56c8ff50a1c07fddbf4f6e857027d548583b54079dd61d54cdd39cd4acae5f8b3bbfa2bb6b3502b69b36da77addddc145ef254a16f2baec1e3d7e8dc80730bc608fcd0e4d8cfef3330a496380c7ac648686b9c5b914d0a77ee84848aa970b2404450179b4022eef003387f6bdbcba30344cadfd5e3f1677caa2c785f4fefe042a1b2adf4f4b8fa6023e41d704bda901d3a697904770ac46e0e304cf19f91ce9ab0ed1ccad8a6febd72313455f139b9222e9a30a2265c6cd22ee5b907fc95967417a0d8ca338a5ee4d51bba78039c314e4001000000000000749d54772b8137e570157c068a5cfebb464b6c1133c72d9abfda72db421cd00561ac4eecb94313c6912013e32c322ea36743b01814fe919ca84b9aea9c78b10ba021506f7ad8c6625e87e07ce32b559036af6b67e2c0383a643cb93cdc2b9800e90588a18fcc449cd466c28c6db73507d8282dd00808b5927fee3336ed0a2202dfb1e176fece6a4104caa2a866c475209967638ea2f1466847da7301a77b9007dfb332a30e9bbfae8a8398165ec9dd4778214e0d6ed35a34071bdf3b3b19510ff2a617bc53eb0e6b0ddc501db027bb47e4f4127d7a0104945f3d3dc7ec1741038b9b80e2c7f131c519ee26ffcb7cb9d3556cd35a12bef1d4b376fc513197ba00ce8f012a0b374164222ba79a39e74e150813474ca6f87ba705c0f06e7b7068039c5edd9dd1a5ab6793ac211989907686b45650221187d4d59ae492679f3b4308765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746'
   );
 
   it('testAuthIntegration', () => {
@@ -232,98 +227,6 @@ describe('ZKGroup', () => {
       presentation,
       new Date(1000 * redemptionTime)
     );
-  });
-
-  it('testProfileKeyIntegration', () => {
-    const uuid = toUUID(TEST_ARRAY_16);
-
-    // Generate keys (client's are per-group, server's are not)
-    // ---
-
-    // SERVER
-    const serverSecretParams =
-      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
-    const serverPublicParams = serverSecretParams.getPublicParams();
-    const serverZkProfile = new ServerZkProfileOperations(serverSecretParams);
-
-    // CLIENT
-    const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
-    const groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
-
-    assertArrayEquals(
-      groupSecretParams.getMasterKey().serialize(),
-      masterKey.serialize()
-    );
-
-    const groupPublicParams = groupSecretParams.getPublicParams();
-    const clientZkProfileCipher = new ClientZkProfileOperations(
-      serverPublicParams
-    );
-
-    const profileKey = new ProfileKey(TEST_ARRAY_32_1);
-    const profileKeyCommitment = profileKey.getCommitment(uuid);
-
-    // Create context and request
-    const context =
-      clientZkProfileCipher.createProfileKeyCredentialRequestContextWithRandom(
-        TEST_ARRAY_32_3,
-        uuid,
-        profileKey
-      );
-    const request = context.getRequest();
-
-    // SERVER
-    const response = serverZkProfile.issueProfileKeyCredentialWithRandom(
-      TEST_ARRAY_32_4,
-      request,
-      uuid,
-      profileKeyCommitment
-    );
-
-    // CLIENT
-    // Gets stored profile credential
-    const clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    const profileKeyCredential =
-      clientZkProfileCipher.receiveProfileKeyCredential(context, response);
-
-    // Create encrypted UID and profile key
-    const uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
-    const plaintext = clientZkGroupCipher.decryptUuid(uuidCiphertext);
-    assert.strictEqual(plaintext, uuid);
-
-    const profileKeyCiphertext = clientZkGroupCipher.encryptProfileKey(
-      profileKey,
-      uuid
-    );
-    const decryptedProfileKey = clientZkGroupCipher.decryptProfileKey(
-      profileKeyCiphertext,
-      uuid
-    );
-    assertArrayEquals(profileKey.serialize(), decryptedProfileKey.serialize());
-
-    const presentation =
-      clientZkProfileCipher.createProfileKeyCredentialPresentationWithRandom(
-        TEST_ARRAY_32_5,
-        groupSecretParams,
-        profileKeyCredential
-      );
-
-    assertArrayEquals(presentation.serialize(), profileKeyPresentationResult);
-
-    // Verify presentation
-    serverZkProfile.verifyProfileKeyCredentialPresentation(
-      groupPublicParams,
-      presentation
-    );
-    const uuidCiphertextRecv = presentation.getUuidCiphertext();
-    assertArrayEquals(
-      uuidCiphertext.serialize(),
-      uuidCiphertextRecv.serialize()
-    );
-
-    const pkvB = profileKey.getProfileKeyVersion(uuid);
-    const pkvC = new ProfileKeyVersion(pkvB.serialize());
-    assertArrayEquals(pkvB.serialize(), pkvC.serialize());
   });
 
   it('testExpiringProfileKeyIntegration', () => {

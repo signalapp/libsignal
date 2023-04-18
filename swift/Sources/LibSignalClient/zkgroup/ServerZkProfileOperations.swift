@@ -14,26 +14,6 @@ public class ServerZkProfileOperations {
     self.serverSecretParams = serverSecretParams
   }
 
-  public func issueProfileKeyCredential(profileKeyCredentialRequest: ProfileKeyCredentialRequest, uuid: UUID, profileKeyCommitment: ProfileKeyCommitment) throws -> ProfileKeyCredentialResponse {
-    return try issueProfileKeyCredential(randomness: Randomness.generate(), profileKeyCredentialRequest: profileKeyCredentialRequest, uuid: uuid, profileKeyCommitment: profileKeyCommitment)
-  }
-
-  public func issueProfileKeyCredential(randomness: Randomness, profileKeyCredentialRequest: ProfileKeyCredentialRequest, uuid: UUID, profileKeyCommitment: ProfileKeyCommitment) throws -> ProfileKeyCredentialResponse {
-    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
-      try randomness.withUnsafePointerToBytes { randomness in
-        try profileKeyCredentialRequest.withUnsafePointerToSerialized { request in
-          try withUnsafePointer(to: uuid.uuid) { uuid in
-            try profileKeyCommitment.withUnsafePointerToSerialized { commitment in
-              try invokeFnReturningSerialized {
-                signal_server_secret_params_issue_profile_key_credential_deterministic($0, serverSecretParams, randomness, request, uuid, commitment)
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   public func issueExpiringProfileKeyCredential(profileKeyCredentialRequest: ProfileKeyCredentialRequest, uuid: UUID, profileKeyCommitment: ProfileKeyCommitment, expiration: UInt64) throws -> ExpiringProfileKeyCredentialResponse {
     return try issueExpiringProfileKeyCredential(randomness: Randomness.generate(), profileKeyCredentialRequest: profileKeyCredentialRequest, uuid: uuid, profileKeyCommitment: profileKeyCommitment, expiration: expiration)
   }

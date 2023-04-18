@@ -16,8 +16,11 @@ pub struct ServerSecretParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::AuthCredential>,
+
+    // Now unused
     pub(crate) profile_key_credentials_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::ProfileKeyCredential>,
+
     sig_key_pair: crypto::signature::KeyPair,
     receipt_credentials_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::ReceiptCredential>,
@@ -35,7 +38,10 @@ pub struct ServerSecretParams {
 pub struct ServerPublicParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_public_key: crypto::credentials::PublicKey,
+
+    // Now unused
     pub(crate) profile_key_credentials_public_key: crypto::credentials::PublicKey,
+
     sig_public_key: crypto::signature::PublicKey,
     receipt_credentials_public_key: crypto::credentials::PublicKey,
 
@@ -262,8 +268,9 @@ impl ServerSecretParams {
                 Err(ZkGroupVerificationFailure)
             }
 
-            api::profiles::AnyProfileKeyCredentialPresentation::V2(presentation) => self
-                .verify_profile_key_credential_presentation_v2(group_public_params, presentation),
+            api::profiles::AnyProfileKeyCredentialPresentation::V2(_) => {
+                Err(ZkGroupVerificationFailure)
+            }
 
             api::profiles::AnyProfileKeyCredentialPresentation::V3(presentation) => self
                 .verify_expiring_profile_key_credential_presentation(
@@ -272,24 +279,6 @@ impl ServerSecretParams {
                     current_time,
                 ),
         }
-    }
-
-    pub fn verify_profile_key_credential_presentation_v2(
-        &self,
-        group_public_params: api::groups::GroupPublicParams,
-        presentation: &api::profiles::ProfileKeyCredentialPresentationV2,
-    ) -> Result<(), ZkGroupVerificationFailure> {
-        let credentials_key_pair = self.profile_key_credentials_key_pair;
-        let uid_enc_public_key = group_public_params.uid_enc_public_key;
-        let profile_key_enc_public_key = group_public_params.profile_key_enc_public_key;
-
-        presentation.proof.verify(
-            credentials_key_pair,
-            presentation.uid_enc_ciphertext,
-            uid_enc_public_key,
-            presentation.profile_key_enc_ciphertext,
-            profile_key_enc_public_key,
-        )
     }
 
     pub fn verify_expiring_profile_key_credential_presentation(
@@ -316,51 +305,6 @@ impl ServerSecretParams {
         }
 
         Ok(())
-    }
-
-    pub fn issue_profile_key_credential(
-        &self,
-        randomness: RandomnessBytes,
-        request: &api::profiles::ProfileKeyCredentialRequest,
-        uid_bytes: UidBytes,
-        commitment: api::profiles::ProfileKeyCommitment,
-    ) -> Result<api::profiles::ProfileKeyCredentialResponse, ZkGroupVerificationFailure> {
-        let mut sho = Sho::new(
-            b"Signal_ZKGroup_20200424_Random_ServerSecretParams_IssueProfileKeyCredential",
-            &randomness,
-        );
-
-        request.proof.verify(
-            request.public_key,
-            request.ciphertext,
-            commitment.commitment,
-        )?;
-
-        let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
-        let blinded_credential_with_secret_nonce = self
-            .profile_key_credentials_key_pair
-            .create_blinded_profile_key_credential(
-                uid,
-                request.public_key,
-                request.ciphertext,
-                &mut sho,
-            );
-
-        let proof = crypto::proofs::ProfileKeyCredentialIssuanceProof::new(
-            self.profile_key_credentials_key_pair,
-            request.public_key,
-            request.ciphertext,
-            blinded_credential_with_secret_nonce,
-            uid,
-            &mut sho,
-        );
-
-        Ok(api::profiles::ProfileKeyCredentialResponse {
-            reserved: Default::default(),
-            blinded_credential: blinded_credential_with_secret_nonce
-                .get_blinded_profile_key_credential(),
-            proof,
-        })
     }
 
     pub fn issue_expiring_profile_key_credential(
@@ -642,31 +586,6 @@ impl ServerPublicParams {
         }
     }
 
-    pub fn receive_profile_key_credential(
-        &self,
-        context: &api::profiles::ProfileKeyCredentialRequestContext,
-        response: &api::profiles::ProfileKeyCredentialResponse,
-    ) -> Result<api::profiles::ProfileKeyCredential, ZkGroupVerificationFailure> {
-        response.proof.verify(
-            self.profile_key_credentials_public_key,
-            context.key_pair.get_public_key(),
-            context.uid_bytes,
-            context.ciphertext_with_secret_nonce.get_ciphertext(),
-            response.blinded_credential,
-        )?;
-
-        let credential = context
-            .key_pair
-            .decrypt_blinded_profile_key_credential(response.blinded_credential);
-
-        Ok(api::profiles::ProfileKeyCredential {
-            reserved: Default::default(),
-            credential,
-            uid_bytes: context.uid_bytes,
-            profile_key_bytes: context.profile_key_bytes,
-        })
-    }
-
     pub fn receive_expiring_profile_key_credential(
         &self,
         context: &api::profiles::ProfileKeyCredentialRequestContext,
@@ -704,61 +623,6 @@ impl ServerPublicParams {
             profile_key_bytes: context.profile_key_bytes,
             credential_expiration_time: response.credential_expiration_time,
         })
-    }
-
-    pub fn create_profile_key_credential_presentation(
-        &self,
-        randomness: RandomnessBytes,
-        group_secret_params: api::groups::GroupSecretParams,
-        profile_key_credential: api::profiles::ProfileKeyCredential,
-    ) -> api::profiles::AnyProfileKeyCredentialPresentation {
-        let presentation_v2 = self.create_profile_key_credential_presentation_v2(
-            randomness,
-            group_secret_params,
-            profile_key_credential,
-        );
-        api::profiles::AnyProfileKeyCredentialPresentation::V2(presentation_v2)
-    }
-
-    pub fn create_profile_key_credential_presentation_v2(
-        &self,
-        randomness: RandomnessBytes,
-        group_secret_params: api::groups::GroupSecretParams,
-        profile_key_credential: api::profiles::ProfileKeyCredential,
-    ) -> api::profiles::ProfileKeyCredentialPresentationV2 {
-        let mut sho = Sho::new(
-            b"Signal_ZKGroup_20220120_Random_ServerPublicParams_CreateProfileKeyCredentialPresentationV2",
-            &randomness,
-        );
-
-        let uid_enc_key_pair = group_secret_params.uid_enc_key_pair;
-        let profile_key_enc_key_pair = group_secret_params.profile_key_enc_key_pair;
-        let credentials_public_key = self.profile_key_credentials_public_key;
-
-        let uuid_ciphertext = group_secret_params.encrypt_uuid(profile_key_credential.uid_bytes);
-        let profile_key_ciphertext = group_secret_params.encrypt_profile_key_bytes(
-            profile_key_credential.profile_key_bytes,
-            profile_key_credential.uid_bytes,
-        );
-
-        let proof = crypto::proofs::ProfileKeyCredentialPresentationProofV2::new(
-            uid_enc_key_pair,
-            profile_key_enc_key_pair,
-            credentials_public_key,
-            profile_key_credential.credential,
-            uuid_ciphertext.ciphertext,
-            profile_key_ciphertext.ciphertext,
-            profile_key_credential.uid_bytes,
-            profile_key_credential.profile_key_bytes,
-            &mut sho,
-        );
-
-        api::profiles::ProfileKeyCredentialPresentationV2 {
-            version: [PRESENTATION_VERSION_2],
-            proof,
-            uid_enc_ciphertext: uuid_ciphertext.ciphertext,
-            profile_key_enc_ciphertext: profile_key_ciphertext.ciphertext,
-        }
     }
 
     pub fn create_expiring_profile_key_credential_presentation(

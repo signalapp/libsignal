@@ -125,14 +125,4 @@ class CryptoTests: TestCaseBase {
         try! Aes256Ctr32.process(&ciphertext, key: key, nonce: nonce)
         XCTAssertEqual(ciphertext, expectedCiphertext)
     }
-
-    static var allTests: [(String, (CryptoTests) -> () throws -> Void)] {
-        return [
-            ("testAesGcmSiv", testAesGcmSiv),
-            ("testAesGcm", testAesGcm),
-            ("testAesGcmKat", testAesGcmKat),
-            ("testAesCtr", testAesCtr),
-            ("testAesCtrKat", testAesCtrKat),
-        ]
-    }
 }

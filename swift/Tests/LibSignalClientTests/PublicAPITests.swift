@@ -321,18 +321,4 @@ class PublicAPITests: TestCaseBase {
         let signature = secondary.signAlternateIdentity(primary.identityKey)
         XCTAssert(try! secondary.identityKey.verifyAlternateIdentity(primary.identityKey, signature: signature))
     }
-
-    static var allTests: [(String, (PublicAPITests) -> () throws -> Void)] {
-        return [
-            ("testAddreses", testAddress),
-            ("testFingerprint", testFingerprint),
-            ("testPkOperations", testPkOperations),
-            ("testHkdfSimple", testHkdfSimple),
-            ("testHkdfUsingRFCExample", testHkdfUsingRFCExample),
-            ("testGroupCipher", testGroupCipher),
-            ("testSenderCertifications", testSenderCertificates),
-            ("testSerializationRoundTrip", testSerializationRoundTrip),
-            ("testSignAlternateIdentity", testSignAlternateIdentity),
-        ]
-    }
 }

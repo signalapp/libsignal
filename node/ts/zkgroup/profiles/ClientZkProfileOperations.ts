@@ -14,10 +14,8 @@ import GroupSecretParams from '../groups/GroupSecretParams';
 import ExpiringProfileKeyCredential from './ExpiringProfileKeyCredential';
 import ExpiringProfileKeyCredentialResponse from './ExpiringProfileKeyCredentialResponse';
 import ProfileKey from './ProfileKey';
-import ProfileKeyCredential from './ProfileKeyCredential';
 import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation';
 import ProfileKeyCredentialRequestContext from './ProfileKeyCredentialRequestContext';
-import ProfileKeyCredentialResponse from './ProfileKeyCredentialResponse';
 
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
 
@@ -56,19 +54,6 @@ export default class ClientZkProfileOperations {
     );
   }
 
-  receiveProfileKeyCredential(
-    profileKeyCredentialRequestContext: ProfileKeyCredentialRequestContext,
-    profileKeyCredentialResponse: ProfileKeyCredentialResponse
-  ): ProfileKeyCredential {
-    return new ProfileKeyCredential(
-      Native.ServerPublicParams_ReceiveProfileKeyCredential(
-        this.serverPublicParams.getContents(),
-        profileKeyCredentialRequestContext.getContents(),
-        profileKeyCredentialResponse.getContents()
-      )
-    );
-  }
-
   receiveExpiringProfileKeyCredential(
     profileKeyCredentialRequestContext: ProfileKeyCredentialRequestContext,
     profileKeyCredentialResponse: ExpiringProfileKeyCredentialResponse,
@@ -80,34 +65,6 @@ export default class ClientZkProfileOperations {
         profileKeyCredentialRequestContext.getContents(),
         profileKeyCredentialResponse.getContents(),
         Math.floor(now.getTime() / 1000)
-      )
-    );
-  }
-
-  createProfileKeyCredentialPresentation(
-    groupSecretParams: GroupSecretParams,
-    profileKeyCredential: ProfileKeyCredential
-  ): ProfileKeyCredentialPresentation {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.createProfileKeyCredentialPresentationWithRandom(
-      random,
-      groupSecretParams,
-      profileKeyCredential
-    );
-  }
-
-  createProfileKeyCredentialPresentationWithRandom(
-    random: Buffer,
-    groupSecretParams: GroupSecretParams,
-    profileKeyCredential: ProfileKeyCredential
-  ): ProfileKeyCredentialPresentation {
-    return new ProfileKeyCredentialPresentation(
-      Native.ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
-        this.serverPublicParams.getContents(),
-        random,
-        groupSecretParams.getContents(),
-        profileKeyCredential.getContents()
       )
     );
   }

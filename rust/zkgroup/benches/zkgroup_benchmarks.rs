@@ -132,13 +132,19 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
 
     let randomness = zkgroup::TEST_ARRAY_32_4;
     let response = server_secret_params
-        .issue_profile_key_credential(randomness, &request, uid, profile_key_commitment)
+        .issue_expiring_profile_key_credential(randomness, &request, uid, profile_key_commitment, 0)
         .unwrap();
 
     c.bench_function("issue_profile_key_credential", |b| {
         b.iter(|| {
             server_secret_params
-                .issue_profile_key_credential(randomness, &request, uid, profile_key_commitment)
+                .issue_expiring_profile_key_credential(
+                    randomness,
+                    &request,
+                    uid,
+                    profile_key_commitment,
+                    0,
+                )
                 .unwrap()
         })
     });
@@ -146,13 +152,13 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     // CLIENT
     // Gets stored profile credential
     let profile_key_credential = server_public_params
-        .receive_profile_key_credential(&context, &response)
+        .receive_expiring_profile_key_credential(&context, &response, 0)
         .unwrap();
 
     c.bench_function("receive_profile_key_credential", |b| {
         b.iter(|| {
             server_public_params
-                .receive_profile_key_credential(&context, &response)
+                .receive_expiring_profile_key_credential(&context, &response, 0)
                 .unwrap()
         })
     });
@@ -191,15 +197,15 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation_v2 = server_public_params.create_profile_key_credential_presentation_v2(
+    let presentation = server_public_params.create_expiring_profile_key_credential_presentation(
         randomness,
         group_secret_params,
         profile_key_credential,
     );
 
-    c.bench_function("create_profile_key_credential_presentation_v2", |b| {
+    c.bench_function("create_expiring_profile_key_credential_presentation", |b| {
         b.iter(|| {
-            server_public_params.create_profile_key_credential_presentation_v2(
+            server_public_params.create_expiring_profile_key_credential_presentation(
                 randomness,
                 group_secret_params,
                 profile_key_credential,
@@ -209,17 +215,21 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
 
     // SERVER
     server_secret_params
-        .verify_profile_key_credential_presentation_v2(group_public_params, &presentation_v2)
+        .verify_expiring_profile_key_credential_presentation(group_public_params, &presentation, 0)
         .unwrap();
 
-    c.bench_function("verify_profile_key_credential_presentation_v2", |b| {
-        b.iter(|| {
-            server_secret_params.verify_profile_key_credential_presentation_v2(
-                group_public_params,
-                &presentation_v2,
-            )
-        })
-    });
+    c.bench_function(
+        "verify_expiring_profile_key_credential_presentation_v2",
+        |b| {
+            b.iter(|| {
+                server_secret_params.verify_expiring_profile_key_credential_presentation(
+                    group_public_params,
+                    &presentation,
+                    0,
+                )
+            })
+        },
+    );
 }
 
 criterion_group!(

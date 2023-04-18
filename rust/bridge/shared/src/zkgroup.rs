@@ -60,10 +60,8 @@ fixed_length_serializable!(GroupSecretParams);
 fixed_length_serializable!(ProfileKey);
 fixed_length_serializable!(ProfileKeyCiphertext);
 fixed_length_serializable!(ProfileKeyCommitment);
-fixed_length_serializable!(ProfileKeyCredential);
 fixed_length_serializable!(ProfileKeyCredentialRequest);
 fixed_length_serializable!(ProfileKeyCredentialRequestContext);
-fixed_length_serializable!(ProfileKeyCredentialResponse);
 fixed_length_serializable!(ReceiptCredential);
 fixed_length_serializable!(ReceiptCredentialPresentation);
 fixed_length_serializable!(ReceiptCredentialRequest);
@@ -299,17 +297,6 @@ fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
 }
 
 #[bridge_fn]
-fn ServerPublicParams_ReceiveProfileKeyCredential(
-    server_public_params: Serialized<ServerPublicParams>,
-    request_context: Serialized<ProfileKeyCredentialRequestContext>,
-    response: Serialized<ProfileKeyCredentialResponse>,
-) -> Result<Serialized<ProfileKeyCredential>, ZkGroupVerificationFailure> {
-    Ok(server_public_params
-        .receive_profile_key_credential(&request_context, &response)?
-        .into())
-}
-
-#[bridge_fn]
 fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
     server_public_params: Serialized<ServerPublicParams>,
     request_context: Serialized<ProfileKeyCredentialRequestContext>,
@@ -323,23 +310,6 @@ fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
             current_time_in_seconds.as_seconds(),
         )?
         .into())
-}
-
-#[bridge_fn]
-fn ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    group_secret_params: Serialized<GroupSecretParams>,
-    profile_key_credential: Serialized<ProfileKeyCredential>,
-) -> Vec<u8> {
-    bincode::serialize(
-        &server_public_params.create_profile_key_credential_presentation(
-            *randomness,
-            group_secret_params.into_inner(),
-            profile_key_credential.into_inner(),
-        ),
-    )
-    .expect("can serialize")
 }
 
 #[bridge_fn]
@@ -436,24 +406,6 @@ fn ServerSecretParams_VerifyAuthCredentialPresentation(
         &presentation,
         current_time_in_seconds.as_seconds(),
     )
-}
-
-#[bridge_fn]
-fn ServerSecretParams_IssueProfileKeyCredentialDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    request: Serialized<ProfileKeyCredentialRequest>,
-    uuid: Uuid,
-    commitment: Serialized<ProfileKeyCommitment>,
-) -> Result<Serialized<ProfileKeyCredentialResponse>, ZkGroupVerificationFailure> {
-    Ok(server_secret_params
-        .issue_profile_key_credential(
-            *randomness,
-            &request,
-            *uuid.as_bytes(),
-            commitment.into_inner(),
-        )?
-        .into())
 }
 
 #[bridge_fn]

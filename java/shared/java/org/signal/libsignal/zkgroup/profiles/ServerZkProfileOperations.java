@@ -25,23 +25,6 @@ public class ServerZkProfileOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
-  public ProfileKeyCredentialResponse issueProfileKeyCredential(ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment) throws VerificationFailedException {
-    return issueProfileKeyCredential(new SecureRandom(), profileKeyCredentialRequest, uuid, profileKeyCommitment);
-  }
-
-  public ProfileKeyCredentialResponse issueProfileKeyCredential(SecureRandom secureRandom, ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment) throws VerificationFailedException {
-    byte[] random      = new byte[RANDOM_LENGTH];
-    secureRandom.nextBytes(random);
-
-    byte[] newContents = Native.ServerSecretParams_IssueProfileKeyCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, profileKeyCredentialRequest.getInternalContentsForJNI(), uuid, profileKeyCommitment.getInternalContentsForJNI());
-
-    try {
-      return new ProfileKeyCredentialResponse(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
-  }
-
   public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
     return issueExpiringProfileKeyCredential(new SecureRandom(), profileKeyCredentialRequest, uuid, profileKeyCommitment, expiration);
   }

@@ -83,15 +83,4 @@ class ClonableHandleOwnerTests: XCTestCase {
         XCTAssertTrue(handle.destroyed.original)
         XCTAssertFalse(handle.destroyed.clone)
     }
-
-    static var allTests: [(String, (ClonableHandleOwnerTests) -> () throws -> Void)] {
-        return [
-          ("testOwned", testOwned),
-          ("testBorrowAndForget", testBorrowAndForget),
-          ("testBorrowAndEscape", testBorrowAndEscape),
-          ("testTake", testTake),
-          ("testTakeAfterEscape", testTakeAfterEscape),
-        ]
-    }
-
 }

@@ -145,28 +145,12 @@ pub struct AuthCredentialWithPni {
     pub(crate) V: RistrettoPoint,
 }
 
+/// Unused, kept only because ServerSecretParams contains a KeyPair<ProfileKeyCredential>.
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlindedProfileKeyCredentialWithSecretNonce {
-    pub(crate) rprime: Scalar,
-    pub(crate) t: Scalar,
-    pub(crate) U: RistrettoPoint,
-    pub(crate) S1: RistrettoPoint,
-    pub(crate) S2: RistrettoPoint,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlindedProfileKeyCredential {
-    pub(crate) t: Scalar,
-    pub(crate) U: RistrettoPoint,
-    pub(crate) S1: RistrettoPoint,
-    pub(crate) S2: RistrettoPoint,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -457,32 +441,6 @@ impl KeyPair<AuthCredentialWithPni> {
     }
 }
 
-impl KeyPair<ProfileKeyCredential> {
-    pub fn create_blinded_profile_key_credential(
-        &self,
-        uid: uid_struct::UidStruct,
-        public_key: profile_key_credential_request::PublicKey,
-        ciphertext: profile_key_credential_request::Ciphertext,
-        sho: &mut Sho,
-    ) -> BlindedProfileKeyCredentialWithSecretNonce {
-        let M = [uid.M1, uid.M2];
-
-        let (t, U, Vprime) = self.credential_core(&M, sho);
-        let rprime = sho.get_scalar();
-        let R1 = rprime * RISTRETTO_BASEPOINT_POINT;
-        let R2 = rprime * public_key.Y + Vprime;
-        let S1 = R1 + (self.y[3] * ciphertext.D1) + (self.y[4] * ciphertext.E1);
-        let S2 = R2 + (self.y[3] * ciphertext.D2) + (self.y[4] * ciphertext.E2);
-        BlindedProfileKeyCredentialWithSecretNonce {
-            rprime,
-            t,
-            U,
-            S1,
-            S2,
-        }
-    }
-}
-
 impl KeyPair<ExpiringProfileKeyCredential> {
     pub fn create_blinded_expiring_profile_key_credential(
         &self,
@@ -541,17 +499,6 @@ impl KeyPair<ReceiptCredential> {
             U,
             S1,
             S2,
-        }
-    }
-}
-
-impl BlindedProfileKeyCredentialWithSecretNonce {
-    pub fn get_blinded_profile_key_credential(&self) -> BlindedProfileKeyCredential {
-        BlindedProfileKeyCredential {
-            t: self.t,
-            U: self.U,
-            S1: self.S1,
-            S2: self.S2,
         }
     }
 }

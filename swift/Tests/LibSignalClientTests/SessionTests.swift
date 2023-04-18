@@ -422,16 +422,4 @@ class SessionTests: TestCaseBase {
         let bob_session_with_alice = try XCTUnwrap(bob_store.loadSession(for: alice_address, context: NullContext()))
         XCTAssert(try bob_session_with_alice.currentRatchetKeyMatches(XCTUnwrap(bob_error_message.ratchetKey)))
     }
-
-    static var allTests: [(String, (SessionTests) -> () throws -> Void)] {
-        return [
-            ("testSessionCipher", testSessionCipher),
-            ("testSessionCipherWithBadStore", testSessionCipherWithBadStore),
-            ("testSealedSenderSession", testSealedSenderSession),
-            ("testArchiveSession", testArchiveSession),
-            ("testSealedSenderGroupCipher", testSealedSenderGroupCipher),
-            ("testSealedSenderGroupCipherWithBadRegistrationId", testSealedSenderGroupCipherWithBadRegistrationId),
-            ("testDecryptionErrorMessage", testDecryptionErrorMessage)
-        ]
-    }
 }

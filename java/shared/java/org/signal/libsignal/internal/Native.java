@@ -270,10 +270,6 @@ public final class Native {
 
   public static native void ProfileKeyCredentialRequest_CheckValidContents(byte[] buffer);
 
-  public static native void ProfileKeyCredentialResponse_CheckValidContents(byte[] buffer);
-
-  public static native void ProfileKeyCredential_CheckValidContents(byte[] buffer);
-
   public static native void ProfileKey_CheckValidContents(byte[] buffer);
   public static native byte[] ProfileKey_GetCommitment(byte[] profileKey, UUID uuid);
   public static native byte[] ProfileKey_GetProfileKeyVersion(byte[] profileKey, UUID uuid);
@@ -357,14 +353,12 @@ public final class Native {
   public static native byte[] ServerPublicParams_CreateAuthCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
   public static native byte[] ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
   public static native byte[] ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);
-  public static native byte[] ServerPublicParams_CreateProfileKeyCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);
   public static native byte[] ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, UUID uuid, byte[] profileKey);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptCredential);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptSerial);
   public static native byte[] ServerPublicParams_ReceiveAuthCredential(byte[] params, UUID uuid, int redemptionTime, byte[] response);
   public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPni(byte[] params, UUID aci, UUID pni, long redemptionTime, byte[] response);
   public static native byte[] ServerPublicParams_ReceiveExpiringProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response, long currentTimeInSeconds);
-  public static native byte[] ServerPublicParams_ReceiveProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
   public static native byte[] ServerPublicParams_ReceiveReceiptCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
   public static native void ServerPublicParams_VerifySignature(byte[] serverPublicParams, byte[] message, byte[] notarySignature);
 
@@ -374,7 +368,6 @@ public final class Native {
   public static native byte[] ServerSecretParams_IssueAuthCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, UUID uuid, int redemptionTime);
   public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniDeterministic(byte[] serverSecretParams, byte[] randomness, UUID aci, UUID pni, long redemptionTime);
   public static native byte[] ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment, long expirationInSeconds);
-  public static native byte[] ServerSecretParams_IssueProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment);
   public static native byte[] ServerSecretParams_IssueReceiptCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, long receiptExpirationTime, long receiptLevel);
   public static native byte[] ServerSecretParams_SignDeterministic(byte[] params, byte[] randomness, byte[] message);
   public static native void ServerSecretParams_VerifyAuthCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes, long currentTimeInSeconds);

@@ -36,11 +36,9 @@ export { default as ServerZkProfileOperations } from './profiles/ServerZkProfile
 
 export { default as ProfileKey } from './profiles/ProfileKey';
 export { default as ProfileKeyCommitment } from './profiles/ProfileKeyCommitment';
-export { default as ProfileKeyCredential } from './profiles/ProfileKeyCredential';
 export { default as ProfileKeyCredentialPresentation } from './profiles/ProfileKeyCredentialPresentation';
 export { default as ProfileKeyCredentialRequest } from './profiles/ProfileKeyCredentialRequest';
 export { default as ProfileKeyCredentialRequestContext } from './profiles/ProfileKeyCredentialRequestContext';
-export { default as ProfileKeyCredentialResponse } from './profiles/ProfileKeyCredentialResponse';
 export { default as ProfileKeyVersion } from './profiles/ProfileKeyVersion';
 
 export { default as ExpiringProfileKeyCredential } from './profiles/ExpiringProfileKeyCredential';

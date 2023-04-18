@@ -13,7 +13,6 @@ import GroupPublicParams from '../groups/GroupPublicParams';
 import ExpiringProfileKeyCredentialResponse from './ExpiringProfileKeyCredentialResponse';
 import ProfileKeyCommitment from './ProfileKeyCommitment';
 import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation';
-import ProfileKeyCredentialResponse from './ProfileKeyCredentialResponse';
 import ProfileKeyCredentialRequest from './ProfileKeyCredentialRequest';
 
 import { UUIDType, fromUUID } from '../internal/UUIDUtil';
@@ -23,38 +22,6 @@ export default class ServerZkProfileOperations {
 
   constructor(serverSecretParams: ServerSecretParams) {
     this.serverSecretParams = serverSecretParams;
-  }
-
-  issueProfileKeyCredential(
-    profileKeyCredentialRequest: ProfileKeyCredentialRequest,
-    uuid: UUIDType,
-    profileKeyCommitment: ProfileKeyCommitment
-  ): ProfileKeyCredentialResponse {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.issueProfileKeyCredentialWithRandom(
-      random,
-      profileKeyCredentialRequest,
-      uuid,
-      profileKeyCommitment
-    );
-  }
-
-  issueProfileKeyCredentialWithRandom(
-    random: Buffer,
-    profileKeyCredentialRequest: ProfileKeyCredentialRequest,
-    uuid: UUIDType,
-    profileKeyCommitment: ProfileKeyCommitment
-  ): ProfileKeyCredentialResponse {
-    return new ProfileKeyCredentialResponse(
-      Native.ServerSecretParams_IssueProfileKeyCredentialDeterministic(
-        this.serverSecretParams.getContents(),
-        random,
-        profileKeyCredentialRequest.getContents(),
-        fromUUID(uuid),
-        profileKeyCommitment.getContents()
-      )
-    );
   }
 
   issueExpiringProfileKeyCredential(
