@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.ecc;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 public class ECPrivateKey implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
@@ -16,7 +17,7 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
     return new ECPrivateKey(Native.ECPrivateKey_Generate());
   }
 
-  ECPrivateKey(byte[] privateKey) {
+  ECPrivateKey(byte[] privateKey) throws InvalidKeyException {
     this.unsafeHandle = Native.ECPrivateKey_Deserialize(privateKey);
   }
 

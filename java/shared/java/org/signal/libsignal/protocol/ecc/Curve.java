@@ -25,7 +25,7 @@ public class Curve {
     return new ECPublicKey(bytes, offset);
   }
 
-  public static ECPrivateKey decodePrivatePoint(byte[] bytes) {
+  public static ECPrivateKey decodePrivatePoint(byte[] bytes) throws InvalidKeyException {
     return new ECPrivateKey(bytes);
   }
 

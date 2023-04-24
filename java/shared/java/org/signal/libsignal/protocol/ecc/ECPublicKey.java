@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.ecc;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 import java.util.Arrays;
 
 public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.Owner {
@@ -16,11 +17,11 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
 
   private final long unsafeHandle;
 
-  public ECPublicKey(byte[] serialized, int offset) {
+  public ECPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
     this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, offset);
   }
 
-  public ECPublicKey(byte[] serialized) {
+  public ECPublicKey(byte[] serialized) throws InvalidKeyException {
     this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, 0);
   }
 
