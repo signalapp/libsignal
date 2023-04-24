@@ -72,9 +72,14 @@ impl<'a> SgxQuote<'a> {
 
 /// Reads the bytes backing `value`.
 ///
-/// SAFETY: `T` must be a `repr(C, packed)` or `repr(transparent)` struct,
-/// and all its fields recursively the same down to primitive integers or fixed-sized arrays of integers.
+/// SAFETY: `T` must be a `repr(C)` or `repr(transparent)` struct with no interior padding
+/// (alignment of 1), and all its fields recursively the same down to bytes (`u8` or `i8`) or
+/// fixed-sized arrays of bytes.
+///
+/// Rust can only check the alignment of the top-level type; it can't check the repr or the
+/// properties of fields. Be careful!
 unsafe fn bytes_of<T>(value: &T) -> &[u8] {
+    assert_eq!(1, std::mem::align_of::<T>());
     let len = std::mem::size_of::<T>();
     let ptr = value as *const T;
     std::slice::from_raw_parts(ptr as *const u8, len)
@@ -98,7 +103,7 @@ const QUOTE_V3: u16 = 3;
 // https://github.com/openenclave/openenclave/tree/v0.17.7
 // sgx_quote.h
 #[derive(Debug)]
-#[repr(C, packed)]
+#[repr(C)]
 pub(crate) struct SgxQuoteBody {
     //    /* (0) */
     //    uint16_t version;
@@ -134,6 +139,7 @@ pub(crate) struct SgxQuoteBody {
     //    /* (432) */
 }
 
+static_assertions::const_assert_eq!(1, std::mem::align_of::<SgxQuoteBody>());
 static_assertions::const_assert_eq!(432, std::mem::size_of::<SgxQuoteBody>());
 
 #[derive(Debug)]
@@ -326,7 +332,7 @@ impl<'a> Expireable for SgxQuoteSupport<'a> {
 }
 
 #[derive(Debug)]
-#[repr(C, packed)]
+#[repr(C)]
 struct SgxEcdsaSignatureHeader {
     signature: [u8; 64],
     attest_pub_key: [u8; 64],
@@ -335,6 +341,7 @@ struct SgxEcdsaSignatureHeader {
     auth_data_size: UInt16LE,
 }
 
+static_assertions::const_assert_eq!(1, std::mem::align_of::<SgxEcdsaSignatureHeader>());
 static_assertions::const_assert_eq!(578, std::mem::size_of::<SgxEcdsaSignatureHeader>());
 
 impl TryFrom<[u8; std::mem::size_of::<SgxEcdsaSignatureHeader>()]> for SgxEcdsaSignatureHeader {

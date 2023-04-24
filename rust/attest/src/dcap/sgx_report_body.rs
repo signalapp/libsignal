@@ -21,7 +21,7 @@ const SGX_HASH_SIZE: usize = 32;
 pub type MREnclave = [u8; SGX_HASH_SIZE];
 
 #[derive(Debug)]
-#[repr(C, packed)]
+#[repr(C)]
 // sgx_report_body_t
 pub(crate) struct SgxReportBody {
     //     /* (0) CPU security version */
@@ -92,6 +92,7 @@ pub(crate) struct SgxReportBody {
     pub sgx_report_data_bytes: [u8; 64],
 }
 
+static_assertions::const_assert_eq!(1, std::mem::align_of::<SgxReportBody>());
 static_assertions::const_assert_eq!(384, std::mem::size_of::<SgxReportBody>());
 
 bitflags! {

@@ -7,11 +7,14 @@ use std::convert::{TryFrom, TryInto};
 
 use hex::FromHex;
 
-#[derive(Debug)]
-#[repr(C, packed)]
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub(crate) struct UInt16LE {
     bytes: [u8; 2],
 }
+
+static_assertions::assert_eq_align!(u8, UInt16LE);
+static_assertions::assert_eq_size!(u16, UInt16LE);
 
 impl UInt16LE {
     pub fn value(&self) -> u16 {
@@ -27,11 +30,14 @@ impl From<u16> for UInt16LE {
     }
 }
 
-#[derive(Debug)]
-#[repr(C, packed)]
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub(crate) struct UInt32LE {
     bytes: [u8; 4],
 }
+
+static_assertions::assert_eq_align!(u8, UInt32LE);
+static_assertions::assert_eq_size!(u32, UInt32LE);
 
 impl UInt32LE {
     pub fn value(&self) -> u32 {
@@ -66,8 +72,11 @@ impl FromHex for UInt32LE {
     }
 }
 
-#[derive(Debug)]
-#[repr(C, packed)]
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub(crate) struct UInt64LE {
     bytes: [u8; 8],
 }
+
+static_assertions::assert_eq_align!(u8, UInt64LE);
+static_assertions::assert_eq_size!(u64, UInt64LE);

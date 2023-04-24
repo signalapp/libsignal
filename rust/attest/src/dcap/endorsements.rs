@@ -268,7 +268,7 @@ fn data_for_field<'a>(field: SgxEndorsementField, offsets: &[usize], data: &'a [
 }
 
 #[derive(Debug)]
-#[repr(C, packed)]
+#[repr(C)]
 pub(crate) struct EndorsementsHeader {
     // include/openenclave/bits/attestation.h
     // oe_endorsements_t
@@ -285,6 +285,7 @@ pub(crate) struct EndorsementsHeader {
     num_elements: UInt32LE,
 }
 
+static_assertions::const_assert_eq!(1, std::mem::align_of::<EndorsementsHeader>());
 static_assertions::const_assert_eq!(16, std::mem::size_of::<EndorsementsHeader>());
 
 impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHeader {
