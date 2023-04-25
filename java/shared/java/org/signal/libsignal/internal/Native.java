@@ -115,9 +115,31 @@ public final class Native {
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer);
 
+  public static native void CallLinkPublicParams_CheckValidContents(byte[] paramsBytes);
+
+  public static native void CallLinkSecretParams_CheckValidContents(byte[] paramsBytes);
+  public static native byte[] CallLinkSecretParams_DeriveFromRootKey(byte[] rootKey);
+  public static native byte[] CallLinkSecretParams_GetPublicParams(byte[] paramsBytes);
+
   public static native long Cds2ClientState_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
   public static native Map Cds2Metrics_extract(byte[] attestationMsg);
+
+  public static native void CreateCallLinkCredentialPresentation_CheckValidContents(byte[] presentationBytes);
+  public static native void CreateCallLinkCredentialPresentation_Verify(byte[] presentationBytes, byte[] roomId, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes);
+
+  public static native void CreateCallLinkCredentialRequestContext_CheckValidContents(byte[] contextBytes);
+  public static native byte[] CreateCallLinkCredentialRequestContext_GetRequest(byte[] contextBytes);
+  public static native byte[] CreateCallLinkCredentialRequestContext_NewDeterministic(byte[] roomId, byte[] randomness);
+  public static native byte[] CreateCallLinkCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, UUID userId, byte[] paramsBytes);
+
+  public static native void CreateCallLinkCredentialRequest_CheckValidContents(byte[] requestBytes);
+  public static native byte[] CreateCallLinkCredentialRequest_IssueDeterministic(byte[] requestBytes, UUID userId, long timestamp, byte[] paramsBytes, byte[] randomness);
+
+  public static native void CreateCallLinkCredentialResponse_CheckValidContents(byte[] responseBytes);
+
+  public static native void CreateCallLinkCredential_CheckValidContents(byte[] paramsBytes);
+  public static native byte[] CreateCallLinkCredential_PresentDeterministic(byte[] credentialBytes, byte[] roomId, UUID userId, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
 
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);
@@ -162,6 +184,12 @@ public final class Native {
 
   public static native void ExpiringProfileKeyCredential_CheckValidContents(byte[] buffer);
   public static native long ExpiringProfileKeyCredential_GetExpirationTime(byte[] credential);
+
+  public static native void GenericServerPublicParams_CheckValidContents(byte[] paramsBytes);
+
+  public static native void GenericServerSecretParams_CheckValidContents(byte[] paramsBytes);
+  public static native byte[] GenericServerSecretParams_GenerateDeterministic(byte[] randomness);
+  public static native byte[] GenericServerSecretParams_GetPublicParams(byte[] paramsBytes);
 
   public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store, Object ctx);
   public static native CiphertextMessage GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store, Object ctx);

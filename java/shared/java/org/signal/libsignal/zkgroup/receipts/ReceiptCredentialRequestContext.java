@@ -28,8 +28,4 @@ public final class ReceiptCredentialRequestContext extends ByteArray {
     }
   }
 
-  public byte[] serialize() {
-    return contents.clone();
-  }
-
 }

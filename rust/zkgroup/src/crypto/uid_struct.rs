@@ -43,3 +43,9 @@ impl UidStruct {
         self.bytes
     }
 }
+
+impl zkcredential::attributes::Attribute for UidStruct {
+    fn as_points(&self) -> [RistrettoPoint; 2] {
+        [self.M1, self.M2]
+    }
+}

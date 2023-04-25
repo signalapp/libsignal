@@ -66,8 +66,4 @@ public final class GroupSecretParams extends ByteArray {
     }
   }
 
-  public byte[] serialize() {
-    return contents.clone();
-  }
-
 }

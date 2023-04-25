@@ -13,6 +13,7 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 poksho = { path = "../poksho" }
+zkcredential = { path = "../zkcredential" }
 
 bincode = "1.2.1"
 serde = { version = "1.0.106", features = ["derive"] }
@@ -22,6 +23,7 @@ aead = "0.4.0"
 aes-gcm-siv = "0.10.0"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
+subtle = "2.3"
 
 # For generation
 base64 = { version = "0.13.0", optional = true }
@@ -35,8 +37,6 @@ branch = "lizard2"
 
 
 [dev-dependencies]
-zkcredential = { path = "../zkcredential" }
-
 # For benchmarking
 criterion = "0.4"
 
@@ -45,5 +45,9 @@ name = "zkgroup_benchmarks"
 harness = false
 
 [[bin]]
-name = "generate-server-params"
+name = "generate_server_params"
+required-features = ["base64", "rand"]
+
+[[bin]]
+name = "generate_generic_server_params"
 required-features = ["base64", "rand"]

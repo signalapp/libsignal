@@ -1332,6 +1332,70 @@ SignalFfiError *signal_receipt_credential_presentation_get_receipt_level(uint64_
 SignalFfiError *signal_receipt_credential_presentation_get_receipt_serial(uint8_t (*out)[SignalRECEIPT_SERIAL_LEN],
                                                                           const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
 
+SignalFfiError *signal_generic_server_secret_params_check_valid_contents(SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_generic_server_secret_params_generate_deterministic(SignalOwnedBuffer *out,
+                                                                           const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_generic_server_secret_params_get_public_params(SignalOwnedBuffer *out,
+                                                                      SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_generic_server_public_params_check_valid_contents(SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_call_link_secret_params_check_valid_contents(SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_call_link_secret_params_derive_from_root_key(SignalOwnedBuffer *out,
+                                                                    SignalBorrowedBuffer root_key);
+
+SignalFfiError *signal_call_link_secret_params_get_public_params(SignalOwnedBuffer *out,
+                                                                 SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_call_link_public_params_check_valid_contents(SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_create_call_link_credential_request_context_check_valid_contents(SignalBorrowedBuffer context_bytes);
+
+SignalFfiError *signal_create_call_link_credential_request_context_new_deterministic(SignalOwnedBuffer *out,
+                                                                                     SignalBorrowedBuffer room_id,
+                                                                                     const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_create_call_link_credential_request_context_get_request(SignalOwnedBuffer *out,
+                                                                               SignalBorrowedBuffer context_bytes);
+
+SignalFfiError *signal_create_call_link_credential_request_check_valid_contents(SignalBorrowedBuffer request_bytes);
+
+SignalFfiError *signal_create_call_link_credential_request_issue_deterministic(SignalOwnedBuffer *out,
+                                                                               SignalBorrowedBuffer request_bytes,
+                                                                               const uint8_t (*user_id)[16],
+                                                                               uint64_t timestamp,
+                                                                               SignalBorrowedBuffer params_bytes,
+                                                                               const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_create_call_link_credential_response_check_valid_contents(SignalBorrowedBuffer response_bytes);
+
+SignalFfiError *signal_create_call_link_credential_request_context_receive_response(SignalOwnedBuffer *out,
+                                                                                    SignalBorrowedBuffer context_bytes,
+                                                                                    SignalBorrowedBuffer response_bytes,
+                                                                                    const uint8_t (*user_id)[16],
+                                                                                    SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_create_call_link_credential_check_valid_contents(SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_create_call_link_credential_present_deterministic(SignalOwnedBuffer *out,
+                                                                         SignalBorrowedBuffer credential_bytes,
+                                                                         SignalBorrowedBuffer room_id,
+                                                                         const uint8_t (*user_id)[16],
+                                                                         SignalBorrowedBuffer server_params_bytes,
+                                                                         SignalBorrowedBuffer call_link_params_bytes,
+                                                                         const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_create_call_link_credential_presentation_check_valid_contents(SignalBorrowedBuffer presentation_bytes);
+
+SignalFfiError *signal_create_call_link_credential_presentation_verify(SignalBorrowedBuffer presentation_bytes,
+                                                                       SignalBorrowedBuffer room_id,
+                                                                       uint64_t now,
+                                                                       SignalBorrowedBuffer server_params_bytes,
+                                                                       SignalBorrowedBuffer call_link_params_bytes);
+
 SignalFfiError *signal_verify_signature(bool *out,
                                         SignalBorrowedBuffer cert_pem,
                                         SignalBorrowedBuffer body,

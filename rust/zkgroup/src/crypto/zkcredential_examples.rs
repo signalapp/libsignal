@@ -28,18 +28,6 @@ use crate::crypto::uid_struct::UidStruct;
 use crate::crypto::{profile_key_encryption, uid_encryption};
 use crate::{RANDOMNESS_LEN, TEST_ARRAY_16, TEST_ARRAY_32};
 
-impl Attribute for UidStruct {
-    fn as_points(&self) -> [RistrettoPoint; 2] {
-        [self.M1, self.M2]
-    }
-}
-
-impl Attribute for uid_encryption::Ciphertext {
-    fn as_points(&self) -> [RistrettoPoint; 2] {
-        [self.E_A1, self.E_A2]
-    }
-}
-
 impl Attribute for ProfileKeyStruct {
     fn as_points(&self) -> [RistrettoPoint; 2] {
         [self.M3, self.M4]
@@ -49,23 +37,6 @@ impl Attribute for ProfileKeyStruct {
 impl Attribute for profile_key_encryption::Ciphertext {
     fn as_points(&self) -> [RistrettoPoint; 2] {
         [self.E_B1, self.E_B2]
-    }
-}
-
-const UID_ENCRYPTION_ID: &str = "20220630-zkgroup-uid";
-
-impl PublicKey for uid_encryption::PublicKey {
-    fn A(&self) -> RistrettoPoint {
-        self.A
-    }
-
-    fn G_a(&self) -> [RistrettoPoint; 2] {
-        let system = uid_encryption::SystemParams::get_hardcoded();
-        [system.G_a1, system.G_a2]
-    }
-
-    fn id(&self) -> &'static str {
-        UID_ENCRYPTION_ID
     }
 }
 
@@ -83,27 +54,6 @@ impl PublicKey for profile_key_encryption::PublicKey {
 
     fn id(&self) -> &'static str {
         PROFILE_KEY_ENCRYPTION_ID
-    }
-}
-
-impl PublicKey for uid_encryption::KeyPair {
-    fn A(&self) -> RistrettoPoint {
-        self.A
-    }
-
-    fn G_a(&self) -> [RistrettoPoint; 2] {
-        let system = uid_encryption::SystemParams::get_hardcoded();
-        [system.G_a1, system.G_a2]
-    }
-
-    fn id(&self) -> &'static str {
-        UID_ENCRYPTION_ID
-    }
-}
-
-impl attributes::KeyPair for uid_encryption::KeyPair {
-    fn a(&self) -> [Scalar; 2] {
-        [self.a1, self.a2]
     }
 }
 

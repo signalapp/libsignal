@@ -6,6 +6,8 @@
 import XCTest
 import LibSignalClient
 
+private let SECONDS_PER_DAY: UInt64 = 24 * 60 * 60
+
 class ZKGroupTests: TestCaseBase {
 
   let TEST_ARRAY_16: UUID         = UUID(uuid: (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f))
@@ -119,8 +121,8 @@ class ZKGroupTests: TestCaseBase {
     XCTAssertEqual(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize())
     XCTAssertNil(try presentation.getPniCiphertext())
     XCTAssertEqual(try presentation.getRedemptionTime(),
-                   Date(timeIntervalSince1970: TimeInterval(redemptionTime) * 86400))
-    try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime) * 86400))
+                   Date(timeIntervalSince1970: TimeInterval(redemptionTime) * TimeInterval(SECONDS_PER_DAY)))
+    try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime) * TimeInterval(SECONDS_PER_DAY)))
 
     XCTAssertEqual(presentation.serialize(), authPresentationResult)
   }
@@ -128,7 +130,7 @@ class ZKGroupTests: TestCaseBase {
   func testAuthWithPniIntegration() throws {
     let aci: UUID              = TEST_ARRAY_16
     let pni: UUID              = TEST_ARRAY_16_1
-    let redemptionTime: UInt64 = 123456 * 86400
+    let redemptionTime: UInt64 = 123456 * SECONDS_PER_DAY
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -204,8 +206,8 @@ class ZKGroupTests: TestCaseBase {
 
     // SERVER
     let now = UInt64(Date().timeIntervalSince1970)
-    let startOfDay = now - (now % 86400)
-    let expiration = startOfDay + 5 * 86400
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let expiration = startOfDay + 5 * SECONDS_PER_DAY
     let response = try serverZkProfile.issueExpiringProfileKeyCredential(randomness: TEST_ARRAY_32_4, profileKeyCredentialRequest: request, uuid: uuid, profileKeyCommitment: profileKeyCommitment, expiration: expiration)
 
     // CLIENT
@@ -339,5 +341,32 @@ class ZKGroupTests: TestCaseBase {
 
     let plaintext257 = try clientZkGroupCipher.decryptBlob(blobCiphertext: ciphertext257)
     XCTAssertEqual(plaintext, plaintext257)
+  }
+
+  func testCreateCallLinkCredential() throws {
+    let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = serverSecretParams.getPublicParams()
+    let clientSecretParams = CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1)
+    let clientPublicParams = clientSecretParams.getPublicParams()
+
+    // Client
+    let roomId = withUnsafeBytes(of: TEST_ARRAY_32_2) { Data($0) }
+    let context = CreateCallLinkCredentialRequestContext.forRoomId(roomId, randomness: TEST_ARRAY_32_3)
+    let request = context.getRequest()
+
+    // Server
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = request.issueCredential(userId: TEST_ARRAY_16, timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), params: serverSecretParams, randomness: TEST_ARRAY_32_4)
+
+    // Client
+    let credential = try context.receive(response, userId: TEST_ARRAY_16, params: serverPublicParams)
+    let presentation = credential.present(roomId: roomId, userId: TEST_ARRAY_16, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: TEST_ARRAY_32_5)
+
+    // Server
+    try presentation.verify(roomId: roomId, serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+    try presentation.verify(roomId: roomId, now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+
+    XCTAssertThrowsError(try presentation.verify(roomId: roomId, now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 30 * 60 * 60)), serverParams: serverSecretParams, callLinkParams: clientPublicParams))
   }
 }

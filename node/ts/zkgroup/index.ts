@@ -7,6 +7,9 @@
 export { default as ServerPublicParams } from './ServerPublicParams';
 export { default as ServerSecretParams } from './ServerSecretParams';
 
+export { default as GenericServerPublicParams } from './GenericServerPublicParams';
+export { default as GenericServerSecretParams } from './GenericServerSecretParams';
+
 export { default as NotarySignature } from './NotarySignature';
 
 // Auth
@@ -54,3 +57,12 @@ export { default as ReceiptCredentialRequest } from './receipts/ReceiptCredentia
 export { default as ReceiptCredentialRequestContext } from './receipts/ReceiptCredentialRequestContext';
 export { default as ReceiptCredentialResponse } from './receipts/ReceiptCredentialResponse';
 export { default as ReceiptSerial } from './receipts/ReceiptSerial';
+
+// Call Links
+export { default as CallLinkPublicParams } from './calllinks/CallLinkPublicParams';
+export { default as CallLinkSecretParams } from './calllinks/CallLinkSecretParams';
+export { default as CreateCallLinkCredential } from './calllinks/CreateCallLinkCredential';
+export { default as CreateCallLinkCredentialPresentation } from './calllinks/CreateCallLinkCredentialPresentation';
+export { default as CreateCallLinkCredentialRequest } from './calllinks/CreateCallLinkCredentialRequest';
+export { default as CreateCallLinkCredentialRequestContext } from './calllinks/CreateCallLinkCredentialRequestContext';
+export { default as CreateCallLinkCredentialResponse } from './calllinks/CreateCallLinkCredentialResponse';

@@ -19,7 +19,12 @@ import {
   ClientZkReceiptOperations,
   ServerZkReceiptOperations,
   ReceiptSerial,
+  GenericServerSecretParams,
+  CreateCallLinkCredentialRequestContext,
+  CallLinkSecretParams,
 } from '../zkgroup/';
+
+const SECONDS_PER_DAY = 86400;
 
 function hexToBuffer(hex: string) {
   return Buffer.from(hex, 'hex');
@@ -133,12 +138,12 @@ describe('ZKGroup', () => {
     assert.isNull(presentation.getPniCiphertext());
     assert.deepEqual(
       presentation.getRedemptionTime(),
-      new Date(redemptionTime * 86400 * 1000)
+      new Date(redemptionTime * SECONDS_PER_DAY * 1000)
     );
     serverZkAuth.verifyAuthCredentialPresentation(
       groupPublicParams,
       presentation,
-      new Date(redemptionTime * 86400 * 1000)
+      new Date(redemptionTime * SECONDS_PER_DAY * 1000)
     );
 
     assertArrayEquals(presentation.serialize(), authPresentationResult);
@@ -147,7 +152,7 @@ describe('ZKGroup', () => {
   it('testAuthWithPniIntegration', () => {
     const aci = toUUID(TEST_ARRAY_16);
     const pni = toUUID(TEST_ARRAY_16_1);
-    const redemptionTime = 123456 * 86400;
+    const redemptionTime = 123456 * SECONDS_PER_DAY;
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -264,8 +269,8 @@ describe('ZKGroup', () => {
 
     // SERVER
     const now = Math.floor(Date.now() / 1000);
-    const startOfDay = now - (now % 86400);
-    const expiration = startOfDay + 5 * 86400;
+    const startOfDay = now - (now % SECONDS_PER_DAY);
+    const expiration = startOfDay + 5 * SECONDS_PER_DAY;
     const response =
       serverZkProfile.issueExpiringProfileKeyCredentialWithRandom(
         TEST_ARRAY_32_4,
@@ -463,5 +468,62 @@ describe('ZKGroup', () => {
 
     // redemption server
     serverOps.verifyReceiptCredentialPresentation(presentation);
+  });
+
+  it('testCreateCallLinkCredential', () => {
+    const serverSecretParams =
+      GenericServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+    const serverPublicParams = serverSecretParams.getPublicParams();
+
+    const clientSecretParams =
+      CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1);
+    const clientPublicParams = clientSecretParams.getPublicParams();
+
+    // client
+    const roomId = TEST_ARRAY_32_2;
+    const context = CreateCallLinkCredentialRequestContext.forRoomIdWithRandom(
+      roomId,
+      TEST_ARRAY_32_3
+    );
+    const request = context.getRequest();
+
+    // issuance server
+    const userId = toUUID(TEST_ARRAY_16);
+    const now = Math.floor(Date.now() / 1000);
+    const startOfDay = now - (now % SECONDS_PER_DAY);
+    const response = request.issueCredentialWithRandom(
+      userId,
+      startOfDay,
+      serverSecretParams,
+      TEST_ARRAY_32_4
+    );
+
+    // client
+    const credential = context.receive(response, userId, serverPublicParams);
+    const presentation = credential.presentWithRandom(
+      roomId,
+      userId,
+      serverPublicParams,
+      clientSecretParams,
+      TEST_ARRAY_32_5
+    );
+
+    // redemption server
+    presentation.verify(roomId, serverSecretParams, clientPublicParams);
+    presentation.verify(
+      roomId,
+      serverSecretParams,
+      clientPublicParams,
+      new Date(1000 * (startOfDay + SECONDS_PER_DAY))
+    );
+
+    assert.throws(() =>
+      presentation.verify(
+        roomId,
+        serverSecretParams,
+        clientPublicParams,
+        new Date(1000 * (startOfDay + 30 * 60 * 60))
+      )
+    );
   });
 });

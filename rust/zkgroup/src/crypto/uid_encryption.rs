@@ -114,6 +114,50 @@ impl KeyPair {
     }
 }
 
+const UID_ENCRYPTION_ID: &str = "Signal_ZKGroup_20230419_UidEncryption";
+
+impl zkcredential::attributes::PublicKey for KeyPair {
+    fn A(&self) -> RistrettoPoint {
+        self.A
+    }
+
+    fn G_a(&self) -> [RistrettoPoint; 2] {
+        let system = SystemParams::get_hardcoded();
+        [system.G_a1, system.G_a2]
+    }
+
+    fn id(&self) -> &'static str {
+        UID_ENCRYPTION_ID
+    }
+}
+
+impl zkcredential::attributes::KeyPair for KeyPair {
+    fn a(&self) -> [Scalar; 2] {
+        [self.a1, self.a2]
+    }
+}
+
+impl zkcredential::attributes::PublicKey for PublicKey {
+    fn A(&self) -> RistrettoPoint {
+        self.A
+    }
+
+    fn G_a(&self) -> [RistrettoPoint; 2] {
+        let system = SystemParams::get_hardcoded();
+        [system.G_a1, system.G_a2]
+    }
+
+    fn id(&self) -> &'static str {
+        UID_ENCRYPTION_ID
+    }
+}
+
+impl zkcredential::attributes::Attribute for Ciphertext {
+    fn as_points(&self) -> [RistrettoPoint; 2] {
+        [self.E_A1, self.E_A2]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
