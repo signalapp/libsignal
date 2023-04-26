@@ -6,6 +6,7 @@
 package org.signal.libsignal.zkgroup.calllinks;
 
 import org.signal.libsignal.zkgroup.InvalidInputException;
+import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.groups.UuidCiphertext;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
@@ -37,6 +38,10 @@ public final class CallLinkSecretParams extends ByteArray {
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
+  }
+
+  public UUID decryptUserId(UuidCiphertext ciphertext) throws VerificationFailedException {
+    return Native.CallLinkSecretParams_DecryptUserId(getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI());
   }
 
 }

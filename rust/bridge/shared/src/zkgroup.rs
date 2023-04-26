@@ -693,6 +693,17 @@ fn CallLinkSecretParams_GetPublicParams(params_bytes: &[u8]) -> Vec<u8> {
     bincode::serialize(&public_params).expect("can serialize")
 }
 
+#[bridge_fn]
+fn CallLinkSecretParams_DecryptUserId(
+    params_bytes: &[u8],
+    user_id: Serialized<UuidCiphertext>,
+) -> Result<Uuid, ZkGroupVerificationFailure> {
+    let params = bincode::deserialize::<CallLinkSecretParams>(params_bytes)
+        .expect("should have been parsed previously");
+
+    Ok(Uuid::from_bytes(params.decrypt_uuid(user_id.into_inner())?))
+}
+
 #[bridge_fn_void]
 fn CallLinkPublicParams_CheckValidContents(
     params_bytes: &[u8],
@@ -836,4 +847,116 @@ fn CreateCallLinkCredentialPresentation_Verify(
         .expect("should have been parsed previously");
 
     presentation.verify(room_id, now.as_seconds(), &server_params, &call_link_params)
+}
+
+#[bridge_fn_void]
+fn CallLinkAuthCredentialResponse_CheckValidContents(
+    response_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<CallLinkAuthCredentialResponse>(response_bytes)
+}
+
+#[bridge_fn]
+fn CallLinkAuthCredentialResponse_IssueDeterministic(
+    user_id: Uuid,
+    redemption_time: Timestamp,
+    params_bytes: &[u8],
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Vec<u8> {
+    let params = bincode::deserialize::<GenericServerSecretParams>(params_bytes)
+        .expect("should have been parsed previously");
+
+    let response = CallLinkAuthCredentialResponse::issue_credential(
+        user_id.into_bytes(),
+        redemption_time.as_seconds(),
+        &params,
+        *randomness,
+    );
+    bincode::serialize(&response).expect("can serialize")
+}
+
+#[bridge_fn]
+fn CallLinkAuthCredentialResponse_Receive(
+    response_bytes: &[u8],
+    user_id: Uuid,
+    redemption_time: Timestamp,
+    params_bytes: &[u8],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let response = bincode::deserialize::<CallLinkAuthCredentialResponse>(response_bytes)
+        .expect("should have been parsed previously");
+    let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
+        .expect("should have been parsed previously");
+
+    let credential =
+        response.receive(user_id.into_bytes(), redemption_time.as_seconds(), &params)?;
+    Ok(bincode::serialize(&credential).expect("can serialize"))
+}
+
+#[bridge_fn_void]
+fn CallLinkAuthCredential_CheckValidContents(
+    credential_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<CallLinkAuthCredential>(credential_bytes)
+}
+
+#[bridge_fn]
+fn CallLinkAuthCredential_PresentDeterministic(
+    credential_bytes: &[u8],
+    user_id: Uuid,
+    redemption_time: Timestamp,
+    server_params_bytes: &[u8],
+    call_link_params_bytes: &[u8],
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let credential = bincode::deserialize::<CallLinkAuthCredential>(credential_bytes)
+        .expect("should have been parsed previously");
+    let server_params = bincode::deserialize::<GenericServerPublicParams>(server_params_bytes)
+        .expect("should have been parsed previously");
+    let call_link_params = bincode::deserialize::<CallLinkSecretParams>(call_link_params_bytes)
+        .expect("should have been parsed previously");
+
+    let presentation = credential.present(
+        user_id.into_bytes(),
+        redemption_time.as_seconds(),
+        &server_params,
+        &call_link_params,
+        *randomness,
+    );
+    Ok(bincode::serialize(&presentation).expect("can serialize"))
+}
+
+#[bridge_fn_void]
+fn CallLinkAuthCredentialPresentation_CheckValidContents(
+    presentation_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<CallLinkAuthCredentialPresentation>(presentation_bytes)
+}
+
+#[bridge_fn_void]
+fn CallLinkAuthCredentialPresentation_Verify(
+    presentation_bytes: &[u8],
+    now: Timestamp,
+    server_params_bytes: &[u8],
+    call_link_params_bytes: &[u8],
+) -> Result<(), ZkGroupVerificationFailure> {
+    let presentation =
+        bincode::deserialize::<CallLinkAuthCredentialPresentation>(presentation_bytes)
+            .expect("should have been parsed previously");
+    let server_params = bincode::deserialize::<GenericServerSecretParams>(server_params_bytes)
+        .expect("should have been parsed previously");
+    let call_link_params = bincode::deserialize::<CallLinkPublicParams>(call_link_params_bytes)
+        .expect("should have been parsed previously");
+
+    presentation.verify(now.as_seconds(), &server_params, &call_link_params)
+}
+
+#[bridge_fn]
+fn CallLinkAuthCredentialPresentation_GetUserId(
+    presentation_bytes: &[u8],
+) -> Serialized<UuidCiphertext> {
+    let presentation =
+        bincode::deserialize::<CallLinkAuthCredentialPresentation>(presentation_bytes)
+            .expect("should have been parsed previously");
+
+    presentation.get_user_id().into()
 }

@@ -15,6 +15,9 @@ import org.signal.libsignal.zkgroup.SecureRandomTest;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.calllinks.CallLinkPublicParams;
 import org.signal.libsignal.zkgroup.calllinks.CallLinkSecretParams;
+import org.signal.libsignal.zkgroup.calllinks.CallLinkAuthCredential;
+import org.signal.libsignal.zkgroup.calllinks.CallLinkAuthCredentialPresentation;
+import org.signal.libsignal.zkgroup.calllinks.CallLinkAuthCredentialResponse;
 import org.signal.libsignal.zkgroup.calllinks.CreateCallLinkCredential;
 import org.signal.libsignal.zkgroup.calllinks.CreateCallLinkCredentialPresentation;
 import org.signal.libsignal.zkgroup.calllinks.CreateCallLinkCredentialRequest;
@@ -143,6 +146,44 @@ public final class CallLinksTest extends SecureRandomTest {
     } catch (VerificationFailedException e) {
         // expected
     }
+  }
+
+  @Test
+  public void testCallLinkAuthIntegration() throws InvalidInputException, VerificationFailedException {
+    // SERVER
+    // Generate keys
+    GenericServerSecretParams serverSecretParams = GenericServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
+    GenericServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+
+    // CLIENT
+    // Generate keys
+    CallLinkSecretParams clientSecretParams = CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1);
+    CallLinkPublicParams clientPublicParams = clientSecretParams.getPublicParams();
+
+    // SERVER
+    // Issue credential
+    Instant redemptionTime = Instant.now().truncatedTo(ChronoUnit.DAYS);
+    CallLinkAuthCredentialResponse response = CallLinkAuthCredentialResponse.issueCredential(TEST_UUID, redemptionTime, serverSecretParams, createSecureRandom(TEST_ARRAY_32_4));
+
+    // CLIENT
+    // Gets stored credential
+    CallLinkAuthCredential credential = response.receive(TEST_UUID, redemptionTime, serverPublicParams);
+    CallLinkAuthCredentialPresentation presentation = credential.present(TEST_UUID, redemptionTime, serverPublicParams, clientSecretParams, createSecureRandom(TEST_ARRAY_32_5));
+
+    // SERVER
+    // Verify presentation
+    presentation.verify(serverSecretParams, clientPublicParams);
+    presentation.verify(redemptionTime.plus(1, ChronoUnit.DAYS), serverSecretParams, clientPublicParams);
+
+    try {
+        presentation.verify(redemptionTime.plus(3, ChronoUnit.DAYS), serverSecretParams, clientPublicParams);
+        fail("credential expired 1");
+    } catch (VerificationFailedException e) {
+        // expected
+    }
+
+    // CLIENT
+    assertEquals(TEST_UUID, clientSecretParams.decryptUserId(presentation.getUserId()));
   }
 }
 

@@ -7,6 +7,8 @@ import ByteArray from '../internal/ByteArray';
 import * as Native from '../../../Native';
 
 import CallLinkPublicParams from './CallLinkPublicParams';
+import UuidCiphertext from '../groups/UuidCiphertext';
+import { UUIDType, toUUID } from '../internal/UUIDUtil';
 
 export default class CallLinkSecretParams extends ByteArray {
   private readonly __type?: never;
@@ -24,6 +26,12 @@ export default class CallLinkSecretParams extends ByteArray {
   getPublicParams(): CallLinkPublicParams {
     return new CallLinkPublicParams(
       Native.CallLinkSecretParams_GetPublicParams(this.contents)
+    );
+  }
+
+  decryptUserId(userId: UuidCiphertext): UUIDType {
+    return toUUID(
+      Native.CallLinkSecretParams_DecryptUserId(this.contents, userId.contents)
     );
   }
 }

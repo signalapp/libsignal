@@ -115,9 +115,21 @@ public final class Native {
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer);
 
+  public static native void CallLinkAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes);
+  public static native byte[] CallLinkAuthCredentialPresentation_GetUserId(byte[] presentationBytes);
+  public static native void CallLinkAuthCredentialPresentation_Verify(byte[] presentationBytes, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes);
+
+  public static native void CallLinkAuthCredentialResponse_CheckValidContents(byte[] responseBytes);
+  public static native byte[] CallLinkAuthCredentialResponse_IssueDeterministic(UUID userId, long redemptionTime, byte[] paramsBytes, byte[] randomness);
+  public static native byte[] CallLinkAuthCredentialResponse_Receive(byte[] responseBytes, UUID userId, long redemptionTime, byte[] paramsBytes);
+
+  public static native void CallLinkAuthCredential_CheckValidContents(byte[] credentialBytes);
+  public static native byte[] CallLinkAuthCredential_PresentDeterministic(byte[] credentialBytes, UUID userId, long redemptionTime, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
+
   public static native void CallLinkPublicParams_CheckValidContents(byte[] paramsBytes);
 
   public static native void CallLinkSecretParams_CheckValidContents(byte[] paramsBytes);
+  public static native UUID CallLinkSecretParams_DecryptUserId(byte[] paramsBytes, byte[] userId);
   public static native byte[] CallLinkSecretParams_DeriveFromRootKey(byte[] rootKey);
   public static native byte[] CallLinkSecretParams_GetPublicParams(byte[] paramsBytes);
 

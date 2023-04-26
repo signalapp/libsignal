@@ -173,7 +173,7 @@ impl ServerSecretParams {
     ///
     /// All times are relative to SystemTime::UNIX_EPOCH,
     /// but we don't actually use SystemTime because it's too small on 32-bit Linux.
-    fn check_auth_credential_redemption_time(
+    pub(crate) fn check_auth_credential_redemption_time(
         redemption_time_in_seconds: Timestamp,
         current_time_in_seconds: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {

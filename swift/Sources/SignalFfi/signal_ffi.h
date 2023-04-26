@@ -1350,6 +1350,10 @@ SignalFfiError *signal_call_link_secret_params_derive_from_root_key(SignalOwnedB
 SignalFfiError *signal_call_link_secret_params_get_public_params(SignalOwnedBuffer *out,
                                                                  SignalBorrowedBuffer params_bytes);
 
+SignalFfiError *signal_call_link_secret_params_decrypt_user_id(uint8_t (*out)[16],
+                                                               SignalBorrowedBuffer params_bytes,
+                                                               const unsigned char (*user_id)[SignalUUID_CIPHERTEXT_LEN]);
+
 SignalFfiError *signal_call_link_public_params_check_valid_contents(SignalBorrowedBuffer params_bytes);
 
 SignalFfiError *signal_create_call_link_credential_request_context_check_valid_contents(SignalBorrowedBuffer context_bytes);
@@ -1395,6 +1399,40 @@ SignalFfiError *signal_create_call_link_credential_presentation_verify(SignalBor
                                                                        uint64_t now,
                                                                        SignalBorrowedBuffer server_params_bytes,
                                                                        SignalBorrowedBuffer call_link_params_bytes);
+
+SignalFfiError *signal_call_link_auth_credential_response_check_valid_contents(SignalBorrowedBuffer response_bytes);
+
+SignalFfiError *signal_call_link_auth_credential_response_issue_deterministic(SignalOwnedBuffer *out,
+                                                                              const uint8_t (*user_id)[16],
+                                                                              uint64_t redemption_time,
+                                                                              SignalBorrowedBuffer params_bytes,
+                                                                              const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_call_link_auth_credential_response_receive(SignalOwnedBuffer *out,
+                                                                  SignalBorrowedBuffer response_bytes,
+                                                                  const uint8_t (*user_id)[16],
+                                                                  uint64_t redemption_time,
+                                                                  SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_call_link_auth_credential_check_valid_contents(SignalBorrowedBuffer credential_bytes);
+
+SignalFfiError *signal_call_link_auth_credential_present_deterministic(SignalOwnedBuffer *out,
+                                                                       SignalBorrowedBuffer credential_bytes,
+                                                                       const uint8_t (*user_id)[16],
+                                                                       uint64_t redemption_time,
+                                                                       SignalBorrowedBuffer server_params_bytes,
+                                                                       SignalBorrowedBuffer call_link_params_bytes,
+                                                                       const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_call_link_auth_credential_presentation_check_valid_contents(SignalBorrowedBuffer presentation_bytes);
+
+SignalFfiError *signal_call_link_auth_credential_presentation_verify(SignalBorrowedBuffer presentation_bytes,
+                                                                     uint64_t now,
+                                                                     SignalBorrowedBuffer server_params_bytes,
+                                                                     SignalBorrowedBuffer call_link_params_bytes);
+
+SignalFfiError *signal_call_link_auth_credential_presentation_get_user_id(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN],
+                                                                          SignalBorrowedBuffer presentation_bytes);
 
 SignalFfiError *signal_verify_signature(bool *out,
                                         SignalBorrowedBuffer cert_pem,

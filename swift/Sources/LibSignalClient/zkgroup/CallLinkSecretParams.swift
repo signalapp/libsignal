@@ -32,4 +32,14 @@ public class CallLinkSecretParams: ByteArray {
     }
   }
 
+  public func decryptUserId(_ ciphertext: UuidCiphertext) throws -> UUID {
+    return try withUnsafeBorrowedBuffer { contents in
+      try ciphertext.withUnsafePointerToSerialized { ciphertext in
+        try invokeFnReturningUuid {
+          signal_call_link_secret_params_decrypt_user_id($0, contents, ciphertext)
+        }
+      }
+    }
+  }
+
 }

@@ -61,6 +61,9 @@ export { default as ReceiptSerial } from './receipts/ReceiptSerial';
 // Call Links
 export { default as CallLinkPublicParams } from './calllinks/CallLinkPublicParams';
 export { default as CallLinkSecretParams } from './calllinks/CallLinkSecretParams';
+export { default as CallLinkAuthCredential } from './calllinks/CallLinkAuthCredential';
+export { default as CallLinkAuthCredentialPresentation } from './calllinks/CallLinkAuthCredentialPresentation';
+export { default as CallLinkAuthCredentialResponse } from './calllinks/CallLinkAuthCredentialResponse';
 export { default as CreateCallLinkCredential } from './calllinks/CreateCallLinkCredential';
 export { default as CreateCallLinkCredentialPresentation } from './calllinks/CreateCallLinkCredentialPresentation';
 export { default as CreateCallLinkCredentialRequest } from './calllinks/CreateCallLinkCredentialRequest';

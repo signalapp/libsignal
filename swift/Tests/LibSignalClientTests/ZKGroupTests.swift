@@ -369,4 +369,30 @@ class ZKGroupTests: TestCaseBase {
 
     XCTAssertThrowsError(try presentation.verify(roomId: roomId, now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 30 * 60 * 60)), serverParams: serverSecretParams, callLinkParams: clientPublicParams))
   }
+
+  func testCallLinkAuthCredential() throws {
+    let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = serverSecretParams.getPublicParams()
+    let clientSecretParams = CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1)
+    let clientPublicParams = clientSecretParams.getPublicParams()
+
+    // Server
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
+    let response = CallLinkAuthCredentialResponse.issueCredential(userId: TEST_ARRAY_16, redemptionTime: redemptionTime, params: serverSecretParams, randomness: TEST_ARRAY_32_4)
+
+    // Client
+    let credential = try response.receive(userId: TEST_ARRAY_16, redemptionTime: redemptionTime, params: serverPublicParams)
+    let presentation = credential.present(userId: TEST_ARRAY_16, redemptionTime: redemptionTime, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: TEST_ARRAY_32_5)
+
+    // Server
+    try presentation.verify(serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+    try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams)
+
+    XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 3 * SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams))
+
+    // Client
+    XCTAssertEqual(TEST_ARRAY_16, try clientSecretParams.decryptUserId(presentation.userId))
+  }
 }
