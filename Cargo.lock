@@ -843,7 +843,6 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f00447f331c7f726db5b8532ebc9163519eed03c6d7c8b73c90b3ff5646ac85"
 dependencies = [
- "anyhow",
  "rustc_version 0.4.0",
 ]
 
@@ -1365,9 +1364,9 @@ dependencies = [
 
 [[package]]
 name = "mp4san"
-version = "0.1.4"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e64e844698e7c247cb69b1d875f35352648ba79544bc6c4217ce24a4195810f"
+checksum = "21ebf83f92d31d0b9e6eeb8414df4b0b3b504f34a0ad38de86dc7079ba850d64"
 dependencies = [
  "bytes",
  "derive-where",
