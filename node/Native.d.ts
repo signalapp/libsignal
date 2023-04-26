@@ -173,6 +173,7 @@ export function ProfileKeyCredentialRequestContext_CheckValidContents(buffer: Bu
 export function ProfileKeyCredentialRequestContext_GetRequest(context: Serialized<ProfileKeyCredentialRequestContext>): Serialized<ProfileKeyCredentialRequest>;
 export function ProfileKeyCredentialRequest_CheckValidContents(buffer: Buffer): void;
 export function ProfileKey_CheckValidContents(buffer: Buffer): void;
+export function ProfileKey_DeriveAccessKey(profileKey: Serialized<ProfileKey>): Buffer;
 export function ProfileKey_GetCommitment(profileKey: Serialized<ProfileKey>, uuid: Uuid): Serialized<ProfileKeyCommitment>;
 export function ProfileKey_GetProfileKeyVersion(profileKey: Serialized<ProfileKey>, uuid: Uuid): Buffer;
 export function ProtocolAddress_DeviceId(obj: Wrapper<ProtocolAddress>): number;

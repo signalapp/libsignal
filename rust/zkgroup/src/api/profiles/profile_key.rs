@@ -62,10 +62,10 @@ impl ProfileKey {
         }
     }
 
-    pub fn derive_access_key(&self) -> [u8; 16] {
-        let nonce = &[0u8; 12];
+    pub fn derive_access_key(&self) -> [u8; ACCESS_KEY_LEN] {
+        let nonce = &[0u8; AESGCM_NONCE_LEN];
         let mut cipher = Aes256GcmEncryption::new(&self.bytes, nonce, &[]).unwrap();
-        let mut buf = [0u8; 16];
+        let mut buf = [0u8; ACCESS_KEY_LEN];
         cipher.encrypt(&mut buf[..]).unwrap();
         buf
     }

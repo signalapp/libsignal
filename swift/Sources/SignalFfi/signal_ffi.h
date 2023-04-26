@@ -96,6 +96,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalUUID_LEN 16
 
+#define SignalACCESS_KEY_LEN 16
+
 /**
  * Seconds in a 24-hour cycle (ignoring leap seconds).
  */
@@ -1131,6 +1133,9 @@ SignalFfiError *signal_profile_key_get_commitment(unsigned char (*out)[SignalPRO
 SignalFfiError *signal_profile_key_get_profile_key_version(uint8_t (*out)[SignalPROFILE_KEY_VERSION_ENCODED_LEN],
                                                            const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN],
                                                            const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_profile_key_derive_access_key(uint8_t (*out)[SignalACCESS_KEY_LEN],
+                                                     const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN]);
 
 SignalFfiError *signal_group_secret_params_generate_deterministic(unsigned char (*out)[SignalGROUP_SECRET_PARAMS_LEN],
                                                                   const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);

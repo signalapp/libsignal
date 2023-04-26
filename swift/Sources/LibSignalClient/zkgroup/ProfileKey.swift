@@ -34,4 +34,14 @@ public class ProfileKey: ByteArray {
     }
   }
 
+  public func deriveAccessKey() -> [UInt8] {
+    return failOnError {
+      try withUnsafePointerToSerialized { contents in
+        try invokeFnReturningFixedLengthArray {
+          signal_profile_key_derive_access_key($0, contents)
+        }
+      }
+    }
+  }
+
 }

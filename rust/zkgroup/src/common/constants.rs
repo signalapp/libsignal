@@ -47,6 +47,7 @@ pub const UUID_CIPHERTEXT_LEN: usize = 65;
 pub const RANDOMNESS_LEN: usize = 32;
 pub const SIGNATURE_LEN: usize = 64;
 pub const UUID_LEN: usize = 16;
+pub const ACCESS_KEY_LEN: usize = 16;
 
 /// Seconds in a 24-hour cycle (ignoring leap seconds).
 pub const SECONDS_PER_DAY: u64 = 86400;

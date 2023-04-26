@@ -38,4 +38,8 @@ public final class ProfileKey extends ByteArray {
     }
   }
 
+  public byte[] deriveAccessKey() {
+    return Native.ProfileKey_DeriveAccessKey(contents);
+  }
+
 }

@@ -28,4 +28,8 @@ export default class ProfileKey extends ByteArray {
       Native.ProfileKey_GetProfileKeyVersion(this.contents, fromUUID(uuid))
     );
   }
+
+  deriveAccessKey(): Buffer {
+    return Native.ProfileKey_DeriveAccessKey(this.contents);
+  }
 }

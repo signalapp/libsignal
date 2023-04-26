@@ -311,6 +311,7 @@ public final class Native {
   public static native void ProfileKeyCredentialRequest_CheckValidContents(byte[] buffer);
 
   public static native void ProfileKey_CheckValidContents(byte[] buffer);
+  public static native byte[] ProfileKey_DeriveAccessKey(byte[] profileKey);
   public static native byte[] ProfileKey_GetCommitment(byte[] profileKey, UUID uuid);
   public static native byte[] ProfileKey_GetProfileKeyVersion(byte[] profileKey, UUID uuid);
 

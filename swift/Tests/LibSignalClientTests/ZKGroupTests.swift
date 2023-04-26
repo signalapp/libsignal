@@ -395,4 +395,12 @@ class ZKGroupTests: TestCaseBase {
     // Client
     XCTAssertEqual(TEST_ARRAY_16, try clientSecretParams.decryptUserId(presentation.userId))
   }
+
+  func testDeriveProfileKey() throws {
+    let expectedAccessKey: [UInt8] = [0x5a, 0x72, 0x3a, 0xce, 0xe5, 0x2c, 0x5e, 0xa0, 0x2b, 0x92, 0xa3, 0xa3, 0x60, 0xc0, 0x95, 0x95]
+    let profileKeyBytes: [UInt8] = Array(repeating: 0x02, count: 32)
+
+    let result = try ProfileKey(contents: profileKeyBytes).deriveAccessKey()
+    XCTAssertEqual(expectedAccessKey, result)
+  }
 }

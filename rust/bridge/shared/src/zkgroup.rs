@@ -123,6 +123,11 @@ fn ProfileKey_GetProfileKeyVersion(
 }
 
 #[bridge_fn]
+fn ProfileKey_DeriveAccessKey(profile_key: Serialized<ProfileKey>) -> [u8; ACCESS_KEY_LEN] {
+    profile_key.derive_access_key()
+}
+
+#[bridge_fn]
 fn GroupSecretParams_GenerateDeterministic(
     randomness: &[u8; RANDOMNESS_LEN],
 ) -> Serialized<GroupSecretParams> {

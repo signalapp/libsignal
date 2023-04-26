@@ -580,4 +580,12 @@ describe('ZKGroup', () => {
       clientSecretParams.decryptUserId(presentation.getUserId())
     );
   });
+
+  it('testDeriveProfileKey', () => {
+    const expectedAccessKey = hexToBuffer('5a723acee52c5ea02b92a3a360c09595');
+    const profileKey = Buffer.alloc(32, 0x02);
+
+    const result = new ProfileKey(profileKey).deriveAccessKey();
+    assertArrayEquals(expectedAccessKey, result);
+  });
 });

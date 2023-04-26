@@ -784,6 +784,16 @@ public final class ZkGroupTest extends SecureRandomTest {
     assertArrayEquals(plaintext, plaintext257);
   }
 
+  @Test
+  public void testDeriveAccessKey() throws Exception {
+    byte[] expectedAccessKey = Hex.fromStringCondensedAssert("5a723acee52c5ea02b92a3a360c09595");
+    byte[] profileKey = new byte[32];
+    Arrays.fill(profileKey, (byte)0x02);
+
+    byte[] result = new ProfileKey(profileKey).deriveAccessKey();
+    assertArrayEquals(result, expectedAccessKey);
+  }
+
   private void assertByteArray(String expectedAsHex, byte[] actual) {
     byte[] expectedBytes = Hex.fromStringCondensedAssert(expectedAsHex);
 
