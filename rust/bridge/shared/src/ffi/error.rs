@@ -12,9 +12,6 @@ use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use signal_media::sanitize::{
-    Error as MediaSanitizeError, ParseErrorReport as MediaSanitizeParseError,
-};
 use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
@@ -36,7 +33,8 @@ pub enum SignalFfiError {
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     UsernameError(UsernameError),
     Io(IoError),
-    MediaSanitizeParse(MediaSanitizeParseError),
+    #[cfg(feature = "signal-media")]
+    MediaSanitizeParse(signal_media::sanitize::ParseErrorReport),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -63,6 +61,7 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalFfiError::UsernameError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
+            #[cfg(feature = "signal-media")]
             SignalFfiError::MediaSanitizeParse(e) => {
                 write!(f, "Media sanitizer failed to parse media file: {}", e)
             }
@@ -135,11 +134,13 @@ impl From<IoError> for SignalFfiError {
     }
 }
 
-impl From<MediaSanitizeError> for SignalFfiError {
-    fn from(e: MediaSanitizeError) -> SignalFfiError {
+#[cfg(feature = "signal-media")]
+impl From<signal_media::sanitize::Error> for SignalFfiError {
+    fn from(e: signal_media::sanitize::Error) -> SignalFfiError {
+        use signal_media::sanitize::Error;
         match e {
-            MediaSanitizeError::Io(e) => Self::Io(e.into()),
-            MediaSanitizeError::Parse(e) => Self::MediaSanitizeParse(e),
+            Error::Io(e) => Self::Io(e.into()),
+            Error::Parse(e) => Self::MediaSanitizeParse(e),
         }
     }
 }

@@ -1513,22 +1513,38 @@ SignalFfiError *signal_username_candidates_from(const char **out,
                                                 uint32_t min_len,
                                                 uint32_t max_len);
 
+#if defined(SIGNAL_MEDIA_SUPPORTED)
+SignalFfiError *signal_signal_media_check_available(void);
+#endif
+
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_mp4_sanitizer_sanitize(SignalSanitizedMetadata **out,
                                               const SignalInputStream *input,
                                               uint64_t len);
+#endif
 
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_destroy(SignalSanitizedMetadata *p);
+#endif
 
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_clone(SignalSanitizedMetadata **new_obj,
                                                 const SignalSanitizedMetadata *obj);
+#endif
 
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_metadata(SignalOwnedBuffer *out,
                                                        const SignalSanitizedMetadata *sanitized);
+#endif
 
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_data_offset(uint64_t *out,
                                                           const SignalSanitizedMetadata *sanitized);
+#endif
 
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_data_len(uint64_t *out,
                                                        const SignalSanitizedMetadata *sanitized);
+#endif
 
 #endif /* SIGNAL_FFI_H_ */

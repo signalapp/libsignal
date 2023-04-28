@@ -124,7 +124,7 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Build
-      run: cargo ${{ matrix.toolchain }} build --workspace --verbose
+      run: cargo ${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
 
     - name: Run tests
       run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose -- -Z unstable-options --include-ignored

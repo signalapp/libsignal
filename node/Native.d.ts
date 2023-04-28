@@ -290,6 +290,7 @@ export function SgxClientState_CompleteHandshake(cli: Wrapper<SgxClientState>, h
 export function SgxClientState_EstablishedRecv(cli: Wrapper<SgxClientState>, receivedCiphertext: Buffer): Buffer;
 export function SgxClientState_EstablishedSend(cli: Wrapper<SgxClientState>, plaintextToSend: Buffer): Buffer;
 export function SgxClientState_InitialRequest(obj: Wrapper<SgxClientState>): Buffer;
+export function SignalMedia_CheckAvailable(): void;
 export function SignalMessage_Deserialize(data: Buffer): SignalMessage;
 export function SignalMessage_GetBody(obj: Wrapper<SignalMessage>): Buffer;
 export function SignalMessage_GetCounter(obj: Wrapper<SignalMessage>): number;

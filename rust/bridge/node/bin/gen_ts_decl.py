@@ -89,13 +89,13 @@ def camelcase(arg):
     return parts[0] + ''.join(x.title() for x in parts[1:])
 
 
-def collect_decls(crate_dir, features=''):
+def collect_decls(crate_dir, features=()):
     args = [
         'cargo',
         'rustc',
         '-q',
         '--profile=check',
-        '--features', features,
+        '--features', ','.join(features),
         '--message-format=short',
         '--',
         '-Zunpretty=expanded']
@@ -166,7 +166,7 @@ our_abs_dir = os.path.dirname(os.path.realpath(__file__))
 
 decls = itertools.chain(
     collect_decls(os.path.join(our_abs_dir, '..')),
-    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features='node'))
+    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media')))
 
 output_file_name = 'Native.d.ts'
 contents = open(os.path.join(our_abs_dir, output_file_name + '.in')).read()

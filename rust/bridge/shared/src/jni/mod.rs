@@ -381,6 +381,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(java.io.IOException)
         }
 
+        #[cfg(feature = "signal-media")]
         SignalJniError::MediaSanitizeParse(_) => {
             jni_class_name!(org.signal.libsignal.media.ParseException)
         }

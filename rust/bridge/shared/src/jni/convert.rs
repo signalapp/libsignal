@@ -8,7 +8,6 @@ use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
-use signal_media::sanitize;
 use std::convert::TryInto;
 use std::ops::Deref;
 
@@ -781,7 +780,8 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_pin::Error> {
     }
 }
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, sanitize::Error> {
+#[cfg(feature = "signal-media")]
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_media::sanitize::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)

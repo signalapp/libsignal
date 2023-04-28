@@ -453,6 +453,8 @@ public final class Native {
   public static native byte[] SgxClientState_EstablishedSend(long cli, byte[] plaintextToSend);
   public static native byte[] SgxClientState_InitialRequest(long obj);
 
+  public static native void SignalMedia_CheckAvailable();
+
   public static native long SignalMessage_Deserialize(byte[] data);
   public static native void SignalMessage_Destroy(long handle);
   public static native byte[] SignalMessage_GetBody(long obj);

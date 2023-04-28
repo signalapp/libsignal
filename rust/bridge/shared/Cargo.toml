@@ -18,7 +18,7 @@ attest = { path = "../../attest" }
 zkgroup = { path = "../../zkgroup" }
 usernames = { path = "../../usernames" }
 signal-pin = { path = "../../pin" }
-signal-media = { path = "../../media" }
+signal-media = { path = "../../media", optional = true }
 libsignal-bridge-macros = { path = "macros" }
 aes-gcm-siv = "0.10.1"
 async-trait = "0.1.41"

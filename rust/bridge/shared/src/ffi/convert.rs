@@ -6,7 +6,6 @@
 use libc::{c_char, c_uchar, c_void};
 use libsignal_protocol::*;
 use paste::paste;
-use signal_media::sanitize;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ops::Deref;
@@ -298,7 +297,8 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
     }
 }
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, sanitize::Error> {
+#[cfg(feature = "signal-media")]
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_media::sanitize::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         T::convert_into(self?)

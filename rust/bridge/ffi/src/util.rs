@@ -9,7 +9,6 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use signal_media::sanitize::ParseError as MediaSanitizeParseError;
 use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
@@ -66,7 +65,9 @@ pub enum SignalErrorCode {
     UsernameTooLong = 126,
 
     IoError = 130,
+    #[allow(dead_code)]
     InvalidMediaInput = 131,
+    #[allow(dead_code)]
     UnsupportedMediaInput = 132,
 }
 
@@ -232,18 +233,22 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::Io(_) => SignalErrorCode::IoError,
 
-            SignalFfiError::MediaSanitizeParse(err) => match err.kind {
-                MediaSanitizeParseError::InvalidBoxLayout { .. }
-                | MediaSanitizeParseError::InvalidInput { .. }
-                | MediaSanitizeParseError::MissingRequiredBox { .. }
-                | MediaSanitizeParseError::TruncatedBox => SignalErrorCode::InvalidMediaInput,
+            #[cfg(feature = "signal-media")]
+            SignalFfiError::MediaSanitizeParse(err) => {
+                use signal_media::sanitize::ParseError;
+                match err.kind {
+                    ParseError::InvalidBoxLayout { .. }
+                    | ParseError::InvalidInput { .. }
+                    | ParseError::MissingRequiredBox { .. }
+                    | ParseError::TruncatedBox => SignalErrorCode::InvalidMediaInput,
 
-                MediaSanitizeParseError::UnsupportedBoxLayout { .. }
-                | MediaSanitizeParseError::UnsupportedBox { .. }
-                | MediaSanitizeParseError::UnsupportedFormat { .. } => {
-                    SignalErrorCode::UnsupportedMediaInput
+                    ParseError::UnsupportedBoxLayout { .. }
+                    | ParseError::UnsupportedBox { .. }
+                    | ParseError::UnsupportedFormat { .. } => {
+                        SignalErrorCode::UnsupportedMediaInput
+                    }
                 }
-            },
+            }
         }
     }
 }

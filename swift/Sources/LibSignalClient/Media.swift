@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#if SIGNAL_MEDIA_SUPPORTED
+
 import Foundation
 import SignalFfi
 
@@ -92,3 +94,5 @@ public class SanitizedMetadata: ClonableHandleOwner {
         }
     }
 }
+
+#endif

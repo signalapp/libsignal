@@ -52,4 +52,5 @@ pub mod usernames;
 
 mod io;
 
+#[cfg(feature = "signal-media")]
 pub mod media;

@@ -5,10 +5,12 @@
 
 package org.signal.libsignal.media;
 
-import junit.framework.TestCase;
-
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 import org.signal.libsignal.protocol.util.ByteUtil;
+import org.signal.libsignal.internal.Native;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,7 +18,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class Mp4SanitizerTest extends TestCase {
+import static org.junit.Assert.fail;
+
+public class Mp4SanitizerTest {
+    @Before
+    public void checkLibsignalMediaAvailable() {
+        try {
+            Native.SignalMedia_CheckAvailable();
+        } catch (UnsatisfiedLinkError e) {
+            Assume.assumeNoException(e);
+        }
+    }
+
+    @Test
     public void testEmptyMp4() throws Exception {
         byte[] data = new byte[] {};
         try {
@@ -27,6 +41,7 @@ public class Mp4SanitizerTest extends TestCase {
         }
     }
 
+    @Test
     public void testTruncatedMp4() throws Exception {
         byte[] data = new byte[] { 0, 0, 0, 0 };
         try {
@@ -37,6 +52,7 @@ public class Mp4SanitizerTest extends TestCase {
         }
     }
 
+    @Test
     public void testNoopMinimalMp4() throws Exception {
         byte[] metadata = ByteUtil.combine(ftyp(), moov());
         byte[] mp4Data = ByteUtil.combine(metadata, mdat());
@@ -46,6 +62,7 @@ public class Mp4SanitizerTest extends TestCase {
         assertSanitizedMetadataEquals(sanitized, metadata.length, mp4Data.length - metadata.length, null);
     }
 
+    @Test
     public void testMinimalMp4() throws Exception {
         byte[] metadata = ByteUtil.combine(ftyp(), moov());
         byte[] mp4Data = ByteUtil.combine(ftyp(), mdat(), moov());
@@ -55,6 +72,7 @@ public class Mp4SanitizerTest extends TestCase {
         assertSanitizedMetadataEquals(sanitized, ftyp().length, mp4Data.length - metadata.length, metadata);
     }
 
+    @Test
     public void testMp4IoError() throws Exception {
         InputStream ioErrorStream = new InputStream() {
             @Override

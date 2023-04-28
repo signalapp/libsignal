@@ -39,6 +39,11 @@ enum SanitizerInputState<'a> {
     Skipping(LocalBoxFuture<'a, io::Result<()>>),
 }
 
+/// Exposed so that we have an easy method to invoke from Java to test whether libsignal was
+/// compiled with signal-media.
+#[bridge_fn]
+fn SignalMedia_CheckAvailable() {}
+
 #[bridge_fn]
 async fn Mp4Sanitizer_Sanitize(
     input: &mut dyn InputStream,

@@ -12,9 +12,6 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use signal_media::sanitize::{
-    Error as MediaSanitizeError, ParseErrorReport as MediaSanitizeParseErrorReport,
-};
 use signal_pin::Error as PinError;
 use usernames::UsernameError;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
@@ -36,13 +33,17 @@ pub enum SignalJniError {
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     UsernameError(UsernameError),
     Io(IoError),
-    MediaSanitizeParse(MediaSanitizeParseErrorReport),
+    #[cfg(feature = "signal-media")]
+    MediaSanitizeParse(signal_media::sanitize::ParseErrorReport),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
-    IncorrectArrayLength { expected: usize, actual: usize },
+    IncorrectArrayLength {
+        expected: usize,
+        actual: usize,
+    },
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
@@ -59,6 +60,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalJniError::UsernameError(e) => write!(f, "{}", e),
             SignalJniError::Io(e) => write!(f, "{}", e),
+            #[cfg(feature = "signal-media")]
             SignalJniError::MediaSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
@@ -143,11 +145,13 @@ impl From<IoError> for SignalJniError {
     }
 }
 
-impl From<MediaSanitizeError> for SignalJniError {
-    fn from(e: MediaSanitizeError) -> Self {
+#[cfg(feature = "signal-media")]
+impl From<signal_media::sanitize::Error> for SignalJniError {
+    fn from(e: signal_media::sanitize::Error) -> Self {
+        use signal_media::sanitize::Error;
         match e {
-            MediaSanitizeError::Io(e) => Self::Io(e.into()),
-            MediaSanitizeError::Parse(e) => Self::MediaSanitizeParse(e),
+            Error::Io(e) => Self::Io(e.into()),
+            Error::Parse(e) => Self::MediaSanitizeParse(e),
         }
     }
 }

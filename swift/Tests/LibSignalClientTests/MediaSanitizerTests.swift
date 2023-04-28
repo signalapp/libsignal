@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#if SIGNAL_MEDIA_SUPPORTED
+
 import XCTest
 @testable import LibSignalClient
 
@@ -114,3 +116,5 @@ private func assertSanitizedMetadataEqual(_ sanitized: SanitizedMetadata, dataOf
     XCTAssertEqual(sanitized.dataOffset, UInt64(dataOffset))
     XCTAssertEqual(sanitized.dataLen, UInt64(dataLen))
 }
+
+#endif
