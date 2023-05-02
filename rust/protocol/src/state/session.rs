@@ -402,7 +402,7 @@ impl SessionState {
     ) {
         let signed_pre_key_id: u32 = signed_pre_key_id.into();
         let pending = session_structure::PendingPreKey {
-            pre_key_id: pre_key_id.map(PreKeyId::into).unwrap_or(0),
+            pre_key_id: pre_key_id.map(PreKeyId::into),
             signed_pre_key_id: signed_pre_key_id as i32,
             base_key: base_key.serialize().to_vec(),
         };
@@ -414,10 +414,7 @@ impl SessionState {
     ) -> Result<Option<UnacknowledgedPreKeyMessageItems>, InvalidSessionError> {
         if let Some(ref pending_pre_key) = self.session.pending_pre_key {
             Ok(Some(UnacknowledgedPreKeyMessageItems::new(
-                match pending_pre_key.pre_key_id {
-                    0 => None,
-                    v => Some(v.into()),
-                },
+                pending_pre_key.pre_key_id.map(Into::into),
                 (pending_pre_key.signed_pre_key_id as u32).into(),
                 PublicKey::deserialize(&pending_pre_key.base_key)
                     .map_err(|_| InvalidSessionError("invalid pending PreKey message base key"))?,
