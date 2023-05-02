@@ -18,6 +18,7 @@ use uuid::Uuid;
 pub const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 3;
 pub const SENDERKEY_MESSAGE_CURRENT_VERSION: u8 = 3;
 
+#[derive(Debug)]
 pub enum CiphertextMessage {
     SignalMessage(SignalMessage),
     PreKeySignalMessage(PreKeySignalMessage),
