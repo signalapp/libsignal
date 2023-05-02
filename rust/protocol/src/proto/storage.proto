@@ -30,9 +30,9 @@ message SessionStructure {
   }
 
   message PendingPreKey {
-    uint32 pre_key_id        = 1;
-    int32  signed_pre_key_id = 3;
-    bytes  base_key          = 2;
+    optional uint32 pre_key_id        = 1;
+             int32  signed_pre_key_id = 3;
+             bytes  base_key          = 2;
   }
 
   uint32         session_version        = 1;

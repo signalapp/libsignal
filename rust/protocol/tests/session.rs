@@ -868,6 +868,104 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
+fn zero_is_a_valid_prekey_id() -> Result<(), SignalProtocolError> {
+    async {
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
+
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
+
+        let mut csprng = OsRng;
+        let bob_pre_key_pair = KeyPair::generate(&mut csprng);
+        let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
+
+        let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
+        let bob_signed_pre_key_signature = bob_store
+            .get_identity_key_pair(None)
+            .await?
+            .private_key()
+            .calculate_signature(&bob_signed_pre_key_public, &mut csprng)?;
+
+        let signed_pre_key_id = 0;
+        let pre_key_id = 0;
+
+        let bob_pre_key_bundle = PreKeyBundle::new(
+            bob_store.get_local_registration_id(None).await?,
+            1.into(), // device id
+            Some((pre_key_id.into(), bob_pre_key_pair.public_key)),
+            signed_pre_key_id.into(),
+            bob_signed_pre_key_pair.public_key,
+            bob_signed_pre_key_signature.to_vec(),
+            *bob_store.get_identity_key_pair(None).await?.identity_key(),
+        )?;
+
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            &mut csprng,
+            None,
+        )
+        .await?;
+
+        assert_eq!(
+            alice_store
+                .load_session(&bob_address, None)
+                .await?
+                .expect("session found")
+                .session_version()?,
+            3
+        );
+
+        let original_message = "L'homme est condamné à être libre";
+
+        let outgoing_message = encrypt(&mut alice_store, &bob_address, original_message).await?;
+
+        assert_eq!(
+            outgoing_message.message_type(),
+            CiphertextMessageType::PreKey
+        );
+
+        let incoming_message = CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+        );
+
+        bob_store
+            .save_pre_key(
+                pre_key_id.into(),
+                &PreKeyRecord::new(pre_key_id.into(), &bob_pre_key_pair),
+                None,
+            )
+            .await?;
+        bob_store
+            .save_signed_pre_key(
+                signed_pre_key_id.into(),
+                &SignedPreKeyRecord::new(
+                    signed_pre_key_id.into(),
+                    /*timestamp*/ 42,
+                    &bob_signed_pre_key_pair,
+                    &bob_signed_pre_key_signature,
+                ),
+                None,
+            )
+            .await?;
+
+        let ptext = decrypt(&mut bob_store, &alice_address, &incoming_message).await?;
+
+        assert_eq!(
+            String::from_utf8(ptext).expect("valid utf8"),
+            original_message
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
 fn basic_session_v3() -> Result<(), SignalProtocolError> {
     let (alice_session, bob_session) = initialize_sessions_v3()?;
     run_session_interaction(alice_session, bob_session)?;
