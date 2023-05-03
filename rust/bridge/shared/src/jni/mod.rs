@@ -220,7 +220,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(_, _))
         | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
-        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed) => {
+        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
+        | SignalJniError::Grpc(_) => {
             jni_class_name!(java.lang.RuntimeException)
         }
 

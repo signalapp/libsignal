@@ -487,4 +487,6 @@ public final class Native {
   public static native void Username_Verify(byte[] proof, byte[] hash);
 
   public static native void UuidCiphertext_CheckValidContents(byte[] buffer);
+
+  public static native byte[] Grpc_SendMessage(String method, String urlFragment, byte[] body);
 }

@@ -1,0 +1,20 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "signal-grpc"
+version = "0.1.0"
+authors = ["Signal Messenger LLC"]
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[dependencies]
+displaydoc = "0.2"
+prost = "0.11"
+thiserror = "1.0.30"
+tonic = "0.9"
+
+[build-dependencies]
+tonic-build = "0.9"

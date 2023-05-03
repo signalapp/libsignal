@@ -9,6 +9,7 @@ use std::fmt;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
+use signal_grpc::Error as GrpcError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
@@ -24,6 +25,7 @@ use super::NullPointerError;
 pub enum SignalFfiError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
+    Grpc(GrpcError),
     HsmEnclave(HsmEnclaveError),
     Sgx(SgxError),
     Pin(PinError),
@@ -42,6 +44,9 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::Signal(s) => write!(f, "{}", s),
             SignalFfiError::DeviceTransfer(c) => {
                 write!(f, "Device transfer operation failed: {}", c)
+            }
+            SignalFfiError::Grpc(e) => {
+                write!(f, "Grpc operation failed: {}", e)
             }
             SignalFfiError::HsmEnclave(e) => {
                 write!(f, "HSM enclave operation failed: {}", e)
@@ -74,6 +79,12 @@ impl From<SignalProtocolError> for SignalFfiError {
 impl From<DeviceTransferError> for SignalFfiError {
     fn from(e: DeviceTransferError) -> SignalFfiError {
         SignalFfiError::DeviceTransfer(e)
+    }
+}
+
+impl From<GrpcError> for SignalFfiError {
+    fn from(e: GrpcError) -> SignalFfiError {
+        SignalFfiError::Grpc(e)
     }
 }
 
