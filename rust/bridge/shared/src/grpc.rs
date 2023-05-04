@@ -12,5 +12,5 @@ use crate::*;
 
 #[bridge_fn]
 pub fn Grpc_SendMessage(method: String, url_fragment: String, body: &[u8]) -> Result<Vec<u8>> {
-    GrpcClient::new().send_message(method, url_fragment, body).await
+    GrpcClient::new()?.send_message(method, url_fragment, body)
 }

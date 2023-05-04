@@ -7,7 +7,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = [
         "src/proto/proxy.proto",
     ];
-    tonic_build::configure().build_server(false).compile(
+    tonic_build::configure()
+        .build_server(false).compile(
         &protos,
         &["src"],
     )?;

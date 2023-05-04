@@ -2172,6 +2172,7 @@ dependencies = [
  "displaydoc",
  "prost 0.11.9",
  "thiserror",
+ "tokio",
  "tonic",
  "tonic-build",
 ]
