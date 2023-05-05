@@ -5,7 +5,7 @@ syntax = "proto3";
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-package io.privacyresource.grpcproxy;
+package signal.grpc.proxy;
 
 service Tunnel {
     rpc SendSomeMessage (SignalRpcMessage) returns (SignalRpcReply) {}
@@ -15,7 +15,7 @@ message SignalRpcMessage {
   string urlfragment = 1;
   string method = 2;
   repeated string header = 3;
-  string body = 4;
+  bytes body = 4;
 }
 
 message SignalRpcReply {

@@ -10,7 +10,12 @@ use libsignal_bridge_macros::*;
 use crate::support::*;
 use crate::*;
 
-#[bridge_fn]
-pub fn Grpc_SendMessage(method: String, url_fragment: String, body: &[u8]) -> Result<Vec<u8>> {
-    GrpcClient::new()?.send_message(method, url_fragment, body)
+use std::collections::HashMap;
+
+#[cfg(all(feature = "jni"))]
+pub struct GrpcHeaders(pub HashMap<String, Vec<String>>);
+
+#[bridge_fn(ffi = false, node = false)]
+pub fn Grpc_SendMessage(method: String, url_fragment: String, body: &[u8], headers: GrpcHeaders) -> Result<Vec<u8>> {
+    GrpcClient::new()?.send_message(method, url_fragment, body, headers.0)
 }

@@ -42,6 +42,7 @@ pub type ObjectHandle = jlong;
 
 pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
+pub type JavaArgMap<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaReturnCiphertextMessage = jobject;
