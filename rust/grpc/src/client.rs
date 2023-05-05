@@ -20,7 +20,7 @@ impl GrpcClient {
     }
 
     pub fn send_message(&self, method: String, url_fragment: String, body: &[u8]) -> Result<Vec<u8>> {
-        println!("Tunneling gRPC message: mmethod={} url_fragment={}, body.len={}", method, url_fragment, body.len());
+        println!("Tunneling gRPC message: method={} url_fragment={}, body.len={}", method, url_fragment, body.len());
         self.tokio_runtime.block_on(async {
             self.tunnel_message(method, url_fragment, body).await
         })
@@ -31,7 +31,7 @@ impl GrpcClient {
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
 
         let request = proto::proxy::SignalRpcMessage {
-            body: body.to_vec(),
+            body: std::str::from_utf8(body).unwrap().to_owned(),
             method,
             urlfragment: url_fragment,
             header: vec![],

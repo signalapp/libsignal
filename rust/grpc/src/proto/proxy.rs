@@ -5,4 +5,4 @@
 
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-include!(concat!(env!("OUT_DIR"), "/signal.grpc.proxy.rs"));
+include!(concat!(env!("OUT_DIR"), "/io.privacyresource.grpcproxy.rs"));
