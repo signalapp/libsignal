@@ -72,7 +72,6 @@ impl From<&SignalFfiError> for SignalErrorCode {
 
             SignalFfiError::UnexpectedPanic(_)
             | SignalFfiError::DeviceTransfer(DeviceTransferError::InternalError(_))
-            | SignalFfiError::Grpc(_)
             | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_)) => {
                 SignalErrorCode::InternalError
             }
