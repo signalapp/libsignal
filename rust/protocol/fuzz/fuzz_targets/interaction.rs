@@ -20,6 +20,7 @@ struct Participant {
     store: InMemSignalProtocolStore,
     message_queue: Vec<(CiphertextMessage, Box<[u8]>)>,
     archive_count: u8,
+    pre_key_count: u32,
 }
 
 impl Participant {
@@ -41,7 +42,8 @@ impl Participant {
             .calculate_signature(&their_signed_pre_key_public, rng)
             .unwrap();
 
-        let signed_pre_key_id: SignedPreKeyId = rng.gen_range(0..0xFF_FFFF).into();
+        them.pre_key_count += 1;
+        let signed_pre_key_id: SignedPreKeyId = them.pre_key_count.into();
 
         them.store
             .save_signed_pre_key(
@@ -56,8 +58,10 @@ impl Participant {
             .await
             .unwrap();
 
+        them.pre_key_count += 1;
+        let pre_key_id: PreKeyId = them.pre_key_count.into();
+
         let pre_key_info = if use_one_time_pre_key {
-            let pre_key_id: PreKeyId = rng.gen_range(0..0xFF_FFFF).into();
             let one_time_pre_key = KeyPair::generate(rng);
 
             them.store
@@ -195,6 +199,7 @@ fuzz_target!(|data: (u64, &[u8])| {
             .unwrap(),
             message_queue: Vec::new(),
             archive_count: 0,
+            pre_key_count: 0,
         };
         let mut bob = Participant {
             name: "bob",
@@ -206,6 +211,7 @@ fuzz_target!(|data: (u64, &[u8])| {
             .unwrap(),
             message_queue: Vec::new(),
             archive_count: 0,
+            pre_key_count: 0,
         };
 
         for action in actions {
