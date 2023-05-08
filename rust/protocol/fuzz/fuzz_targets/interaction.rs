@@ -222,10 +222,12 @@ fuzz_target!(|data: (u64, &[u8])| {
             };
             match action >> 1 {
                 0 => {
-                    if me.archive_count < 40 {
+                    if me.archive_count + them.archive_count < 40 {
                         // Only archive if it can't result in old sessions getting expired.
                         // We're not testing that.
                         me.archive_session(&them.address).await
+                    } else {
+                        info!("{}: archiving LIMITED at {}/{}", me.name, me.archive_count, them.archive_count);
                     }
                 }
                 1..=32 => me.receive_messages(&them.address, &mut csprng).await,
