@@ -48,6 +48,11 @@ impl GrpcClient {
         let response = tunnel.send_some_message(request).await
             .map_err(|e| Error::InvalidArgument(format!("tunnel.send_some_message: {:?}", e)))?;
 
-        Ok(response.get_ref().message.as_bytes().to_vec())
+        let mut result = vec![];
+
+        result.extend(response.get_ref().statuscode.to_be_bytes());
+        result.extend(response.get_ref().message.as_bytes());
+
+        Ok(result)
     }
 }
