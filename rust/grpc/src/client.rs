@@ -6,13 +6,17 @@
 use crate::{error::{Error, Result}, proto};
 use std::collections::HashMap;
 
+const DEFAULT_TARGET: &str = "https://grpcproxy.gluonhq.net:443";
+
 pub struct GrpcClient {
+    target: String,
     tokio_runtime: tokio::runtime::Runtime,
 }
 
 impl GrpcClient {
     pub fn new() -> Result<Self> {
         Ok(GrpcClient {
+            target: DEFAULT_TARGET.to_owned(),
             tokio_runtime: tokio::runtime::Builder::new_current_thread()
                 .enable_io()
                 .build()
@@ -20,15 +24,40 @@ impl GrpcClient {
         })
     }
 
-    pub fn send_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<Vec<u8>> {
-        println!("Tunneling gRPC message: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
+    pub fn target(&mut self, target: &str) {
+        self.target = target.to_owned();
+    }
+
+    pub fn echo_message(&self, message: &str) -> Result<String> {
+        println!("Received echo message: message={}", message);
         self.tokio_runtime.block_on(async {
-            self.tunnel_message(method, url_fragment, body, headers).await
+            self.async_echo_message(message).await
         })
     }
 
-    async fn tunnel_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<Vec<u8>> {
-        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect("https://grpcproxy.gluonhq.net:443").await
+    async fn async_echo_message(&self, message: &str) -> Result<String> {
+        let mut echo_client = proto::proxy::echo_client::EchoClient::connect(self.target.clone()).await
+            .map_err(|e| Error::InvalidArgument(format!("echo.connect: {:?}", e)))?;
+
+        let request = proto::proxy::EchoMessage {
+            message: message.to_owned()
+        };
+
+        let response = echo_client.send_message(request).await
+            .map_err(|e| Error::InvalidArgument(format!("echo.send_message: {:?}", e)))?;
+
+        Ok(response.get_ref().message.clone())
+    }
+
+    pub fn send_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<Vec<u8>> {
+        println!("Tunneling gRPC message: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
+        self.tokio_runtime.block_on(async {
+            self.async_send_message(method, url_fragment, body, headers).await
+        })
+    }
+
+    async fn async_send_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<Vec<u8>> {
+        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone()).await
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
 
         let mut request_headers = vec![];
