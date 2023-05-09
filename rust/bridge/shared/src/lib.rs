@@ -28,6 +28,9 @@ pub use support::describe_panic;
 pub mod crypto;
 pub mod protocol;
 
+#[cfg(feature = "jni")]
+pub mod grpc;
+
 // Desktop does not make use of device transfer certificates
 #[cfg(any(feature = "jni", feature = "ffi"))]
 pub mod device_transfer;

@@ -42,6 +42,7 @@ pub type ObjectHandle = jlong;
 
 pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
+pub type JavaArgMap<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaReturnCiphertextMessage = jobject;
@@ -220,7 +221,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(_, _))
         | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
-        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed) => {
+        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
+        | SignalJniError::Grpc(_) => {
             jni_class_name!(java.lang.RuntimeException)
         }
 

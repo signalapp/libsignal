@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+package signal.grpc.proxy;
+
+service Tunnel {
+    rpc SendSomeMessage (SignalRpcMessage) returns (SignalRpcReply) {}
+}
+
+message SignalRpcMessage {
+  string urlfragment = 1;
+  string method = 2;
+  repeated string header = 3;
+  bytes body = 4;
+}
+
+message SignalRpcReply {
+  int32 statuscode = 1;
+  string message = 2;
+}

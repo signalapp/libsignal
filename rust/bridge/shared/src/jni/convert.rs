@@ -8,6 +8,7 @@ use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ops::Deref;
 
@@ -414,6 +415,34 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
+    type ArgType = JavaArgMap<'a>;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        if foreign.is_null() {
+            return Err(SignalJniError::NullHandle);
+        }
+
+        let mut headers = HashMap::new();
+
+        let jmap = env.get_map(foreign)?;
+        let mut jmap_iter = jmap.iter()?;
+        while let Some((key, value)) = jmap_iter.next() {
+            let header_key: String = env.get_string(key.into())?.into();
+            let values = env.get_list(value)?;
+            let mut values_iter = values.iter()?;
+            while let Some(value) = values_iter.next() {
+                let header_value: String = env.get_string(value.into())?.into();
+                headers
+                    .entry(header_key.clone())
+                    .and_modify(|l: &mut Vec<String>| l.push(header_value.clone()))
+                    .or_insert_with(move || vec![header_value]);
+            }
+        }
+
+        Ok(crate::grpc::GrpcHeaders(headers))
+    }
+}
+
 #[cfg(not(target_os = "android"))]
 impl ResultTypeInfo for crate::cds2::Cds2Metrics {
     type ResultType = jobject;
@@ -739,6 +768,16 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_grpc::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
@@ -1090,6 +1129,9 @@ macro_rules! jni_arg_type {
     };
     (Uuid) => {
         jni::JavaUUID
+    };
+    (GrpcHeaders) => {
+        jni::JavaArgMap
     };
     (jni::CiphertextMessageRef) => {
         jni::JavaCiphertextMessage
