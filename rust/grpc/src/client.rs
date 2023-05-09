@@ -36,14 +36,14 @@ impl GrpcClient {
     }
 
     async fn async_echo_message(&self, message: &str) -> Result<String> {
-        let mut echo_client = proto::proxy::echo_client::EchoClient::connect(self.target.clone()).await
-            .map_err(|e| Error::InvalidArgument(format!("echo.connect: {:?}", e)))?;
+        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone()).await
+            .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
 
-        let request = proto::proxy::EchoMessage {
+        let request = proto::proxy::EchoRequest {
             message: message.to_owned()
         };
 
-        let response = echo_client.send_message(request).await
+        let response = tunnel.echo_message(request).await
             .map_err(|e| Error::InvalidArgument(format!("echo.send_message: {:?}", e)))?;
 
         Ok(response.get_ref().message.clone())
