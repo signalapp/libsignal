@@ -17,6 +17,13 @@ use futures_util::FutureExt;
 use crate::support::*;
 use crate::*;
 
+#[allow(dead_code)]
+const KYBER_KEY_TYPE: kem::KeyType = kem::KeyType::Kyber1024;
+
+pub type KyberKeyPair = kem::KeyPair;
+pub type KyberPublicKey = kem::PublicKey;
+pub type KyberSecretKey = kem::SecretKey;
+
 bridge_handle!(CiphertextMessage, clone = false, jni = false);
 bridge_handle!(DecryptionErrorMessage);
 bridge_handle!(Fingerprint, jni = NumericFingerprintGenerator);
@@ -35,8 +42,12 @@ bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
+bridge_handle!(KyberPreKeyRecord, ffi = false, node = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
+bridge_handle!(KyberKeyPair, ffi = false, node = false);
+bridge_handle!(KyberPublicKey, ffi = false, node = false);
+bridge_handle!(KyberSecretKey, ffi = false, node = false);
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Timestamp(u64);
@@ -115,6 +126,11 @@ bridge_get!(
 bridge_get!(ProtocolAddress::device_id as DeviceId -> u32, ffi = "address_get_device_id");
 bridge_get!(ProtocolAddress::name as Name -> &str, ffi = "address_get_name");
 
+#[bridge_fn(ffi = "publickey_equals", node = "PublicKey_Equals")]
+fn ECPublicKey_Equals(lhs: &PublicKey, rhs: &PublicKey) -> bool {
+    lhs == rhs
+}
+
 #[bridge_fn(ffi = "publickey_compare", node = "PublicKey_Compare")]
 fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
     match key1.cmp(key2) {
@@ -161,6 +177,56 @@ fn ECPrivateKey_Sign(key: &PrivateKey, message: &[u8]) -> Result<Vec<u8>> {
 #[bridge_fn(ffi = "privatekey_agree", node = "PrivateKey_Agree")]
 fn ECPrivateKey_Agree(private_key: &PrivateKey, public_key: &PublicKey) -> Result<Vec<u8>> {
     Ok(private_key.calculate_agreement(public_key)?.into_vec())
+}
+
+bridge_get!(
+    KyberPublicKey::serialize as Serialize -> Vec<u8>,
+    ffi = false,
+    node = false,
+    jni = "KyberPublicKey_1Serialize"
+);
+
+// #[bridge_fn(ffi = "kyber_publickey_deserialize", jni = false)]
+// fn KyberPublicKey_Deserialize(data: &[u8]) -> Result<KyberPublicKey> {
+//     KyberPublicKey::deserialize(data)
+// }
+
+#[bridge_fn(ffi = false, node = false)]
+fn KyberPublicKey_DeserializeWithOffset(data: &[u8], offset: u32) -> Result<KyberPublicKey> {
+    let offset = offset as usize;
+    KyberPublicKey::deserialize(&data[offset..])
+}
+
+bridge_get!(
+    KyberSecretKey::serialize as Serialize -> Vec<u8>,
+    ffi = false,
+    node = false,
+    jni = "KyberSecretKey_1Serialize"
+);
+
+#[bridge_fn(ffi = false, node = false, jni = "KyberSecretKey_1Deserialize")]
+fn KyberSecretKey_Deserialize(data: &[u8]) -> Result<KyberSecretKey> {
+    KyberSecretKey::deserialize(data)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn KyberPublicKey_Equals(lhs: &KyberPublicKey, rhs: &KyberPublicKey) -> bool {
+    lhs == rhs
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn KyberKeyPair_Generate() -> kem::KeyPair {
+    kem::KeyPair::generate(KYBER_KEY_TYPE)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn KyberKeyPair_GetPublicKey(key_pair: &kem::KeyPair) -> kem::PublicKey {
+    key_pair.public_key.clone()
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn KyberKeyPair_GetSecretKey(key_pair: &kem::KeyPair) -> kem::SecretKey {
+    key_pair.secret_key.clone()
 }
 
 #[bridge_fn(ffi = "identitykeypair_serialize")]
@@ -318,6 +384,7 @@ fn PreKeySignalMessage_New(
         registration_id,
         pre_key_id.map(|id| id.into()),
         signed_pre_key_id.into(),
+        None, // TODO: accept kyber payload
         *base_key,
         IdentityKey::new(*identity_key),
         signal_message.clone(),
@@ -483,7 +550,7 @@ fn PlaintextContent_DeserializeAndGetContent(bytes: &[u8]) -> Result<Vec<u8>> {
     Ok(PlaintextContent::try_from(bytes)?.body().to_vec())
 }
 
-#[bridge_fn]
+#[bridge_fn(jni = false)]
 fn PreKeyBundle_New(
     registration_id: u32,
     device_id: u32,
@@ -502,7 +569,7 @@ fn PreKeyBundle_New(
         _ => {
             return Err(SignalProtocolError::InvalidArgument(
                 "Must supply both or neither of prekey and prekey_id".to_owned(),
-            ))
+            ));
         }
     };
 
@@ -517,6 +584,53 @@ fn PreKeyBundle_New(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+#[bridge_fn(jni = "PreKeyBundle_1New", ffi = false, node = false)]
+fn PreKeyBundle_NewWithKyber(
+    registration_id: u32,
+    device_id: u32,
+    prekey_id: Option<u32>,
+    prekey: Option<&PublicKey>,
+    signed_prekey_id: u32,
+    signed_prekey: &PublicKey,
+    signed_prekey_signature: &[u8],
+    identity_key: &PublicKey,
+    kyber_prekey_id: Option<u32>,
+    kyber_prekey: Option<&KyberPublicKey>,
+    kyber_prekey_signature: &[u8],
+) -> Result<PreKeyBundle> {
+    let identity_key = IdentityKey::new(*identity_key);
+
+    let prekey: Option<(PreKeyId, PublicKey)> = match (prekey, prekey_id) {
+        (None, None) => None,
+        (Some(k), Some(id)) => Some((id.into(), *k)),
+        _ => {
+            return Err(SignalProtocolError::InvalidArgument(
+                "Must supply both or neither of prekey and prekey_id".to_owned(),
+            ));
+        }
+    };
+
+    let bundle = PreKeyBundle::new(
+        registration_id,
+        device_id.into(),
+        prekey,
+        signed_prekey_id.into(),
+        *signed_prekey,
+        signed_prekey_signature.to_vec(),
+        identity_key,
+    )?;
+    match (kyber_prekey_id, kyber_prekey, kyber_prekey_signature) {
+        (Some(id), Some(public), signature) if !signature.is_empty() => {
+            Ok(bundle.with_kyber_pre_key(id.into(), public.clone(), signature.to_vec()))
+        }
+        (None, None, &[]) => Ok(bundle),
+        _ => Err(SignalProtocolError::InvalidArgument(
+            "All or none Kyber pre key arguments must be set".to_owned(),
+        )),
+    }
+}
+
 #[bridge_fn]
 fn PreKeyBundle_GetIdentityKey(p: &PreKeyBundle) -> Result<PublicKey> {
     Ok(*p.identity_key()?.public_key())
@@ -529,6 +643,20 @@ bridge_get!(PreKeyBundle::signed_pre_key_id -> u32);
 bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
 bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
 bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
+bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>, ffi = false, node = false);
+#[bridge_fn(ffi = false, node = false)]
+fn PreKeyBundle_GetKyberPreKeyPublic(bundle: &PreKeyBundle) -> Result<Option<KyberPublicKey>> {
+    bundle
+        .kyber_pre_key_public()
+        .map(|maybe_key| maybe_key.cloned())
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn PreKeyBundle_GetKyberPreKeySignature(bundle: &PreKeyBundle) -> Result<&[u8]> {
+    bundle
+        .kyber_pre_key_signature()
+        .map(|maybe_sig| maybe_sig.unwrap_or(&[]))
+}
 
 bridge_deserialize!(SignedPreKeyRecord::deserialize);
 bridge_get!(SignedPreKeyRecord::signature -> Vec<u8>);
@@ -541,6 +669,20 @@ bridge_get!(SignedPreKeyRecord::timestamp -> Timestamp);
 bridge_get!(SignedPreKeyRecord::public_key -> PublicKey);
 bridge_get!(SignedPreKeyRecord::private_key -> PrivateKey);
 
+bridge_deserialize!(KyberPreKeyRecord::deserialize, ffi = false, node = false);
+bridge_get!(KyberPreKeyRecord::signature -> Vec<u8>, ffi = false, node = false);
+bridge_get!(
+    KyberPreKeyRecord::serialize as Serialize -> Vec<u8>,
+    jni = "KyberPreKeyRecord_1GetSerialized",
+    ffi = false,
+    node = false
+);
+bridge_get!(KyberPreKeyRecord::id -> u32, ffi = false, node = false);
+bridge_get!(KyberPreKeyRecord::timestamp -> Timestamp, ffi = false, node = false);
+bridge_get!(KyberPreKeyRecord::public_key -> KyberPublicKey, ffi = false, node = false);
+bridge_get!(KyberPreKeyRecord::secret_key -> KyberSecretKey, ffi = false, node = false);
+bridge_get!(KyberPreKeyRecord::key_pair -> KyberKeyPair, ffi = false, node = false);
+
 #[bridge_fn]
 fn SignedPreKeyRecord_New(
     id: u32,
@@ -551,6 +693,24 @@ fn SignedPreKeyRecord_New(
 ) -> SignedPreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
     SignedPreKeyRecord::new(id.into(), timestamp.as_millis(), &keypair, signature)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn KyberPreKeyRecord_New(
+    id: u32,
+    timestamp: Timestamp,
+    key_pair: &KyberKeyPair,
+    signature: &[u8],
+) -> KyberPreKeyRecord {
+    KyberPreKeyRecord::new(id.into(), timestamp.as_millis(), key_pair, signature)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn SignedPrekeyRecord_GenerateKyber(
+    id: u32,
+    signing_key: &PrivateKey,
+) -> Result<KyberPreKeyRecord> {
+    KyberPreKeyRecord::generate(KYBER_KEY_TYPE, id.into(), signing_key)
 }
 
 bridge_deserialize!(PreKeyRecord::deserialize);
@@ -891,7 +1051,6 @@ fn SessionRecord_InitializeAliceSession(
         our_base_key_pair,
         their_identity_key,
         *their_signed_prekey,
-        None,
         *their_ratchet_key,
     );
 
@@ -925,8 +1084,10 @@ fn SessionRecord_InitializeBobSession(
         our_signed_pre_key_pair,
         None,
         our_ratchet_key_pair,
+        None,
         their_identity_key,
         *their_base_key,
+        None,
     );
 
     initialize_bob_session_record(&parameters)
@@ -992,7 +1153,7 @@ async fn SessionCipher_DecryptSignalMessage(
     .await
 }
 
-#[bridge_fn(ffi = "decrypt_pre_key_message")]
+#[bridge_fn(jni = false, ffi = "decrypt_pre_key_message")]
 async fn SessionCipher_DecryptPreKeySignalMessage(
     message: &PreKeySignalMessage,
     protocol_address: &ProtocolAddress,
@@ -1003,6 +1164,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
     ctx: Context,
 ) -> Result<Vec<u8>> {
     let mut csprng = rand::rngs::OsRng;
+    let mut kyber_store = InMemKyberPreKeyStore::new();
     message_decrypt_prekey(
         message,
         protocol_address,
@@ -1010,6 +1172,37 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
         identity_key_store,
         prekey_store,
         signed_prekey_store,
+        &mut kyber_store,
+        &mut csprng,
+        ctx,
+    )
+    .await
+}
+
+#[bridge_fn(
+    jni = "SessionCipher_1DecryptPreKeySignalMessage",
+    ffi = false,
+    node = false
+)]
+async fn SessionCipher_DecryptPreKeySignalMessageWithKyber(
+    message: &PreKeySignalMessage,
+    protocol_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_key_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+    kyber_prekey_store: &mut dyn KyberPreKeyStore,
+    ctx: Context,
+) -> Result<Vec<u8>> {
+    let mut csprng = rand::rngs::OsRng;
+    message_decrypt_prekey(
+        message,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        prekey_store,
+        signed_prekey_store,
+        kyber_prekey_store,
         &mut csprng,
         ctx,
     )
@@ -1089,7 +1282,39 @@ async fn SealedSessionCipher_DecryptToUsmc(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false, jni = false, node = "SealedSender_DecryptMessage")]
+async fn SealedSender_DecryptMessagePreKyber(
+    message: &[u8],
+    trust_root: &PublicKey,
+    timestamp: Timestamp,
+    local_e164: Option<String>,
+    local_uuid: String,
+    local_device_id: u32,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    prekey_store: &mut dyn PreKeyStore,
+    signed_prekey_store: &mut dyn SignedPreKeyStore,
+) -> Result<SealedSenderDecryptionResult> {
+    let mut kyber_pre_key_store = InMemKyberPreKeyStore::new();
+    sealed_sender_decrypt(
+        message,
+        trust_root,
+        timestamp.as_millis(),
+        local_e164,
+        local_uuid,
+        local_device_id.into(),
+        identity_store,
+        session_store,
+        prekey_store,
+        signed_prekey_store,
+        &mut kyber_pre_key_store,
+        None,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+#[bridge_fn(ffi = false, jni = false, node = false)]
 async fn SealedSender_DecryptMessage(
     message: &[u8],
     trust_root: &PublicKey,
@@ -1101,6 +1326,7 @@ async fn SealedSender_DecryptMessage(
     identity_store: &mut dyn IdentityKeyStore,
     prekey_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
+    kyber_prekey_store: &mut dyn KyberPreKeyStore,
 ) -> Result<SealedSenderDecryptionResult> {
     sealed_sender_decrypt(
         message,
@@ -1113,6 +1339,7 @@ async fn SealedSender_DecryptMessage(
         session_store,
         prekey_store,
         signed_prekey_store,
+        kyber_prekey_store,
         None,
     )
     .await

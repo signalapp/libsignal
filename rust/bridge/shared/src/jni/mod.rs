@@ -38,6 +38,7 @@ pub use io::*;
 
 mod storage;
 pub use storage::*;
+
 use usernames::UsernameError;
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
@@ -232,7 +233,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
+        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
+        | SignalJniError::Signal(SignalProtocolError::InvalidKyberPreKeyId) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyIdException)
         }
 
@@ -241,6 +243,9 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
         | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
         | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
+        | SignalJniError::Signal(SignalProtocolError::BadKEMKeyType(_))
+        | SignalJniError::Signal(SignalProtocolError::WrongKEMKeyType(_, _))
+        | SignalJniError::Signal(SignalProtocolError::BadKEMKeyLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyException)
         }
@@ -258,6 +263,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
         | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
+        | SignalJniError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidMessageException)
         }

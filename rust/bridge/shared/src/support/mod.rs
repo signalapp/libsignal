@@ -110,9 +110,9 @@ macro_rules! bridge_handle {
 /// functions that are generated (they are always suffixed with `_Deserialize` or `_deserialize`
 /// as appropriate). If you need additional flexibility, use `bridge_fn` directly.
 macro_rules! bridge_deserialize {
-    ($typ:ident::$fn:path) => {
+    ($typ:ident::$fn:path $(, $param:ident = $val:tt)*) => {
         paste! {
-            #[bridge_fn]
+            #[bridge_fn($($param = $val),*)]
             fn [<$typ _Deserialize>](data: &[u8]) -> Result<$typ> {
                 $typ::$fn(data)
             }

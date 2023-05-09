@@ -12,6 +12,7 @@ use libsignal_bridge_macros::*;
 
 use crate::protocol::Timestamp;
 use crate::sgx_session::SgxClientState;
+#[allow(unused_imports)]
 use crate::support::*;
 use crate::*;
 

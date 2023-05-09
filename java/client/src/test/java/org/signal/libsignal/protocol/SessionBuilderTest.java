@@ -4,10 +4,13 @@ import junit.framework.TestCase;
 
 import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyType;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 import org.signal.libsignal.protocol.state.PreKeyBundle;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
@@ -24,25 +27,30 @@ public class SessionBuilderTest extends TestCase {
 
   public void testBasicPreKeyV3()
       throws InvalidKeyException, InvalidVersionException, InvalidMessageException, InvalidKeyIdException, DuplicateMessageException, LegacyMessageException, UntrustedIdentityException, NoSessionException {
-    SignalProtocolStore aliceStore          = new TestInMemorySignalProtocolStore();
+    SignalProtocolStore aliceStore     = new TestInMemorySignalProtocolStore();
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
 
-    final SignalProtocolStore bobStore                 = new TestInMemorySignalProtocolStore();
-          ECKeyPair    bobPreKeyPair            = Curve.generateKeyPair();
-          ECKeyPair    bobSignedPreKeyPair      = Curve.generateKeyPair();
-          byte[]       bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                           bobSignedPreKeyPair.getPublicKey().serialize());
+    final SignalProtocolStore bobStore        = new TestInMemorySignalProtocolStore();
+          ECKeyPair  bobPreKeyPair            = Curve.generateKeyPair();
+          ECKeyPair  bobSignedPreKeyPair      = Curve.generateKeyPair();
+          byte[]     bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                         bobSignedPreKeyPair.getPublicKey().serialize());
+          KEMKeyPair bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+          byte[]     bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                         bobKyberPreKeyPair.getPublicKey().serialize());
 
     PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
                                               31337, bobPreKeyPair.getPublicKey(),
                                               22, bobSignedPreKeyPair.getPublicKey(),
                                               bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
+                                              bobStore.getIdentityKeyPair().getPublicKey(),
+                                              32, bobKyberPreKeyPair.getPublicKey(),
+                                              bobKyberPreKeySignature);
 
     aliceSessionBuilder.process(bobPreKey);
 
     assertTrue(aliceStore.containsSession(BOB_ADDRESS));
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
 
           String            originalMessage    = "Good, fast, cheap: pick two";
           SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
@@ -53,12 +61,13 @@ public class SessionBuilderTest extends TestCase {
     PreKeySignalMessage incomingMessage = new PreKeySignalMessage(outgoingMessage.serialize());
     bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(32, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
 
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
     byte[] plaintext = bobSessionCipher.decrypt(incomingMessage);
 
     assertTrue(bobStore.containsSession(ALICE_ADDRESS));
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
     assertTrue(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey() != null);
     assertTrue(originalMessage.equals(new String(plaintext)));
 
@@ -77,13 +86,17 @@ public class SessionBuilderTest extends TestCase {
     bobPreKeyPair            = Curve.generateKeyPair();
     bobSignedPreKeyPair      = Curve.generateKeyPair();
     bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(), bobSignedPreKeyPair.getPublicKey().serialize());
+    bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(), bobKyberPreKeyPair.getPublicKey().serialize());
     bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(),
                                  1, 31338, bobPreKeyPair.getPublicKey(),
                                  23, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
-                                 bobStore.getIdentityKeyPair().getPublicKey());
+                                 bobStore.getIdentityKeyPair().getPublicKey(),
+                                 33, bobKyberPreKeyPair.getPublicKey(), bobKyberPreKeySignature);
 
     bobStore.storePreKey(31338, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(23, new SignedPreKeyRecord(23, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(33, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
     aliceSessionBuilder.process(bobPreKey);
 
     outgoingMessage = aliceSessionCipher.encrypt(originalMessage.getBytes());
@@ -132,7 +145,8 @@ public class SessionBuilderTest extends TestCase {
       PreKeyBundle bobPreKey = new PreKeyBundle(bobIdentityKeyStore.getLocalRegistrationId(), 1,
                                                 31337, bobPreKeyPair.getPublicKey(),
                                                 22, bobSignedPreKeyPair.getPublicKey(), modifiedSignature,
-                                                bobIdentityKeyStore.getIdentityKeyPair().getPublicKey());
+                                                bobIdentityKeyStore.getIdentityKeyPair().getPublicKey(),
+                                                -1, null, new byte[0]);
 
       try {
         aliceSessionBuilder.process(bobPreKey);
@@ -145,7 +159,8 @@ public class SessionBuilderTest extends TestCase {
     PreKeyBundle bobPreKey = new PreKeyBundle(bobIdentityKeyStore.getLocalRegistrationId(), 1,
                                               31337, bobPreKeyPair.getPublicKey(),
                                               22, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
-                                              bobIdentityKeyStore.getIdentityKeyPair().getPublicKey());
+                                              bobIdentityKeyStore.getIdentityKeyPair().getPublicKey(),
+                                              -1, null, new byte[0]);
 
     aliceSessionBuilder.process(bobPreKey);
   }
@@ -156,18 +171,23 @@ public class SessionBuilderTest extends TestCase {
 
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
 
-    ECKeyPair bobPreKeyPair            = Curve.generateKeyPair();
-    ECKeyPair bobSignedPreKeyPair      = Curve.generateKeyPair();
-    byte[]    bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                  bobSignedPreKeyPair.getPublicKey().serialize());
+    ECKeyPair    bobPreKeyPair            = Curve.generateKeyPair();
+    ECKeyPair    bobSignedPreKeyPair      = Curve.generateKeyPair();
+    KEMKeyPair   bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    byte[]       bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                     bobSignedPreKeyPair.getPublicKey().serialize());
+    byte[]       bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                     bobKyberPreKeyPair.getPublicKey().serialize());
 
     PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
                                               31337, bobPreKeyPair.getPublicKey(),
                                               22, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
+                                              bobStore.getIdentityKeyPair().getPublicKey(),
+                                              32, bobKyberPreKeyPair.getPublicKey(), bobKyberPreKeySignature);
 
     bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(32, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
 
     aliceSessionBuilder.process(bobPreKey);
 
@@ -210,18 +230,23 @@ public class SessionBuilderTest extends TestCase {
 
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
 
-    ECKeyPair bobPreKeyPair            = Curve.generateKeyPair();
-    ECKeyPair bobSignedPreKeyPair      = Curve.generateKeyPair();
-    byte[]    bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                  bobSignedPreKeyPair.getPublicKey().serialize());
+    ECKeyPair  bobPreKeyPair            = Curve.generateKeyPair();
+    ECKeyPair  bobSignedPreKeyPair      = Curve.generateKeyPair();
+    KEMKeyPair bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    byte[]     bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobSignedPreKeyPair.getPublicKey().serialize());
+    byte[]     bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobKyberPreKeyPair.getPublicKey().serialize());
 
     PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
                                               31337, bobPreKeyPair.getPublicKey(),
                                               22, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
+                                              bobStore.getIdentityKeyPair().getPublicKey(),
+                                              32, bobKyberPreKeyPair.getPublicKey(), bobKyberPreKeySignature);
 
     bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(32, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
 
     aliceSessionBuilder.process(bobPreKey);
 
@@ -263,18 +288,23 @@ public class SessionBuilderTest extends TestCase {
 
     SignalProtocolStore bobStore = new TestNoSignedPreKeysStore();
 
-    ECKeyPair bobPreKeyPair            = Curve.generateKeyPair();
-    ECKeyPair bobSignedPreKeyPair      = Curve.generateKeyPair();
-    byte[]    bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                  bobSignedPreKeyPair.getPublicKey().serialize());
+    ECKeyPair  bobPreKeyPair            = Curve.generateKeyPair();
+    ECKeyPair  bobSignedPreKeyPair      = Curve.generateKeyPair();
+    KEMKeyPair bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    byte[]     bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobSignedPreKeyPair.getPublicKey().serialize());
+    byte[]     bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobKyberPreKeyPair.getPublicKey().serialize());
 
     PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
                                               31337, bobPreKeyPair.getPublicKey(),
                                               22, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
+                                              bobStore.getIdentityKeyPair().getPublicKey(),
+                                              32, bobKyberPreKeyPair.getPublicKey(), bobKyberPreKeySignature);
 
     bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(32, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
 
     aliceSessionBuilder.process(bobPreKey);
 
@@ -303,18 +333,23 @@ public class SessionBuilderTest extends TestCase {
 
     SignalProtocolStore bobStore = new TestBadSignedPreKeysStore();
 
-    ECKeyPair bobPreKeyPair            = Curve.generateKeyPair();
-    ECKeyPair bobSignedPreKeyPair      = Curve.generateKeyPair();
-    byte[]    bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                  bobSignedPreKeyPair.getPublicKey().serialize());
+    ECKeyPair  bobPreKeyPair            = Curve.generateKeyPair();
+    ECKeyPair  bobSignedPreKeyPair      = Curve.generateKeyPair();
+    KEMKeyPair bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    byte[]     bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobSignedPreKeyPair.getPublicKey().serialize());
+    byte[]     bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobKyberPreKeyPair.getPublicKey().serialize());
 
     PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
                                               31337, bobPreKeyPair.getPublicKey(),
                                               22, bobSignedPreKeyPair.getPublicKey(), bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
+                                              bobStore.getIdentityKeyPair().getPublicKey(),
+                                              32, bobKyberPreKeyPair.getPublicKey(), bobKyberPreKeySignature);
 
     bobStore.storePreKey(31337, new PreKeyRecord(bobPreKey.getPreKeyId(), bobPreKeyPair));
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(32, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
 
     aliceSessionBuilder.process(bobPreKey);
 
@@ -345,21 +380,26 @@ public class SessionBuilderTest extends TestCase {
 
     SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
 
-    ECKeyPair bobPreKeyPair            = Curve.generateKeyPair();
-    ECKeyPair bobSignedPreKeyPair      = Curve.generateKeyPair();
-    byte[]    bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
-                                                                  bobSignedPreKeyPair.getPublicKey().serialize());
+    ECKeyPair  bobPreKeyPair            = Curve.generateKeyPair();
+    ECKeyPair  bobSignedPreKeyPair      = Curve.generateKeyPair();
+    KEMKeyPair bobKyberPreKeyPair       = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    byte[]     bobSignedPreKeySignature = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobSignedPreKeyPair.getPublicKey().serialize());
+    byte[]     bobKyberPreKeySignature  = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                                   bobKyberPreKeyPair.getPublicKey().serialize());
 
     PreKeyBundle bobPreKey = new PreKeyBundle(bobStore.getLocalRegistrationId(), 1,
                                               -1, null,
                                               22, bobSignedPreKeyPair.getPublicKey(),
                                               bobSignedPreKeySignature,
-                                              bobStore.getIdentityKeyPair().getPublicKey());
+                                              bobStore.getIdentityKeyPair().getPublicKey(),
+                                              32, bobKyberPreKeyPair.getPublicKey(),
+                                              bobKyberPreKeySignature );
 
     aliceSessionBuilder.process(bobPreKey);
 
     assertTrue(aliceStore.containsSession(BOB_ADDRESS));
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
 
     String            originalMessage    = "Good, fast, cheap: pick two";
     SessionCipher     aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
@@ -371,12 +411,13 @@ public class SessionBuilderTest extends TestCase {
     assertTrue(!incomingMessage.getPreKeyId().isPresent());
 
     bobStore.storeSignedPreKey(22, new SignedPreKeyRecord(22, System.currentTimeMillis(), bobSignedPreKeyPair, bobSignedPreKeySignature));
+    bobStore.storeKyberPreKey(32, new KyberPreKeyRecord(32, System.currentTimeMillis(), bobKyberPreKeyPair, bobKyberPreKeySignature));
 
     SessionCipher bobSessionCipher = new SessionCipher(bobStore, ALICE_ADDRESS);
     byte[]        plaintext        = bobSessionCipher.decrypt(incomingMessage);
 
     assertTrue(bobStore.containsSession(ALICE_ADDRESS));
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
     assertTrue(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey() != null);
     assertTrue(originalMessage.equals(new String(plaintext)));
   }

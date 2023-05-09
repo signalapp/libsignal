@@ -34,12 +34,19 @@ then
     # Use small BoringSSL curve tables to reduce binary size on Android.
     export CFLAGS="-DOPENSSL_SMALL -flto=thin ${CFLAGS:-}"
 
-    # Use the Android NDK's prebuilt Clang+lld as Rust's linker.
+    # Use the Android NDK's prebuilt Clang+lld as pqcrypto's compiler and Rust's linker.
     ANDROID_TOOLCHAIN_DIR=$(echo "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt"/*/bin/)
-    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/aarch64-linux-android21-clang"
-    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="${ANDROID_TOOLCHAIN_DIR}/armv7a-linux-androideabi21-clang"
-    export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/x86_64-linux-android21-clang"
-    export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${ANDROID_TOOLCHAIN_DIR}/i686-linux-android21-clang"
+    export CC_aarch64_linux_android="${ANDROID_TOOLCHAIN_DIR}/aarch64-linux-android21-clang"
+    export CC_armv7_linux_androideabi="${ANDROID_TOOLCHAIN_DIR}/armv7a-linux-androideabi21-clang"
+    export CC_x86_64_linux_android="${ANDROID_TOOLCHAIN_DIR}/x86_64-linux-android21-clang"
+    export CC_i686_linux_android="${ANDROID_TOOLCHAIN_DIR}/i686-linux-android21-clang"
+
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${CC_aarch64_linux_android}"
+    export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="${CC_armv7_linux_androideabi}"
+    export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${CC_x86_64_linux_android}"
+    export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${CC_i686_linux_android}"
+
+    export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
     export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
 
     echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target aarch64-linux-android --out-dir "${ANDROID_LIB_DIR}/arm64-v8a"

@@ -5,8 +5,8 @@
 
 use crate::{
     CiphertextMessage, CiphertextMessageType, Context, Direction, IdentityKeyStore, KeyPair,
-    PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey, Result, SessionRecord,
-    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
+    KyberPayload, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey,
+    Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::consts::MAX_FORWARD_JUMPS;
@@ -75,11 +75,17 @@ pub async fn message_encrypt(
             &their_identity_key,
         )?;
 
+        let kyber_payload = items
+            .kyber_pre_key_id()
+            .zip(items.kyber_ciphertext())
+            .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.into()));
+
         CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::new(
             session_version,
             local_registration_id,
             items.pre_key_id(),
             items.signed_pre_key_id(),
+            kyber_payload,
             *items.base_key(),
             local_identity_key,
             message,
@@ -128,6 +134,7 @@ pub async fn message_encrypt(
     Ok(message)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn message_decrypt<R: Rng + CryptoRng>(
     ciphertext: &CiphertextMessage,
     remote_address: &ProtocolAddress,
@@ -135,6 +142,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
     identity_store: &mut dyn IdentityKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
+    kyber_pre_key_store: &mut dyn KyberPreKeyStore,
     csprng: &mut R,
     ctx: Context,
 ) -> Result<Vec<u8>> {
@@ -158,6 +166,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
                 identity_store,
                 pre_key_store,
                 signed_pre_key_store,
+                kyber_pre_key_store,
                 csprng,
                 ctx,
             )
@@ -170,6 +179,7 @@ pub async fn message_decrypt<R: Rng + CryptoRng>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     ciphertext: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
@@ -177,6 +187,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     identity_store: &mut dyn IdentityKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
+    kyber_pre_key_store: &mut dyn KyberPreKeyStore,
     csprng: &mut R,
     ctx: Context,
 ) -> Result<Vec<u8>> {
@@ -186,19 +197,20 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         .unwrap_or_else(SessionRecord::new_fresh);
 
     // Make sure we log the session state if we fail to process the pre-key.
-    let pre_key_id_or_err = session::process_prekey(
+    let pre_key_used_or_err = session::process_prekey(
         ciphertext,
         remote_address,
         &mut session_record,
         identity_store,
         pre_key_store,
         signed_pre_key_store,
+        kyber_pre_key_store,
         ctx,
     )
     .await;
 
-    let pre_key_id = match pre_key_id_or_err {
-        Ok(id) => id,
+    let pre_key_used = match pre_key_used_or_err {
+        Ok(result) => result,
         Err(e) => {
             let errs = [e];
             log::error!(
@@ -227,8 +239,14 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         .store_session(remote_address, &session_record, ctx)
         .await?;
 
-    if let Some(pre_key_id) = pre_key_id {
+    if let Some(pre_key_id) = pre_key_used.pre_key_id {
         pre_key_store.remove_pre_key(pre_key_id, ctx).await?;
+    }
+
+    if let Some(kyber_pre_key_id) = pre_key_used.kyber_pre_key_id {
+        kyber_pre_key_store
+            .mark_kyber_pre_key_used(kyber_pre_key_id, ctx)
+            .await?;
     }
 
     Ok(ptext)

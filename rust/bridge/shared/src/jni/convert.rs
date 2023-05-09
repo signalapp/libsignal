@@ -350,6 +350,7 @@ store!(PreKeyStore);
 store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
+store!(KyberPreKeyStore);
 store!(InputStream);
 
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
@@ -1208,7 +1209,7 @@ macro_rules! jni_result_type {
     (Serialized<$typ:ident>) => {
         jni::jbyteArray
     };
-    ( $handle:ident ) => {
+    ( $handle:ty ) => {
         jni::ObjectHandle
     };
 }

@@ -558,6 +558,10 @@ SignalFfiError *signal_address_get_device_id(uint32_t *out, const SignalProtocol
 
 SignalFfiError *signal_address_get_name(const char **out, const SignalProtocolAddress *obj);
 
+SignalFfiError *signal_publickey_equals(bool *out,
+                                        const SignalPublicKey *lhs,
+                                        const SignalPublicKey *rhs);
+
 SignalFfiError *signal_publickey_compare(int32_t *out,
                                          const SignalPublicKey *key1,
                                          const SignalPublicKey *key2);

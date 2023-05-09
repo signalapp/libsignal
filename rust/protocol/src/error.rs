@@ -4,6 +4,7 @@
 //
 
 use crate::curve::KeyType;
+use crate::kem;
 
 use displaydoc::Display;
 use thiserror::Error;
@@ -54,6 +55,8 @@ pub enum SignalProtocolError {
     InvalidPreKeyId,
     /// invalid signed prekey identifier
     InvalidSignedPreKeyId,
+    /// invalid Kyber prekey identifier
+    InvalidKyberPreKeyId,
 
     /// invalid MAC key length <{0}>
     InvalidMacKeyLength(usize),
@@ -89,4 +92,13 @@ pub enum SignalProtocolError {
     UnknownSealedSenderVersion(u8),
     /// self send of a sealed sender message
     SealedSenderSelfSend,
+
+    /// bad KEM key type <{0:#04x}>
+    BadKEMKeyType(u8),
+    /// unexpected KEM key type <{0:#04x}> (expected <{1:#04x}>)
+    WrongKEMKeyType(u8, u8),
+    /// bad KEM key length <{1}> for key with type <{0}>
+    BadKEMKeyLength(kem::KeyType, usize),
+    /// bad KEM ciphertext length <{1}> for key with type <{0}>
+    BadKEMCiphertextLength(kem::KeyType, usize),
 }

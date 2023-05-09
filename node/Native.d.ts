@@ -191,6 +191,7 @@ export function ProtocolAddress_Name(obj: Wrapper<ProtocolAddress>): string;
 export function ProtocolAddress_New(name: string, deviceId: number): ProtocolAddress;
 export function PublicKey_Compare(key1: Wrapper<PublicKey>, key2: Wrapper<PublicKey>): number;
 export function PublicKey_Deserialize(data: Buffer): PublicKey;
+export function PublicKey_Equals(lhs: Wrapper<PublicKey>, rhs: Wrapper<PublicKey>): boolean;
 export function PublicKey_GetPublicKeyBytes(obj: Wrapper<PublicKey>): Buffer;
 export function PublicKey_Serialize(obj: Wrapper<PublicKey>): Buffer;
 export function PublicKey_Verify(key: Wrapper<PublicKey>, message: Buffer, signature: Buffer): boolean;

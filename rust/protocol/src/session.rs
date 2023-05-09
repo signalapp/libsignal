@@ -4,14 +4,21 @@
 //
 
 use crate::{
-    Context, Direction, IdentityKeyStore, KeyPair, PreKeyBundle, PreKeyId, PreKeySignalMessage,
-    PreKeyStore, ProtocolAddress, Result, SessionRecord, SessionStore, SignalProtocolError,
-    SignedPreKeyStore,
+    kem, Context, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore,
+    PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result,
+    SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::ratchet;
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
+use crate::state::GenericSignedPreKey;
 use rand::{CryptoRng, Rng};
+
+#[derive(Default)]
+pub struct PreKeysUsed {
+    pub pre_key_id: Option<PreKeyId>,
+    pub kyber_pre_key_id: Option<KyberPreKeyId>,
+}
 
 /*
 These functions are on SessionBuilder in Java
@@ -29,8 +36,9 @@ pub async fn process_prekey(
     identity_store: &mut dyn IdentityKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
+    kyber_prekey_store: &mut dyn KyberPreKeyStore,
     ctx: Context,
-) -> Result<Option<PreKeyId>> {
+) -> Result<PreKeysUsed> {
     let their_identity_key = message.identity_key();
 
     if !identity_store
@@ -47,11 +55,12 @@ pub async fn process_prekey(
         ));
     }
 
-    let unsigned_pre_key_id = process_prekey_v3(
+    let pre_keys_used = process_prekey_impl(
         message,
         remote_address,
         session_record,
         signed_prekey_store,
+        kyber_prekey_store,
         pre_key_store,
         identity_store,
         ctx,
@@ -62,30 +71,44 @@ pub async fn process_prekey(
         .save_identity(remote_address, their_identity_key, ctx)
         .await?;
 
-    Ok(unsigned_pre_key_id)
+    Ok(pre_keys_used)
 }
 
-async fn process_prekey_v3(
+async fn process_prekey_impl(
     message: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
+    kyber_prekey_store: &mut dyn KyberPreKeyStore,
     pre_key_store: &mut dyn PreKeyStore,
     identity_store: &mut dyn IdentityKeyStore,
     ctx: Context,
-) -> Result<Option<PreKeyId>> {
+) -> Result<PreKeysUsed> {
     if session_record.has_session_state(
         message.message_version() as u32,
         &message.base_key().serialize(),
     )? {
-        // We've already setup a session for this V3 message, letting bundled message fall through
-        return Ok(None);
+        // We've already setup a session for this message, letting bundled message fall through
+        return Ok(Default::default());
     }
 
     let our_signed_pre_key_pair = signed_prekey_store
         .get_signed_pre_key(message.signed_pre_key_id(), ctx)
         .await?
         .key_pair()?;
+
+    // Because async closures are unstable
+    let our_kyber_pre_key_pair: Option<kem::KeyPair>;
+    if let Some(kyber_pre_key_id) = message.kyber_pre_key_id() {
+        our_kyber_pre_key_pair = Some(
+            kyber_prekey_store
+                .get_kyber_pre_key(kyber_pre_key_id, ctx)
+                .await?
+                .key_pair()?,
+        );
+    } else {
+        our_kyber_pre_key_pair = None;
+    }
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
         log::info!("processing PreKey message from {}", remote_address);
@@ -108,8 +131,10 @@ async fn process_prekey_v3(
         our_signed_pre_key_pair, // signed pre key
         our_one_time_pre_key_pair,
         our_signed_pre_key_pair, // ratchet key
+        our_kyber_pre_key_pair,
         *message.identity_key(),
         *message.base_key(),
+        message.kyber_ciphertext(),
     );
 
     session_record.archive_current_state()?;
@@ -122,7 +147,11 @@ async fn process_prekey_v3(
 
     session_record.promote_state(new_session);
 
-    Ok(message.pre_key_id())
+    let pre_keys_used = PreKeysUsed {
+        pre_key_id: message.pre_key_id(),
+        kyber_pre_key_id: message.kyber_pre_key_id(),
+    };
+    Ok(pre_keys_used)
 }
 
 pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
@@ -151,6 +180,17 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         return Err(SignalProtocolError::SignatureValidationFailed);
     }
 
+    if let Some(kyber_public) = bundle.kyber_pre_key_public()? {
+        if !their_identity_key.public_key().verify_signature(
+            kyber_public.serialize().as_ref(),
+            bundle
+                .kyber_pre_key_signature()?
+                .expect("signature must be present"),
+        )? {
+            return Err(SignalProtocolError::SignatureValidationFailed);
+        }
+    }
+
     let mut session_record = session_store
         .load_session(remote_address, ctx)
         .await?
@@ -159,19 +199,24 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     let our_base_key_pair = KeyPair::generate(&mut csprng);
     let their_signed_prekey = bundle.signed_pre_key_public()?;
 
-    let their_one_time_prekey = bundle.pre_key_public()?;
     let their_one_time_prekey_id = bundle.pre_key_id()?;
 
     let our_identity_key_pair = identity_store.get_identity_key_pair(ctx).await?;
 
-    let parameters = AliceSignalProtocolParameters::new(
+    let mut parameters = AliceSignalProtocolParameters::new(
         our_identity_key_pair,
         our_base_key_pair,
         *their_identity_key,
         their_signed_prekey,
-        their_one_time_prekey,
         their_signed_prekey,
     );
+    if let Some(key) = bundle.pre_key_public()? {
+        parameters.set_their_one_time_pre_key(key);
+    }
+
+    if let Some(key) = bundle.kyber_pre_key_public()? {
+        parameters.set_their_kyber_pre_key(key);
+    }
 
     let mut session = ratchet::initialize_alice_session(&parameters, csprng)?;
 
@@ -186,6 +231,10 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         bundle.signed_pre_key_id()?,
         &our_base_key_pair.public_key,
     );
+
+    if let Some(kyber_pre_key_id) = bundle.kyber_pre_key_id()? {
+        session.set_unacknowledged_kyber_pre_key_id(kyber_pre_key_id);
+    }
 
     session.set_local_registration_id(identity_store.get_local_registration_id(ctx).await?);
     session.set_remote_registration_id(bundle.registration_id()?);

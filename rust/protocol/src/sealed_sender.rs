@@ -5,8 +5,8 @@
 
 use crate::{
     message_encrypt, CiphertextMessageType, Context, DeviceId, Direction, IdentityKey,
-    IdentityKeyPair, IdentityKeyStore, KeyPair, PreKeySignalMessage, PreKeyStore, PrivateKey,
-    ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
+    IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore,
+    PrivateKey, ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
     SignalProtocolError, SignedPreKeyStore,
 };
 
@@ -393,6 +393,7 @@ impl From<ContentHint> for u32 {
         hint.to_u32()
     }
 }
+
 pub struct UnidentifiedSenderMessageContent {
     serialized: Vec<u8>,
     contents: Vec<u8>,
@@ -1603,6 +1604,7 @@ pub async fn sealed_sender_decrypt(
     session_store: &mut dyn SessionStore,
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &mut dyn SignedPreKeyStore,
+    kyber_pre_key_store: &mut dyn KyberPreKeyStore,
     ctx: Context,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store, ctx).await?;
@@ -1653,6 +1655,7 @@ pub async fn sealed_sender_decrypt(
                 identity_store,
                 pre_key_store,
                 signed_pre_key_store,
+                kyber_pre_key_store,
                 &mut rng,
                 ctx,
             )

@@ -8,6 +8,6 @@ package org.signal.libsignal.protocol.state;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 
 public interface SignalProtocolStore
-    extends IdentityKeyStore, PreKeyStore, SessionStore, SignedPreKeyStore, SenderKeyStore
+    extends IdentityKeyStore, PreKeyStore, SessionStore, SignedPreKeyStore, SenderKeyStore, KyberPreKeyStore
 {
 }

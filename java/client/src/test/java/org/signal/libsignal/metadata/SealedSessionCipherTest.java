@@ -24,6 +24,8 @@ import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.groups.GroupCipher;
 import org.signal.libsignal.protocol.groups.GroupSessionBuilder;
+import org.signal.libsignal.protocol.kem.KEMKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyType;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.DecryptionErrorMessage;
 import org.signal.libsignal.protocol.message.PlaintextContent;
@@ -32,12 +34,12 @@ import org.signal.libsignal.protocol.state.PreKeyBundle;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
 import org.signal.libsignal.protocol.util.Hex;
-import org.signal.libsignal.protocol.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,6 +55,14 @@ public class SealedSessionCipherTest extends TestCase {
     byte[]    signature = Curve.calculateSignature(identityKeyPair.getPrivateKey(), keyPair.getPublicKey().serialize());
 
     return new SignedPreKeyRecord(signedPreKeyId, System.currentTimeMillis(), keyPair, signature);
+  }
+
+  private static KyberPreKeyRecord generateKyberPreKey(IdentityKeyPair identityKeyPair, int kyberPreKeyId)
+      throws InvalidKeyException {
+    KEMKeyPair keyPair   = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+    byte[]     signature = Curve.calculateSignature(identityKeyPair.getPrivateKey(), keyPair.getPublicKey().serialize());
+
+    return new KyberPreKeyRecord(kyberPreKeyId, System.currentTimeMillis(), keyPair, signature);
   }
 
   public void testEncryptDecrypt() throws UntrustedIdentityException, InvalidKeyException, InvalidCertificateException, InvalidMetadataMessageException, ProtocolDuplicateMessageException, ProtocolUntrustedIdentityException, ProtocolLegacyMessageException, ProtocolInvalidKeyException, InvalidMetadataVersionException, ProtocolInvalidVersionException, ProtocolInvalidMessageException, ProtocolInvalidKeyIdException, ProtocolNoSessionException, SelfSendException {
@@ -201,8 +211,9 @@ public class SealedSessionCipherTest extends TestCase {
     ECKeyPair          bobPreKey       = Curve.generateKeyPair();
     IdentityKeyPair    bobIdentityKey  = bobStore.getIdentityKeyPair();
     SignedPreKeyRecord bobSignedPreKey = generateSignedPreKey(bobIdentityKey, 2);
+    KyberPreKeyRecord bobKyberPreKey = generateKyberPreKey(bobIdentityKey, 12);
 
-    PreKeyBundle bobBundle = new PreKeyBundle(0x4000, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey());
+    PreKeyBundle bobBundle = new PreKeyBundle(0x4000, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey(), 12, bobKyberPreKey.getKeyPair().getPublicKey(), bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, bobAddress);
     aliceSessionBuilder.process(bobBundle);
 
@@ -239,16 +250,18 @@ public class SealedSessionCipherTest extends TestCase {
     ECKeyPair          bobPreKey       = Curve.generateKeyPair();
     IdentityKeyPair    bobIdentityKey  = bobStore.getIdentityKeyPair();
     SignedPreKeyRecord bobSignedPreKey = generateSignedPreKey(bobIdentityKey, 2);
+    KyberPreKeyRecord  bobKyberPreKey  = generateKyberPreKey(bobIdentityKey, 12);
 
-    PreKeyBundle bobBundle = new PreKeyBundle(0x1234, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey());
+    PreKeyBundle bobBundle = new PreKeyBundle(0x1234, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey(), 12, bobKyberPreKey.getKeyPair().getPublicKey(), bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForBob = new SessionBuilder(aliceStore, bobAddress);
     aliceSessionBuilderForBob.process(bobBundle);
 
     ECKeyPair          carolPreKey       = Curve.generateKeyPair();
     IdentityKeyPair    carolIdentityKey  = carolStore.getIdentityKeyPair();
     SignedPreKeyRecord carolSignedPreKey = generateSignedPreKey(carolIdentityKey, 2);
+    KyberPreKeyRecord  carolKyberPreKey  = generateKyberPreKey(carolIdentityKey, 12);
 
-    PreKeyBundle carolBundle = new PreKeyBundle(0x1111, 1, 1, carolPreKey.getPublicKey(), 2, carolSignedPreKey.getKeyPair().getPublicKey(), carolSignedPreKey.getSignature(), carolIdentityKey.getPublicKey());
+    PreKeyBundle carolBundle = new PreKeyBundle(0x1111, 1, 1, carolPreKey.getPublicKey(), 2, carolSignedPreKey.getKeyPair().getPublicKey(), carolSignedPreKey.getSignature(), carolIdentityKey.getPublicKey(), 12, carolKyberPreKey.getKeyPair().getPublicKey(), carolKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilderForCarol = new SessionBuilder(aliceStore, carolAddress);
     aliceSessionBuilderForCarol.process(carolBundle);
 
@@ -384,13 +397,14 @@ public class SealedSessionCipherTest extends TestCase {
     ECKeyPair          bobPreKey       = Curve.generateKeyPair();
     IdentityKeyPair    bobIdentityKey  = bobStore.getIdentityKeyPair();
     SignedPreKeyRecord bobSignedPreKey = generateSignedPreKey(bobIdentityKey, 2);
+    KyberPreKeyRecord  bobKyberPreKey  = generateKyberPreKey(bobIdentityKey, 12);
 
-    PreKeyBundle bobBundle             = new PreKeyBundle(1, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey());
+    PreKeyBundle bobBundle             = new PreKeyBundle(1, 1, 1, bobPreKey.getPublicKey(), 2, bobSignedPreKey.getKeyPair().getPublicKey(), bobSignedPreKey.getSignature(), bobIdentityKey.getPublicKey(), 12, bobKyberPreKey.getKeyPair().getPublicKey(), bobKyberPreKey.getSignature());
     SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, bobAddress);
     aliceSessionBuilder.process(bobBundle);
 
     bobStore.storeSignedPreKey(2, bobSignedPreKey);
+    bobStore.storeKyberPreKey(12, bobKyberPreKey);
     bobStore.storePreKey(1, new PreKeyRecord(1, bobPreKey));
-
   }
 }

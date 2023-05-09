@@ -4,12 +4,15 @@ import junit.framework.TestCase;
 
 import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyType;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
-import org.signal.libsignal.protocol.state.SignalProtocolStore;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 import org.signal.libsignal.protocol.state.PreKeyBundle;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
+import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import org.signal.libsignal.protocol.util.Medium;
 
@@ -22,10 +25,14 @@ public class SimultaneousInitiateTests extends TestCase {
   private static final SignalProtocolAddress ALICE_ADDRESS = new SignalProtocolAddress("+14159998888", 1);
 
   private static final ECKeyPair aliceSignedPreKey = Curve.generateKeyPair();
+  private static final KEMKeyPair aliceKyberPreKey = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
   private static final ECKeyPair bobSignedPreKey   = Curve.generateKeyPair();
+  private static final KEMKeyPair bobKyberPreKey   = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
 
   private static final int aliceSignedPreKeyId = new Random().nextInt(Medium.MAX_VALUE);
+  private static final int aliceKyberPreKeyId  = new Random().nextInt(Medium.MAX_VALUE);
   private static final int bobSignedPreKeyId   = new Random().nextInt(Medium.MAX_VALUE);
+  private static final int bobKyberPreKeyId    = new Random().nextInt(Medium.MAX_VALUE);
 
   public void testBasicSimultaneousInitiate()
       throws InvalidKeyException, UntrustedIdentityException, InvalidVersionException,
@@ -61,8 +68,8 @@ public class SimultaneousInitiateTests extends TestCase {
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
 
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
@@ -112,7 +119,7 @@ public class SimultaneousInitiateTests extends TestCase {
     byte[] bobPlaintext   = bobSessionCipher.decrypt(new PreKeySignalMessage(messageForBob.serialize()));
 
     assertTrue(new String(bobPlaintext).equals("hey there"));
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
 
     CiphertextMessage aliceResponse = aliceSessionCipher.encrypt("second message".getBytes());
 
@@ -167,8 +174,8 @@ public class SimultaneousInitiateTests extends TestCase {
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
 
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
@@ -226,8 +233,8 @@ public class SimultaneousInitiateTests extends TestCase {
     assertTrue(new String(alicePlaintext).equals("sample message"));
     assertTrue(new String(bobPlaintext).equals("hey there"));
 
-    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
-    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+    assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
+    assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
 
     assertFalse(isSessionIdEqual(aliceStore, bobStore));
 
@@ -304,8 +311,8 @@ public class SimultaneousInitiateTests extends TestCase {
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
 
-      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
-      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
+      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
 
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
     }
@@ -392,8 +399,8 @@ public class SimultaneousInitiateTests extends TestCase {
       assertTrue(new String(alicePlaintext).equals("sample message"));
       assertTrue(new String(bobPlaintext).equals("hey there"));
 
-      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 3);
-      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 3);
+      assertTrue(aliceStore.loadSession(BOB_ADDRESS).getSessionVersion() == 4);
+      assertTrue(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion() == 4);
 
       assertFalse(isSessionIdEqual(aliceStore, bobStore));
     }
@@ -456,13 +463,18 @@ public class SimultaneousInitiateTests extends TestCase {
     int       aliceUnsignedPreKeyId = new Random().nextInt(Medium.MAX_VALUE);
     byte[]    aliceSignature        = Curve.calculateSignature(aliceStore.getIdentityKeyPair().getPrivateKey(),
                                                                aliceSignedPreKey.getPublicKey().serialize());
+    byte[]    aliceKyberSignature   = Curve.calculateSignature(aliceStore.getIdentityKeyPair().getPrivateKey(),
+                                                               aliceKyberPreKey.getPublicKey().serialize());
 
     PreKeyBundle alicePreKeyBundle = new PreKeyBundle(1, 1,
                                                       aliceUnsignedPreKeyId, aliceUnsignedPreKey.getPublicKey(),
                                                       aliceSignedPreKeyId, aliceSignedPreKey.getPublicKey(),
-                                                      aliceSignature, aliceStore.getIdentityKeyPair().getPublicKey());
+                                                      aliceSignature, aliceStore.getIdentityKeyPair().getPublicKey(),
+                                                      aliceKyberPreKeyId, aliceKyberPreKey.getPublicKey(),
+                                                      aliceKyberSignature);
 
     aliceStore.storeSignedPreKey(aliceSignedPreKeyId, new SignedPreKeyRecord(aliceSignedPreKeyId, System.currentTimeMillis(), aliceSignedPreKey, aliceSignature));
+    aliceStore.storeKyberPreKey(aliceKyberPreKeyId, new KyberPreKeyRecord(aliceKyberPreKeyId, System.currentTimeMillis(), aliceKyberPreKey, aliceKyberSignature));
     aliceStore.storePreKey(aliceUnsignedPreKeyId, new PreKeyRecord(aliceUnsignedPreKeyId, aliceUnsignedPreKey));
 
     return alicePreKeyBundle;
@@ -473,13 +485,18 @@ public class SimultaneousInitiateTests extends TestCase {
     int       bobUnsignedPreKeyId = new Random().nextInt(Medium.MAX_VALUE);
     byte[]    bobSignature        = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
                                                              bobSignedPreKey.getPublicKey().serialize());
+    byte[]    bobKyberSignature   = Curve.calculateSignature(bobStore.getIdentityKeyPair().getPrivateKey(),
+                                                             bobKyberPreKey.getPublicKey().serialize());
 
     PreKeyBundle bobPreKeyBundle = new PreKeyBundle(1, 1,
                                                     bobUnsignedPreKeyId, bobUnsignedPreKey.getPublicKey(),
                                                     bobSignedPreKeyId, bobSignedPreKey.getPublicKey(),
-                                                    bobSignature, bobStore.getIdentityKeyPair().getPublicKey());
+                                                    bobSignature, bobStore.getIdentityKeyPair().getPublicKey(),
+                                                    bobKyberPreKeyId, bobKyberPreKey.getPublicKey(),
+                                                    bobKyberSignature);
 
     bobStore.storeSignedPreKey(bobSignedPreKeyId, new SignedPreKeyRecord(bobSignedPreKeyId, System.currentTimeMillis(), bobSignedPreKey, bobSignature));
+    bobStore.storeKyberPreKey(bobKyberPreKeyId, new KyberPreKeyRecord(bobKyberPreKeyId, System.currentTimeMillis(), bobKyberPreKey, bobKyberSignature));
     bobStore.storePreKey(bobUnsignedPreKeyId, new PreKeyRecord(bobUnsignedPreKeyId, bobUnsignedPreKey));
 
     return bobPreKeyBundle;

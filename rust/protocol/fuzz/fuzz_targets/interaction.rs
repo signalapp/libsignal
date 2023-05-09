@@ -156,6 +156,7 @@ impl Participant {
                 &mut self.store.identity_store,
                 &mut self.store.pre_key_store,
                 &mut self.store.signed_pre_key_store,
+                &mut self.store.kyber_pre_key_store,
                 rng,
                 None,
             )

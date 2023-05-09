@@ -9,8 +9,9 @@
 
 use crate::storage::{traits, Context};
 use crate::{
-    IdentityKey, IdentityKeyPair, PreKeyId, PreKeyRecord, ProtocolAddress, Result, SenderKeyRecord,
-    SessionRecord, SignalProtocolError, SignedPreKeyId, SignedPreKeyRecord,
+    IdentityKey, IdentityKeyPair, KyberPreKeyId, KyberPreKeyRecord, PreKeyId, PreKeyRecord,
+    ProtocolAddress, Result, SenderKeyRecord, SessionRecord, SignalProtocolError, SignedPreKeyId,
+    SignedPreKeyRecord,
 };
 
 use async_trait::async_trait;
@@ -199,6 +200,61 @@ impl traits::SignedPreKeyStore for InMemSignedPreKeyStore {
     }
 }
 
+/// Reference implementation of [traits::KyberPreKeyStore].
+#[derive(Clone)]
+pub struct InMemKyberPreKeyStore {
+    kyber_pre_keys: HashMap<KyberPreKeyId, KyberPreKeyRecord>,
+}
+
+impl InMemKyberPreKeyStore {
+    /// Create an empty kyber pre-key store.
+    pub fn new() -> Self {
+        Self {
+            kyber_pre_keys: HashMap::new(),
+        }
+    }
+}
+
+impl Default for InMemKyberPreKeyStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait(?Send)]
+impl traits::KyberPreKeyStore for InMemKyberPreKeyStore {
+    async fn get_kyber_pre_key(
+        &self,
+        kyber_prekey_id: KyberPreKeyId,
+        _ctx: Context,
+    ) -> Result<KyberPreKeyRecord> {
+        Ok(self
+            .kyber_pre_keys
+            .get(&kyber_prekey_id)
+            .ok_or(SignalProtocolError::InvalidKyberPreKeyId)?
+            .clone())
+    }
+
+    async fn save_kyber_pre_key(
+        &mut self,
+        kyber_prekey_id: KyberPreKeyId,
+        record: &KyberPreKeyRecord,
+        _ctx: Context,
+    ) -> Result<()> {
+        self.kyber_pre_keys
+            .insert(kyber_prekey_id, record.to_owned());
+        Ok(())
+    }
+
+    async fn mark_kyber_pre_key_used(
+        &mut self,
+        _kyber_prekey_id: KyberPreKeyId,
+        _ctx: Context,
+    ) -> Result<()> {
+        Ok(())
+    }
+}
+
 /// Reference implementation of [traits::SessionStore].
 #[derive(Clone)]
 pub struct InMemSessionStore {
@@ -322,6 +378,7 @@ pub struct InMemSignalProtocolStore {
     pub session_store: InMemSessionStore,
     pub pre_key_store: InMemPreKeyStore,
     pub signed_pre_key_store: InMemSignedPreKeyStore,
+    pub kyber_pre_key_store: InMemKyberPreKeyStore,
     pub identity_store: InMemIdentityKeyStore,
     pub sender_key_store: InMemSenderKeyStore,
 }
@@ -334,6 +391,7 @@ impl InMemSignalProtocolStore {
             session_store: InMemSessionStore::new(),
             pre_key_store: InMemPreKeyStore::new(),
             signed_pre_key_store: InMemSignedPreKeyStore::new(),
+            kyber_pre_key_store: InMemKyberPreKeyStore::new(),
             identity_store: InMemIdentityKeyStore::new(key_pair, registration_id),
             sender_key_store: InMemSenderKeyStore::new(),
         })
@@ -420,6 +478,40 @@ impl traits::SignedPreKeyStore for InMemSignalProtocolStore {
     ) -> Result<()> {
         self.signed_pre_key_store
             .save_signed_pre_key(id, record, ctx)
+            .await
+    }
+}
+
+#[async_trait(?Send)]
+impl traits::KyberPreKeyStore for InMemSignalProtocolStore {
+    async fn get_kyber_pre_key(
+        &self,
+        kyber_prekey_id: KyberPreKeyId,
+        ctx: Context,
+    ) -> Result<KyberPreKeyRecord> {
+        self.kyber_pre_key_store
+            .get_kyber_pre_key(kyber_prekey_id, ctx)
+            .await
+    }
+
+    async fn save_kyber_pre_key(
+        &mut self,
+        kyber_prekey_id: KyberPreKeyId,
+        record: &KyberPreKeyRecord,
+        ctx: Context,
+    ) -> Result<()> {
+        self.kyber_pre_key_store
+            .save_kyber_pre_key(kyber_prekey_id, record, ctx)
+            .await
+    }
+
+    async fn mark_kyber_pre_key_used(
+        &mut self,
+        kyber_prekey_id: KyberPreKeyId,
+        ctx: Context,
+    ) -> Result<()> {
+        self.kyber_pre_key_store
+            .mark_kyber_pre_key_used(kyber_prekey_id, ctx)
             .await
     }
 }

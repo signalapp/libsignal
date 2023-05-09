@@ -65,7 +65,7 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         let original_message = "L'homme est condamné à être libre";
@@ -118,7 +118,10 @@ fn test_basic_prekey_v3() -> Result<(), SignalProtocolError> {
             .load_session(&alice_address, None)
             .await?
             .expect("session found");
-        assert_eq!(bobs_session_with_alice.session_version()?, 3);
+        assert_eq!(
+            bobs_session_with_alice.session_version()?,
+            PRE_KYBER_MESSAGE_VERSION
+        );
         assert_eq!(bobs_session_with_alice.alice_base_key()?.len(), 32 + 1);
 
         let bob_outgoing = encrypt(&mut bob_store, &alice_address, bobs_response).await?;
@@ -573,7 +576,7 @@ fn repeat_bundle_message_v3() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         let original_message = "L'homme est condamné à être libre";
@@ -727,7 +730,7 @@ fn bad_message_bundle() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         let original_message = "L'homme est condamné à être libre";
@@ -825,7 +828,7 @@ fn optional_one_time_prekey() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         let original_message = "L'homme est condamné à être libre";
@@ -916,7 +919,7 @@ fn zero_is_a_valid_prekey_id() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         let original_message = "L'homme est condamné à être libre";
@@ -1010,7 +1013,7 @@ fn message_key_limits() -> Result<(), SignalProtocolError> {
                 decrypt(
                     &mut bob_store,
                     &alice_address,
-                    &inflight[TOO_MANY_MESSAGES - 1]
+                    &inflight[TOO_MANY_MESSAGES - 1],
                 )
                 .await?
             )
@@ -1321,7 +1324,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
         assert_eq!(
             bob_store
@@ -1329,7 +1332,7 @@ fn basic_simultaneous_initiate() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         assert!(
@@ -1448,7 +1451,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
         assert_eq!(
             bob_store
@@ -1456,7 +1459,7 @@ fn simultaneous_initiate_with_lossage() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         let alice_response = encrypt(&mut alice_store, &bob_address, "nice to see you").await?;
@@ -1583,7 +1586,7 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
         assert_eq!(
             bob_store
@@ -1591,7 +1594,7 @@ fn simultaneous_initiate_lost_message() -> Result<(), SignalProtocolError> {
                 .await?
                 .expect("session found")
                 .session_version()?,
-            3
+            PRE_KYBER_MESSAGE_VERSION
         );
 
         assert!(
@@ -1716,7 +1719,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
             assert_eq!(
                 bob_store
@@ -1724,7 +1727,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
 
             assert!(
@@ -1783,7 +1786,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
             assert_eq!(
                 bob_store
@@ -1791,7 +1794,7 @@ fn simultaneous_initiate_repeated_messages() -> Result<(), SignalProtocolError> 
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
 
             assert!(
@@ -1932,7 +1935,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
             assert_eq!(
                 bob_store
@@ -1940,7 +1943,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
 
             assert!(
@@ -1999,7 +2002,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
             assert_eq!(
                 bob_store
@@ -2007,7 +2010,7 @@ fn simultaneous_initiate_lost_message_repeated_messages() -> Result<(), SignalPr
                     .await?
                     .expect("session found")
                     .session_version()?,
-                3
+                PRE_KYBER_MESSAGE_VERSION
             );
 
             assert!(

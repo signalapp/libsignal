@@ -7,6 +7,14 @@ use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng};
 
+// Deliberately not reusing the constants from `protocol`.
+// dead_code warning reported when building benches.
+#[allow(dead_code)]
+pub(crate) const PRE_KYBER_MESSAGE_VERSION: u32 = 3;
+#[allow(dead_code)]
+pub(crate) const KYBER_AWARE_MESSAGE_VERSION: u32 = 4;
+
+#[allow(dead_code)]
 pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, SignalProtocolError> {
     let mut csprng = OsRng;
     let identity_key = IdentityKeyPair::generate(&mut csprng);
@@ -45,6 +53,7 @@ pub async fn decrypt(
         &mut store.identity_store,
         &mut store.pre_key_store,
         &mut store.signed_pre_key_store,
+        &mut store.kyber_pre_key_store,
         &mut csprng,
         None,
     )
@@ -122,7 +131,6 @@ pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), Signal
         alice_base_key,
         *bob_identity.identity_key(),
         bob_base_key.public_key,
-        None,
         bob_ephemeral_key.public_key,
     );
 
@@ -133,8 +141,10 @@ pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), Signal
         bob_base_key,
         None,
         bob_ephemeral_key,
+        None, // TODO: add kyber prekeys
         *alice_identity.identity_key(),
         alice_base_key.public_key,
+        None,
     );
 
     let bob_session = initialize_bob_session_record(&bob_params)?;

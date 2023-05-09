@@ -16,6 +16,7 @@ import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,7 @@ public class InMemorySignalProtocolStore implements SignalProtocolStore {
   private final InMemoryPreKeyStore       preKeyStore       = new InMemoryPreKeyStore();
   private final InMemorySessionStore      sessionStore      = new InMemorySessionStore();
   private final InMemorySignedPreKeyStore signedPreKeyStore = new InMemorySignedPreKeyStore();
+  private final InMemoryKyberPreKeyStore  kyberPreKeyStore  = new InMemoryKyberPreKeyStore();
   private final InMemorySenderKeyStore    senderKeyStore    = new InMemorySenderKeyStore();
 
   private final InMemoryIdentityKeyStore  identityKeyStore;
@@ -146,5 +148,34 @@ public class InMemorySignalProtocolStore implements SignalProtocolStore {
   @Override
   public SenderKeyRecord loadSenderKey(SignalProtocolAddress sender, UUID distributionId) {
     return senderKeyStore.loadSenderKey(sender, distributionId);
+  }
+
+  @Override
+  public KyberPreKeyRecord loadKyberPreKey(int kyberPreKeyId) throws InvalidKeyIdException {
+    return kyberPreKeyStore.loadKyberPreKey(kyberPreKeyId);
+  }
+
+  @Override
+  public List<KyberPreKeyRecord> loadKyberPreKeys() {
+    return kyberPreKeyStore.loadKyberPreKeys();
+  }
+
+  @Override
+  public void storeKyberPreKey(int kyberPreKeyId, KyberPreKeyRecord record) {
+    kyberPreKeyStore.storeKyberPreKey(kyberPreKeyId, record);
+  }
+
+  @Override
+  public boolean containsKyberPreKey(int kyberPreKeyId) {
+    return kyberPreKeyStore.containsKyberPreKey(kyberPreKeyId);
+  }
+
+  @Override
+  public void markKyberPreKeyUsed(int kyberPreKeyId) {
+    kyberPreKeyStore.markKyberPreKeyUsed(kyberPreKeyId);
+  }
+
+  public boolean hasKyberPreKeyBeenUsed(int kyberPreKeyId) {
+    return kyberPreKeyStore.hasKyberPreKeyBeenUsed(kyberPreKeyId);
   }
 }

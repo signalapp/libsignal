@@ -12,6 +12,7 @@ import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
+import org.signal.libsignal.protocol.state.KyberPreKeyStore;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 import org.signal.libsignal.protocol.logging.Log;
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
@@ -188,6 +189,7 @@ public final class Native {
   public static native int ECPublicKey_Compare(long key1, long key2);
   public static native long ECPublicKey_Deserialize(byte[] data, int offset);
   public static native void ECPublicKey_Destroy(long handle);
+  public static native boolean ECPublicKey_Equals(long lhs, long rhs);
   public static native byte[] ECPublicKey_GetPublicKeyBytes(long obj);
   public static native byte[] ECPublicKey_Serialize(long obj);
   public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
@@ -247,6 +249,31 @@ public final class Native {
   public static native long IncrementalMac_Initialize(byte[] key, int chunkSize);
   public static native byte[] IncrementalMac_Update(long mac, byte[] bytes, int offset, int length);
 
+  public static native void KyberKeyPair_Destroy(long handle);
+  public static native long KyberKeyPair_Generate();
+  public static native long KyberKeyPair_GetPublicKey(long keyPair);
+  public static native long KyberKeyPair_GetSecretKey(long keyPair);
+
+  public static native long KyberPreKeyRecord_Deserialize(byte[] data);
+  public static native void KyberPreKeyRecord_Destroy(long handle);
+  public static native int KyberPreKeyRecord_GetId(long obj);
+  public static native long KyberPreKeyRecord_GetKeyPair(long obj);
+  public static native long KyberPreKeyRecord_GetPublicKey(long obj);
+  public static native long KyberPreKeyRecord_GetSecretKey(long obj);
+  public static native byte[] KyberPreKeyRecord_GetSerialized(long obj);
+  public static native byte[] KyberPreKeyRecord_GetSignature(long obj);
+  public static native long KyberPreKeyRecord_GetTimestamp(long obj);
+  public static native long KyberPreKeyRecord_New(int id, long timestamp, long keyPair, byte[] signature);
+
+  public static native long KyberPublicKey_DeserializeWithOffset(byte[] data, int offset);
+  public static native void KyberPublicKey_Destroy(long handle);
+  public static native boolean KyberPublicKey_Equals(long lhs, long rhs);
+  public static native byte[] KyberPublicKey_Serialize(long obj);
+
+  public static native long KyberSecretKey_Deserialize(byte[] data);
+  public static native void KyberSecretKey_Destroy(long handle);
+  public static native byte[] KyberSecretKey_Serialize(long obj);
+
   public static native void Logger_Initialize(int maxLevel, Class loggerClass);
   public static native void Logger_SetMaxLevel(int maxLevel);
 
@@ -276,13 +303,16 @@ public final class Native {
   public static native void PreKeyBundle_Destroy(long handle);
   public static native int PreKeyBundle_GetDeviceId(long obj);
   public static native long PreKeyBundle_GetIdentityKey(long p);
+  public static native int PreKeyBundle_GetKyberPreKeyId(long obj);
+  public static native long PreKeyBundle_GetKyberPreKeyPublic(long bundle);
+  public static native byte[] PreKeyBundle_GetKyberPreKeySignature(long bundle);
   public static native int PreKeyBundle_GetPreKeyId(long obj);
   public static native long PreKeyBundle_GetPreKeyPublic(long obj);
   public static native int PreKeyBundle_GetRegistrationId(long obj);
   public static native int PreKeyBundle_GetSignedPreKeyId(long obj);
   public static native long PreKeyBundle_GetSignedPreKeyPublic(long obj);
   public static native byte[] PreKeyBundle_GetSignedPreKeySignature(long obj);
-  public static native long PreKeyBundle_New(int registrationId, int deviceId, int prekeyId, long prekey, int signedPrekeyId, long signedPrekey, byte[] signedPrekeySignature, long identityKey);
+  public static native long PreKeyBundle_New(int registrationId, int deviceId, int prekeyId, long prekey, int signedPrekeyId, long signedPrekey, byte[] signedPrekeySignature, long identityKey, int kyberPrekeyId, long kyberPrekey, byte[] kyberPrekeySignature);
 
   public static native long PreKeyRecord_Deserialize(byte[] data);
   public static native void PreKeyRecord_Destroy(long handle);
@@ -430,7 +460,7 @@ public final class Native {
 
   public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
-  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, Object ctx);
+  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore, Object ctx);
   public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
   public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
@@ -480,6 +510,8 @@ public final class Native {
   public static native byte[] SignedPreKeyRecord_GetSignature(long obj);
   public static native long SignedPreKeyRecord_GetTimestamp(long obj);
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
+
+  public static native long SignedPrekeyRecord_GenerateKyber(int id, long signingKey);
 
   public static native void Svr2Client_Destroy(long handle);
   public static native long Svr2Client_GroupId(long svr2Client);

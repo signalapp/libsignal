@@ -48,7 +48,11 @@ fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStr
     }
 }
 
-fn bridge_fn_async_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
+fn bridge_fn_async_body(
+    orig_name: &Ident,
+    custom_name: &String,
+    input_args: &[(&Ident, &Type)],
+) -> TokenStream2 {
     let input_saving = input_args.iter().zip(0..).map(|((name, ty), i)| {
         let name_arg = format_ident!("{}_arg", name);
         let name_stored = format_ident!("{}_stored", name);
@@ -118,7 +122,7 @@ fn bridge_fn_async_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> To
                             failure,
                             *cx,
                             __this,
-                            stringify!(#orig_name),
+                            #custom_name,
                         ),
                     }
                 })
@@ -171,7 +175,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
     };
 
     let body = match sig.asyncness {
-        Some(_) => bridge_fn_async_body(&sig.ident, &input_args),
+        Some(_) => bridge_fn_async_body(&sig.ident, &name, &input_args),
         None => bridge_fn_body(&sig.ident, &input_args),
     };
 

@@ -11,7 +11,10 @@ use uuid::Uuid;
 use crate::address::ProtocolAddress;
 use crate::error::Result;
 use crate::sender_keys::SenderKeyRecord;
-use crate::state::{PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord};
+use crate::state::{
+    KyberPreKeyId, KyberPreKeyRecord, PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId,
+    SignedPreKeyRecord,
+};
 use crate::{IdentityKey, IdentityKeyPair};
 
 /// Handle to FFI-provided context object.
@@ -119,6 +122,35 @@ pub trait SignedPreKeyStore {
     ) -> Result<()>;
 }
 
+/// Interface for storing signed Kyber pre-keys downloaded from a server.
+///
+/// NB: libsignal makes no distinction between one-time and last-resort pre-keys.
+#[async_trait(?Send)]
+pub trait KyberPreKeyStore {
+    /// Look up the signed kyber pre-key corresponding to `kyber_prekey_id`.
+    async fn get_kyber_pre_key(
+        &self,
+        kyber_prekey_id: KyberPreKeyId,
+        ctx: Context,
+    ) -> Result<KyberPreKeyRecord>;
+
+    /// Set the entry for `kyber_prekey_id` to the value of `record`.
+    async fn save_kyber_pre_key(
+        &mut self,
+        kyber_prekey_id: KyberPreKeyId,
+        record: &KyberPreKeyRecord,
+        ctx: Context,
+    ) -> Result<()>;
+
+    /// Mark the entry for `kyber_prekey_id` as "used".
+    /// This would mean different things for one-time and last-resort Kyber keys.
+    async fn mark_kyber_pre_key_used(
+        &mut self,
+        kyber_prekey_id: KyberPreKeyId,
+        ctx: Context,
+    ) -> Result<()>;
+}
+
 /// Interface for a Signal client instance to store a session associated with another particular
 /// separate Signal client instance.
 ///
@@ -167,4 +199,7 @@ pub trait SenderKeyStore {
 }
 
 /// Mixes in all the store interfaces defined in this module.
-pub trait ProtocolStore: SessionStore + PreKeyStore + SignedPreKeyStore + IdentityKeyStore {}
+pub trait ProtocolStore:
+    SessionStore + PreKeyStore + SignedPreKeyStore + KyberPreKeyStore + IdentityKeyStore
+{
+}

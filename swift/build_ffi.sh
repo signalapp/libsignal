@@ -16,6 +16,10 @@ export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export CARGO_PROFILE_RELEASE_LTO=fat # use fat LTO to reduce binary size
 export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
 
+# Work around cc crate bug with Catalyst targets
+export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS}"
+export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS}"
+
 usage() {
   cat >&2 <<END
 Usage: $(basename "$0") [-d|-r] [-v] [--generate-ffi|--verify-ffi|--build-std]

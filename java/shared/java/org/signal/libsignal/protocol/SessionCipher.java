@@ -18,6 +18,7 @@ import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
+import org.signal.libsignal.protocol.state.KyberPreKeyStore;
 
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -39,6 +40,7 @@ public class SessionCipher {
   private final IdentityKeyStore      identityKeyStore;
   private final PreKeyStore           preKeyStore;
   private final SignedPreKeyStore     signedPreKeyStore;
+  private final KyberPreKeyStore      kyberPreKeyStore;
   private final SignalProtocolAddress remoteAddress;
 
   /**
@@ -49,19 +51,23 @@ public class SessionCipher {
    * @param  sessionStore The {@link SessionStore} that contains a session for this recipient.
    * @param  remoteAddress  The remote address that messages will be encrypted to or decrypted from.
    */
-  public SessionCipher(SessionStore sessionStore, PreKeyStore preKeyStore,
-                       SignedPreKeyStore signedPreKeyStore, IdentityKeyStore identityKeyStore,
+  public SessionCipher(SessionStore sessionStore,
+                       PreKeyStore preKeyStore,
+                       SignedPreKeyStore signedPreKeyStore,
+                       KyberPreKeyStore kyberPreKeyStore,
+                       IdentityKeyStore identityKeyStore,
                        SignalProtocolAddress remoteAddress)
   {
-    this.sessionStore     = sessionStore;
-    this.preKeyStore      = preKeyStore;
-    this.identityKeyStore = identityKeyStore;
-    this.remoteAddress    = remoteAddress;
+    this.sessionStore      = sessionStore;
+    this.preKeyStore       = preKeyStore;
+    this.identityKeyStore  = identityKeyStore;
+    this.remoteAddress     = remoteAddress;
     this.signedPreKeyStore = signedPreKeyStore;
+    this.kyberPreKeyStore  = kyberPreKeyStore;;
   }
 
   public SessionCipher(SignalProtocolStore store, SignalProtocolAddress remoteAddress) {
-    this(store, store, store, store, remoteAddress);
+    this(store, store, store, store, store, remoteAddress);
   }
 
   /**
@@ -106,6 +112,7 @@ public class SessionCipher {
                                                              identityKeyStore,
                                                              preKeyStore,
                                                              signedPreKeyStore,
+                                                             kyberPreKeyStore,
                                                              null);
     }
   }

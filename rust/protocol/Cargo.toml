@@ -33,6 +33,8 @@ num_enum = "0.5.1"
 uuid = "1.1.2"
 displaydoc = "0.2"
 thiserror = "1.0.30"
+pqcrypto-kyber = {version = "0.7.6", default-features = false, features = ["std"]}
+pqcrypto-traits = "0.3.4"
 
 [features]
 armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
@@ -59,4 +61,8 @@ harness = false
 
 [[bench]]
 name = "sealed_sender"
+harness = false
+
+[[bench]]
+name = "kem"
 harness = false

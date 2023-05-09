@@ -93,7 +93,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidPreKeyId)
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
+            | SignalFfiError::Signal(SignalProtocolError::InvalidKyberPreKeyId) => {
                 SignalErrorCode::InvalidKeyIdentifier
             }
 
@@ -108,6 +109,9 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
+            | SignalFfiError::Signal(SignalProtocolError::BadKEMKeyType(_))
+            | SignalFfiError::Signal(SignalProtocolError::WrongKEMKeyType(_, _))
+            | SignalFfiError::Signal(SignalProtocolError::BadKEMKeyLength(_, _))
             | SignalFfiError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
@@ -151,6 +155,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(..))
             | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
+            | SignalFfiError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
             | SignalFfiError::Sgx(SgxError::DcapError(_))
             | SignalFfiError::Sgx(SgxError::NoiseError(_))

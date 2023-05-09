@@ -5,6 +5,7 @@
 
 use libsignal_bridge_macros::*;
 
+#[allow(unused_imports)]
 use crate::support::*;
 use crate::*;
 
