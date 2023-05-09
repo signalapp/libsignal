@@ -56,12 +56,17 @@ task downloadNonLinuxLibraries(type: Download) {
   def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
 
   src(extraResources.collect {
-    'https://github.com/signalapp/libsignal/releases/download/v' + version_number + '/' + it
+    'https://github.com/' + getGithubReleasesAccount() + '/libsignal/releases/download/v' + version_number + '/' + it
   })
   dest 'shared/resources'
 }
 
 // PUBLISHING
+
+def getGithubReleasesAccount() {
+    return hasProperty("githubReleasesAccount") ? githubReleasesAccount
+            : "libsignal"
+}
 
 def isReleaseBuild() {
     return version.contains("SNAPSHOT") == false
