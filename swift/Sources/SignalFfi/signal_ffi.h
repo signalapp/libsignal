@@ -190,6 +190,8 @@ typedef struct SignalFingerprint SignalFingerprint;
 
 typedef struct SignalHsmEnclaveClient SignalHsmEnclaveClient;
 
+typedef struct SignalIncrementalMac SignalIncrementalMac;
+
 typedef struct SignalPinHash SignalPinHash;
 
 typedef struct SignalPlaintextContent SignalPlaintextContent;
@@ -240,6 +242,8 @@ typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 typedef struct SignalSvr2Client SignalSvr2Client;
 
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
+
+typedef struct SignalValidatingMac SignalValidatingMac;
 
 typedef struct {
   const unsigned char *base;
@@ -1499,6 +1503,37 @@ SignalFfiError *signal_svr2_client_new(SignalSvr2Client **out,
                                        SignalBorrowedBuffer mrenclave,
                                        SignalBorrowedBuffer attestation_msg,
                                        uint64_t current_timestamp);
+
+SignalFfiError *signal_incremental_mac_calculate_chunk_size(uint32_t *out, uint32_t data_size);
+
+SignalFfiError *signal_incremental_mac_destroy(SignalIncrementalMac *p);
+
+SignalFfiError *signal_incremental_mac_initialize(SignalIncrementalMac **out,
+                                                  SignalBorrowedBuffer key,
+                                                  uint32_t chunk_size);
+
+SignalFfiError *signal_incremental_mac_update(SignalOwnedBuffer *out,
+                                              SignalIncrementalMac *mac,
+                                              SignalBorrowedBuffer bytes,
+                                              uint32_t offset,
+                                              uint32_t length);
+
+SignalFfiError *signal_incremental_mac_finalize(SignalOwnedBuffer *out, SignalIncrementalMac *mac);
+
+SignalFfiError *signal_validating_mac_destroy(SignalValidatingMac *p);
+
+SignalFfiError *signal_validating_mac_initialize(SignalValidatingMac **out,
+                                                 SignalBorrowedBuffer key,
+                                                 uint32_t chunk_size,
+                                                 SignalBorrowedBuffer digests);
+
+SignalFfiError *signal_validating_mac_update(bool *out,
+                                             SignalValidatingMac *mac,
+                                             SignalBorrowedBuffer bytes,
+                                             uint32_t offset,
+                                             uint32_t length);
+
+SignalFfiError *signal_validating_mac_finalize(bool *out, SignalValidatingMac *mac);
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 

@@ -17,8 +17,10 @@ arrayref = "0.3.6"
 async-trait = "0.1.41"
 block-modes = "0.8"
 curve25519-dalek = "3.0"
+generic-array = "0.14.5"
 hkdf = "0.11"
 hmac = "0.11.0"
+typenum = "1.12.0"
 itertools = "0.10.1"
 prost = "0.9"
 rand = "0.7.3"
@@ -37,6 +39,7 @@ armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
 
 [dev-dependencies]
 criterion = "0.4"
+proptest = "1.0"
 futures-util = "0.3.7"
 
 [build-dependencies]

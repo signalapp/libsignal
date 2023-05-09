@@ -23,6 +23,7 @@ pub mod node;
 
 #[macro_use]
 mod support;
+
 pub use support::describe_panic;
 
 pub mod crypto;
@@ -48,6 +49,7 @@ mod pin;
 #[cfg(any(feature = "jni", feature = "ffi"))]
 mod svr2;
 
+pub mod incremental_mac;
 pub mod usernames;
 
 mod io;

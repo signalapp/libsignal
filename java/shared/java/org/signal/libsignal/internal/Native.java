@@ -241,6 +241,12 @@ public final class Native {
 
   public static native boolean IdentityKey_VerifyAlternateIdentity(long publicKey, long otherIdentity, byte[] signature);
 
+  public static native int IncrementalMac_CalculateChunkSize(int dataSize);
+  public static native void IncrementalMac_Destroy(long handle);
+  public static native byte[] IncrementalMac_Finalize(long mac);
+  public static native long IncrementalMac_Initialize(byte[] key, int chunkSize);
+  public static native byte[] IncrementalMac_Update(long mac, byte[] bytes, int offset, int length);
+
   public static native void Logger_Initialize(int maxLevel, Class loggerClass);
   public static native void Logger_SetMaxLevel(int maxLevel);
 
@@ -496,4 +502,9 @@ public final class Native {
   public static native void Username_Verify(byte[] proof, byte[] hash);
 
   public static native void UuidCiphertext_CheckValidContents(byte[] buffer);
+
+  public static native void ValidatingMac_Destroy(long handle);
+  public static native boolean ValidatingMac_Finalize(long mac);
+  public static native long ValidatingMac_Initialize(byte[] key, int chunkSize, byte[] digests);
+  public static native boolean ValidatingMac_Update(long mac, byte[] bytes, int offset, int length);
 }
