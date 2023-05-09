@@ -103,6 +103,6 @@ publishing {
 }
 
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
+    required { !isSkipSigning() && isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
     sign publishing.publications.mavenJava
 }
