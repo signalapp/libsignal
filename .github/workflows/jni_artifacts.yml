@@ -54,6 +54,12 @@ jobs:
       run: choco install nasm
       shell: cmd
 
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+      with:
+        version: '3.x'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
     - run: cargo build --release -p libsignal-jni
 
     - run: cargo build --release -p libsignal-jni --target aarch64-apple-darwin
