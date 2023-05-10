@@ -8,7 +8,16 @@ syntax = "proto3";
 package signal.grpc.proxy;
 
 service Tunnel {
-    rpc SendSomeMessage (SignalRpcMessage) returns (SignalRpcReply) {}
+  rpc EchoMessage (EchoRequest) returns (EchoReply) {}
+  rpc SendSomeMessage (SignalRpcMessage) returns (SignalRpcReply) {}
+}
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoReply {
+  string message = 1;
 }
 
 message SignalRpcMessage {
