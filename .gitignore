@@ -15,6 +15,7 @@
 \#*\#
 .\#*
 
+java/**/bin
 java/**/build
 java/.gradle
 java/local.properties
