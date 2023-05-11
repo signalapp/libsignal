@@ -36,7 +36,7 @@ public class Svr2Client extends SgxClient {
     }
 
 
-    public static Svr2Client create_NOT_FOR_PRODUCTION(byte[] mrenclave, byte[] attestationMsg, Instant currentInstant) throws AttestationDataException {
+    public static Svr2Client create(byte[] mrenclave, byte[] attestationMsg, Instant currentInstant) throws AttestationDataException {
         long handle = Native.Svr2Client_New(mrenclave, attestationMsg, currentInstant.toEpochMilli());
         try {
             return new Svr2Client(Native.Svr2Client_TakeSgxClientState(handle), Native.Svr2Client_GroupId(handle));

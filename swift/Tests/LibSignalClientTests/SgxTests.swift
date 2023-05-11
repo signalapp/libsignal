@@ -43,7 +43,7 @@ class SgxTests: TestCaseBase {
         case .cds2:
             return try Cds2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         case .svr2:
-            return try Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
+            return try Svr2Client.create(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         }
     }
 
@@ -113,7 +113,7 @@ class SgxTests: TestCaseBase {
             // echo "260d1f6d233c9326e8ba744e778b7b127147c7211d9bc3219ab3b7394766c508" | xxd -r -p | base64
             let knownSalt = Data(base64Encoded: "Jg0fbSM8kybounROd4t7EnFHxyEdm8MhmrO3OUdmxQg=")!
 
-            let client = try! Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave: mrenclave, attestationMessage: attestationMsg, currentDate: currentDate)
+            let client = try! Svr2Client.create(mrenclave: mrenclave, attestationMessage: attestationMsg, currentDate: currentDate)
             let pinHash = try! client.hashPin(pin, forUser: username)
 
             let expectedHash = try! PinHash(pin: pin, salt: knownSalt)

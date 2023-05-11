@@ -37,7 +37,7 @@ public class Svr2ClientTest {
         final byte[] username = "username".getBytes(StandardCharsets.UTF_8);
         final long groupId = Long.parseUnsignedLong("15525669046665930652");
 
-        final Svr2Client svr2Client = Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave, svr2Handshake, instant);
+        final Svr2Client svr2Client = Svr2Client.create(mrenclave, svr2Handshake, instant);
         Assert.assertEquals(48, svr2Client.initialRequest().length);
         final PinHash actual = svr2Client.hashPin(pin, username);
 

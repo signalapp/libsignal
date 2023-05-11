@@ -23,7 +23,7 @@ public class Svr2Client: SgxClient {
         try PinHash(pin: pin, username: username, groupId: self.groupId)
     }
 
-    public static func create_NOT_FOR_PRODUCTION<MrenclaveBytes, AttestationBytes>(mrenclave: MrenclaveBytes, attestationMessage: AttestationBytes, currentDate: Date) throws -> Svr2Client
+    public static func create<MrenclaveBytes, AttestationBytes>(mrenclave: MrenclaveBytes, attestationMessage: AttestationBytes, currentDate: Date) throws -> Svr2Client
     where MrenclaveBytes: ContiguousBytes, AttestationBytes: ContiguousBytes {
         return try Svr2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
     }
