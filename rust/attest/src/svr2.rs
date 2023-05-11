@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 
+use hex_literal::hex;
 use lazy_static::lazy_static;
 use prost::Message;
 
@@ -16,7 +17,10 @@ use crate::sgx_session::{Error, Result};
 lazy_static! {
     /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
     /// build with that MREnclave value
-    static ref ACCEPTABLE_SW_ADVISORIES: HashMap<MREnclave, &'static [&'static str]> = HashMap::new();
+    static ref ACCEPTABLE_SW_ADVISORIES: HashMap<MREnclave, &'static [&'static str]> = HashMap::from([
+        (hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"), &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str]),
+        (hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"), &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str]),
+    ]);
 }
 
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
@@ -43,7 +47,20 @@ impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
 
 lazy_static! {
     /// Expected raft configuration for a given enclave.
-    static ref EXPECTED_RAFT_CONFIG: HashMap<MREnclave, &'static RaftConfig> = HashMap::new();
+    static ref EXPECTED_RAFT_CONFIG: HashMap<MREnclave, &'static RaftConfig> = HashMap::from([
+        (hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"), &RaftConfig {
+            min_voting_replicas: 3,
+            max_voting_replicas: 5,
+            super_majority: 0,
+            group_id: 15525669046665930652
+        }),
+        (hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"), &RaftConfig {
+            min_voting_replicas: 4,
+            max_voting_replicas: 7,
+            super_majority: 2,
+            group_id: 3950115602363750357
+        }),
+    ]);
 }
 
 pub struct Svr2Handshake {
@@ -54,26 +71,32 @@ pub struct Svr2Handshake {
     pub group_id: u64,
 }
 
-#[allow(dead_code)]
-fn validate_raft_config(mrenclave: &[u8], raft_config: &svr2::RaftGroupConfig) -> Result<()> {
-    let expected_config =
-        *EXPECTED_RAFT_CONFIG
-            .get(mrenclave)
-            .ok_or(Error::AttestationDataError {
-                reason: format!("unknown mrenclave {:?}", mrenclave),
-            })?;
-    if expected_config != raft_config {
-        return Err(Error::AttestationDataError {
-            reason: format!("Unexpected raft config {:?}", raft_config),
-        });
-    }
-    Ok(())
-}
-
 pub fn new_handshake(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
+) -> Result<Svr2Handshake> {
+    new_handshake_with_constants(
+        mrenclave,
+        attestation_msg,
+        current_time,
+        ACCEPTABLE_SW_ADVISORIES
+            .get(mrenclave)
+            .unwrap_or(&DEFAULT_SW_ADVISORIES),
+        *EXPECTED_RAFT_CONFIG
+            .get(mrenclave)
+            .ok_or(Error::AttestationDataError {
+                reason: format!("unknown mrenclave {:?}", mrenclave),
+            })?,
+    )
+}
+
+fn new_handshake_with_constants(
+    mrenclave: &[u8],
+    attestation_msg: &[u8],
+    current_time: std::time::SystemTime,
+    acceptable_sw_advisories: &[&str],
+    expected_raft_config: &RaftConfig,
 ) -> Result<Svr2Handshake> {
     // Deserialize attestation handshake start.
     let handshake_start = svr2::ClientHandshakeStart::decode(attestation_msg)?;
@@ -81,9 +104,7 @@ pub fn new_handshake(
         mrenclave,
         &handshake_start.evidence,
         &handshake_start.endorsement,
-        ACCEPTABLE_SW_ADVISORIES
-            .get(mrenclave)
-            .unwrap_or(&DEFAULT_SW_ADVISORIES),
+        acceptable_sw_advisories,
         current_time,
     )?;
 
@@ -93,10 +114,13 @@ pub fn new_handshake(
         .ok_or(Error::AttestationDataError {
             reason: "Claims must contain a raft group config".to_string(),
         })?;
-    let actual_config = svr2::RaftGroupConfig::decode(&**config)?;
 
-    // Once we have expected server raft configurations, we can validate the raft config too
-    // validate_raft_config(mrenclave, &actual_config)?;
+    let actual_config = svr2::RaftGroupConfig::decode(&**config)?;
+    if expected_raft_config != &actual_config {
+        return Err(Error::AttestationDataError {
+            reason: format!("Unexpected raft config {:?}", expected_raft_config),
+        });
+    }
 
     Ok(Svr2Handshake {
         handshake,
@@ -116,10 +140,32 @@ mod tests {
     #[test]
     fn attest_svr2() {
         let handshake_bytes = read_test_file("tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1676529724);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
         let mrenclave_bytes =
-            hex!("f25dfd3b18adc4c0dc190bae1edd603ceca81b42a10b1de52f74db99b338619e");
+            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
         new_handshake(&mrenclave_bytes, &handshake_bytes, current_time).unwrap();
+    }
+
+    #[test]
+    fn attest_svr2_bad_config() {
+        let handshake_bytes = read_test_file("tests/data/svr2handshakestart.data");
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
+        let mrenclave_bytes =
+            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
+
+        assert!(new_handshake_with_constants(
+            &mrenclave_bytes,
+            &handshake_bytes,
+            current_time,
+            &[],
+            &RaftConfig {
+                min_voting_replicas: 3,
+                max_voting_replicas: 5,
+                super_majority: 0,
+                group_id: 0, // wrong
+            },
+        )
+        .is_err());
     }
 
     fn matches(

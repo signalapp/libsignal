@@ -30,19 +30,19 @@ public class Svr2ClientTest {
     @Test
     public void testSaltWithGroupId() throws IOException, AttestationDataException {
         final byte[] svr2Handshake = ResourceReader.readAll(SgxClientTest.class.getResourceAsStream("svr2handshakestart.data"));
-        final byte[] mrenclave = Hex.fromStringCondensed("f25dfd3b18adc4c0dc190bae1edd603ceca81b42a10b1de52f74db99b338619e");
-        final Instant instant = Instant.ofEpochSecond(1676529724);
+        final byte[] mrenclave = Hex.fromStringCondensed("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
+        final Instant instant = Instant.ofEpochSecond(1683836600);
 
         final byte[] pin = "password".getBytes(StandardCharsets.UTF_8);
         final byte[] username = "username".getBytes(StandardCharsets.UTF_8);
-        final long groupId = 3862621253427332054L;
+        final long groupId = Long.parseUnsignedLong("15525669046665930652");
 
         final Svr2Client svr2Client = Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave, svr2Handshake, instant);
         Assert.assertEquals(48, svr2Client.initialRequest().length);
         final PinHash actual = svr2Client.hashPin(pin, username);
 
         final byte[] expectedSalt = HKDF.deriveSecrets(username, bebytes(groupId), new byte[]{}, 32);
-        final byte[] knownSalt = Hex.fromStringCondensed("d6159ba30f90b6eb6ccf1ec844427f052baaf0705da849767471744cdb3f8a5e");
+        final byte[] knownSalt = Hex.fromStringCondensed("260d1f6d233c9326e8ba744e778b7b127147c7211d9bc3219ab3b7394766c508");
         Assert.assertArrayEquals(knownSalt, expectedSalt);
 
         final PinHash expected = PinHash.create(pin, expectedSalt);
