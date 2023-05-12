@@ -80,7 +80,7 @@ impl GrpcClient {
         let mut result = vec![];
 
         result.extend(response.get_ref().statuscode.to_be_bytes());
-        result.extend(response.get_ref().message.as_bytes());
+        result.extend(&response.get_ref().message);
 
         Ok(result)
     }
