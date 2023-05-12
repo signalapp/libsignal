@@ -29,5 +29,5 @@ message SignalRpcMessage {
 
 message SignalRpcReply {
   int32 statuscode = 1;
-  string message = 2;
+  bytes message = 2;
 }
