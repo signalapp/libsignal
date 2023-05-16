@@ -12,6 +12,8 @@ import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
+import org.signal.libsignal.grpc.GrpcReplyListener;
+import org.signal.libsignal.grpc.SignalRpcReply;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 import org.signal.libsignal.protocol.logging.Log;
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
@@ -489,5 +491,6 @@ public final class Native {
 
   public static native void UuidCiphertext_CheckValidContents(byte[] buffer);
 
-  public static native byte[] Grpc_SendMessage(String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
+  public static native void Grpc_OpenStream(String uri, Map<String, List<String>> headers, GrpcReplyListener listener);
+  public static native SignalRpcReply Grpc_SendMessage(String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
 }

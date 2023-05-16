@@ -10,6 +10,7 @@ package signal.grpc.proxy;
 service Tunnel {
   rpc EchoMessage (EchoRequest) returns (EchoReply) {}
   rpc SendSomeMessage (SignalRpcMessage) returns (SignalRpcReply) {}
+  rpc StreamSomeMessages (stream SignalRpcMessage) returns (stream SignalRpcReply) {}
 }
 
 message EchoRequest {

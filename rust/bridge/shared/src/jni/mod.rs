@@ -11,6 +11,7 @@ use jni::sys::jobject;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
+use signal_grpc::{Error as GrpcError, GrpcReplyListener, GrpcReply};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
@@ -33,6 +34,9 @@ pub use convert::*;
 mod error;
 pub use error::*;
 
+mod grpc;
+pub use grpc::*;
+
 mod storage;
 pub use storage::*;
 use usernames::UsernameError;
@@ -46,6 +50,7 @@ pub type JavaArgMap<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaReturnCiphertextMessage = jobject;
+pub type JavaReturnGrpcReply = jobject;
 pub type JavaReturnMap = jobject;
 
 /// Translates errors into Java exceptions.

@@ -6,7 +6,8 @@
 mod client;
 mod error;
 mod proto;
+mod traits;
 
-pub use client::GrpcClient;
+pub use client::{GrpcClient, GrpcReply, SignalRpcReplyListener};
 pub use error::{Error, Result};
-
+pub use traits::GrpcReplyListener;

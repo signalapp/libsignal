@@ -8,7 +8,15 @@ package org.signal.libsignal.grpc;
 public class SignalRpcReply {
 
   private int statusCode;
-  private String message;
+  private byte[] message;
+
+  public SignalRpcReply() {
+  }
+
+  public SignalRpcReply(int statusCode, byte[] message) {
+    this.statusCode = statusCode;
+    this.message = message;
+  }
 
   public int getStatusCode() {
     return statusCode;
@@ -18,11 +26,11 @@ public class SignalRpcReply {
     this.statusCode = statusCode;
   }
 
-  public String getMessage() {
+  public byte[] getMessage() {
     return message;
   }
 
-  public void setMessage(String message) {
+  public void setMessage(byte[] message) {
     this.message = message;
   }
 }

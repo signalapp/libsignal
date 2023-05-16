@@ -5,22 +5,18 @@
 
 package org.signal.libsignal.grpc;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 
 import org.signal.libsignal.internal.Native;
 
 public class GrpcClient {
 
   public SignalRpcReply sendMessage(SignalRpcMessage message) {
-    byte[] reply = Native.Grpc_SendMessage(message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
+    return Native.Grpc_SendMessage(message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
+  }
 
-    SignalRpcReply signalRpcReply = new SignalRpcReply();
-
-    ByteBuffer replyBuffer = ByteBuffer.wrap(reply, 0, 4);
-    signalRpcReply.setStatusCode(replyBuffer.getInt());
-
-    signalRpcReply.setMessage(new String(reply, 4, reply.length - 4, StandardCharsets.UTF_8));
-    return signalRpcReply;
+  public void openStream(String uri, Map<String, List<String>> headers, GrpcReplyListener listener) {
+    Native.Grpc_OpenStream(uri, headers, listener);
   }
 }

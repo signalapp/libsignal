@@ -8,6 +8,7 @@ use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
+use signal_grpc::GrpcReplyListener;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ops::Deref;
@@ -351,6 +352,25 @@ store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
 
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage mut dyn GrpcReplyListener {
+    type ArgType = JavaGrpcReplyListener<'context>;
+    type StoredType = JniGrpcReplyListener<'context>;
+
+    fn borrow(
+        env: &'context JNIEnv,
+        store: Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
+        Self::StoredType::new(env, store)
+    }
+
+    fn load_from(
+        _env: &JNIEnv,
+        stored: &'storage mut Self::StoredType,
+    ) -> SignalJniResult<Self> {
+        Ok(stored)
+    }
+}
+
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     type ArgType = JavaCiphertextMessage<'a>;
@@ -440,6 +460,30 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
         }
 
         Ok(crate::grpc::GrpcHeaders(headers))
+    }
+}
+
+impl ResultTypeInfo for signal_grpc::GrpcReply {
+    type ResultType = jobject;
+
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        let message = env.byte_array_from_slice(&self.message)?;
+        let args = jni_args!((
+            self.statuscode => int,
+            message => [byte],
+        ) -> void);
+        let jobj = env.new_object(
+            env.find_class(jni_class_name!(org.signal.libsignal.grpc.SignalRpcReply))?,
+            args.sig,
+            &args.args,
+        )?;
+        Ok(jobj.into_inner())
+    }
+
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -1218,6 +1262,9 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         jni::jbyteArray
+    };
+    (GrpcReply) => {
+        jni::JavaReturnGrpcReply
     };
     (Cds2Metrics) => {
         jni::JavaReturnMap
