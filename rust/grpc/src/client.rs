@@ -78,19 +78,22 @@ impl GrpcClient {
         };
 
         let response = tunnel.echo_message(request).await
-            .map_err(|e| Error::InvalidArgument(format!("echo.send_message: {:?}", e)))?;
+            .map_err(|e| Error::InvalidArgument(format!("echo_message: {:?}", e)))?;
 
         Ok(response.get_ref().message.clone())
     }
 
-    pub fn send_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<()> {
-        println!("Tunneling gRPC message via sender: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
+    pub fn send_direct_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<GrpcReply> {
+        println!("Tunneling gRPC message direct: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
         self.tokio_runtime.block_on(async {
-            self.async_send_message(method, url_fragment, body, headers).await
+            self.async_send_direct_message(method, url_fragment, body, headers).await
         })
     }
 
-    async fn async_send_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<()> {
+    async fn async_send_direct_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<GrpcReply> {
+        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone()).await
+            .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
+
         let mut request_headers = vec![];
         for (header_name, header_values) in headers.iter() {
             for header_value in header_values.iter() {
@@ -98,13 +101,17 @@ impl GrpcClient {
             }
         }
 
-        self.sender.as_ref().unwrap().send(proto::proxy::SignalRpcMessage {
-            method, urlfragment: url_fragment, body: body.to_vec(), header: request_headers
-        })
-        .await
-        .map_err(|e| Error::InvalidArgument(format!("{:?}", e)))?;
+        let request = proto::proxy::SignalRpcMessage {
+            method,
+            urlfragment: url_fragment,
+            body: body.to_vec(),
+            header: request_headers,
+        };
 
-        Ok(())
+        let response = tunnel.send_some_message(request).await
+            .map_err(|e| Error::InvalidArgument(format!("send_message: {:?}", e)))?;
+
+        Ok(response.get_ref().into())
     }
 
     pub fn open_stream(&mut self, uri: String, headers: HashMap<String, Vec<String>>, listener: &mut dyn GrpcReplyListener) -> Result<()> {
@@ -160,5 +167,31 @@ impl GrpcClient {
         }
 
         Ok(())
+    }
+
+    pub fn send_message_on_stream(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<()> {
+        println!("Tunneling gRPC message on stream: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
+        self.tokio_runtime.block_on(async {
+            self.async_send_message_on_stream(method, url_fragment, body, headers).await
+        })
+    }
+
+    async fn async_send_message_on_stream(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<()> {
+        if let Some(sender) = self.sender.as_ref() {
+            let mut request_headers = vec![];
+            for (header_name, header_values) in headers.iter() {
+                for header_value in header_values.iter() {
+                    request_headers.push(format!("{}={}", header_name, header_value))
+                }
+            }
+    
+            sender.send(proto::proxy::SignalRpcMessage {
+                method, urlfragment: url_fragment, body: body.to_vec(), header: request_headers
+            })
+            .await
+            .map_err(|e| Error::InvalidArgument(format!("{:?}", e)))
+        } else {
+            Err(Error::StreamNotOpened())
+        }
     }
 }

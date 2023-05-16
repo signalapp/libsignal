@@ -37,7 +37,11 @@ public class GrpcClient implements NativeHandleGuard.Owner {
     Native.GrpcClient_OpenStream(this.unsafeHandle, uri, headers, replyListener);
   }
 
-  public void sendMessage(SignalRpcMessage message) {
-    Native.GrpcClient_SendMessage(this.unsafeHandle, message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
+  public SignalRpcReply sendDirectMessage(SignalRpcMessage message) {
+    return Native.GrpcClient_SendDirectMessage(this.unsafeHandle, message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
+  }
+
+  public void sendMessageOnStream(SignalRpcMessage message) {
+    Native.GrpcClient_SendMessageOnStream(this.unsafeHandle, message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
   }
 }

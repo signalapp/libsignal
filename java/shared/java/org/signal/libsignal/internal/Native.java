@@ -493,6 +493,7 @@ public final class Native {
 
   public static native long GrpcClient_New(String target);
   public static native void GrpcClient_Destroy(long handle);
+  public static native SignalRpcReply GrpcClient_SendDirectMessage(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
   public static native long GrpcClient_OpenStream(long cli, String uri, Map<String, List<String>> headers, GrpcReplyListener listener);
-  public static native void GrpcClient_SendMessage(long cli, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
+  public static native void GrpcClient_SendMessageOnStream(long cli, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
 }
