@@ -36,6 +36,19 @@ impl<'a> JniGrpcReplyListener<'a> {
 
         Ok(())
     }
+
+    fn do_on_error(
+        &mut self,
+        error: String,
+    ) -> Result<(), SignalJniError> {
+        let message = self.env.new_string(error.to_string())?;
+        let callback_args = jni_args!((
+            message => java.lang.String,
+        ) -> void);
+        call_method_checked(self.env, self.listener, "onError", callback_args)?;
+
+        Ok(())
+    }
 }
 
 #[async_trait(?Send)]
@@ -45,5 +58,12 @@ impl<'a> GrpcReplyListener for JniGrpcReplyListener<'a> {
         reply: GrpcReply,
     ) -> Result<(), GrpcError> {
         self.do_on_reply(reply).map_err(|e| GrpcError::InvalidArgument(format!("{}", e)))
+    }
+
+    async fn on_error(
+        &mut self,
+        error: String,
+    ) -> Result<(), GrpcError> {
+        self.do_on_error(error).map_err(|e| GrpcError::InvalidArgument(format!("{}", e)))
     }
 }

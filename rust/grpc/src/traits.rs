@@ -13,4 +13,9 @@ pub trait GrpcReplyListener {
         &mut self,
         reply: GrpcReply,
     ) -> Result<()>;
+
+    async fn on_error(
+        &mut self,
+        error: String,
+    ) -> Result<()>;
 }

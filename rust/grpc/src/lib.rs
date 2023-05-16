@@ -10,4 +10,5 @@ mod traits;
 
 pub use client::{GrpcClient, GrpcReply, SignalRpcReplyListener};
 pub use error::{Error, Result};
+pub use proto::proxy::SignalRpcMessage;
 pub use traits::GrpcReplyListener;
