@@ -19,7 +19,7 @@ jobs:
       contents: read
       pull-requests: read
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
@@ -83,7 +83,7 @@ jobs:
   rust:
     name: Rust
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     needs: changes
 
@@ -167,7 +167,7 @@ jobs:
   java:
     name: Java
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     needs: changes
 
@@ -202,7 +202,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest, macos-latest]
 
     needs: changes
 
@@ -225,7 +225,7 @@ jobs:
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
 
     - run: yarn install --frozen-lockfile
       working-directory: node
@@ -234,11 +234,11 @@ jobs:
       working-directory: node
 
     - run: yarn lint
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
       working-directory: node
 
     - run: yarn format -c
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
       working-directory: node
 
     - run: yarn test
@@ -247,7 +247,7 @@ jobs:
   swift_package:
     name: Swift Package
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     needs: changes
 
