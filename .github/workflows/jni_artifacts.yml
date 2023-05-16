@@ -24,9 +24,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest, macos-latest]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             library: libsignal_jni.so
           - os: windows-latest
             library: signal_jni.dll
