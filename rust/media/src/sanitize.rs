@@ -71,7 +71,7 @@ impl From<mp4san::Error> for Error {
                     .unwrap_or_default(),
             }),
             mp4san::Error::Parse(err) => Self::Parse(ParseErrorReport {
-                kind: err.current_context().clone(),
+                kind: err.get_ref().clone(),
                 report: format!("{err:?}"),
             }),
         }

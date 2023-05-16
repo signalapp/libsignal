@@ -680,7 +680,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "3.2.1"
-source = "git+https://github.com/signalapp/curve25519-dalek.git?branch=lizard2#4f0aa6653c51598daa0a2f53b8ba54ce0eedfbdd"
+source = "git+https://github.com/signalapp/curve25519-dalek?branch=lizard2#4f0aa6653c51598daa0a2f53b8ba54ce0eedfbdd"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
@@ -911,15 +911,6 @@ checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
 dependencies = [
  "cc",
  "libc",
-]
-
-[[package]]
-name = "error-stack"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f00447f331c7f726db5b8532ebc9163519eed03c6d7c8b73c90b3ff5646ac85"
-dependencies = [
- "rustc_version",
 ]
 
 [[package]]
@@ -1535,9 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "mp4san"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21ebf83f92d31d0b9e6eeb8414df4b0b3b504f34a0ad38de86dc7079ba850d64"
+checksum = "08f5a9d33916d7d0afbbdec30dbceabe84640cf354f4f612f25d4a25e0ce9f07"
 dependencies = [
  "bytes",
  "derive-where",
@@ -1545,7 +1536,6 @@ dependencies = [
  "derive_more",
  "downcast-rs",
  "dyn-clonable",
- "error-stack",
  "futures-util",
  "log",
  "thiserror",
