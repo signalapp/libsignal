@@ -2,7 +2,7 @@ plugins {
     id "de.undercouch.download" version "5.0.2"
 }
 
-def version_number = "0.23.0-gluon-3"
+def version_number = "0.23.0-gluon-4-SNAPSHOT"
 
 subprojects {
     ext.version_number     = version_number
