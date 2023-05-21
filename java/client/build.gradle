@@ -46,6 +46,12 @@ java {
     withJavadocJar()
 }
 
+tasks.named('jar') {
+    manifest {
+        attributes('Automatic-Module-Name': 'org.signal.libsignal')
+    }
+}
+
 processResources {
     // TODO: Build a different variant of the JNI library for server.
     dependsOn ':makeJniLibrariesDesktop'
