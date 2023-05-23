@@ -117,6 +117,11 @@ impl InMemPreKeyStore {
             pre_keys: HashMap::new(),
         }
     }
+
+    /// Returns all registered pre-key ids
+    pub fn all_pre_key_ids(&self) -> impl Iterator<Item = &PreKeyId> {
+        self.pre_keys.keys()
+    }
 }
 
 impl Default for InMemPreKeyStore {
@@ -166,6 +171,11 @@ impl InMemSignedPreKeyStore {
             signed_pre_keys: HashMap::new(),
         }
     }
+
+    /// Returns all registered signed pre-key ids
+    pub fn all_signed_pre_key_ids(&self) -> impl Iterator<Item = &SignedPreKeyId> {
+        self.signed_pre_keys.keys()
+    }
 }
 
 impl Default for InMemSignedPreKeyStore {
@@ -212,6 +222,11 @@ impl InMemKyberPreKeyStore {
         Self {
             kyber_pre_keys: HashMap::new(),
         }
+    }
+
+    /// Returns all registered Kyber pre-key ids
+    pub fn all_kyber_pre_key_ids(&self) -> impl Iterator<Item = &KyberPreKeyId> {
+        self.kyber_pre_keys.keys()
     }
 }
 
@@ -395,6 +410,21 @@ impl InMemSignalProtocolStore {
             identity_store: InMemIdentityKeyStore::new(key_pair, registration_id),
             sender_key_store: InMemSenderKeyStore::new(),
         })
+    }
+
+    /// Returns all registered pre-key ids
+    pub fn all_pre_key_ids(&self) -> impl Iterator<Item = &PreKeyId> {
+        self.pre_key_store.all_pre_key_ids()
+    }
+
+    /// Returns all registered signed pre-key ids
+    pub fn all_signed_pre_key_ids(&self) -> impl Iterator<Item = &SignedPreKeyId> {
+        self.signed_pre_key_store.all_signed_pre_key_ids()
+    }
+
+    /// Returns all registered Kyber pre-key ids
+    pub fn all_kyber_pre_key_ids(&self) -> impl Iterator<Item = &KyberPreKeyId> {
+        self.kyber_pre_key_store.all_kyber_pre_key_ids()
     }
 }
 

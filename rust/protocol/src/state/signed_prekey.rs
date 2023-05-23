@@ -12,7 +12,7 @@ use std::convert::AsRef;
 use std::fmt;
 
 /// A unique identifier selecting among this client's known signed pre-keys.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SignedPreKeyId(u32);
 
 impl From<u32> for SignedPreKeyId {

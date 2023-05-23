@@ -75,8 +75,8 @@ pub use session_cipher::{
     message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
 };
 pub use state::{
-    GenericSignedPreKey, KyberPreKeyId, KyberPreKeyRecord, PreKeyBundle, PreKeyId, PreKeyRecord,
-    SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
+    GenericSignedPreKey, KyberPreKeyId, KyberPreKeyRecord, PreKeyBundle, PreKeyBundleContent,
+    PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
 };
 pub use storage::{
     Context, Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore,

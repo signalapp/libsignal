@@ -9,7 +9,7 @@ mod prekey;
 mod session;
 mod signed_prekey;
 
-pub use bundle::PreKeyBundle;
+pub use bundle::{PreKeyBundle, PreKeyBundleContent};
 pub use kyber_prekey::{KyberPreKeyId, KyberPreKeyRecord};
 pub use prekey::{PreKeyId, PreKeyRecord};
 pub use session::SessionRecord;

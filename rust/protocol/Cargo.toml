@@ -43,6 +43,7 @@ armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
 criterion = "0.4"
 proptest = "1.0"
 futures-util = "0.3.7"
+env_logger = "0.8.1"
 
 [build-dependencies]
 prost-build = "0.9"

@@ -11,7 +11,7 @@ use prost::Message;
 use std::fmt;
 
 /// A unique identifier selecting among this client's known pre-keys.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct PreKeyId(u32);
 
 impl From<u32> for PreKeyId {
