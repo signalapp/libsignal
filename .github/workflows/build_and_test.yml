@@ -133,8 +133,11 @@ jobs:
       # Exclude signal-neon-futures because those tests run Node
       run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- -Z unstable-options --include-ignored
 
-    - name: Build benches and bins
-      run: cargo ${{ matrix.toolchain }} build --benches --bins --all-features --verbose
+    - name: Test run benches
+      run: cargo ${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
+
+    - name: Build bins
+      run: cargo ${{ matrix.toolchain }} build  --bins --all-features --verbose
 
     - name: Clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
