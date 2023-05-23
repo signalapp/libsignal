@@ -7,17 +7,18 @@ package org.signal.libsignal.protocol.kem;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 import java.util.Arrays;
 
 public class KEMPublicKey implements NativeHandleGuard.Owner {
 
   private final long unsafeHandle;
 
-  public KEMPublicKey(byte[] serialized, int offset) {
+  public KEMPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
     this.unsafeHandle = Native.KyberPublicKey_DeserializeWithOffset(serialized, offset);
   }
 
-  public KEMPublicKey(byte[] serialized) {
+  public KEMPublicKey(byte[] serialized) throws InvalidKeyException {
     this.unsafeHandle = Native.KyberPublicKey_DeserializeWithOffset(serialized, 0);
   }
 

@@ -7,11 +7,12 @@ package org.signal.libsignal.protocol.kem;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 
 public class KEMSecretKey implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  KEMSecretKey(byte[] privateKey) {
+  public KEMSecretKey(byte[] privateKey) throws InvalidKeyException {
     this.unsafeHandle = Native.KyberSecretKey_Deserialize(privateKey);
   }
 
