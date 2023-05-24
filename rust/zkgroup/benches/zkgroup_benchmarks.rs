@@ -132,7 +132,13 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
 
     let randomness = zkgroup::TEST_ARRAY_32_4;
     let response = server_secret_params
-        .issue_expiring_profile_key_credential(randomness, &request, uid, profile_key_commitment, 0)
+        .issue_expiring_profile_key_credential(
+            randomness,
+            &request,
+            uid,
+            profile_key_commitment,
+            zkgroup::SECONDS_PER_DAY,
+        )
         .unwrap();
 
     c.bench_function("issue_profile_key_credential", |b| {
@@ -143,7 +149,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
                     &request,
                     uid,
                     profile_key_commitment,
-                    0,
+                    zkgroup::SECONDS_PER_DAY,
                 )
                 .unwrap()
         })
