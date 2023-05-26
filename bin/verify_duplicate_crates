@@ -11,9 +11,6 @@
 #
 # getrandom + rand*:
 #   curve25519-dalek + x25519-dalek use rand_core 0.5, snow and picky use rand_core 0.6
-# serde:
-#   num_enum_derive indirectly uses serde in a proc-macro;
-#   unfortunately that shows up as a repeat here
 # block-buffer + digest:
 #  argon2 uses digest 0.10, all of the other rust-crypto dependencies are still based
 #  on digest 0.9. 
