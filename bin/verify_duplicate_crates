@@ -26,23 +26,19 @@ block-buffer v0.10.4
 
 digest v0.9.0
 
-digest v0.10.6
+digest v0.10.7
 
 getrandom v0.1.16
 
-getrandom v0.2.5
+getrandom v0.2.9
 
 rand_core v0.5.1
 
 rand_core v0.6.4
 
-serde v1.0.136
-
-serde v1.0.136
-
 syn v1.0.109
 
-syn v2.0.15"
+syn v2.0.17"
 
 if [[ "$(cargo tree -d -e normal --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
     cargo tree -d -e normal --workspace --locked

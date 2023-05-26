@@ -9,6 +9,7 @@ use chacha20poly1305::aead::{AeadInPlace, NewAead};
 use chacha20poly1305::ChaCha20Poly1305;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
+use snow::error::Error as SnowError;
 use snow::params::{CipherChoice, DHChoice, HashChoice};
 use snow::resolvers::CryptoResolver;
 use snow::types::{Cipher, Dh, Hash, Random};
@@ -75,7 +76,7 @@ impl Dh for Dh25519 {
         &self.privkey
     }
 
-    fn dh(&self, pubkey: &[u8], out: &mut [u8]) -> Result<(), ()> {
+    fn dh(&self, pubkey: &[u8], out: &mut [u8]) -> Result<(), SnowError> {
         let result = x25519::x25519(self.privkey, pubkey[..self.pub_len()].try_into().unwrap());
         out[..result.len()].copy_from_slice(&result);
         Ok(())
@@ -156,7 +157,7 @@ impl Cipher for CipherChaChaPoly {
         authtext: &[u8],
         ciphertext: &[u8],
         out: &mut [u8],
-    ) -> Result<usize, ()> {
+    ) -> Result<usize, SnowError> {
         let mut nonce_bytes = [0u8; 12];
         copy_slices!(&nonce.to_le_bytes(), &mut nonce_bytes[4..]);
 
@@ -173,7 +174,7 @@ impl Cipher for CipherChaChaPoly {
 
         match result {
             Ok(_) => Ok(message_len),
-            Err(_) => Err(()),
+            Err(_) => Err(SnowError::Decrypt),
         }
     }
 }
