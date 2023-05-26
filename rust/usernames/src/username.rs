@@ -238,7 +238,7 @@ fn validate_discriminator<T: FromStr + PartialOrd + From<u8>>(
         return Err(UsernameError::BadDiscriminator);
     }
     let first_ascii_char = discriminator.as_bytes()[0];
-    if !(b'0'..=b'9').contains(&first_ascii_char) {
+    if !first_ascii_char.is_ascii_digit() {
         // "+123" is allowed by Rust u*::from_str, but not by us.
         return Err(UsernameError::BadDiscriminator);
     }
