@@ -431,8 +431,8 @@ mod tests {
 
     #[test]
     fn test_serialize() -> Result<()> {
-        let pk_bytes = include_bytes!("kem/data/pk.dat");
-        let sk_bytes = include_bytes!("kem/data/sk.dat");
+        let pk_bytes = include_bytes!("kem/test-data/pk.dat");
+        let sk_bytes = include_bytes!("kem/test-data/sk.dat");
 
         let mut serialized_pk = Vec::with_capacity(1 + kyber1024::Parameters::PUBLIC_KEY_LENGTH);
         serialized_pk.push(KeyType::Kyber1024.value());
@@ -466,8 +466,8 @@ mod tests {
     #[test]
     fn test_kyber1024_kem() -> Result<()> {
         // test data for kyber1024
-        let pk_bytes = include_bytes!("kem/data/pk.dat");
-        let sk_bytes = include_bytes!("kem/data/sk.dat");
+        let pk_bytes = include_bytes!("kem/test-data/pk.dat");
+        let sk_bytes = include_bytes!("kem/test-data/sk.dat");
 
         let mut serialized_pk = Vec::with_capacity(1 + kyber1024::Parameters::PUBLIC_KEY_LENGTH);
         serialized_pk.push(KeyType::Kyber1024.value());
