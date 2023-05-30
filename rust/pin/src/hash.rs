@@ -79,9 +79,9 @@ impl PinHash {
     /// # Arguments
     /// * `username` - The Basic Auth username credential retrieved from the chat service and used to authenticate with the SVR service
     /// * `group_id` - The attested group id returned by the SVR service
-    pub fn make_salt(username: &[u8], group_id: u64) -> [u8; 32] {
+    pub fn make_salt(username: &str, group_id: u64) -> [u8; 32] {
         let mut out = [0u8; 32];
-        Hkdf::<Sha256>::new(Some(&group_id.to_be_bytes()), username)
+        Hkdf::<Sha256>::new(Some(&group_id.to_be_bytes()), username.as_bytes())
             .expand(&[], &mut out)
             .expect("should expand");
         out
@@ -231,7 +231,7 @@ mod test {
 
     #[test]
     fn known_salt() {
-        let username = b"username";
+        let username = "username";
         let group_id = 3862621253427332054u64;
         assert_eq!(
             PinHash::make_salt(username, group_id),

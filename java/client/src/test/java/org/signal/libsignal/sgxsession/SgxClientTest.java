@@ -65,7 +65,7 @@ public class SgxClientTest {
     private SgxClient getClient(byte[] mrenclave, byte[] attestationMsg, Instant currentTime) throws AttestationDataException {
         switch (serviceType) {
             case SVR2:
-                return Svr2Client.create(mrenclave, attestationMsg, currentTime);
+                return new Svr2Client(mrenclave, attestationMsg, currentTime);
             case CDS2:
                 return new Cds2Client(mrenclave, attestationMsg, currentTime);
         }

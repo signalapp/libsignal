@@ -74,18 +74,18 @@ public class PinHash: NativeHandleOwner {
         }
     }
 
-    /// Hash a pin for use with a remote SecureValueRecovery service.
+    /// Hash a pin for use with a remote SecureValueRecovery1 service.
     ///
     /// Note: This should be used with SVR1 only. For SVR1, the salt should be the backup id.
-    /// For SVR2 clients, use ``Svr2Client/hashPin(_:forUser:)`` which handles salt selection internally.
+    /// For SVR2 clients, use ``PinHash/init(pin:username:mrenclave:)`` which handles salt construction.
     ///
-    /// - parameter pin: A normalized, UTF-8 encoded byte representation of the pin to verify
+    /// - parameter normalizedPin: A normalized, UTF-8 encoded byte representation of the pin to verify
     /// - parameter salt: A 32 byte salt
     /// - returns: A `PinHash`
-    public convenience init<PinBytes: ContiguousBytes, SaltBytes: ContiguousBytes>(pin: PinBytes, salt: SaltBytes) throws {
+    public convenience init<PinBytes: ContiguousBytes, SaltBytes: ContiguousBytes>(normalizedPin: PinBytes, salt: SaltBytes) throws {
 
         var result: OpaquePointer?
-        try pin.withUnsafeBorrowedBuffer { pinBytes in
+        try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try salt.withUnsafeBytes { saltBytes in
                 try ByteArray(newContents: Array(saltBytes), expectedLength: 32).withUnsafePointerToSerialized { saltTuple in
                     try checkError(signal_pin_hash_from_salt(&result, pinBytes, saltTuple))
@@ -95,11 +95,21 @@ public class PinHash: NativeHandleOwner {
         self.init(owned: result!)
     }
 
-    internal convenience init<PinBytes: ContiguousBytes, UsernameBytes: ContiguousBytes>(pin: PinBytes, username: UsernameBytes, groupId: UInt64) throws {
+    /// Hash a pin for use with a remote SecureValueRecovery2 service.
+    ///
+    /// Note: This should be used with SVR2 only. For SVR1 clients, use ``PinHash/init(pin:salt:)``
+    ///
+    /// - parameter normalizedPin: An already normalized UTF-8 encoded byte representation of the pin
+    /// - parameter username: The Basic Auth username used to authenticate with SVR2
+    /// - parameter mrenclave: The mrenclave where the hashed pin will be stored
+    /// - returns: A `PinHash`
+    public convenience init<PinBytes: ContiguousBytes, MrenclaveBytes: ContiguousBytes>(normalizedPin: PinBytes, username: String, mrenclave: MrenclaveBytes) throws {
         var result: OpaquePointer?
-        try pin.withUnsafeBorrowedBuffer { pinBytes in
-            try username.withUnsafeBorrowedBuffer { userBytes in
-                try checkError(signal_pin_hash_from_username_group_id(&result, pinBytes, userBytes, groupId))
+        try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
+            try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBytes in
+                try username.withCString { userBytes in
+                    try checkError(signal_pin_hash_from_username_mrenclave(&result, pinBytes, userBytes, mrenclaveBytes))
+                }
             }
         }
         self.init(owned: result!)

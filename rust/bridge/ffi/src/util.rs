@@ -124,7 +124,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Pin(PinError::Argon2Error(_))
-            | SignalFfiError::Pin(PinError::DecodingError(_)) => SignalErrorCode::InvalidArgument,
+            | SignalFfiError::Pin(PinError::DecodingError(_))
+            | SignalFfiError::Pin(PinError::MrenclaveLookupError) => {
+                SignalErrorCode::InvalidArgument
+            }
 
             SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_))
             | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {

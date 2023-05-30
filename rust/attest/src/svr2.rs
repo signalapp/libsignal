@@ -71,11 +71,18 @@ pub struct Svr2Handshake {
     pub group_id: u64,
 }
 
+/// Lookup the group id constant associated with the `mrenclave`
+pub fn lookup_groupid(mrenclave: &[u8]) -> Option<u64> {
+    EXPECTED_RAFT_CONFIG
+        .get(mrenclave)
+        .map(|config| config.group_id)
+}
+
 pub fn new_handshake(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
-) -> Result<Svr2Handshake> {
+) -> Result<sgx_session::Handshake> {
     new_handshake_with_constants(
         mrenclave,
         attestation_msg,
@@ -97,7 +104,7 @@ fn new_handshake_with_constants(
     current_time: std::time::SystemTime,
     acceptable_sw_advisories: &[&str],
     expected_raft_config: &RaftConfig,
-) -> Result<Svr2Handshake> {
+) -> Result<sgx_session::Handshake> {
     // Deserialize attestation handshake start.
     let handshake_start = svr2::ClientHandshakeStart::decode(attestation_msg)?;
     let handshake = sgx_session::Handshake::new(
@@ -122,10 +129,7 @@ fn new_handshake_with_constants(
         });
     }
 
-    Ok(Svr2Handshake {
-        handshake,
-        group_id: actual_config.group_id,
-    })
+    Ok(handshake)
 }
 
 #[cfg(test)]

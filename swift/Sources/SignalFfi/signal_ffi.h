@@ -239,8 +239,6 @@ typedef struct SignalMessage SignalMessage;
 
 typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 
-typedef struct SignalSvr2Client SignalSvr2Client;
-
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
 
 typedef struct SignalValidatingMac SignalValidatingMac;
@@ -1485,10 +1483,10 @@ SignalFfiError *signal_pin_hash_from_salt(SignalPinHash **out,
                                           SignalBorrowedBuffer pin,
                                           const uint8_t (*salt)[32]);
 
-SignalFfiError *signal_pin_hash_from_username_group_id(SignalPinHash **out,
-                                                       SignalBorrowedBuffer pin,
-                                                       SignalBorrowedBuffer username,
-                                                       uint64_t groupid);
+SignalFfiError *signal_pin_hash_from_username_mrenclave(SignalPinHash **out,
+                                                        SignalBorrowedBuffer pin,
+                                                        const char *username,
+                                                        SignalBorrowedBuffer mrenclave);
 
 SignalFfiError *signal_pin_local_hash(const char **out, SignalBorrowedBuffer pin);
 
@@ -1496,14 +1494,7 @@ SignalFfiError *signal_pin_verify_local_hash(bool *out,
                                              const char *encoded_hash,
                                              SignalBorrowedBuffer pin);
 
-SignalFfiError *signal_svr2_client_destroy(SignalSvr2Client *p);
-
-SignalFfiError *signal_svr2_client_take_sgx_client_state(SignalSgxClientState **out,
-                                                         SignalSvr2Client *svr2_client);
-
-SignalFfiError *signal_svr2_client_group_id(uint64_t *out, const SignalSvr2Client *svr2_client);
-
-SignalFfiError *signal_svr2_client_new(SignalSvr2Client **out,
+SignalFfiError *signal_svr2_client_new(SignalSgxClientState **out,
                                        SignalBorrowedBuffer mrenclave,
                                        SignalBorrowedBuffer attestation_msg,
                                        uint64_t current_timestamp);

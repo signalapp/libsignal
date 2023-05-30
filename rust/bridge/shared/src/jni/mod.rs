@@ -334,7 +334,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Pin(PinError::Argon2Error(_))
-        | SignalJniError::Pin(PinError::DecodingError(_)) => {
+        | SignalJniError::Pin(PinError::DecodingError(_))
+        | SignalJniError::Pin(PinError::MrenclaveLookupError) => {
             jni_class_name!(java.lang.IllegalArgumentException)
         }
 

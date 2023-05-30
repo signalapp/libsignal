@@ -288,7 +288,7 @@ public final class Native {
   public static native void PinHash_Destroy(long handle);
   public static native byte[] PinHash_EncryptionKey(long ph);
   public static native long PinHash_FromSalt(byte[] pin, byte[] salt);
-  public static native long PinHash_FromUsernameGroupId(byte[] pin, byte[] username, long groupid);
+  public static native long PinHash_FromUsernameMrenclave(byte[] pin, String username, byte[] mrenclave);
 
   public static native String Pin_LocalHash(byte[] pin);
   public static native boolean Pin_VerifyLocalHash(String encodedHash, byte[] pin);
@@ -513,10 +513,7 @@ public final class Native {
 
   public static native long SignedPrekeyRecord_GenerateKyber(int id, long signingKey);
 
-  public static native void Svr2Client_Destroy(long handle);
-  public static native long Svr2Client_GroupId(long svr2Client);
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
-  public static native long Svr2Client_TakeSgxClientState(long svr2Client);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);

@@ -46,18 +46,4 @@ public class Pin {
     public static boolean verifyLocalHash(final String encodedHash, final byte[] pin) {
         return Native.Pin_VerifyLocalHash(encodedHash, pin);
     }
-
-    /**
-     * Hash a pin for use with a remote SecureValueRecovery service.
-     *
-     * Note: This should be used with SVR1 only. For SVR1, the salt should be the backup id.
-     * For SVR2 clients, use {@link Svr2Client#hashPin} which handles salt selection internally.
-     *
-     * @param pin A normalized, UTF-8 encoded byte representation of the pin to verify
-     * @param salt A 32 byte salt
-     * @return A {@link PinHash}
-     */
-    public static PinHash hash(final byte[] pin, final byte[] salt) {
-        return PinHash.create(pin, salt);
-    }
 }
