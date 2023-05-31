@@ -128,7 +128,7 @@ jobs:
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
 
-  swift_cocoapod:
+  swift-cocoapod:
     name: Swift CocoaPod (with Catalyst)
     runs-on: macOS-latest
     needs: [check-up-to-date]
@@ -173,3 +173,25 @@ jobs:
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
+
+  report_failures:
+    name: Report Failures
+    runs-on: ubuntu-latest
+    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+
+    permissions:
+      # createCommitComment is supposed to only need the default 'read' permissions...
+      # ...but maybe it's different for private repositories.
+      contents: write
+
+    steps:
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.repos.createCommitComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: context.sha,
+            body: 'Failed Slow Tests: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>'
+          })
