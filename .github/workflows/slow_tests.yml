@@ -102,6 +102,32 @@ jobs:
     - uses: actions/checkout@v3
     - run: node/docker-prebuildify.sh
 
+  node-windows-arm64:
+    name: Node (Windows ARM64 cross-compile)
+    runs-on: windows-latest
+    needs: [check-up-to-date]
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-pc-windows-msvc
+    # install nasm compiler for boring
+    - name: Install nasm
+      run: choco install nasm
+      shell: cmd
+    - name: Get Node version from .nvmrc
+      id: get-nvm-version
+      shell: bash
+      run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+    - uses: actions/setup-node@v3
+      with:
+        node-version-file: '.nvmrc'
+    - run: npx yarn install --ignore-scripts --frozen-lockfile
+      working-directory: node
+    - name: Build for arm64
+      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+      working-directory: node
+
   swift_cocoapod:
     name: Swift CocoaPod (with Catalyst)
     runs-on: macOS-latest
