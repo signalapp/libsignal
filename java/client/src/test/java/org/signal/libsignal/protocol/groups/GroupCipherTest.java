@@ -45,9 +45,9 @@ public class GroupCipherTest extends TestCase {
     CiphertextMessage ciphertextFromAlice = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes());
     try {
       byte[] plaintextFromAlice  = bobGroupCipher.decrypt(ciphertextFromAlice.serialize());
-      throw new AssertionError("Should be no session!");
+      fail("Should be no session!");
     } catch (NoSessionException e) {
-      // good
+      assertNull(e.getAddress());
     }
   }
 
@@ -123,7 +123,7 @@ public class GroupCipherTest extends TestCase {
 
     try {
       bobGroupCipher.decrypt(ciphertextFromAlice);
-      throw new AssertionError("Should have ratcheted forward!");
+      fail("Should have ratcheted forward!");
     } catch (DuplicateMessageException dme) {
       // good
     }
@@ -203,9 +203,9 @@ public class GroupCipherTest extends TestCase {
     GroupCipher aliceGroupCipher = new GroupCipher(aliceStore, new SignalProtocolAddress("+10002223333", 1));
     try {
       aliceGroupCipher.encrypt(DISTRIBUTION_ID, "up the punks".getBytes());
-      throw new AssertionError("Should have failed!");
-    } catch (NoSessionException nse) {
-      // good
+      fail("Should have failed!");
+    } catch (NoSessionException e) {
+      assertNull(e.getAddress());
     }
   }
 
@@ -231,7 +231,7 @@ public class GroupCipherTest extends TestCase {
     byte[] tooFarCiphertext = aliceGroupCipher.encrypt(DISTRIBUTION_ID, "notta gonna worka".getBytes()).serialize();
     try {
       bobGroupCipher.decrypt(tooFarCiphertext);
-      throw new AssertionError("Should have failed!");
+      fail("Should have failed!");
     } catch (InvalidMessageException e) {
       // good
     }
@@ -262,7 +262,7 @@ public class GroupCipherTest extends TestCase {
 
     try {
       bobGroupCipher.decrypt(inflight.get(0));
-      throw new AssertionError("Should have failed!");
+      fail("Should have failed!");
     } catch (DuplicateMessageException e) {
       // good
     }

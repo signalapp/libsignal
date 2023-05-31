@@ -103,6 +103,25 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             return;
         }
 
+        SignalJniError::Signal(SignalProtocolError::SessionNotFound(ref addr)) => {
+            let throwable = protocol_address_to_jobject(env, addr)
+                .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
+                .and_then(|(addr_object, message)| {
+                    let args = jni_args!((
+                        addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
+                        message => java.lang.String,
+                    ) -> void);
+                    Ok(env.new_object(
+                        jni_class_name!(org.signal.libsignal.protocol.NoSessionException),
+                        args.sig,
+                        &args.args,
+                    )?)
+                });
+
+            try_throw(env, throwable, error);
+            return;
+        }
+
         SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(ref addr, _value)) => {
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
@@ -250,8 +269,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::SessionNotFound(_))
-        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
+        SignalJniError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
             jni_class_name!(org.signal.libsignal.protocol.NoSessionException)
         }
 
@@ -291,6 +309,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend)
         | SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
         | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _))
+        | SignalJniError::Signal(SignalProtocolError::SessionNotFound(..))
         | SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(..))
         | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
         | SignalJniError::UnexpectedPanic(_)

@@ -28,7 +28,7 @@ public class InMemorySessionStore implements SessionStore {
       if (containsSession(remoteAddress)) {
         return new SessionRecord(sessions.get(remoteAddress));
       } else {
-        return new SessionRecord();
+        return null;
       }
     } catch (InvalidMessageException e) {
       throw new AssertionError(e);
@@ -41,7 +41,7 @@ public class InMemorySessionStore implements SessionStore {
     for (SignalProtocolAddress remoteAddress : addresses) {
       byte[] serialized = sessions.get(remoteAddress);
       if (serialized == null) {
-        throw new NoSessionException("no session for " + remoteAddress);
+        throw new NoSessionException(remoteAddress, "no session for " + remoteAddress);
       }
       try {
         resultSessions.add(new SessionRecord(serialized));
