@@ -42,12 +42,12 @@ bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
-bridge_handle!(KyberPreKeyRecord, ffi = false, node = false);
+bridge_handle!(KyberPreKeyRecord, ffi = false);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
-bridge_handle!(KyberKeyPair, ffi = false, node = false);
-bridge_handle!(KyberPublicKey, ffi = false, node = false);
-bridge_handle!(KyberSecretKey, ffi = false, node = false);
+bridge_handle!(KyberKeyPair, ffi = false);
+bridge_handle!(KyberPublicKey, ffi = false);
+bridge_handle!(KyberSecretKey, ffi = false);
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Timestamp(u64);
@@ -182,14 +182,13 @@ fn ECPrivateKey_Agree(private_key: &PrivateKey, public_key: &PublicKey) -> Resul
 bridge_get!(
     KyberPublicKey::serialize as Serialize -> Vec<u8>,
     ffi = false,
-    node = false,
     jni = "KyberPublicKey_1Serialize"
 );
 
-// #[bridge_fn(ffi = "kyber_publickey_deserialize", jni = false)]
-// fn KyberPublicKey_Deserialize(data: &[u8]) -> Result<KyberPublicKey> {
-//     KyberPublicKey::deserialize(data)
-// }
+#[bridge_fn(ffi = false /*"kyber_publickey_deserialize"*/, jni = false)]
+fn KyberPublicKey_Deserialize(data: &[u8]) -> Result<KyberPublicKey> {
+    KyberPublicKey::deserialize(data)
+}
 
 #[bridge_fn(ffi = false, node = false)]
 fn KyberPublicKey_DeserializeWithOffset(data: &[u8], offset: u32) -> Result<KyberPublicKey> {
@@ -200,32 +199,31 @@ fn KyberPublicKey_DeserializeWithOffset(data: &[u8], offset: u32) -> Result<Kybe
 bridge_get!(
     KyberSecretKey::serialize as Serialize -> Vec<u8>,
     ffi = false,
-    node = false,
     jni = "KyberSecretKey_1Serialize"
 );
 
-#[bridge_fn(ffi = false, node = false, jni = "KyberSecretKey_1Deserialize")]
+#[bridge_fn(ffi = false, jni = "KyberSecretKey_1Deserialize")]
 fn KyberSecretKey_Deserialize(data: &[u8]) -> Result<KyberSecretKey> {
     KyberSecretKey::deserialize(data)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(ffi = false)]
 fn KyberPublicKey_Equals(lhs: &KyberPublicKey, rhs: &KyberPublicKey) -> bool {
     lhs == rhs
 }
 
-#[bridge_fn(ffi = false, node = false)]
-fn KyberKeyPair_Generate() -> kem::KeyPair {
-    kem::KeyPair::generate(KYBER_KEY_TYPE)
+#[bridge_fn(ffi = false)]
+fn KyberKeyPair_Generate() -> KyberKeyPair {
+    KyberKeyPair::generate(KYBER_KEY_TYPE)
 }
 
-#[bridge_fn(ffi = false, node = false)]
-fn KyberKeyPair_GetPublicKey(key_pair: &kem::KeyPair) -> kem::PublicKey {
+#[bridge_fn(ffi = false)]
+fn KyberKeyPair_GetPublicKey(key_pair: &KyberKeyPair) -> KyberPublicKey {
     key_pair.public_key.clone()
 }
 
-#[bridge_fn(ffi = false, node = false)]
-fn KyberKeyPair_GetSecretKey(key_pair: &kem::KeyPair) -> kem::SecretKey {
+#[bridge_fn(ffi = false)]
+fn KyberKeyPair_GetSecretKey(key_pair: &KyberKeyPair) -> KyberSecretKey {
     key_pair.secret_key.clone()
 }
 
@@ -550,7 +548,7 @@ fn PlaintextContent_DeserializeAndGetContent(bytes: &[u8]) -> Result<Vec<u8>> {
     Ok(PlaintextContent::try_from(bytes)?.body().to_vec())
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn(jni = false, node = false)]
 fn PreKeyBundle_New(
     registration_id: u32,
     device_id: u32,
@@ -585,7 +583,7 @@ fn PreKeyBundle_New(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[bridge_fn(jni = "PreKeyBundle_1New", ffi = false, node = false)]
+#[bridge_fn(jni = "PreKeyBundle_1New", ffi = false, node = "PreKeyBundle_New")]
 fn PreKeyBundle_NewWithKyber(
     registration_id: u32,
     device_id: u32,
@@ -643,15 +641,15 @@ bridge_get!(PreKeyBundle::signed_pre_key_id -> u32);
 bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
 bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
 bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
-bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>, ffi = false, node = false);
-#[bridge_fn(ffi = false, node = false)]
+bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>, ffi = false);
+#[bridge_fn(ffi = false)]
 fn PreKeyBundle_GetKyberPreKeyPublic(bundle: &PreKeyBundle) -> Result<Option<KyberPublicKey>> {
     bundle
         .kyber_pre_key_public()
         .map(|maybe_key| maybe_key.cloned())
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(ffi = false)]
 fn PreKeyBundle_GetKyberPreKeySignature(bundle: &PreKeyBundle) -> Result<&[u8]> {
     bundle
         .kyber_pre_key_signature()
@@ -669,19 +667,18 @@ bridge_get!(SignedPreKeyRecord::timestamp -> Timestamp);
 bridge_get!(SignedPreKeyRecord::public_key -> PublicKey);
 bridge_get!(SignedPreKeyRecord::private_key -> PrivateKey);
 
-bridge_deserialize!(KyberPreKeyRecord::deserialize, ffi = false, node = false);
-bridge_get!(KyberPreKeyRecord::signature -> Vec<u8>, ffi = false, node = false);
+bridge_deserialize!(KyberPreKeyRecord::deserialize, ffi = false);
+bridge_get!(KyberPreKeyRecord::signature -> Vec<u8>, ffi = false);
 bridge_get!(
     KyberPreKeyRecord::serialize as Serialize -> Vec<u8>,
     jni = "KyberPreKeyRecord_1GetSerialized",
-    ffi = false,
-    node = false
+    ffi = false
 );
-bridge_get!(KyberPreKeyRecord::id -> u32, ffi = false, node = false);
-bridge_get!(KyberPreKeyRecord::timestamp -> Timestamp, ffi = false, node = false);
-bridge_get!(KyberPreKeyRecord::public_key -> KyberPublicKey, ffi = false, node = false);
-bridge_get!(KyberPreKeyRecord::secret_key -> KyberSecretKey, ffi = false, node = false);
-bridge_get!(KyberPreKeyRecord::key_pair -> KyberKeyPair, ffi = false, node = false);
+bridge_get!(KyberPreKeyRecord::id -> u32, ffi = false);
+bridge_get!(KyberPreKeyRecord::timestamp -> Timestamp, ffi = false);
+bridge_get!(KyberPreKeyRecord::public_key -> KyberPublicKey, ffi = false);
+bridge_get!(KyberPreKeyRecord::secret_key -> KyberSecretKey, ffi = false);
+bridge_get!(KyberPreKeyRecord::key_pair -> KyberKeyPair, ffi = false);
 
 #[bridge_fn]
 fn SignedPreKeyRecord_New(
@@ -695,7 +692,7 @@ fn SignedPreKeyRecord_New(
     SignedPreKeyRecord::new(id.into(), timestamp.as_millis(), &keypair, signature)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(ffi = false)]
 fn KyberPreKeyRecord_New(
     id: u32,
     timestamp: Timestamp,
@@ -703,14 +700,6 @@ fn KyberPreKeyRecord_New(
     signature: &[u8],
 ) -> KyberPreKeyRecord {
     KyberPreKeyRecord::new(id.into(), timestamp.as_millis(), key_pair, signature)
-}
-
-#[bridge_fn(ffi = false, node = false)]
-fn SignedPrekeyRecord_GenerateKyber(
-    id: u32,
-    signing_key: &PrivateKey,
-) -> Result<KyberPreKeyRecord> {
-    KyberPreKeyRecord::generate(KYBER_KEY_TYPE, id.into(), signing_key)
 }
 
 bridge_deserialize!(PreKeyRecord::deserialize);
@@ -1153,7 +1142,7 @@ async fn SessionCipher_DecryptSignalMessage(
     .await
 }
 
-#[bridge_fn(jni = false, ffi = "decrypt_pre_key_message")]
+#[bridge_fn(jni = false, node = false, ffi = "decrypt_pre_key_message")]
 async fn SessionCipher_DecryptPreKeySignalMessage(
     message: &PreKeySignalMessage,
     protocol_address: &ProtocolAddress,
@@ -1182,7 +1171,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
 #[bridge_fn(
     jni = "SessionCipher_1DecryptPreKeySignalMessage",
     ffi = false,
-    node = false
+    node = "SessionCipher_DecryptPreKeySignalMessage"
 )]
 async fn SessionCipher_DecryptPreKeySignalMessageWithKyber(
     message: &PreKeySignalMessage,
@@ -1282,7 +1271,7 @@ async fn SealedSessionCipher_DecryptToUsmc(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[bridge_fn(ffi = false, jni = false, node = "SealedSender_DecryptMessage")]
+#[bridge_fn(ffi = false, jni = false, node = false)]
 async fn SealedSender_DecryptMessagePreKyber(
     message: &[u8],
     trust_root: &PublicKey,
@@ -1314,7 +1303,7 @@ async fn SealedSender_DecryptMessagePreKyber(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[bridge_fn(ffi = false, jni = false, node = false)]
+#[bridge_fn(ffi = false, jni = false)]
 async fn SealedSender_DecryptMessage(
     message: &[u8],
     trust_root: &PublicKey,

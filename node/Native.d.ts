@@ -35,6 +35,12 @@ export abstract class SignedPreKeyStore {
   _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
 }
 
+export abstract class KyberPreKeyStore {
+  _saveKyberPreKey(kyberPreKeyId: number, record: KyberPreKeyRecord): Promise<void>;
+  _getKyberPreKey(kyberPreKeyId: number): Promise<KyberPreKeyRecord>;
+  _markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void>;
+}
+
 export abstract class SenderKeyStore {
   _saveSenderKey(sender: ProtocolAddress, distributionId: Uuid, record: SenderKeyRecord): Promise<void>;
   _getSenderKey(sender: ProtocolAddress, distributionId: Uuid): Promise<SenderKeyRecord | null>;
@@ -141,6 +147,23 @@ export function IncrementalMac_CalculateChunkSize(dataSize: number): number;
 export function IncrementalMac_Finalize(mac: Wrapper<IncrementalMac>): Buffer;
 export function IncrementalMac_Initialize(key: Buffer, chunkSize: number): IncrementalMac;
 export function IncrementalMac_Update(mac: Wrapper<IncrementalMac>, bytes: Buffer, offset: number, length: number): Buffer;
+export function KyberKeyPair_Generate(): KyberKeyPair;
+export function KyberKeyPair_GetPublicKey(keyPair: Wrapper<KyberKeyPair>): KyberPublicKey;
+export function KyberKeyPair_GetSecretKey(keyPair: Wrapper<KyberKeyPair>): KyberSecretKey;
+export function KyberPreKeyRecord_Deserialize(data: Buffer): KyberPreKeyRecord;
+export function KyberPreKeyRecord_GetId(obj: Wrapper<KyberPreKeyRecord>): number;
+export function KyberPreKeyRecord_GetKeyPair(obj: Wrapper<KyberPreKeyRecord>): KyberKeyPair;
+export function KyberPreKeyRecord_GetPublicKey(obj: Wrapper<KyberPreKeyRecord>): KyberPublicKey;
+export function KyberPreKeyRecord_GetSecretKey(obj: Wrapper<KyberPreKeyRecord>): KyberSecretKey;
+export function KyberPreKeyRecord_GetSignature(obj: Wrapper<KyberPreKeyRecord>): Buffer;
+export function KyberPreKeyRecord_GetTimestamp(obj: Wrapper<KyberPreKeyRecord>): Timestamp;
+export function KyberPreKeyRecord_New(id: number, timestamp: Timestamp, keyPair: Wrapper<KyberKeyPair>, signature: Buffer): KyberPreKeyRecord;
+export function KyberPreKeyRecord_Serialize(obj: Wrapper<KyberPreKeyRecord>): Buffer;
+export function KyberPublicKey_Deserialize(data: Buffer): KyberPublicKey;
+export function KyberPublicKey_Equals(lhs: Wrapper<KyberPublicKey>, rhs: Wrapper<KyberPublicKey>): boolean;
+export function KyberPublicKey_Serialize(obj: Wrapper<KyberPublicKey>): Buffer;
+export function KyberSecretKey_Deserialize(data: Buffer): KyberSecretKey;
+export function KyberSecretKey_Serialize(obj: Wrapper<KyberSecretKey>): Buffer;
 export function Mp4Sanitizer_Sanitize(input: InputStream, len: Buffer): Promise<SanitizedMetadata>;
 export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;
@@ -148,13 +171,16 @@ export function PlaintextContent_GetBody(obj: Wrapper<PlaintextContent>): Buffer
 export function PlaintextContent_Serialize(obj: Wrapper<PlaintextContent>): Buffer;
 export function PreKeyBundle_GetDeviceId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetIdentityKey(p: Wrapper<PreKeyBundle>): PublicKey;
+export function PreKeyBundle_GetKyberPreKeyId(obj: Wrapper<PreKeyBundle>): number | null;
+export function PreKeyBundle_GetKyberPreKeyPublic(bundle: Wrapper<PreKeyBundle>): KyberPublicKey | null;
+export function PreKeyBundle_GetKyberPreKeySignature(bundle: Wrapper<PreKeyBundle>): Buffer;
 export function PreKeyBundle_GetPreKeyId(obj: Wrapper<PreKeyBundle>): number | null;
 export function PreKeyBundle_GetPreKeyPublic(obj: Wrapper<PreKeyBundle>): PublicKey | null;
 export function PreKeyBundle_GetRegistrationId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetSignedPreKeyId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetSignedPreKeyPublic(obj: Wrapper<PreKeyBundle>): PublicKey;
 export function PreKeyBundle_GetSignedPreKeySignature(obj: Wrapper<PreKeyBundle>): Buffer;
-export function PreKeyBundle_New(registrationId: number, deviceId: number, prekeyId: number | null, prekey: Wrapper<PublicKey> | null, signedPrekeyId: number, signedPrekey: Wrapper<PublicKey>, signedPrekeySignature: Buffer, identityKey: Wrapper<PublicKey>): PreKeyBundle;
+export function PreKeyBundle_New(registrationId: number, deviceId: number, prekeyId: number | null, prekey: Wrapper<PublicKey> | null, signedPrekeyId: number, signedPrekey: Wrapper<PublicKey>, signedPrekeySignature: Buffer, identityKey: Wrapper<PublicKey>, kyberPrekeyId: number | null, kyberPrekey: Wrapper<KyberPublicKey> | null, kyberPrekeySignature: Buffer): PreKeyBundle;
 export function PreKeyRecord_Deserialize(data: Buffer): PreKeyRecord;
 export function PreKeyRecord_GetId(obj: Wrapper<PreKeyRecord>): number;
 export function PreKeyRecord_GetPrivateKey(obj: Wrapper<PreKeyRecord>): PrivateKey;
@@ -214,7 +240,7 @@ export function SealedSenderDecryptionResult_GetDeviceId(obj: Wrapper<SealedSend
 export function SealedSenderDecryptionResult_GetSenderE164(obj: Wrapper<SealedSenderDecryptionResult>): string | null;
 export function SealedSenderDecryptionResult_GetSenderUuid(obj: Wrapper<SealedSenderDecryptionResult>): string;
 export function SealedSenderDecryptionResult_Message(obj: Wrapper<SealedSenderDecryptionResult>): Buffer;
-export function SealedSender_DecryptMessage(message: Buffer, trustRoot: Wrapper<PublicKey>, timestamp: Timestamp, localE164: string | null, localUuid: string, localDeviceId: number, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore): Promise<SealedSenderDecryptionResult>;
+export function SealedSender_DecryptMessage(message: Buffer, trustRoot: Wrapper<PublicKey>, timestamp: Timestamp, localE164: string | null, localUuid: string, localDeviceId: number, sessionStore: SessionStore, identityStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore): Promise<SealedSenderDecryptionResult>;
 export function SealedSender_DecryptToUsmc(ctext: Buffer, identityStore: IdentityKeyStore, ctx: null): Promise<UnidentifiedSenderMessageContent>;
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
@@ -281,7 +307,7 @@ export function ServerSecretParams_VerifyAuthCredentialPresentation(serverSecret
 export function ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentationBytes: Buffer, currentTimeInSeconds: Timestamp): void;
 export function ServerSecretParams_VerifyReceiptCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, presentation: Serialized<ReceiptCredentialPresentation>): void;
 export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<void>;
-export function SessionCipher_DecryptPreKeySignalMessage(message: Wrapper<PreKeySignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, ctx: null): Promise<Buffer>;
+export function SessionCipher_DecryptPreKeySignalMessage(message: Wrapper<PreKeySignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore, ctx: null): Promise<Buffer>;
 export function SessionCipher_DecryptSignalMessage(message: Wrapper<SignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;
 export function SessionCipher_EncryptMessage(ptext: Buffer, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<CiphertextMessage>;
 export function SessionRecord_ArchiveCurrentState(sessionRecord: Wrapper<SessionRecord>): void;
@@ -343,6 +369,10 @@ interface GroupPublicParams { readonly __type: unique symbol; }
 interface GroupSecretParams { readonly __type: unique symbol; }
 interface HsmEnclaveClient { readonly __type: unique symbol; }
 interface IncrementalMac { readonly __type: unique symbol; }
+interface KyberKeyPair { readonly __type: unique symbol; }
+interface KyberPreKeyRecord { readonly __type: unique symbol; }
+interface KyberPublicKey { readonly __type: unique symbol; }
+interface KyberSecretKey { readonly __type: unique symbol; }
 interface PlaintextContent { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }
 interface PreKeyRecord { readonly __type: unique symbol; }

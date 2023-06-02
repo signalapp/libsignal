@@ -539,6 +539,7 @@ store!(PreKeyStore);
 store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
+store!(KyberPreKeyStore);
 store!(InputStream);
 
 impl<'a> ResultTypeInfo<'a> for bool {

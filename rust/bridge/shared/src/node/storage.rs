@@ -230,6 +230,134 @@ impl SignedPreKeyStore for NodeSignedPreKeyStore {
     }
 }
 
+pub struct NodeKyberPreKeyStore {
+    js_channel: Channel,
+    store_object: Arc<Root<JsObject>>,
+}
+
+impl NodeKyberPreKeyStore {
+    pub(crate) fn new(cx: &mut FunctionContext, store: Handle<JsObject>) -> Self {
+        Self {
+            js_channel: cx.channel(),
+            store_object: Arc::new(store.root(cx)),
+        }
+    }
+
+    async fn do_get_kyber_pre_key(&self, id: u32) -> Result<KyberPreKeyRecord, String> {
+        let store_object_shared = self.store_object.clone();
+        JsFuture::get_promise(&self.js_channel, move |cx| {
+            let store_object = store_object_shared.to_inner(cx);
+            let id = id.convert_into(cx)?;
+            let result = call_method(cx, store_object, "_getKyberPreKey", [id.upcast()])?;
+            let result = result.downcast_or_throw(cx)?;
+            store_object_shared.finalize(cx);
+            Ok(result)
+        })
+        .then(|cx, result| match result {
+            Ok(value) => match value.downcast::<DefaultJsBox<KyberPreKeyRecord>, _>(cx) {
+                Ok(obj) => Ok((***obj).clone()),
+                Err(_) => Err("result must be an object".to_owned()),
+            },
+            Err(error) => Err(error
+                .to_string(cx)
+                .expect("can convert to string")
+                .value(cx)),
+        })
+        .await
+    }
+
+    async fn do_save_kyber_pre_key(
+        &self,
+        id: u32,
+        record: KyberPreKeyRecord,
+    ) -> Result<(), String> {
+        let store_object_shared = self.store_object.clone();
+        JsFuture::get_promise(&self.js_channel, move |cx| {
+            let store_object = store_object_shared.to_inner(cx);
+            let id: Handle<JsNumber> = id.convert_into(cx)?;
+            let record: Handle<JsValue> = record.convert_into(cx)?;
+            let result = call_method(cx, store_object, "_saveKyberPreKey", [id.upcast(), record])?
+                .downcast_or_throw(cx)?;
+            store_object_shared.finalize(cx);
+            Ok(result)
+        })
+        .then(|cx, result| match result {
+            Ok(value) => match value.downcast::<JsUndefined, _>(cx) {
+                Ok(_) => Ok(()),
+                Err(_) => Err("unexpected result from _saveKyberPreKey".into()),
+            },
+            Err(error) => Err(error
+                .to_string(cx)
+                .expect("can convert to string")
+                .value(cx)),
+        })
+        .await
+    }
+
+    async fn do_mark_kyber_pre_key_used(&self, id: u32) -> Result<(), String> {
+        let store_object_shared = self.store_object.clone();
+        JsFuture::get_promise(&self.js_channel, move |cx| {
+            let store_object = store_object_shared.to_inner(cx);
+            let id: Handle<JsNumber> = id.convert_into(cx)?;
+            let result = call_method(cx, store_object, "_markKyberPreKeyUsed", [id.upcast()])?
+                .downcast_or_throw(cx)?;
+            store_object_shared.finalize(cx);
+            Ok(result)
+        })
+        .then(|cx, result| match result {
+            Ok(value) => match value.downcast::<JsUndefined, _>(cx) {
+                Ok(_) => Ok(()),
+                Err(_) => Err("unexpected result from _markKyberPreKeyUsed".into()),
+            },
+            Err(error) => Err(error
+                .to_string(cx)
+                .expect("can convert to string")
+                .value(cx)),
+        })
+        .await
+    }
+}
+
+impl Finalize for NodeKyberPreKeyStore {
+    fn finalize<'b, C: neon::prelude::Context<'b>>(self, cx: &mut C) {
+        self.store_object.finalize(cx)
+    }
+}
+
+#[async_trait(?Send)]
+impl KyberPreKeyStore for NodeKyberPreKeyStore {
+    async fn get_kyber_pre_key(
+        &self,
+        kyber_pre_key_id: KyberPreKeyId,
+        _ctx: libsignal_protocol::Context,
+    ) -> Result<KyberPreKeyRecord, SignalProtocolError> {
+        self.do_get_kyber_pre_key(kyber_pre_key_id.into())
+            .await
+            .map_err(|s| js_error_to_rust("getKyberPreKey", s))
+    }
+
+    async fn save_kyber_pre_key(
+        &mut self,
+        kyber_pre_key_id: KyberPreKeyId,
+        record: &KyberPreKeyRecord,
+        _ctx: libsignal_protocol::Context,
+    ) -> Result<(), SignalProtocolError> {
+        self.do_save_kyber_pre_key(kyber_pre_key_id.into(), record.clone())
+            .await
+            .map_err(|s| js_error_to_rust("saveKyberPreKey", s))
+    }
+
+    async fn mark_kyber_pre_key_used(
+        &mut self,
+        kyber_pre_key_id: KyberPreKeyId,
+        _ctx: libsignal_protocol::Context,
+    ) -> Result<(), SignalProtocolError> {
+        self.do_mark_kyber_pre_key_used(kyber_pre_key_id.into())
+            .await
+            .map_err(|s| js_error_to_rust("markKyberPreKeyUsed", s))
+    }
+}
+
 pub struct NodeSessionStore {
     js_channel: Channel,
     store_object: Arc<Root<JsObject>>,

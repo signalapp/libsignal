@@ -511,8 +511,6 @@ public final class Native {
   public static native long SignedPreKeyRecord_GetTimestamp(long obj);
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
 
-  public static native long SignedPrekeyRecord_GenerateKyber(int id, long signingKey);
-
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);

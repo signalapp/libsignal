@@ -146,6 +146,9 @@ def collect_decls(crate_dir, features=()):
         ts_ret_type = translate_to_ts(ret_type)
         ts_args = []
         if args:
+            if '::' in args:
+                raise Exception(f'Paths are not supported. Use alias for the type of \'{args}\'')
+
             for arg in args.split(', '):
                 (arg_name, arg_type) = arg.split(': ')
                 ts_arg_type = translate_to_ts(arg_type)
