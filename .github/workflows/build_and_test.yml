@@ -127,11 +127,11 @@ jobs:
       run: cargo ${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
 
     - name: Run tests
-      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose -- -Z unstable-options --include-ignored
+      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
-      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- -Z unstable-options --include-ignored
+      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
 
     - name: Test run benches
       run: cargo ${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
