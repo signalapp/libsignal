@@ -15,12 +15,14 @@ private struct SenderKeyName: Hashable {
     var distributionId: UUID
 }
 
-public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, SessionStore, SenderKeyStore {
+public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, KyberPreKeyStore, SessionStore, SenderKeyStore {
     private var publicKeys: [ProtocolAddress: IdentityKey] = [:]
     private var privateKey: IdentityKeyPair
     private var registrationId: UInt32
     private var prekeyMap: [UInt32: PreKeyRecord] = [:]
     private var signedPrekeyMap: [UInt32: SignedPreKeyRecord] = [:]
+    private var kyberPrekeyMap: [UInt32: KyberPreKeyRecord] = [:]
+    private var kyberPrekeysUsed: Set<UInt32> = []
     private var sessionMap: [ProtocolAddress: SessionRecord] = [:]
     private var senderKeyMap: [SenderKeyName: SenderKeyRecord] = [:]
 
@@ -88,6 +90,22 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
 
     public func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: StoreContext) throws {
         signedPrekeyMap[id] = record
+    }
+
+    public func loadKyberPreKey(id: UInt32, context: StoreContext) throws -> KyberPreKeyRecord {
+        if let record = kyberPrekeyMap[id] {
+            return record
+        } else {
+            throw SignalError.invalidKeyIdentifier("no kyber prekey with this identifier")
+        }
+    }
+
+    public func storeKyberPreKey(_ record: KyberPreKeyRecord, id: UInt32, context: StoreContext) throws {
+        kyberPrekeyMap[id] = record
+    }
+
+    public func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws {
+        kyberPrekeysUsed.insert(id)
     }
 
     public func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord? {

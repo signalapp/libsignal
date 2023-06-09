@@ -14,7 +14,7 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/signalapp/libsignal.git', :tag => "v#{s.version}" }
 
   s.swift_version    = '5'
-  s.platform         = :ios, '12.2'
+  s.platform         = :ios, '13.0'
 
   s.dependency 'SignalCoreKit'
 

@@ -260,6 +260,7 @@ store!(PreKeyStore);
 store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
+store!(KyberPreKeyStore);
 store!(InputStream);
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {

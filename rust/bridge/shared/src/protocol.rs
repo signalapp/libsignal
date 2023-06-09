@@ -42,12 +42,12 @@ bridge_handle!(ServerCertificate);
 bridge_handle!(SessionRecord, mut = true);
 bridge_handle!(SignalMessage, ffi = message);
 bridge_handle!(SignedPreKeyRecord);
-bridge_handle!(KyberPreKeyRecord, ffi = false);
+bridge_handle!(KyberPreKeyRecord);
 bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
 bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
-bridge_handle!(KyberKeyPair, ffi = false);
-bridge_handle!(KyberPublicKey, ffi = false);
-bridge_handle!(KyberSecretKey, ffi = false);
+bridge_handle!(KyberKeyPair);
+bridge_handle!(KyberPublicKey);
+bridge_handle!(KyberSecretKey);
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Timestamp(u64);
@@ -181,11 +181,10 @@ fn ECPrivateKey_Agree(private_key: &PrivateKey, public_key: &PublicKey) -> Resul
 
 bridge_get!(
     KyberPublicKey::serialize as Serialize -> Vec<u8>,
-    ffi = false,
     jni = "KyberPublicKey_1Serialize"
 );
 
-#[bridge_fn(ffi = false /*"kyber_publickey_deserialize"*/, jni = false)]
+#[bridge_fn(jni = false)]
 fn KyberPublicKey_Deserialize(data: &[u8]) -> Result<KyberPublicKey> {
     KyberPublicKey::deserialize(data)
 }
@@ -198,31 +197,30 @@ fn KyberPublicKey_DeserializeWithOffset(data: &[u8], offset: u32) -> Result<Kybe
 
 bridge_get!(
     KyberSecretKey::serialize as Serialize -> Vec<u8>,
-    ffi = false,
     jni = "KyberSecretKey_1Serialize"
 );
 
-#[bridge_fn(ffi = false, jni = "KyberSecretKey_1Deserialize")]
+#[bridge_fn(jni = "KyberSecretKey_1Deserialize")]
 fn KyberSecretKey_Deserialize(data: &[u8]) -> Result<KyberSecretKey> {
     KyberSecretKey::deserialize(data)
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KyberPublicKey_Equals(lhs: &KyberPublicKey, rhs: &KyberPublicKey) -> bool {
     lhs == rhs
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KyberKeyPair_Generate() -> KyberKeyPair {
     KyberKeyPair::generate(KYBER_KEY_TYPE)
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KyberKeyPair_GetPublicKey(key_pair: &KyberKeyPair) -> KyberPublicKey {
     key_pair.public_key.clone()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KyberKeyPair_GetSecretKey(key_pair: &KyberKeyPair) -> KyberSecretKey {
     key_pair.secret_key.clone()
 }
@@ -548,43 +546,9 @@ fn PlaintextContent_DeserializeAndGetContent(bytes: &[u8]) -> Result<Vec<u8>> {
     Ok(PlaintextContent::try_from(bytes)?.body().to_vec())
 }
 
-#[bridge_fn(jni = false, node = false)]
-fn PreKeyBundle_New(
-    registration_id: u32,
-    device_id: u32,
-    prekey_id: Option<u32>,
-    prekey: Option<&PublicKey>,
-    signed_prekey_id: u32,
-    signed_prekey: &PublicKey,
-    signed_prekey_signature: &[u8],
-    identity_key: &PublicKey,
-) -> Result<PreKeyBundle> {
-    let identity_key = IdentityKey::new(*identity_key);
-
-    let prekey: Option<(PreKeyId, PublicKey)> = match (prekey, prekey_id) {
-        (None, None) => None,
-        (Some(k), Some(id)) => Some((id.into(), *k)),
-        _ => {
-            return Err(SignalProtocolError::InvalidArgument(
-                "Must supply both or neither of prekey and prekey_id".to_owned(),
-            ));
-        }
-    };
-
-    PreKeyBundle::new(
-        registration_id,
-        device_id.into(),
-        prekey,
-        signed_prekey_id.into(),
-        *signed_prekey,
-        signed_prekey_signature.to_vec(),
-        identity_key,
-    )
-}
-
 #[allow(clippy::too_many_arguments)]
-#[bridge_fn(jni = "PreKeyBundle_1New", ffi = false, node = "PreKeyBundle_New")]
-fn PreKeyBundle_NewWithKyber(
+#[bridge_fn(jni = "PreKeyBundle_1New")]
+fn PreKeyBundle_New(
     registration_id: u32,
     device_id: u32,
     prekey_id: Option<u32>,
@@ -642,14 +606,14 @@ bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
 bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
 bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
 bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>, ffi = false);
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn PreKeyBundle_GetKyberPreKeyPublic(bundle: &PreKeyBundle) -> Result<Option<KyberPublicKey>> {
     bundle
         .kyber_pre_key_public()
         .map(|maybe_key| maybe_key.cloned())
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn PreKeyBundle_GetKyberPreKeySignature(bundle: &PreKeyBundle) -> Result<&[u8]> {
     bundle
         .kyber_pre_key_signature()
@@ -667,18 +631,17 @@ bridge_get!(SignedPreKeyRecord::timestamp -> Timestamp);
 bridge_get!(SignedPreKeyRecord::public_key -> PublicKey);
 bridge_get!(SignedPreKeyRecord::private_key -> PrivateKey);
 
-bridge_deserialize!(KyberPreKeyRecord::deserialize, ffi = false);
-bridge_get!(KyberPreKeyRecord::signature -> Vec<u8>, ffi = false);
+bridge_deserialize!(KyberPreKeyRecord::deserialize);
+bridge_get!(KyberPreKeyRecord::signature -> Vec<u8>);
 bridge_get!(
     KyberPreKeyRecord::serialize as Serialize -> Vec<u8>,
-    jni = "KyberPreKeyRecord_1GetSerialized",
-    ffi = false
+    jni = "KyberPreKeyRecord_1GetSerialized"
 );
-bridge_get!(KyberPreKeyRecord::id -> u32, ffi = false);
-bridge_get!(KyberPreKeyRecord::timestamp -> Timestamp, ffi = false);
-bridge_get!(KyberPreKeyRecord::public_key -> KyberPublicKey, ffi = false);
-bridge_get!(KyberPreKeyRecord::secret_key -> KyberSecretKey, ffi = false);
-bridge_get!(KyberPreKeyRecord::key_pair -> KyberKeyPair, ffi = false);
+bridge_get!(KyberPreKeyRecord::id -> u32);
+bridge_get!(KyberPreKeyRecord::timestamp -> Timestamp);
+bridge_get!(KyberPreKeyRecord::public_key -> KyberPublicKey);
+bridge_get!(KyberPreKeyRecord::secret_key -> KyberSecretKey);
+bridge_get!(KyberPreKeyRecord::key_pair -> KyberKeyPair);
 
 #[bridge_fn]
 fn SignedPreKeyRecord_New(
@@ -692,7 +655,7 @@ fn SignedPreKeyRecord_New(
     SignedPreKeyRecord::new(id.into(), timestamp.as_millis(), &keypair, signature)
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KyberPreKeyRecord_New(
     id: u32,
     timestamp: Timestamp,
@@ -1142,38 +1105,8 @@ async fn SessionCipher_DecryptSignalMessage(
     .await
 }
 
-#[bridge_fn(jni = false, node = false, ffi = "decrypt_pre_key_message")]
+#[bridge_fn(ffi = "decrypt_pre_key_message")]
 async fn SessionCipher_DecryptPreKeySignalMessage(
-    message: &PreKeySignalMessage,
-    protocol_address: &ProtocolAddress,
-    session_store: &mut dyn SessionStore,
-    identity_key_store: &mut dyn IdentityKeyStore,
-    prekey_store: &mut dyn PreKeyStore,
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-    ctx: Context,
-) -> Result<Vec<u8>> {
-    let mut csprng = rand::rngs::OsRng;
-    let mut kyber_store = InMemKyberPreKeyStore::new();
-    message_decrypt_prekey(
-        message,
-        protocol_address,
-        session_store,
-        identity_key_store,
-        prekey_store,
-        signed_prekey_store,
-        &mut kyber_store,
-        &mut csprng,
-        ctx,
-    )
-    .await
-}
-
-#[bridge_fn(
-    jni = "SessionCipher_1DecryptPreKeySignalMessage",
-    ffi = false,
-    node = "SessionCipher_DecryptPreKeySignalMessage"
-)]
-async fn SessionCipher_DecryptPreKeySignalMessageWithKyber(
     message: &PreKeySignalMessage,
     protocol_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
@@ -1268,38 +1201,6 @@ async fn SealedSessionCipher_DecryptToUsmc(
     ctx: Context,
 ) -> Result<UnidentifiedSenderMessageContent> {
     sealed_sender_decrypt_to_usmc(ctext, identity_store, ctx).await
-}
-
-#[allow(clippy::too_many_arguments)]
-#[bridge_fn(ffi = false, jni = false, node = false)]
-async fn SealedSender_DecryptMessagePreKyber(
-    message: &[u8],
-    trust_root: &PublicKey,
-    timestamp: Timestamp,
-    local_e164: Option<String>,
-    local_uuid: String,
-    local_device_id: u32,
-    session_store: &mut dyn SessionStore,
-    identity_store: &mut dyn IdentityKeyStore,
-    prekey_store: &mut dyn PreKeyStore,
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-) -> Result<SealedSenderDecryptionResult> {
-    let mut kyber_pre_key_store = InMemKyberPreKeyStore::new();
-    sealed_sender_decrypt(
-        message,
-        trust_root,
-        timestamp.as_millis(),
-        local_e164,
-        local_uuid,
-        local_device_id.into(),
-        identity_store,
-        session_store,
-        prekey_store,
-        signed_prekey_store,
-        &mut kyber_pre_key_store,
-        None,
-    )
-    .await
 }
 
 #[allow(clippy::too_many_arguments)]

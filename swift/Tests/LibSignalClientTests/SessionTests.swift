@@ -6,144 +6,112 @@
 import XCTest
 import LibSignalClient
 
+typealias InitSession = (
+    _ aliceStore: InMemorySignalProtocolStore,
+    _ bobStore: InMemorySignalProtocolStore,
+    _ bobAddress: ProtocolAddress
+) -> Void
+
 class SessionTests: TestCaseBase {
-    fileprivate func initializeSessions(alice_store: InMemorySignalProtocolStore,
-                                        bob_store: InMemorySignalProtocolStore,
-                                        bob_address: ProtocolAddress) {
-        let bob_pre_key = PrivateKey.generate()
-        let bob_signed_pre_key = PrivateKey.generate()
-
-        let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
-
-        let bob_identity_key = try! bob_store.identityKeyPair(context: NullContext()).identityKey
-        let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: NullContext()).privateKey.generateSignature(message: bob_signed_pre_key_public)
-
-        let prekey_id: UInt32 = 4570
-        let signed_prekey_id: UInt32 = 3006
-
-        let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: NullContext()),
-                                           deviceId: 9,
-                                           prekeyId: prekey_id,
-                                           prekey: bob_pre_key.publicKey,
-                                           signedPrekeyId: signed_prekey_id,
-                                           signedPrekey: bob_signed_pre_key.publicKey,
-                                           signedPrekeySignature: bob_signed_pre_key_signature,
-                                           identity: bob_identity_key)
-
-        // Alice processes the bundle:
-        try! processPreKeyBundle(bob_bundle,
-                                 for: bob_address,
-                                 sessionStore: alice_store,
-                                 identityStore: alice_store,
-                                 context: NullContext())
-
-        XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState, true)
-        XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.remoteRegistrationId(),
-                       try! bob_store.localRegistrationId(context: NullContext()))
-
-        // Bob does the same:
-        try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, privateKey: bob_pre_key),
-                                   id: prekey_id,
-                                   context: NullContext())
-
-        try! bob_store.storeSignedPreKey(
-            SignedPreKeyRecord(
-                id: signed_prekey_id,
-                timestamp: 42000,
-                privateKey: bob_signed_pre_key,
-                signature: bob_signed_pre_key_signature
-            ),
-            id: signed_prekey_id,
-            context: NullContext())
-    }
-
     func testSessionCipher() {
-        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
-        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+        run(initializeSessionsV3)
+        run(initializeSessionsV4)
 
-        let alice_store = InMemorySignalProtocolStore()
-        let bob_store = InMemorySignalProtocolStore()
+        func run(_ initSessions: InitSession) {
+            let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+            let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
 
-        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+            let alice_store = InMemorySignalProtocolStore()
+            let bob_store = InMemorySignalProtocolStore()
 
-        // Alice sends a message:
-        let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
+            initSessions(alice_store, bob_store, bob_address)
 
-        let ctext_a = try! signalEncrypt(message: ptext_a,
-                                         for: bob_address,
-                                         sessionStore: alice_store,
-                                         identityStore: alice_store,
-                                         context: NullContext())
+            // Alice sends a message:
+            let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
 
-        XCTAssertEqual(ctext_a.messageType, .preKey)
+            let ctext_a = try! signalEncrypt(message: ptext_a,
+                                             for: bob_address,
+                                             sessionStore: alice_store,
+                                             identityStore: alice_store,
+                                             context: NullContext())
 
-        let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
+            XCTAssertEqual(ctext_a.messageType, .preKey)
 
-        let ptext_b = try! signalDecryptPreKey(message: ctext_b,
-                                               from: alice_address,
-                                               sessionStore: bob_store,
-                                               identityStore: bob_store,
-                                               preKeyStore: bob_store,
-                                               signedPreKeyStore: bob_store,
-                                               context: NullContext())
+            let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
 
-        XCTAssertEqual(ptext_a, ptext_b)
+            let ptext_b = try! signalDecryptPreKey(message: ctext_b,
+                                                   from: alice_address,
+                                                   sessionStore: bob_store,
+                                                   identityStore: bob_store,
+                                                   preKeyStore: bob_store,
+                                                   signedPreKeyStore: bob_store,
+                                                   kyberPreKeyStore: bob_store,
+                                                   context: NullContext())
 
-        // Bob replies
-        let ptext2_b: [UInt8] = [23]
+            XCTAssertEqual(ptext_a, ptext_b)
 
-        let ctext2_b = try! signalEncrypt(message: ptext2_b,
-                                          for: alice_address,
-                                          sessionStore: bob_store,
-                                          identityStore: bob_store,
-                                          context: NullContext())
+            // Bob replies
+            let ptext2_b: [UInt8] = [23]
 
-        XCTAssertEqual(ctext2_b.messageType, .whisper)
+            let ctext2_b = try! signalEncrypt(message: ptext2_b,
+                                              for: alice_address,
+                                              sessionStore: bob_store,
+                                              identityStore: bob_store,
+                                              context: NullContext())
 
-        let ctext2_a = try! SignalMessage(bytes: ctext2_b.serialize())
+            XCTAssertEqual(ctext2_b.messageType, .whisper)
 
-        let ptext2_a = try! signalDecrypt(message: ctext2_a,
-                                          from: bob_address,
-                                          sessionStore: alice_store,
-                                          identityStore: alice_store,
-                                          context: NullContext())
+            let ctext2_a = try! SignalMessage(bytes: ctext2_b.serialize())
 
-        XCTAssertEqual(ptext2_a, ptext2_b)
+            let ptext2_a = try! signalDecrypt(message: ctext2_a,
+                                              from: bob_address,
+                                              sessionStore: alice_store,
+                                              identityStore: alice_store,
+                                              context: NullContext())
+
+            XCTAssertEqual(ptext2_a, ptext2_b)
+        }
     }
 
     func testSessionCipherWithBadStore() {
-        let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
-        let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
+        run(initializeSessionsV3)
+        run(initializeSessionsV4)
 
-        let alice_store = InMemorySignalProtocolStore()
-        let bob_store = BadStore()
+        func run(_ initSession: InitSession) {
+            let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)
+            let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
 
-        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+            let alice_store = InMemorySignalProtocolStore()
+            let bob_store = BadStore()
 
-        // Alice sends a message:
-        let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
+            initializeSessionsV3(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
-        let ctext_a = try! signalEncrypt(message: ptext_a,
-                                         for: bob_address,
-                                         sessionStore: alice_store,
-                                         identityStore: alice_store,
-                                         context: NullContext())
+            // Alice sends a message:
+            let ptext_a: [UInt8] = [8, 6, 7, 5, 3, 0, 9]
 
-        XCTAssertEqual(ctext_a.messageType, .preKey)
+            let ctext_a = try! signalEncrypt(message: ptext_a,
+                                             for: bob_address,
+                                             sessionStore: alice_store,
+                                             identityStore: alice_store,
+                                             context: NullContext())
 
-        let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
+            XCTAssertEqual(ctext_a.messageType, .preKey)
 
-        XCTAssertThrowsError(try signalDecryptPreKey(message: ctext_b,
-                                                     from: alice_address,
-                                                     sessionStore: bob_store,
-                                                     identityStore: bob_store,
-                                                     preKeyStore: bob_store,
-                                                     signedPreKeyStore: bob_store,
-                                                     context: NullContext()),
-                             "should fail to decrypt") { error in
-            guard case BadStore.Error.badness = error else {
-                XCTFail("wrong error thrown: \(error)")
-                return
+            let ctext_b = try! PreKeySignalMessage(bytes: ctext_a.serialize())
+
+            XCTAssertThrowsError(try signalDecryptPreKey(message: ctext_b,
+                                                         from: alice_address,
+                                                         sessionStore: bob_store,
+                                                         identityStore: bob_store,
+                                                         preKeyStore: bob_store,
+                                                         signedPreKeyStore: bob_store,
+                                                         kyberPreKeyStore: bob_store,
+                                                         context: NullContext()),
+                                 "should fail to decrypt") { error in
+                guard case BadStore.Error.badness = error else {
+                    XCTFail("wrong error thrown: \(error)")
+                    return
+                }
             }
         }
     }
@@ -155,7 +123,7 @@ class SessionTests: TestCaseBase {
         let alice_store = InMemorySignalProtocolStore()
         let bob_store = InMemorySignalProtocolStore()
 
-        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+        initializeSessionsV3(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
         let trust_root = IdentityKeyPair.generate()
         let server_keys = IdentityKeyPair.generate()
@@ -220,7 +188,7 @@ class SessionTests: TestCaseBase {
         let alice_store = InMemorySignalProtocolStore()
         let bob_store = InMemorySignalProtocolStore()
 
-        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+        initializeSessionsV3(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
         let session: SessionRecord! = try! alice_store.loadSession(for: bob_address, context: NullContext())
         XCTAssertNotNil(session)
@@ -241,7 +209,7 @@ class SessionTests: TestCaseBase {
         let alice_store = InMemorySignalProtocolStore()
         let bob_store = InMemorySignalProtocolStore()
 
-        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+        initializeSessionsV3(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
         let trust_root = IdentityKeyPair.generate()
         let server_keys = IdentityKeyPair.generate()
@@ -311,7 +279,7 @@ class SessionTests: TestCaseBase {
         let alice_store = InMemorySignalProtocolStore()
         let bob_store = InMemorySignalProtocolStore(identity: IdentityKeyPair.generate(), registrationId: 0x4000)
 
-        initializeSessions(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
+        initializeSessionsV3(alice_store: alice_store, bob_store: bob_store, bob_address: bob_address)
 
         let trust_root = IdentityKeyPair.generate()
         let server_keys = IdentityKeyPair.generate()
@@ -363,7 +331,7 @@ class SessionTests: TestCaseBase {
         let bob_store = InMemorySignalProtocolStore()
 
         // Notice the reverse initialization. Bob will send the first message to Alice in this example.
-        initializeSessions(alice_store: bob_store, bob_store: alice_store, bob_address: alice_address)
+        initializeSessionsV3(alice_store: bob_store, bob_store: alice_store, bob_address: alice_address)
 
         let bob_first_message = try signalEncrypt(message: Array("swim camp".utf8),
                                                   for: alice_address,
@@ -376,6 +344,7 @@ class SessionTests: TestCaseBase {
                                     identityStore: alice_store,
                                     preKeyStore: alice_store,
                                     signedPreKeyStore: alice_store,
+                                    kyberPreKeyStore: bob_store,
                                     context: NullContext())
 
         let bob_message = try signalEncrypt(message: Array("space camp".utf8),
@@ -422,4 +391,125 @@ class SessionTests: TestCaseBase {
         let bob_session_with_alice = try XCTUnwrap(bob_store.loadSession(for: alice_address, context: NullContext()))
         XCTAssert(try bob_session_with_alice.currentRatchetKeyMatches(XCTUnwrap(bob_error_message.ratchetKey)))
     }
+}
+
+private func initializeSessionsV3(
+    alice_store: InMemorySignalProtocolStore,
+    bob_store: InMemorySignalProtocolStore,
+    bob_address: ProtocolAddress
+) {
+    let bob_pre_key = PrivateKey.generate()
+    let bob_signed_pre_key = PrivateKey.generate()
+
+    let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
+
+    let bob_identity_key = try! bob_store.identityKeyPair(context: NullContext()).identityKey
+    let bob_signed_pre_key_signature = try! bob_store.identityKeyPair(context: NullContext()).privateKey.generateSignature(message: bob_signed_pre_key_public)
+
+    let prekey_id: UInt32 = 4570
+    let signed_prekey_id: UInt32 = 3006
+
+    let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: NullContext()),
+                                       deviceId: 9,
+                                       prekeyId: prekey_id,
+                                       prekey: bob_pre_key.publicKey,
+                                       signedPrekeyId: signed_prekey_id,
+                                       signedPrekey: bob_signed_pre_key.publicKey,
+                                       signedPrekeySignature: bob_signed_pre_key_signature,
+                                       identity: bob_identity_key)
+
+    // Alice processes the bundle:
+    try! processPreKeyBundle(bob_bundle,
+                             for: bob_address,
+                             sessionStore: alice_store,
+                             identityStore: alice_store,
+                             context: NullContext())
+
+    XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState, true)
+    XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.remoteRegistrationId(),
+                   try! bob_store.localRegistrationId(context: NullContext()))
+
+    // Bob does the same:
+    try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, privateKey: bob_pre_key),
+                               id: prekey_id,
+                               context: NullContext())
+
+    try! bob_store.storeSignedPreKey(
+        SignedPreKeyRecord(
+            id: signed_prekey_id,
+            timestamp: 42000,
+            privateKey: bob_signed_pre_key,
+            signature: bob_signed_pre_key_signature
+        ),
+        id: signed_prekey_id,
+        context: NullContext())
+}
+
+private func initializeSessionsV4(
+    alice_store: InMemorySignalProtocolStore,
+    bob_store: InMemorySignalProtocolStore,
+    bob_address: ProtocolAddress
+) {
+    let bob_pre_key = PrivateKey.generate()
+    let bob_signed_pre_key = PrivateKey.generate()
+    let bob_kyber_pre_key = KEMKeyPair.generate()
+
+    let bob_signed_pre_key_public = bob_signed_pre_key.publicKey.serialize()
+    let bob_kyber_pre_key_public = bob_kyber_pre_key.publicKey.serialize()
+
+    let bob_identity_key_pair = try! bob_store.identityKeyPair(context: NullContext())
+    let bob_identity_key = bob_identity_key_pair.identityKey
+    let bob_signed_pre_key_signature = bob_identity_key_pair.privateKey.generateSignature(message: bob_signed_pre_key_public)
+    let bob_kyber_pre_key_signature = bob_identity_key_pair.privateKey.generateSignature(message: bob_kyber_pre_key_public)
+
+    let prekey_id: UInt32 = 4570
+    let signed_prekey_id: UInt32 = 3006
+    let kyber_pre_key_id: UInt32 = 8888
+
+    let bob_bundle = try! PreKeyBundle(registrationId: bob_store.localRegistrationId(context: NullContext()),
+                                       deviceId: 9,
+                                       prekeyId: prekey_id,
+                                       prekey: bob_pre_key.publicKey,
+                                       signedPrekeyId: signed_prekey_id,
+                                       signedPrekey: bob_signed_pre_key.publicKey,
+                                       signedPrekeySignature: bob_signed_pre_key_signature,
+                                       identity: bob_identity_key,
+                                       kyberPrekeyId: kyber_pre_key_id,
+                                       kyberPrekey: bob_kyber_pre_key.publicKey,
+                                       kyberPrekeySignature: bob_kyber_pre_key_signature)
+    // Alice processes the bundle:
+    try! processPreKeyBundle(bob_bundle,
+                             for: bob_address,
+                             sessionStore: alice_store,
+                             identityStore: alice_store,
+                             context: NullContext())
+
+    XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState, true)
+    XCTAssertEqual(try! alice_store.loadSession(for: bob_address, context: NullContext())?.remoteRegistrationId(),
+                   try! bob_store.localRegistrationId(context: NullContext()))
+
+    // Bob does the same:
+    try! bob_store.storePreKey(PreKeyRecord(id: prekey_id, privateKey: bob_pre_key),
+                               id: prekey_id,
+                               context: NullContext())
+
+    try! bob_store.storeSignedPreKey(
+        SignedPreKeyRecord(
+            id: signed_prekey_id,
+            timestamp: 42000,
+            privateKey: bob_signed_pre_key,
+            signature: bob_signed_pre_key_signature
+        ),
+        id: signed_prekey_id,
+        context: NullContext())
+    try! bob_store.storeKyberPreKey(
+        KyberPreKeyRecord(
+            id: kyber_pre_key_id,
+            timestamp: 42000,
+            keyPair: bob_kyber_pre_key,
+            signature: bob_kyber_pre_key_signature
+        ),
+        id: kyber_pre_key_id,
+        context: NullContext()
+        )
 }

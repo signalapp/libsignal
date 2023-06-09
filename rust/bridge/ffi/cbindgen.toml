@@ -32,6 +32,7 @@ renaming_overrides_prefixing = true
 "FfiIdentityKeyStoreStruct" = "SignalIdentityKeyStore"
 "FfiPreKeyStoreStruct" = "SignalPreKeyStore"
 "FfiSignedPreKeyStoreStruct" = "SignalSignedPreKeyStore"
+"FfiKyberPreKeyStoreStruct" = "SignalKyberPreKeyStore"
 "FfiSenderKeyStoreStruct" = "SignalSenderKeyStore"
 "FfiDirection" = "SignalDirection"
 "FfiCiphertextMessageType" = "SignalCiphertextMessageType"
@@ -52,6 +53,7 @@ remove_underscores = true
 
 [fn]
 sort_by = "None"
+args = "horizontal"
 
 [parse]
 parse_deps = true

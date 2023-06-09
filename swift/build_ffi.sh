@@ -113,6 +113,7 @@ FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 
 if [[ -n "${SHOULD_CBINDGEN}" ]]; then
   check_cbindgen
+  cbindgen --version
   if [[ -n "${CBINDGEN_VERIFY}" ]]; then
     echo diff -u "${FFI_HEADER_PATH}" "<(cbindgen -q ${RELEASE_BUILD:+--profile release} rust/bridge/ffi)"
     if ! diff -u "${FFI_HEADER_PATH}"  <(cbindgen -q ${RELEASE_BUILD:+--profile release} rust/bridge/ffi); then
