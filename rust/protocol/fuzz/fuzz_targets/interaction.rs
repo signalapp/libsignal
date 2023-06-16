@@ -222,7 +222,15 @@ fuzz_target!(|data: (u64, &[u8])| {
             };
             match action >> 1 {
                 0 => {
-                    if me.archive_count + them.archive_count < 40 {
+                    let mut estimated_prev_states = 0;
+                    // The set of previous session states grows in two ways:
+                    // 1) The current session state of "me" is archived explicitly.
+                    estimated_prev_states += me.archive_count;
+                    // 2) A pre-key message is received from "them" and displaces the
+                    //    current session state. They may send one pre-key message initially.
+                    //    Additional pre-key messages from "them" follow explicit archiving.
+                    estimated_prev_states += 1 + them.archive_count;
+                    if estimated_prev_states < 40 {
                         // Only archive if it can't result in old sessions getting expired.
                         // We're not testing that.
                         me.archive_session(&them.address).await
