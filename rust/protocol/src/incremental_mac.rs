@@ -32,6 +32,9 @@ where
     D: FixedOutput,
     D::OutputSize: ArrayLength<u8>,
 {
+    if data_size == 0 {
+        return MINIMUM_INCREMENTAL_CHUNK_SIZE;
+    }
     let max_chunks = MAXIMUM_INCREMENTAL_DIGEST_BYTES / D::OutputSize::USIZE;
     let chunk_size = (data_size + max_chunks - 1) / max_chunks;
     std::cmp::min(
@@ -42,6 +45,7 @@ where
 
 impl<M: Mac> Incremental<M> {
     pub fn new(mac: M, chunk_size: usize) -> Self {
+        assert!(chunk_size > 0, "chunk size must be positive");
         Self {
             mac,
             chunk_size,
@@ -331,6 +335,14 @@ mod test {
             let chunk_size = calculate_chunk_size::<Sha256>(data_size);
             assert!(chunk_size <= data_size)
         })
+    }
+
+    #[test]
+    fn chunk_size_for_empty_input() {
+        assert_eq!(
+            MINIMUM_INCREMENTAL_CHUNK_SIZE,
+            calculate_chunk_size::<Sha256>(0)
+        );
     }
 
     #[derive(Clone)]

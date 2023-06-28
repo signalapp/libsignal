@@ -96,6 +96,28 @@ public class IncrementalStreamsTest extends TestCase {
         assertEquals(TEST_EXPECTED_DIGEST, Hex.toStringCondensed(digestStream.toByteArray()));
     }
 
+    public void testEmptyInput() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream digest = new ByteArrayOutputStream();
+        try (IncrementalMacOutputStream incrementalOut = new IncrementalMacOutputStream(out, TEST_HMAC_KEY, ChunkSizeChoice.inferChunkSize(0), digest)) {
+            incrementalOut.write(new byte[0]);
+            incrementalOut.flush();
+        }
+    }
+
+    public void testInvalidChunkSize() throws IOException {
+        try {
+            new IncrementalMacOutputStream(
+                new ByteArrayOutputStream(),
+                TEST_HMAC_KEY,
+                ChunkSizeChoice.everyNthByte(0),
+                new ByteArrayOutputStream());
+        }
+        catch(AssertionError ex) {
+            assertTrue(ex.getMessage().contains("chunk size must be positive"));
+        }
+    }
+
     private byte[] fullIncrementalDigest(OutputStream innerOut, String[] input) throws IOException {
         ByteArrayOutputStream digestStream = new ByteArrayOutputStream();
         try (IncrementalMacOutputStream incrementalOut = new IncrementalMacOutputStream(innerOut, TEST_HMAC_KEY, SIZE_CHOICE, digestStream)) {
