@@ -3,19 +3,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{consts, crypto};
+use std::convert::TryFrom;
 
-use crate::{
-    CiphertextMessageType, Context, KeyPair, ProtocolAddress, Result, SenderKeyDistributionMessage,
-    SenderKeyMessage, SenderKeyRecord, SenderKeyStore, SignalProtocolError,
-};
+use rand::{CryptoRng, Rng};
+use uuid::Uuid;
 
 use crate::protocol::SENDERKEY_MESSAGE_CURRENT_VERSION;
 use crate::sender_keys::{SenderKeyState, SenderMessageKey};
-
-use rand::{CryptoRng, Rng};
-use std::convert::TryFrom;
-use uuid::Uuid;
+use crate::{
+    consts, CiphertextMessageType, Context, KeyPair, ProtocolAddress, Result,
+    SenderKeyDistributionMessage, SenderKeyMessage, SenderKeyRecord, SenderKeyStore,
+    SignalProtocolError,
+};
 
 pub async fn group_encrypt<R: Rng + CryptoRng>(
     sender_key_store: &mut dyn SenderKeyStore,
@@ -41,7 +40,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
     let message_keys = sender_chain_key.sender_message_key();
 
     let ciphertext =
-        crypto::aes_256_cbc_encrypt(plaintext, message_keys.cipher_key(), message_keys.iv())
+        signal_crypto::aes_256_cbc_encrypt(plaintext, message_keys.cipher_key(), message_keys.iv())
             .map_err(|_| {
                 log::error!(
                     "outgoing sender key state corrupt for distribution ID {}",
@@ -169,13 +168,13 @@ pub async fn group_decrypt(
 
     let sender_key = get_sender_key(sender_key_state, skm.iteration(), distribution_id)?;
 
-    let plaintext = match crypto::aes_256_cbc_decrypt(
+    let plaintext = match signal_crypto::aes_256_cbc_decrypt(
         skm.ciphertext(),
         sender_key.cipher_key(),
         sender_key.iv(),
     ) {
         Ok(plaintext) => plaintext,
-        Err(crypto::DecryptionError::BadKeyOrIv) => {
+        Err(signal_crypto::DecryptionError::BadKeyOrIv) => {
             log::error!(
                 "incoming sender key state corrupt for {}, distribution ID {}, chain ID {}",
                 sender,
@@ -184,7 +183,7 @@ pub async fn group_decrypt(
             );
             return Err(SignalProtocolError::InvalidSenderKeySession { distribution_id });
         }
-        Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+        Err(signal_crypto::DecryptionError::BadCiphertext(msg)) => {
             log::error!("sender key decryption failed: {}", msg);
             return Err(SignalProtocolError::InvalidMessage(
                 CiphertextMessageType::SenderKey,

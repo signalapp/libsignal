@@ -12,12 +12,15 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 aes = { version = "0.7.4", features = ["ctr"] }
+block-modes = "0.8"
 subtle = "2.3"
 generic-array = "0.14"
 ghash = "0.4.2"
 hmac = "0.11"
 sha-1 = "0.9"
 sha2 = "0.9"
+thiserror = "1.0.38"
+displaydoc = "0.2"
 
 [dev-dependencies]
 rand = "0.7.3"

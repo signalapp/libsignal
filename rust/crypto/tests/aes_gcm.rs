@@ -120,10 +120,10 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
 
         gcm_dec.decrypt(&mut buf)?;
 
-        assert_eq!(
+        assert!(matches!(
             gcm_dec.verify_tag(&tag),
             Err(signal_crypto::Error::InvalidTag)
-        );
+        ));
     }
 
     Ok(())

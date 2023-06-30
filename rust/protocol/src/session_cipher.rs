@@ -3,18 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{
-    CiphertextMessage, CiphertextMessageType, Context, Direction, IdentityKeyStore, KeyPair,
-    KyberPayload, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress, PublicKey,
-    Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
-};
+use rand::{CryptoRng, Rng};
 
 use crate::consts::MAX_FORWARD_JUMPS;
 use crate::ratchet::{ChainKey, MessageKeys};
 use crate::state::{InvalidSessionError, SessionState};
-use crate::{crypto, session};
-
-use rand::{CryptoRng, Rng};
+use crate::{
+    session, CiphertextMessage, CiphertextMessageType, Context, Direction, IdentityKeyStore,
+    KeyPair, KyberPayload, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
+    PublicKey, Result, SessionRecord, SessionStore, SignalMessage, SignalProtocolError,
+    SignedPreKeyStore,
+};
 
 pub async fn message_encrypt(
     ptext: &[u8],
@@ -47,11 +46,12 @@ pub async fn message_encrypt(
         )
     })?;
 
-    let ctext = crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
-        .map_err(|_| {
-            log::error!("session state corrupt for {}", remote_address);
-            SignalProtocolError::InvalidSessionStructure("invalid sender chain message keys")
-        })?;
+    let ctext =
+        signal_crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
+            .map_err(|_| {
+                log::error!("session state corrupt for {}", remote_address);
+                SignalProtocolError::InvalidSessionStructure("invalid sender chain message keys")
+            })?;
 
     let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
         let local_registration_id = session_state.local_registration_id();
@@ -613,13 +613,13 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
         ));
     }
 
-    let ptext = match crypto::aes_256_cbc_decrypt(
+    let ptext = match signal_crypto::aes_256_cbc_decrypt(
         ciphertext.body(),
         message_keys.cipher_key(),
         message_keys.iv(),
     ) {
         Ok(ptext) => ptext,
-        Err(crypto::DecryptionError::BadKeyOrIv) => {
+        Err(signal_crypto::DecryptionError::BadKeyOrIv) => {
             log::warn!(
                 "{} session state corrupt for {}",
                 current_or_previous,
@@ -629,7 +629,7 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
                 "invalid receiver chain message keys",
             ));
         }
-        Err(crypto::DecryptionError::BadCiphertext(msg)) => {
+        Err(signal_crypto::DecryptionError::BadCiphertext(msg)) => {
             log::warn!("failed to decrypt 1:1 message: {}", msg);
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,

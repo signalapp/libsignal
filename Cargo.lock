@@ -1444,6 +1444,7 @@ dependencies = [
  "prost-build",
  "rand 0.7.3",
  "sha2 0.9.9",
+ "signal-crypto",
  "subtle",
  "thiserror",
  "typenum",
@@ -2252,7 +2253,9 @@ name = "signal-crypto"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "block-modes",
  "criterion",
+ "displaydoc",
  "generic-array",
  "ghash",
  "hex",
@@ -2263,6 +2266,7 @@ dependencies = [
  "sha-1",
  "sha2 0.9.9",
  "subtle",
+ "thiserror",
 ]
 
 [[package]]
@@ -2522,11 +2526,16 @@ dependencies = [
  "criterion",
  "curve25519-dalek 3.2.1",
  "displaydoc",
+ "hkdf",
  "lazy_static",
  "poksho",
  "proptest",
+ "prost",
+ "prost-build",
  "rand 0.7.3",
  "sha2 0.9.9",
+ "signal-crypto",
+ "thiserror",
  "zkgroup",
 ]
 
