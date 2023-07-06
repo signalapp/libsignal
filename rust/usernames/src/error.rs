@@ -27,10 +27,10 @@ pub enum UsernameError {
 pub enum UsernameLinkError {
     /// The combined length of all input data is too long
     InputDataTooLong,
-    /// Username link data size is too short: must contain IV, ciphertext, and HMAC
-    UsernameLinkDataTooShort,
     /// Invalid size of the entropy data
     InvalidEntropyDataLength,
+    /// Username link data size is too short: must contain IV, ciphertext, and HMAC
+    UsernameLinkDataTooShort,
     /// HMAC on username link doesn't match the one calculated with the given entropy input
     HmacMismatch,
     /// Ciphertext in the username link can't be decrypted

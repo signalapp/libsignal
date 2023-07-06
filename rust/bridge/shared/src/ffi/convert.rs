@@ -334,6 +334,13 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, usernames::UsernameError> {
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, usernames::UsernameLinkError> {
+    type ResultType = T::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        T::convert_into(self?)
+    }
+}
+
 /// Allocates and returns a new Rust-owned C string.
 impl ResultTypeInfo for String {
     type ResultType = *const libc::c_char;

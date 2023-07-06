@@ -345,6 +345,8 @@ export function UnidentifiedSenderMessageContent_GetMsgType(m: Wrapper<Unidentif
 export function UnidentifiedSenderMessageContent_GetSenderCert(m: Wrapper<UnidentifiedSenderMessageContent>): SenderCertificate;
 export function UnidentifiedSenderMessageContent_New(message: Wrapper<CiphertextMessage>, sender: Wrapper<SenderCertificate>, contentHint: number, groupId: Buffer | null): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_Serialize(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
+export function UsernameLink_Create(username: string): Buffer;
+export function UsernameLink_DecryptUsername(entropy: Buffer, encryptedUsername: Buffer): string;
 export function Username_CandidatesFrom(nickname: string, minLen: number, maxLen: number): string;
 export function Username_Hash(username: string): Buffer;
 export function Username_Proof(username: string, randomness: Buffer): Buffer;

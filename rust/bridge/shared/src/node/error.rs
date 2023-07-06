@@ -226,6 +226,32 @@ impl SignalNodeError for usernames::UsernameError {
     }
 }
 
+impl SignalNodeError for usernames::UsernameLinkError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let name = match &self {
+            Self::InputDataTooLong => Some("InputDataTooLong"),
+            Self::InvalidEntropyDataLength => Some("InvalidEntropyDataLength"),
+            Self::UsernameLinkDataTooShort
+            | Self::HmacMismatch
+            | Self::BadCiphertext
+            | Self::InvalidDecryptedDataStructure => Some("InvalidUsernameLinkEncryptedData"),
+        };
+        let message = self.to_string();
+        match new_js_error(cx, module, name, &message, operation_name, None) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(message)
+            }
+        }
+    }
+}
+
 impl SignalNodeError for sanitize::Error {
     fn throw<'a>(
         self,

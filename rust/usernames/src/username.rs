@@ -322,6 +322,7 @@ mod test {
             Username::new(username).map(|name| name.hash()).unwrap();
         }
     }
+
     #[test]
     fn invalid_usernames() {
         for username in [

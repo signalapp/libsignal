@@ -7,6 +7,7 @@ import { assert, expect } from 'chai';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import * as usernames from '../usernames';
 import * as util from './util';
+import { UsernameLink } from '../usernames';
 
 util.initLogger();
 
@@ -82,6 +83,39 @@ describe('usernames', () => {
       expect(() => usernames.generateCandidates('Ke$ha', 3, 32))
         .throws(LibSignalErrorBase)
         .with.property('code', ErrorCode.BadNicknameCharacter);
+    });
+  });
+
+  describe('link', () => {
+    it('works end to end with valid data', () => {
+      const expectedUsername = 'signal_test.42';
+      const usernameLinkData = usernames.createUsernameLink(expectedUsername);
+      const actualUsername = usernameLinkData.decryptUsername();
+      assert.equal(expectedUsername, actualUsername);
+    });
+    it('will error on too long input data', () => {
+      const longUsername = 'a'.repeat(128);
+      expect(() => usernames.createUsernameLink(longUsername))
+        .throws(LibSignalErrorBase)
+        .with.property('code', ErrorCode.InputDataTooLong);
+    });
+    it('will error on invalid entropy data size', () => {
+      const entropy = Buffer.alloc(16);
+      const encryptedUsername = Buffer.alloc(32);
+      expect(() =>
+        new UsernameLink(entropy, encryptedUsername).decryptUsername()
+      )
+        .throws(LibSignalErrorBase)
+        .with.property('code', ErrorCode.InvalidEntropyDataLength);
+    });
+    it('will error on invalid encrypted username data', () => {
+      const entropy = Buffer.alloc(32);
+      const encryptedUsername = Buffer.alloc(32);
+      expect(() =>
+        new UsernameLink(entropy, encryptedUsername).decryptUsername()
+      )
+        .throws(LibSignalErrorBase)
+        .with.property('code', ErrorCode.InvalidUsernameLinkEncryptedData);
     });
   });
 });

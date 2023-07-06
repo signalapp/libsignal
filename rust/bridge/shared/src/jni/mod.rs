@@ -39,7 +39,7 @@ pub use io::*;
 mod storage;
 pub use storage::*;
 
-use usernames::UsernameError;
+use usernames::{UsernameError, UsernameLinkError};
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
@@ -401,6 +401,23 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                     .usernames
                     .ProofVerificationFailureException
             )
+        }
+
+        SignalJniError::UsernameLinkError(UsernameLinkError::InputDataTooLong) => {
+            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInputDataTooLong)
+        }
+
+        SignalJniError::UsernameLinkError(UsernameLinkError::InvalidEntropyDataLength) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .UsernameLinkInvalidEntropyDataLength
+            )
+        }
+
+        SignalJniError::UsernameLinkError(_) => {
+            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInvalidLinkData)
         }
 
         SignalJniError::Io(_) => {

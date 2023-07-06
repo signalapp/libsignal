@@ -37,6 +37,30 @@ export function generateProofWithRandom(
   return Native.Username_Proof(username, random);
 }
 
+export class UsernameLink {
+  readonly _entropy: Buffer;
+  readonly _encryptedUsername: Buffer;
+
+  constructor(entropy: Buffer, encryptedUsername: Buffer) {
+    this._entropy = entropy;
+    this._encryptedUsername = encryptedUsername;
+  }
+
+  decryptUsername(): string {
+    return Native.UsernameLink_DecryptUsername(
+      this._entropy,
+      this._encryptedUsername
+    );
+  }
+}
+
+export function createUsernameLink(username: string): UsernameLink {
+  const usernameLinkData = Native.UsernameLink_Create(username);
+  const entropy = usernameLinkData.slice(0, 32);
+  const encryptedUsername = usernameLinkData.slice(32);
+  return new UsernameLink(entropy, encryptedUsername);
+}
+
 // Only for testing. Will throw on failure.
 export function verifyProof(proof: Buffer, hash: Buffer): void {
   Native.Username_Verify(proof, hash);

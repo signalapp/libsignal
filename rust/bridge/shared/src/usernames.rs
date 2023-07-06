@@ -9,7 +9,11 @@ use libsignal_bridge_macros::*;
 use crate::support::*;
 use crate::*;
 
-use ::usernames::{NicknameLimits, Username, UsernameError};
+#[allow(unused_imports)]
+use ::usernames::{
+    create_for_username, decrypt_username, NicknameLimits, Username, UsernameError,
+    UsernameLinkError,
+};
 
 #[bridge_fn]
 pub fn Username_Hash(username: String) -> Result<[u8; 32], UsernameError> {
@@ -40,4 +44,18 @@ pub fn Username_CandidatesFrom(
     let mut rng = rand::rngs::OsRng;
     let limits = NicknameLimits::new(min_len as usize, max_len as usize);
     Username::candidates_from(&mut rng, &nickname, limits).map(|names| names.join(","))
+}
+
+#[bridge_fn]
+pub fn UsernameLink_Create(username: String) -> Result<Vec<u8>, UsernameLinkError> {
+    let mut rng = rand::rngs::OsRng;
+    create_for_username(&mut rng, username)
+}
+
+#[bridge_fn]
+pub fn UsernameLink_DecryptUsername(
+    entropy: &[u8],
+    encrypted_username: &[u8],
+) -> Result<String, UsernameLinkError> {
+    decrypt_username(entropy, encrypted_username)
 }

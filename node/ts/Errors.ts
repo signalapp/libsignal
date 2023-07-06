@@ -28,6 +28,10 @@ export enum ErrorCode {
 
   InvalidMediaInput,
   UnsupportedMediaInput,
+
+  InputDataTooLong,
+  InvalidEntropyDataLength,
+  InvalidUsernameLinkEncryptedData,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -135,6 +139,18 @@ export type NicknameTooLongError = LibSignalErrorCommon & {
   code: ErrorCode.NicknameTooLong;
 };
 
+export type InputDataTooLong = LibSignalErrorCommon & {
+  code: ErrorCode.InputDataTooLong;
+};
+
+export type InvalidEntropyDataLength = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidEntropyDataLength;
+};
+
+export type InvalidUsernameLinkEncryptedData = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidUsernameLinkEncryptedData;
+};
+
 export type IoError = LibSignalErrorCommon & {
   code: ErrorCode.IoError;
 };
@@ -162,6 +178,9 @@ export type LibSignalError =
   | BadNicknameCharacterError
   | NicknameTooShortError
   | NicknameTooLongError
+  | InputDataTooLong
+  | InvalidEntropyDataLength
+  | InvalidUsernameLinkEncryptedData
   | IoError
   | InvalidMediaInputError
   | UnsupportedMediaInputError;

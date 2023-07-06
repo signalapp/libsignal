@@ -42,6 +42,8 @@ public enum SignalError: Error {
     case badNicknameCharacter(String)
     case nicknameTooShort(String)
     case nicknameTooLong(String)
+    case usernameLinkInvalidEntropyDataLength(String)
+    case usernameLinkInvalid(String)
     case ioError(String)
     case invalidMediaInput(String)
     case unsupportedMediaInput(String)
@@ -130,6 +132,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.nicknameTooShort(errStr)
     case SignalErrorCodeUsernameTooLong:
         throw SignalError.nicknameTooLong(errStr)
+    case SignalErrorCodeUsernameLinkInvalidEntropyDataLength:
+        throw SignalError.usernameLinkInvalidEntropyDataLength(errStr)
+    case SignalErrorCodeUsernameLinkInvalid:
+        throw SignalError.usernameLinkInvalid(errStr)
     case SignalErrorCodeIoError:
         throw SignalError.ioError(errStr)
     case SignalErrorCodeInvalidMediaInput:

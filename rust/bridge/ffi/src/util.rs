@@ -10,7 +10,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
-use usernames::UsernameError;
+use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 #[derive(Debug)]
@@ -63,6 +63,9 @@ pub enum SignalErrorCode {
     UsernameBadCharacter = 124,
     UsernameTooShort = 125,
     UsernameTooLong = 126,
+
+    UsernameLinkInvalidEntropyDataLength = 127,
+    UsernameLinkInvalid = 128,
 
     IoError = 130,
     #[allow(dead_code)]
@@ -231,13 +234,20 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UsernameTooShort
             }
 
-            SignalFfiError::UsernameError(UsernameError::NicknameTooLong) => {
+            SignalFfiError::UsernameError(UsernameError::NicknameTooLong)
+            | SignalFfiError::UsernameLinkError(UsernameLinkError::InputDataTooLong) => {
                 SignalErrorCode::UsernameTooLong
             }
 
             SignalFfiError::UsernameError(UsernameError::ProofVerificationFailure) => {
                 SignalErrorCode::VerificationFailure
             }
+
+            SignalFfiError::UsernameLinkError(UsernameLinkError::InvalidEntropyDataLength) => {
+                SignalErrorCode::UsernameLinkInvalidEntropyDataLength
+            }
+
+            SignalFfiError::UsernameLinkError(_) => SignalErrorCode::UsernameLinkInvalid,
 
             SignalFfiError::Io(_) => SignalErrorCode::IoError,
 

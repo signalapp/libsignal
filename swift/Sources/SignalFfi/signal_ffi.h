@@ -166,6 +166,8 @@ typedef enum {
   SignalErrorCodeUsernameBadCharacter = 124,
   SignalErrorCodeUsernameTooShort = 125,
   SignalErrorCodeUsernameTooLong = 126,
+  SignalErrorCodeUsernameLinkInvalidEntropyDataLength = 127,
+  SignalErrorCodeUsernameLinkInvalid = 128,
   SignalErrorCodeIoError = 130,
   SignalErrorCodeInvalidMediaInput = 131,
   SignalErrorCodeUnsupportedMediaInput = 132,
@@ -1121,6 +1123,10 @@ SignalFfiError *signal_username_proof(SignalOwnedBuffer *out, const char *userna
 SignalFfiError *signal_username_verify(SignalBorrowedBuffer proof, SignalBorrowedBuffer hash);
 
 SignalFfiError *signal_username_candidates_from(const char **out, const char *nickname, uint32_t min_len, uint32_t max_len);
+
+SignalFfiError *signal_username_link_create(SignalOwnedBuffer *out, const char *username);
+
+SignalFfiError *signal_username_link_decrypt_username(const char **out, SignalBorrowedBuffer entropy, SignalBorrowedBuffer encrypted_username);
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_signal_media_check_available(void);

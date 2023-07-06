@@ -13,7 +13,7 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
-use usernames::UsernameError;
+use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::support::describe_panic;
@@ -32,6 +32,7 @@ pub enum SignalJniError {
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     UsernameError(UsernameError),
+    UsernameLinkError(UsernameLinkError),
     Io(IoError),
     #[cfg(feature = "signal-media")]
     MediaSanitizeParse(signal_media::sanitize::ParseErrorReport),
@@ -59,6 +60,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalJniError::UsernameError(e) => write!(f, "{}", e),
+            SignalJniError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalJniError::Io(e) => write!(f, "{}", e),
             #[cfg(feature = "signal-media")]
             SignalJniError::MediaSanitizeParse(e) => write!(f, "{}", e),
@@ -136,6 +138,12 @@ impl From<ZkGroupDeserializationFailure> for SignalJniError {
 impl From<UsernameError> for SignalJniError {
     fn from(e: UsernameError) -> Self {
         SignalJniError::UsernameError(e)
+    }
+}
+
+impl From<UsernameLinkError> for SignalJniError {
+    fn from(e: UsernameLinkError) -> Self {
+        SignalJniError::UsernameLinkError(e)
     }
 }
 
