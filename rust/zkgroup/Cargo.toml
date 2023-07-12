@@ -12,9 +12,10 @@ description = "A zero-knowledge group library"
 license = "AGPL-3.0-only"
 
 [dependencies]
+libsignal-protocol = { path = "../protocol" }
 poksho = { path = "../poksho" }
-zkcredential = { path = "../zkcredential" }
 signal-crypto = { path = "../crypto" }
+zkcredential = { path = "../zkcredential" }
 
 bincode = "1.2.1"
 serde = { version = "1.0.106", features = ["derive"] }
@@ -25,6 +26,7 @@ aes-gcm-siv = "0.10.0"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
 subtle = "2.3"
+uuid = "1.1.2"
 
 # For generation
 base64 = { version = "0.13.0", optional = true }

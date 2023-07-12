@@ -63,6 +63,6 @@ impl CallLinkSecretParams {
         ciphertext: api::groups::UuidCiphertext,
     ) -> Result<UidBytes, ZkGroupVerificationFailure> {
         let uid = self.uid_enc_key_pair.decrypt(ciphertext.ciphertext)?;
-        Ok(uid.to_bytes())
+        Ok(uid.raw_uuid().into_bytes())
     }
 }

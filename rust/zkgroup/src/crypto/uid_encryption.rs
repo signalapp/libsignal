@@ -8,12 +8,13 @@
 use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::crypto::uid_struct;
+
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use serde::{Deserialize, Serialize};
-
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use subtle::{ConditionallySelectable, ConstantTimeEq};
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
@@ -80,33 +81,48 @@ impl KeyPair {
     }
 
     pub fn encrypt(&self, uid: uid_struct::UidStruct) -> Ciphertext {
-        let E_A1 = self.calc_E_A1(uid);
+        let E_A1 = self.a1 * uid.M1;
         let E_A2 = (self.a2 * E_A1) + uid.M2;
         Ciphertext { E_A1, E_A2 }
     }
 
-    // Might return VerificationFailure
     pub fn decrypt(
         &self,
         ciphertext: Ciphertext,
-    ) -> Result<uid_struct::UidStruct, ZkGroupVerificationFailure> {
+    ) -> Result<libsignal_protocol::ServiceId, ZkGroupVerificationFailure> {
         if ciphertext.E_A1 == RISTRETTO_BASEPOINT_POINT {
             return Err(ZkGroupVerificationFailure);
         }
-        match uid_struct::UidStruct::from_M2(ciphertext.E_A2 - (self.a2 * ciphertext.E_A1)) {
-            Err(_) => Err(ZkGroupVerificationFailure),
-            Ok(decrypted_uid) => {
-                if ciphertext.E_A1 == self.calc_E_A1(decrypted_uid) {
-                    Ok(decrypted_uid)
-                } else {
-                    Err(ZkGroupVerificationFailure)
-                }
+        let M2 = ciphertext.E_A2 - (self.a2 * ciphertext.E_A1);
+        match M2.lizard_decode::<sha2::Sha256>() {
+            None => Err(ZkGroupVerificationFailure),
+            Some(bytes) => {
+                // We want to do a constant-time choice between the ACI and the PNI possibilities.
+                // Only at the end do we do a normal branch to see if decryption succeeded,
+                // and even then we don't want to expose whether we picked the ACI or the PNI.
+                // So we store them both in an array, and index into it at the very end.
+                // This isn't fully "data-oblivious"; only one service ID gets loaded from memory at
+                // the end, and which one is data-dependent. But it is constant-time.
+                let decoded_uuid = uuid::Uuid::from_bytes(bytes);
+                let decoded_service_ids = [
+                    libsignal_protocol::Aci::from(decoded_uuid).into(),
+                    libsignal_protocol::Pni::from(decoded_uuid).into(),
+                ];
+                let decoded_aci = &decoded_service_ids[0];
+                let decoded_pni = &decoded_service_ids[1];
+                let aci_M1 = uid_struct::UidStruct::calc_M1(*decoded_aci);
+                let pni_M1 = uid_struct::UidStruct::calc_M1(*decoded_pni);
+                debug_assert!(aci_M1 != pni_M1);
+                let decrypted_M1 = self.a1.invert() * ciphertext.E_A1;
+                let mut index = u8::MAX;
+                index.conditional_assign(&0, decrypted_M1.ct_eq(&aci_M1));
+                index.conditional_assign(&1, decrypted_M1.ct_eq(&pni_M1));
+                decoded_service_ids
+                    .get(index as usize)
+                    .copied()
+                    .ok_or(ZkGroupVerificationFailure)
             }
         }
-    }
-
-    fn calc_E_A1(&self, uid: uid_struct::UidStruct) -> RistrettoPoint {
-        self.a1 * uid.M1
     }
 
     pub fn get_public_key(&self) -> PublicKey {
@@ -204,7 +220,28 @@ mod tests {
         );
 
         let plaintext = key_pair.decrypt(ciphertext2).unwrap();
+        assert!(matches!(plaintext, libsignal_protocol::ServiceId::Aci(_)));
+        assert!(uid_struct::UidStruct::from_service_id(plaintext) == uid);
+    }
 
-        assert!(plaintext == uid);
+    #[test]
+    fn test_pni_encryption() {
+        let mut sho = Sho::new(b"Test_Pni_Encryption", &[]);
+        let key_pair = KeyPair::derive_from(&mut sho);
+
+        let uid = uid_struct::UidStruct::from_service_id(
+            libsignal_protocol::Pni::from(uuid::Uuid::from_bytes(TEST_ARRAY_16)).into(),
+        );
+        let ciphertext = key_pair.encrypt(uid);
+
+        // Test serialize / deserialize of Ciphertext
+        let ciphertext_bytes = bincode::serialize(&ciphertext).unwrap();
+        assert!(ciphertext_bytes.len() == 64);
+        let ciphertext2: Ciphertext = bincode::deserialize(&ciphertext_bytes).unwrap();
+        assert!(ciphertext == ciphertext2);
+
+        let plaintext = key_pair.decrypt(ciphertext2).unwrap();
+        assert!(matches!(plaintext, libsignal_protocol::ServiceId::Pni(_)));
+        assert!(uid_struct::UidStruct::from_service_id(plaintext) == uid);
     }
 }
