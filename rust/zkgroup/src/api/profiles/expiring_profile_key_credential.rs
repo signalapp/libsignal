@@ -17,6 +17,10 @@ pub struct ExpiringProfileKeyCredential {
 }
 
 impl ExpiringProfileKeyCredential {
+    pub fn aci(&self) -> libsignal_protocol::Aci {
+        uuid::Uuid::from_bytes(self.uid_bytes).into()
+    }
+
     pub fn get_expiration_time(&self) -> Timestamp {
         self.credential_expiration_time
     }

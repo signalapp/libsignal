@@ -134,6 +134,10 @@ public class ServiceId {
         }
         return downcastResult
     }
+
+    internal func withPointerToFixedWidthBinary<R>(_ callback: (UnsafePointer<ServiceIdStorage>) throws -> R) rethrows -> R {
+        return try callback(&self.storage)
+    }
 }
 
 extension ServiceId: Equatable {

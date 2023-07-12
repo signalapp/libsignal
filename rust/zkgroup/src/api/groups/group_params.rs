@@ -99,8 +99,11 @@ impl GroupSecretParams {
         }
     }
 
-    pub fn encrypt_uuid(&self, uid_bytes: UidBytes) -> api::groups::UuidCiphertext {
-        let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
+    pub fn encrypt_service_id(
+        &self,
+        service_id: libsignal_protocol::ServiceId,
+    ) -> api::groups::UuidCiphertext {
+        let uid = crypto::uid_struct::UidStruct::from_service_id(service_id);
         self.encrypt_uid_struct(uid)
     }
 
@@ -115,12 +118,11 @@ impl GroupSecretParams {
         }
     }
 
-    pub fn decrypt_uuid(
+    pub fn decrypt_service_id(
         &self,
         ciphertext: api::groups::UuidCiphertext,
-    ) -> Result<UidBytes, ZkGroupVerificationFailure> {
-        let uid = self.uid_enc_key_pair.decrypt(ciphertext.ciphertext)?;
-        Ok(uid.raw_uuid().into_bytes())
+    ) -> Result<libsignal_protocol::ServiceId, ZkGroupVerificationFailure> {
+        self.uid_enc_key_pair.decrypt(ciphertext.ciphertext)
     }
 
     pub fn encrypt_profile_key(

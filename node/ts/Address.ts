@@ -43,6 +43,10 @@ export class ServiceId extends Object {
     return Native.ServiceId_ServiceIdBinary(this.serviceIdFixedWidthBinary);
   }
 
+  getServiceIdFixedWidthBinary(): Buffer {
+    return Buffer.from(this.serviceIdFixedWidthBinary);
+  }
+
   getServiceIdString(): string {
     return Native.ServiceId_ServiceIdString(this.serviceIdFixedWidthBinary);
   }
@@ -51,7 +55,7 @@ export class ServiceId extends Object {
     return Native.ServiceId_ServiceIdLog(this.serviceIdFixedWidthBinary);
   }
 
-  private static parseFromServiceIdFixedWidthBinary(
+  static parseFromServiceIdFixedWidthBinary(
     serviceIdFixedWidthBinary: Buffer
   ): ServiceId {
     switch (serviceIdFixedWidthBinary[0]) {

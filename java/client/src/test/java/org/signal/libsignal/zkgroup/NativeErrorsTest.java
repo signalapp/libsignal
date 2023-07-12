@@ -16,10 +16,10 @@ public final class NativeErrorsTest extends TestCase {
   @Test
   public void testBadNativeCalls() {
     byte[] params = new byte[10]; // invalid size
-    byte[] uid = new byte[16]; // valid size
+    byte[] uuidCiphertext = new byte[65]; // valid size
     boolean failed = false;
     try {
-        Native.GroupSecretParams_DecryptUuid(params, uid);
+        Native.GroupSecretParams_DecryptServiceId(params, uuidCiphertext);
         failed = true;
     } catch (AssertionError e) {}
     if (failed) {

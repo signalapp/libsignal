@@ -641,7 +641,7 @@ impl ServerPublicParams {
         let credentials_public_key = self.expiring_profile_key_credentials_public_key;
 
         let uuid_ciphertext =
-            group_secret_params.encrypt_uuid(expiring_profile_key_credential.uid_bytes);
+            group_secret_params.encrypt_service_id(expiring_profile_key_credential.aci().into());
         let profile_key_ciphertext = group_secret_params.encrypt_profile_key_bytes(
             expiring_profile_key_credential.profile_key_bytes,
             expiring_profile_key_credential.uid_bytes,

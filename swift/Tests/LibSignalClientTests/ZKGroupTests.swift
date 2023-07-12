@@ -109,9 +109,9 @@ class ZKGroupTests: TestCaseBase {
     let authCredential      = try clientZkAuthCipher.receiveAuthCredential(uuid: uuid, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
 
     // Create and decrypt user entry
-    let uuidCiphertext = try clientZkGroupCipher.encryptUuid(uuid: uuid)
-    let plaintext      = try clientZkGroupCipher.decryptUuid(uuidCiphertext: uuidCiphertext)
-    XCTAssertEqual(uuid, plaintext)
+    let uuidCiphertext = try clientZkGroupCipher.encrypt(Aci(fromUUID: uuid))
+    let plaintext      = try clientZkGroupCipher.decrypt(uuidCiphertext)
+    XCTAssertEqual(Aci(fromUUID: uuid), plaintext)
 
     // Create presentation
     let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(randomness: TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, authCredential: authCredential)
@@ -159,12 +159,16 @@ class ZKGroupTests: TestCaseBase {
     let authCredential      = try clientZkAuthCipher.receiveAuthCredentialWithPni(aci: aci, pni: pni, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
 
     // Create and decrypt user entry
-    let aciCiphertext = try clientZkGroupCipher.encryptUuid(uuid: aci)
-    let aciPlaintext  = try clientZkGroupCipher.decryptUuid(uuidCiphertext: aciCiphertext)
-    XCTAssertEqual(aci, aciPlaintext)
-    let pniCiphertext = try clientZkGroupCipher.encryptUuid(uuid: pni)
-    let pniPlaintext  = try clientZkGroupCipher.decryptUuid(uuidCiphertext: pniCiphertext)
-    XCTAssertEqual(pni, pniPlaintext)
+    let aciCiphertext = try clientZkGroupCipher.encrypt(Aci(fromUUID: aci))
+    let aciPlaintext  = try clientZkGroupCipher.decrypt(aciCiphertext)
+    XCTAssertEqual(Aci(fromUUID: aci), aciPlaintext)
+    // swiftlint:disable todo
+    // TODO: Use PNI encoding for the PNI in AuthCredentialWithPni.
+    // swiftlint:enable todo
+    let pniAsAci      = Aci(fromUUID: pni)
+    let pniCiphertext = try clientZkGroupCipher.encrypt(pniAsAci)
+    let pniPlaintext  = try clientZkGroupCipher.decrypt(pniCiphertext)
+    XCTAssertEqual(pniAsAci, pniPlaintext)
 
     // Create presentation
     let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(randomness: TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, authCredential: authCredential)
@@ -216,10 +220,10 @@ class ZKGroupTests: TestCaseBase {
     let profileKeyCredential = try clientZkProfileCipher.receiveExpiringProfileKeyCredential(profileKeyCredentialRequestContext: context, profileKeyCredentialResponse: response)
 
     // Create encrypted UID and profile key
-    let uuidCiphertext = try clientZkGroupCipher.encryptUuid(uuid: uuid)
-    let plaintext      = try clientZkGroupCipher.decryptUuid(uuidCiphertext: uuidCiphertext)
+    let uuidCiphertext = try clientZkGroupCipher.encrypt(Aci(fromUUID: uuid))
+    let plaintext      = try clientZkGroupCipher.decrypt(uuidCiphertext)
 
-    XCTAssertEqual(plaintext, uuid)
+    XCTAssertEqual(plaintext, Aci(fromUUID: uuid))
 
     let profileKeyCiphertext   = try clientZkGroupCipher.encryptProfileKey(profileKey: profileKey, uuid: uuid)
     let decryptedProfileKey    = try clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext: profileKeyCiphertext, uuid: uuid)

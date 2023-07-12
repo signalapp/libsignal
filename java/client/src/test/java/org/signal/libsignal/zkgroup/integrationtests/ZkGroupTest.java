@@ -7,6 +7,8 @@ package org.signal.libsignal.zkgroup.integrationtests;
 
 import java.io.UnsupportedEncodingException;
 import org.junit.Test;
+import org.signal.libsignal.protocol.ServiceId;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.NotarySignature;
@@ -225,9 +227,9 @@ public final class ZkGroupTest extends SecureRandomTest {
     }
 
     // Create and decrypt user entry
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
-    UUID           plaintext      = clientZkGroupCipher.decryptUuid(uuidCiphertext);
-    assertEquals(uuid, plaintext);
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(new Aci(uuid));
+    ServiceId      plaintext      = clientZkGroupCipher.decrypt(uuidCiphertext);
+    assertEquals(new Aci(uuid), plaintext);
 
     // CLIENT - deserialize test
     {
@@ -253,7 +255,7 @@ public final class ZkGroupTest extends SecureRandomTest {
         byte[] temp = uuidCiphertext.serialize();
         temp[3]++; // We need a bad ciphertext that passes deserialization, this seems to work
         try {
-            clientZkGroupCipher.decryptUuid(new UuidCiphertext(temp));
+            clientZkGroupCipher.decrypt(new UuidCiphertext(temp));
             throw new AssertionError("Failed to catch invalid UuidCiphertext decrypt");
         } catch (VerificationFailedException e) {
             // expected
@@ -377,9 +379,9 @@ public final class ZkGroupTest extends SecureRandomTest {
     AuthCredential         authCredential      = clientZkAuthCipher.receiveAuthCredential(uuid, redemptionTime, authCredentialResponse);
 
     // Create and decrypt user entry
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
-    UUID           plaintext      = clientZkGroupCipher.decryptUuid(uuidCiphertext);
-    assertEquals(uuid, plaintext);
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(new Aci(uuid));
+    ServiceId      plaintext      = clientZkGroupCipher.decrypt(uuidCiphertext);
+    assertEquals(new Aci(uuid), plaintext);
 
     // Create presentation
     AuthCredentialPresentation presentation = clientZkAuthCipher.createAuthCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
@@ -485,12 +487,14 @@ public final class ZkGroupTest extends SecureRandomTest {
     }
 
     // Create and decrypt user entry
-    UuidCiphertext aciCiphertext = clientZkGroupCipher.encryptUuid(aci);
-    UUID           aciPlaintext  = clientZkGroupCipher.decryptUuid(aciCiphertext);
-    assertEquals(aci, aciPlaintext);
-    UuidCiphertext pniCiphertext = clientZkGroupCipher.encryptUuid(pni);
-    UUID           pniPlaintext  = clientZkGroupCipher.decryptUuid(pniCiphertext);
-    assertEquals(pni, pniPlaintext);
+    UuidCiphertext aciCiphertext = clientZkGroupCipher.encrypt(new Aci(aci));
+    ServiceId      aciPlaintext  = clientZkGroupCipher.decrypt(aciCiphertext);
+    assertEquals(new Aci(aci), aciPlaintext);
+    // TODO: Use PNI encoding for the PNI in AuthCredentialWithPni.
+    Aci            pniAsAci      = new Aci(pni);
+    UuidCiphertext pniCiphertext = clientZkGroupCipher.encrypt(pniAsAci);
+    ServiceId      pniPlaintext  = clientZkGroupCipher.decrypt(pniCiphertext);
+    assertEquals(pniAsAci, pniPlaintext);
 
     // CLIENT - Create presentation
     AuthCredentialPresentation presentation = clientZkAuthCipher.createAuthCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
@@ -621,9 +625,9 @@ public final class ZkGroupTest extends SecureRandomTest {
     ExpiringProfileKeyCredential profileKeyCredential = clientZkProfileCipher.receiveExpiringProfileKeyCredential(context, response);
 
     // Create encrypted UID and profile key
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
-    UUID           plaintext      = clientZkGroupCipher.decryptUuid(uuidCiphertext);
-    assertEquals(plaintext, uuid);
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(new Aci(uuid));
+    ServiceId      plaintext      = clientZkGroupCipher.decrypt(uuidCiphertext);
+    assertEquals(new Aci(uuid), plaintext);
 
     ProfileKeyCiphertext profileKeyCiphertext   = clientZkGroupCipher.encryptProfileKey(profileKey, uuid);
     ProfileKey           decryptedProfileKey    = clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext, uuid);

@@ -281,6 +281,7 @@ fn test_integration_auth() {
 
     // Random UID and issueTime
     let uid = zkgroup::TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid));
     let redemption_time = 123456u32;
 
     // SERVER
@@ -295,9 +296,11 @@ fn test_integration_auth() {
         .unwrap();
 
     // Create and decrypt user entry
-    let uuid_ciphertext = group_secret_params.encrypt_uuid(uid);
-    let plaintext = group_secret_params.decrypt_uuid(uuid_ciphertext).unwrap();
-    assert!(plaintext == uid);
+    let uuid_ciphertext = group_secret_params.encrypt_service_id(aci.into());
+    let plaintext = group_secret_params
+        .decrypt_service_id(uuid_ciphertext)
+        .unwrap();
+    assert_eq!(plaintext, aci.into());
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
@@ -516,6 +519,7 @@ fn test_integration_expiring_profile() {
     let group_public_params = group_secret_params.get_public_params();
 
     let uid = zkgroup::TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid));
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
     let profile_key_commitment = profile_key.get_commitment(uid);
@@ -553,9 +557,11 @@ fn test_integration_expiring_profile() {
         .unwrap();
 
     // Create encrypted UID and profile key
-    let uuid_ciphertext = group_secret_params.encrypt_uuid(uid);
-    let plaintext = group_secret_params.decrypt_uuid(uuid_ciphertext).unwrap();
-    assert!(plaintext == uid);
+    let uuid_ciphertext = group_secret_params.encrypt_service_id(aci.into());
+    let plaintext = group_secret_params
+        .decrypt_service_id(uuid_ciphertext)
+        .unwrap();
+    assert_eq!(plaintext, aci.into());
 
     let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, uid);
     let decrypted_profile_key = group_secret_params

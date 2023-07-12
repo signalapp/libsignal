@@ -14,21 +14,21 @@ public class ClientZkGroupCipher {
     self.groupSecretParams = groupSecretParams
   }
 
-  public func encryptUuid(uuid: UUID) throws -> UuidCiphertext {
+  public func encrypt(_ serviceId: ServiceId) throws -> UuidCiphertext {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
-      try withUnsafePointer(to: uuid.uuid) { uuid in
+      try serviceId.withPointerToFixedWidthBinary { serviceId in
         try invokeFnReturningSerialized {
-          signal_group_secret_params_encrypt_uuid($0, groupSecretParams, uuid)
+          signal_group_secret_params_encrypt_service_id($0, groupSecretParams, serviceId)
         }
       }
     }
   }
 
-  public func decryptUuid(uuidCiphertext: UuidCiphertext) throws -> UUID {
+  public func decrypt(_ uuidCiphertext: UuidCiphertext) throws -> ServiceId {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try uuidCiphertext.withUnsafePointerToSerialized { uuidCiphertext in
-        try invokeFnReturningUuid {
-          signal_group_secret_params_decrypt_uuid($0, groupSecretParams, uuidCiphertext)
+        try invokeFnReturningServiceId {
+          signal_group_secret_params_decrypt_service_id($0, groupSecretParams, uuidCiphertext)
         }
       }
     }

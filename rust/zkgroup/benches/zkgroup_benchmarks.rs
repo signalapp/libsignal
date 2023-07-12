@@ -18,6 +18,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
 
     // Random UID and issueTime
     let uid = zkgroup::TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid));
     let redemption_time = 123456u32;
 
     // SERVER
@@ -44,9 +45,11 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     });
 
     // Create and decrypt user entry
-    let uuid_ciphertext = group_secret_params.encrypt_uuid(uid);
-    let plaintext = group_secret_params.decrypt_uuid(uuid_ciphertext).unwrap();
-    assert!(plaintext == uid);
+    let uuid_ciphertext = group_secret_params.encrypt_service_id(aci.into());
+    let plaintext = group_secret_params
+        .decrypt_service_id(uuid_ciphertext)
+        .unwrap();
+    assert_eq!(plaintext, aci.into());
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
@@ -89,9 +92,6 @@ fn benchmark_integration_auth(c: &mut Criterion) {
 
 // Copied and modified from tests/integration_tests.rs
 pub fn benchmark_integration_profile(c: &mut Criterion) {
-    // Random UID and issueTime
-    let _uid = zkgroup::TEST_ARRAY_16;
-
     // SERVER
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
     let server_public_params = server_secret_params.get_public_params();
@@ -103,6 +103,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     let group_public_params = group_secret_params.get_public_params();
 
     let uid = zkgroup::TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid));
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
     let profile_key_commitment = profile_key.get_commitment(uid);
@@ -170,19 +171,22 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     });
 
     // Create encrypted UID and profile key
-    let uuid_ciphertext = group_secret_params.encrypt_uuid(uid);
+    let aci_service_id = aci.into();
+    let uuid_ciphertext = group_secret_params.encrypt_service_id(aci_service_id);
 
     c.bench_function("encrypt_uuid", |b| {
-        b.iter(|| group_secret_params.encrypt_uuid(uid))
+        b.iter(|| group_secret_params.encrypt_service_id(aci_service_id))
     });
 
-    let plaintext = group_secret_params.decrypt_uuid(uuid_ciphertext).unwrap();
+    let plaintext = group_secret_params
+        .decrypt_service_id(uuid_ciphertext)
+        .unwrap();
 
     c.bench_function("decrypt_uuid", |b| {
-        b.iter(|| group_secret_params.decrypt_uuid(uuid_ciphertext))
+        b.iter(|| group_secret_params.decrypt_service_id(uuid_ciphertext))
     });
 
-    assert!(plaintext == uid);
+    assert_eq!(plaintext, aci_service_id);
 
     let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, uid);
 

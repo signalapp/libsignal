@@ -12,7 +12,8 @@ import UuidCiphertext from './UuidCiphertext';
 import ProfileKeyCiphertext from './ProfileKeyCiphertext';
 import ProfileKey from '../profiles/ProfileKey';
 import GroupSecretParams from './GroupSecretParams';
-import { UUIDType, fromUUID, toUUID } from '../internal/UUIDUtil';
+import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { ServiceId } from '../../Address';
 
 export default class ClientZkGroupCipher {
   groupSecretParams: GroupSecretParams;
@@ -21,20 +22,20 @@ export default class ClientZkGroupCipher {
     this.groupSecretParams = groupSecretParams;
   }
 
-  encryptUuid(uuid: UUIDType): UuidCiphertext {
+  encryptServiceId(serviceId: ServiceId): UuidCiphertext {
     return new UuidCiphertext(
-      Native.GroupSecretParams_EncryptUuid(
+      Native.GroupSecretParams_EncryptServiceId(
         this.groupSecretParams.getContents(),
-        fromUUID(uuid)
+        serviceId.getServiceIdFixedWidthBinary()
       )
     );
   }
 
-  decryptUuid(uuidCiphertext: UuidCiphertext): UUIDType {
-    return toUUID(
-      Native.GroupSecretParams_DecryptUuid(
+  decryptServiceId(ciphertext: UuidCiphertext): ServiceId {
+    return ServiceId.parseFromServiceIdFixedWidthBinary(
+      Native.GroupSecretParams_DecryptServiceId(
         this.groupSecretParams.getContents(),
-        uuidCiphertext.getContents()
+        ciphertext.getContents()
       )
     );
   }

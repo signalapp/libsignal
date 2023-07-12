@@ -4,7 +4,6 @@
 //
 
 import { assert } from 'chai';
-import { toUUID } from '../zkgroup/internal/UUIDUtil';
 
 import {
   ServerSecretParams,
@@ -24,6 +23,7 @@ import {
   CallLinkSecretParams,
   CallLinkAuthCredentialResponse,
 } from '../zkgroup/';
+import { Aci } from '../Address';
 
 const SECONDS_PER_DAY = 86400;
 
@@ -49,8 +49,8 @@ function assertArrayNotEquals(expected: Buffer, actual: Buffer) {
 }
 
 describe('ZKGroup', () => {
-  const TEST_ARRAY_16 = hexToBuffer('000102030405060708090a0b0c0d0e0f');
-  const TEST_ARRAY_16_1 = hexToBuffer('6465666768696a6b6c6d6e6f70717273');
+  const TEST_UUID = 'dc249e7a-56ea-49cd-abce-aa3a0d65f6f0';
+  const TEST_UUID_1 = '18c7e848-2213-40c1-bd6b-3b69a82dd1f5';
   const TEST_ARRAY_32 = hexToBuffer(
     '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'
   );
@@ -71,12 +71,9 @@ describe('ZKGroup', () => {
   const TEST_ARRAY_32_5 = hexToBuffer(
     '030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122'
   );
-  const authPresentationResult = hexToBuffer(
-    '01322f9100de0734550a81dc81724a81dbd3b1b43dbc1d552d53455911c2772f34a6356ca17c6d34d858391456af55d0ef841fbe1fa8c4ee810f21e0bb9f4ace4c5c48c72ebbeb2ccda5f7aa49aee6bc0051cdde166e0f8c5f1febd53a4437c570ee1aa223f5eb937db98f34e3653d85ec163f39847222a2dec4235ea41c47bb62028aae30945857ee77663079bcc4923d14a43ad4f6bc33715046f7bde52715375ca9f89be0e630d4bdaa211156d0306723f543b06f5e998447b962c8e9729b4cc00000000000000074d0eae8e4311a6ae3d2970ef198c398110462be47dd2f26e6559209ef6cc20001a05a0b319a172dbeb2293cc1e0e191cefb23e24cf0d6b4b5373a30044be10cb033674d631e17dfce09398f234e9d62e118a6077caea0ef8bf67d7d723db70fecf2098fa041317b7be9fdbb68b0f25f5c479d68bd917fc6f187c5bf7a58910231921fc43565232466325c039212362b6d1203ccaedf831dc7f9060dcaaffa02624042171f5f0e780b9f74cfa88a147f3f1c082f9ca8638af1788e7899cbae0c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100'
-  );
 
   it('testAuthIntegration', () => {
-    const uuid = toUUID(TEST_ARRAY_16);
+    const uuid = TEST_UUID;
     const redemptionTime = 123456;
 
     // Generate keys (client's are per-group, server's are not)
@@ -118,9 +115,11 @@ describe('ZKGroup', () => {
     );
 
     // Create and decrypt user entry
-    const uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
-    const plaintext = clientZkGroupCipher.decryptUuid(uuidCiphertext);
-    assert.strictEqual(uuid, plaintext);
+    const uuidCiphertext = clientZkGroupCipher.encryptServiceId(
+      Aci.fromUuid(uuid)
+    );
+    const plaintext = clientZkGroupCipher.decryptServiceId(uuidCiphertext);
+    assert.isTrue(plaintext.isEqual(Aci.fromUuid(uuid)));
 
     // Create presentation
     const presentation =
@@ -146,13 +145,11 @@ describe('ZKGroup', () => {
       presentation,
       new Date(redemptionTime * SECONDS_PER_DAY * 1000)
     );
-
-    assertArrayEquals(presentation.serialize(), authPresentationResult);
   });
 
   it('testAuthWithPniIntegration', () => {
-    const aci = toUUID(TEST_ARRAY_16);
-    const pni = toUUID(TEST_ARRAY_16_1);
+    const aci = TEST_UUID;
+    const pni = TEST_UUID_1;
     const redemptionTime = 123456 * SECONDS_PER_DAY;
 
     // Generate keys (client's are per-group, server's are not)
@@ -197,12 +194,17 @@ describe('ZKGroup', () => {
     );
 
     // Create and decrypt user entry
-    const aciCiphertext = clientZkGroupCipher.encryptUuid(aci);
-    const aciPlaintext = clientZkGroupCipher.decryptUuid(aciCiphertext);
-    assert.strictEqual(aci, aciPlaintext);
-    const pniCiphertext = clientZkGroupCipher.encryptUuid(pni);
-    const pniPlaintext = clientZkGroupCipher.decryptUuid(pniCiphertext);
-    assert.strictEqual(pni, pniPlaintext);
+    const aciCiphertext = clientZkGroupCipher.encryptServiceId(
+      Aci.fromUuid(aci)
+    );
+    const aciPlaintext = clientZkGroupCipher.decryptServiceId(aciCiphertext);
+    assert(Aci.fromUuid(aci).isEqual(aciPlaintext));
+    // TODO: Use PNI encoding for the PNI in AuthCredentialWithPni.
+    const pniCiphertext = clientZkGroupCipher.encryptServiceId(
+      Aci.fromUuid(pni)
+    );
+    const pniPlaintext = clientZkGroupCipher.decryptServiceId(pniCiphertext);
+    assert(Aci.fromUuid(pni).isEqual(pniPlaintext));
 
     // Create presentation
     const presentation =
@@ -236,7 +238,7 @@ describe('ZKGroup', () => {
   });
 
   it('testExpiringProfileKeyIntegration', () => {
-    const uuid = toUUID(TEST_ARRAY_16);
+    const uuid = TEST_UUID;
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -291,9 +293,11 @@ describe('ZKGroup', () => {
       );
 
     // Create encrypted UID and profile key
-    const uuidCiphertext = clientZkGroupCipher.encryptUuid(uuid);
-    const plaintext = clientZkGroupCipher.decryptUuid(uuidCiphertext);
-    assert.strictEqual(plaintext, uuid);
+    const uuidCiphertext = clientZkGroupCipher.encryptServiceId(
+      Aci.fromUuid(uuid)
+    );
+    const plaintext = clientZkGroupCipher.decryptServiceId(uuidCiphertext);
+    assert(plaintext.isEqual(Aci.fromUuid(uuid)));
 
     const profileKeyCiphertext = clientZkGroupCipher.encryptProfileKey(
       profileKey,
@@ -489,7 +493,7 @@ describe('ZKGroup', () => {
     const request = context.getRequest();
 
     // issuance server
-    const userId = toUUID(TEST_ARRAY_16);
+    const userId = TEST_UUID;
     const now = Math.floor(Date.now() / 1000);
     const startOfDay = now - (now % SECONDS_PER_DAY);
     const response = request.issueCredentialWithRandom(
@@ -538,7 +542,7 @@ describe('ZKGroup', () => {
     const clientPublicParams = clientSecretParams.getPublicParams();
 
     // issuance server
-    const userId = toUUID(TEST_ARRAY_16);
+    const userId = TEST_UUID;
     const now = Math.floor(Date.now() / 1000);
     const startOfDay = now - (now % SECONDS_PER_DAY);
     const response = CallLinkAuthCredentialResponse.issueCredentialWithRandom(

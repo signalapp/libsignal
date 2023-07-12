@@ -4,8 +4,8 @@
 //
 
 use ::zkgroup;
-use bincode::Options;
-use serde::Deserialize;
+use libsignal_bridge_macros::*;
+use libsignal_protocol::ServiceId;
 use zkgroup::auth::*;
 use zkgroup::call_links::*;
 use zkgroup::generic_server_params::*;
@@ -14,9 +14,11 @@ use zkgroup::profiles::*;
 use zkgroup::receipts::*;
 use zkgroup::*;
 
-use libsignal_bridge_macros::*;
-use std::convert::TryInto;
+use bincode::Options;
+use serde::Deserialize;
 use uuid::Uuid;
+
+use std::convert::TryInto;
 
 use crate::support::*;
 use crate::*;
@@ -158,19 +160,19 @@ fn GroupSecretParams_GetPublicParams(
 }
 
 #[bridge_fn]
-fn GroupSecretParams_EncryptUuid(
+fn GroupSecretParams_EncryptServiceId(
     params: Serialized<GroupSecretParams>,
-    uuid: Uuid,
+    service_id: ServiceId,
 ) -> Serialized<UuidCiphertext> {
-    params.encrypt_uuid(*uuid.as_bytes()).into()
+    params.encrypt_service_id(service_id).into()
 }
 
 #[bridge_fn]
-fn GroupSecretParams_DecryptUuid(
+fn GroupSecretParams_DecryptServiceId(
     params: Serialized<GroupSecretParams>,
-    uuid: Serialized<UuidCiphertext>,
-) -> Result<Uuid, ZkGroupVerificationFailure> {
-    Ok(Uuid::from_bytes(params.decrypt_uuid(uuid.into_inner())?))
+    ciphertext: Serialized<UuidCiphertext>,
+) -> Result<ServiceId, ZkGroupVerificationFailure> {
+    params.decrypt_service_id(ciphertext.into_inner())
 }
 
 #[bridge_fn]

@@ -61,7 +61,11 @@ public abstract class ServiceId {
     public byte[] toServiceIdBinary() {
         return Native.ServiceId_ServiceIdBinary(this.storage);
     }
-   
+
+    public byte[] toServiceIdFixedWidthBinary() {
+        return this.storage.clone();
+    }
+
     public String toServiceIdString() {
         return Native.ServiceId_ServiceIdString(this.storage);
     }
@@ -81,18 +85,14 @@ public abstract class ServiceId {
     }
 
     public static ServiceId parseFromBinary(byte[] serviceIdBinary) throws InvalidServiceIdException {
-        byte[] storage = safeParseFromBinary(serviceIdBinary);
-        return parseFromFixedWidthBinary(storage);
-    }
-
-    static byte[] safeParseFromBinary(byte[] serviceIdBinary) {
         if (serviceIdBinary == null) {
             throw new IllegalArgumentException("Service-Id-Binary cannot be null");
         }
-        return Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary);
+        byte[] storage = Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary);
+        return parseFromFixedWidthBinary(storage);
     }
 
-    private static ServiceId parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {
+    public static ServiceId parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {
         if (storage == null) {
             throw new IllegalArgumentException();
         }
@@ -123,6 +123,14 @@ public abstract class ServiceId {
         Aci(byte[] storage) {
             super(storage);
         }
+
+        public static Aci parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {
+            ServiceId result = ServiceId.parseFromFixedWidthBinary(storage);
+            if (result instanceof Aci) {
+                return (Aci)result;
+            }
+            throw new InvalidServiceIdException();
+        }
     }
 
     public final static class Pni extends ServiceId {
@@ -132,6 +140,14 @@ public abstract class ServiceId {
 
         Pni(byte[] storage) {
             super(storage);
+        }
+
+        public static Pni parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {
+            ServiceId result = ServiceId.parseFromFixedWidthBinary(storage);
+            if (result instanceof Pni) {
+                return (Pni)result;
+            }
+            throw new InvalidServiceIdException();
         }
     }
 }
