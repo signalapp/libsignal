@@ -96,6 +96,38 @@ fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Resu
     Ok(())
 }
 
+// FIXME: Use bridge_get! when it works on values instead of references.
+#[bridge_fn]
+fn ServiceId_ServiceIdBinary(value: ServiceId) -> Vec<u8> {
+    value.service_id_binary()
+}
+
+// FIXME: Use bridge_get! when it works on values instead of references.
+#[bridge_fn]
+fn ServiceId_ServiceIdString(value: ServiceId) -> String {
+    value.service_id_string()
+}
+
+#[bridge_fn]
+fn ServiceId_ServiceIdLog(value: ServiceId) -> String {
+    format!("{value:?}")
+}
+
+#[bridge_fn]
+fn ServiceId_ParseFromServiceIdBinary(input: &[u8]) -> Result<ServiceId> {
+    ServiceId::parse_from_service_id_binary(input).ok_or_else(|| {
+        SignalProtocolError::InvalidArgument("invalid Service-Id-Binary".to_string())
+    })
+}
+
+// FIXME: use &str
+#[bridge_fn]
+fn ServiceId_ParseFromServiceIdString(input: String) -> Result<ServiceId> {
+    ServiceId::parse_from_service_id_string(&input).ok_or_else(|| {
+        SignalProtocolError::InvalidArgument("invalid Service-Id-String".to_string())
+    })
+}
+
 #[bridge_fn(ffi = "address_new")]
 fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
     ProtocolAddress::new(name, device_id.into())

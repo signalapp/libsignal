@@ -34,6 +34,7 @@ def translate_to_ts(typ):
         "&str": "string",
         "Vec<u8>": "Buffer",
         "Context": "null",
+        "ServiceId": "Buffer",
     }
 
     if typ in type_map:

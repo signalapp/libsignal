@@ -306,6 +306,11 @@ export function ServerSecretParams_SignDeterministic(params: Serialized<ServerSe
 export function ServerSecretParams_VerifyAuthCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentationBytes: Buffer, currentTimeInSeconds: Timestamp): void;
 export function ServerSecretParams_VerifyProfileKeyCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, groupPublicParams: Serialized<GroupPublicParams>, presentationBytes: Buffer, currentTimeInSeconds: Timestamp): void;
 export function ServerSecretParams_VerifyReceiptCredentialPresentation(serverSecretParams: Serialized<ServerSecretParams>, presentation: Serialized<ReceiptCredentialPresentation>): void;
+export function ServiceId_ParseFromServiceIdBinary(input: Buffer): Buffer;
+export function ServiceId_ParseFromServiceIdString(input: string): Buffer;
+export function ServiceId_ServiceIdBinary(value: Buffer): Buffer;
+export function ServiceId_ServiceIdLog(value: Buffer): string;
+export function ServiceId_ServiceIdString(value: Buffer): string;
 export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<void>;
 export function SessionCipher_DecryptPreKeySignalMessage(message: Wrapper<PreKeySignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore, ctx: null): Promise<Buffer>;
 export function SessionCipher_DecryptSignalMessage(message: Wrapper<SignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, ctx: null): Promise<Buffer>;

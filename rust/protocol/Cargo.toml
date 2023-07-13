@@ -42,6 +42,7 @@ armv8 = ["aes/armv8", "aes-gcm-siv/armv8"]
 
 [dev-dependencies]
 criterion = "0.4"
+hex-literal = "0.3.4"
 proptest = "1.0"
 futures-util = "0.3.7"
 env_logger = "0.8.1"

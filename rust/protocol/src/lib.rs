@@ -45,7 +45,9 @@ mod utils;
 
 use error::Result;
 
-pub use address::{DeviceId, ProtocolAddress};
+pub use address::{
+    Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
+};
 pub use curve::{KeyPair, PrivateKey, PublicKey};
 pub use error::SignalProtocolError;
 pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};

@@ -458,6 +458,12 @@ public final class Native {
   public static native void ServerSecretParams_VerifyProfileKeyCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes, long currentTimeInSeconds);
   public static native void ServerSecretParams_VerifyReceiptCredentialPresentation(byte[] serverSecretParams, byte[] presentation);
 
+  public static native byte[] ServiceId_ParseFromServiceIdBinary(byte[] input);
+  public static native byte[] ServiceId_ParseFromServiceIdString(String input);
+  public static native byte[] ServiceId_ServiceIdBinary(byte[] value);
+  public static native String ServiceId_ServiceIdLog(byte[] value);
+  public static native String ServiceId_ServiceIdString(byte[] value);
+
   public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
 
   public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore, Object ctx);

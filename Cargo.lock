@@ -1432,6 +1432,7 @@ dependencies = [
  "futures-util",
  "generic-array",
  "hex",
+ "hex-literal",
  "hkdf",
  "hmac",
  "itertools",

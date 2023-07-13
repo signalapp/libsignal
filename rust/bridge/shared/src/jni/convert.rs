@@ -955,6 +955,18 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
     }
 }
 
+impl ResultTypeInfo for ServiceId {
+    type ResultType = jbyteArray;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        Ok(env.byte_array_from_slice(&self.service_id_fixed_width_binary())?)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        signal_jni_result
+            .as_ref()
+            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
 impl<T> SimpleArgTypeInfo<'_> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
@@ -979,6 +991,18 @@ where
             )
         });
         Ok(Serialized::from(result))
+    }
+}
+
+impl SimpleArgTypeInfo<'_> for ServiceId {
+    type ArgType = jbyteArray;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        env.convert_byte_array(foreign)
+            .ok()
+            .and_then(|vec| vec.try_into().ok())
+            .as_ref()
+            .and_then(Self::parse_from_service_id_fixed_width_binary)
+            .ok_or_else(|| SignalJniError::Jni(jni::errors::Error::JavaException))
     }
 }
 
@@ -1106,6 +1130,9 @@ macro_rules! jni_arg_type {
     (&[u8; $len:expr]) => {
         jni::jbyteArray
     };
+    (ServiceId) => {
+        jni::jbyteArray
+    };
     (Context) => {
         jni::JObject
     };
@@ -1205,6 +1232,9 @@ macro_rules! jni_result_type {
         jni::JavaReturnMap
     };
     ([u8; $len:expr]) => {
+        jni::jbyteArray
+    };
+    (ServiceId) => {
         jni::jbyteArray
     };
     (Option<$typ:tt>) => {

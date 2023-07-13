@@ -5,11 +5,13 @@
 
 /* eslint-disable @typescript-eslint/require-await */
 
-import { assert, use } from 'chai';
-import * as chaiAsPromised from 'chai-as-promised';
 import * as SignalClient from '../index';
 import * as util from './util';
+
+import { assert, use } from 'chai';
+import * as chaiAsPromised from 'chai-as-promised';
 import * as Chance from 'chance';
+import * as uuid from 'uuid';
 
 use(chaiAsPromised);
 util.initLogger();
@@ -333,6 +335,82 @@ describe('SignalClient', () => {
       SignalClient.hkdf(42, secret, label, salt).toString('hex'),
       '3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865'
     );
+  });
+  describe('ServiceId', () => {
+    it('handles ACIs', () => {
+      const testingUuid = '8c78cd2a-16ff-427d-83dc-1a5e36ce713d';
+      const aci = SignalClient.Aci.fromUuid(testingUuid);
+      assert.instanceOf(aci, SignalClient.Aci);
+      assert.isTrue(
+        aci.isEqual(SignalClient.Aci.fromUuidBytes(uuid.parse(testingUuid)))
+      );
+      assert.isFalse(aci.isEqual(SignalClient.Pni.fromUuid(testingUuid)));
+
+      assert.deepEqual(testingUuid, aci.getRawUuid());
+      assert.deepEqual(uuid.parse(testingUuid), aci.getRawUuidBytes());
+      assert.deepEqual(testingUuid, aci.getServiceIdString());
+      assert.deepEqual(uuid.parse(testingUuid), aci.getServiceIdBinary());
+      assert.deepEqual(`<ACI:${testingUuid}>`, `${aci}`);
+
+      {
+        const aciServiceId = SignalClient.ServiceId.parseFromServiceIdString(
+          aci.getServiceIdString()
+        );
+        assert.instanceOf(aciServiceId, SignalClient.Aci);
+        assert.deepEqual(aci, aciServiceId);
+      }
+
+      {
+        const aciServiceId = SignalClient.ServiceId.parseFromServiceIdBinary(
+          aci.getServiceIdBinary()
+        );
+        assert.instanceOf(aciServiceId, SignalClient.Aci);
+        assert.deepEqual(aci, aciServiceId);
+      }
+    });
+    it('handles PNIs', () => {
+      const testingUuid = '8c78cd2a-16ff-427d-83dc-1a5e36ce713d';
+      const pni = SignalClient.Pni.fromUuid(testingUuid);
+      assert.instanceOf(pni, SignalClient.Pni);
+      assert.isTrue(
+        pni.isEqual(SignalClient.Pni.fromUuidBytes(uuid.parse(testingUuid)))
+      );
+      assert.isFalse(pni.isEqual(SignalClient.Aci.fromUuid(testingUuid)));
+
+      assert.deepEqual(testingUuid, pni.getRawUuid());
+      assert.deepEqual(uuid.parse(testingUuid), pni.getRawUuidBytes());
+      assert.deepEqual(`PNI:${testingUuid}`, pni.getServiceIdString());
+      assert.deepEqual(
+        Buffer.concat([Buffer.of(0x01), pni.getRawUuidBytes()]),
+        pni.getServiceIdBinary()
+      );
+      assert.deepEqual(`<PNI:${testingUuid}>`, `${pni}`);
+
+      {
+        const pniServiceId = SignalClient.ServiceId.parseFromServiceIdString(
+          pni.getServiceIdString()
+        );
+        assert.instanceOf(pniServiceId, SignalClient.Pni);
+        assert.deepEqual(pni, pniServiceId);
+      }
+
+      {
+        const pniServiceId = SignalClient.ServiceId.parseFromServiceIdBinary(
+          pni.getServiceIdBinary()
+        );
+        assert.instanceOf(pniServiceId, SignalClient.Pni);
+        assert.deepEqual(pni, pniServiceId);
+      }
+    });
+    it('accepts the null UUID', () => {
+      SignalClient.ServiceId.parseFromServiceIdString(uuid.NIL);
+    });
+    it('rejects invalid values', () => {
+      assert.throws(() =>
+        SignalClient.ServiceId.parseFromServiceIdBinary(Buffer.of())
+      );
+      assert.throws(() => SignalClient.ServiceId.parseFromServiceIdString(''));
+    });
   });
   it('ProtocolAddress', () => {
     const addr = SignalClient.ProtocolAddress.new('name', 42);

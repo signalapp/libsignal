@@ -302,6 +302,21 @@ impl SimpleArgTypeInfo for uuid::Uuid {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        foreign
+            .as_slice(cx)
+            .try_into()
+            .ok()
+            .and_then(Self::parse_from_service_id_fixed_width_binary)
+            .ok_or_else(|| {
+                cx.throw_type_error::<_, ()>("invalid Service-Id-FixedWidthBinary")
+                    .expect_err("throw_type_error always produces Err")
+            })
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where
@@ -621,6 +636,17 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let mut buffer = cx.buffer(16)?;
         buffer.as_mut_slice(cx).copy_from_slice(self.as_bytes());
+        Ok(buffer)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let mut buffer = cx.buffer(17)?;
+        buffer
+            .as_mut_slice(cx)
+            .copy_from_slice(&self.service_id_fixed_width_binary());
         Ok(buffer)
     }
 }

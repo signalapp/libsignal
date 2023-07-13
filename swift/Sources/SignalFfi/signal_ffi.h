@@ -528,6 +528,16 @@ SignalFfiError *signal_kyber_secret_key_clone(SignalKyberSecretKey **new_obj, co
 
 SignalFfiError *signal_hkdf_derive(SignalBorrowedMutableBuffer output, SignalBorrowedBuffer ikm, SignalBorrowedBuffer label, SignalBorrowedBuffer salt);
 
+SignalFfiError *signal_service_id_service_id_binary(SignalOwnedBuffer *out, const uint8_t (*value)[17]);
+
+SignalFfiError *signal_service_id_service_id_string(const char **out, const uint8_t (*value)[17]);
+
+SignalFfiError *signal_service_id_service_id_log(const char **out, const uint8_t (*value)[17]);
+
+SignalFfiError *signal_service_id_parse_from_service_id_binary(uint8_t (*out)[17], SignalBorrowedBuffer input);
+
+SignalFfiError *signal_service_id_parse_from_service_id_string(uint8_t (*out)[17], const char *input);
+
 SignalFfiError *signal_address_new(SignalProtocolAddress **out, const char *name, uint32_t device_id);
 
 SignalFfiError *signal_publickey_deserialize(SignalPublicKey **out, SignalBorrowedBuffer data);
