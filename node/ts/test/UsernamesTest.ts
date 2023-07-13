@@ -90,7 +90,10 @@ describe('usernames', () => {
     it('works end to end with valid data', () => {
       const expectedUsername = 'signal_test.42';
       const usernameLinkData = usernames.createUsernameLink(expectedUsername);
-      const actualUsername = usernameLinkData.decryptUsername();
+      const actualUsername = new UsernameLink(
+        usernameLinkData.entropy,
+        usernameLinkData.encryptedUsername
+      ).decryptUsername();
       assert.equal(expectedUsername, actualUsername);
     });
     it('will error on too long input data', () => {

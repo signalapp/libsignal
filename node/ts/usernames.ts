@@ -38,18 +38,12 @@ export function generateProofWithRandom(
 }
 
 export class UsernameLink {
-  readonly _entropy: Buffer;
-  readonly _encryptedUsername: Buffer;
-
-  constructor(entropy: Buffer, encryptedUsername: Buffer) {
-    this._entropy = entropy;
-    this._encryptedUsername = encryptedUsername;
-  }
+  constructor(readonly entropy: Buffer, readonly encryptedUsername: Buffer) {}
 
   decryptUsername(): string {
     return Native.UsernameLink_DecryptUsername(
-      this._entropy,
-      this._encryptedUsername
+      this.entropy,
+      this.encryptedUsername
     );
   }
 }
