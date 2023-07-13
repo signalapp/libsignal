@@ -79,7 +79,7 @@ class ZKGroupTests: TestCaseBase {
   0xd7, 0xa4, 0xab, 0x36, 0x7b, 0x06]
 
   func testAuthIntegration() throws {
-    let uuid: UUID             = TEST_ARRAY_16
+    let aci: Aci               = Aci(fromUUID: TEST_ARRAY_16)
     let redemptionTime: UInt32 = 123456
 
     // Generate keys (client's are per-group, server's are not)
@@ -100,18 +100,18 @@ class ZKGroupTests: TestCaseBase {
 
     // SERVER
     // Issue credential
-    let authCredentialResponse = try serverZkAuth.issueAuthCredential(randomness: TEST_ARRAY_32_2, uuid: uuid, redemptionTime: redemptionTime)
+    let authCredentialResponse = try serverZkAuth.issueAuthCredential(randomness: TEST_ARRAY_32_2, aci: aci, redemptionTime: redemptionTime)
 
     // CLIENT
     // Receive credential
     let clientZkAuthCipher  = ClientZkAuthOperations(serverPublicParams: serverPublicParams)
     let clientZkGroupCipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
-    let authCredential      = try clientZkAuthCipher.receiveAuthCredential(uuid: uuid, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
+    let authCredential      = try clientZkAuthCipher.receiveAuthCredential(aci: aci, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
 
     // Create and decrypt user entry
-    let uuidCiphertext = try clientZkGroupCipher.encrypt(Aci(fromUUID: uuid))
+    let uuidCiphertext = try clientZkGroupCipher.encrypt(aci)
     let plaintext      = try clientZkGroupCipher.decrypt(uuidCiphertext)
-    XCTAssertEqual(Aci(fromUUID: uuid), plaintext)
+    XCTAssertEqual(aci, plaintext)
 
     // Create presentation
     let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(randomness: TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, authCredential: authCredential)
@@ -128,8 +128,8 @@ class ZKGroupTests: TestCaseBase {
   }
 
   func testAuthWithPniIntegration() throws {
-    let aci: UUID              = TEST_ARRAY_16
-    let pni: UUID              = TEST_ARRAY_16_1
+    let aci: Aci               = Aci(fromUUID: TEST_ARRAY_16)
+    let pni: Pni               = Pni(fromUUID: TEST_ARRAY_16_1)
     let redemptionTime: UInt64 = 123456 * SECONDS_PER_DAY
 
     // Generate keys (client's are per-group, server's are not)
@@ -159,13 +159,13 @@ class ZKGroupTests: TestCaseBase {
     let authCredential      = try clientZkAuthCipher.receiveAuthCredentialWithPni(aci: aci, pni: pni, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
 
     // Create and decrypt user entry
-    let aciCiphertext = try clientZkGroupCipher.encrypt(Aci(fromUUID: aci))
+    let aciCiphertext = try clientZkGroupCipher.encrypt(aci)
     let aciPlaintext  = try clientZkGroupCipher.decrypt(aciCiphertext)
-    XCTAssertEqual(Aci(fromUUID: aci), aciPlaintext)
+    XCTAssertEqual(aci, aciPlaintext)
     // swiftlint:disable todo
     // TODO: Use PNI encoding for the PNI in AuthCredentialWithPni.
     // swiftlint:enable todo
-    let pniAsAci      = Aci(fromUUID: pni)
+    let pniAsAci      = Aci(fromUUID: pni.rawUUID)
     let pniCiphertext = try clientZkGroupCipher.encrypt(pniAsAci)
     let pniPlaintext  = try clientZkGroupCipher.decrypt(pniCiphertext)
     XCTAssertEqual(pniAsAci, pniPlaintext)
@@ -182,8 +182,7 @@ class ZKGroupTests: TestCaseBase {
   }
 
   func testExpiringProfileKeyIntegration() throws {
-
-    let uuid: UUID             = TEST_ARRAY_16
+    let userId: Aci             = Aci(fromUUID: TEST_ARRAY_16)
     // Generate keys (client's are per-group, server's are not)
     // ---
 
@@ -202,17 +201,17 @@ class ZKGroupTests: TestCaseBase {
     let clientZkProfileCipher = ClientZkProfileOperations(serverPublicParams: serverPublicParams)
 
     let profileKey  = try ProfileKey(contents: TEST_ARRAY_32_1)
-    let profileKeyCommitment = try profileKey.getCommitment(uuid: uuid)
+    let profileKeyCommitment = try profileKey.getCommitment(userId: userId)
 
     // Create context and request
-    let context = try clientZkProfileCipher.createProfileKeyCredentialRequestContext(randomness: TEST_ARRAY_32_3, uuid: uuid, profileKey: profileKey)
+    let context = try clientZkProfileCipher.createProfileKeyCredentialRequestContext(randomness: TEST_ARRAY_32_3, userId: userId, profileKey: profileKey)
     let request = try context.getRequest()
 
     // SERVER
     let now = UInt64(Date().timeIntervalSince1970)
     let startOfDay = now - (now % SECONDS_PER_DAY)
     let expiration = startOfDay + 5 * SECONDS_PER_DAY
-    let response = try serverZkProfile.issueExpiringProfileKeyCredential(randomness: TEST_ARRAY_32_4, profileKeyCredentialRequest: request, uuid: uuid, profileKeyCommitment: profileKeyCommitment, expiration: expiration)
+    let response = try serverZkProfile.issueExpiringProfileKeyCredential(randomness: TEST_ARRAY_32_4, profileKeyCredentialRequest: request, userId: userId, profileKeyCommitment: profileKeyCommitment, expiration: expiration)
 
     // CLIENT
     // Gets stored profile credential
@@ -220,13 +219,12 @@ class ZKGroupTests: TestCaseBase {
     let profileKeyCredential = try clientZkProfileCipher.receiveExpiringProfileKeyCredential(profileKeyCredentialRequestContext: context, profileKeyCredentialResponse: response)
 
     // Create encrypted UID and profile key
-    let uuidCiphertext = try clientZkGroupCipher.encrypt(Aci(fromUUID: uuid))
+    let uuidCiphertext = try clientZkGroupCipher.encrypt(userId)
     let plaintext      = try clientZkGroupCipher.decrypt(uuidCiphertext)
+    XCTAssertEqual(plaintext, userId)
 
-    XCTAssertEqual(plaintext, Aci(fromUUID: uuid))
-
-    let profileKeyCiphertext   = try clientZkGroupCipher.encryptProfileKey(profileKey: profileKey, uuid: uuid)
-    let decryptedProfileKey    = try clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext: profileKeyCiphertext, uuid: uuid)
+    let profileKeyCiphertext   = try clientZkGroupCipher.encryptProfileKey(profileKey: profileKey, userId: userId)
+    let decryptedProfileKey    = try clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext: profileKeyCiphertext, userId: userId)
     XCTAssertEqual(profileKey.serialize(), decryptedProfileKey.serialize())
 
     XCTAssertEqual(Date(timeIntervalSince1970: TimeInterval(expiration)), profileKeyCredential.expirationTime)
@@ -348,6 +346,8 @@ class ZKGroupTests: TestCaseBase {
   }
 
   func testCreateCallLinkCredential() throws {
+    let userId = Aci(fromUUID: TEST_ARRAY_16)
+
     let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
     let serverPublicParams = serverSecretParams.getPublicParams()
     let clientSecretParams = CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1)
@@ -361,11 +361,11 @@ class ZKGroupTests: TestCaseBase {
     // Server
     let now = UInt64(Date().timeIntervalSince1970)
     let startOfDay = now - (now % SECONDS_PER_DAY)
-    let response = request.issueCredential(userId: TEST_ARRAY_16, timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), params: serverSecretParams, randomness: TEST_ARRAY_32_4)
+    let response = request.issueCredential(userId: userId, timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), params: serverSecretParams, randomness: TEST_ARRAY_32_4)
 
     // Client
-    let credential = try context.receive(response, userId: TEST_ARRAY_16, params: serverPublicParams)
-    let presentation = credential.present(roomId: roomId, userId: TEST_ARRAY_16, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: TEST_ARRAY_32_5)
+    let credential = try context.receive(response, userId: userId, params: serverPublicParams)
+    let presentation = credential.present(roomId: roomId, userId: userId, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: TEST_ARRAY_32_5)
 
     // Server
     try presentation.verify(roomId: roomId, serverParams: serverSecretParams, callLinkParams: clientPublicParams)
@@ -375,6 +375,8 @@ class ZKGroupTests: TestCaseBase {
   }
 
   func testCallLinkAuthCredential() throws {
+    let userId = Aci(fromUUID: TEST_ARRAY_16)
+
     let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
     let serverPublicParams = serverSecretParams.getPublicParams()
     let clientSecretParams = CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1)
@@ -384,11 +386,11 @@ class ZKGroupTests: TestCaseBase {
     let now = UInt64(Date().timeIntervalSince1970)
     let startOfDay = now - (now % SECONDS_PER_DAY)
     let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
-    let response = CallLinkAuthCredentialResponse.issueCredential(userId: TEST_ARRAY_16, redemptionTime: redemptionTime, params: serverSecretParams, randomness: TEST_ARRAY_32_4)
+    let response = CallLinkAuthCredentialResponse.issueCredential(userId: userId, redemptionTime: redemptionTime, params: serverSecretParams, randomness: TEST_ARRAY_32_4)
 
     // Client
-    let credential = try response.receive(userId: TEST_ARRAY_16, redemptionTime: redemptionTime, params: serverPublicParams)
-    let presentation = credential.present(userId: TEST_ARRAY_16, redemptionTime: redemptionTime, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: TEST_ARRAY_32_5)
+    let credential = try response.receive(userId: userId, redemptionTime: redemptionTime, params: serverPublicParams)
+    let presentation = credential.present(userId: userId, redemptionTime: redemptionTime, serverParams: serverPublicParams, callLinkParams: clientSecretParams, randomness: TEST_ARRAY_32_5)
 
     // Server
     try presentation.verify(serverParams: serverSecretParams, callLinkParams: clientPublicParams)
@@ -397,7 +399,7 @@ class ZKGroupTests: TestCaseBase {
     XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 3 * SECONDS_PER_DAY)), serverParams: serverSecretParams, callLinkParams: clientPublicParams))
 
     // Client
-    XCTAssertEqual(TEST_ARRAY_16, try clientSecretParams.decryptUserId(presentation.userId))
+    XCTAssertEqual(userId, try clientSecretParams.decrypt(presentation.userId))
   }
 
   func testDeriveProfileKey() throws {

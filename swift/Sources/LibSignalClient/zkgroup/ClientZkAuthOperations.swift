@@ -14,9 +14,9 @@ public class ClientZkAuthOperations {
     self.serverPublicParams = serverPublicParams
   }
 
-  public func receiveAuthCredential(uuid: UUID, redemptionTime: UInt32, authCredentialResponse: AuthCredentialResponse) throws -> AuthCredential {
+  public func receiveAuthCredential(aci: Aci, redemptionTime: UInt32, authCredentialResponse: AuthCredentialResponse) throws -> AuthCredential {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
-      try withUnsafePointer(to: uuid.uuid) { uuid in
+      try aci.withPointerToFixedWidthBinary { uuid in
         try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
           try invokeFnReturningSerialized {
             signal_server_public_params_receive_auth_credential($0, serverPublicParams, uuid, redemptionTime, authCredentialResponse)
@@ -29,10 +29,10 @@ public class ClientZkAuthOperations {
   /// Produces the `AuthCredentialWithPni` from a server-generated `AuthCredentialWithPniResponse`.
   ///
   /// - parameter redemptionTime: This is provided by the server as an integer, and should be passed through directly.
-  public func receiveAuthCredentialWithPni(aci: UUID, pni: UUID, redemptionTime: UInt64, authCredentialResponse: AuthCredentialWithPniResponse) throws -> AuthCredentialWithPni {
+  public func receiveAuthCredentialWithPni(aci: Aci, pni: Pni, redemptionTime: UInt64, authCredentialResponse: AuthCredentialWithPniResponse) throws -> AuthCredentialWithPni {
     return try serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
-      try withUnsafePointer(to: aci.uuid) { aci in
-        try withUnsafePointer(to: pni.uuid) { pni in
+      try aci.withPointerToFixedWidthBinary { aci in
+        try pni.withPointerToFixedWidthBinary { pni in
           try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
             try invokeFnReturningSerialized {
               signal_server_public_params_receive_auth_credential_with_pni($0, serverPublicParams, aci, pni, redemptionTime, authCredentialResponse)

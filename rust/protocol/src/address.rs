@@ -52,6 +52,16 @@ pub struct WrongKindOfServiceIdError {
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct SpecificServiceId<const RAW_KIND: u8>(Uuid);
 
+impl<const KIND: u8> SpecificServiceId<KIND> {
+    /// Convenience function to go directly from bytes to a specific kind of service ID.
+    ///
+    /// Prefer `from(Uuid)` / `Uuid::into` if you already have a strongly-typed UUID.
+    #[inline]
+    pub fn from_uuid_bytes(bytes: [u8; 16]) -> Self {
+        uuid::Uuid::from_bytes(bytes).into()
+    }
+}
+
 impl<const KIND: u8> SpecificServiceId<KIND>
 where
     ServiceId: From<Self>,

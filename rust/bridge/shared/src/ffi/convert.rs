@@ -245,6 +245,31 @@ impl ResultTypeInfo for libsignal_protocol::ServiceId {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_protocol::Aci {
+    type ArgType = <libsignal_protocol::ServiceId as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        libsignal_protocol::ServiceId::convert_from(foreign)?
+            .try_into()
+            .map_err(|_| SignalProtocolError::InvalidArgument("not an ACI".to_string()).into())
+    }
+}
+
+impl ResultTypeInfo for libsignal_protocol::Aci {
+    type ResultType = libsignal_protocol::ServiceIdFixedWidthBinaryBytes;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        libsignal_protocol::ServiceId::from(self).convert_into()
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_protocol::Pni {
+    type ArgType = <libsignal_protocol::ServiceId as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        libsignal_protocol::ServiceId::convert_from(foreign)?
+            .try_into()
+            .map_err(|_| SignalProtocolError::InvalidArgument("not a PNI".to_string()).into())
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
     type ArgType = *const [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -639,6 +664,8 @@ macro_rules! ffi_arg_type {
     (Timestamp) => (u64);
     (Uuid) => (*const [u8; 16]);
     (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
+    (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
+    (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<*const $typ>);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
@@ -680,6 +707,8 @@ macro_rules! ffi_result_type {
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
+    (Aci) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
+    (Pni) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     ([u8; $len:expr]) => ([u8; $len]);
     (&[u8]) => (ffi::OwnedBufferOf<libc::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<libc::c_uchar>);

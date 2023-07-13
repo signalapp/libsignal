@@ -4,7 +4,7 @@
 //
 
 use zkgroup::call_links::CallLinkAuthCredentialResponse;
-use zkgroup::{RandomnessBytes, Timestamp, UidBytes, RANDOMNESS_LEN, SECONDS_PER_DAY, UUID_LEN};
+use zkgroup::{RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY, UUID_LEN};
 
 const DAY_ALIGNED_TIMESTAMP: Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
 
@@ -17,7 +17,7 @@ fn test_create_call_link_request_response() {
     let randomness4: RandomnessBytes = [0x46u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id: UidBytes = [0x04u8; UUID_LEN];
+    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
     // known to client and redemption server
@@ -97,7 +97,7 @@ fn test_create_call_link_request_response() {
     assert_eq!(
         client_user_id,
         client_secret_params
-            .decrypt_uuid(presentation.get_user_id())
+            .decrypt_uid(presentation.get_user_id())
             .expect("user ID should match")
     );
 }
@@ -109,7 +109,7 @@ fn test_create_call_link_enforces_timestamp_granularity() {
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id: UidBytes = [0x04u8; UUID_LEN];
+    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP + 60 * 60; // not on a day boundary!
 
     // known to client and redemption server
@@ -151,7 +151,7 @@ fn test_auth_credential() {
     let randomness4: RandomnessBytes = [0x46u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id: UidBytes = [0x04u8; UUID_LEN];
+    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
     // server generated materials; issuance request -> issuance response
@@ -214,7 +214,7 @@ fn test_auth_credential() {
     assert_eq!(
         client_user_id,
         client_secret_params
-            .decrypt_uuid(presentation.get_user_id())
+            .decrypt_uid(presentation.get_user_id())
             .expect("user ID should match")
     );
 }
@@ -225,7 +225,7 @@ fn test_auth_credential_enforces_timestamp_granularity() {
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id: UidBytes = [0x04u8; UUID_LEN];
+    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP + 60 * 60; // not on a day boundary!
 
     // server generated materials; issuance request -> issuance response

@@ -12,17 +12,17 @@ public class CreateCallLinkCredential: ByteArray {
     try super.init(contents, checkValid: signal_create_call_link_credential_check_valid_contents)
   }
 
-  public func present<RoomId: ContiguousBytes>(roomId: RoomId, userId: UUID, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams) -> CreateCallLinkCredentialPresentation {
+  public func present<RoomId: ContiguousBytes>(roomId: RoomId, userId: Aci, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams) -> CreateCallLinkCredentialPresentation {
     return failOnError {
       present(roomId: roomId, userId: userId, serverParams: serverParams, callLinkParams: callLinkParams, randomness: try .generate())
     }
   }
 
-  public func present<RoomId: ContiguousBytes>(roomId: RoomId, userId: UUID, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams, randomness: Randomness) -> CreateCallLinkCredentialPresentation {
+  public func present<RoomId: ContiguousBytes>(roomId: RoomId, userId: Aci, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams, randomness: Randomness) -> CreateCallLinkCredentialPresentation {
     return failOnError {
       try withUnsafeBorrowedBuffer { contents in
         try roomId.withUnsafeBorrowedBuffer { roomId in
-          try withUnsafePointer(to: userId.uuid) { userId in
+          try userId.withPointerToFixedWidthBinary { userId in
             try serverParams.withUnsafeBorrowedBuffer { serverParams in
               try callLinkParams.withUnsafeBorrowedBuffer { callLinkParams in
                 try randomness.withUnsafePointerToBytes { randomness in

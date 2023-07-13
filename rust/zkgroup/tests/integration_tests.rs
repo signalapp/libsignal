@@ -280,19 +280,18 @@ fn test_integration_auth() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let uid = zkgroup::TEST_ARRAY_16;
-    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid));
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let redemption_time = 123456u32;
 
     // SERVER
     // Issue credential
     let randomness = zkgroup::TEST_ARRAY_32_2;
     let auth_credential_response =
-        server_secret_params.issue_auth_credential(randomness, uid, redemption_time);
+        server_secret_params.issue_auth_credential(randomness, aci, redemption_time);
 
     // CLIENT
     let auth_credential = server_public_params
-        .receive_auth_credential(uid, redemption_time, &auth_credential_response)
+        .receive_auth_credential(aci, redemption_time, &auth_credential_response)
         .unwrap();
 
     // Create and decrypt user entry
@@ -372,7 +371,6 @@ fn test_integration_auth() {
     let mut auth_credential_presentation_v2_bytes =
         [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_PRESENTATION_V2_LEN];
     let mut uuid_ciphertext_bytes = [0u8; zkgroup::common::constants::UUID_CIPHERTEXT_LEN];
-    let mut uid_bytes = [0u8; zkgroup::common::constants::UUID_LEN];
     let mut randomness_bytes = [0u8; zkgroup::common::constants::RANDOMNESS_LEN];
 
     //ccm_bytes.copy_from_slice(&bincode::serialize(&client_credential_manager).unwrap());
@@ -386,7 +384,6 @@ fn test_integration_auth() {
     auth_credential_presentation_v2_bytes
         .copy_from_slice(&bincode::serialize(&presentation_v2).unwrap());
     uuid_ciphertext_bytes.copy_from_slice(&bincode::serialize(&uuid_ciphertext).unwrap());
-    uid_bytes.copy_from_slice(&bincode::serialize(&uid).unwrap());
     randomness_bytes.copy_from_slice(&bincode::serialize(&randomness).unwrap());
 }
 
@@ -408,8 +405,8 @@ fn test_integration_auth_with_pni() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = zkgroup::TEST_ARRAY_16;
-    let pni = zkgroup::TEST_ARRAY_16_1;
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let pni = libsignal_protocol::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
     let redemption_time = 123456 * SECONDS_PER_DAY;
 
     // SERVER
@@ -518,18 +515,17 @@ fn test_integration_expiring_profile() {
         zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
     let group_public_params = group_secret_params.get_public_params();
 
-    let uid = zkgroup::TEST_ARRAY_16;
-    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid));
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
-    let profile_key_commitment = profile_key.get_commitment(uid);
+    let profile_key_commitment = profile_key.get_commitment(aci);
 
     // Create context and request
     let randomness = zkgroup::TEST_ARRAY_32_3;
 
     let context = server_public_params.create_profile_key_credential_request_context(
         randomness,
-        uid,
+        aci,
         profile_key,
     );
     let request = context.get_request();
@@ -543,7 +539,7 @@ fn test_integration_expiring_profile() {
         .issue_expiring_profile_key_credential(
             randomness,
             &request,
-            uid,
+            aci,
             profile_key_commitment,
             expiration,
         )
@@ -563,9 +559,9 @@ fn test_integration_expiring_profile() {
         .unwrap();
     assert_eq!(plaintext, aci.into());
 
-    let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, uid);
+    let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, aci);
     let decrypted_profile_key = group_secret_params
-        .decrypt_profile_key(profile_key_ciphertext, uid)
+        .decrypt_profile_key(profile_key_ciphertext, aci)
         .unwrap();
 
     assert!(decrypted_profile_key.get_bytes() == profile_key.get_bytes());

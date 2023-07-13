@@ -9,10 +9,10 @@ import ByteArray from '../internal/ByteArray';
 import * as Native from '../../../Native';
 import { RANDOM_LENGTH } from '../internal/Constants';
 
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
 import GenericServerSecretParams from '../GenericServerSecretParams';
 import GenericServerPublicParams from '../GenericServerPublicParams';
 import CallLinkAuthCredential from './CallLinkAuthCredential';
+import { Aci } from '../../Address';
 
 export default class CallLinkAuthCredentialResponse extends ByteArray {
   private readonly __type?: never;
@@ -22,7 +22,7 @@ export default class CallLinkAuthCredentialResponse extends ByteArray {
   }
 
   static issueCredential(
-    userId: UUIDType,
+    userId: Aci,
     redemptionTime: number,
     params: GenericServerSecretParams
   ): CallLinkAuthCredentialResponse {
@@ -36,14 +36,14 @@ export default class CallLinkAuthCredentialResponse extends ByteArray {
   }
 
   static issueCredentialWithRandom(
-    userId: UUIDType,
+    userId: Aci,
     redemptionTime: number,
     params: GenericServerSecretParams,
     random: Buffer
   ): CallLinkAuthCredentialResponse {
     return new CallLinkAuthCredentialResponse(
       Native.CallLinkAuthCredentialResponse_IssueDeterministic(
-        fromUUID(userId),
+        userId.getServiceIdFixedWidthBinary(),
         redemptionTime,
         params.contents,
         random
@@ -52,14 +52,14 @@ export default class CallLinkAuthCredentialResponse extends ByteArray {
   }
 
   receive(
-    userId: UUIDType,
+    userId: Aci,
     redemptionTime: number,
     params: GenericServerPublicParams
   ): CallLinkAuthCredential {
     return new CallLinkAuthCredential(
       Native.CallLinkAuthCredentialResponse_Receive(
         this.contents,
-        fromUUID(userId),
+        userId.getServiceIdFixedWidthBinary(),
         redemptionTime,
         params.contents
       )

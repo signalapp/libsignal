@@ -12,16 +12,16 @@ public class CallLinkAuthCredential: ByteArray {
     try super.init(contents, checkValid: signal_call_link_auth_credential_check_valid_contents)
   }
 
-  public func present(userId: UUID, redemptionTime: Date, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams) -> CallLinkAuthCredentialPresentation {
+  public func present(userId: Aci, redemptionTime: Date, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams) -> CallLinkAuthCredentialPresentation {
     return failOnError {
       present(userId: userId, redemptionTime: redemptionTime, serverParams: serverParams, callLinkParams: callLinkParams, randomness: try .generate())
     }
   }
 
-  public func present(userId: UUID, redemptionTime: Date, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams, randomness: Randomness) -> CallLinkAuthCredentialPresentation {
+  public func present(userId: Aci, redemptionTime: Date, serverParams: GenericServerPublicParams, callLinkParams: CallLinkSecretParams, randomness: Randomness) -> CallLinkAuthCredentialPresentation {
     return failOnError {
       try withUnsafeBorrowedBuffer { contents in
-        try withUnsafePointer(to: userId.uuid) { userId in
+        try userId.withPointerToFixedWidthBinary { userId in
           try serverParams.withUnsafeBorrowedBuffer { serverParams in
             try callLinkParams.withUnsafeBorrowedBuffer { callLinkParams in
               try randomness.withUnsafePointerToBytes { randomness in

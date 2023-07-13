@@ -12,7 +12,7 @@ import * as Native from '../../../Native';
 import CallLinkSecretParams from './CallLinkSecretParams';
 import CreateCallLinkCredentialPresentation from './CreateCallLinkCredentialPresentation';
 import GenericServerPublicParams from '../GenericServerPublicParams';
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class CreateCallLinkCredential extends ByteArray {
   private readonly __type?: never;
@@ -23,7 +23,7 @@ export default class CreateCallLinkCredential extends ByteArray {
 
   present(
     roomId: Buffer,
-    userId: UUIDType,
+    userId: Aci,
     serverParams: GenericServerPublicParams,
     callLinkParams: CallLinkSecretParams
   ): CreateCallLinkCredentialPresentation {
@@ -39,7 +39,7 @@ export default class CreateCallLinkCredential extends ByteArray {
 
   presentWithRandom(
     roomId: Buffer,
-    userId: UUIDType,
+    userId: Aci,
     serverParams: GenericServerPublicParams,
     callLinkParams: CallLinkSecretParams,
     random: Buffer
@@ -48,7 +48,7 @@ export default class CreateCallLinkCredential extends ByteArray {
       Native.CreateCallLinkCredential_PresentDeterministic(
         this.contents,
         roomId,
-        fromUUID(userId),
+        userId.getServiceIdFixedWidthBinary(),
         serverParams.contents,
         callLinkParams.contents,
         random

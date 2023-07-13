@@ -121,16 +121,16 @@ public final class Native {
   public static native void CallLinkAuthCredentialPresentation_Verify(byte[] presentationBytes, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes);
 
   public static native void CallLinkAuthCredentialResponse_CheckValidContents(byte[] responseBytes);
-  public static native byte[] CallLinkAuthCredentialResponse_IssueDeterministic(UUID userId, long redemptionTime, byte[] paramsBytes, byte[] randomness);
-  public static native byte[] CallLinkAuthCredentialResponse_Receive(byte[] responseBytes, UUID userId, long redemptionTime, byte[] paramsBytes);
+  public static native byte[] CallLinkAuthCredentialResponse_IssueDeterministic(byte[] userId, long redemptionTime, byte[] paramsBytes, byte[] randomness);
+  public static native byte[] CallLinkAuthCredentialResponse_Receive(byte[] responseBytes, byte[] userId, long redemptionTime, byte[] paramsBytes);
 
   public static native void CallLinkAuthCredential_CheckValidContents(byte[] credentialBytes);
-  public static native byte[] CallLinkAuthCredential_PresentDeterministic(byte[] credentialBytes, UUID userId, long redemptionTime, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
+  public static native byte[] CallLinkAuthCredential_PresentDeterministic(byte[] credentialBytes, byte[] userId, long redemptionTime, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
 
   public static native void CallLinkPublicParams_CheckValidContents(byte[] paramsBytes);
 
   public static native void CallLinkSecretParams_CheckValidContents(byte[] paramsBytes);
-  public static native UUID CallLinkSecretParams_DecryptUserId(byte[] paramsBytes, byte[] userId);
+  public static native byte[] CallLinkSecretParams_DecryptUserId(byte[] paramsBytes, byte[] userId);
   public static native byte[] CallLinkSecretParams_DeriveFromRootKey(byte[] rootKey);
   public static native byte[] CallLinkSecretParams_GetPublicParams(byte[] paramsBytes);
 
@@ -144,15 +144,15 @@ public final class Native {
   public static native void CreateCallLinkCredentialRequestContext_CheckValidContents(byte[] contextBytes);
   public static native byte[] CreateCallLinkCredentialRequestContext_GetRequest(byte[] contextBytes);
   public static native byte[] CreateCallLinkCredentialRequestContext_NewDeterministic(byte[] roomId, byte[] randomness);
-  public static native byte[] CreateCallLinkCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, UUID userId, byte[] paramsBytes);
+  public static native byte[] CreateCallLinkCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, byte[] userId, byte[] paramsBytes);
 
   public static native void CreateCallLinkCredentialRequest_CheckValidContents(byte[] requestBytes);
-  public static native byte[] CreateCallLinkCredentialRequest_IssueDeterministic(byte[] requestBytes, UUID userId, long timestamp, byte[] paramsBytes, byte[] randomness);
+  public static native byte[] CreateCallLinkCredentialRequest_IssueDeterministic(byte[] requestBytes, byte[] userId, long timestamp, byte[] paramsBytes, byte[] randomness);
 
   public static native void CreateCallLinkCredentialResponse_CheckValidContents(byte[] responseBytes);
 
   public static native void CreateCallLinkCredential_CheckValidContents(byte[] paramsBytes);
-  public static native byte[] CreateCallLinkCredential_PresentDeterministic(byte[] credentialBytes, byte[] roomId, UUID userId, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
+  public static native byte[] CreateCallLinkCredential_PresentDeterministic(byte[] credentialBytes, byte[] roomId, byte[] userId, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
 
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);
@@ -215,11 +215,11 @@ public final class Native {
 
   public static native void GroupSecretParams_CheckValidContents(byte[] buffer);
   public static native byte[] GroupSecretParams_DecryptBlobWithPadding(byte[] params, byte[] ciphertext);
-  public static native byte[] GroupSecretParams_DecryptProfileKey(byte[] params, byte[] profileKey, UUID uuid);
+  public static native byte[] GroupSecretParams_DecryptProfileKey(byte[] params, byte[] profileKey, byte[] userId);
   public static native byte[] GroupSecretParams_DecryptServiceId(byte[] params, byte[] ciphertext);
   public static native byte[] GroupSecretParams_DeriveFromMasterKey(byte[] masterKey);
   public static native byte[] GroupSecretParams_EncryptBlobWithPaddingDeterministic(byte[] params, byte[] randomness, byte[] plaintext, int paddingLen);
-  public static native byte[] GroupSecretParams_EncryptProfileKey(byte[] params, byte[] profileKey, UUID uuid);
+  public static native byte[] GroupSecretParams_EncryptProfileKey(byte[] params, byte[] profileKey, byte[] userId);
   public static native byte[] GroupSecretParams_EncryptServiceId(byte[] params, byte[] serviceId);
   public static native byte[] GroupSecretParams_GenerateDeterministic(byte[] randomness);
   public static native byte[] GroupSecretParams_GetMasterKey(byte[] params);
@@ -350,8 +350,8 @@ public final class Native {
 
   public static native void ProfileKey_CheckValidContents(byte[] buffer);
   public static native byte[] ProfileKey_DeriveAccessKey(byte[] profileKey);
-  public static native byte[] ProfileKey_GetCommitment(byte[] profileKey, UUID uuid);
-  public static native byte[] ProfileKey_GetProfileKeyVersion(byte[] profileKey, UUID uuid);
+  public static native byte[] ProfileKey_GetCommitment(byte[] profileKey, byte[] userId);
+  public static native byte[] ProfileKey_GetProfileKeyVersion(byte[] profileKey, byte[] userId);
 
   public static native void ProtocolAddress_Destroy(long handle);
   public static native int ProtocolAddress_DeviceId(long obj);
@@ -437,11 +437,11 @@ public final class Native {
   public static native byte[] ServerPublicParams_CreateAuthCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
   public static native byte[] ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
   public static native byte[] ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);
-  public static native byte[] ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, UUID uuid, byte[] profileKey);
+  public static native byte[] ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] userId, byte[] profileKey);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptCredential);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptSerial);
-  public static native byte[] ServerPublicParams_ReceiveAuthCredential(byte[] params, UUID uuid, int redemptionTime, byte[] response);
-  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPni(byte[] params, UUID aci, UUID pni, long redemptionTime, byte[] response);
+  public static native byte[] ServerPublicParams_ReceiveAuthCredential(byte[] params, byte[] aci, int redemptionTime, byte[] response);
+  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPni(byte[] params, byte[] aci, byte[] pni, long redemptionTime, byte[] response);
   public static native byte[] ServerPublicParams_ReceiveExpiringProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response, long currentTimeInSeconds);
   public static native byte[] ServerPublicParams_ReceiveReceiptCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response);
   public static native void ServerPublicParams_VerifySignature(byte[] serverPublicParams, byte[] message, byte[] notarySignature);
@@ -449,9 +449,9 @@ public final class Native {
   public static native void ServerSecretParams_CheckValidContents(byte[] buffer);
   public static native byte[] ServerSecretParams_GenerateDeterministic(byte[] randomness);
   public static native byte[] ServerSecretParams_GetPublicParams(byte[] params);
-  public static native byte[] ServerSecretParams_IssueAuthCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, UUID uuid, int redemptionTime);
-  public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniDeterministic(byte[] serverSecretParams, byte[] randomness, UUID aci, UUID pni, long redemptionTime);
-  public static native byte[] ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, UUID uuid, byte[] commitment, long expirationInSeconds);
+  public static native byte[] ServerSecretParams_IssueAuthCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] aci, int redemptionTime);
+  public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] aci, byte[] pni, long redemptionTime);
+  public static native byte[] ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, byte[] userId, byte[] commitment, long expirationInSeconds);
   public static native byte[] ServerSecretParams_IssueReceiptCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, long receiptExpirationTime, long receiptLevel);
   public static native byte[] ServerSecretParams_SignDeterministic(byte[] params, byte[] randomness, byte[] message);
   public static native void ServerSecretParams_VerifyAuthCredentialPresentation(byte[] serverSecretParams, byte[] groupPublicParams, byte[] presentationBytes, long currentTimeInSeconds);

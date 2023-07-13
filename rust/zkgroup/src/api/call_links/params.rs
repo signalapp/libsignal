@@ -42,8 +42,8 @@ impl CallLinkSecretParams {
         }
     }
 
-    pub fn encrypt_uuid(&self, uid_bytes: UidBytes) -> api::groups::UuidCiphertext {
-        let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
+    pub fn encrypt_uid(&self, user_id: libsignal_protocol::Aci) -> api::groups::UuidCiphertext {
+        let uid = crypto::uid_struct::UidStruct::from_service_id(user_id.into());
         self.encrypt_uid_struct(uid)
     }
 
@@ -58,11 +58,11 @@ impl CallLinkSecretParams {
         }
     }
 
-    pub fn decrypt_uuid(
+    pub fn decrypt_uid(
         &self,
         ciphertext: api::groups::UuidCiphertext,
-    ) -> Result<UidBytes, ZkGroupVerificationFailure> {
+    ) -> Result<libsignal_protocol::Aci, ZkGroupVerificationFailure> {
         let uid = self.uid_enc_key_pair.decrypt(ciphertext.ciphertext)?;
-        Ok(uid.raw_uuid().into_bytes())
+        uid.try_into().map_err(|_| ZkGroupVerificationFailure)
     }
 }

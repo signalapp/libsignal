@@ -15,7 +15,7 @@ import AuthCredentialResponse from './AuthCredentialResponse';
 import AuthCredentialWithPni from './AuthCredentialWithPni';
 import AuthCredentialWithPniResponse from './AuthCredentialWithPniResponse';
 import GroupSecretParams from '../groups/GroupSecretParams';
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci, Pni } from '../../Address';
 
 export default class ClientZkAuthOperations {
   serverPublicParams: ServerPublicParams;
@@ -25,14 +25,14 @@ export default class ClientZkAuthOperations {
   }
 
   receiveAuthCredential(
-    uuid: UUIDType,
+    aci: Aci,
     redemptionTime: number,
     authCredentialResponse: AuthCredentialResponse
   ): AuthCredential {
     return new AuthCredential(
       Native.ServerPublicParams_ReceiveAuthCredential(
         this.serverPublicParams.getContents(),
-        fromUUID(uuid),
+        aci.getServiceIdFixedWidthBinary(),
         redemptionTime,
         authCredentialResponse.getContents()
       )
@@ -45,16 +45,16 @@ export default class ClientZkAuthOperations {
    * @param redemptionTime - This is provided by the server as an integer, and should be passed through directly.
    */
   receiveAuthCredentialWithPni(
-    aci: UUIDType,
-    pni: UUIDType,
+    aci: Aci,
+    pni: Pni,
     redemptionTime: number,
     authCredentialResponse: AuthCredentialWithPniResponse
   ): AuthCredentialWithPni {
     return new AuthCredentialWithPni(
       Native.ServerPublicParams_ReceiveAuthCredentialWithPni(
         this.serverPublicParams.getContents(),
-        fromUUID(aci),
-        fromUUID(pni),
+        aci.getServiceIdFixedWidthBinary(),
+        pni.getServiceIdFixedWidthBinary(),
         redemptionTime,
         authCredentialResponse.getContents()
       )

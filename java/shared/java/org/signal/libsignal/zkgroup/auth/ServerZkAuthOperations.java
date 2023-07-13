@@ -7,7 +7,8 @@ package org.signal.libsignal.zkgroup.auth;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.UUID;
+import org.signal.libsignal.protocol.ServiceId.Aci;
+import org.signal.libsignal.protocol.ServiceId.Pni;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -24,16 +25,16 @@ public class ServerZkAuthOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
-  public AuthCredentialResponse issueAuthCredential(UUID uuid, int redemptionTime) {
-    return issueAuthCredential(new SecureRandom(), uuid, redemptionTime);
+  public AuthCredentialResponse issueAuthCredential(Aci aci, int redemptionTime) {
+    return issueAuthCredential(new SecureRandom(), aci, redemptionTime);
   }
 
-  public AuthCredentialResponse issueAuthCredential(SecureRandom secureRandom, UUID uuid, int redemptionTime) {
+  public AuthCredentialResponse issueAuthCredential(SecureRandom secureRandom, Aci aci, int redemptionTime) {
     byte[] random      = new byte[RANDOM_LENGTH];
 
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, uuid, redemptionTime);
+    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci.toServiceIdFixedWidthBinary(), redemptionTime);
 
     try {
       return new AuthCredentialResponse(newContents);
@@ -42,16 +43,16 @@ public class ServerZkAuthOperations {
     }
   }
 
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(UUID aci, UUID pni, Instant redemptionTime) {
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(Aci aci, Pni pni, Instant redemptionTime) {
     return issueAuthCredentialWithPni(new SecureRandom(), aci, pni, redemptionTime);
   }
 
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(SecureRandom secureRandom, UUID aci, UUID pni, Instant redemptionTime) {
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
     byte[] random      = new byte[RANDOM_LENGTH];
 
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci, pni, redemptionTime.getEpochSecond());
+    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime.getEpochSecond());
 
     try {
       return new AuthCredentialWithPniResponse(newContents);

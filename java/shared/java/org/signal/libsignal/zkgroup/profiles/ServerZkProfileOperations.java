@@ -8,7 +8,7 @@ package org.signal.libsignal.zkgroup.profiles;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.UUID;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -25,8 +25,8 @@ public class ServerZkProfileOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
-  public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
-    return issueExpiringProfileKeyCredential(new SecureRandom(), profileKeyCredentialRequest, uuid, profileKeyCommitment, expiration);
+  public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(ProfileKeyCredentialRequest profileKeyCredentialRequest, Aci userId, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
+    return issueExpiringProfileKeyCredential(new SecureRandom(), profileKeyCredentialRequest, userId, profileKeyCommitment, expiration);
   }
 
   /**
@@ -35,13 +35,13 @@ public class ServerZkProfileOperations {
    * @param expiration Must be a round number of days. Use {@link java.time.Instant#truncatedTo} to
    * ensure this.
    */
-  public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(SecureRandom secureRandom, ProfileKeyCredentialRequest profileKeyCredentialRequest, UUID uuid, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
+  public ExpiringProfileKeyCredentialResponse issueExpiringProfileKeyCredential(SecureRandom secureRandom, ProfileKeyCredentialRequest profileKeyCredentialRequest, Aci userId, ProfileKeyCommitment profileKeyCommitment, Instant expiration) throws VerificationFailedException {
     assert expiration.equals(expiration.truncatedTo(ChronoUnit.DAYS));
 
     byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, profileKeyCredentialRequest.getInternalContentsForJNI(), uuid, profileKeyCommitment.getInternalContentsForJNI(), expiration.getEpochSecond());
+    byte[] newContents = Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, profileKeyCredentialRequest.getInternalContentsForJNI(), userId.toServiceIdFixedWidthBinary(), profileKeyCommitment.getInternalContentsForJNI(), expiration.getEpochSecond());
 
     try {
       return new ExpiringProfileKeyCredentialResponse(newContents);

@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.GenericServerPublicParams;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -12,7 +13,6 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
 
 import java.security.SecureRandom;
-import java.util.UUID;
 
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
@@ -50,8 +50,8 @@ public final class CreateCallLinkCredentialRequestContext extends ByteArray {
     }
   }
 
-  public CreateCallLinkCredential receiveResponse(CreateCallLinkCredentialResponse response, UUID userId, GenericServerPublicParams params) throws VerificationFailedException {
-    byte[] newContents = Native.CreateCallLinkCredentialRequestContext_ReceiveResponse(getInternalContentsForJNI(), response.getInternalContentsForJNI(), userId, params.getInternalContentsForJNI());
+  public CreateCallLinkCredential receiveResponse(CreateCallLinkCredentialResponse response, Aci userId, GenericServerPublicParams params) throws VerificationFailedException {
+    byte[] newContents = Native.CreateCallLinkCredentialRequestContext_ReceiveResponse(getInternalContentsForJNI(), response.getInternalContentsForJNI(), userId.toServiceIdFixedWidthBinary(), params.getInternalContentsForJNI());
 
     try {
       return new CreateCallLinkCredential(newContents);

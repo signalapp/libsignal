@@ -12,7 +12,7 @@ import AuthCredentialResponse from './AuthCredentialResponse';
 import AuthCredentialPresentation from './AuthCredentialPresentation';
 import AuthCredentialWithPniResponse from './AuthCredentialWithPniResponse';
 import GroupPublicParams from '../groups/GroupPublicParams';
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci, Pni } from '../../Address';
 
 export default class ServerZkAuthOperations {
   serverSecretParams: ServerSecretParams;
@@ -22,32 +22,32 @@ export default class ServerZkAuthOperations {
   }
 
   issueAuthCredential(
-    uuid: UUIDType,
+    aci: Aci,
     redemptionTime: number
   ): AuthCredentialResponse {
     const random = randomBytes(RANDOM_LENGTH);
 
-    return this.issueAuthCredentialWithRandom(random, uuid, redemptionTime);
+    return this.issueAuthCredentialWithRandom(random, aci, redemptionTime);
   }
 
   issueAuthCredentialWithRandom(
     random: Buffer,
-    uuid: UUIDType,
+    aci: Aci,
     redemptionTime: number
   ): AuthCredentialResponse {
     return new AuthCredentialResponse(
       Native.ServerSecretParams_IssueAuthCredentialDeterministic(
         this.serverSecretParams.getContents(),
         random,
-        fromUUID(uuid),
+        aci.getServiceIdFixedWidthBinary(),
         redemptionTime
       )
     );
   }
 
   issueAuthCredentialWithPni(
-    aci: UUIDType,
-    pni: UUIDType,
+    aci: Aci,
+    pni: Pni,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     const random = randomBytes(RANDOM_LENGTH);
@@ -62,16 +62,16 @@ export default class ServerZkAuthOperations {
 
   issueAuthCredentialWithPniWithRandom(
     random: Buffer,
-    aci: UUIDType,
-    pni: UUIDType,
+    aci: Aci,
+    pni: Pni,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
       Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
         this.serverSecretParams.getContents(),
         random,
-        fromUUID(aci),
-        fromUUID(pni),
+        aci.getServiceIdFixedWidthBinary(),
+        pni.getServiceIdFixedWidthBinary(),
         redemptionTime
       )
     );

@@ -34,7 +34,11 @@ impl ProfileKey {
         self.bytes
     }
 
-    pub fn get_commitment(&self, uid_bytes: UidBytes) -> api::profiles::ProfileKeyCommitment {
+    pub fn get_commitment(
+        &self,
+        user_id: libsignal_protocol::Aci,
+    ) -> api::profiles::ProfileKeyCommitment {
+        let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
         let profile_key = crypto::profile_key_struct::ProfileKeyStruct::new(self.bytes, uid_bytes);
         let commitment =
             crypto::profile_key_commitment::CommitmentWithSecretNonce::new(profile_key, uid_bytes);
@@ -44,7 +48,11 @@ impl ProfileKey {
         }
     }
 
-    pub fn get_profile_key_version(&self, uid_bytes: UidBytes) -> api::profiles::ProfileKeyVersion {
+    pub fn get_profile_key_version(
+        &self,
+        user_id: libsignal_protocol::Aci,
+    ) -> api::profiles::ProfileKeyVersion {
+        let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
         let mut combined_array = [0u8; PROFILE_KEY_LEN + UUID_LEN];
         combined_array[..PROFILE_KEY_LEN].copy_from_slice(&self.bytes);
         combined_array[PROFILE_KEY_LEN..].copy_from_slice(&uid_bytes);

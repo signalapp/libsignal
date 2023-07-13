@@ -9,6 +9,7 @@ import java.io.UnsupportedEncodingException;
 import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ServiceId.Aci;
+import org.signal.libsignal.protocol.ServiceId.Pni;
 import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.NotarySignature;
@@ -86,8 +87,8 @@ public final class ZkGroupTest extends SecureRandomTest {
   @Test
   public void testAuthIntegration() throws VerificationFailedException, InvalidInputException {
 
-    UUID uuid           = TEST_UUID;
-    int  redemptionTime = 123456;
+    Aci aci            = new Aci(TEST_UUID);
+    int redemptionTime = 123456;
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -179,13 +180,13 @@ public final class ZkGroupTest extends SecureRandomTest {
 
     // SERVER
     // Issue credential
-    AuthCredentialResponse authCredentialResponse = serverZkAuth.issueAuthCredential(createSecureRandom(TEST_ARRAY_32_2), uuid, redemptionTime);
+    AuthCredentialResponse authCredentialResponse = serverZkAuth.issueAuthCredential(createSecureRandom(TEST_ARRAY_32_2), aci, redemptionTime);
 
     // CLIENT
     // Receive credential
     ClientZkAuthOperations clientZkAuthCipher  = new ClientZkAuthOperations(serverPublicParams);
     ClientZkGroupCipher    clientZkGroupCipher = new ClientZkGroupCipher   (groupSecretParams );
-    AuthCredential         authCredential      = clientZkAuthCipher.receiveAuthCredential(uuid, redemptionTime, authCredentialResponse);
+    AuthCredential         authCredential      = clientZkAuthCipher.receiveAuthCredential(aci, redemptionTime, authCredentialResponse);
 
     // CLIENT - deserialize test
     {
@@ -209,7 +210,7 @@ public final class ZkGroupTest extends SecureRandomTest {
     {
         UUID badUuid = TEST_UUID_1;
         try {
-            clientZkAuthCipher.receiveAuthCredential(badUuid, redemptionTime, authCredentialResponse);
+            clientZkAuthCipher.receiveAuthCredential(new Aci(badUuid), redemptionTime, authCredentialResponse);
             throw new AssertionError("Failed to catch invalid AuthCredential 1");
         } catch (VerificationFailedException e) {
             // expected
@@ -219,7 +220,7 @@ public final class ZkGroupTest extends SecureRandomTest {
         temp[1]++;
         AuthCredentialResponse badResponse = new AuthCredentialResponse(temp);  
         try {
-            clientZkAuthCipher.receiveAuthCredential(uuid, redemptionTime, badResponse);
+            clientZkAuthCipher.receiveAuthCredential(aci, redemptionTime, badResponse);
             throw new AssertionError("Failed to catch invalid AuthCredential 2");
         } catch (VerificationFailedException e) {
             // expected
@@ -227,9 +228,9 @@ public final class ZkGroupTest extends SecureRandomTest {
     }
 
     // Create and decrypt user entry
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(new Aci(uuid));
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(aci);
     ServiceId      plaintext      = clientZkGroupCipher.decrypt(uuidCiphertext);
-    assertEquals(new Aci(uuid), plaintext);
+    assertEquals(aci, plaintext);
 
     // CLIENT - deserialize test
     {
@@ -349,8 +350,8 @@ public final class ZkGroupTest extends SecureRandomTest {
     // This test is mostly the same as testAuthIntegration() except instead of using a hardcoded
     // redemption date to compare against test vectors, it uses the current time
 
-    UUID uuid           = TEST_UUID;
-    int  redemptionTime = (int)(Instant.now().truncatedTo(ChronoUnit.DAYS).getEpochSecond() / 86400);
+    Aci aci            = new Aci(TEST_UUID);
+    int redemptionTime = (int)(Instant.now().truncatedTo(ChronoUnit.DAYS).getEpochSecond() / 86400);
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -370,18 +371,18 @@ public final class ZkGroupTest extends SecureRandomTest {
 
     // SERVER
     // Issue credential
-    AuthCredentialResponse authCredentialResponse = serverZkAuth.issueAuthCredential(createSecureRandom(TEST_ARRAY_32_2), uuid, redemptionTime);
+    AuthCredentialResponse authCredentialResponse = serverZkAuth.issueAuthCredential(createSecureRandom(TEST_ARRAY_32_2), aci, redemptionTime);
 
     // CLIENT
     // Receive credential
     ClientZkAuthOperations clientZkAuthCipher  = new ClientZkAuthOperations(serverPublicParams);
     ClientZkGroupCipher    clientZkGroupCipher = new ClientZkGroupCipher   (groupSecretParams );
-    AuthCredential         authCredential      = clientZkAuthCipher.receiveAuthCredential(uuid, redemptionTime, authCredentialResponse);
+    AuthCredential         authCredential      = clientZkAuthCipher.receiveAuthCredential(aci, redemptionTime, authCredentialResponse);
 
     // Create and decrypt user entry
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(new Aci(uuid));
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(aci);
     ServiceId      plaintext      = clientZkGroupCipher.decrypt(uuidCiphertext);
-    assertEquals(new Aci(uuid), plaintext);
+    assertEquals(aci, plaintext);
 
     // Create presentation
     AuthCredentialPresentation presentation = clientZkAuthCipher.createAuthCredentialPresentation(createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
@@ -416,8 +417,8 @@ public final class ZkGroupTest extends SecureRandomTest {
   @Test
   public void testAuthWithPniIntegration() throws VerificationFailedException, InvalidInputException {
 
-    UUID aci               = TEST_UUID;
-    UUID pni               = TEST_UUID_1;
+    Aci     aci            = new Aci(TEST_UUID);
+    Pni     pni            = new Pni(TEST_UUID_1);
     Instant redemptionTime = Instant.now().truncatedTo(ChronoUnit.DAYS);
 
     // Generate keys (client's are per-group, server's are not)
@@ -469,7 +470,7 @@ public final class ZkGroupTest extends SecureRandomTest {
     {
         try {
             // Switch ACI and PNI
-            clientZkAuthCipher.receiveAuthCredentialWithPni(pni, aci, redemptionTime.getEpochSecond(), authCredentialResponse);
+            clientZkAuthCipher.receiveAuthCredentialWithPni(new Aci(pni.getRawUUID()), new Pni(aci.getRawUUID()), redemptionTime.getEpochSecond(), authCredentialResponse);
             throw new AssertionError("Failed to catch invalid AuthCredentialWithPni 1");
         } catch (VerificationFailedException e) {
             // expected
@@ -487,11 +488,11 @@ public final class ZkGroupTest extends SecureRandomTest {
     }
 
     // Create and decrypt user entry
-    UuidCiphertext aciCiphertext = clientZkGroupCipher.encrypt(new Aci(aci));
+    UuidCiphertext aciCiphertext = clientZkGroupCipher.encrypt(aci);
     ServiceId      aciPlaintext  = clientZkGroupCipher.decrypt(aciCiphertext);
-    assertEquals(new Aci(aci), aciPlaintext);
+    assertEquals(aci, aciPlaintext);
     // TODO: Use PNI encoding for the PNI in AuthCredentialWithPni.
-    Aci            pniAsAci      = new Aci(pni);
+    Aci            pniAsAci      = new Aci(pni.getRawUUID());
     UuidCiphertext pniCiphertext = clientZkGroupCipher.encrypt(pniAsAci);
     ServiceId      pniPlaintext  = clientZkGroupCipher.decrypt(pniCiphertext);
     assertEquals(pniAsAci, pniPlaintext);
@@ -576,7 +577,7 @@ public final class ZkGroupTest extends SecureRandomTest {
   @Test
   public void testExpiringProfileKeyIntegration() throws VerificationFailedException, InvalidInputException, UnsupportedEncodingException {
 
-    UUID uuid           = TEST_UUID;
+    Aci userId           = new Aci(TEST_UUID);
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -596,15 +597,15 @@ public final class ZkGroupTest extends SecureRandomTest {
     ClientZkProfileOperations clientZkProfileCipher = new ClientZkProfileOperations(serverPublicParams);
 
     ProfileKey           profileKey             = new ProfileKey(TEST_ARRAY_32_1);
-    ProfileKeyCommitment profileKeyCommitment = profileKey.getCommitment(uuid);
+    ProfileKeyCommitment profileKeyCommitment = profileKey.getCommitment(userId);
 
     // Create context and request
-    ProfileKeyCredentialRequestContext context = clientZkProfileCipher.createProfileKeyCredentialRequestContext(createSecureRandom(TEST_ARRAY_32_3), uuid, profileKey);
+    ProfileKeyCredentialRequestContext context = clientZkProfileCipher.createProfileKeyCredentialRequestContext(createSecureRandom(TEST_ARRAY_32_3), userId, profileKey);
     ProfileKeyCredentialRequest        request = context.getRequest();
 
     // SERVER 
     Instant expiration = Instant.now().truncatedTo(ChronoUnit.DAYS).plus(5, ChronoUnit.DAYS);
-    ExpiringProfileKeyCredentialResponse response = serverZkProfile.issueExpiringProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), request, uuid, profileKeyCommitment, expiration);
+    ExpiringProfileKeyCredentialResponse response = serverZkProfile.issueExpiringProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), request, userId, profileKeyCommitment, expiration);
 
     // SERVER - verification test
     {
@@ -612,7 +613,7 @@ public final class ZkGroupTest extends SecureRandomTest {
         temp[4]++;  // We need a bad presentation that passes deserialization, this seems to work
         ProfileKeyCredentialRequest badRequest = new ProfileKeyCredentialRequest(temp);
         try {
-            serverZkProfile.issueExpiringProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), badRequest, uuid, profileKeyCommitment, expiration);
+            serverZkProfile.issueExpiringProfileKeyCredential(createSecureRandom(TEST_ARRAY_32_4), badRequest, userId, profileKeyCommitment, expiration);
             throw new AssertionError("Failed to catch invalid ProfileKeyCredentialRequest");
         } catch (VerificationFailedException e) {
             // expected
@@ -625,12 +626,12 @@ public final class ZkGroupTest extends SecureRandomTest {
     ExpiringProfileKeyCredential profileKeyCredential = clientZkProfileCipher.receiveExpiringProfileKeyCredential(context, response);
 
     // Create encrypted UID and profile key
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(new Aci(uuid));
+    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(userId);
     ServiceId      plaintext      = clientZkGroupCipher.decrypt(uuidCiphertext);
-    assertEquals(new Aci(uuid), plaintext);
+    assertEquals(plaintext, userId);
 
-    ProfileKeyCiphertext profileKeyCiphertext   = clientZkGroupCipher.encryptProfileKey(profileKey, uuid);
-    ProfileKey           decryptedProfileKey    = clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext, uuid);
+    ProfileKeyCiphertext profileKeyCiphertext   = clientZkGroupCipher.encryptProfileKey(profileKey, userId);
+    ProfileKey           decryptedProfileKey    = clientZkGroupCipher.decryptProfileKey(profileKeyCiphertext, userId);
     assertArrayEquals(profileKey.serialize(), decryptedProfileKey.serialize());
 
     assertEquals(expiration, profileKeyCredential.getExpirationTime());

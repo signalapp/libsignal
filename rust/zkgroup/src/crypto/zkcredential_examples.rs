@@ -87,7 +87,8 @@ fn test_mac_generic() {
     let label = b"20221221_AuthCredentialLike";
 
     let uid_bytes = TEST_ARRAY_16;
-    let uid = UidStruct::new(uid_bytes);
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(uid_bytes);
+    let uid = UidStruct::from_service_id(aci.into());
 
     let proof = IssuanceProofBuilder::new(label)
         .add_attribute(&uid)
@@ -130,7 +131,8 @@ fn test_profile_key_credential() {
 
     let label = b"20221221_ProfileKeyCredentialLike";
 
-    let uid = UidStruct::new(TEST_ARRAY_16);
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+    let uid = UidStruct::from_service_id(aci.into());
     let profile_key = ProfileKeyStruct::new(TEST_ARRAY_32, TEST_ARRAY_16);
     let encrypted_profile_key = blinding_keypair.encrypt(&profile_key, &mut sho).into();
 

@@ -11,7 +11,7 @@ import * as Native from '../../../Native';
 
 import CreateCallLinkCredentialResponse from './CreateCallLinkCredentialResponse';
 import GenericServerSecretParams from '../GenericServerSecretParams';
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class CreateCallLinkCredentialRequest extends ByteArray {
   private readonly __type?: never;
@@ -21,7 +21,7 @@ export default class CreateCallLinkCredentialRequest extends ByteArray {
   }
 
   issueCredential(
-    userId: UUIDType,
+    userId: Aci,
     timestamp: number,
     params: GenericServerSecretParams
   ): CreateCallLinkCredentialResponse {
@@ -30,7 +30,7 @@ export default class CreateCallLinkCredentialRequest extends ByteArray {
   }
 
   issueCredentialWithRandom(
-    userId: UUIDType,
+    userId: Aci,
     timestamp: number,
     params: GenericServerSecretParams,
     random: Buffer
@@ -38,7 +38,7 @@ export default class CreateCallLinkCredentialRequest extends ByteArray {
     return new CreateCallLinkCredentialResponse(
       Native.CreateCallLinkCredentialRequest_IssueDeterministic(
         this.contents,
-        fromUUID(userId),
+        userId.getServiceIdFixedWidthBinary(),
         timestamp,
         params.contents,
         random

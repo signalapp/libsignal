@@ -5,7 +5,7 @@
 
 use ::zkgroup;
 use libsignal_bridge_macros::*;
-use libsignal_protocol::ServiceId;
+use libsignal_protocol::{Aci, Pni, ServiceId};
 use zkgroup::auth::*;
 use zkgroup::call_links::*;
 use zkgroup::generic_server_params::*;
@@ -16,7 +16,6 @@ use zkgroup::*;
 
 use bincode::Options;
 use serde::Deserialize;
-use uuid::Uuid;
 
 use std::convert::TryInto;
 
@@ -109,18 +108,18 @@ impl From<u64> for Timestamp {
 #[bridge_fn]
 fn ProfileKey_GetCommitment(
     profile_key: Serialized<ProfileKey>,
-    uuid: Uuid,
+    user_id: Aci,
 ) -> Serialized<ProfileKeyCommitment> {
-    profile_key.get_commitment(*uuid.as_bytes()).into()
+    profile_key.get_commitment(user_id).into()
 }
 
 #[bridge_fn]
 fn ProfileKey_GetProfileKeyVersion(
     profile_key: Serialized<ProfileKey>,
-    uuid: Uuid,
+    user_id: Aci,
 ) -> [u8; PROFILE_KEY_VERSION_ENCODED_LEN] {
-    let serialized = bincode::serialize(&profile_key.get_profile_key_version(*uuid.as_bytes()))
-        .expect("can serialize");
+    let serialized =
+        bincode::serialize(&profile_key.get_profile_key_version(user_id)).expect("can serialize");
     serialized.try_into().expect("right length")
 }
 
@@ -179,10 +178,10 @@ fn GroupSecretParams_DecryptServiceId(
 fn GroupSecretParams_EncryptProfileKey(
     params: Serialized<GroupSecretParams>,
     profile_key: Serialized<ProfileKey>,
-    uuid: Uuid,
+    user_id: Aci,
 ) -> Serialized<ProfileKeyCiphertext> {
     params
-        .encrypt_profile_key(profile_key.into_inner(), *uuid.as_bytes())
+        .encrypt_profile_key(profile_key.into_inner(), user_id)
         .into()
 }
 
@@ -190,10 +189,10 @@ fn GroupSecretParams_EncryptProfileKey(
 fn GroupSecretParams_DecryptProfileKey(
     params: Serialized<GroupSecretParams>,
     profile_key: Serialized<ProfileKeyCiphertext>,
-    uuid: Uuid,
+    user_id: Aci,
 ) -> Result<Serialized<ProfileKey>, ZkGroupVerificationFailure> {
     Ok(params
-        .decrypt_profile_key(profile_key.into_inner(), *uuid.as_bytes())?
+        .decrypt_profile_key(profile_key.into_inner(), user_id)?
         .into())
 }
 
@@ -242,30 +241,25 @@ fn ServerSecretParams_SignDeterministic(
 #[bridge_fn]
 fn ServerPublicParams_ReceiveAuthCredential(
     params: Serialized<ServerPublicParams>,
-    uuid: Uuid,
+    aci: Aci,
     redemption_time: u32,
     response: Serialized<AuthCredentialResponse>,
 ) -> Result<Serialized<AuthCredential>, ZkGroupVerificationFailure> {
     Ok(params
-        .receive_auth_credential(*uuid.as_bytes(), redemption_time, &response)?
+        .receive_auth_credential(aci, redemption_time, &response)?
         .into())
 }
 
 #[bridge_fn]
 fn ServerPublicParams_ReceiveAuthCredentialWithPni(
     params: Serialized<ServerPublicParams>,
-    aci: Uuid,
-    pni: Uuid,
+    aci: Aci,
+    pni: Pni,
     redemption_time: Timestamp,
     response: Serialized<AuthCredentialWithPniResponse>,
 ) -> Result<Serialized<AuthCredentialWithPni>, ZkGroupVerificationFailure> {
     Ok(params
-        .receive_auth_credential_with_pni(
-            *aci.as_bytes(),
-            *pni.as_bytes(),
-            redemption_time.as_seconds(),
-            &response,
-        )?
+        .receive_auth_credential_with_pni(aci, pni, redemption_time.as_seconds(), &response)?
         .into())
 }
 
@@ -305,13 +299,13 @@ fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
 fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
-    uuid: Uuid,
+    user_id: Aci,
     profile_key: Serialized<ProfileKey>,
 ) -> Serialized<ProfileKeyCredentialRequestContext> {
     server_public_params
         .create_profile_key_credential_request_context(
             *randomness,
-            *uuid.as_bytes(),
+            user_id,
             profile_key.into_inner(),
         )
         .into()
@@ -387,11 +381,11 @@ fn ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
 fn ServerSecretParams_IssueAuthCredentialDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
-    uuid: Uuid,
+    aci: Aci,
     redemption_time: u32,
 ) -> Serialized<AuthCredentialResponse> {
     server_secret_params
-        .issue_auth_credential(*randomness, *uuid.as_bytes(), redemption_time)
+        .issue_auth_credential(*randomness, aci, redemption_time)
         .into()
 }
 
@@ -399,17 +393,12 @@ fn ServerSecretParams_IssueAuthCredentialDeterministic(
 fn ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
-    aci: Uuid,
-    pni: Uuid,
+    aci: Aci,
+    pni: Pni,
     redemption_time: Timestamp,
 ) -> Serialized<AuthCredentialWithPniResponse> {
     server_secret_params
-        .issue_auth_credential_with_pni(
-            *randomness,
-            *aci.as_bytes(),
-            *pni.as_bytes(),
-            redemption_time.as_seconds(),
-        )
+        .issue_auth_credential_with_pni(*randomness, aci, pni, redemption_time.as_seconds())
         .into()
 }
 
@@ -434,7 +423,7 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
     request: Serialized<ProfileKeyCredentialRequest>,
-    uuid: Uuid,
+    user_id: Aci,
     commitment: Serialized<ProfileKeyCommitment>,
     expiration_in_seconds: Timestamp,
 ) -> Result<Serialized<ExpiringProfileKeyCredentialResponse>, ZkGroupVerificationFailure> {
@@ -442,7 +431,7 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
         .issue_expiring_profile_key_credential(
             *randomness,
             &request,
-            *uuid.as_bytes(),
+            user_id,
             commitment.into_inner(),
             expiration_in_seconds.as_seconds(),
         )?
@@ -704,11 +693,11 @@ fn CallLinkSecretParams_GetPublicParams(params_bytes: &[u8]) -> Vec<u8> {
 fn CallLinkSecretParams_DecryptUserId(
     params_bytes: &[u8],
     user_id: Serialized<UuidCiphertext>,
-) -> Result<Uuid, ZkGroupVerificationFailure> {
+) -> Result<Aci, ZkGroupVerificationFailure> {
     let params = bincode::deserialize::<CallLinkSecretParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    Ok(Uuid::from_bytes(params.decrypt_uuid(user_id.into_inner())?))
+    params.decrypt_uid(user_id.into_inner())
 }
 
 #[bridge_fn_void]
@@ -753,7 +742,7 @@ fn CreateCallLinkCredentialRequest_CheckValidContents(
 #[bridge_fn]
 fn CreateCallLinkCredentialRequest_IssueDeterministic(
     request_bytes: &[u8],
-    user_id: Uuid,
+    user_id: Aci,
     timestamp: Timestamp,
     params_bytes: &[u8],
     randomness: &[u8; RANDOMNESS_LEN],
@@ -763,12 +752,7 @@ fn CreateCallLinkCredentialRequest_IssueDeterministic(
     let params = bincode::deserialize::<GenericServerSecretParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let response = request.issue(
-        user_id.into_bytes(),
-        timestamp.as_seconds(),
-        &params,
-        *randomness,
-    );
+    let response = request.issue(user_id, timestamp.as_seconds(), &params, *randomness);
     bincode::serialize(&response).expect("can serialize")
 }
 
@@ -783,7 +767,7 @@ fn CreateCallLinkCredentialResponse_CheckValidContents(
 fn CreateCallLinkCredentialRequestContext_ReceiveResponse(
     context_bytes: &[u8],
     response_bytes: &[u8],
-    user_id: Uuid,
+    user_id: Aci,
     params_bytes: &[u8],
 ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
     let context = bincode::deserialize::<CreateCallLinkCredentialRequestContext>(context_bytes)
@@ -793,7 +777,7 @@ fn CreateCallLinkCredentialRequestContext_ReceiveResponse(
     let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let credential = context.receive(response, user_id.into_bytes(), &params)?;
+    let credential = context.receive(response, user_id, &params)?;
     Ok(bincode::serialize(&credential).expect("can serialize"))
 }
 
@@ -808,7 +792,7 @@ fn CreateCallLinkCredential_CheckValidContents(
 fn CreateCallLinkCredential_PresentDeterministic(
     credential_bytes: &[u8],
     room_id: &[u8],
-    user_id: Uuid,
+    user_id: Aci,
     server_params_bytes: &[u8],
     call_link_params_bytes: &[u8],
     randomness: &[u8; RANDOMNESS_LEN],
@@ -822,7 +806,7 @@ fn CreateCallLinkCredential_PresentDeterministic(
 
     let presentation = credential.present(
         room_id,
-        user_id.into_bytes(),
+        user_id,
         &server_params,
         &call_link_params,
         *randomness,
@@ -865,7 +849,7 @@ fn CallLinkAuthCredentialResponse_CheckValidContents(
 
 #[bridge_fn]
 fn CallLinkAuthCredentialResponse_IssueDeterministic(
-    user_id: Uuid,
+    user_id: Aci,
     redemption_time: Timestamp,
     params_bytes: &[u8],
     randomness: &[u8; RANDOMNESS_LEN],
@@ -874,7 +858,7 @@ fn CallLinkAuthCredentialResponse_IssueDeterministic(
         .expect("should have been parsed previously");
 
     let response = CallLinkAuthCredentialResponse::issue_credential(
-        user_id.into_bytes(),
+        user_id,
         redemption_time.as_seconds(),
         &params,
         *randomness,
@@ -885,7 +869,7 @@ fn CallLinkAuthCredentialResponse_IssueDeterministic(
 #[bridge_fn]
 fn CallLinkAuthCredentialResponse_Receive(
     response_bytes: &[u8],
-    user_id: Uuid,
+    user_id: Aci,
     redemption_time: Timestamp,
     params_bytes: &[u8],
 ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
@@ -894,8 +878,7 @@ fn CallLinkAuthCredentialResponse_Receive(
     let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let credential =
-        response.receive(user_id.into_bytes(), redemption_time.as_seconds(), &params)?;
+    let credential = response.receive(user_id, redemption_time.as_seconds(), &params)?;
     Ok(bincode::serialize(&credential).expect("can serialize"))
 }
 
@@ -909,7 +892,7 @@ fn CallLinkAuthCredential_CheckValidContents(
 #[bridge_fn]
 fn CallLinkAuthCredential_PresentDeterministic(
     credential_bytes: &[u8],
-    user_id: Uuid,
+    user_id: Aci,
     redemption_time: Timestamp,
     server_params_bytes: &[u8],
     call_link_params_bytes: &[u8],
@@ -923,7 +906,7 @@ fn CallLinkAuthCredential_PresentDeterministic(
         .expect("should have been parsed previously");
 
     let presentation = credential.present(
-        user_id.into_bytes(),
+        user_id,
         redemption_time.as_seconds(),
         &server_params,
         &call_link_params,

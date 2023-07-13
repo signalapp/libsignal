@@ -29,12 +29,6 @@ pub struct UidStruct {
 }
 
 impl UidStruct {
-    pub fn new(uid_bytes: UidBytes) -> Self {
-        Self::from_service_id(
-            libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(uid_bytes)).into(),
-        )
-    }
-
     pub fn from_service_id(service_id: ServiceId) -> Self {
         let M1 = Self::calc_M1(service_id);
         let raw_uuid_bytes = service_id.raw_uuid().into_bytes();

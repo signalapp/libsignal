@@ -34,24 +34,24 @@ public class ClientZkGroupCipher {
     }
   }
 
-  public func encryptProfileKey(profileKey: ProfileKey, uuid: UUID) throws -> ProfileKeyCiphertext {
+  public func encryptProfileKey(profileKey: ProfileKey, userId: Aci) throws -> ProfileKeyCiphertext {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try profileKey.withUnsafePointerToSerialized { profileKey in
-        try withUnsafePointer(to: uuid.uuid) { uuid in
+        try userId.withPointerToFixedWidthBinary { userId in
           try invokeFnReturningSerialized {
-            signal_group_secret_params_encrypt_profile_key($0, groupSecretParams, profileKey, uuid)
+            signal_group_secret_params_encrypt_profile_key($0, groupSecretParams, profileKey, userId)
           }
         }
       }
     }
   }
 
-  public func decryptProfileKey(profileKeyCiphertext: ProfileKeyCiphertext, uuid: UUID) throws -> ProfileKey {
+  public func decryptProfileKey(profileKeyCiphertext: ProfileKeyCiphertext, userId: Aci) throws -> ProfileKey {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try profileKeyCiphertext.withUnsafePointerToSerialized { profileKeyCiphertext in
-        try withUnsafePointer(to: uuid.uuid) { uuid in
+        try userId.withPointerToFixedWidthBinary { userId in
           try invokeFnReturningSerialized {
-            signal_group_secret_params_decrypt_profile_key($0, groupSecretParams, profileKeyCiphertext, uuid)
+            signal_group_secret_params_decrypt_profile_key($0, groupSecretParams, profileKeyCiphertext, userId )
           }
         }
       }

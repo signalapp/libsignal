@@ -7,7 +7,7 @@ package org.signal.libsignal.zkgroup.profiles;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.UUID;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerPublicParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -24,15 +24,15 @@ public class ClientZkProfileOperations {
     this.serverPublicParams = serverPublicParams;
   }
 
-  public ProfileKeyCredentialRequestContext createProfileKeyCredentialRequestContext(UUID uuid, ProfileKey profileKey) {
-    return createProfileKeyCredentialRequestContext(new SecureRandom(), uuid, profileKey);
+  public ProfileKeyCredentialRequestContext createProfileKeyCredentialRequestContext(Aci userId, ProfileKey profileKey) {
+    return createProfileKeyCredentialRequestContext(new SecureRandom(), userId, profileKey);
   }
 
-  public ProfileKeyCredentialRequestContext createProfileKeyCredentialRequestContext(SecureRandom secureRandom, UUID uuid, ProfileKey profileKey) {
+  public ProfileKeyCredentialRequestContext createProfileKeyCredentialRequestContext(SecureRandom secureRandom, Aci userId, ProfileKey profileKey) {
     byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams.getInternalContentsForJNI(), random, uuid, profileKey.getInternalContentsForJNI());
+    byte[] newContents = Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams.getInternalContentsForJNI(), random, userId.toServiceIdFixedWidthBinary(), profileKey.getInternalContentsForJNI());
 
     try {
       return new ProfileKeyCredentialRequestContext(newContents);

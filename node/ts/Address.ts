@@ -55,17 +55,27 @@ export class ServiceId extends Object {
     return Native.ServiceId_ServiceIdLog(this.serviceIdFixedWidthBinary);
   }
 
-  static parseFromServiceIdFixedWidthBinary(
+  static parseFromServiceIdFixedWidthBinary<T extends typeof ServiceId>(
+    this: T,
     serviceIdFixedWidthBinary: Buffer
-  ): ServiceId {
+  ): ThisType<T> {
+    let result: ServiceId;
     switch (serviceIdFixedWidthBinary[0]) {
       case ServiceIdKind.Aci:
-        return new Aci(serviceIdFixedWidthBinary);
+        result = new Aci(serviceIdFixedWidthBinary);
+        break;
       case ServiceIdKind.Pni:
-        return new Pni(serviceIdFixedWidthBinary);
+        result = new Pni(serviceIdFixedWidthBinary);
+        break;
       default:
         throw new TypeError('unknown type in Service-Id-FixedWidthBinary');
     }
+    if ((result as object) instanceof this) {
+      return result;
+    }
+    throw new TypeError(
+      `expected ${this.name}, got ${result.constructor.name}`
+    );
   }
 
   static parseFromServiceIdBinary(serviceIdBinary: Buffer): ServiceId {

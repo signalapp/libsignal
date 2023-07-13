@@ -317,6 +317,24 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_protocol::Aci {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        libsignal_protocol::ServiceId::convert_from(cx, foreign)?
+            .try_into()
+            .or_else(|_| cx.throw_type_error("not an ACI"))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_protocol::Pni {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        libsignal_protocol::ServiceId::convert_from(cx, foreign)?
+            .try_into()
+            .or_else(|_| cx.throw_type_error("not a PNI"))
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where
@@ -648,6 +666,13 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
             .as_mut_slice(cx)
             .copy_from_slice(&self.service_id_fixed_width_binary());
         Ok(buffer)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
 }
 

@@ -199,7 +199,8 @@ mod tests {
         let key_pair2: KeyPair = bincode::deserialize(&key_pair_bytes).unwrap();
         assert!(key_pair == key_pair2);
 
-        let uid = uid_struct::UidStruct::new(TEST_ARRAY_16);
+        let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+        let uid = uid_struct::UidStruct::from_service_id(aci.into());
         let ciphertext = key_pair.encrypt(uid);
 
         // Test serialize / deserialize of Ciphertext
@@ -229,9 +230,8 @@ mod tests {
         let mut sho = Sho::new(b"Test_Pni_Encryption", &[]);
         let key_pair = KeyPair::derive_from(&mut sho);
 
-        let uid = uid_struct::UidStruct::from_service_id(
-            libsignal_protocol::Pni::from(uuid::Uuid::from_bytes(TEST_ARRAY_16)).into(),
-        );
+        let pni = libsignal_protocol::Pni::from_uuid_bytes(TEST_ARRAY_16);
+        let uid = uid_struct::UidStruct::from_service_id(pni.into());
         let ciphertext = key_pair.encrypt(uid);
 
         // Test serialize / deserialize of Ciphertext
