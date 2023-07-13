@@ -92,6 +92,8 @@ export class ServiceId extends Object {
 }
 
 export class Aci extends ServiceId {
+  private readonly __type?: never;
+
   static fromUuid(uuidString: string): Aci {
     return this.fromUuidBytes(uuid.parse(uuidString));
   }
@@ -102,6 +104,8 @@ export class Aci extends ServiceId {
 }
 
 export class Pni extends ServiceId {
+  private readonly __type?: never;
+
   static fromUuid(uuidString: string): Pni {
     return this.fromUuidBytes(uuid.parse(uuidString));
   }
