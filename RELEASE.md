@@ -12,7 +12,7 @@ A change is "breaking" if it will require updates in any of the Signal client ap
 
 ```
 bin/update_versions.py 0.x.y
-cargo check --workspace # make sure Cargo.lock is updated
+cargo check --workspace --all-features # make sure Cargo.lock is updated
 ```
 
 ## 2. Record the code size for the Java library
