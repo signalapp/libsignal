@@ -6,8 +6,8 @@
 use crate::{
     message_encrypt, CiphertextMessageType, Context, DeviceId, Direction, IdentityKey,
     IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore,
-    PrivateKey, ProtocolAddress, PublicKey, Result, SessionRecord, SessionStore, SignalMessage,
-    SignalProtocolError, SignedPreKeyStore,
+    PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId, SessionRecord, SessionStore,
+    SignalMessage, SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::{crypto, curve, proto, session_cipher};
@@ -19,7 +19,6 @@ use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
-use uuid::Uuid;
 
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 
@@ -521,6 +520,7 @@ enum UnidentifiedSenderMessage {
 
 const SEALED_SENDER_V1_VERSION: u8 = 1;
 const SEALED_SENDER_V2_VERSION: u8 = 2;
+const SERVICE_ID_AWARE_VERSION: u8 = 3;
 
 impl UnidentifiedSenderMessage {
     fn deserialize(data: &[u8]) -> Result<Self> {
@@ -1187,7 +1187,7 @@ mod sealed_sender_v2 {
 ///
 /// ```text
 /// PerRecipientData {
-///     uuid: [u8; 16],
+///     service_id_fixed_width_binary: [u8; 17],
 ///     device_id: varint,
 ///     registration_id: u16,
 ///     c: [u8; 32],
@@ -1203,18 +1203,11 @@ mod sealed_sender_v2 {
 /// }
 /// ```
 ///
-/// The varint encoding used is the same as [protobuf's][varint]. Values are unsigned. UUIDs are
-/// encoded per [RFC 4122], with the first eight bytes considered "most significant". [^1]
+/// The varint encoding used is the same as [protobuf's][varint]. Values are unsigned.
+/// Fixed-width-binary encoding is used for the [ServiceId] values.
 /// Fixed-width integers are unaligned and in network byte order (big-endian).
 ///
 /// [varint]: https://developers.google.com/protocol-buffers/docs/encoding#varints
-/// [RFC 4122]: https://tools.ietf.org/html/rfc4122#section-4.1.2
-///
-/// [^1]: RFC 4122 guarantees the encoding order of the fields in a
-/// UUID, but the representation of each field may vary based on the UUID's
-/// "variant". For Sealed Sender's purposes, this is not important except for
-/// debug-printing, since UUIDs are always treated as opaque identifiers matched
-/// byte-for-byte.
 pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
@@ -1252,9 +1245,9 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
         ciphertext
     };
 
-    // Uses a flat representation: count || UUID_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
-    let version = SEALED_SENDER_V2_VERSION;
-    let mut serialized: Vec<u8> = vec![(version | (version << 4))];
+    // Uses a flat representation: count || ServiceId_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
+    let mut serialized: Vec<u8> =
+        vec![(SERVICE_ID_AWARE_VERSION | (SEALED_SENDER_V2_VERSION << 4))];
 
     prost::encode_length_delimiter(destinations.len(), &mut serialized)
         .expect("cannot fail encoding to Vec");
@@ -1262,12 +1255,13 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     let our_identity = identity_store.get_identity_key_pair(ctx).await?;
     let mut previous_their_identity = None;
     for (&destination, session) in destinations.iter().zip(destination_sessions) {
-        let their_uuid = Uuid::parse_str(destination.name()).map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!(
-                "multi-recipient sealed sender requires UUID recipients (not {})",
-                destination.name()
-            ))
-        })?;
+        let their_service_id = ServiceId::parse_from_service_id_string(destination.name())
+            .ok_or_else(|| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "multi-recipient sealed sender requires recipients' ServiceId (not {})",
+                    destination.name()
+                ))
+            })?;
 
         let their_identity = identity_store
             .get_identity(destination, ctx)
@@ -1305,7 +1299,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
 
         let end_of_previous_recipient_data = serialized.len();
 
-        serialized.extend_from_slice(their_uuid.as_bytes());
+        serialized.extend_from_slice(&their_service_id.service_id_fixed_width_binary());
         let device_id: u32 = destination.device_id().into();
         prost::encode_length_delimiter(device_id as usize, &mut serialized)
             .expect("cannot fail encoding to Vec");
@@ -1389,8 +1383,8 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
 
     let mut messages: Vec<Vec<u8>> = Vec::new();
     for _ in 0..recipient_count {
-        // Skip UUID.
-        let _ = advance(&mut remaining, 16)?;
+        // Skip ServiceId.
+        let _ = advance(&mut remaining, 17)?;
         // Skip device ID.
         let _ = decode_varint(&mut remaining)?;
         // Skip registration ID.
