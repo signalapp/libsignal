@@ -45,6 +45,11 @@ public abstract class ServiceId {
     }
 
     @Override
+    public int hashCode() {
+        return Arrays.hashCode(this.storage);
+    }
+
+    @Override
     public String toString() {
         return this.toLogString();
     }
