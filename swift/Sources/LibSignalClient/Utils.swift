@@ -84,6 +84,12 @@ internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> Signa
     return UUID(uuid: output)
 }
 
+internal func invokeFnReturningServiceId<Id: ServiceId>(fn: (UnsafeMutablePointer<ServiceIdStorage>?) -> SignalFfiErrorRef?) throws -> Id {
+    var output: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    try checkError(fn(&output))
+    return try Id.parseFrom(fixedWidthBinary: output)
+}
+
 internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result {
     var output: Result = 0
     try checkError(fn(&output))

@@ -341,6 +341,13 @@ typedef SignalKeySecret SignalSecretKey;
 
 typedef SignalSecretKey SignalKyberSecretKey;
 
+/**
+ * The fixed-width binary representation of a ServiceId.
+ *
+ * Rarely used. The variable-width format that privileges ACIs is preferred.
+ */
+typedef uint8_t SignalServiceIdFixedWidthBinaryBytes[17];
+
 typedef int (*SignalLoadKyberPreKey)(void *store_ctx, SignalKyberPreKeyRecord **recordp, uint32_t id, void *ctx);
 
 typedef int (*SignalStoreKyberPreKey)(void *store_ctx, uint32_t id, const SignalKyberPreKeyRecord *record, void *ctx);
@@ -528,15 +535,15 @@ SignalFfiError *signal_kyber_secret_key_clone(SignalKyberSecretKey **new_obj, co
 
 SignalFfiError *signal_hkdf_derive(SignalBorrowedMutableBuffer output, SignalBorrowedBuffer ikm, SignalBorrowedBuffer label, SignalBorrowedBuffer salt);
 
-SignalFfiError *signal_service_id_service_id_binary(SignalOwnedBuffer *out, const uint8_t (*value)[17]);
+SignalFfiError *signal_service_id_service_id_binary(SignalOwnedBuffer *out, const SignalServiceIdFixedWidthBinaryBytes *value);
 
-SignalFfiError *signal_service_id_service_id_string(const char **out, const uint8_t (*value)[17]);
+SignalFfiError *signal_service_id_service_id_string(const char **out, const SignalServiceIdFixedWidthBinaryBytes *value);
 
-SignalFfiError *signal_service_id_service_id_log(const char **out, const uint8_t (*value)[17]);
+SignalFfiError *signal_service_id_service_id_log(const char **out, const SignalServiceIdFixedWidthBinaryBytes *value);
 
-SignalFfiError *signal_service_id_parse_from_service_id_binary(uint8_t (*out)[17], SignalBorrowedBuffer input);
+SignalFfiError *signal_service_id_parse_from_service_id_binary(SignalServiceIdFixedWidthBinaryBytes *out, SignalBorrowedBuffer input);
 
-SignalFfiError *signal_service_id_parse_from_service_id_string(uint8_t (*out)[17], const char *input);
+SignalFfiError *signal_service_id_parse_from_service_id_string(SignalServiceIdFixedWidthBinaryBytes *out, const char *input);
 
 SignalFfiError *signal_address_new(SignalProtocolAddress **out, const char *name, uint32_t device_id);
 
@@ -946,9 +953,9 @@ SignalFfiError *signal_group_secret_params_get_master_key(unsigned char (*out)[S
 
 SignalFfiError *signal_group_secret_params_get_public_params(unsigned char (*out)[SignalGROUP_PUBLIC_PARAMS_LEN], const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN]);
 
-SignalFfiError *signal_group_secret_params_encrypt_uuid(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN], const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN], const uint8_t (*uuid)[16]);
+SignalFfiError *signal_group_secret_params_encrypt_service_id(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN], const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN], const SignalServiceIdFixedWidthBinaryBytes *service_id);
 
-SignalFfiError *signal_group_secret_params_decrypt_uuid(uint8_t (*out)[16], const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*uuid)[SignalUUID_CIPHERTEXT_LEN]);
+SignalFfiError *signal_group_secret_params_decrypt_service_id(SignalServiceIdFixedWidthBinaryBytes *out, const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*ciphertext)[SignalUUID_CIPHERTEXT_LEN]);
 
 SignalFfiError *signal_group_secret_params_encrypt_profile_key(unsigned char (*out)[SignalPROFILE_KEY_CIPHERTEXT_LEN], const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN], const uint8_t (*uuid)[16]);
 

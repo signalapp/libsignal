@@ -638,7 +638,7 @@ macro_rules! ffi_arg_type {
     (Context) => (*mut libc::c_void);
     (Timestamp) => (u64);
     (Uuid) => (*const [u8; 16]);
-    (ServiceId) => (*const [u8; 17]);
+    (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<*const $typ>);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
@@ -679,7 +679,7 @@ macro_rules! ffi_result_type {
     (Option<$typ:ty>) => (*mut $typ);
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
-    (ServiceId) => ([u8; 17]);
+    (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     ([u8; $len:expr]) => ([u8; $len]);
     (&[u8]) => (ffi::OwnedBufferOf<libc::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<libc::c_uchar>);
