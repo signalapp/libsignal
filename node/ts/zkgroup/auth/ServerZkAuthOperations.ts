@@ -45,14 +45,14 @@ export default class ServerZkAuthOperations {
     );
   }
 
-  issueAuthCredentialWithPni(
+  issueAuthCredentialWithPniAsServiceId(
     aci: Aci,
     pni: Pni,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     const random = randomBytes(RANDOM_LENGTH);
 
-    return this.issueAuthCredentialWithPniWithRandom(
+    return this.issueAuthCredentialWithPniAsServiceIdWithRandom(
       random,
       aci,
       pni,
@@ -60,14 +60,46 @@ export default class ServerZkAuthOperations {
     );
   }
 
-  issueAuthCredentialWithPniWithRandom(
+  issueAuthCredentialWithPniAsServiceIdWithRandom(
     random: Buffer,
     aci: Aci,
     pni: Pni,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
-      Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
+      Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
+        this.serverSecretParams.getContents(),
+        random,
+        aci.getServiceIdFixedWidthBinary(),
+        pni.getServiceIdFixedWidthBinary(),
+        redemptionTime
+      )
+    );
+  }
+
+  issueAuthCredentialWithPniAsAci(
+    aci: Aci,
+    pni: Pni,
+    redemptionTime: number
+  ): AuthCredentialWithPniResponse {
+    const random = randomBytes(RANDOM_LENGTH);
+
+    return this.issueAuthCredentialWithPniAsAciWithRandom(
+      random,
+      aci,
+      pni,
+      redemptionTime
+    );
+  }
+
+  issueAuthCredentialWithPniAsAciWithRandom(
+    random: Buffer,
+    aci: Aci,
+    pni: Pni,
+    redemptionTime: number
+  ): AuthCredentialWithPniResponse {
+    return new AuthCredentialWithPniResponse(
+      Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
         this.serverSecretParams.getContents(),
         random,
         aci.getServiceIdFixedWidthBinary(),

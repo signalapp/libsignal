@@ -43,16 +43,34 @@ public class ServerZkAuthOperations {
     }
   }
 
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(Aci aci, Pni pni, Instant redemptionTime) {
-    return issueAuthCredentialWithPni(new SecureRandom(), aci, pni, redemptionTime);
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsServiceId(Aci aci, Pni pni, Instant redemptionTime) {
+    return issueAuthCredentialWithPniAsServiceId(new SecureRandom(), aci, pni, redemptionTime);
   }
 
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPni(SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsServiceId(SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
     byte[] random      = new byte[RANDOM_LENGTH];
 
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialWithPniDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime.getEpochSecond());
+    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime.getEpochSecond());
+
+    try {
+      return new AuthCredentialWithPniResponse(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsAci(Aci aci, Pni pni, Instant redemptionTime) {
+    return issueAuthCredentialWithPniAsAci(new SecureRandom(), aci, pni, redemptionTime);
+  }
+
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsAci(SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
+    byte[] random      = new byte[RANDOM_LENGTH];
+
+    secureRandom.nextBytes(random);
+
+    byte[] newContents = Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(serverSecretParams.getInternalContentsForJNI(), random, aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime.getEpochSecond());
 
     try {
       return new AuthCredentialWithPniResponse(newContents);

@@ -39,8 +39,26 @@ public class ClientZkAuthOperations {
    * 
    * @param redemptionTime This is provided by the server as an integer, and should be passed through directly.
    */
-  public AuthCredentialWithPni receiveAuthCredentialWithPni(Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
-    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPni(serverPublicParams.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime, authCredentialResponse.getInternalContentsForJNI());
+  public AuthCredentialWithPni receiveAuthCredentialWithPniAsServiceId(Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
+    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(serverPublicParams.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime, authCredentialResponse.getInternalContentsForJNI());
+
+    try {
+      return new AuthCredentialWithPni(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  /**
+   * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse.
+   *
+   * This older style of AuthCredentialWithPni will not actually have a usable PNI field,
+   * but can still be used for authenticating with an ACI.
+   * 
+   * @param redemptionTime This is provided by the server as an integer, and should be passed through directly.
+   */
+  public AuthCredentialWithPni receiveAuthCredentialWithPniAsAci(Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
+    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(serverPublicParams.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime, authCredentialResponse.getInternalContentsForJNI());
 
     try {
       return new AuthCredentialWithPni(newContents);

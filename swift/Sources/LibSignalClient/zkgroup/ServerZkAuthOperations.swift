@@ -30,17 +30,35 @@ public class ServerZkAuthOperations {
     }
   }
 
-  public func issueAuthCredentialWithPni(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-    return try issueAuthCredentialWithPni(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
+  public func issueAuthCredentialWithPniAsServiceId(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+    return try issueAuthCredentialWithPniAsServiceId(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
   }
 
-  public func issueAuthCredentialWithPni(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+  public func issueAuthCredentialWithPniAsServiceId(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
     return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
         try aci.withPointerToFixedWidthBinary { aci in
           try pni.withPointerToFixedWidthBinary { pni in
             try invokeFnReturningSerialized {
-              signal_server_secret_params_issue_auth_credential_with_pni_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
+              signal_server_secret_params_issue_auth_credential_with_pni_as_service_id_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public func issueAuthCredentialWithPniAsAci(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+    return try issueAuthCredentialWithPniAsAci(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
+  }
+
+  public func issueAuthCredentialWithPniAsAci(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try aci.withPointerToFixedWidthBinary { aci in
+          try pni.withPointerToFixedWidthBinary { pni in
+            try invokeFnReturningSerialized {
+              signal_server_secret_params_issue_auth_credential_with_pni_as_aci_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
             }
           }
         }

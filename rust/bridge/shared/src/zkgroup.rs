@@ -251,7 +251,7 @@ fn ServerPublicParams_ReceiveAuthCredential(
 }
 
 #[bridge_fn]
-fn ServerPublicParams_ReceiveAuthCredentialWithPni(
+fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
     params: Serialized<ServerPublicParams>,
     aci: Aci,
     pni: Pni,
@@ -259,7 +259,25 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPni(
     response: Serialized<AuthCredentialWithPniResponse>,
 ) -> Result<Serialized<AuthCredentialWithPni>, ZkGroupVerificationFailure> {
     Ok(params
-        .receive_auth_credential_with_pni(aci, pni, redemption_time.as_seconds(), &response)?
+        .receive_auth_credential_with_pni_as_service_id(
+            aci,
+            pni,
+            redemption_time.as_seconds(),
+            &response,
+        )?
+        .into())
+}
+
+#[bridge_fn]
+fn ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
+    params: Serialized<ServerPublicParams>,
+    aci: Aci,
+    pni: Pni,
+    redemption_time: Timestamp,
+    response: Serialized<AuthCredentialWithPniResponse>,
+) -> Result<Serialized<AuthCredentialWithPni>, ZkGroupVerificationFailure> {
+    Ok(params
+        .receive_auth_credential_with_pni_as_aci(aci, pni, redemption_time.as_seconds(), &response)?
         .into())
 }
 
@@ -390,7 +408,7 @@ fn ServerSecretParams_IssueAuthCredentialDeterministic(
 }
 
 #[bridge_fn]
-fn ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
+fn ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
     server_secret_params: Serialized<ServerSecretParams>,
     randomness: &[u8; RANDOMNESS_LEN],
     aci: Aci,
@@ -398,7 +416,25 @@ fn ServerSecretParams_IssueAuthCredentialWithPniDeterministic(
     redemption_time: Timestamp,
 ) -> Serialized<AuthCredentialWithPniResponse> {
     server_secret_params
-        .issue_auth_credential_with_pni(*randomness, aci, pni, redemption_time.as_seconds())
+        .issue_auth_credential_with_pni_as_service_id(
+            *randomness,
+            aci,
+            pni,
+            redemption_time.as_seconds(),
+        )
+        .into()
+}
+
+#[bridge_fn]
+fn ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
+    server_secret_params: Serialized<ServerSecretParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    aci: Aci,
+    pni: Pni,
+    redemption_time: Timestamp,
+) -> Serialized<AuthCredentialWithPniResponse> {
+    server_secret_params
+        .issue_auth_credential_with_pni_as_aci(*randomness, aci, pni, redemption_time.as_seconds())
         .into()
 }
 
