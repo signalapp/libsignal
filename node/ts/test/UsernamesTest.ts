@@ -7,7 +7,7 @@ import { assert, expect } from 'chai';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import * as usernames from '../usernames';
 import * as util from './util';
-import { UsernameLink } from '../usernames';
+import { decryptUsernameLink } from '../usernames';
 
 util.initLogger();
 
@@ -90,10 +90,10 @@ describe('usernames', () => {
     it('works end to end with valid data', () => {
       const expectedUsername = 'signal_test.42';
       const usernameLinkData = usernames.createUsernameLink(expectedUsername);
-      const actualUsername = new UsernameLink(
-        usernameLinkData.entropy,
-        usernameLinkData.encryptedUsername
-      ).decryptUsername();
+      const actualUsername = decryptUsernameLink({
+        entropy: usernameLinkData.entropy,
+        encryptedUsername: usernameLinkData.encryptedUsername,
+      });
       assert.equal(expectedUsername, actualUsername);
     });
     it('will error on too long input data', () => {
@@ -105,18 +105,14 @@ describe('usernames', () => {
     it('will error on invalid entropy data size', () => {
       const entropy = Buffer.alloc(16);
       const encryptedUsername = Buffer.alloc(32);
-      expect(() =>
-        new UsernameLink(entropy, encryptedUsername).decryptUsername()
-      )
+      expect(() => decryptUsernameLink({ entropy, encryptedUsername }))
         .throws(LibSignalErrorBase)
         .with.property('code', ErrorCode.InvalidEntropyDataLength);
     });
     it('will error on invalid encrypted username data', () => {
       const entropy = Buffer.alloc(32);
       const encryptedUsername = Buffer.alloc(32);
-      expect(() =>
-        new UsernameLink(entropy, encryptedUsername).decryptUsername()
-      )
+      expect(() => decryptUsernameLink({ entropy, encryptedUsername }))
         .throws(LibSignalErrorBase)
         .with.property('code', ErrorCode.InvalidUsernameLinkEncryptedData);
     });
