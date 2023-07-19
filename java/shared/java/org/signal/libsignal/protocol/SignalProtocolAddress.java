@@ -15,6 +15,10 @@ public class SignalProtocolAddress implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.ProtocolAddress_New(name, deviceId);
   }
 
+  public SignalProtocolAddress(ServiceId serviceId, int deviceId) {
+    this(serviceId.toServiceIdString(), deviceId);
+  }
+
   public SignalProtocolAddress(long unsafeHandle) {
     this.unsafeHandle = unsafeHandle;
   }
@@ -27,6 +31,19 @@ public class SignalProtocolAddress implements NativeHandleGuard.Owner {
   public String getName() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return Native.ProtocolAddress_Name(guard.nativeHandle());
+    }
+  }
+
+  /**
+   * Returns a ServiceId if this address contains a valid ServiceId, {@code null} otherwise.
+   *
+   * In a future release SignalProtocolAddresses will <em>only</em> support ServiceIds.
+   */
+  public ServiceId getServiceId() {
+    try {
+      return ServiceId.parseFromString(getName());
+    } catch (ServiceId.InvalidServiceIdException e) {
+      return null;
     }
   }
 

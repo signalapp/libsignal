@@ -126,7 +126,10 @@ export class ProtocolAddress {
     return new ProtocolAddress(handle);
   }
 
-  static new(name: string, deviceId: number): ProtocolAddress {
+  static new(name: string | ServiceId, deviceId: number): ProtocolAddress {
+    if (typeof name !== 'string') {
+      name = name.getServiceIdString();
+    }
     return new ProtocolAddress(Native.ProtocolAddress_New(name, deviceId));
   }
 
@@ -134,7 +137,24 @@ export class ProtocolAddress {
     return Native.ProtocolAddress_Name(this);
   }
 
+  /**
+   * Returns a ServiceId if this address contains a valid ServiceId, `null` otherwise.
+   *
+   * In a future release ProtocolAddresses will *only* support ServiceIds.
+   */
+  serviceId(): ServiceId | null {
+    try {
+      return ServiceId.parseFromServiceIdString(this.name());
+    } catch {
+      return null;
+    }
+  }
+
   deviceId(): number {
     return Native.ProtocolAddress_DeviceId(this);
+  }
+
+  toString(): string {
+    return `${this.name()}.${this.deviceId()}`;
   }
 }

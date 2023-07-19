@@ -48,6 +48,18 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(addr.deviceId, 5)
     }
 
+    func testAddressRoundTripServiceId() {
+        let uuid = UUID()
+        let aci = Aci(fromUUID: uuid)
+        let pni = Pni(fromUUID: uuid)
+
+        let aciAddr = ProtocolAddress(aci, deviceId: 1)
+        let pniAddr = ProtocolAddress(pni, deviceId: 1)
+        XCTAssertNotEqual(aciAddr, pniAddr)
+        XCTAssertEqual(aci, aciAddr.serviceId)
+        XCTAssertEqual(pni, pniAddr.serviceId)
+    }
+
     func testPkOperations() {
         let sk = PrivateKey.generate()
         let sk_bytes = sk.serialize()

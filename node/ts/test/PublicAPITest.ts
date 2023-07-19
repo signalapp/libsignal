@@ -412,10 +412,23 @@ describe('SignalClient', () => {
       assert.throws(() => SignalClient.ServiceId.parseFromServiceIdString(''));
     });
   });
-  it('ProtocolAddress', () => {
-    const addr = SignalClient.ProtocolAddress.new('name', 42);
-    assert.deepEqual(addr.name(), 'name');
-    assert.deepEqual(addr.deviceId(), 42);
+  describe('ProtocolAddress', () => {
+    it('can hold arbitrary data', () => {
+      const addr = SignalClient.ProtocolAddress.new('name', 42);
+      assert.deepEqual(addr.name(), 'name');
+      assert.deepEqual(addr.deviceId(), 42);
+    });
+    it('can round-trip ServiceIds', () => {
+      const newUuid = uuid.v4();
+      const aci = SignalClient.Aci.fromUuid(newUuid);
+      const pni = SignalClient.Pni.fromUuid(newUuid);
+
+      const aciAddr = SignalClient.ProtocolAddress.new(aci, 1);
+      const pniAddr = SignalClient.ProtocolAddress.new(pni, 1);
+      assert.notEqual(aciAddr.toString(), pniAddr.toString());
+      assert.isTrue(aciAddr.serviceId()?.isEqual(aci));
+      assert.isTrue(pniAddr.serviceId()?.isEqual(pni));
+    });
   });
   it('Fingerprint', () => {
     const aliceKey = SignalClient.PublicKey.deserialize(

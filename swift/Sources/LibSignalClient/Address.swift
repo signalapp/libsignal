@@ -14,6 +14,17 @@ public class ProtocolAddress: ClonableHandleOwner {
         self.init(owned: handle!)
     }
 
+    /// Creates a ProtocolAddress using the **uppercase** string representation of a service ID, for backward compatibility.
+    public convenience init(_ serviceId: ServiceId, deviceId: UInt32) {
+        do {
+            try self.init(name: serviceId.serviceIdUppercaseString, deviceId: deviceId)
+        } catch {
+            // `self.init` can't be put inside a closure, but we want the same error handling `failOnError` gives us.
+            // So we rethrow the error here.
+            failOnError { () -> Never in throw error }
+        }
+    }
+
     internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_address_clone(&newHandle, currentHandle)
     }
@@ -32,6 +43,13 @@ public class ProtocolAddress: ClonableHandleOwner {
         }
     }
 
+    /// Returns a ServiceId if this address contains a valid ServiceId, `nil` otherwise.
+    ///
+    /// In a future release ProtocolAddresses will *only* support ServiceIds.
+    public var serviceId: ServiceId! {
+        return try? ServiceId.parseFrom(serviceIdString: name)
+    }
+
     public var deviceId: UInt32 {
         return withNativeHandle { nativeHandle in
             failOnError {
@@ -40,6 +58,12 @@ public class ProtocolAddress: ClonableHandleOwner {
                 }
             }
         }
+    }
+}
+
+extension ProtocolAddress: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "\(name).\(deviceId)"
     }
 }
 
