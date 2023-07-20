@@ -2,7 +2,7 @@ plugins {
     id "de.undercouch.download" version "5.0.2"
 }
 
-def version_number = "0.28.1"
+def version_number = "0.29.0"
 
 subprojects {
     ext.version_number     = version_number
