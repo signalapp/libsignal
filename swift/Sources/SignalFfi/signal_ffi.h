@@ -261,9 +261,9 @@ typedef struct {
   uintptr_t length;
 } SignalOwnedBuffer;
 
-typedef int (*SignalLoadSession)(void *store_ctx, SignalSessionRecord **recordp, const SignalProtocolAddress *address, void *ctx);
+typedef int (*SignalLoadSession)(void *store_ctx, SignalSessionRecord **recordp, const SignalProtocolAddress *address);
 
-typedef int (*SignalStoreSession)(void *store_ctx, const SignalProtocolAddress *address, const SignalSessionRecord *record, void *ctx);
+typedef int (*SignalStoreSession)(void *store_ctx, const SignalProtocolAddress *address, const SignalSessionRecord *record);
 
 typedef struct {
   void *ctx;
@@ -271,15 +271,15 @@ typedef struct {
   SignalStoreSession store_session;
 } SignalSessionStore;
 
-typedef int (*SignalGetIdentityKeyPair)(void *store_ctx, SignalPrivateKey **keyp, void *ctx);
+typedef int (*SignalGetIdentityKeyPair)(void *store_ctx, SignalPrivateKey **keyp);
 
-typedef int (*SignalGetLocalRegistrationId)(void *store_ctx, uint32_t *idp, void *ctx);
+typedef int (*SignalGetLocalRegistrationId)(void *store_ctx, uint32_t *idp);
 
-typedef int (*SignalSaveIdentityKey)(void *store_ctx, const SignalProtocolAddress *address, const SignalPublicKey *public_key, void *ctx);
+typedef int (*SignalSaveIdentityKey)(void *store_ctx, const SignalProtocolAddress *address, const SignalPublicKey *public_key);
 
-typedef int (*SignalGetIdentityKey)(void *store_ctx, SignalPublicKey **public_keyp, const SignalProtocolAddress *address, void *ctx);
+typedef int (*SignalGetIdentityKey)(void *store_ctx, SignalPublicKey **public_keyp, const SignalProtocolAddress *address);
 
-typedef int (*SignalIsTrustedIdentity)(void *store_ctx, const SignalProtocolAddress *address, const SignalPublicKey *public_key, unsigned int direction, void *ctx);
+typedef int (*SignalIsTrustedIdentity)(void *store_ctx, const SignalProtocolAddress *address, const SignalPublicKey *public_key, unsigned int direction);
 
 typedef struct {
   void *ctx;
@@ -290,11 +290,11 @@ typedef struct {
   SignalIsTrustedIdentity is_trusted_identity;
 } SignalIdentityKeyStore;
 
-typedef int (*SignalLoadPreKey)(void *store_ctx, SignalPreKeyRecord **recordp, uint32_t id, void *ctx);
+typedef int (*SignalLoadPreKey)(void *store_ctx, SignalPreKeyRecord **recordp, uint32_t id);
 
-typedef int (*SignalStorePreKey)(void *store_ctx, uint32_t id, const SignalPreKeyRecord *record, void *ctx);
+typedef int (*SignalStorePreKey)(void *store_ctx, uint32_t id, const SignalPreKeyRecord *record);
 
-typedef int (*SignalRemovePreKey)(void *store_ctx, uint32_t id, void *ctx);
+typedef int (*SignalRemovePreKey)(void *store_ctx, uint32_t id);
 
 typedef struct {
   void *ctx;
@@ -303,9 +303,9 @@ typedef struct {
   SignalRemovePreKey remove_pre_key;
 } SignalPreKeyStore;
 
-typedef int (*SignalLoadSignedPreKey)(void *store_ctx, SignalSignedPreKeyRecord **recordp, uint32_t id, void *ctx);
+typedef int (*SignalLoadSignedPreKey)(void *store_ctx, SignalSignedPreKeyRecord **recordp, uint32_t id);
 
-typedef int (*SignalStoreSignedPreKey)(void *store_ctx, uint32_t id, const SignalSignedPreKeyRecord *record, void *ctx);
+typedef int (*SignalStoreSignedPreKey)(void *store_ctx, uint32_t id, const SignalSignedPreKeyRecord *record);
 
 typedef struct {
   void *ctx;
@@ -348,11 +348,11 @@ typedef SignalSecretKey SignalKyberSecretKey;
  */
 typedef uint8_t SignalServiceIdFixedWidthBinaryBytes[17];
 
-typedef int (*SignalLoadKyberPreKey)(void *store_ctx, SignalKyberPreKeyRecord **recordp, uint32_t id, void *ctx);
+typedef int (*SignalLoadKyberPreKey)(void *store_ctx, SignalKyberPreKeyRecord **recordp, uint32_t id);
 
-typedef int (*SignalStoreKyberPreKey)(void *store_ctx, uint32_t id, const SignalKyberPreKeyRecord *record, void *ctx);
+typedef int (*SignalStoreKyberPreKey)(void *store_ctx, uint32_t id, const SignalKyberPreKeyRecord *record);
 
-typedef int (*SignalMarkKyberPreKeyUsed)(void *store_ctx, uint32_t id, void *ctx);
+typedef int (*SignalMarkKyberPreKeyUsed)(void *store_ctx, uint32_t id);
 
 typedef struct {
   void *ctx;
@@ -371,9 +371,9 @@ typedef struct {
   uintptr_t length;
 } SignalBorrowedSliceOfSessionRecord;
 
-typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16], void *ctx);
+typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16]);
 
-typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16], const SignalSenderKeyRecord*, void *ctx);
+typedef int (*SignalStoreSenderKey)(void *store_ctx, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16], const SignalSenderKeyRecord*);
 
 typedef struct {
   void *ctx;
@@ -411,7 +411,7 @@ void signal_error_free(SignalFfiError *err);
 
 SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_key, SignalPublicKey **public_key, SignalBorrowedBuffer input);
 
-SignalFfiError *signal_sealed_session_cipher_decrypt(SignalOwnedBuffer *out, const char **sender_e164, const char **sender_uuid, uint32_t *sender_device_id, SignalBorrowedBuffer ctext, const SignalPublicKey *trust_root, uint64_t timestamp, const char *local_e164, const char *local_uuid, unsigned int local_device_id, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_store, const SignalPreKeyStore *prekey_store, const SignalSignedPreKeyStore *signed_prekey_store, void *ctx);
+SignalFfiError *signal_sealed_session_cipher_decrypt(SignalOwnedBuffer *out, const char **sender_e164, const char **sender_uuid, uint32_t *sender_device_id, SignalBorrowedBuffer ctext, const SignalPublicKey *trust_root, uint64_t timestamp, const char *local_e164, const char *local_uuid, unsigned int local_device_id, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_store, const SignalPreKeyStore *prekey_store, const SignalSignedPreKeyStore *signed_prekey_store);
 
 void signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
 
@@ -841,29 +841,29 @@ SignalFfiError *signal_session_record_get_local_registration_id(uint32_t *out, c
 
 SignalFfiError *signal_session_record_get_remote_registration_id(uint32_t *out, const SignalSessionRecord *obj);
 
-SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, void *ctx);
+SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
 
-SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out, SignalBorrowedBuffer ptext, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, void *ctx);
+SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out, SignalBorrowedBuffer ptext, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
 
-SignalFfiError *signal_decrypt_message(SignalOwnedBuffer *out, const SignalMessage *message, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, void *ctx);
+SignalFfiError *signal_decrypt_message(SignalOwnedBuffer *out, const SignalMessage *message, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
 
-SignalFfiError *signal_decrypt_pre_key_message(SignalOwnedBuffer *out, const SignalPreKeySignalMessage *message, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, const SignalPreKeyStore *prekey_store, const SignalSignedPreKeyStore *signed_prekey_store, const SignalKyberPreKeyStore *kyber_prekey_store, void *ctx);
+SignalFfiError *signal_decrypt_pre_key_message(SignalOwnedBuffer *out, const SignalPreKeySignalMessage *message, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, const SignalPreKeyStore *prekey_store, const SignalSignedPreKeyStore *signed_prekey_store, const SignalKyberPreKeyStore *kyber_prekey_store);
 
-SignalFfiError *signal_sealed_session_cipher_encrypt(SignalOwnedBuffer *out, const SignalProtocolAddress *destination, const SignalUnidentifiedSenderMessageContent *content, const SignalIdentityKeyStore *identity_key_store, void *ctx);
+SignalFfiError *signal_sealed_session_cipher_encrypt(SignalOwnedBuffer *out, const SignalProtocolAddress *destination, const SignalUnidentifiedSenderMessageContent *content, const SignalIdentityKeyStore *identity_key_store);
 
-SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(SignalOwnedBuffer *out, SignalBorrowedSliceOfProtocolAddress recipients, SignalBorrowedSliceOfSessionRecord recipient_sessions, const SignalUnidentifiedSenderMessageContent *content, const SignalIdentityKeyStore *identity_key_store, void *ctx);
+SignalFfiError *signal_sealed_sender_multi_recipient_encrypt(SignalOwnedBuffer *out, SignalBorrowedSliceOfProtocolAddress recipients, SignalBorrowedSliceOfSessionRecord recipient_sessions, const SignalUnidentifiedSenderMessageContent *content, const SignalIdentityKeyStore *identity_key_store);
 
 SignalFfiError *signal_sealed_sender_multi_recipient_message_for_single_recipient(SignalOwnedBuffer *out, SignalBorrowedBuffer encoded_multi_recipient_message);
 
-SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out, SignalBorrowedBuffer ctext, const SignalIdentityKeyStore *identity_store, void *ctx);
+SignalFfiError *signal_sealed_session_cipher_decrypt_to_usmc(SignalUnidentifiedSenderMessageContent **out, SignalBorrowedBuffer ctext, const SignalIdentityKeyStore *identity_store);
 
-SignalFfiError *signal_sender_key_distribution_message_create(SignalSenderKeyDistributionMessage **out, const SignalProtocolAddress *sender, const uint8_t (*distribution_id)[16], const SignalSenderKeyStore *store, void *ctx);
+SignalFfiError *signal_sender_key_distribution_message_create(SignalSenderKeyDistributionMessage **out, const SignalProtocolAddress *sender, const uint8_t (*distribution_id)[16], const SignalSenderKeyStore *store);
 
-SignalFfiError *signal_process_sender_key_distribution_message(const SignalProtocolAddress *sender, const SignalSenderKeyDistributionMessage *sender_key_distribution_message, const SignalSenderKeyStore *store, void *ctx);
+SignalFfiError *signal_process_sender_key_distribution_message(const SignalProtocolAddress *sender, const SignalSenderKeyDistributionMessage *sender_key_distribution_message, const SignalSenderKeyStore *store);
 
-SignalFfiError *signal_group_encrypt_message(SignalCiphertextMessage **out, const SignalProtocolAddress *sender, const uint8_t (*distribution_id)[16], SignalBorrowedBuffer message, const SignalSenderKeyStore *store, void *ctx);
+SignalFfiError *signal_group_encrypt_message(SignalCiphertextMessage **out, const SignalProtocolAddress *sender, const uint8_t (*distribution_id)[16], SignalBorrowedBuffer message, const SignalSenderKeyStore *store);
 
-SignalFfiError *signal_group_decrypt_message(SignalOwnedBuffer *out, const SignalProtocolAddress *sender, SignalBorrowedBuffer message, const SignalSenderKeyStore *store, void *ctx);
+SignalFfiError *signal_group_decrypt_message(SignalOwnedBuffer *out, const SignalProtocolAddress *sender, SignalBorrowedBuffer message, const SignalSenderKeyStore *store);
 
 SignalFfiError *signal_device_transfer_generate_private_key(SignalOwnedBuffer *out);
 

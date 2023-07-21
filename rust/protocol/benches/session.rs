@@ -21,11 +21,11 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
     let mut bob_store = support::test_in_memory_protocol_store()?;
 
     alice_store
-        .store_session(&bob_address, &alice_session_record, None)
+        .store_session(&bob_address, &alice_session_record)
         .now_or_never()
         .expect("sync")?;
     bob_store
-        .store_session(&alice_address, &bob_session_record, None)
+        .store_session(&alice_address, &bob_session_record)
         .now_or_never()
         .expect("sync")?;
 
@@ -70,13 +70,13 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     // Archive on Alice's side...
     let mut state = alice_store
-        .load_session(&bob_address, None)
+        .load_session(&bob_address)
         .now_or_never()
         .expect("sync")?
         .expect("already decrypted successfully");
     state.archive_current_state()?;
     alice_store
-        .store_session(&bob_address, &state, None)
+        .store_session(&bob_address, &state)
         .now_or_never()
         .expect("sync")?;
 
@@ -85,7 +85,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
-        .get_identity_key_pair(None)
+        .get_identity_key_pair()
         .now_or_never()
         .expect("sync")?
         .private_key()
@@ -95,7 +95,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
 
     let bob_pre_key_bundle = PreKeyBundle::new(
         bob_store
-            .get_local_registration_id(None)
+            .get_local_registration_id()
             .now_or_never()
             .expect("sync")?,
         1.into(),                 // device id
@@ -104,7 +104,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         bob_signed_pre_key_pair.public_key,
         bob_signed_pre_key_signature.to_vec(),
         *bob_store
-            .get_identity_key_pair(None)
+            .get_identity_key_pair()
             .now_or_never()
             .expect("sync")?
             .identity_key(),
@@ -119,7 +119,6 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                 &bob_signed_pre_key_pair,
                 &bob_signed_pre_key_signature,
             ),
-            None,
         )
         .now_or_never()
         .expect("sync")?;
@@ -135,7 +134,6 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
         &mut OsRng,
-        None,
     )
     .now_or_never()
     .expect("sync")?;
@@ -190,11 +188,11 @@ pub fn session_encrypt_decrypt_result(c: &mut Criterion) -> Result<(), SignalPro
     let mut bob_store = support::test_in_memory_protocol_store()?;
 
     alice_store
-        .store_session(&bob_address, &alice_session_record, None)
+        .store_session(&bob_address, &alice_session_record)
         .now_or_never()
         .expect("sync")?;
     bob_store
-        .store_session(&alice_address, &bob_session_record, None)
+        .store_session(&alice_address, &bob_session_record)
         .now_or_never()
         .expect("sync")?;
 

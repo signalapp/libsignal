@@ -33,7 +33,7 @@ impl Participant {
         let their_signed_pre_key_public = their_signed_pre_key_pair.public_key.serialize();
         let their_signed_pre_key_signature = them
             .store
-            .get_identity_key_pair(None)
+            .get_identity_key_pair()
             .await
             .unwrap()
             .private_key()
@@ -51,7 +51,6 @@ impl Participant {
                     &their_signed_pre_key_pair,
                     &their_signed_pre_key_signature,
                 ),
-                None,
             )
             .await
             .unwrap();
@@ -64,7 +63,6 @@ impl Participant {
                 .save_pre_key(
                     pre_key_id,
                     &PreKeyRecord::new(pre_key_id, &one_time_pre_key),
-                    None,
                 )
                 .await
                 .unwrap();
@@ -74,7 +72,7 @@ impl Participant {
         };
 
         let their_pre_key_bundle = PreKeyBundle::new(
-            them.store.get_local_registration_id(None).await.unwrap(),
+            them.store.get_local_registration_id().await.unwrap(),
             1.into(), // device id
             pre_key_info.into(),
             signed_pre_key_id.into(),
@@ -82,7 +80,7 @@ impl Participant {
             their_signed_pre_key_signature.into_vec(),
             *them
                 .store
-                .get_identity_key_pair(None)
+                .get_identity_key_pair()
                 .await
                 .unwrap()
                 .identity_key(),
@@ -95,7 +93,6 @@ impl Participant {
             &mut self.store.identity_store,
             &their_pre_key_bundle,
             rng,
-            None,
         )
         .await
         .unwrap();
@@ -105,7 +102,7 @@ impl Participant {
         info!("{}: sending message", self.name);
         if self
             .store
-            .load_session(&them.address, None)
+            .load_session(&them.address)
             .await
             .unwrap()
             .map(|session| !session.has_current_session_state())
@@ -123,7 +120,6 @@ impl Participant {
             &them.address,
             &mut self.store.session_store,
             &mut self.store.identity_store,
-            None,
         )
         .await
         .unwrap();
@@ -158,7 +154,6 @@ impl Participant {
                 &mut self.store.signed_pre_key_store,
                 &mut self.store.kyber_pre_key_store,
                 rng,
-                None,
             )
             .await
             .unwrap();
@@ -168,11 +163,11 @@ impl Participant {
     }
 
     async fn archive_session(&mut self, their_address: &ProtocolAddress) {
-        if let Some(mut session) = self.store.load_session(their_address, None).await.unwrap() {
+        if let Some(mut session) = self.store.load_session(their_address).await.unwrap() {
             info!("{}: archiving session", self.name);
             session.archive_current_state().unwrap();
             self.store
-                .store_session(their_address, &session, None)
+                .store_session(their_address, &session)
                 .await
                 .unwrap();
             self.archive_count += 1;

@@ -15,7 +15,7 @@ private struct SenderKeyName: Hashable {
     var distributionId: UUID
 }
 
-public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, KyberPreKeyStore, SessionStore, SenderKeyStore {
+open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPreKeyStore, KyberPreKeyStore, SessionStore, SenderKeyStore {
     private var publicKeys: [ProtocolAddress: IdentityKey] = [:]
     private var privateKey: IdentityKeyPair
     private var registrationId: UInt32
@@ -36,15 +36,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         self.registrationId = registrationId
     }
 
-    public func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair {
+    open func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair {
         return privateKey
     }
 
-    public func localRegistrationId(context: StoreContext) throws -> UInt32 {
+    open func localRegistrationId(context: StoreContext) throws -> UInt32 {
         return registrationId
     }
 
-    public func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {
+    open func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {
         if publicKeys.updateValue(identity, forKey: address) == nil {
             return false // newly created
         } else {
@@ -52,7 +52,7 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: StoreContext) throws -> Bool {
+    open func isTrustedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, direction: Direction, context: StoreContext) throws -> Bool {
         if let pk = publicKeys[address] {
             return pk == identity
         } else {
@@ -60,11 +60,11 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey? {
+    open func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey? {
         return publicKeys[address]
     }
 
-    public func loadPreKey(id: UInt32, context: StoreContext) throws -> PreKeyRecord {
+    open func loadPreKey(id: UInt32, context: StoreContext) throws -> PreKeyRecord {
         if let record = prekeyMap[id] {
             return record
         } else {
@@ -72,15 +72,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func storePreKey(_ record: PreKeyRecord, id: UInt32, context: StoreContext) throws {
+    open func storePreKey(_ record: PreKeyRecord, id: UInt32, context: StoreContext) throws {
         prekeyMap[id] = record
     }
 
-    public func removePreKey(id: UInt32, context: StoreContext) throws {
+    open func removePreKey(id: UInt32, context: StoreContext) throws {
         prekeyMap.removeValue(forKey: id)
     }
 
-    public func loadSignedPreKey(id: UInt32, context: StoreContext) throws -> SignedPreKeyRecord {
+    open func loadSignedPreKey(id: UInt32, context: StoreContext) throws -> SignedPreKeyRecord {
         if let record = signedPrekeyMap[id] {
             return record
         } else {
@@ -88,11 +88,11 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: StoreContext) throws {
+    open func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: StoreContext) throws {
         signedPrekeyMap[id] = record
     }
 
-    public func loadKyberPreKey(id: UInt32, context: StoreContext) throws -> KyberPreKeyRecord {
+    open func loadKyberPreKey(id: UInt32, context: StoreContext) throws -> KyberPreKeyRecord {
         if let record = kyberPrekeyMap[id] {
             return record
         } else {
@@ -100,19 +100,19 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func storeKyberPreKey(_ record: KyberPreKeyRecord, id: UInt32, context: StoreContext) throws {
+    open func storeKyberPreKey(_ record: KyberPreKeyRecord, id: UInt32, context: StoreContext) throws {
         kyberPrekeyMap[id] = record
     }
 
-    public func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws {
+    open func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws {
         kyberPrekeysUsed.insert(id)
     }
 
-    public func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord? {
+    open func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord? {
         return sessionMap[address]
     }
 
-    public func loadExistingSessions(for addresses: [ProtocolAddress], context: StoreContext) throws -> [SessionRecord] {
+    open func loadExistingSessions(for addresses: [ProtocolAddress], context: StoreContext) throws -> [SessionRecord] {
         return try addresses.map { address in
             if let session = sessionMap[address] {
                 return session
@@ -121,15 +121,15 @@ public class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedP
         }
     }
 
-    public func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: StoreContext) throws {
+    open func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: StoreContext) throws {
         sessionMap[address] = record
     }
 
-    public func storeSenderKey(from sender: ProtocolAddress, distributionId: UUID, record: SenderKeyRecord, context: StoreContext) throws {
+    open func storeSenderKey(from sender: ProtocolAddress, distributionId: UUID, record: SenderKeyRecord, context: StoreContext) throws {
         senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)] = record
     }
 
-    public func loadSenderKey(from sender: ProtocolAddress, distributionId: UUID, context: StoreContext) throws -> SenderKeyRecord? {
+    open func loadSenderKey(from sender: ProtocolAddress, distributionId: UUID, context: StoreContext) throws -> SenderKeyRecord? {
         return senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)]
     }
 }

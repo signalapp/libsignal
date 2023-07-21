@@ -37,7 +37,6 @@ pub async fn encrypt(
         remote_address,
         &mut store.session_store,
         &mut store.identity_store,
-        None,
     )
     .await
 }
@@ -57,7 +56,6 @@ pub async fn decrypt(
         &mut store.signed_pre_key_store,
         &mut store.kyber_pre_key_store,
         &mut csprng,
-        None,
     )
     .await
 }
@@ -71,7 +69,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 
     let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
     let signed_pre_key_signature = store
-        .get_identity_key_pair(None)
+        .get_identity_key_pair()
         .await?
         .private_key()
         .calculate_signature(&signed_pre_key_public, &mut csprng)?;
@@ -81,20 +79,19 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
     let signed_pre_key_id: u32 = csprng.gen();
 
     let pre_key_bundle = PreKeyBundle::new(
-        store.get_local_registration_id(None).await?,
+        store.get_local_registration_id().await?,
         device_id.into(),
         Some((pre_key_id.into(), pre_key_pair.public_key)),
         signed_pre_key_id.into(),
         signed_pre_key_pair.public_key,
         signed_pre_key_signature.to_vec(),
-        *store.get_identity_key_pair(None).await?.identity_key(),
+        *store.get_identity_key_pair().await?.identity_key(),
     )?;
 
     store
         .save_pre_key(
             pre_key_id.into(),
             &PreKeyRecord::new(pre_key_id.into(), &pre_key_pair),
-            None,
         )
         .await?;
 
@@ -109,7 +106,6 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
                 &signed_pre_key_pair,
                 &signed_pre_key_signature,
             ),
-            None,
         )
         .await?;
 
@@ -253,7 +249,7 @@ impl TestStoreBuilder {
         }
         let pair = KeyPair::generate(&mut self.rng);
         self.store
-            .save_pre_key(id.into(), &PreKeyRecord::new(id.into(), &pair), None)
+            .save_pre_key(id.into(), &PreKeyRecord::new(id.into(), &pair))
             .now_or_never()
             .expect("sync")
             .expect("able to store pre key");
@@ -277,7 +273,7 @@ impl TestStoreBuilder {
         let signature = self.sign(&public);
         let record = SignedPreKeyRecord::new(id.into(), 42, &pair, &signature);
         self.store
-            .save_signed_pre_key(id.into(), &record, None)
+            .save_signed_pre_key(id.into(), &record)
             .now_or_never()
             .expect("sync")
             .expect("able to store signed pre key");
@@ -301,7 +297,7 @@ impl TestStoreBuilder {
         let signature = self.sign(&public);
         let record = KyberPreKeyRecord::new(id.into(), 43, &pair, &signature);
         self.store
-            .save_kyber_pre_key(id.into(), &record, None)
+            .save_kyber_pre_key(id.into(), &record)
             .now_or_never()
             .expect("sync")
             .expect("able toe store kyber pre key");
@@ -310,21 +306,21 @@ impl TestStoreBuilder {
     pub fn make_bundle_with_latest_keys(&self, device_id: DeviceId) -> PreKeyBundle {
         let registration_id = self
             .store
-            .get_local_registration_id(None)
+            .get_local_registration_id()
             .now_or_never()
             .expect("sync")
             .expect("contains local registration id");
         let maybe_pre_key_record = self.store.all_pre_key_ids().max().map(|id| {
             self.store
                 .pre_key_store
-                .get_pre_key(*id, None)
+                .get_pre_key(*id)
                 .now_or_never()
                 .expect("syng")
                 .expect("has pre key")
         });
         let identity_key_pair = self
             .store
-            .get_identity_key_pair(None)
+            .get_identity_key_pair()
             .now_or_never()
             .expect("sync")
             .expect("has identity key pair");
@@ -335,7 +331,7 @@ impl TestStoreBuilder {
             .max()
             .map(|id| {
                 self.store
-                    .get_signed_pre_key(*id, None)
+                    .get_signed_pre_key(*id)
                     .now_or_never()
                     .expect("sync")
                     .expect("has signed pre key")
@@ -343,7 +339,7 @@ impl TestStoreBuilder {
             .expect("contains at least one signed pre key");
         let maybe_kyber_pre_key_record = self.store.all_kyber_pre_key_ids().max().map(|id| {
             self.store
-                .get_kyber_pre_key(*id, None)
+                .get_kyber_pre_key(*id)
                 .now_or_never()
                 .expect("sync")
                 .expect("has kyber pre key")
@@ -376,7 +372,7 @@ impl TestStoreBuilder {
     fn sign(&mut self, message: &[u8]) -> Box<[u8]> {
         let identity_key_pair = self
             .store
-            .get_identity_key_pair(None)
+            .get_identity_key_pair()
             .now_or_never()
             .expect("sync")
             .expect("able to get identity");
@@ -412,7 +408,7 @@ impl HasSessionVersion for TestStoreBuilder {
 
 impl HasSessionVersion for InMemSignalProtocolStore {
     fn session_version(&self, address: &ProtocolAddress) -> Result<u32, SignalProtocolError> {
-        self.load_session(address, None)
+        self.load_session(address)
             .now_or_never()
             .expect("sync")?
             .expect("session found")

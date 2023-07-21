@@ -81,8 +81,7 @@ pub use state::{
     PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
 };
 pub use storage::{
-    Context, Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore,
-    InMemPreKeyStore, InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore,
-    InMemSignedPreKeyStore, KyberPreKeyStore, PreKeyStore, ProtocolStore, SenderKeyStore,
-    SessionStore, SignedPreKeyStore,
+    Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore, InMemPreKeyStore,
+    InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
+    KyberPreKeyStore, PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
 };

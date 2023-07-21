@@ -916,8 +916,7 @@ export class SenderKeyDistributionMessage {
     const handle = await Native.SenderKeyDistributionMessage_Create(
       sender,
       Buffer.from(uuid.parse(distributionId) as Uint8Array),
-      store,
-      null
+      store
     );
     return new SenderKeyDistributionMessage(handle);
   }
@@ -976,12 +975,7 @@ export async function processSenderKeyDistributionMessage(
   message: SenderKeyDistributionMessage,
   store: SenderKeyStore
 ): Promise<void> {
-  await Native.SenderKeyDistributionMessage_Process(
-    sender,
-    message,
-    store,
-    null
-  );
+  await Native.SenderKeyDistributionMessage_Process(sender, message, store);
 }
 
 export class SenderKeyMessage {
@@ -1306,8 +1300,7 @@ export async function groupEncrypt(
       sender,
       Buffer.from(uuid.parse(distributionId) as Uint8Array),
       message,
-      store,
-      null
+      store
     )
   );
 }
@@ -1317,7 +1310,7 @@ export async function groupDecrypt(
   store: SenderKeyStore,
   message: Buffer
 ): Promise<Buffer> {
-  return Native.GroupCipher_DecryptMessage(sender, message, store, null);
+  return Native.GroupCipher_DecryptMessage(sender, message, store);
 }
 
 export class SealedSenderDecryptionResult {
@@ -1485,8 +1478,7 @@ export function processPreKeyBundle(
     bundle,
     address,
     sessionStore,
-    identityStore,
-    null
+    identityStore
   );
 }
 
@@ -1501,8 +1493,7 @@ export async function signalEncrypt(
       message,
       address,
       sessionStore,
-      identityStore,
-      null
+      identityStore
     )
   );
 }
@@ -1517,8 +1508,7 @@ export function signalDecrypt(
     message,
     address,
     sessionStore,
-    identityStore,
-    null
+    identityStore
   );
 }
 
@@ -1538,8 +1528,7 @@ export function signalDecryptPreKey(
     identityStore,
     prekeyStore,
     signedPrekeyStore,
-    kyberPrekeyStore,
-    null
+    kyberPrekeyStore
   );
 }
 
@@ -1570,7 +1559,7 @@ export function sealedSenderEncrypt(
   address: ProtocolAddress,
   identityStore: IdentityKeyStore
 ): Promise<Buffer> {
-  return Native.SealedSender_Encrypt(address, content, identityStore, null);
+  return Native.SealedSender_Encrypt(address, content, identityStore);
 }
 
 export async function sealedSenderMultiRecipientEncrypt(
@@ -1584,8 +1573,7 @@ export async function sealedSenderMultiRecipientEncrypt(
     recipients,
     recipientSessions,
     content,
-    identityStore,
-    null
+    identityStore
   );
 }
 
@@ -1629,11 +1617,7 @@ export async function sealedSenderDecryptToUsmc(
   message: Buffer,
   identityStore: IdentityKeyStore
 ): Promise<UnidentifiedSenderMessageContent> {
-  const usmc = await Native.SealedSender_DecryptToUsmc(
-    message,
-    identityStore,
-    null
-  );
+  const usmc = await Native.SealedSender_DecryptToUsmc(message, identityStore);
   return UnidentifiedSenderMessageContent._fromNativeHandle(usmc);
 }
 

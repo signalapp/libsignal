@@ -31,7 +31,6 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         distribution_id,
         &mut alice_store,
         &mut csprng,
-        None,
     )
     .now_or_never()
     .expect("sync")?;
@@ -43,7 +42,6 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         &sender_address,
         &recv_distribution_message,
         &mut bob_store,
-        None,
     )
     .now_or_never()
     .expect("sync")?;
@@ -58,7 +56,6 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                 distribution_id,
                 format!("nefarious plotting {}", i).as_bytes(),
                 &mut csprng,
-                None,
             )
             .now_or_never()
             .expect("sync")?;
@@ -70,7 +67,6 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             distribution_id,
             "you got the plan?".as_bytes(),
             &mut csprng,
-            None,
         )
         .now_or_never()
         .expect("sync")?;
@@ -82,7 +78,6 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                     alice_ciphertext.serialized(),
                     &mut bob_store,
                     &sender_address,
-                    None,
                 )
                 .now_or_never()
                 .expect("sync")

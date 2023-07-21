@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::{c_char, c_uchar, c_void};
+use libc::{c_char, c_uchar};
 use libsignal_protocol::*;
 use paste::paste;
 use std::convert::TryInto;
@@ -191,13 +191,6 @@ impl SimpleArgTypeInfo for Option<String> {
         } else {
             String::convert_from(foreign).map(Some)
         }
-    }
-}
-
-impl SimpleArgTypeInfo for Context {
-    type ArgType = *mut c_void;
-    fn convert_from(foreign: *mut c_void) -> SignalFfiResult<Self> {
-        Ok(Some(foreign))
     }
 }
 
@@ -660,7 +653,6 @@ macro_rules! ffi_arg_type {
     (String) => (*const libc::c_char);
     (Option<String>) => (*const libc::c_char);
     (Option<&str>) => (*const libc::c_char);
-    (Context) => (*mut libc::c_void);
     (Timestamp) => (u64);
     (Uuid) => (*const [u8; 16]);
     (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);

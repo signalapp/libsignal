@@ -248,6 +248,37 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(b_ptext, [1, 2, 3])
     }
 
+    func testGroupCipherWithContext() {
+        class ContextUsingStore: InMemorySignalProtocolStore {
+            var expectedContext: StoreContext & AnyObject
+
+            init(expectedContext: StoreContext & AnyObject) {
+                self.expectedContext = expectedContext
+                super.init()
+            }
+
+            override func loadSenderKey(from sender: ProtocolAddress, distributionId: UUID, context: StoreContext) throws -> SenderKeyRecord? {
+                XCTAssertIdentical(expectedContext, context as AnyObject)
+                return try super.loadSenderKey(from: sender, distributionId: distributionId, context: context)
+            }
+        }
+
+        class ContextWithIdentity: StoreContext {}
+
+        let sender = try! ProtocolAddress(name: "+14159999111", deviceId: 4)
+        let distribution_id = UUID(uuidString: "d1d1d1d1-7000-11eb-b32a-33b8a8a487a6")!
+
+        let a_store = ContextUsingStore(expectedContext: ContextWithIdentity())
+
+        let skdm = try! SenderKeyDistributionMessage(from: sender, distributionId: distribution_id, store: a_store, context: a_store.expectedContext)
+
+        let skdm_bits = skdm.serialize()
+
+        _ = try! SenderKeyDistributionMessage(bytes: skdm_bits)
+
+        _ = try! groupEncrypt([1, 2, 3], from: sender, distributionId: distribution_id, store: a_store, context: a_store.expectedContext).serialize()
+    }
+
     func testSenderCertificates() {
         let senderCertBits: [UInt8] = [
             0x0a, 0xcd, 0x01, 0x0a, 0x0c, 0x2b, 0x31, 0x34, 0x31, 0x35, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x10, 0x2a, 0x19,

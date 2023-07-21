@@ -332,19 +332,6 @@ macro_rules! store {
     };
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for Context {
-    type ArgType = JObject<'a>;
-    fn convert_from(_env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
-        if foreign.is_null() {
-            Ok(None)
-        } else {
-            Err(SignalJniError::BadJniParameter(
-                "<context> (only 'null' contexts are supported)",
-            ))
-        }
-    }
-}
-
 store!(IdentityKeyStore);
 store!(PreKeyStore);
 store!(SenderKeyStore);
@@ -1173,9 +1160,6 @@ macro_rules! jni_arg_type {
     };
     (Pni) => {
         jni::jbyteArray
-    };
-    (Context) => {
-        jni::JObject
     };
     (Timestamp) => {
         jni::jlong

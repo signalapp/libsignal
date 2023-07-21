@@ -81,8 +81,7 @@ public class SessionCipher {
       return Native.SessionCipher_EncryptMessage(paddedMessage,
                                                  remoteAddress.nativeHandle(),
                                                  sessionStore,
-                                                 identityKeyStore,
-                                                 null);
+                                                 identityKeyStore);
     }
   }
 
@@ -112,8 +111,7 @@ public class SessionCipher {
                                                              identityKeyStore,
                                                              preKeyStore,
                                                              signedPreKeyStore,
-                                                             kyberPreKeyStore,
-                                                             null);
+                                                             kyberPreKeyStore);
     }
   }
 
@@ -138,8 +136,7 @@ public class SessionCipher {
       return Native.SessionCipher_DecryptSignalMessage(ciphertextGuard.nativeHandle(),
                                                        remoteAddressGuard.nativeHandle(),
                                                        sessionStore,
-                                                       identityKeyStore,
-                                                       null);
+                                                       identityKeyStore);
     }
   }
 

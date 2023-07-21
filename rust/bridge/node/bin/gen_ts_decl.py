@@ -33,7 +33,6 @@ def translate_to_ts(typ):
         "String": "string",
         "&str": "string",
         "Vec<u8>": "Buffer",
-        "Context": "null",
         "ServiceId": "Buffer",
         "Aci": "Buffer",
         "Pni": "Buffer",

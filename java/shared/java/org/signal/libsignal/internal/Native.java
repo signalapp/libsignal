@@ -205,8 +205,8 @@ public final class Native {
   public static native byte[] GenericServerSecretParams_GenerateDeterministic(byte[] randomness);
   public static native byte[] GenericServerSecretParams_GetPublicParams(byte[] paramsBytes);
 
-  public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store, Object ctx);
-  public static native CiphertextMessage GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store, Object ctx);
+  public static native byte[] GroupCipher_DecryptMessage(long sender, byte[] message, SenderKeyStore store);
+  public static native CiphertextMessage GroupCipher_EncryptMessage(long sender, UUID distributionId, byte[] message, SenderKeyStore store);
 
   public static native void GroupMasterKey_CheckValidContents(byte[] buffer);
 
@@ -225,8 +225,8 @@ public final class Native {
   public static native byte[] GroupSecretParams_GetMasterKey(byte[] params);
   public static native byte[] GroupSecretParams_GetPublicParams(byte[] params);
 
-  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store, Object ctx);
-  public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store, Object ctx);
+  public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store);
+  public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store);
 
   public static native byte[] HKDF_DeriveSecrets(int outputLength, byte[] ikm, byte[] label, byte[] salt);
 
@@ -381,9 +381,9 @@ public final class Native {
 
   public static native boolean ScannableFingerprint_Compare(byte[] fprint1, byte[] fprint2);
 
-  public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore, Object ctx);
-  public static native byte[] SealedSessionCipher_Encrypt(long destination, long content, IdentityKeyStore identityKeyStore, Object ctx);
-  public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long[] recipientSessions, long content, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native long SealedSessionCipher_DecryptToUsmc(byte[] ctext, IdentityKeyStore identityStore);
+  public static native byte[] SealedSessionCipher_Encrypt(long destination, long content, IdentityKeyStore identityKeyStore);
+  public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long[] recipientSessions, long content, IdentityKeyStore identityKeyStore);
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage);
 
   public static native long SenderCertificate_Deserialize(byte[] data);
@@ -466,11 +466,11 @@ public final class Native {
   public static native String ServiceId_ServiceIdLog(byte[] value);
   public static native String ServiceId_ServiceIdString(byte[] value);
 
-  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
 
-  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore, Object ctx);
-  public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
-  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, Object ctx);
+  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore);
+  public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
 
   public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);
   public static native boolean SessionRecord_CurrentRatchetKeyMatches(long s, long key);

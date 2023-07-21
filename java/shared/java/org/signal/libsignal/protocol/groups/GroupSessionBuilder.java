@@ -52,8 +52,7 @@ public class GroupSessionBuilder {
       Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(
         senderGuard.nativeHandle(),
         skdmGuard.nativeHandle(),
-        senderKeyStore,
-        null);
+        senderKeyStore);
     }
   }
 
@@ -66,7 +65,7 @@ public class GroupSessionBuilder {
    */
   public SenderKeyDistributionMessage create(SignalProtocolAddress sender, UUID distributionId) {
     try (NativeHandleGuard senderGuard = new NativeHandleGuard(sender)) {
-      return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderGuard.nativeHandle(), distributionId, senderKeyStore, null));
+      return new SenderKeyDistributionMessage(Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(senderGuard.nativeHandle(), distributionId, senderKeyStore));
     }
   }
 }

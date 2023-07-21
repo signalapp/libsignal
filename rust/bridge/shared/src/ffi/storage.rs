@@ -9,27 +9,23 @@ use libc::{c_int, c_uint, c_void};
 use uuid::Uuid;
 
 type GetIdentityKeyPair =
-    extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey, ctx: *mut c_void) -> c_int;
-type GetLocalRegistrationId =
-    extern "C" fn(store_ctx: *mut c_void, idp: *mut u32, ctx: *mut c_void) -> c_int;
+    extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey) -> c_int;
+type GetLocalRegistrationId = extern "C" fn(store_ctx: *mut c_void, idp: *mut u32) -> c_int;
 type GetIdentityKey = extern "C" fn(
     store_ctx: *mut c_void,
     public_keyp: *mut *mut PublicKey,
     address: *const ProtocolAddress,
-    ctx: *mut c_void,
 ) -> c_int;
 type SaveIdentityKey = extern "C" fn(
     store_ctx: *mut c_void,
     address: *const ProtocolAddress,
     public_key: *const PublicKey,
-    ctx: *mut c_void,
 ) -> c_int;
 type IsTrustedIdentity = extern "C" fn(
     store_ctx: *mut c_void,
     address: *const ProtocolAddress,
     public_key: *const PublicKey,
     direction: c_uint,
-    ctx: *mut c_void,
 ) -> c_int;
 
 #[derive(Debug)]
@@ -52,13 +48,9 @@ pub struct FfiIdentityKeyStoreStruct {
 
 #[async_trait(?Send)]
 impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
-    async fn get_identity_key_pair(
-        &self,
-        ctx: Context,
-    ) -> Result<IdentityKeyPair, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+    async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
         let mut key = std::ptr::null_mut();
-        let result = (self.get_identity_key_pair)(self.ctx, &mut key, ctx);
+        let result = (self.get_identity_key_pair)(self.ctx, &mut key);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -80,10 +72,9 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         Ok(IdentityKeyPair::new(IdentityKey::new(pub_key), *priv_key))
     }
 
-    async fn get_local_registration_id(&self, ctx: Context) -> Result<u32, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+    async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
         let mut id = 0;
-        let result = (self.get_local_registration_id)(self.ctx, &mut id, ctx);
+        let result = (self.get_local_registration_id)(self.ctx, &mut id);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -99,10 +90,8 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-        ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.save_identity)(self.ctx, address, identity.public_key(), ctx);
+        let result = (self.save_identity)(self.ctx, address, identity.public_key());
 
         match result {
             0 => Ok(false),
@@ -119,20 +108,13 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         address: &ProtocolAddress,
         identity: &IdentityKey,
         direction: Direction,
-        ctx: Context,
     ) -> Result<bool, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let direction = match direction {
             Direction::Sending => FfiDirection::Sending,
             Direction::Receiving => FfiDirection::Receiving,
         };
-        let result = (self.is_trusted_identity)(
-            self.ctx,
-            address,
-            identity.public_key(),
-            direction as u32,
-            ctx,
-        );
+        let result =
+            (self.is_trusted_identity)(self.ctx, address, identity.public_key(), direction as u32);
 
         match result {
             0 => Ok(false),
@@ -147,11 +129,9 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
     async fn get_identity(
         &self,
         address: &ProtocolAddress,
-        ctx: Context,
     ) -> Result<Option<IdentityKey>, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut key = std::ptr::null_mut();
-        let result = (self.get_identity)(self.ctx, &mut key, address, ctx);
+        let result = (self.get_identity)(self.ctx, &mut key, address);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -170,19 +150,11 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
     }
 }
 
-type LoadPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    recordp: *mut *mut PreKeyRecord,
-    id: u32,
-    ctx: *mut c_void,
-) -> c_int;
-type StorePreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    id: u32,
-    record: *const PreKeyRecord,
-    ctx: *mut c_void,
-) -> c_int;
-type RemovePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32, ctx: *mut c_void) -> c_int;
+type LoadPreKey =
+    extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut PreKeyRecord, id: u32) -> c_int;
+type StorePreKey =
+    extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const PreKeyRecord) -> c_int;
+type RemovePreKey = extern "C" fn(store_ctx: *mut c_void, id: u32) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -195,14 +167,9 @@ pub struct FfiPreKeyStoreStruct {
 
 #[async_trait(?Send)]
 impl PreKeyStore for &FfiPreKeyStoreStruct {
-    async fn get_pre_key(
-        &self,
-        prekey_id: PreKeyId,
-        ctx: Context,
-    ) -> Result<PreKeyRecord, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
+    async fn get_pre_key(&self, prekey_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
         let mut record = std::ptr::null_mut();
-        let result = (self.load_pre_key)(self.ctx, &mut record, prekey_id.into(), ctx);
+        let result = (self.load_pre_key)(self.ctx, &mut record, prekey_id.into());
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -223,10 +190,8 @@ impl PreKeyStore for &FfiPreKeyStoreStruct {
         &mut self,
         prekey_id: PreKeyId,
         record: &PreKeyRecord,
-        ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store_pre_key)(self.ctx, prekey_id.into(), record, ctx);
+        let result = (self.store_pre_key)(self.ctx, prekey_id.into(), record);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -238,13 +203,8 @@ impl PreKeyStore for &FfiPreKeyStoreStruct {
         Ok(())
     }
 
-    async fn remove_pre_key(
-        &mut self,
-        prekey_id: PreKeyId,
-        ctx: Context,
-    ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.remove_pre_key)(self.ctx, prekey_id.into(), ctx);
+    async fn remove_pre_key(&mut self, prekey_id: PreKeyId) -> Result<(), SignalProtocolError> {
+        let result = (self.remove_pre_key)(self.ctx, prekey_id.into());
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -257,18 +217,10 @@ impl PreKeyStore for &FfiPreKeyStoreStruct {
     }
 }
 
-type LoadSignedPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    recordp: *mut *mut SignedPreKeyRecord,
-    id: u32,
-    ctx: *mut c_void,
-) -> c_int;
-type StoreSignedPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    id: u32,
-    record: *const SignedPreKeyRecord,
-    ctx: *mut c_void,
-) -> c_int;
+type LoadSignedPreKey =
+    extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut SignedPreKeyRecord, id: u32) -> c_int;
+type StoreSignedPreKey =
+    extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const SignedPreKeyRecord) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -283,11 +235,9 @@ impl SignedPreKeyStore for &FfiSignedPreKeyStoreStruct {
     async fn get_signed_pre_key(
         &self,
         prekey_id: SignedPreKeyId,
-        ctx: Context,
     ) -> Result<SignedPreKeyRecord, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.load_signed_pre_key)(self.ctx, &mut record, prekey_id.into(), ctx);
+        let result = (self.load_signed_pre_key)(self.ctx, &mut record, prekey_id.into());
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -309,10 +259,8 @@ impl SignedPreKeyStore for &FfiSignedPreKeyStoreStruct {
         &mut self,
         prekey_id: SignedPreKeyId,
         record: &SignedPreKeyRecord,
-        ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store_signed_pre_key)(self.ctx, prekey_id.into(), record, ctx);
+        let result = (self.store_signed_pre_key)(self.ctx, prekey_id.into(), record);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -325,20 +273,11 @@ impl SignedPreKeyStore for &FfiSignedPreKeyStoreStruct {
     }
 }
 
-type LoadKyberPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    recordp: *mut *mut KyberPreKeyRecord,
-    id: u32,
-    ctx: *mut c_void,
-) -> c_int;
-type StoreKyberPreKey = extern "C" fn(
-    store_ctx: *mut c_void,
-    id: u32,
-    record: *const KyberPreKeyRecord,
-    ctx: *mut c_void,
-) -> c_int;
-type MarkKyberPreKeyUsed =
-    extern "C" fn(store_ctx: *mut c_void, id: u32, ctx: *mut c_void) -> c_int;
+type LoadKyberPreKey =
+    extern "C" fn(store_ctx: *mut c_void, recordp: *mut *mut KyberPreKeyRecord, id: u32) -> c_int;
+type StoreKyberPreKey =
+    extern "C" fn(store_ctx: *mut c_void, id: u32, record: *const KyberPreKeyRecord) -> c_int;
+type MarkKyberPreKeyUsed = extern "C" fn(store_ctx: *mut c_void, id: u32) -> c_int;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -354,11 +293,9 @@ impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
     async fn get_kyber_pre_key(
         &self,
         id: KyberPreKeyId,
-        ctx: Context,
     ) -> Result<KyberPreKeyRecord, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.load_kyber_pre_key)(self.ctx, &mut record, id.into(), ctx);
+        let result = (self.load_kyber_pre_key)(self.ctx, &mut record, id.into());
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -380,10 +317,8 @@ impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
         &mut self,
         id: KyberPreKeyId,
         record: &KyberPreKeyRecord,
-        ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store_kyber_pre_key)(self.ctx, id.into(), record, ctx);
+        let result = (self.store_kyber_pre_key)(self.ctx, id.into(), record);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -398,10 +333,8 @@ impl KyberPreKeyStore for &FfiKyberPreKeyStoreStruct {
     async fn mark_kyber_pre_key_used(
         &mut self,
         id: KyberPreKeyId,
-        ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.mark_kyber_pre_key_used)(self.ctx, id.into(), ctx);
+        let result = (self.mark_kyber_pre_key_used)(self.ctx, id.into());
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -418,13 +351,11 @@ type LoadSession = extern "C" fn(
     store_ctx: *mut c_void,
     recordp: *mut *mut SessionRecord,
     address: *const ProtocolAddress,
-    ctx: *mut c_void,
 ) -> c_int;
 type StoreSession = extern "C" fn(
     store_ctx: *mut c_void,
     address: *const ProtocolAddress,
     record: *const SessionRecord,
-    ctx: *mut c_void,
 ) -> c_int;
 
 #[repr(C)]
@@ -440,11 +371,9 @@ impl SessionStore for &FfiSessionStoreStruct {
     async fn load_session(
         &self,
         address: &ProtocolAddress,
-        ctx: Context,
     ) -> Result<Option<SessionRecord>, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.load_session)(self.ctx, &mut record, address, ctx);
+        let result = (self.load_session)(self.ctx, &mut record, address);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -466,10 +395,8 @@ impl SessionStore for &FfiSessionStoreStruct {
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
-        ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result = (self.store_session)(self.ctx, address, record, ctx);
+        let result = (self.store_session)(self.ctx, address, record);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -487,14 +414,12 @@ type LoadSenderKey = extern "C" fn(
     *mut *mut SenderKeyRecord,
     *const ProtocolAddress,
     distribution_id: *const [u8; 16],
-    ctx: *mut c_void,
 ) -> c_int;
 type StoreSenderKey = extern "C" fn(
     store_ctx: *mut c_void,
     *const ProtocolAddress,
     distribution_id: *const [u8; 16],
     *const SenderKeyRecord,
-    ctx: *mut c_void,
 ) -> c_int;
 
 #[repr(C)]
@@ -512,11 +437,8 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
         sender: &ProtocolAddress,
         distribution_id: Uuid,
         record: &SenderKeyRecord,
-        ctx: Context,
     ) -> Result<(), SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
-        let result =
-            (self.store_sender_key)(self.ctx, sender, distribution_id.as_bytes(), record, ctx);
+        let result = (self.store_sender_key)(self.ctx, sender, distribution_id.as_bytes(), record);
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
@@ -532,17 +454,10 @@ impl SenderKeyStore for &FfiSenderKeyStoreStruct {
         &mut self,
         sender: &ProtocolAddress,
         distribution_id: Uuid,
-        ctx: Context,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        let ctx = ctx.unwrap_or(std::ptr::null_mut());
         let mut record = std::ptr::null_mut();
-        let result = (self.load_sender_key)(
-            self.ctx,
-            &mut record,
-            sender,
-            distribution_id.as_bytes(),
-            ctx,
-        );
+        let result =
+            (self.load_sender_key)(self.ctx, &mut record, sender, distribution_id.as_bytes());
 
         if let Some(error) = CallbackError::check(result) {
             return Err(SignalProtocolError::ApplicationCallbackError(
