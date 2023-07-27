@@ -78,23 +78,35 @@ public abstract class ServiceId {
 
     public static ServiceId parseFromString(String serviceIdString) throws InvalidServiceIdException {
         if (serviceIdString == null) {
-            throw new IllegalArgumentException("Service-Id-String cannot be null");
+            throw new InvalidServiceIdException("Service-Id-String cannot be null");
         }
-        byte[] storage = Native.ServiceId_ParseFromServiceIdString(serviceIdString);
+        byte[] storage;
+        try {
+            storage = Native.ServiceId_ParseFromServiceIdString(serviceIdString);
+        }
+        catch (IllegalArgumentException ex) {
+            throw new InvalidServiceIdException();
+        }
         return parseFromFixedWidthBinary(storage);
     }
 
     public static ServiceId parseFromBinary(byte[] serviceIdBinary) throws InvalidServiceIdException {
         if (serviceIdBinary == null) {
-            throw new IllegalArgumentException("Service-Id-Binary cannot be null");
+            throw new InvalidServiceIdException("Service-Id-Binary cannot be null");
         }
-        byte[] storage = Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary);
+        byte[] storage;
+        try {
+            storage = Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary);
+        }
+        catch (IllegalArgumentException ex) {
+            throw new InvalidServiceIdException();
+        }
         return parseFromFixedWidthBinary(storage);
     }
 
     public static ServiceId parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {
         if (storage == null) {
-            throw new IllegalArgumentException();
+            throw new InvalidServiceIdException();
         }
         switch(storage[0]) {
             case ACI_MARKER:
@@ -113,7 +125,10 @@ public abstract class ServiceId {
         return new UUID(high, low);
     }
 
-    public static class InvalidServiceIdException extends Exception {}
+    public static class InvalidServiceIdException extends Exception {
+        public InvalidServiceIdException() { super(); }
+        public InvalidServiceIdException(String message) { super(message); }
+    }
 
     public final static class Aci extends ServiceId {
         public Aci(UUID uuid) {

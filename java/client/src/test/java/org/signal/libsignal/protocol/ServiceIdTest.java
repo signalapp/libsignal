@@ -8,6 +8,8 @@ package org.signal.libsignal.protocol;
 import java.util.UUID;
 import junit.framework.TestCase;
 
+import org.signal.libsignal.protocol.ServiceId.InvalidServiceIdException;
+
 import org.signal.libsignal.protocol.util.Hex;
 
 public class ServiceIdTest extends TestCase {
@@ -45,7 +47,7 @@ public class ServiceIdTest extends TestCase {
         try {
             ServiceId.parseFromString(String.format("ACI:%s", TEST_UUID_STRING));
             fail("Successfully parsed an invalid Service-Id-String");
-        } catch (IllegalArgumentException ex) {
+        } catch (InvalidServiceIdException ex) {
         }
     }
 
@@ -58,7 +60,7 @@ public class ServiceIdTest extends TestCase {
         try {
             ServiceId.parseFromBinary(invalidAciBytes);
             fail("Successfully parsed in invalid Service-Id-Binary");
-        } catch (IllegalArgumentException ex) {
+        } catch (InvalidServiceIdException ex) {
         }
     }
 
@@ -74,11 +76,11 @@ public class ServiceIdTest extends TestCase {
         try {
             ServiceId.parseFromString((String)null);
             fail("Should have failed");
-        } catch (IllegalArgumentException ex){}
+        } catch (InvalidServiceIdException ex){}
         try {
             ServiceId.parseFromBinary((byte[])null);
             fail("Should have failed");
-        } catch (IllegalArgumentException ex){}
+        } catch (InvalidServiceIdException ex){}
     }
 
     public void testInvalidServiceId() throws Exception {
@@ -86,11 +88,11 @@ public class ServiceIdTest extends TestCase {
             byte[] invalidServiceIdBytes = Hex.fromStringCondensedAssert("02" + TEST_UUID_HEX);
             ServiceId.parseFromBinary(invalidServiceIdBytes);
             fail("Should have failed");
-        } catch(IllegalArgumentException ex) {}
+        } catch(InvalidServiceIdException ex) {}
         try {
             String invalidServiceString = "SGL:" + TEST_UUID_STRING;
             ServiceId.parseFromString(invalidServiceString);
             fail("Should have failed");
-        } catch(IllegalArgumentException ex) {}
+        } catch(InvalidServiceIdException ex) {}
     }
 }
