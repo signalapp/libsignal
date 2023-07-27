@@ -70,6 +70,7 @@ def main(args=None):
 
     cargo_env = os.environ.copy()
     cargo_env['CARGO_BUILD_TARGET_DIR'] = options.cargo_build_dir
+    cargo_env['MACOSX_DEPLOYMENT_TARGET'] = '10.13'
     # On Linux, cdylibs don't include public symbols from their dependencies,
     # even if those symbols have been re-exported in the Rust source.
     # Using LTO works around this at the cost of a slightly slower build.
