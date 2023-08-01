@@ -14,6 +14,7 @@ import org.signal.libsignal.protocol.InvalidRegistrationIdException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
+import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 import org.signal.libsignal.protocol.UntrustedIdentityException;
@@ -236,6 +237,19 @@ public class SealedSessionCipher {
 
     public String getSenderUuid() {
       return senderUuid;
+    }
+
+    /**
+     * Returns an ACI if the sender is a valid UUID, {@code null} otherwise.
+     *
+     * In a future release DecryptionResult will <em>only</em> support ACIs.
+     */
+    public ServiceId.Aci getSenderAci() {
+      try {
+        return ServiceId.Aci.parseFromString(getSenderUuid());
+      } catch (ServiceId.InvalidServiceIdException e) {
+        return null;
+      }
     }
 
     public Optional<String> getSenderE164() {

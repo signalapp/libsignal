@@ -210,6 +210,19 @@ public struct SealedSenderAddress: Hashable {
         self.uuidString = uuidString
         self.deviceId = deviceId
     }
+
+    public init(e164: String? = nil, aci: Aci, deviceId: UInt32) throws {
+        self.e164 = e164
+        self.uuidString = aci.serviceIdString
+        self.deviceId = deviceId
+    }
+
+    /// Returns an ACI if the sender is a valid UUID, `nil` otherwise.
+    ///
+    /// In a future release SealedSenderAddress will *only* support ACIs.
+    public var senderAci: Aci! {
+        return try? Aci.parseFrom(serviceIdString: uuidString)
+    }
 }
 
 public struct SealedSenderResult {

@@ -306,6 +306,7 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(senderCert.publicKey.serialize().count, 33)
 
         XCTAssertEqual(senderCert.senderUuid, "9d0652a3-dcc3-4d11-975f-74d61598733f")
+        XCTAssertEqual(senderCert.senderAci.serviceIdString, "9d0652a3-dcc3-4d11-975f-74d61598733f")
         XCTAssertEqual(senderCert.senderE164, Optional("+14152222222"))
 
         let serverCert = senderCert.serverCertificate
@@ -313,6 +314,22 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(serverCert.keyId, 1)
         XCTAssertEqual(serverCert.publicKey.serialize().count, 33)
         XCTAssertEqual(serverCert.signatureBytes.count, 64)
+    }
+
+    func testSenderCertificateGetSenderAci() {
+        let aci = Aci(fromUUID: UUID())
+        let trustRoot = IdentityKeyPair.generate()
+        let serverKeys = IdentityKeyPair.generate()
+        let serverCert = try! ServerCertificate(keyId: 1, publicKey: serverKeys.publicKey, trustRoot: trustRoot.privateKey)
+        let senderAddr = try! SealedSenderAddress(aci: aci, deviceId: 1)
+        let senderCert = try! SenderCertificate(sender: senderAddr,
+                                                publicKey: IdentityKeyPair.generate().publicKey,
+                                                expiration: 31337,
+                                                signerCertificate: serverCert,
+                                                signerKey: serverKeys.privateKey)
+
+        XCTAssertNil(senderCert.senderE164)
+        XCTAssertEqual(aci, senderCert.senderAci)
     }
 
     private func testRoundTrip<Handle>(_ initial: Handle, serialize: (Handle) -> [UInt8], deserialize: ([UInt8]) throws -> Handle, line: UInt = #line) {

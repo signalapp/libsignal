@@ -550,6 +550,7 @@ describe('SignalClient', () => {
 
     assert.deepEqual(senderCert.serverCertificate(), serverCert);
     assert.deepEqual(senderCert.senderUuid(), senderUuid);
+    assert.deepEqual(senderCert.senderAci()?.getRawUuid(), senderUuid);
     assert.deepEqual(senderCert.senderE164(), senderE164);
     assert.deepEqual(senderCert.senderDeviceId(), senderDeviceId);
 
@@ -560,6 +561,25 @@ describe('SignalClient', () => {
 
     assert(senderCert.validate(trustRoot.getPublicKey(), expiration - 1000));
     assert(!senderCert.validate(trustRoot.getPublicKey(), expiration + 10)); // expired
+
+    const senderCertWithoutE164 = SignalClient.SenderCertificate.new(
+      senderUuid,
+      null,
+      senderDeviceId,
+      senderKey.getPublicKey(),
+      expiration,
+      serverCert,
+      serverKey
+    );
+
+    assert.deepEqual(senderCertWithoutE164.serverCertificate(), serverCert);
+    assert.deepEqual(senderCertWithoutE164.senderUuid(), senderUuid);
+    assert.deepEqual(
+      senderCertWithoutE164.senderAci()?.getRawUuid(),
+      senderUuid
+    );
+    assert.isNull(senderCertWithoutE164.senderE164());
+    assert.deepEqual(senderCertWithoutE164.senderDeviceId(), senderDeviceId);
   });
   it('SenderKeyMessage', () => {
     const distributionId = 'd1d1d1d1-7000-11eb-b32a-33b8a8a487a6';
@@ -1259,6 +1279,7 @@ describe('SignalClient', () => {
       assert.deepEqual(bPlaintext.message(), aPlaintext);
       assert.deepEqual(bPlaintext.senderE164(), aE164);
       assert.deepEqual(bPlaintext.senderUuid(), aUuid);
+      assert.deepEqual(bPlaintext.senderAci()?.getServiceIdString(), aUuid);
       assert.deepEqual(bPlaintext.deviceId(), aDeviceId);
 
       const innerMessage = await SignalClient.signalEncrypt(

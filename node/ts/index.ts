@@ -8,7 +8,7 @@ import * as uuid from 'uuid';
 import * as Errors from './Errors';
 export * from './Errors';
 
-import { ProtocolAddress } from './Address';
+import { Aci, ProtocolAddress } from './Address';
 export * from './Address';
 
 export * as usernames from './usernames';
@@ -841,7 +841,7 @@ export class SenderCertificate {
   }
 
   static new(
-    senderUuid: string,
+    senderUuid: string | Aci,
     senderE164: string | null,
     senderDeviceId: number,
     senderKey: PublicKey,
@@ -849,6 +849,9 @@ export class SenderCertificate {
     signerCert: ServerCertificate,
     signerKey: PrivateKey
   ): SenderCertificate {
+    if (typeof senderUuid !== 'string') {
+      senderUuid = senderUuid.getServiceIdString();
+    }
     return new SenderCertificate(
       Native.SenderCertificate_New(
         senderUuid,
@@ -884,6 +887,18 @@ export class SenderCertificate {
   }
   senderUuid(): string {
     return Native.SenderCertificate_GetSenderUuid(this);
+  }
+  /**
+   * Returns an ACI if the sender is a valid UUID, `null` otherwise.
+   *
+   * In a future release SenderCertificate will *only* support ACIs.
+   */
+  senderAci(): Aci | null {
+    try {
+      return Aci.parseFromServiceIdString(this.senderUuid());
+    } catch {
+      return null;
+    }
   }
   senderDeviceId(): number {
     return Native.SenderCertificate_GetDeviceId(this);
@@ -1336,6 +1351,19 @@ export class SealedSenderDecryptionResult {
 
   senderUuid(): string {
     return Native.SealedSenderDecryptionResult_GetSenderUuid(this);
+  }
+
+  /**
+   * Returns an ACI if the sender is a valid UUID, `null` otherwise.
+   *
+   * In a future release SenderCertificate will *only* support ACIs.
+   */
+  senderAci(): Aci | null {
+    try {
+      return Aci.parseFromServiceIdString(this.senderUuid());
+    } catch {
+      return null;
+    }
   }
 
   deviceId(): number {

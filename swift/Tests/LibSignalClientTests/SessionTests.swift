@@ -158,6 +158,7 @@ class SessionTests: TestCaseBase {
 
         XCTAssertEqual(plaintext.message, message)
         XCTAssertEqual(plaintext.sender, sender_addr)
+        XCTAssertEqual(plaintext.sender.senderAci, alice_address.serviceId)
 
         let innerMessage = try signalEncrypt(message: [],
                                              for: bob_address,

@@ -85,6 +85,7 @@ public class SealedSessionCipherTest extends TestCase {
 
     assertEquals(new String(plaintext.getPaddedMessage()), "smert za smert");
     assertEquals(plaintext.getSenderUuid(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
+    assertEquals(plaintext.getSenderAci().toServiceIdString(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
     assertEquals(plaintext.getSenderE164().get(), "+14151111111");
     assertEquals(plaintext.getDeviceId(), 1);
   }
@@ -372,6 +373,7 @@ public class SealedSessionCipherTest extends TestCase {
       fail("should have thrown");
     } catch (ProtocolNoSessionException e) {
       assertEquals(e.getSender(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
+      assertEquals(e.getSenderAci().toServiceIdString(), "9d0652a3-dcc3-4d11-975f-74d61598733f");
       assertEquals(e.getSenderDevice(), 1);
       assertEquals(e.getContentHint(), UnidentifiedSenderMessageContent.CONTENT_HINT_RESENDABLE);
       assertEquals(Hex.toStringCondensed(e.getGroupId().get()), Hex.toStringCondensed(new byte[]{42, 1}));
