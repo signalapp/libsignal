@@ -55,6 +55,15 @@ export class ServiceId extends Object {
     return Native.ServiceId_ServiceIdLog(this.serviceIdFixedWidthBinary);
   }
 
+  private downcastTo<T extends typeof ServiceId>(subclass: T): ThisType<T> {
+    if ((this as object) instanceof subclass) {
+      return this;
+    }
+    throw new TypeError(
+      `expected ${subclass.name}, got ${this.constructor.name}`
+    );
+  }
+
   static parseFromServiceIdFixedWidthBinary<T extends typeof ServiceId>(
     this: T,
     serviceIdFixedWidthBinary: Buffer
@@ -70,24 +79,27 @@ export class ServiceId extends Object {
       default:
         throw new TypeError('unknown type in Service-Id-FixedWidthBinary');
     }
-    if ((result as object) instanceof this) {
-      return result;
-    }
-    throw new TypeError(
-      `expected ${this.name}, got ${result.constructor.name}`
-    );
+    return result.downcastTo(this);
   }
 
-  static parseFromServiceIdBinary(serviceIdBinary: Buffer): ServiceId {
-    return ServiceId.parseFromServiceIdFixedWidthBinary(
+  static parseFromServiceIdBinary<T extends typeof ServiceId>(
+    this: T,
+    serviceIdBinary: Buffer
+  ): ThisType<T> {
+    const result = ServiceId.parseFromServiceIdFixedWidthBinary(
       Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary)
     );
+    return result.downcastTo(this);
   }
 
-  static parseFromServiceIdString(serviceIdString: string): ServiceId {
-    return ServiceId.parseFromServiceIdFixedWidthBinary(
+  static parseFromServiceIdString<T extends typeof ServiceId>(
+    this: T,
+    serviceIdString: string
+  ): ThisType<T> {
+    const result = ServiceId.parseFromServiceIdFixedWidthBinary(
       Native.ServiceId_ParseFromServiceIdString(serviceIdString)
     );
+    return result.downcastTo(this);
   }
 
   getRawUuid(): string {

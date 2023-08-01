@@ -43,7 +43,11 @@ public class ServiceIdTest extends TestCase {
 
     public void testParseFromString() throws Exception {
         assert(ServiceId.parseFromString(TEST_UUID_STRING) instanceof ServiceId.Aci);
+        ServiceId.Aci.parseFromString(TEST_UUID_STRING);
+
         assert(ServiceId.parseFromString(String.format("PNI:%s", TEST_UUID_STRING)) instanceof ServiceId.Pni);
+        ServiceId.Pni.parseFromString(String.format("PNI:%s", TEST_UUID_STRING));
+
         try {
             ServiceId.parseFromString(String.format("ACI:%s", TEST_UUID_STRING));
             fail("Successfully parsed an invalid Service-Id-String");
@@ -54,8 +58,12 @@ public class ServiceIdTest extends TestCase {
     public void testParseFromBinary() throws Exception {
         byte[] aciBytes = Hex.fromStringCondensedAssert(TEST_UUID_HEX);
         assert(ServiceId.parseFromBinary(aciBytes) instanceof ServiceId.Aci);
+        ServiceId.Aci.parseFromBinary(aciBytes);
+
         byte[] pniBytes = Hex.fromStringCondensedAssert("01" + TEST_UUID_HEX);
         assert(ServiceId.parseFromBinary(pniBytes) instanceof ServiceId.Pni);
+        ServiceId.Pni.parseFromBinary(pniBytes);
+
         byte[] invalidAciBytes = Hex.fromStringCondensedAssert("00" + TEST_UUID_HEX);
         try {
             ServiceId.parseFromBinary(invalidAciBytes);

@@ -101,20 +101,29 @@ public class ServiceId {
         }
     }
 
-    public static func parseFrom(serviceIdString s: String) throws -> ServiceId {
-        return try invokeFnReturningServiceId {
+    private func downcast<SpecificId: ServiceId>(to subclass: SpecificId.Type) throws -> SpecificId {
+        guard let downcastResult = self as? SpecificId else {
+            throw ServiceIdError.wrongServiceIdKind
+        }
+        return downcastResult
+    }
+
+    public static func parseFrom(serviceIdString s: String) throws -> Self {
+        let result = try invokeFnReturningServiceId {
             signal_service_id_parse_from_service_id_string($0, s)
         }
+        return try result.downcast(to: Self.self)
     }
 
     public static func parseFrom<
         Bytes: ContiguousBytes
-    >(serviceIdBinary sourceBytes: Bytes) throws -> ServiceId {
-        return try sourceBytes.withUnsafeBorrowedBuffer { buffer in
+    >(serviceIdBinary sourceBytes: Bytes) throws -> Self {
+        let result = try sourceBytes.withUnsafeBorrowedBuffer { buffer in
             try invokeFnReturningServiceId {
                 signal_service_id_parse_from_service_id_binary($0, buffer)
             }
         }
+        return try result.downcast(to: Self.self)
     }
 
     internal static func parseFrom(
@@ -129,10 +138,7 @@ public class ServiceId {
         default:
             throw ServiceIdError.invalidServiceId
         }
-        guard let downcastResult = result as? Self else {
-            throw ServiceIdError.wrongServiceIdKind
-        }
-        return downcastResult
+        return try result.downcast(to: Self.self)
     }
 
     internal func withPointerToFixedWidthBinary<R>(_ callback: (UnsafePointer<ServiceIdStorage>) throws -> R) rethrows -> R {

@@ -139,6 +139,22 @@ public abstract class ServiceId {
             super(storage);
         }
 
+        public static Aci parseFromString(String serviceIdString) throws InvalidServiceIdException {
+            ServiceId result = ServiceId.parseFromString(serviceIdString);
+            if (result instanceof Aci) {
+                return (Aci)result;
+            }
+            throw new InvalidServiceIdException();
+        }
+
+        public static Aci parseFromBinary(byte[] serviceIdBinary) throws InvalidServiceIdException {
+            ServiceId result = ServiceId.parseFromBinary(serviceIdBinary);
+            if (result instanceof Aci) {
+                return (Aci)result;
+            }
+            throw new InvalidServiceIdException();
+        }
+
         public static Aci parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {
             ServiceId result = ServiceId.parseFromFixedWidthBinary(storage);
             if (result instanceof Aci) {
@@ -155,6 +171,22 @@ public abstract class ServiceId {
 
         Pni(byte[] storage) {
             super(storage);
+        }
+
+        public static Pni parseFromString(String serviceIdString) throws InvalidServiceIdException {
+            ServiceId result = ServiceId.parseFromString(serviceIdString);
+            if (result instanceof Pni) {
+                return (Pni)result;
+            }
+            throw new InvalidServiceIdException();
+        }
+
+        public static Pni parseFromBinary(byte[] serviceIdBinary) throws InvalidServiceIdException {
+            ServiceId result = ServiceId.parseFromBinary(serviceIdBinary);
+            if (result instanceof Pni) {
+                return (Pni)result;
+            }
+            throw new InvalidServiceIdException();
         }
 
         public static Pni parseFromFixedWidthBinary(byte[] storage) throws InvalidServiceIdException {

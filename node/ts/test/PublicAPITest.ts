@@ -358,6 +358,10 @@ describe('SignalClient', () => {
         );
         assert.instanceOf(aciServiceId, SignalClient.Aci);
         assert.deepEqual(aci, aciServiceId);
+
+        const _: SignalClient.Aci = SignalClient.Aci.parseFromServiceIdString(
+          aci.getServiceIdString()
+        );
       }
 
       {
@@ -366,6 +370,10 @@ describe('SignalClient', () => {
         );
         assert.instanceOf(aciServiceId, SignalClient.Aci);
         assert.deepEqual(aci, aciServiceId);
+
+        const _: SignalClient.Aci = SignalClient.Aci.parseFromServiceIdBinary(
+          aci.getServiceIdBinary()
+        );
       }
     });
     it('handles PNIs', () => {
@@ -392,6 +400,10 @@ describe('SignalClient', () => {
         );
         assert.instanceOf(pniServiceId, SignalClient.Pni);
         assert.deepEqual(pni, pniServiceId);
+
+        const _: SignalClient.Pni = SignalClient.Pni.parseFromServiceIdString(
+          pni.getServiceIdString()
+        );
       }
 
       {
@@ -400,6 +412,10 @@ describe('SignalClient', () => {
         );
         assert.instanceOf(pniServiceId, SignalClient.Pni);
         assert.deepEqual(pni, pniServiceId);
+
+        const _: SignalClient.Pni = SignalClient.Pni.parseFromServiceIdBinary(
+          pni.getServiceIdBinary()
+        );
       }
     });
     it('accepts the null UUID', () => {
