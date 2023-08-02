@@ -14,13 +14,11 @@ enum ServiceIdKind {
 
 const SERVICE_ID_FIXED_WIDTH_BINARY_LEN = 17;
 
-// From https://github.com/Microsoft/TypeScript/issues/5863#issuecomment-1336204919,
-// workaround for a static method returning a polymorphic type.
-type ThisType<T extends { prototype: unknown }> = T['prototype'];
-
-export class ServiceId extends Object {
+export abstract class ServiceId extends Object {
   private readonly serviceIdFixedWidthBinary: Buffer;
-  protected constructor(serviceIdFixedWidthBinary: Buffer) {
+
+  // This has to be public for `InstanceType<T>`, which we use below.
+  constructor(serviceIdFixedWidthBinary: Buffer) {
     super();
     if (serviceIdFixedWidthBinary.length != SERVICE_ID_FIXED_WIDTH_BINARY_LEN) {
       throw new TypeError('invalid Service-Id-FixedWidthBinary');
@@ -29,10 +27,14 @@ export class ServiceId extends Object {
   }
 
   protected static fromUuidBytesAndKind<T extends typeof ServiceId>(
-    this: T,
+    // Why the explicit constructor signature?
+    // Because ServiceId is abstract, and TypeScript won't let us construct an abstract class.
+    // Strictly speaking we don't need the 'typeof' and 'InstanceType',
+    // but it's more consistent with the factory methods below.
+    this: new (serviceIdFixedWidthBinary: Buffer) => InstanceType<T>,
     uuidBytes: ArrayLike<number>,
     kind: ServiceIdKind
-  ): ThisType<T> {
+  ): InstanceType<T> {
     const buffer = Buffer.alloc(SERVICE_ID_FIXED_WIDTH_BINARY_LEN);
     buffer[0] = kind;
     buffer.set(uuidBytes, 1);
@@ -55,9 +57,10 @@ export class ServiceId extends Object {
     return Native.ServiceId_ServiceIdLog(this.serviceIdFixedWidthBinary);
   }
 
-  private downcastTo<T extends typeof ServiceId>(subclass: T): ThisType<T> {
+  private downcastTo<T extends typeof ServiceId>(subclass: T): InstanceType<T> {
+    // Omitting `as object` results in TypeScript mistakenly assuming the branch is always taken.
     if ((this as object) instanceof subclass) {
-      return this;
+      return this as InstanceType<T>;
     }
     throw new TypeError(
       `expected ${subclass.name}, got ${this.constructor.name}`
@@ -67,7 +70,7 @@ export class ServiceId extends Object {
   static parseFromServiceIdFixedWidthBinary<T extends typeof ServiceId>(
     this: T,
     serviceIdFixedWidthBinary: Buffer
-  ): ThisType<T> {
+  ): InstanceType<T> {
     let result: ServiceId;
     switch (serviceIdFixedWidthBinary[0]) {
       case ServiceIdKind.Aci:
@@ -85,7 +88,7 @@ export class ServiceId extends Object {
   static parseFromServiceIdBinary<T extends typeof ServiceId>(
     this: T,
     serviceIdBinary: Buffer
-  ): ThisType<T> {
+  ): InstanceType<T> {
     const result = ServiceId.parseFromServiceIdFixedWidthBinary(
       Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary)
     );
@@ -95,8 +98,8 @@ export class ServiceId extends Object {
   static parseFromServiceIdString<T extends typeof ServiceId>(
     this: T,
     serviceIdString: string
-  ): ThisType<T> {
-    const result = ServiceId.parseFromServiceIdFixedWidthBinary(
+  ): InstanceType<T> {
+    const result = this.parseFromServiceIdFixedWidthBinary(
       Native.ServiceId_ParseFromServiceIdString(serviceIdString)
     );
     return result.downcastTo(this);
@@ -125,7 +128,7 @@ export class Aci extends ServiceId {
   }
 
   static fromUuidBytes(uuidBytes: ArrayLike<number>): Aci {
-    return super.fromUuidBytesAndKind(uuidBytes, ServiceIdKind.Aci);
+    return this.fromUuidBytesAndKind(uuidBytes, ServiceIdKind.Aci);
   }
 }
 
@@ -137,7 +140,7 @@ export class Pni extends ServiceId {
   }
 
   static fromUuidBytes(uuidBytes: ArrayLike<number>): Pni {
-    return super.fromUuidBytesAndKind(uuidBytes, ServiceIdKind.Pni);
+    return this.fromUuidBytesAndKind(uuidBytes, ServiceIdKind.Pni);
   }
 }
 
