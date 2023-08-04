@@ -36,7 +36,7 @@ rand = { version = "0.7.3", optional = true }
 features = ["serde"]
 version = "3.0.0"
 git = "https://github.com/signalapp/curve25519-dalek.git"
-branch = "lizard2"
+rev = "4f0aa6653c51598daa0a2f53b8ba54ce0eedfbdd"
 
 
 [dev-dependencies]
