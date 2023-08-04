@@ -29,7 +29,7 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 
 [patch.crates-io]
 # Use our fork of curve25519-dalek for eventual zkgroup support.
-curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', branch = 'lizard2' }
+curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'libsignal-v0.30.2' }
 boring = { git = 'https://github.com/signalapp/boring', branch = 'libsignal'}
 
 [profile.dev.package.argon2]
