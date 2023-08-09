@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use hmac::digest::{crypto_common, OutputSizeUser};
 use std::convert::TryInto;
 
-use hmac::{Hmac, NewMac};
-use sha2::digest::FixedOutput;
+use crypto_common::KeyInit;
+use hmac::Hmac;
 use typenum::Unsigned;
 
 use libsignal_bridge_macros::*;
@@ -49,7 +50,7 @@ pub fn IncrementalMac_Update(
         .as_mut()
         .expect("MAC used after finalize")
         .update(&bytes[offset..offset + length])
-        .flat_map(|out| -> [u8; 32] { out.into_bytes().into() })
+        .flat_map(|out| -> [u8; 32] { out.into() })
         .collect()
 }
 
@@ -59,7 +60,7 @@ pub fn IncrementalMac_Finalize(mac: &mut IncrementalMac) -> Vec<u8> {
         .take()
         .expect("MAC used after finalize")
         .finalize()
-        .into_bytes()
+        .as_slice()
         .to_vec()
 }
 
@@ -73,7 +74,7 @@ pub fn ValidatingMac_Initialize(key: &[u8], chunk_size: u32, digests: &[u8]) -> 
     let hmac =
         Hmac::<Digest>::new_from_slice(key).expect("Should be able to create a new HMAC instance");
     let incremental = Incremental::new(hmac, chunk_size as usize);
-    let macs = digests.chunks(<Digest as FixedOutput>::OutputSize::USIZE);
+    let macs = digests.chunks(<Digest as OutputSizeUser>::OutputSize::USIZE);
     ValidatingMac(Some(incremental.validating(macs)))
 }
 

@@ -221,7 +221,7 @@ fn char_to_byte(c: char) -> Option<u8> {
 
 fn to_base_37_scalar(bytes: &[u8]) -> Scalar {
     let thirty_seven = Scalar::from(37u8);
-    let mut scalar = Scalar::zero();
+    let mut scalar = Scalar::ZERO;
     for b in bytes.iter().skip(1).rev() {
         scalar *= thirty_seven;
         scalar += Scalar::from(*b);

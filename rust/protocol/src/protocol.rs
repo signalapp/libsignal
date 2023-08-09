@@ -8,7 +8,7 @@ use crate::{kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtoc
 
 use std::convert::TryFrom;
 
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;
@@ -411,13 +411,13 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
                 return Err(SignalProtocolError::InvalidMessage(
                     CiphertextMessageType::PreKey,
                     "Kyber pre key must be present for this session version",
-                ))
+                ));
             }
             _ => {
                 return Err(SignalProtocolError::InvalidMessage(
                     CiphertextMessageType::PreKey,
                     "Both or neither kyber pre_key_id and kyber_ciphertext can be present",
-                ))
+                ));
             }
         };
 

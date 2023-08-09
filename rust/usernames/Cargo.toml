@@ -15,19 +15,20 @@ license = "AGPL-3.0-only"
 poksho = { path = "../poksho" }
 signal-crypto = { path = "../crypto" }
 
-curve25519-dalek = "3.2"
-hkdf = "0.11"
-sha2 = "0.9.0"
+curve25519-dalek = "4.0"
+hkdf = "0.12"
+sha2 = "0.10"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
 prost = "0.9"
-rand = "0.7.3"
+rand = "0.8"
+subtle = "2.5.0"
 thiserror = "1.0.40"
 
 [dev-dependencies]
 zkgroup = { path = "../zkgroup" }
 proptest = "1.0"
-criterion = "0.4"
+criterion = "0.5"
 
 [[bench]]
 name = "usernames_benchmarks"

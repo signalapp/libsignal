@@ -11,7 +11,7 @@ use crate::common::simple_types::*;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use serde::{Deserialize, Serialize};
 
-use curve25519_dalek::subtle::{Choice, ConditionallySelectable};
+use subtle::{Choice, ConditionallySelectable};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileKeyStruct {

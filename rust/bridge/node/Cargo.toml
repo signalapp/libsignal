@@ -23,7 +23,7 @@ libsignal-protocol = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }
 signal-neon-futures = { path = "futures" }
 neon = { version = "0.10.0", default-features = false, features = ["napi-6", "channel-api"] }
-rand = "0.7.3"
+rand = "0.8"
 log = "0.4"
 log-panics = { version = "2.0.0", features = ["with-backtrace"] }
 async-trait = "0.1.41"

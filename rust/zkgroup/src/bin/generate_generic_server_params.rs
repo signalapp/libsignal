@@ -6,6 +6,8 @@
 //! Generates a new GenericServerSecretParams and encodes it using base64 and
 //! [`bincode::serialize`].
 
+use base64::prelude::{Engine, BASE64_STANDARD};
+
 use rand::Rng;
 
 use zkgroup::generic_server_params::GenericServerSecretParams;
@@ -20,6 +22,6 @@ fn main() {
     let serialized_secret = bincode::serialize(&secret_params).unwrap();
     let serialized_public = bincode::serialize(&secret_params.get_public_params()).unwrap();
 
-    println!("secret: {}", base64::encode(&serialized_secret[..]));
-    println!("public: {}", base64::encode(&serialized_public[..]));
+    println!("secret: {}", BASE64_STANDARD.encode(&serialized_secret[..]));
+    println!("public: {}", BASE64_STANDARD.encode(&serialized_public[..]));
 }

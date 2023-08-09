@@ -4,20 +4,19 @@
 //
 
 use generic_array::{ArrayLength, GenericArray};
-use hmac::crypto_mac::{MacError, Output};
 use hmac::Mac;
-use sha2::digest::FixedOutput;
+use sha2::digest::{FixedOutput, MacError, Output};
 use typenum::Unsigned;
 
 #[derive(Clone)]
-pub struct Incremental<M: Mac> {
+pub struct Incremental<M: Mac + Clone> {
     mac: M,
     chunk_size: usize,
     unused_length: usize,
 }
 
 #[derive(Clone)]
-pub struct Validating<M: Mac> {
+pub struct Validating<M: Mac + Clone> {
     incremental: Incremental<M>,
     // Expected MACs in reversed order, to efficiently pop them from off the end
     expected: Vec<Output<M>>,
@@ -43,7 +42,7 @@ where
     )
 }
 
-impl<M: Mac> Incremental<M> {
+impl<M: Mac + Clone> Incremental<M> {
     pub fn new(mac: M, chunk_size: usize) -> Self {
         assert!(chunk_size > 0, "chunk size must be positive");
         Self {
@@ -61,10 +60,7 @@ impl<M: Mac> Incremental<M> {
     {
         let expected = macs
             .into_iter()
-            .map(|mac| {
-                let arr = GenericArray::<u8, M::OutputSize>::from_slice(mac.as_ref()).to_owned();
-                Output::<M>::new(arr)
-            })
+            .map(|mac| GenericArray::<u8, M::OutputSize>::from_slice(mac.as_ref()).to_owned())
             .rev()
             .collect();
         Validating {
@@ -83,7 +79,7 @@ impl<M: Mac> Incremental<M> {
     }
 
     pub fn finalize(self) -> Output<M> {
-        self.mac.finalize()
+        self.mac.finalize().into_bytes()
     }
 
     fn update_chunk(&mut self, bytes: &[u8]) -> Option<Output<M>> {
@@ -93,14 +89,14 @@ impl<M: Mac> Incremental<M> {
         if self.unused_length == 0 {
             self.unused_length = self.chunk_size;
             let mac = self.mac.clone();
-            Some(mac.finalize())
+            Some(mac.finalize().into_bytes())
         } else {
             None
         }
     }
 }
 
-impl<M: Mac> Validating<M> {
+impl<M: Mac + Clone> Validating<M> {
     pub fn update(&mut self, bytes: &[u8]) -> Result<(), MacError> {
         let mut result = Ok(());
         let macs = self.incremental.update(bytes);
@@ -130,10 +126,11 @@ impl<M: Mac> Validating<M> {
 
 #[cfg(test)]
 mod test {
-    use hmac::{Hmac, NewMac};
+    use hmac::Hmac;
     use proptest::prelude::*;
     use rand::distributions::Uniform;
     use rand::prelude::{Rng, ThreadRng};
+    use sha2::digest::OutputSizeUser;
     use sha2::Sha256;
 
     use crate::crypto::hmac_sha256;
@@ -165,7 +162,7 @@ mod test {
         let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
         let _ = incremental.update(bytes).collect::<Vec<_>>();
         let digest = incremental.finalize();
-        let actual: [u8; 32] = digest.into_bytes().into();
+        let actual: [u8; 32] = digest.into();
         assert_eq!(actual, expected);
     }
 
@@ -177,7 +174,7 @@ mod test {
             let expected = hmac_sha256(&key, bytes);
             let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
             let _ = incremental.update(bytes).collect::<Vec<_>>();
-            let actual: [u8; 32] = incremental.finalize().into_bytes().into();
+            let actual: [u8; 32] = incremental.finalize().into();
             assert_eq!(actual, expected);
         });
     }
@@ -203,13 +200,13 @@ mod test {
             let mut actual: Vec<Vec<u8>> = bytes
                 .random_chunks(incremental.chunk_size)
                 .flat_map(|chunk| incremental.update(chunk).collect::<Vec<_>>())
-                .map(|out| out.into_bytes().into())
+                .map(|out| out.into())
                 .map(|bs: [u8; 32]| bs.to_vec())
                 .collect();
             // If the input is not an exact multiple of the chunk_size, there are some leftovers in
             // the incremental that need to be accounted for.
             if bytes.len() % incremental.chunk_size != 0 {
-                let last_hmac: [u8; 32] = incremental.finalize().into_bytes().into();
+                let last_hmac: [u8; 32] = incremental.finalize().into();
                 actual.push(last_hmac.to_vec());
             }
             assert_eq!(actual, expected);
@@ -226,10 +223,8 @@ mod test {
         let mut expected_macs: Vec<_> = incremental.update(bytes).collect();
         expected_macs.push(incremental.finalize());
 
-        let expected_bytes: Vec<[u8; 32]> = expected_macs
-            .into_iter()
-            .map(|mac| mac.into_bytes().into())
-            .collect();
+        let expected_bytes: Vec<[u8; 32]> =
+            expected_macs.into_iter().map(|mac| mac.into()).collect();
 
         {
             let mut validating =
@@ -292,9 +287,9 @@ mod test {
 
             let mut produced: Vec<[u8; 32]> = input_chunks.clone()
                 .flat_map(|chunk| incremental.update(chunk).collect::<Vec<_>>())
-                .map(|out| out.into_bytes().into())
+                .map(|out| out.into())
                 .collect();
-            produced.push(incremental.finalize().into_bytes().into());
+            produced.push(incremental.finalize().into());
 
             let mut validating = new_incremental(&key, TEST_CHUNK_SIZE).validating(produced);
             for chunk in input_chunks.clone() {
@@ -324,7 +319,7 @@ mod test {
         proptest!(|(data_size in 256_usize..1_000_000_000)| {
             let chunk_size = calculate_chunk_size::<Sha256>(data_size);
             let num_increments = std::cmp::max(1, (data_size + chunk_size - 1) / chunk_size);
-            let total_digest_size = num_increments * <Sha256 as FixedOutput>::OutputSize::USIZE;
+            let total_digest_size = num_increments * <Sha256 as OutputSizeUser>::OutputSize::USIZE;
             assert!(total_digest_size <= MAXIMUM_INCREMENTAL_DIGEST_BYTES)
         })
     }

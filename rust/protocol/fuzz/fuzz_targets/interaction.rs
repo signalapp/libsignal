@@ -40,7 +40,7 @@ impl Participant {
             .calculate_signature(&their_signed_pre_key_public, rng)
             .unwrap();
 
-        let signed_pre_key_id: SignedPreKeyId = rng.gen_range(0, 0xFF_FFFF).into();
+        let signed_pre_key_id: SignedPreKeyId = rng.gen_range(0..0xFF_FFFF).into();
 
         them.store
             .save_signed_pre_key(
@@ -56,7 +56,7 @@ impl Participant {
             .unwrap();
 
         let pre_key_info = if use_one_time_pre_key {
-            let pre_key_id: PreKeyId = rng.gen_range(0, 0xFF_FFFF).into();
+            let pre_key_id: PreKeyId = rng.gen_range(0..0xFF_FFFF).into();
             let one_time_pre_key = KeyPair::generate(rng);
 
             them.store
@@ -111,7 +111,7 @@ impl Participant {
             self.process_pre_key(them, rng.gen_bool(0.75), rng).await;
         }
 
-        let length = rng.gen_range(0, 140);
+        let length = rng.gen_range(0..140);
         let mut buffer = vec![0; length];
         rng.fill_bytes(&mut buffer);
 

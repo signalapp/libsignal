@@ -16,6 +16,13 @@ android {
         minSdkVersion 21
         targetSdkVersion 30
         multiDexEnabled true
+
+        // Uncomment this to build 32-bit-only benchmarks.
+        // (Gradle will still build a 64-bit libsignal,
+        // but it won't be included in the benchmark APK.)
+        // ndk {
+        //     abiFilters 'armeabi-v7a'
+        // }
     }
 
     testBuildType "release"

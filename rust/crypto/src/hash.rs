@@ -5,7 +5,7 @@
 
 use crate::{Error, Result};
 
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Digest, Sha256, Sha512};
 

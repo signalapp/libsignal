@@ -16,5 +16,5 @@ pub fn scalar_from_slice_wide(bytes: &[u8]) -> Scalar {
 pub fn scalar_from_slice_canonical(bytes: &[u8]) -> Option<Scalar> {
     let mut scalar_bytes = [0u8; 32];
     scalar_bytes.copy_from_slice(bytes);
-    Scalar::from_canonical_bytes(scalar_bytes)
+    Scalar::from_canonical_bytes(scalar_bytes).into()
 }

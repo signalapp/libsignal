@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use curve25519_dalek::subtle::ConstantTimeEq;
 use prost::Message;
 use rand::{CryptoRng, Rng};
+use subtle::ConstantTimeEq;
 
 use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt, CryptographicMac};
 

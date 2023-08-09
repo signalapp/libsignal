@@ -8,7 +8,7 @@ use std::result::Result;
 
 use aes::cipher::{NewCipher, StreamCipher};
 use aes::Aes256Ctr;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 

@@ -18,6 +18,7 @@ use x25519_dalek as x25519;
 const TAGLEN: usize = 16;
 
 struct Rng<T>(T);
+
 impl<T: RngCore> RngCore for Rng<T> {
     fn next_u32(&mut self) -> u32 {
         self.0.next_u32()
@@ -37,6 +38,7 @@ impl<T: RngCore> RngCore for Rng<T> {
 }
 
 impl<T: CryptoRng> CryptoRng for Rng<T> {}
+
 impl<T: RngCore + CryptoRng + Send + Sync> Random for Rng<T> {}
 
 // From snow's resolvers/default.rs
@@ -45,6 +47,7 @@ struct Dh25519 {
     privkey: [u8; 32],
     pubkey: [u8; 32],
 }
+
 impl Dh for Dh25519 {
     fn name(&self) -> &'static str {
         "25519"
@@ -88,6 +91,7 @@ impl Dh for Dh25519 {
 struct HashSHA256 {
     hasher: Sha256,
 }
+
 impl Hash for HashSHA256 {
     fn name(&self) -> &'static str {
         "sha256"

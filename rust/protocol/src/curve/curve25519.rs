@@ -6,6 +6,7 @@
 use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::montgomery::MontgomeryPoint;
+use curve25519_dalek::scalar;
 use curve25519_dalek::scalar::Scalar;
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
@@ -27,7 +28,12 @@ impl PrivateKey {
     where
         R: CryptoRng + Rng,
     {
-        let secret = StaticSecret::new(csprng);
+        // This is essentially StaticSecret::random_from_rng only with clamping
+        let mut bytes = [0u8; 32];
+        csprng.fill_bytes(&mut bytes);
+        bytes = scalar::clamp_integer(bytes);
+
+        let secret = StaticSecret::from(bytes);
         PrivateKey { secret }
     }
 
@@ -61,8 +67,8 @@ impl PrivateKey {
         csprng.fill_bytes(&mut random_bytes);
 
         let key_data = self.secret.to_bytes();
-        let a = Scalar::from_bits(key_data);
-        let ed_public_key_point = &a * &ED25519_BASEPOINT_TABLE;
+        let a = Scalar::from_bytes_mod_order(key_data);
+        let ed_public_key_point = &a * ED25519_BASEPOINT_TABLE;
         let ed_public_key = ed_public_key_point.compress();
         let sign_bit = ed_public_key.as_bytes()[31] & 0b1000_0000_u8;
 
@@ -81,7 +87,7 @@ impl PrivateKey {
         hash1.update(&random_bytes[..]);
 
         let r = Scalar::from_hash(hash1);
-        let cap_r = (&r * &ED25519_BASEPOINT_TABLE).compress();
+        let cap_r = (&r * ED25519_BASEPOINT_TABLE).compress();
 
         let mut hash = Sha512::new();
         hash.update(cap_r.as_bytes());
@@ -135,7 +141,7 @@ impl PrivateKey {
         let cap_r_check_point = EdwardsPoint::vartime_double_scalar_mul_basepoint(
             &h,
             &minus_cap_a,
-            &Scalar::from_bits(s),
+            &Scalar::from_bytes_mod_order(s),
         );
         let cap_r_check = cap_r_check_point.compress();
 
@@ -153,7 +159,7 @@ impl PrivateKey {
 
 impl From<[u8; PRIVATE_KEY_LENGTH]> for PrivateKey {
     fn from(private_key: [u8; 32]) -> Self {
-        let secret = StaticSecret::from(private_key);
+        let secret = StaticSecret::from(scalar::clamp_integer(private_key));
         PrivateKey { secret }
     }
 }
@@ -258,7 +264,7 @@ mod tests {
             PrivateKey::verify_signature(
                 &alice_identity_public,
                 &[&alice_ephemeral_public],
-                &alice_signature
+                &alice_signature,
             ),
             "signature check failed"
         );
@@ -272,7 +278,7 @@ mod tests {
                 !PrivateKey::verify_signature(
                     &alice_identity_public,
                     &[&alice_ephemeral_public],
-                    &alice_signature_copy
+                    &alice_signature_copy,
                 ),
                 "signature check passed when it should not have"
             );
@@ -291,7 +297,7 @@ mod tests {
                 PrivateKey::verify_signature(
                     &key.derive_public_key_bytes(),
                     &[&message],
-                    &signature
+                    &signature,
                 ),
                 "signature check failed"
             );

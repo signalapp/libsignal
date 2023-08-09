@@ -14,30 +14,32 @@ license = "AGPL-3.0-only"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
 boring-sys = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
 
-asn1 = "0.9.1"
-bitflags = "1.3.2"
-chacha20poly1305 = "0.8.2"
+asn1 = "0.15.4"
+bitflags = "2.3.3"
+chacha20poly1305 = "0.9.1"
 chrono = { version = "0.4", features = ["serde"] }
 displaydoc = "0.2"
 hex = { version = "0.4", features = ["serde"] }
-hex-literal = "0.3.4"
+hex-literal = "0.4.1"
 lazy_static = "1.4.0"
 libc = "0.2"
 log = "0.4"
-num_enum = "0.5.1"
+num_enum = "0.6.1"
 prost = "0.9"
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
-sha2 = "0.9"
-snow = { version = "0.9.2", default-features = false }
+sha2 = "0.10"
+# Here and elsewhere version 0.9.0 allows patching in snow's 'master' branch
+# See top-level Cargo.toml
+snow = { version = "0.9.0", default-features = false }
 static_assertions = "1.1"
 uuid = "1.1.2"
 variant_count = "1.1"
-x25519-dalek = "1.1"
+x25519-dalek = "2.0.0-rc.3"
 
 [dev-dependencies]
-snow = { version = "0.9.2", features = ["default-resolver"] }
+snow = { version = "0.9.0", features = ["default-resolver"] }
 
 [build-dependencies]
 prost-build = "0.9"

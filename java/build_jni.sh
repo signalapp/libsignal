@@ -49,6 +49,9 @@ then
     export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
     export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
 
+    # Uncomment the following to force the 64-bit curve25519-dalek backend on 32-bit targets.
+    # export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
+
     echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target aarch64-linux-android --out-dir "${ANDROID_LIB_DIR}/arm64-v8a"
     echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target armv7-linux-androideabi --out-dir "${ANDROID_LIB_DIR}/armeabi-v7a"
     echo_then_run cargo build -p libsignal-jni --release -Z unstable-options --target x86_64-linux-android --out-dir "${ANDROID_LIB_DIR}/x86_64"
