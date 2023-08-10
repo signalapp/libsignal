@@ -22,11 +22,13 @@ import org.signal.libsignal.protocol.state.SignedPreKeyStore;
  * Once a session has been established, {@link org.signal.libsignal.protocol.SessionCipher}
  * can be used to encrypt/decrypt messages in that session.
  * <p>
- * Sessions are built from one of three different possible vectors:
+ *
+ * Sessions are built from one of two different possible vectors:
  * <ol>
  *   <li>A {@link org.signal.libsignal.protocol.state.PreKeyBundle} retrieved from a server.</li>
- *   <li>A {@link PreKeySignalMessage} received from a client.</li>
+ *   <li>A {@link org.signal.libsignal.protocol.message.PreKeySignalMessage} received from a client.</li>
  * </ol>
+ * Only the first, however, is handled by SessionBuilder.
  *
  * Sessions are constructed per recipientId + deviceId tuple.  Remote logical users are identified
  * by their recipientId, and each logical recipientId can have multiple physical devices.

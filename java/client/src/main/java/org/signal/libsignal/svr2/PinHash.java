@@ -35,7 +35,7 @@ public class PinHash implements NativeHandleGuard.Owner {
      * Note: This should be used with SVR1 only. For SVR1, the salt should be the backup id.
      * For SVR2 clients, use {@link PinHash#svr2} which handles salt selection internally.
      *
-     * @param pin A normalized, UTF-8 encoded byte representation of the pin
+     * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
      * @param salt A 32 byte salt
      * @return A {@link PinHash}
      */
@@ -48,7 +48,7 @@ public class PinHash implements NativeHandleGuard.Owner {
      *
      * Note: This should be used with SVR2 only. For SVR1 clients, use {@link PinHash#svr1}
      *
-     * @param pin A normalized, UTF-8 encoded byte representation of the pin
+     * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
      * @param username The Basic Auth username used to authenticate with SVR2
      * @param mrenclave The mrenclave where the hashed pin will be stored
      * @return A {@link PinHash}

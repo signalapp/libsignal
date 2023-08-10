@@ -21,8 +21,8 @@ public class NumericFingerprintGenerator implements FingerprintGenerator {
    *                   The higher the iteration count, the higher the security level:
    *
    *                   - 1024 ~ 109.7 bits
-   *                   - 1400 > 110 bits
-   *                   - 5200 > 112 bits
+   *                   - 1400 &gt; 110 bits
+   *                   - 5200 &gt; 112 bits
    */
   public NumericFingerprintGenerator(int iterations) {
     this.iterations = iterations;
