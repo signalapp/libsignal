@@ -30,6 +30,8 @@ pub mod protocol;
 
 #[cfg(feature = "jni")]
 pub mod grpc;
+#[cfg(feature = "jni")]
+pub mod quic;
 
 // Desktop does not make use of device transfer certificates
 #[cfg(any(feature = "jni", feature = "ffi"))]

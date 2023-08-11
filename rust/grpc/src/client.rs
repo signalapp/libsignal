@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{error::{Error, Result}, proto};
-use crate::GrpcReplyListener;
+use crate::error::{Error, Result};
+use crate::{proto, GrpcReplyListener};
 use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 use tokio_stream::StreamExt;
@@ -64,34 +64,56 @@ impl GrpcClient {
 
     pub fn echo_message(&self, message: &str) -> Result<String> {
         println!("Received echo message: message={}", message);
-        self.tokio_runtime.block_on(async {
-            self.async_echo_message(message).await
-        })
+        self.tokio_runtime
+            .block_on(async { self.async_echo_message(message).await })
     }
 
     pub async fn async_echo_message(&self, message: &str) -> Result<String> {
-        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone()).await
+        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone())
+            .await
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
 
         let request = proto::proxy::EchoRequest {
-            message: message.to_owned()
+            message: message.to_owned(),
         };
 
-        let response = tunnel.echo_message(request).await
+        let response = tunnel
+            .echo_message(request)
+            .await
             .map_err(|e| Error::InvalidArgument(format!("echo_message: {:?}", e)))?;
 
         Ok(response.get_ref().message.clone())
     }
 
-    pub fn send_direct_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<GrpcReply> {
-        println!("Tunneling gRPC message direct: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
+    pub fn send_direct_message(
+        &self,
+        method: String,
+        url_fragment: String,
+        body: &[u8],
+        headers: HashMap<String, Vec<String>>,
+    ) -> Result<GrpcReply> {
+        println!(
+            "Tunneling gRPC message direct: method={} url_fragment={}, body.len={}, headers={:?}",
+            method,
+            url_fragment,
+            body.len(),
+            headers
+        );
         self.tokio_runtime.block_on(async {
-            self.async_send_direct_message(method, url_fragment, body, headers).await
+            self.async_send_direct_message(method, url_fragment, body, headers)
+                .await
         })
     }
 
-    async fn async_send_direct_message(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<GrpcReply> {
-        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone()).await
+    async fn async_send_direct_message(
+        &self,
+        method: String,
+        url_fragment: String,
+        body: &[u8],
+        headers: HashMap<String, Vec<String>>,
+    ) -> Result<GrpcReply> {
+        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::connect(self.target.clone())
+            .await
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
 
         let mut request_headers = vec![];
@@ -108,13 +130,20 @@ impl GrpcClient {
             header: request_headers,
         };
 
-        let response = tunnel.send_some_message(request).await
+        let response = tunnel
+            .send_some_message(request)
+            .await
             .map_err(|e| Error::InvalidArgument(format!("send_message: {:?}", e)))?;
 
         Ok(response.get_ref().into())
     }
 
-    pub fn open_stream(&mut self, uri: String, headers: HashMap<String, Vec<String>>, listener: &mut dyn GrpcReplyListener) -> Result<()> {
+    pub fn open_stream(
+        &mut self,
+        uri: String,
+        headers: HashMap<String, Vec<String>>,
+        listener: &mut dyn GrpcReplyListener,
+    ) -> Result<()> {
         let (sender, receiver) = tokio::sync::mpsc::channel(100);
         self.sender = Some(sender);
 
@@ -124,40 +153,62 @@ impl GrpcClient {
         })
     }
 
-    async fn async_open_stream(target: String, uri: String, headers: HashMap<String, Vec<String>>, receiver: tokio::sync::mpsc::Receiver<proto::proxy::SignalRpcMessage>, listener: &mut dyn GrpcReplyListener) -> Result<()> {
+    async fn async_open_stream(
+        target: String,
+        uri: String,
+        headers: HashMap<String, Vec<String>>,
+        receiver: tokio::sync::mpsc::Receiver<proto::proxy::SignalRpcMessage>,
+        listener: &mut dyn GrpcReplyListener,
+    ) -> Result<()> {
         let channel = tonic::transport::Channel::from_shared(target)
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?
             .connect()
             .await
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
 
-        let header_uri: tonic::metadata::MetadataValue<_> = uri.parse()
+        let header_uri: tonic::metadata::MetadataValue<_> = uri
+            .parse()
             .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
         let mut metadata_headers = HashMap::new();
         for (header_key, header_values) in headers.iter() {
             for header_value in header_values.iter() {
-                let metadata_header_value: tonic::metadata::MetadataValue<_> = header_value.parse()
+                let metadata_header_value: tonic::metadata::MetadataValue<_> = header_value
+                    .parse()
                     .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
-                let metadata_header_key: tonic::metadata::MetadataKey<_> = header_key.parse()
+                let metadata_header_key: tonic::metadata::MetadataKey<_> = header_key
+                    .parse()
                     .map_err(|e| Error::InvalidArgument(format!("tunnel.connect: {:?}", e)))?;
-                metadata_headers.insert(metadata_header_key.to_owned(), metadata_header_value.to_owned());
+                metadata_headers.insert(
+                    metadata_header_key.to_owned(),
+                    metadata_header_value.to_owned(),
+                );
             }
         }
-        let headers: Vec<(tonic::metadata::MetadataKey<_>, tonic::metadata::MetadataValue<_>)> = metadata_headers.into_iter().collect();
+        let headers: Vec<(
+            tonic::metadata::MetadataKey<_>,
+            tonic::metadata::MetadataValue<_>,
+        )> = metadata_headers.into_iter().collect();
 
-        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::with_interceptor(channel, move |mut req: tonic::Request<()>| {
-            let metadata = req.metadata_mut();
-            metadata.append("uri", header_uri.clone());
-            for (header_key, header_value) in headers.clone().into_iter() {
-                metadata.append(header_key.to_owned(), header_value.to_owned());
-            }
-            Ok(req)
-        });
+        let mut tunnel = proto::proxy::tunnel_client::TunnelClient::with_interceptor(
+            channel,
+            move |mut req: tonic::Request<()>| {
+                let metadata = req.metadata_mut();
+                metadata.append("uri", header_uri.clone());
+                for (header_key, header_value) in headers.clone().into_iter() {
+                    metadata.append(header_key.to_owned(), header_value.to_owned());
+                }
+                Ok(req)
+            },
+        );
 
         let receiver_stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
 
-        let mut response_stream = tunnel.stream_some_messages(receiver_stream).await
-            .map_err(|status| Error::InvalidArgument(format!("tunnel.send_some_messages: status={}", status)))?
+        let mut response_stream = tunnel
+            .stream_some_messages(receiver_stream)
+            .await
+            .map_err(|status| {
+                Error::InvalidArgument(format!("tunnel.send_some_messages: status={}", status))
+            })?
             .into_inner();
         while let Some(reply) = response_stream.next().await {
             match reply {
@@ -169,14 +220,27 @@ impl GrpcClient {
         Ok(())
     }
 
-    pub fn send_message_on_stream(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<()> {
+    pub fn send_message_on_stream(
+        &self,
+        method: String,
+        url_fragment: String,
+        body: &[u8],
+        headers: HashMap<String, Vec<String>>,
+    ) -> Result<()> {
         println!("Tunneling gRPC message on stream: method={} url_fragment={}, body.len={}, headers={:?}", method, url_fragment, body.len(), headers);
         self.tokio_runtime.block_on(async {
-            self.async_send_message_on_stream(method, url_fragment, body, headers).await
+            self.async_send_message_on_stream(method, url_fragment, body, headers)
+                .await
         })
     }
 
-    async fn async_send_message_on_stream(&self, method: String, url_fragment: String, body: &[u8], headers: HashMap<String, Vec<String>>) -> Result<()> {
+    async fn async_send_message_on_stream(
+        &self,
+        method: String,
+        url_fragment: String,
+        body: &[u8],
+        headers: HashMap<String, Vec<String>>,
+    ) -> Result<()> {
         if let Some(sender) = self.sender.as_ref() {
             let mut request_headers = vec![];
             for (header_name, header_values) in headers.iter() {
@@ -184,12 +248,16 @@ impl GrpcClient {
                     request_headers.push(format!("{}={}", header_name, header_value))
                 }
             }
-    
-            sender.send(proto::proxy::SignalRpcMessage {
-                method, urlfragment: url_fragment, body: body.to_vec(), header: request_headers
-            })
-            .await
-            .map_err(|e| Error::InvalidArgument(format!("{:?}", e)))
+
+            sender
+                .send(proto::proxy::SignalRpcMessage {
+                    method,
+                    urlfragment: url_fragment,
+                    body: body.to_vec(),
+                    header: request_headers,
+                })
+                .await
+                .map_err(|e| Error::InvalidArgument(format!("{:?}", e)))
         } else {
             Err(Error::StreamNotOpened())
         }

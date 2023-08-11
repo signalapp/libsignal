@@ -9,13 +9,7 @@ use crate::{GrpcReply, Result};
 
 #[async_trait(?Send)]
 pub trait GrpcReplyListener {
-    async fn on_reply(
-        &mut self,
-        reply: GrpcReply,
-    ) -> Result<()>;
+    async fn on_reply(&mut self, reply: GrpcReply) -> Result<()>;
 
-    async fn on_error(
-        &mut self,
-        error: String,
-    ) -> Result<()>;
+    async fn on_error(&mut self, error: String) -> Result<()>;
 }

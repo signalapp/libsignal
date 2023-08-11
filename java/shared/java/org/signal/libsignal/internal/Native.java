@@ -12,6 +12,7 @@ import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
+import org.signal.libsignal.quic.QuicCallbackListener;
 import org.signal.libsignal.grpc.GrpcReplyListener;
 import org.signal.libsignal.grpc.SignalRpcReply;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
@@ -496,4 +497,10 @@ public final class Native {
   public static native SignalRpcReply GrpcClient_SendDirectMessage(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
   public static native long GrpcClient_OpenStream(long cli, String uri, Map<String, List<String>> headers, GrpcReplyListener listener);
   public static native void GrpcClient_SendMessageOnStream(long cli, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
+
+  public static native long QuicClient_New(String target);
+  public static native void QuicClient_Destroy(long handle);
+  public static native byte[] QuicClient_SendMessage(long handle, byte[] data);
+  public static native long QuicClient_OpenControlledStream(long cli, String baseUrl, Map<String, String> headers, QuicCallbackListener listener);
+  public static native void QuicClient_WriteMessageToStream(long cli, byte[] payload);
 }

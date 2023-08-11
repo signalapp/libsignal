@@ -9,6 +9,7 @@ use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
 use signal_grpc::GrpcReplyListener;
+use signal_quic::QuicCallbackListener;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ops::Deref;
@@ -352,21 +353,32 @@ store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage mut dyn GrpcReplyListener {
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for &'storage mut dyn GrpcReplyListener
+{
     type ArgType = JavaGrpcReplyListener<'context>;
     type StoredType = JniGrpcReplyListener<'context>;
 
-    fn borrow(
-        env: &'context JNIEnv,
-        store: Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    fn borrow(env: &'context JNIEnv, store: Self::ArgType) -> SignalJniResult<Self::StoredType> {
         Self::StoredType::new(env, store)
     }
 
-    fn load_from(
-        _env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> SignalJniResult<Self> {
+    fn load_from(_env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self> {
+        Ok(stored)
+    }
+}
+
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for &'storage mut dyn QuicCallbackListener
+{
+    type ArgType = JavaQuicCallbackListener<'context>;
+    type StoredType = JniQuicCallbackListener<'context>;
+
+    fn borrow(env: &'context JNIEnv, store: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+        Self::StoredType::new(env, store)
+    }
+
+    fn load_from(_env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self> {
         Ok(stored)
     }
 }
@@ -484,6 +496,27 @@ impl ResultTypeInfo for signal_grpc::GrpcReply {
         signal_jni_result
             .as_ref()
             .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for crate::quic::QuicHeaders {
+    type ArgType = JavaArgMap<'a>;
+    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+        if foreign.is_null() {
+            return Err(SignalJniError::NullHandle);
+        }
+
+        let mut headers = HashMap::new();
+
+        let jmap = env.get_map(foreign)?;
+        let mut jmap_iter = jmap.iter()?;
+        while let Some((key, value)) = jmap_iter.next() {
+            let header_key: String = env.get_string(key.into())?.into();
+            let header_value: String = env.get_string(value.into())?.into();
+            headers.insert(header_key.clone(), header_value.clone());
+        }
+
+        Ok(crate::quic::QuicHeaders(headers))
     }
 }
 
@@ -822,6 +855,16 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_grpc::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_quic::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
@@ -1175,6 +1218,9 @@ macro_rules! jni_arg_type {
         jni::JavaUUID
     };
     (GrpcHeaders) => {
+        jni::JavaArgMap
+    };
+    (QuicHeaders) => {
         jni::JavaArgMap
     };
     (jni::CiphertextMessageRef) => {

@@ -12,6 +12,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     /// invalid argument: {0}
     InvalidArgument(String),
+    /// failed to receive: {0}
+    RecvFailed(String),
+    /// failed to send: {0}
+    SendFailed(String),
     /// stream has not yet been opened
     StreamNotOpened(),
 }

@@ -1,0 +1,23 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "signal-quic"
+version = "0.1.0"
+authors = ["Signal Messenger LLC"]
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[dependencies]
+async-trait = "0.1.41"
+displaydoc = "0.2"
+futures = "0.3.28"
+mio = { version = "0.8", features = ["net", "os-poll"] }
+quiche = "0.17.2"
+ring = "0.16"
+thiserror = "1.0.30"
+tokio = { version = "1.28", features = [ "sync", "rt", "rt-multi-thread" ] }
+tokio-stream = "0.1"
+url = "1"

@@ -20,6 +20,7 @@ usernames = { path = "../../usernames" }
 signal-pin = { path = "../../pin" }
 libsignal-bridge-macros = { path = "macros" }
 signal-grpc = { path = "../../grpc" }
+signal-quic = { path = "../../quic" }
 aes-gcm-siv = "0.10.1"
 async-trait = "0.1.41"
 bincode = "1.0"
