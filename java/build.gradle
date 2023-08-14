@@ -1,5 +1,6 @@
 plugins {
     id "de.undercouch.download" version "5.0.2"
+    id "base"
 }
 
 def version_number = "0.31.0"
@@ -38,7 +39,7 @@ task cargoClean(type:Exec) {
   commandLine 'cargo', 'clean'
 }
 
-task clean(type: Delete) {
+task cleanJni(type: Delete) {
   description 'Clean JNI libs'
   delete fileTree('./android/src/main/jniLibs') {
     include '**/*.so'
@@ -49,7 +50,8 @@ task clean(type: Delete) {
     include '**/*.dll'
   }
 }
-clean.dependsOn(cargoClean)
+
+clean.dependsOn([cargoClean, cleanJni])
 
 task downloadNonLinuxLibraries(type: Download) {
   // Must be explicitly enabled.
