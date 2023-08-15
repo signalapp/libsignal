@@ -44,7 +44,7 @@ impl Participant {
 
         them.store
             .save_signed_pre_key(
-                signed_pre_key_id.into(),
+                signed_pre_key_id,
                 &SignedPreKeyRecord::new(
                     signed_pre_key_id,
                     /*timestamp*/ 42,
@@ -74,8 +74,8 @@ impl Participant {
         let their_pre_key_bundle = PreKeyBundle::new(
             them.store.get_local_registration_id().await.unwrap(),
             1.into(), // device id
-            pre_key_info.into(),
-            signed_pre_key_id.into(),
+            pre_key_info,
+            signed_pre_key_id,
             their_signed_pre_key_pair.public_key,
             their_signed_pre_key_signature.into_vec(),
             *them

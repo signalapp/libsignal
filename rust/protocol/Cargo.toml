@@ -27,7 +27,7 @@ prost = "0.9"
 rand = "0.8"
 sha2 = "0.10"
 subtle = "2.3"
-x25519-dalek = { version = "2.0.0-rc.3", features = ["static_secrets"] }
+x25519-dalek = { version = "2.0.0", features = ["static_secrets"] }
 hex = "0.4"
 log = "0.4"
 num_enum = "0.6.1"
