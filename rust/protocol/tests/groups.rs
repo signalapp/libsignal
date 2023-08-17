@@ -11,6 +11,7 @@ use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::convert::TryFrom;
+use std::time::SystemTime;
 use support::*;
 use uuid::Uuid;
 
@@ -174,6 +175,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut csprng,
         )
         .await?;
@@ -183,6 +185,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &carol_pre_key_bundle,
+            SystemTime::now(),
             &mut csprng,
         )
         .await?;

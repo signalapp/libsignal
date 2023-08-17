@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use crate::{
     kem, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore, PreKeyBundle,
     PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result, SessionRecord,
@@ -145,6 +147,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     bundle: &PreKeyBundle,
+    now: SystemTime,
     mut csprng: &mut R,
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?;
@@ -215,6 +218,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         their_one_time_prekey_id,
         bundle.signed_pre_key_id()?,
         &our_base_key_pair.public_key,
+        now,
     );
 
     if let Some(kyber_pre_key_id) = bundle.kyber_pre_key_id()? {

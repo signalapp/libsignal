@@ -10,6 +10,7 @@ use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use std::convert::TryFrom;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 #[test]
@@ -160,6 +161,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .await?;
@@ -327,6 +329,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .await?;
@@ -439,6 +442,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .await?;
@@ -665,6 +669,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .await?;
@@ -768,6 +773,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .await?;
@@ -861,6 +867,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
             &alice_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .await?;

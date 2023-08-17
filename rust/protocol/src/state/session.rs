@@ -5,6 +5,7 @@
 
 use std::convert::TryInto;
 use std::result::Result;
+use std::time::SystemTime;
 
 use prost::Message;
 use subtle::ConstantTimeEq;
@@ -445,12 +446,17 @@ impl SessionState {
         pre_key_id: Option<PreKeyId>,
         signed_ec_pre_key_id: SignedPreKeyId,
         base_key: &PublicKey,
+        now: SystemTime,
     ) {
         let signed_ec_pre_key_id: u32 = signed_ec_pre_key_id.into();
         let pending = session_structure::PendingPreKey {
             pre_key_id: pre_key_id.map(PreKeyId::into),
             signed_pre_key_id: signed_ec_pre_key_id as i32,
             base_key: base_key.serialize().to_vec(),
+            timestamp: now
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         };
         self.session.pending_pre_key = Some(pending);
     }

@@ -1500,13 +1500,15 @@ export function processPreKeyBundle(
   bundle: PreKeyBundle,
   address: ProtocolAddress,
   sessionStore: SessionStore,
-  identityStore: IdentityKeyStore
+  identityStore: IdentityKeyStore,
+  now: Date = new Date()
 ): Promise<void> {
   return Native.SessionBuilder_ProcessPreKeyBundle(
     bundle,
     address,
     sessionStore,
-    identityStore
+    identityStore,
+    now.getTime()
   );
 }
 

@@ -8,6 +8,7 @@ use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use std::convert::TryFrom;
+use std::time::SystemTime;
 use support::*;
 
 type TestResult = Result<(), SignalProtocolError>;
@@ -65,6 +66,7 @@ fn test_basic_prekey() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -148,6 +150,7 @@ fn test_basic_prekey() -> TestResult {
                 &mut alter_alice_store.session_store,
                 &mut alter_alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -204,6 +207,7 @@ fn test_basic_prekey() -> TestResult {
                 &mut alter_alice_store.session_store,
                 &mut alter_alice_store.identity_store,
                 &bad_bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await
@@ -252,6 +256,7 @@ fn test_chain_jump_over_limit() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -317,6 +322,7 @@ fn test_chain_jump_over_limit_with_self() -> TestResult {
                 &mut a1_store.session_store,
                 &mut a1_store.identity_store,
                 &a2_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -382,6 +388,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bad_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await
@@ -394,6 +401,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &good_bundle,
+            SystemTime::now(),
             &mut csprng,
         )
         .await?;
@@ -446,6 +454,7 @@ fn test_repeat_bundle_message() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -581,6 +590,7 @@ fn test_bad_message_bundle() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -678,6 +688,7 @@ fn test_optional_one_time_prekey() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -848,6 +859,7 @@ fn test_basic_simultaneous_initiate() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -857,6 +869,7 @@ fn test_basic_simultaneous_initiate() -> TestResult {
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &alice_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1020,6 +1033,7 @@ fn test_simultaneous_initiate_with_lossage() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1029,6 +1043,7 @@ fn test_simultaneous_initiate_with_lossage() -> TestResult {
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &alice_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1172,6 +1187,7 @@ fn test_simultaneous_initiate_lost_message() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1181,6 +1197,7 @@ fn test_simultaneous_initiate_lost_message() -> TestResult {
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &alice_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1330,6 +1347,7 @@ fn test_simultaneous_initiate_repeated_messages() -> TestResult {
                     &mut alice_store_builder.store.session_store,
                     &mut alice_store_builder.store.identity_store,
                     &bob_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1339,6 +1357,7 @@ fn test_simultaneous_initiate_repeated_messages() -> TestResult {
                     &mut bob_store_builder.store.session_store,
                     &mut bob_store_builder.store.identity_store,
                     &alice_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1584,6 +1603,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
                 &mut alice_store_builder.store.session_store,
                 &mut alice_store_builder.store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1608,6 +1628,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
                     &mut alice_store_builder.store.session_store,
                     &mut alice_store_builder.store.identity_store,
                     &bob_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1617,6 +1638,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
                     &mut bob_store_builder.store.session_store,
                     &mut bob_store_builder.store.identity_store,
                     &alice_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1892,6 +1914,7 @@ fn test_zero_is_a_valid_prekey_id() -> TestResult {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut csprng,
         )
         .await?;

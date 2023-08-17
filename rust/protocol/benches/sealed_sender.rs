@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
@@ -34,6 +36,7 @@ pub fn v1(c: &mut Criterion) {
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
+        SystemTime::now(),
         &mut rng,
     )
     .now_or_never()
@@ -122,6 +125,7 @@ pub fn v2(c: &mut Criterion) {
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
+        SystemTime::now(),
         &mut rng,
     )
     .now_or_never()
@@ -215,6 +219,7 @@ pub fn v2(c: &mut Criterion) {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &next_pre_key_bundle,
+            SystemTime::now(),
             &mut rng,
         )
         .now_or_never()

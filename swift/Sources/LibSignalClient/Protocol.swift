@@ -69,11 +69,12 @@ public func processPreKeyBundle(_ bundle: PreKeyBundle,
                                 for address: ProtocolAddress,
                                 sessionStore: SessionStore,
                                 identityStore: IdentityKeyStore,
+                                now: Date = Date(),
                                 context: StoreContext) throws {
     return try withNativeHandles(bundle, address) { bundleHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try checkError(signal_process_prekey_bundle(bundleHandle, addressHandle, ffiSessionStore, ffiIdentityStore))
+                try checkError(signal_process_prekey_bundle(bundleHandle, addressHandle, ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000)))
             }
         }
     }

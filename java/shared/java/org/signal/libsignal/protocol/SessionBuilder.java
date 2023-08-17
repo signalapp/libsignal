@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol;
 
+import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
@@ -89,13 +90,30 @@ public class SessionBuilder {
    *     IdentityKey} is not trusted.
    */
   public void process(PreKeyBundle preKey) throws InvalidKeyException, UntrustedIdentityException {
+    process(preKey, Instant.now());
+  }
+
+  /**
+   * Build a new session from a {@link org.signal.libsignal.protocol.state.PreKeyBundle} retrieved
+   * from a server.
+   *
+   * @param preKey A PreKey for the destination recipient, retrieved from a server.
+   * @param now The current time, used later to check if the session is stale.
+   * @throws InvalidKeyException when the {@link org.signal.libsignal.protocol.state.PreKeyBundle}
+   *     is badly formatted.
+   * @throws org.signal.libsignal.protocol.UntrustedIdentityException when the sender's {@link
+   *     IdentityKey} is not trusted.
+   */
+  public void process(PreKeyBundle preKey, Instant now)
+      throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard preKeyGuard = new NativeHandleGuard(preKey);
-        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
+        NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress)) {
       Native.SessionBuilder_ProcessPreKeyBundle(
           preKeyGuard.nativeHandle(),
           remoteAddressGuard.nativeHandle(),
           sessionStore,
-          identityKeyStore);
+          identityKeyStore,
+          now.toEpochMilli());
     }
   }
 }

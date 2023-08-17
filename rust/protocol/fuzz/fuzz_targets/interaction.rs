@@ -92,6 +92,7 @@ impl Participant {
             &mut self.store.session_store,
             &mut self.store.identity_store,
             &their_pre_key_bundle,
+            SystemTime::UNIX_EPOCH,
             rng,
         )
         .await
