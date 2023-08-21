@@ -130,7 +130,6 @@ async fn process_prekey_impl(
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());
-    new_session.set_alice_base_key(&message.base_key().serialize());
 
     session_record.promote_state(new_session);
 
@@ -224,7 +223,6 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
 
     session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     session.set_remote_registration_id(bundle.registration_id()?);
-    session.set_alice_base_key(&our_base_key_pair.public_key.serialize());
 
     identity_store
         .save_identity(remote_address, their_identity_key)

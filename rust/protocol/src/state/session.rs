@@ -96,12 +96,13 @@ impl SessionState {
         our_identity: &IdentityKey,
         their_identity: &IdentityKey,
         root_key: &RootKey,
+        alice_base_key: &PublicKey,
     ) -> Self {
         Self {
             session: SessionStructure {
                 session_version: version as u32,
-                local_identity_public: our_identity.public_key().serialize().to_vec(),
-                remote_identity_public: their_identity.serialize().to_vec(),
+                local_identity_public: our_identity.public_key().serialize().into_vec(),
+                remote_identity_public: their_identity.serialize().into_vec(),
                 root_key: root_key.key().to_vec(),
                 previous_counter: 0,
                 sender_chain: None,
@@ -110,7 +111,7 @@ impl SessionState {
                 pending_kyber_pre_key: None,
                 remote_registration_id: 0,
                 local_registration_id: 0,
-                alice_base_key: vec![],
+                alice_base_key: alice_base_key.serialize().into_vec(),
             },
         }
     }
@@ -118,11 +119,6 @@ impl SessionState {
     pub(crate) fn alice_base_key(&self) -> &[u8] {
         // Check the length before returning?
         &self.session.alice_base_key
-    }
-
-    pub(crate) fn set_alice_base_key(&mut self, key: &[u8]) {
-        // Should we check the length?
-        self.session.alice_base_key = key.to_vec();
     }
 
     pub(crate) fn session_version(&self) -> Result<u32, InvalidSessionError> {
