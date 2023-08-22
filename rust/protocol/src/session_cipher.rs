@@ -547,12 +547,13 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     remote_address: &ProtocolAddress,
     csprng: &mut R,
 ) -> Result<Vec<u8>> {
-    if !state.has_sender_chain()? {
-        return Err(SignalProtocolError::InvalidMessage(
+    // Check for a completely empty or invalid session state before we do anything else.
+    let _ = state.root_key().map_err(|_| {
+        SignalProtocolError::InvalidMessage(
             original_message_type,
             "No session available to decrypt",
-        ));
-    }
+        )
+    })?;
 
     let ciphertext_version = ciphertext.message_version() as u32;
     if ciphertext_version != state.session_version()? {

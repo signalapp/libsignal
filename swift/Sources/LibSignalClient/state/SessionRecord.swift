@@ -35,9 +35,13 @@ public class SessionRecord: ClonableHandleOwner {
     }
 
     public var hasCurrentState: Bool {
+        hasCurrentState(now: Date())
+    }
+
+    public func hasCurrentState(now: Date) -> Bool {
         var result = false
         self.withNativeHandle { nativeHandle in
-            failOnError(signal_session_record_has_current_state(&result, nativeHandle))
+            failOnError(signal_session_record_has_usable_sender_chain(&result, nativeHandle, UInt64(now.timeIntervalSince1970 * 1000)))
         }
         return result
     }

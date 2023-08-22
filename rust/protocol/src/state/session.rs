@@ -5,7 +5,7 @@
 
 use std::convert::TryInto;
 use std::result::Result;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use prost::Message;
 use subtle::ConstantTimeEq;
@@ -205,8 +205,18 @@ impl SessionState {
         }
     }
 
-    pub fn has_sender_chain(&self) -> Result<bool, InvalidSessionError> {
-        Ok(self.session.sender_chain.is_some())
+    pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, InvalidSessionError> {
+        if self.session.sender_chain.is_none() {
+            return Ok(false);
+        }
+        if let Some(pending_pre_key) = &self.session.pending_pre_key {
+            let creation_timestamp =
+                SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp);
+            if creation_timestamp + consts::MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     pub(crate) fn all_receiver_chain_logging_info(&self) -> Vec<(Vec<u8>, Option<u32>)> {
@@ -602,10 +612,6 @@ impl SessionRecord {
         Ok(false)
     }
 
-    pub fn has_current_session_state(&self) -> bool {
-        self.current_session.is_some()
-    }
-
     pub(crate) fn session_state(&self) -> Option<&SessionState> {
         self.current_session.as_ref()
     }
@@ -725,9 +731,9 @@ impl SessionRecord {
             .remote_identity_key_bytes()?)
     }
 
-    pub fn has_sender_chain(&self) -> Result<bool, SignalProtocolError> {
+    pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, SignalProtocolError> {
         match &self.current_session {
-            Some(session) => Ok(session.has_sender_chain()?),
+            Some(session) => Ok(session.has_usable_sender_chain(now)?),
             None => Ok(false),
         }
     }

@@ -14,6 +14,9 @@ import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
+import java.io.IOException;
+import java.time.Instant;
+
 /**
  * A SessionRecord encapsulates the state of an ongoing session.
  *
@@ -93,9 +96,25 @@ public class SessionRecord implements NativeHandleGuard.Owner {
     }
   }
 
+  /**
+   * Returns whether the current session can be used to send messages.
+   *
+   * <p>If there is no current session, returns {@code false}.
+   */
   public boolean hasSenderChain() {
+    return hasSenderChain(Instant.now());
+  }
+
+  /**
+   * Returns whether the current session can be used to send messages.
+   *
+   * <p>If there is no current session, returns {@code false}.
+   *
+   * <p>You should only use this overload if you need to test session expiration.
+   */
+  public boolean hasSenderChain(Instant now) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_HasSenderChain(guard.nativeHandle());
+      return Native.SessionRecord_HasUsableSenderChain(guard.nativeHandle(), now.toEpochMilli());
     }
   }
 

@@ -322,7 +322,7 @@ export function SessionRecord_CurrentRatchetKeyMatches(s: Wrapper<SessionRecord>
 export function SessionRecord_Deserialize(data: Buffer): SessionRecord;
 export function SessionRecord_GetLocalRegistrationId(obj: Wrapper<SessionRecord>): number;
 export function SessionRecord_GetRemoteRegistrationId(obj: Wrapper<SessionRecord>): number;
-export function SessionRecord_HasCurrentState(obj: Wrapper<SessionRecord>): boolean;
+export function SessionRecord_HasUsableSenderChain(s: Wrapper<SessionRecord>, now: Timestamp): boolean;
 export function SessionRecord_Serialize(obj: Wrapper<SessionRecord>): Buffer;
 export function SgxClientState_CompleteHandshake(cli: Wrapper<SgxClientState>, handshakeReceived: Buffer): void;
 export function SgxClientState_EstablishedRecv(cli: Wrapper<SgxClientState>, receivedCiphertext: Buffer): Buffer;

@@ -106,7 +106,7 @@ impl Participant {
             .load_session(&them.address)
             .await
             .unwrap()
-            .map(|session| !session.has_current_session_state())
+            .map(|session| !session.has_usable_sender_chain(SystemTime::UNIX_EPOCH))
             .unwrap_or(true)
         {
             self.process_pre_key(them, rng.gen_bool(0.75), rng).await;

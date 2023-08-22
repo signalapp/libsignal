@@ -61,6 +61,10 @@ impl Timestamp {
     pub(crate) fn as_millis(self) -> u64 {
         self.0
     }
+
+    fn as_millis_from_unix_epoch(self) -> SystemTime {
+        SystemTime::UNIX_EPOCH + Duration::from_millis(self.as_millis())
+    }
 }
 
 impl From<u64> for Timestamp {
@@ -956,11 +960,14 @@ fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Resu
 }
 
 #[bridge_fn]
+fn SessionRecord_HasUsableSenderChain(s: &SessionRecord, now: Timestamp) -> Result<bool> {
+    s.has_usable_sender_chain(now.as_millis_from_unix_epoch())
+}
+
+#[bridge_fn]
 fn SessionRecord_CurrentRatchetKeyMatches(s: &SessionRecord, key: &PublicKey) -> Result<bool> {
     s.current_ratchet_key_matches(key)
 }
-
-bridge_get!(SessionRecord::has_current_session_state as HasCurrentState -> bool, jni = false);
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get!(SessionRecord::serialize as Serialize -> Vec<u8>);
@@ -977,7 +984,6 @@ bridge_get!(
 );
 bridge_get!(SessionRecord::local_registration_id -> u32);
 bridge_get!(SessionRecord::remote_registration_id -> u32);
-bridge_get!(SessionRecord::has_sender_chain as HasSenderChain -> bool, ffi = false, node = false);
 
 bridge_get!(SealedSenderDecryptionResult::sender_uuid -> String, ffi = false, jni = false);
 bridge_get!(SealedSenderDecryptionResult::sender_e164 -> Option<String>, ffi = false, jni = false);
@@ -1089,7 +1095,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
         session_store,
         identity_key_store,
         bundle,
-        SystemTime::UNIX_EPOCH + Duration::from_millis(now.as_millis()),
+        now.as_millis_from_unix_epoch(),
         &mut csprng,
     )
     .await
