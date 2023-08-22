@@ -1387,6 +1387,7 @@ dependencies = [
  "rand",
  "sha2",
  "signal-crypto",
+ "static_assertions",
  "subtle",
  "thiserror",
  "typenum",

@@ -202,6 +202,43 @@ pub fn v2(c: &mut Criterion) {
     c.bench_function("v2/encrypt", |b| b.iter(&mut encrypt_it));
     c.bench_function("v2/decrypt", |b| b.iter(&mut decrypt_it));
 
+    {
+        // Test new derivation, while we're still using the old one by default.
+        let mut encrypt_it = || {
+            sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation(
+                &[&bob_address],
+                &alice_store
+                    .session_store
+                    .load_existing_sessions(&[&bob_address])
+                    .expect("present"),
+                &usmc,
+                &mut alice_store.identity_store,
+                &mut rng,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("valid")
+        };
+        let outgoing = encrypt_it();
+
+        let incoming = sealed_sender_multi_recipient_fan_out(&outgoing)
+            .expect("valid")
+            .into_iter()
+            .next()
+            .expect("at least one destination");
+
+        let mut decrypt_it = || {
+            sealed_sender_decrypt_to_usmc(&incoming, &mut bob_store.identity_store)
+                .now_or_never()
+                .expect("sync")
+                .expect("valid")
+        };
+        assert_eq!(message, decrypt_it().contents().expect("valid"));
+
+        c.bench_function("v2/encrypt/new-derivation", |b| b.iter(&mut encrypt_it));
+        c.bench_function("v2/decrypt/new-derivation", |b| b.iter(&mut decrypt_it));
+    }
+
     // Fill out additional recipients.
     let mut recipients = vec![bob_address.clone()];
     while recipients.len() < 10 {
