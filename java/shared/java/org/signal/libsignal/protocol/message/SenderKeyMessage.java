@@ -1,30 +1,26 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.message;
 
+import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-
-import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
-import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
-
-import java.text.ParseException;
-import java.util.UUID;
 
 public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Owner {
 
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.SenderKeyMessage_Destroy(this.unsafeHandle);
+    Native.SenderKeyMessage_Destroy(this.unsafeHandle);
   }
 
   public SenderKeyMessage(long unsafeHandle) {
@@ -35,7 +31,8 @@ public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Ow
     return unsafeHandle;
   }
 
-  public SenderKeyMessage(byte[] serialized) throws InvalidMessageException, InvalidVersionException, LegacyMessageException {
+  public SenderKeyMessage(byte[] serialized)
+      throws InvalidMessageException, InvalidVersionException, LegacyMessageException {
     unsafeHandle = Native.SenderKeyMessage_Deserialize(serialized);
   }
 
@@ -63,13 +60,9 @@ public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Ow
     }
   }
 
-  public void verifySignature(ECPublicKey signatureKey)
-      throws InvalidMessageException
-  {
-    try (
-      NativeHandleGuard guard = new NativeHandleGuard(this);
-      NativeHandleGuard keyGuard = new NativeHandleGuard(signatureKey);
-    ) {
+  public void verifySignature(ECPublicKey signatureKey) throws InvalidMessageException {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this);
+        NativeHandleGuard keyGuard = new NativeHandleGuard(signatureKey); ) {
       if (!Native.SenderKeyMessage_VerifySignature(guard.nativeHandle(), keyGuard.nativeHandle())) {
         throw new InvalidMessageException("Invalid signature!");
       }

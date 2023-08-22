@@ -5,9 +5,9 @@
 
 package org.signal.libsignal.zkgroup.groups;
 
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class GroupPublicParams extends ByteArray {
 
@@ -25,5 +25,4 @@ public final class GroupPublicParams extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

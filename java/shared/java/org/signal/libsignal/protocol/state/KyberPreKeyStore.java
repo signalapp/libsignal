@@ -2,14 +2,13 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
 package org.signal.libsignal.protocol.state;
 
+import java.util.List;
 import org.signal.libsignal.protocol.InvalidKeyIdException;
 
-import java.util.List;
-
 public interface KyberPreKeyStore {
-
 
   /**
    * Load a local KyberPreKeyRecord.
@@ -33,19 +32,20 @@ public interface KyberPreKeyStore {
    * @param kyberPreKeyId the ID of the KyberPreKeyRecord to store.
    * @param record the KyberPreKeyRecord.
    */
-  public void         storeKyberPreKey(int kyberPreKeyId, KyberPreKeyRecord record);
+  public void storeKyberPreKey(int kyberPreKeyId, KyberPreKeyRecord record);
 
   /**
    * @param kyberPreKeyId A KyberPreKeyRecord ID.
    * @return true if the store has a record for the kyberPreKeyId, otherwise false.
    */
-  public boolean      containsKyberPreKey(int kyberPreKeyId);
+  public boolean containsKyberPreKey(int kyberPreKeyId);
 
   /**
    * Mark a KyberPreKeyRecord in the local storage as used.
-   * Remove if it is a one-time pre key and noop if it is last-resort.
+   *
+   * <p>Remove if it is a one-time pre key and noop if it is last-resort.
    *
    * @param kyberPreKeyId The ID of the KyberPreKeyRecord to marked.
    */
-  public void         markKyberPreKeyUsed(int kyberPreKeyId);
+  public void markKyberPreKeyUsed(int kyberPreKeyId);
 }

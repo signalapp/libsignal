@@ -5,12 +5,12 @@
 
 package org.signal.libsignal.zkgroup.groups;
 
+import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
+
 import java.security.SecureRandom;
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
-
-import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public final class GroupSecretParams extends ByteArray {
 
@@ -19,7 +19,7 @@ public final class GroupSecretParams extends ByteArray {
   }
 
   public static GroupSecretParams generate(SecureRandom secureRandom) {
-    byte[] random      = new byte[RANDOM_LENGTH];
+    byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
     byte[] newContents = Native.GroupSecretParams_GenerateDeterministic(random);
@@ -28,20 +28,21 @@ public final class GroupSecretParams extends ByteArray {
       return new GroupSecretParams(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
-    } 
+    }
   }
 
   public static GroupSecretParams deriveFromMasterKey(GroupMasterKey groupMasterKey) {
-    byte[] newContents = Native.GroupSecretParams_DeriveFromMasterKey(groupMasterKey.getInternalContentsForJNI());
+    byte[] newContents =
+        Native.GroupSecretParams_DeriveFromMasterKey(groupMasterKey.getInternalContentsForJNI());
 
     try {
       return new GroupSecretParams(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
-    } 
+    }
   }
 
-  public GroupSecretParams(byte[] contents) throws InvalidInputException  {
+  public GroupSecretParams(byte[] contents) throws InvalidInputException {
     super(contents);
     Native.GroupSecretParams_CheckValidContents(contents);
   }
@@ -65,5 +66,4 @@ public final class GroupSecretParams extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

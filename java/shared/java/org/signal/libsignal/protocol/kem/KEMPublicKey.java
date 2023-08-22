@@ -5,10 +5,10 @@
 
 package org.signal.libsignal.protocol.kem;
 
+import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
-import java.util.Arrays;
 
 public class KEMPublicKey implements NativeHandleGuard.Owner {
 
@@ -29,9 +29,10 @@ public class KEMPublicKey implements NativeHandleGuard.Owner {
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.KyberPublicKey_Destroy(this.unsafeHandle);
+    Native.KyberPublicKey_Destroy(this.unsafeHandle);
   }
 
   public byte[] serialize() {
@@ -46,12 +47,10 @@ public class KEMPublicKey implements NativeHandleGuard.Owner {
 
   @Override
   public boolean equals(Object other) {
-    if (other == null)                      return false;
+    if (other == null) return false;
     if (!(other instanceof KEMPublicKey)) return false;
-    try (
-            NativeHandleGuard thisGuard = new NativeHandleGuard(this);
-            NativeHandleGuard thatGuard = new NativeHandleGuard((KEMPublicKey)other);
-    ) {
+    try (NativeHandleGuard thisGuard = new NativeHandleGuard(this);
+        NativeHandleGuard thatGuard = new NativeHandleGuard((KEMPublicKey) other); ) {
       return Native.KyberPublicKey_Equals(thisGuard.nativeHandle(), thatGuard.nativeHandle());
     }
   }

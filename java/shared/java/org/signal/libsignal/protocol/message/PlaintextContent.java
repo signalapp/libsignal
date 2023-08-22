@@ -1,13 +1,12 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.message;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 
@@ -15,9 +14,10 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
 
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.PlaintextContent_Destroy(this.unsafeHandle);
+    Native.PlaintextContent_Destroy(this.unsafeHandle);
   }
 
   public long unsafeNativeHandleWithoutGuard() {
@@ -32,11 +32,13 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
 
   public PlaintextContent(DecryptionErrorMessage message) {
     try (NativeHandleGuard messageGuard = new NativeHandleGuard(message)) {
-      this.unsafeHandle = Native.PlaintextContent_FromDecryptionErrorMessage(messageGuard.nativeHandle());
+      this.unsafeHandle =
+          Native.PlaintextContent_FromDecryptionErrorMessage(messageGuard.nativeHandle());
     }
   }
 
-  public PlaintextContent(byte[] serialized) throws InvalidMessageException, InvalidVersionException {
+  public PlaintextContent(byte[] serialized)
+      throws InvalidMessageException, InvalidVersionException {
     unsafeHandle = Native.PlaintextContent_Deserialize(serialized);
   }
 

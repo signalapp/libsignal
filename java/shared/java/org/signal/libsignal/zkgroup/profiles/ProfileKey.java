@@ -5,11 +5,10 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
-import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class ProfileKey extends ByteArray {
 
@@ -19,7 +18,8 @@ public final class ProfileKey extends ByteArray {
   }
 
   public ProfileKeyCommitment getCommitment(Aci userId) {
-    byte[] newContents = Native.ProfileKey_GetCommitment(contents, userId.toServiceIdFixedWidthBinary());
+    byte[] newContents =
+        Native.ProfileKey_GetCommitment(contents, userId.toServiceIdFixedWidthBinary());
 
     try {
       return new ProfileKeyCommitment(newContents);
@@ -29,7 +29,8 @@ public final class ProfileKey extends ByteArray {
   }
 
   public ProfileKeyVersion getProfileKeyVersion(Aci userId) {
-    byte[] newContents = Native.ProfileKey_GetProfileKeyVersion(contents, userId.toServiceIdFixedWidthBinary());
+    byte[] newContents =
+        Native.ProfileKey_GetProfileKeyVersion(contents, userId.toServiceIdFixedWidthBinary());
 
     try {
       return new ProfileKeyVersion(newContents);
@@ -41,5 +42,4 @@ public final class ProfileKey extends ByteArray {
   public byte[] deriveAccessKey() {
     return Native.ProfileKey_DeriveAccessKey(contents);
   }
-
 }

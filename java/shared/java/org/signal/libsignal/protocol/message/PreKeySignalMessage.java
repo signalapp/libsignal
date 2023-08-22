@@ -1,10 +1,11 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.message;
 
+import java.util.Optional;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -14,20 +15,21 @@ import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-import java.util.Optional;
-
 public class PreKeySignalMessage implements CiphertextMessage, NativeHandleGuard.Owner {
 
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.PreKeySignalMessage_Destroy(this.unsafeHandle);
+    Native.PreKeySignalMessage_Destroy(this.unsafeHandle);
   }
 
   public PreKeySignalMessage(byte[] serialized)
-      throws InvalidMessageException, InvalidVersionException, LegacyMessageException, InvalidKeyException
-  {
+      throws InvalidMessageException,
+          InvalidVersionException,
+          LegacyMessageException,
+          InvalidKeyException {
     this.unsafeHandle = Native.PreKeySignalMessage_Deserialize(serialized);
   }
 

@@ -6,8 +6,6 @@
 package org.signal.libsignal.protocol;
 
 import junit.framework.TestCase;
-import org.signal.libsignal.protocol.IdentityKey;
-import org.signal.libsignal.protocol.IdentityKeyPair;
 
 public class IdentityKeyTest extends TestCase {
   public void testSignAlternateKey() {

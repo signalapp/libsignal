@@ -2,6 +2,7 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
 package org.signal.libsignal.protocol.kem;
 
 import org.signal.libsignal.internal.Native;
@@ -22,15 +23,15 @@ public class KEMKeyPair implements NativeHandleGuard.Owner {
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.KyberKeyPair_Destroy(this.unsafeHandle);
+    Native.KyberKeyPair_Destroy(this.unsafeHandle);
   }
 
   public long unsafeNativeHandleWithoutGuard() {
     return this.unsafeHandle;
   }
-
 
   public KEMPublicKey getPublicKey() {
     return new KEMPublicKey(Native.KyberKeyPair_GetPublicKey(this.unsafeHandle));

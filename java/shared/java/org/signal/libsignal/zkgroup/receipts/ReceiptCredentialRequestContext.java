@@ -5,9 +5,9 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class ReceiptCredentialRequestContext extends ByteArray {
 
@@ -27,5 +27,4 @@ public final class ReceiptCredentialRequestContext extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

@@ -1,19 +1,21 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.metadata.certificate;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-
-import org.signal.libsignal.protocol.ecc.ECPublicKey;
-import org.signal.libsignal.protocol.InvalidKeyException;
-import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 public class ServerCertificate implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.ServerCertificate_Destroy(this.unsafeHandle);
+    Native.ServerCertificate_Destroy(this.unsafeHandle);
   }
 
   public ServerCertificate(long unsafeHandle) {

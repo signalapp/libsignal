@@ -51,3 +51,6 @@ publish_java: docker_image
 			-Psigning.secretKeyRingFile='/home/libsignal/keyring/$(KEYRING_FILE_ROOT)' \
 			-Psigning.keyId='$(SIGNING_KEY)' \
 			-Psigning.password='$(SIGNING_KEY_PASSWORD)'"
+
+format_java:
+	./gradlew spotlessApply

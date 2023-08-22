@@ -5,16 +5,15 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
+
+import java.security.SecureRandom;
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.GenericServerPublicParams;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
-
-import java.security.SecureRandom;
-
-import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public final class CreateCallLinkCredentialRequestContext extends ByteArray {
 
@@ -27,17 +26,19 @@ public final class CreateCallLinkCredentialRequestContext extends ByteArray {
     return forRoom(roomId, new SecureRandom());
   }
 
-  public static CreateCallLinkCredentialRequestContext forRoom(byte[] roomId, SecureRandom secureRandom) {
+  public static CreateCallLinkCredentialRequestContext forRoom(
+      byte[] roomId, SecureRandom secureRandom) {
     byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.CreateCallLinkCredentialRequestContext_NewDeterministic(roomId, random);
+    byte[] newContents =
+        Native.CreateCallLinkCredentialRequestContext_NewDeterministic(roomId, random);
 
     try {
       return new CreateCallLinkCredentialRequestContext(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
-    } 
+    }
   }
 
   public CreateCallLinkCredentialRequest getRequest() {
@@ -50,8 +51,15 @@ public final class CreateCallLinkCredentialRequestContext extends ByteArray {
     }
   }
 
-  public CreateCallLinkCredential receiveResponse(CreateCallLinkCredentialResponse response, Aci userId, GenericServerPublicParams params) throws VerificationFailedException {
-    byte[] newContents = Native.CreateCallLinkCredentialRequestContext_ReceiveResponse(getInternalContentsForJNI(), response.getInternalContentsForJNI(), userId.toServiceIdFixedWidthBinary(), params.getInternalContentsForJNI());
+  public CreateCallLinkCredential receiveResponse(
+      CreateCallLinkCredentialResponse response, Aci userId, GenericServerPublicParams params)
+      throws VerificationFailedException {
+    byte[] newContents =
+        Native.CreateCallLinkCredentialRequestContext_ReceiveResponse(
+            getInternalContentsForJNI(),
+            response.getInternalContentsForJNI(),
+            userId.toServiceIdFixedWidthBinary(),
+            params.getInternalContentsForJNI());
 
     try {
       return new CreateCallLinkCredential(newContents);
@@ -59,5 +67,4 @@ public final class CreateCallLinkCredentialRequestContext extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

@@ -1,35 +1,38 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.message;
 
+import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-import java.util.UUID;
-
 public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
 
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.SenderKeyDistributionMessage_Destroy(this.unsafeHandle);
+    Native.SenderKeyDistributionMessage_Destroy(this.unsafeHandle);
   }
 
   public SenderKeyDistributionMessage(long unsafeHandle) {
     this.unsafeHandle = unsafeHandle;
   }
 
-  public SenderKeyDistributionMessage(byte[] serialized) throws InvalidMessageException, InvalidVersionException, LegacyMessageException, InvalidKeyException {
+  public SenderKeyDistributionMessage(byte[] serialized)
+      throws InvalidMessageException,
+          InvalidVersionException,
+          LegacyMessageException,
+          InvalidKeyException {
     unsafeHandle = Native.SenderKeyDistributionMessage_Deserialize(serialized);
   }
 
@@ -59,7 +62,8 @@ public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
 
   public ECPublicKey getSignatureKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(Native.SenderKeyDistributionMessage_GetSignatureKey(guard.nativeHandle()));
+      return new ECPublicKey(
+          Native.SenderKeyDistributionMessage_GetSignatureKey(guard.nativeHandle()));
     }
   }
 

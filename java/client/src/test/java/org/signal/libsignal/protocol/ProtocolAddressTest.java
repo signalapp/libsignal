@@ -5,13 +5,11 @@
 
 package org.signal.libsignal.protocol;
 
-import java.util.UUID;
-import org.junit.Test;
-import org.signal.libsignal.protocol.SignalProtocolAddress;
-import org.signal.libsignal.protocol.ServiceId;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+
+import java.util.UUID;
+import org.junit.Test;
 
 public class ProtocolAddressTest {
   @Test

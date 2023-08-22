@@ -5,13 +5,13 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
+import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
+
 import java.security.SecureRandom;
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
-import org.signal.libsignal.internal.Native;
-
-import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 public class ServerZkReceiptOperations {
 
@@ -21,15 +21,31 @@ public class ServerZkReceiptOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
-  public ReceiptCredentialResponse issueReceiptCredential(ReceiptCredentialRequest receiptCredentialRequest, long receiptExpirationTime, long receiptLevel) throws VerificationFailedException {
-    return issueReceiptCredential(new SecureRandom(), receiptCredentialRequest, receiptExpirationTime, receiptLevel);
+  public ReceiptCredentialResponse issueReceiptCredential(
+      ReceiptCredentialRequest receiptCredentialRequest,
+      long receiptExpirationTime,
+      long receiptLevel)
+      throws VerificationFailedException {
+    return issueReceiptCredential(
+        new SecureRandom(), receiptCredentialRequest, receiptExpirationTime, receiptLevel);
   }
 
-  public ReceiptCredentialResponse issueReceiptCredential(SecureRandom secureRandom, ReceiptCredentialRequest receiptCredentialRequest, long receiptExpirationTime, long receiptLevel) throws VerificationFailedException {
-    byte[] random      = new byte[RANDOM_LENGTH];
+  public ReceiptCredentialResponse issueReceiptCredential(
+      SecureRandom secureRandom,
+      ReceiptCredentialRequest receiptCredentialRequest,
+      long receiptExpirationTime,
+      long receiptLevel)
+      throws VerificationFailedException {
+    byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_IssueReceiptCredentialDeterministic(serverSecretParams.getInternalContentsForJNI(), random, receiptCredentialRequest.getInternalContentsForJNI(), receiptExpirationTime, receiptLevel);
+    byte[] newContents =
+        Native.ServerSecretParams_IssueReceiptCredentialDeterministic(
+            serverSecretParams.getInternalContentsForJNI(),
+            random,
+            receiptCredentialRequest.getInternalContentsForJNI(),
+            receiptExpirationTime,
+            receiptLevel);
 
     try {
       return new ReceiptCredentialResponse(newContents);
@@ -38,8 +54,11 @@ public class ServerZkReceiptOperations {
     }
   }
 
-  public void verifyReceiptCredentialPresentation(ReceiptCredentialPresentation receiptCredentialPresentation) throws VerificationFailedException {
-    Native.ServerSecretParams_VerifyReceiptCredentialPresentation(serverSecretParams.getInternalContentsForJNI(), receiptCredentialPresentation.getInternalContentsForJNI());
+  public void verifyReceiptCredentialPresentation(
+      ReceiptCredentialPresentation receiptCredentialPresentation)
+      throws VerificationFailedException {
+    Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
+        serverSecretParams.getInternalContentsForJNI(),
+        receiptCredentialPresentation.getInternalContentsForJNI());
   }
-
 }

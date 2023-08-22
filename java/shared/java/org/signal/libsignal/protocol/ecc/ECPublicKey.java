@@ -1,15 +1,14 @@
-/**
- * Copyright (C) 2013-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2013-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
 package org.signal.libsignal.protocol.ecc;
 
+import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
-import java.util.Arrays;
 
 public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.Owner {
 
@@ -25,7 +24,7 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
     this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, 0);
   }
 
-  static public ECPublicKey fromPublicKeyBytes(byte[] key) {
+  public static ECPublicKey fromPublicKeyBytes(byte[] key) {
     byte[] with_type = new byte[33];
     with_type[0] = 0x05;
     System.arraycopy(key, 0, with_type, 1, 32);
@@ -39,9 +38,10 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.ECPublicKey_Destroy(this.unsafeHandle);
+    Native.ECPublicKey_Destroy(this.unsafeHandle);
   }
 
   public boolean verifySignature(byte[] message, byte[] signature) {
@@ -73,12 +73,10 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
 
   @Override
   public boolean equals(Object other) {
-    if (other == null)                   return false;
+    if (other == null) return false;
     if (!(other instanceof ECPublicKey)) return false;
-    try (
-      NativeHandleGuard thisGuard = new NativeHandleGuard(this);
-      NativeHandleGuard thatGuard = new NativeHandleGuard((ECPublicKey)other);
-    ) {
+    try (NativeHandleGuard thisGuard = new NativeHandleGuard(this);
+        NativeHandleGuard thatGuard = new NativeHandleGuard((ECPublicKey) other); ) {
       return Native.ECPublicKey_Equals(thisGuard.nativeHandle(), thatGuard.nativeHandle());
     }
   }
@@ -90,10 +88,8 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
 
   @Override
   public int compareTo(ECPublicKey another) {
-    try (
-      NativeHandleGuard guard = new NativeHandleGuard(this);
-      NativeHandleGuard otherGuard = new NativeHandleGuard(another);
-    ) {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this);
+        NativeHandleGuard otherGuard = new NativeHandleGuard(another); ) {
       return Native.ECPublicKey_Compare(guard.nativeHandle(), otherGuard.nativeHandle());
     }
   }

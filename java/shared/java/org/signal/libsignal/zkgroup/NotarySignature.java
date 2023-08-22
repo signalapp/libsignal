@@ -14,5 +14,4 @@ public final class NotarySignature extends ByteArray {
   public NotarySignature(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
   }
-
 }

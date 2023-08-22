@@ -15,5 +15,4 @@ public final class GroupIdentifier extends ByteArray {
   public GroupIdentifier(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
   }
-
 }

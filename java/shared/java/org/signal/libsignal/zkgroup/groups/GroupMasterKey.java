@@ -15,5 +15,4 @@ public final class GroupMasterKey extends ByteArray {
   public GroupMasterKey(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
   }
-
 }

@@ -5,10 +5,9 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
-import java.nio.ByteBuffer;
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class ReceiptCredential extends ByteArray {
 
@@ -24,5 +23,4 @@ public final class ReceiptCredential extends ByteArray {
   public long getReceiptLevel() {
     return Native.ReceiptCredential_GetReceiptLevel(contents);
   }
-
 }

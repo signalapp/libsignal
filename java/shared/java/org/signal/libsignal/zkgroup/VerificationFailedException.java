@@ -6,6 +6,11 @@
 package org.signal.libsignal.zkgroup;
 
 public class VerificationFailedException extends Exception {
-    public VerificationFailedException() { super(); }
-    public VerificationFailedException(String msg) { super(msg); }
+  public VerificationFailedException() {
+    super();
+  }
+
+  public VerificationFailedException(String msg) {
+    super(msg);
+  }
 }

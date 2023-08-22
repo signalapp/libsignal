@@ -15,5 +15,4 @@ public final class ReceiptSerial extends ByteArray {
   public ReceiptSerial(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
   }
-
 }

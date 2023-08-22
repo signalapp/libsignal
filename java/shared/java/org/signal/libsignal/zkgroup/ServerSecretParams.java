@@ -5,11 +5,11 @@
 
 package org.signal.libsignal.zkgroup;
 
-import java.security.SecureRandom;
-import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
-
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
+
+import java.security.SecureRandom;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.zkgroup.internal.ByteArray;
 
 public final class ServerSecretParams extends ByteArray {
 
@@ -18,7 +18,7 @@ public final class ServerSecretParams extends ByteArray {
   }
 
   public static ServerSecretParams generate(SecureRandom secureRandom) {
-    byte[] random      = new byte[RANDOM_LENGTH];
+    byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
     byte[] newContents = Native.ServerSecretParams_GenerateDeterministic(random);
@@ -27,10 +27,10 @@ public final class ServerSecretParams extends ByteArray {
       return new ServerSecretParams(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
-    } 
+    }
   }
 
-  public ServerSecretParams(byte[] contents) throws InvalidInputException  {
+  public ServerSecretParams(byte[] contents) throws InvalidInputException {
     super(contents);
     Native.ServerSecretParams_CheckValidContents(contents);
   }
@@ -41,7 +41,7 @@ public final class ServerSecretParams extends ByteArray {
       return new ServerPublicParams(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
-    } 
+    }
   }
 
   public NotarySignature sign(byte[] message) {
@@ -49,7 +49,7 @@ public final class ServerSecretParams extends ByteArray {
   }
 
   public NotarySignature sign(SecureRandom secureRandom, byte[] message) {
-    byte[] random      = new byte[RANDOM_LENGTH];
+    byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
     byte[] newContents = Native.ServerSecretParams_SignDeterministic(contents, random, message);
@@ -60,5 +60,4 @@ public final class ServerSecretParams extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

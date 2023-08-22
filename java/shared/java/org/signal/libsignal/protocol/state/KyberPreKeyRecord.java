@@ -2,6 +2,7 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
 package org.signal.libsignal.protocol.state;
 
 import org.signal.libsignal.internal.Native;
@@ -12,20 +13,16 @@ import org.signal.libsignal.protocol.kem.KEMKeyPair;
 public class KyberPreKeyRecord implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.KyberPreKeyRecord_Destroy(this.unsafeHandle);
   }
 
   public KyberPreKeyRecord(int id, long timestamp, KEMKeyPair keyPair, byte[] signature) {
-    try (
-      NativeHandleGuard guard = new NativeHandleGuard(keyPair);
-    ) {
-      this.unsafeHandle = Native.KyberPreKeyRecord_New(
-        id,
-        timestamp,
-        guard.nativeHandle(),
-        signature);
+    try (NativeHandleGuard guard = new NativeHandleGuard(keyPair)) {
+      this.unsafeHandle =
+          Native.KyberPreKeyRecord_New(id, timestamp, guard.nativeHandle(), signature);
     }
   }
 
@@ -67,5 +64,4 @@ public class KyberPreKeyRecord implements NativeHandleGuard.Owner {
   public long unsafeNativeHandleWithoutGuard() {
     return this.unsafeHandle;
   }
-
 }

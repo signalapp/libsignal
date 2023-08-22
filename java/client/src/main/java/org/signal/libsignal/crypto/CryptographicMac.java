@@ -15,7 +15,8 @@ public class CryptographicMac implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.CryptographicMac_New(algo, key);
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.CryptographicMac_Destroy(this.unsafeHandle);
   }
@@ -41,5 +42,4 @@ public class CryptographicMac implements NativeHandleGuard.Owner {
       return Native.CryptographicMac_Finalize(guard.nativeHandle());
     }
   }
-
 }

@@ -2,12 +2,8 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-package org.signal.libsignal.protocol.state.impl;
 
-import org.signal.libsignal.protocol.InvalidKeyIdException;
-import org.signal.libsignal.protocol.InvalidMessageException;
-import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
-import org.signal.libsignal.protocol.state.KyberPreKeyStore;
+package org.signal.libsignal.protocol.state.impl;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,6 +11,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.signal.libsignal.protocol.InvalidKeyIdException;
+import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
+import org.signal.libsignal.protocol.state.KyberPreKeyStore;
 
 public class InMemoryKyberPreKeyStore implements KyberPreKeyStore {
 
@@ -61,7 +61,7 @@ public class InMemoryKyberPreKeyStore implements KyberPreKeyStore {
 
   @Override
   public void markKyberPreKeyUsed(int kyberPreKeyId) {
-    //store.remove(kyberPreKeyId);
+    // store.remove(kyberPreKeyId);
     used.add(kyberPreKeyId);
   }
 

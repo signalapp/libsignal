@@ -6,6 +6,11 @@
 package org.signal.libsignal.sgxsession;
 
 public class SgxCommunicationFailureException extends Exception {
-    public SgxCommunicationFailureException(String msg) { super(msg); }
-    public SgxCommunicationFailureException(Throwable t) { super(t); }
+  public SgxCommunicationFailureException(String msg) {
+    super(msg);
+  }
+
+  public SgxCommunicationFailureException(Throwable t) {
+    super(t);
+  }
 }

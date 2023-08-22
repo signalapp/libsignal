@@ -5,9 +5,9 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class ReceiptCredentialResponse extends ByteArray {
   public ReceiptCredentialResponse(byte[] contents) throws InvalidInputException {

@@ -1,0 +1,9 @@
+// Source files from 'shared' folder is included in both server and client's
+// 'srcSets' and does not need to be its own Gradle subproject.  However,
+// 'spotless' plugin does not allow formatting files outside the 'projectDir'.
+// For this reason we turn 'shared' into a Gradle subproject, but _do not_ set
+// it up as 'java'.
+repositories {
+    mavenCentral()
+    mavenLocal()
+}

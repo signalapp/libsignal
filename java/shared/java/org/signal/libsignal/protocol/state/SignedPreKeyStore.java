@@ -1,16 +1,14 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.state;
 
+import java.util.List;
 import org.signal.libsignal.protocol.InvalidKeyIdException;
 
-import java.util.List;
-
 public interface SignedPreKeyStore {
-
 
   /**
    * Load a local SignedPreKeyRecord.
@@ -34,19 +32,18 @@ public interface SignedPreKeyStore {
    * @param signedPreKeyId the ID of the SignedPreKeyRecord to store.
    * @param record the SignedPreKeyRecord.
    */
-  public void         storeSignedPreKey(int signedPreKeyId, SignedPreKeyRecord record);
+  public void storeSignedPreKey(int signedPreKeyId, SignedPreKeyRecord record);
 
   /**
    * @param signedPreKeyId A SignedPreKeyRecord ID.
    * @return true if the store has a record for the signedPreKeyId, otherwise false.
    */
-  public boolean      containsSignedPreKey(int signedPreKeyId);
+  public boolean containsSignedPreKey(int signedPreKeyId);
 
   /**
    * Delete a SignedPreKeyRecord from local storage.
    *
    * @param signedPreKeyId The ID of the SignedPreKeyRecord to remove.
    */
-  public void         removeSignedPreKey(int signedPreKeyId);
-
+  public void removeSignedPreKey(int signedPreKeyId);
 }

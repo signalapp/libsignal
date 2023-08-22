@@ -1,8 +1,7 @@
-/**
- * Copyright (C) 2013-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2013-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
 package org.signal.libsignal.protocol.kdf;
 
@@ -13,7 +12,8 @@ public abstract class HKDF {
     return Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, null);
   }
 
-  public static byte[] deriveSecrets(byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength) {
+  public static byte[] deriveSecrets(
+      byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength) {
     return Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, salt);
   }
 }

@@ -1,6 +1,7 @@
 plugins {
-    id "de.undercouch.download" version "5.0.2"
     id "base"
+    id "de.undercouch.download" version "5.0.2"
+    id "com.diffplug.spotless" version "6.20.0"
 }
 
 def version_number = "0.31.0"
@@ -22,6 +23,19 @@ subprojects {
         tasks.withType(JavaCompile) {
             options.encoding = 'UTF-8'
             options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
+        }
+    }
+    apply plugin: "com.diffplug.spotless"
+    spotless {
+        java {
+            target('**/*.java')
+            targetExclude('**/Native.java')
+            importOrder()
+            removeUnusedImports()
+
+            googleJavaFormat()
+            formatAnnotations()
+            licenseHeaderFile rootProject.file('license_header.txt')
         }
     }
 }
