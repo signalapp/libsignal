@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use rand::{CryptoRng, Rng};
 
-use crate::consts::MAX_FORWARD_JUMPS;
+use crate::consts::{MAX_FORWARD_JUMPS, MAX_UNACKNOWLEDGED_SESSION_AGE};
 use crate::ratchet::{ChainKey, MessageKeys};
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{
@@ -19,6 +21,7 @@ pub async fn message_encrypt(
     remote_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
+    now: SystemTime,
 ) -> Result<CiphertextMessage> {
     let mut session_record = session_store
         .load_session(remote_address)
@@ -52,6 +55,19 @@ pub async fn message_encrypt(
             })?;
 
     let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
+        if items.timestamp() + MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+            log::warn!(
+                "stale unacknowledged session for {} (created at {})",
+                remote_address,
+                items
+                    .timestamp()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs()
+            );
+            return Err(SignalProtocolError::SessionNotFound(remote_address.clone()));
+        }
+
         let local_registration_id = session_state.local_registration_id();
 
         log::info!(

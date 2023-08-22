@@ -1158,6 +1158,55 @@ describe('SignalClient', () => {
           assert.exists(err.stack); // Make sure we're still getting the benefits of Error.
         }
       });
+
+      it('expires unacknowledged sessions', async () => {
+        const aliceStores = new TestStores();
+        const bobStores = new TestStores();
+
+        const bAddress = SignalClient.ProtocolAddress.new('+19192222222', 1);
+
+        const bPreKeyBundle = await testCase.makeBundle(bAddress, bobStores);
+
+        await SignalClient.processPreKeyBundle(
+          bPreKeyBundle,
+          bAddress,
+          aliceStores.session,
+          aliceStores.identity,
+          new Date('2020-01-01')
+        );
+
+        const initialSession = await aliceStores.session.getSession(bAddress);
+        assert.isTrue(initialSession?.hasCurrentState(new Date('2020-01-01')));
+        assert.isFalse(initialSession?.hasCurrentState(new Date('2023-01-01')));
+
+        const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
+        const aCiphertext = await SignalClient.signalEncrypt(
+          aMessage,
+          bAddress,
+          aliceStores.session,
+          aliceStores.identity,
+          new Date('2020-01-01')
+        );
+
+        assert.deepEqual(
+          aCiphertext.type(),
+          SignalClient.CiphertextMessageType.PreKey
+        );
+
+        const updatedSession = await aliceStores.session.getSession(bAddress);
+        assert.isTrue(updatedSession?.hasCurrentState(new Date('2020-01-01')));
+        assert.isFalse(updatedSession?.hasCurrentState(new Date('2023-01-01')));
+
+        await assert.isRejected(
+          SignalClient.signalEncrypt(
+            aMessage,
+            bAddress,
+            aliceStores.session,
+            aliceStores.identity,
+            new Date('2023-01-01')
+          )
+        );
+      });
     });
   }
 

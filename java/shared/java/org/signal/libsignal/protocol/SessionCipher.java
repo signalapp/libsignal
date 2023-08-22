@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol;
 
+import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
@@ -70,11 +71,35 @@ public class SessionCipher {
    *
    * @param paddedMessage The plaintext message bytes, optionally padded to a constant multiple.
    * @return A ciphertext message encrypted to the recipient+device tuple.
+   * @throws NoSessionException if there is no established session for this contact, or if an
+   *     unacknowledged session has expired
+   * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is out of date.
    */
-  public CiphertextMessage encrypt(byte[] paddedMessage) throws UntrustedIdentityException {
+  public CiphertextMessage encrypt(byte[] paddedMessage)
+      throws NoSessionException, UntrustedIdentityException {
+    return encrypt(paddedMessage, Instant.now());
+  }
+
+  /**
+   * Encrypt a message.
+   *
+   * <p>You should only use this overload if you need to test session expiration explicitly.
+   *
+   * @param paddedMessage The plaintext message bytes, optionally padded to a constant multiple.
+   * @return A ciphertext message encrypted to the recipient+device tuple.
+   * @throws NoSessionException if there is no established session for this contact, or if an
+   *     unacknowledged session has expired
+   * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is out of date.
+   */
+  public CiphertextMessage encrypt(byte[] paddedMessage, Instant now)
+      throws NoSessionException, UntrustedIdentityException {
     try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress)) {
       return Native.SessionCipher_EncryptMessage(
-          paddedMessage, remoteAddress.nativeHandle(), sessionStore, identityKeyStore);
+          paddedMessage,
+          remoteAddress.nativeHandle(),
+          sessionStore,
+          identityKeyStore,
+          now.toEpochMilli());
     }
   }
 

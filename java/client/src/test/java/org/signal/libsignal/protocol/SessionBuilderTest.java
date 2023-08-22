@@ -11,6 +11,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.PreKeyBundle;
+import org.signal.libsignal.protocol.state.SessionRecord;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.util.Medium;
 import org.signal.libsignal.protocol.util.Pair;
@@ -243,6 +246,49 @@ public class SessionBuilderTest {
       assertNotNull(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey());
       assertEquals(originalMessage, new String(plaintext));
     }
+
+    @Test
+    public void testExpiresUnacknowledgedSessions()
+        throws InvalidKeyException,
+            InvalidVersionException,
+            InvalidMessageException,
+            InvalidKeyIdException,
+            DuplicateMessageException,
+            LegacyMessageException,
+            UntrustedIdentityException,
+            NoSessionException {
+      SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+      SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
+
+      final SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+
+      PreKeyBundle bobPreKey = bundleFactory.createBundle(bobStore);
+
+      aliceSessionBuilder.process(bobPreKey, Instant.EPOCH);
+
+      SessionRecord initialSession = aliceStore.loadSession(BOB_ADDRESS);
+      assertTrue(initialSession.hasSenderChain(Instant.EPOCH));
+      assertFalse(initialSession.hasSenderChain(Instant.EPOCH.plus(90, ChronoUnit.DAYS)));
+
+      String originalMessage = "Good, fast, cheap: pick two";
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, BOB_ADDRESS);
+      CiphertextMessage outgoingMessage =
+          aliceSessionCipher.encrypt(originalMessage.getBytes(), Instant.EPOCH);
+
+      assertTrue(outgoingMessage.getType() == CiphertextMessage.PREKEY_TYPE);
+
+      SessionRecord updatedSession = aliceStore.loadSession(BOB_ADDRESS);
+      assertTrue(updatedSession.hasSenderChain(Instant.EPOCH));
+      assertFalse(updatedSession.hasSenderChain(Instant.EPOCH.plus(90, ChronoUnit.DAYS)));
+
+      try {
+        aliceSessionCipher.encrypt(
+            originalMessage.getBytes(), Instant.EPOCH.plus(90, ChronoUnit.DAYS));
+        fail("should have expired");
+      } catch (NoSessionException e) {
+        // Expected
+      }
+    }
   }
 
   public static class VersionAgnostic {
@@ -313,7 +359,8 @@ public class SessionBuilderTest {
             InvalidMessageException,
             DuplicateMessageException,
             LegacyMessageException,
-            InvalidKeyIdException {
+            InvalidKeyIdException,
+            NoSessionException {
       SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
       SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
 
@@ -362,7 +409,8 @@ public class SessionBuilderTest {
             InvalidVersionException,
             InvalidMessageException,
             DuplicateMessageException,
-            LegacyMessageException {
+            LegacyMessageException,
+            NoSessionException {
       SignalProtocolStore aliceStore = new TestNoSignedPreKeysStore();
       SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
 
@@ -398,7 +446,8 @@ public class SessionBuilderTest {
             InvalidVersionException,
             InvalidMessageException,
             DuplicateMessageException,
-            LegacyMessageException {
+            LegacyMessageException,
+            NoSessionException {
       SignalProtocolStore aliceStore = new TestBadSignedPreKeysStore();
       SessionBuilder aliceSessionBuilder = new SessionBuilder(aliceStore, BOB_ADDRESS);
 

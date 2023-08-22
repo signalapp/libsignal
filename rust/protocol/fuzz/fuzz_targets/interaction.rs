@@ -6,6 +6,7 @@
 #![no_main]
 
 use std::convert::TryFrom;
+use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libfuzzer_sys::fuzz_target;
@@ -101,13 +102,13 @@ impl Participant {
 
     async fn send_message(&mut self, them: &mut Self, rng: &mut (impl Rng + CryptoRng)) {
         info!("{}: sending message", self.name);
-        if self
+        if !self
             .store
             .load_session(&them.address)
             .await
             .unwrap()
-            .map(|session| !session.has_usable_sender_chain(SystemTime::UNIX_EPOCH))
-            .unwrap_or(true)
+            .and_then(|session| session.has_usable_sender_chain(SystemTime::UNIX_EPOCH).ok())
+            .unwrap_or(false)
         {
             self.process_pre_key(them, rng.gen_bool(0.75), rng).await;
         }
@@ -121,6 +122,7 @@ impl Participant {
             &them.address,
             &mut self.store.session_store,
             &mut self.store.identity_store,
+            SystemTime::UNIX_EPOCH,
         )
         .await
         .unwrap();

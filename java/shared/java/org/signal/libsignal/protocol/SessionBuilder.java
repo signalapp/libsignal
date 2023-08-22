@@ -97,6 +97,8 @@ public class SessionBuilder {
    * Build a new session from a {@link org.signal.libsignal.protocol.state.PreKeyBundle} retrieved
    * from a server.
    *
+   * <p>You should only use this overload if you need to test session expiration explicitly.
+   *
    * @param preKey A PreKey for the destination recipient, retrieved from a server.
    * @param now The current time, used later to check if the session is stale.
    * @throws InvalidKeyException when the {@link org.signal.libsignal.protocol.state.PreKeyBundle}

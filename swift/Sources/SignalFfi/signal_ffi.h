@@ -843,7 +843,7 @@ SignalFfiError *signal_session_record_get_remote_registration_id(uint32_t *out, 
 
 SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, uint64_t now);
 
-SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out, SignalBorrowedBuffer ptext, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
+SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out, SignalBorrowedBuffer ptext, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, uint64_t now);
 
 SignalFfiError *signal_decrypt_message(SignalOwnedBuffer *out, const SignalMessage *message, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
 

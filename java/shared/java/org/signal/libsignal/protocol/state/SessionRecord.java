@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.state;
 
+import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -13,9 +14,6 @@ import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
-
-import java.io.IOException;
-import java.time.Instant;
 
 /**
  * A SessionRecord encapsulates the state of an ongoing session.

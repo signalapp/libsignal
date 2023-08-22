@@ -693,6 +693,7 @@ public class SealedSessionCipherTest extends TestCase {
           InvalidMessageException,
           InvalidMetadataMessageException,
           InvalidMetadataVersionException,
+          NoSessionException,
           ProtocolDuplicateMessageException,
           ProtocolInvalidKeyException,
           ProtocolInvalidKeyIdException,

@@ -13,6 +13,7 @@ use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng};
 
 use std::ops::RangeFrom;
+use std::time::SystemTime;
 
 // Deliberately not reusing the constants from `protocol`.
 pub(crate) const PRE_KYBER_MESSAGE_VERSION: u32 = 3;
@@ -37,6 +38,7 @@ pub async fn encrypt(
         remote_address,
         &mut store.session_store,
         &mut store.identity_store,
+        SystemTime::now(),
     )
     .await
 }

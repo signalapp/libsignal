@@ -23,6 +23,7 @@ use subtle::ConstantTimeEq;
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 
 use std::convert::{TryFrom, TryInto};
+use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
 pub struct ServerCertificate {
@@ -779,9 +780,10 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     ptext: &[u8],
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
+    now: SystemTime,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
-    let message = message_encrypt(ptext, destination, session_store, identity_store).await?;
+    let message = message_encrypt(ptext, destination, session_store, identity_store, now).await?;
     let usmc = UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender_cert.clone(),

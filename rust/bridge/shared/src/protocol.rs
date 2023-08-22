@@ -1107,8 +1107,16 @@ async fn SessionCipher_EncryptMessage(
     protocol_address: &ProtocolAddress,
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
+    now: Timestamp,
 ) -> Result<CiphertextMessage> {
-    message_encrypt(ptext, protocol_address, session_store, identity_key_store).await
+    message_encrypt(
+        ptext,
+        protocol_address,
+        session_store,
+        identity_key_store,
+        now.as_millis_from_unix_epoch(),
+    )
+    .await
 }
 
 #[bridge_fn(ffi = "decrypt_message")]

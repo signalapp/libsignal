@@ -1521,14 +1521,16 @@ export async function signalEncrypt(
   message: Buffer,
   address: ProtocolAddress,
   sessionStore: SessionStore,
-  identityStore: IdentityKeyStore
+  identityStore: IdentityKeyStore,
+  now: Date = new Date()
 ): Promise<CiphertextMessage> {
   return CiphertextMessage._fromNativeHandle(
     await Native.SessionCipher_EncryptMessage(
       message,
       address,
       sessionStore,
-      identityStore
+      identityStore,
+      now.getTime()
     )
   );
 }

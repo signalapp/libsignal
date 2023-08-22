@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.metadata;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,7 +64,8 @@ public class SealedSessionCipher {
               paddedPlaintext,
               addressGuard.nativeHandle(),
               this.signalProtocolStore,
-              this.signalProtocolStore);
+              this.signalProtocolStore,
+              Instant.now().toEpochMilli());
       UnidentifiedSenderMessageContent content =
           new UnidentifiedSenderMessageContent(
               message,
@@ -78,7 +80,7 @@ public class SealedSessionCipher {
       SignalProtocolAddress destinationAddress, UnidentifiedSenderMessageContent content)
       throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard addressGuard = new NativeHandleGuard(destinationAddress);
-        NativeHandleGuard contentGuard = new NativeHandleGuard(content); ) {
+        NativeHandleGuard contentGuard = new NativeHandleGuard(content)) {
       return Native.SealedSessionCipher_Encrypt(
           addressGuard.nativeHandle(), contentGuard.nativeHandle(), this.signalProtocolStore);
     }

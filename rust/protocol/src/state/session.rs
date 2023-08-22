@@ -40,6 +40,7 @@ pub(crate) struct UnacknowledgedPreKeyMessageItems<'a> {
     base_key: PublicKey,
     kyber_pre_key_id: Option<KyberPreKeyId>,
     kyber_ciphertext: Option<&'a [u8]>,
+    timestamp: SystemTime,
 }
 
 impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
@@ -48,6 +49,7 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
         signed_pre_key_id: SignedPreKeyId,
         base_key: PublicKey,
         pending_kyber_pre_key: Option<&'a session_structure::PendingKyberPreKey>,
+        timestamp: SystemTime,
     ) -> Self {
         let (kyber_pre_key_id, kyber_ciphertext) = pending_kyber_pre_key
             .map(|pending| (pending.pre_key_id.into(), pending.ciphertext.as_slice()))
@@ -58,6 +60,7 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
             base_key,
             kyber_pre_key_id,
             kyber_ciphertext,
+            timestamp,
         }
     }
 
@@ -79,6 +82,10 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
 
     pub(crate) fn kyber_ciphertext(&self) -> Option<&'a [u8]> {
         self.kyber_ciphertext
+    }
+
+    pub(crate) fn timestamp(&self) -> SystemTime {
+        self.timestamp
     }
 }
 
@@ -484,7 +491,7 @@ impl SessionState {
         &mut self,
         signed_kyber_pre_key_id: KyberPreKeyId,
     ) {
-        let mut pending = self
+        let pending = self
             .session
             .pending_kyber_pre_key
             .as_mut()
@@ -502,6 +509,7 @@ impl SessionState {
                 PublicKey::deserialize(&pending_pre_key.base_key)
                     .map_err(|_| InvalidSessionError("invalid pending PreKey message base key"))?,
                 self.session.pending_kyber_pre_key.as_ref(),
+                SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp),
             )))
         } else {
             Ok(None)
