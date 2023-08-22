@@ -476,7 +476,6 @@ public final class Native {
   public static native boolean SessionRecord_CurrentRatchetKeyMatches(long s, long key);
   public static native long SessionRecord_Deserialize(byte[] data);
   public static native void SessionRecord_Destroy(long handle);
-  public static native long SessionRecord_FromSingleSessionState(byte[] sessionState);
   public static native byte[] SessionRecord_GetAliceBaseKey(long obj);
   public static native byte[] SessionRecord_GetLocalIdentityKeyPublic(long obj);
   public static native int SessionRecord_GetLocalRegistrationId(long obj);

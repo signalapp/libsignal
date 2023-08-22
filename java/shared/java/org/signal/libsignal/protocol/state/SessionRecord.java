@@ -38,12 +38,6 @@ public class SessionRecord implements NativeHandleGuard.Owner {
   }
 
   // FIXME: This shouldn't be considered a "message".
-  public static SessionRecord fromSingleSessionState(byte[] sessionStateBytes)
-      throws InvalidMessageException {
-    return new SessionRecord(Native.SessionRecord_FromSingleSessionState(sessionStateBytes));
-  }
-
-  // FIXME: This shouldn't be considered a "message".
   public SessionRecord(byte[] serialized) throws InvalidMessageException {
     this.unsafeHandle = Native.SessionRecord_Deserialize(serialized);
   }

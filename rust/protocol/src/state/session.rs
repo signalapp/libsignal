@@ -569,17 +569,6 @@ impl SessionRecord {
         })
     }
 
-    pub fn from_single_session_state(bytes: &[u8]) -> Result<Self, SignalProtocolError> {
-        let session = SessionState::from_session_structure(
-            SessionStructure::decode(bytes)
-                .map_err(|_| InvalidSessionError("failed to decode session state protobuf"))?,
-        );
-        Ok(Self {
-            current_session: Some(session),
-            previous_sessions: Vec::new(),
-        })
-    }
-
     pub(crate) fn has_session_state(
         &self,
         version: u32,

@@ -939,11 +939,6 @@ fn SessionRecord_NewFresh() -> SessionRecord {
     SessionRecord::new_fresh()
 }
 
-#[bridge_fn(ffi = false, node = false)]
-fn SessionRecord_FromSingleSessionState(session_state: &[u8]) -> Result<SessionRecord> {
-    SessionRecord::from_single_session_state(session_state)
-}
-
 // For historical reasons Android assumes this function will return zero if there is no session state
 #[bridge_fn(ffi = false, node = false)]
 fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32> {
