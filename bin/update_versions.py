@@ -29,7 +29,7 @@ def update_version(file, pattern, new_version):
 
 
 PODSPEC_PATTERN = re.compile(r"^(.*\.version\s+=\s+')(.*)(')")
-GRADLE_PATTERN = re.compile(r'^(def\s+version_number\s+=\s+")(.*)(")')
+GRADLE_PATTERN = re.compile(r'^(\s+version\s+=\s+")(.*)(")')
 NODE_PATTERN = re.compile(r'^(\s+"version": ")(.*)(")')
 CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 

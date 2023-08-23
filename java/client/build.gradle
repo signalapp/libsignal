@@ -6,8 +6,6 @@ plugins {
 
 sourceCompatibility = 1.8
 archivesBaseName = "libsignal-client"
-version          = version_number
-group            = group_info
 
 repositories {
     mavenCentral()

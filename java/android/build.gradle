@@ -5,8 +5,6 @@ plugins {
 }
 
 archivesBaseName = "libsignal-android"
-version          = version_number
-group            = group_info
 
 repositories {
     google()

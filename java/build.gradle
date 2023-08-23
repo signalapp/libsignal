@@ -4,12 +4,12 @@ plugins {
     id "com.diffplug.spotless" version "6.20.0"
 }
 
-def version_number = "0.31.0"
+allprojects {
+    version = "0.31.0"
+    group   = "org.signal"
+}
 
 subprojects {
-    ext.version_number     = version_number
-    ext.group_info         = "org.signal"
-
     if (JavaVersion.current().isJava8Compatible()) {
         allprojects {
             tasks.withType(Javadoc) {
@@ -25,6 +25,7 @@ subprojects {
             options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
         }
     }
+
     apply plugin: "com.diffplug.spotless"
     spotless {
         java {
@@ -74,7 +75,7 @@ task downloadNonLinuxLibraries(type: Download) {
   def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
 
   src(extraResources.collect {
-    'https://github.com/signalapp/libsignal/releases/download/v' + version_number + '/' + it
+    'https://github.com/signalapp/libsignal/releases/download/v' + version + '/' + it
   })
   dest 'shared/resources'
 }
