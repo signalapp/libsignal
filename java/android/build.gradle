@@ -104,15 +104,6 @@ afterEvaluate {
                 }
             }
         }
-        repositories {
-            maven {
-                url = getReleaseRepositoryUrl()
-                credentials {
-                    username = getRepositoryUsername()
-                    password = getRepositoryPassword()
-                }
-            }
-        }
     }
 
     signing {

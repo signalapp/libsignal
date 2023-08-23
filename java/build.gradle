@@ -2,6 +2,7 @@ plugins {
     id "base"
     id "de.undercouch.download" version "5.0.2"
     id "com.diffplug.spotless" version "6.20.0"
+    id "io.github.gradle-nexus.publish-plugin" version "1.3.0"
 }
 
 allprojects {
@@ -82,19 +83,15 @@ task downloadNonLinuxLibraries(type: Download) {
 
 // PUBLISHING
 
+nexusPublishing {
+    repositories {
+        sonatype {
+            username = project.hasProperty('sonatypeUsername') ? sonatypeUsername : ""
+            password = project.hasProperty('sonatypePassword') ? sonatypePassword : ""
+        }
+    }
+}
+
 def isReleaseBuild() {
     return version.contains("SNAPSHOT") == false
-}
-
-def getReleaseRepositoryUrl() {
-    return hasProperty('sonatypeRepo') ? sonatypeRepo
-            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-}
-
-def getRepositoryUsername() {
-    return hasProperty('sonatypeUsername') ? sonatypeUsername : ""
-}
-
-def getRepositoryPassword() {
-    return hasProperty('sonatypePassword') ? sonatypePassword : ""
 }
