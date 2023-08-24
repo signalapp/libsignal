@@ -26,31 +26,22 @@ java_test: java_build
 	  -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
 		sh -c "cd src/java; ./gradlew test"
 
-SONATYPE_USERNAME     ?=
-SONATYPE_PASSWORD     ?=
-KEYRING_FILE          ?=
-SIGNING_KEY           ?=
-SIGNING_KEY_PASSSWORD ?=
-
 publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
-publish_java: KEYRING_VOLUME := $(dir $(KEYRING_FILE))
-publish_java: KEYRING_FILE_ROOT := $(notdir $(KEYRING_FILE))
 publish_java: docker_image
-	@[ -n "$(SONATYPE_USERNAME)" ]    || ( echo "SONATYPE_USERNAME is not set" && false )
-	@[ -n "$(SONATYPE_PASSWORD)" ]    || ( echo "SONATYPE_PASSWORD is not set" && false )
-	@[ -n "$(KEYRING_FILE)" ]         || ( echo "KEYRING_FILE is not set" && false )
-	@[ -n "$(SIGNING_KEY)" ]          || ( echo "SIGNING_KEY is not set" && false )
-	@[ -n "$(SIGNING_KEY_PASSWORD)" ] || ( echo "SIGNING_KEY_PASSWORD is not set" && false )
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
-		-v $(KEYRING_VOLUME):/home/libsignal/keyring \
+		-e ORG_GRADLE_PROJECT_sonatypeUsername \
+		-e ORG_GRADLE_PROJECT_sonatypePassword \
+		-e ORG_GRADLE_PROJECT_signingKeyId \
+		-e ORG_GRADLE_PROJECT_signingPassword \
+		-e ORG_GRADLE_PROJECT_signingKey \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew clean publish closeSonatypeStagingRepository \
-			-PsonatypeUsername='$(SONATYPE_USERNAME)' \
-			-PsonatypePassword='$(SONATYPE_PASSWORD)' \
-			-Psigning.secretKeyRingFile='/home/libsignal/keyring/$(KEYRING_FILE_ROOT)' \
-			-Psigning.keyId='$(SIGNING_KEY)' \
-			-Psigning.password='$(SIGNING_KEY_PASSWORD)'"
+		sh -c "cd src/java; ./gradlew publish closeSonatypeStagingRepository"
+
+# We could run these through Docker, but they would have the same result anyway.
+
+clean:
+	./gradlew clean
 
 format_java:
 	./gradlew spotlessApply

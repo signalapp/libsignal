@@ -15,8 +15,6 @@ cd "${SCRIPT_DIR}"/..
 ANDROID_LIB_DIR=java/android/src/main/jniLibs
 DESKTOP_LIB_DIR=java/shared/resources
 
-# Keep these settings in sync with .github/workflows/jni_artifacts.yml,
-# which builds for Windows as well.
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 # On Linux, cdylibs don't include public symbols from their dependencies,
 # even if those symbols have been re-exported in the Rust source.
@@ -28,7 +26,9 @@ export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 if [ "$1" = 'desktop' ];
 then
     echo_then_run cargo build -p libsignal-jni --release
-    copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
+    if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
+        copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
+    fi
 elif [ "$1" = 'android' ];
 then
     # Use small BoringSSL curve tables to reduce binary size on Android.

@@ -53,12 +53,6 @@ tasks.named('jar') {
 processResources {
     // TODO: Build a different variant of the JNI library for server.
     dependsOn ':makeJniLibrariesDesktop'
-    dependsOn ':downloadNonLinuxLibraries'
-    gradle.taskGraph.whenReady { graph ->
-        if (graph.hasTask(":client:publish")) {
-            tasks.getByPath(":downloadNonLinuxLibraries").enabled = true
-        }
-    }
 }
 
 // MARK: Publishing
@@ -97,6 +91,7 @@ publishing {
     }
 }
 
+setUpSigningKey(signing)
 signing {
     required { isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
     sign publishing.publications.mavenJava
