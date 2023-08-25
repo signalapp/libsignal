@@ -4,9 +4,10 @@
 //
 
 use crate::{Aes256Ctr32, Error, Result};
-use aes::{Aes256, BlockEncrypt, NewBlockCipher};
-use generic_array::GenericArray;
-use ghash::universal_hash::{NewUniversalHash, UniversalHash};
+use aes::cipher::generic_array::GenericArray;
+use aes::cipher::{BlockEncrypt, KeyInit};
+use aes::Aes256;
+use ghash::universal_hash::UniversalHash;
 use ghash::GHash;
 use subtle::ConstantTimeEq;
 
@@ -50,7 +51,10 @@ impl GcmGhash {
             self.msg_len += taking;
 
             if self.msg_buf_offset == TAG_SIZE {
-                self.ghash.update(&self.msg_buf.into());
+                self.ghash
+                    .update(std::slice::from_ref(ghash::Block::from_slice(
+                        &self.msg_buf,
+                    )));
                 self.msg_buf_offset = 0;
                 return self.update(&msg[taking..]);
             } else {
@@ -65,9 +69,16 @@ impl GcmGhash {
         let leftover = msg.len() - 16 * full_blocks;
         assert!(leftover < TAG_SIZE);
         if full_blocks > 0 {
-            for block in msg[..full_blocks * 16].chunks_exact(16) {
-                self.ghash.update(block.into());
-            }
+            // Transmute [u8] to [[u8; 16]], like slice::as_chunks.
+            // Then transmute [[u8; 16]] to [GenericArray<U16>], per repr(transparent).
+            let blocks = unsafe {
+                std::slice::from_raw_parts(msg[..16 * full_blocks].as_ptr().cast(), full_blocks)
+            };
+            assert_eq!(
+                std::mem::size_of_val(blocks) + leftover,
+                std::mem::size_of_val(msg)
+            );
+            self.ghash.update(blocks);
         }
 
         self.msg_buf[0..leftover].copy_from_slice(&msg[full_blocks * 16..]);
@@ -87,8 +98,8 @@ impl GcmGhash {
         final_block[..8].copy_from_slice(&(8 * self.ad_len as u64).to_be_bytes());
         final_block[8..].copy_from_slice(&(8 * self.msg_len as u64).to_be_bytes());
 
-        self.ghash.update(&final_block.into());
-        let mut hash = self.ghash.finalize().into_bytes();
+        self.ghash.update(&[final_block.into()]);
+        let mut hash = self.ghash.finalize();
 
         for (i, b) in hash.iter_mut().enumerate() {
             *b ^= self.ghash_pad[i];

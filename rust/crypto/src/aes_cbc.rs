@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use std::result::Result;
-
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Cbc};
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum EncryptionError {
@@ -28,9 +27,9 @@ pub fn aes_256_cbc_encrypt(
     key: &[u8],
     iv: &[u8],
 ) -> Result<Vec<u8>, EncryptionError> {
-    Cbc::<Aes256, Pkcs7>::new_from_slices(key, iv)
-        .map_err(|_| EncryptionError::BadKeyOrIv)
-        .map(|mode| mode.encrypt_vec(ptext))
+    Ok(cbc::Encryptor::<Aes256>::new_from_slices(key, iv)
+        .map_err(|_| EncryptionError::BadKeyOrIv)?
+        .encrypt_padded_vec_mut::<Pkcs7>(ptext))
 }
 
 pub fn aes_256_cbc_decrypt(
@@ -44,9 +43,9 @@ pub fn aes_256_cbc_decrypt(
         ));
     }
 
-    Cbc::<Aes256, Pkcs7>::new_from_slices(key, iv)
+    cbc::Decryptor::<Aes256>::new_from_slices(key, iv)
         .map_err(|_| DecryptionError::BadKeyOrIv)?
-        .decrypt_vec(ctext)
+        .decrypt_padded_vec_mut::<Pkcs7>(ctext)
         .map_err(|_| DecryptionError::BadCiphertext("failed to decrypt"))
 }
 

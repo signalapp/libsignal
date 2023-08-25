@@ -14,10 +14,6 @@ edition = "2018"
 name = "signal_node"
 crate-type = ["cdylib"]
 
-[features]
-default = ["armv8"]
-armv8 = ["libsignal-protocol/armv8", "libsignal-bridge/armv8"]
-
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }

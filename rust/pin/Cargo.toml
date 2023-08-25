@@ -12,7 +12,7 @@ description = "A library for operating on signal pins"
 license = "AGPL-3.0-only"
 
 [dependencies]
-argon2 = "0.5.0"
+argon2 = { version = "0.5.0", features = ["zeroize"] }
 displaydoc = "0.2"
 hkdf = "0.12"
 rand_core = { version = "0.6", features = ["getrandom"] }
@@ -21,7 +21,7 @@ static_assertions = "1.1"
 
 [dev-dependencies]
 hex-literal = "0.4.1"
-hmac = "0.12"
+hmac = { version = "0.12", features = ["reset"] }
 criterion = "0.5"
 
 

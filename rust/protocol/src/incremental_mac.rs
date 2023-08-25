@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use generic_array::{ArrayLength, GenericArray};
+use hmac::digest::generic_array::{ArrayLength, GenericArray};
+use hmac::digest::typenum::Unsigned;
 use hmac::Mac;
 use sha2::digest::{FixedOutput, MacError, Output};
-use typenum::Unsigned;
 
 #[derive(Clone)]
 pub struct Incremental<M: Mac + Clone> {

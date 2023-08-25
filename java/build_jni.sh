@@ -48,6 +48,7 @@ then
 
     export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
     export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
+    export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
     # Uncomment the following to force the 64-bit curve25519-dalek backend on 32-bit targets.
     # export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"

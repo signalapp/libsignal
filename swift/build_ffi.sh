@@ -14,6 +14,7 @@ cd "${SCRIPT_DIR}"/..
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export CARGO_PROFILE_RELEASE_LTO=fat # use fat LTO to reduce binary size
 export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
+export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
 # Work around cc crate bug with Catalyst targets
 export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS}"

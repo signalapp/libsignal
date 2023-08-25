@@ -174,7 +174,7 @@ typedef enum {
 } SignalErrorCode;
 
 /**
- * A wrapper around [`aes::Aes256Ctr`] that uses a smaller nonce and supports an initial counter.
+ * A wrapper around [`ctr::Ctr32BE`] that uses a smaller nonce and supports an initial counter.
  */
 typedef struct SignalAes256Ctr32 SignalAes256Ctr32;
 

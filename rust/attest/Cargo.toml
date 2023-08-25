@@ -16,7 +16,7 @@ boring-sys = { git = "https://github.com/signalapp/boring", branch = "libsignal"
 
 asn1 = "0.15.4"
 bitflags = "2.3.3"
-chacha20poly1305 = "0.9.1"
+chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 displaydoc = "0.2"
 hex = { version = "0.4", features = ["serde"] }

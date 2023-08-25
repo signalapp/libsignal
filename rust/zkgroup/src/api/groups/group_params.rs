@@ -10,9 +10,9 @@ use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
-use aead::generic_array::GenericArray;
-use aead::{Aead, NewAead};
-use aes_gcm_siv::Aes256GcmSiv;
+use aes_gcm_siv::aead::generic_array::GenericArray;
+use aes_gcm_siv::aead::Aead;
+use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, Default)]

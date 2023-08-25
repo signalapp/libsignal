@@ -13,8 +13,7 @@ use crate::{
 use crate::{crypto, curve, proto, session_cipher};
 
 use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
-use aes_gcm_siv::aead::{AeadInPlace, NewAead};
-use aes_gcm_siv::Aes256GcmSiv;
+use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
 use arrayref::array_ref;
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
@@ -910,7 +909,8 @@ mod sealed_sender_v2 {
     const LABEL_DH_S: &[u8] = b"Sealed Sender v2: DH-sender";
 
     pub const MESSAGE_KEY_LEN: usize = 32;
-    pub const CIPHER_KEY_LEN: usize = <Aes256GcmSiv as aes_gcm_siv::aead::NewAead>::KeySize::USIZE;
+    pub const CIPHER_KEY_LEN: usize =
+        <Aes256GcmSiv as aes_gcm_siv::aead::KeySizeUser>::KeySize::USIZE;
     pub const AUTH_TAG_LEN: usize = 16;
 
     // Change this to false after all clients have receive support.
@@ -1299,16 +1299,14 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
 
     let ciphertext = {
         let mut ciphertext = usmc.serialized()?.to_vec();
-        let symmetric_authentication_tag = Aes256GcmSiv::new_from_slice(&keys.derive_k())
-            .and_then(|aes_gcm_siv| {
-                aes_gcm_siv.encrypt_in_place_detached(
-                    // There's no nonce because the key is already one-use.
-                    &aes_gcm_siv::Nonce::default(),
-                    // And there's no associated data.
-                    &[],
-                    &mut ciphertext,
-                )
-            })
+        let symmetric_authentication_tag = Aes256GcmSiv::new(&keys.derive_k().into())
+            .encrypt_in_place_detached(
+                // There's no nonce because the key is already one-use.
+                &aes_gcm_siv::Nonce::default(),
+                // And there's no associated data.
+                &[],
+                &mut ciphertext,
+            )
             .expect("AES-GCM-SIV encryption should not fail with a just-computed key");
         // AES-GCM-SIV expects the authentication tag to be at the end of the ciphertext
         // when decrypting.
@@ -1597,16 +1595,14 @@ pub async fn sealed_sender_decrypt_to_usmc(
             }
 
             let mut message_bytes = encrypted_message.into_vec();
-            Aes256GcmSiv::new_from_slice(&keys.derive_k())
-                .and_then(|aes_gcm_siv| {
-                    aes_gcm_siv.decrypt_in_place(
-                        // There's no nonce because the key is already one-use.
-                        &aes_gcm_siv::Nonce::default(),
-                        // And there's no associated data.
-                        &[],
-                        &mut message_bytes,
-                    )
-                })
+            Aes256GcmSiv::new(&keys.derive_k().into())
+                .decrypt_in_place(
+                    // There's no nonce because the key is already one-use.
+                    &aes_gcm_siv::Nonce::default(),
+                    // And there's no associated data.
+                    &[],
+                    &mut message_bytes,
+                )
                 .map_err(|err| {
                     SignalProtocolError::InvalidSealedSenderMessage(format!(
                         "failed to decrypt inner message: {}",

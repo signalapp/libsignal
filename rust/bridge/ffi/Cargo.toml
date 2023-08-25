@@ -15,9 +15,6 @@ name = "signal_ffi"
 crate-type = ["staticlib"]
 
 [features]
-default = ["armv8"]
-armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
-
 # Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:
 #     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
 signal-media = ["libsignal-bridge/signal-media"]

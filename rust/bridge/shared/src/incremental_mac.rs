@@ -7,8 +7,8 @@ use hmac::digest::{crypto_common, OutputSizeUser};
 use std::convert::TryInto;
 
 use crypto_common::KeyInit;
+use hmac::digest::typenum::Unsigned;
 use hmac::Hmac;
-use typenum::Unsigned;
 
 use libsignal_bridge_macros::*;
 use libsignal_protocol::incremental_mac::{calculate_chunk_size, Incremental, Validating};
