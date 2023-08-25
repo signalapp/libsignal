@@ -136,7 +136,7 @@ jobs:
       working-directory: node
 
   swift-cocoapod:
-    name: Swift CocoaPod (with Catalyst)
+    name: Swift CocoaPod (all architectures)
     runs-on: macOS-latest
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
@@ -166,16 +166,6 @@ jobs:
         run: swift/build_ffi.sh --release
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
-
-      - name: Build for x86_64-apple-ios-macabi
-        run: swift/build_ffi.sh --release --build-std
-        env:
-          CARGO_BUILD_TARGET: x86_64-apple-ios-macabi
-
-      - name: Build for aarch64-apple-ios-macabi
-        run: swift/build_ffi.sh --release --build-std
-        env:
-          CARGO_BUILD_TARGET: aarch64-apple-ios-macabi
 
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).

@@ -61,8 +61,10 @@ When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag 
 
 # Catalyst Support
 
-Rust targets for Mac Catalyst are still in tier 3 support, so we use the experimental `-Zbuild-std` flag to build the standard library.
+Mac Catalyst is not supported by this repository, but we've done experiments with it in the past. Rust targets for Catalyst are still in tier 3 support, so we use the experimental `-Zbuild-std` flag to build the standard library.
 
-In order to compile for these platforms you will need to:
+In order to compile for Catalyst you will need to:
 * Install the standard library component with `rustup component add rust-src`
-* If not using Cocoapods, add the `--build-std` flag to your `build_ffi.sh` invocation
+* Add the `--build-std` flag to your `build_ffi.sh` invocation
+
+There may be other issues. For example, at one point the `cmake` crate had trouble compiling for Catalyst; you can try downgrading to version 0.1.48 if that's affecting you.

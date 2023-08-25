@@ -1389,7 +1389,6 @@ version = "0.31.0"
 dependencies = [
  "async-trait",
  "attest",
- "cmake",
  "cpufeatures",
  "device-transfer",
  "futures-util",

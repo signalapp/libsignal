@@ -26,7 +26,6 @@ check_rust() {
   fi
 
   if [[ -n "${CARGO_BUILD_TARGET:-}" ]] && ! (rustup target list --installed | grep -q "${CARGO_BUILD_TARGET:-}"); then
-    # TODO: We could remove this once Catalyst support is promoted to tier 2
     if [[ -n "${BUILD_STD:-}" ]]; then
       echo "warning: Building using -Zbuild-std to support tier 3 target ${CARGO_BUILD_TARGET}." >&2
     else
