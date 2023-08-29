@@ -22,12 +22,12 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
     _class: JClass,
     data: jbyteArray,
 ) -> jlongArray {
-    run_ffi_safe(&env, || {
+    run_ffi_safe(&env, |env| {
         let data = env.convert_byte_array(data)?;
         let key = IdentityKeyPair::try_from(data.as_ref())?;
 
-        let public_key_handle = key.identity_key().public_key().convert_into(&env)?;
-        let private_key_handle = key.private_key().convert_into(&env)?;
+        let public_key_handle = key.identity_key().public_key().convert_into(env)?;
+        let private_key_handle = key.private_key().convert_into(env)?;
         let tuple = [public_key_handle, private_key_handle];
 
         let result = env.new_long_array(2)?;

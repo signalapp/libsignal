@@ -467,14 +467,18 @@ impl JniDummyValue for () {
 }
 
 #[inline(always)]
-pub fn run_ffi_safe<F: FnOnce() -> Result<R, SignalJniError> + std::panic::UnwindSafe, R>(
-    env: &JNIEnv,
+pub fn run_ffi_safe<
+    'context,
+    F: FnOnce(&'context JNIEnv) -> Result<R, SignalJniError> + std::panic::UnwindSafe,
+    R,
+>(
+    env: &'context JNIEnv,
     f: F,
 ) -> R
 where
     R: JniDummyValue,
 {
-    match std::panic::catch_unwind(f) {
+    match std::panic::catch_unwind(|| f(env)) {
         Ok(Ok(r)) => r,
         Ok(Err(e)) => {
             throw_error(env, e);
