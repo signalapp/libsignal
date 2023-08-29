@@ -48,7 +48,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
                         name.ident.clone(),
                         quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
                         quote! {
-                            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(&env, #name)?;
+                            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(&env, &#name)?;
                             let #name = <#ty as jni::ArgTypeInfo>::load_from(&env, &mut #name)?
                         },
                     )

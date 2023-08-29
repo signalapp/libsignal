@@ -26,7 +26,7 @@ use super::*;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo<'_> for Foo {
 /// #     type ArgType = isize;
-/// #     fn convert_from(env: &JNIEnv, foreign: isize) -> SignalJniResult<Self> { Ok(Foo) }
+/// #     fn convert_from(env: &JNIEnv, foreign: &isize) -> SignalJniResult<Self> { Ok(Foo) }
 /// # }
 /// # fn test(env: &JNIEnv, jni_arg: isize) -> SignalJniResult<()> {
 /// let mut jni_arg_borrowed = Foo::borrow(env, jni_arg)?;
@@ -44,13 +44,16 @@ use super::*;
 /// implement [`SimpleArgTypeInfo`] instead.
 ///
 /// Implementers should also see the `jni_arg_type` macro in `convert.rs`.
-pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
+pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
     /// The JNI form of the argument (e.g. `jni::jint`).
-    type ArgType;
+    type ArgType: 'param;
     /// Local storage for the argument (ideally borrowed rather than copied).
     type StoredType: 'storage;
     /// "Borrows" the data in `foreign`, usually to establish a local lifetime or owning type.
-    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType>;
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType>;
     /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
     fn load_from(env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self>;
 }
@@ -66,7 +69,7 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
 /// # struct Foo;
 /// impl<'a> SimpleArgTypeInfo<'a> for Foo {
 ///     type ArgType = JObject<'a>;
-///     fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
+///     fn convert_from(env: &JNIEnv, foreign: &JObject<'a>) -> SignalJniResult<Self> {
 ///         // ...
 ///         # Ok(Foo)
 ///     }
@@ -81,24 +84,25 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
 /// However, some types do need the full flexibility of `ArgTypeInfo`.
 pub trait SimpleArgTypeInfo<'a>: Sized {
     /// The JNI form of the argument (e.g. `jint`).
-    ///
-    /// Must be [`Copy`] to help the compiler optimize out local storage.
-    type ArgType: Copy + 'a;
+    type ArgType: 'a;
     /// Converts the data in `foreign` to the Rust type.
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self>;
+    fn convert_from(env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self>;
 }
 
-impl<'a, T> ArgTypeInfo<'a, 'a> for T
+impl<'storage, 'param: 'storage, 'context: 'param, T> ArgTypeInfo<'storage, 'param, 'context> for T
 where
-    T: SimpleArgTypeInfo<'a>,
+    T: SimpleArgTypeInfo<'context> + 'storage,
 {
-    type ArgType = <Self as SimpleArgTypeInfo<'a>>::ArgType;
-    type StoredType = Self::ArgType;
-    fn borrow(_env: &'a JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+    type ArgType = <Self as SimpleArgTypeInfo<'context>>::ArgType;
+    type StoredType = &'param Self::ArgType;
+    fn borrow(
+        _env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
         Ok(foreign)
     }
-    fn load_from(env: &JNIEnv, stored: &'a mut Self::StoredType) -> SignalJniResult<Self> {
-        Self::convert_from(env, *stored)
+    fn load_from(env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self> {
+        Self::convert_from(env, stored)
     }
 }
 
@@ -140,14 +144,14 @@ pub trait ResultTypeInfo: Sized {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u32`.
 impl<'a> SimpleArgTypeInfo<'a> for u32 {
     type ArgType = jint;
-    fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
-        if foreign < 0 {
+    fn convert_from(_env: &JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
+        if *foreign < 0 {
             return Err(SignalJniError::IntegerOverflow(format!(
                 "{} to u32",
                 foreign
             )));
         }
-        Ok(foreign as u32)
+        Ok(*foreign as u32)
     }
 }
 
@@ -156,8 +160,8 @@ impl<'a> SimpleArgTypeInfo<'a> for u32 {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `Option<u32>`.
 impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
     type ArgType = jint;
-    fn convert_from(env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
-        if foreign < 0 {
+    fn convert_from(env: &JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
+        if *foreign < 0 {
             Ok(None)
         } else {
             u32::convert_from(env, foreign).map(Some)
@@ -168,8 +172,8 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<u32> {
 /// Reinterprets the bits of the Java `long` as a `u64`.
 impl<'a> SimpleArgTypeInfo<'a> for u64 {
     type ArgType = jlong;
-    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
-        Ok(foreign as u64)
+    fn convert_from(_env: &JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
+        Ok(*foreign as u64)
     }
 }
 
@@ -179,14 +183,14 @@ impl<'a> SimpleArgTypeInfo<'a> for u64 {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
 impl<'a> SimpleArgTypeInfo<'a> for crate::protocol::Timestamp {
     type ArgType = jlong;
-    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
-        if foreign < 0 {
+    fn convert_from(_env: &JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
+        if *foreign < 0 {
             return Err(SignalJniError::IntegerOverflow(format!(
                 "{} to Timestamp (u64)",
                 foreign
             )));
         }
-        Ok(Self::from_millis(foreign as u64))
+        Ok(Self::from_millis(*foreign as u64))
     }
 }
 
@@ -196,22 +200,22 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::protocol::Timestamp {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
 impl<'a> SimpleArgTypeInfo<'a> for crate::zkgroup::Timestamp {
     type ArgType = jlong;
-    fn convert_from(_env: &JNIEnv, foreign: jlong) -> SignalJniResult<Self> {
-        if foreign < 0 {
+    fn convert_from(_env: &JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
+        if *foreign < 0 {
             return Err(SignalJniError::IntegerOverflow(format!(
                 "{} to Timestamp (u64)",
                 foreign
             )));
         }
-        Ok(Self::from_seconds(foreign as u64))
+        Ok(Self::from_seconds(*foreign as u64))
     }
 }
 
 /// Supports all valid byte values `0..=255`.
 impl<'a> SimpleArgTypeInfo<'a> for u8 {
     type ArgType = jint;
-    fn convert_from(_env: &JNIEnv, foreign: jint) -> SignalJniResult<Self> {
-        match u8::try_from(foreign) {
+    fn convert_from(_env: &JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
+        match u8::try_from(*foreign) {
             Err(_) => Err(SignalJniError::IntegerOverflow(format!(
                 "{} to u8",
                 foreign
@@ -223,14 +227,14 @@ impl<'a> SimpleArgTypeInfo<'a> for u8 {
 
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
-    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> SignalJniResult<Self> {
-        Ok(env.get_string(foreign)?.into())
+    fn convert_from(env: &JNIEnv, foreign: &JString<'a>) -> SignalJniResult<Self> {
+        Ok(env.get_string(*foreign)?.into())
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     type ArgType = JString<'a>;
-    fn convert_from(env: &JNIEnv, foreign: JString<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &JNIEnv, foreign: &JString<'a>) -> SignalJniResult<Self> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -241,11 +245,11 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
 
 impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JObject<'a>;
-    fn convert_from(env: &JNIEnv, foreign: JObject<'a>) -> SignalJniResult<Self> {
-        check_jobject_type(env, foreign, jni_class_name!(java.util.UUID))?;
+    fn convert_from(env: &JNIEnv, foreign: &JObject<'a>) -> SignalJniResult<Self> {
+        check_jobject_type(env, *foreign, jni_class_name!(java.util.UUID))?;
         let args = jni_args!(() -> long);
-        let msb: jlong = call_method_checked(env, foreign, "getMostSignificantBits", args)?;
-        let lsb: jlong = call_method_checked(env, foreign, "getLeastSignificantBits", args)?;
+        let msb: jlong = call_method_checked(env, *foreign, "getMostSignificantBits", args)?;
+        let lsb: jlong = call_method_checked(env, *foreign, "getLeastSignificantBits", args)?;
 
         let mut bytes = [0u8; 16];
         bytes[..8].copy_from_slice(&msb.to_be_bytes());
@@ -254,11 +258,16 @@ impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     }
 }
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u8] {
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for &'storage [u8]
+{
     type ArgType = jbyteArray;
     type StoredType = AutoArray<'context, 'context, jbyte>;
-    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
-        Ok(env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?)
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
+        Ok(env.get_byte_array_elements(*foreign, ReleaseMode::NoCopyBack)?)
     }
     fn load_from(
         _env: &JNIEnv,
@@ -270,10 +279,15 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
     }
 }
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'storage [u8]> {
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for Option<&'storage [u8]>
+{
     type ArgType = jbyteArray;
     type StoredType = Option<AutoArray<'context, 'context, jbyte>>;
-    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -291,11 +305,16 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Option<&'
     }
 }
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage mut [u8] {
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for &'storage mut [u8]
+{
     type ArgType = jbyteArray;
     type StoredType = AutoArray<'context, 'context, jbyte>;
-    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
-        Ok(env.get_byte_array_elements(foreign, ReleaseMode::CopyBack)?)
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
+        Ok(env.get_byte_array_elements(*foreign, ReleaseMode::CopyBack)?)
     }
     fn load_from(
         _env: &JNIEnv,
@@ -310,16 +329,16 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
 macro_rules! store {
     ($name:ident) => {
         paste! {
-            impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+            impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
                 for &'storage mut dyn $name
             {
                 type ArgType = JObject<'context>;
                 type StoredType = [<Jni $name>]<'context>;
                 fn borrow(
                     env: &'context JNIEnv,
-                    store: Self::ArgType,
+                    store: &'param Self::ArgType,
                 ) -> SignalJniResult<Self::StoredType> {
-                    Self::StoredType::new(env, store)
+                    Self::StoredType::new(env, *store)
                 }
                 fn load_from(
                     _env: &JNIEnv,
@@ -343,7 +362,7 @@ store!(InputStream);
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     type ArgType = JavaCiphertextMessage<'a>;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
         fn native_handle_from_message<'a, T: 'static>(
             env: &JNIEnv,
             foreign: JavaCiphertextMessage<'a>,
@@ -367,7 +386,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         None.or_else(|| {
             native_handle_from_message(
                 env,
-                foreign,
+                *foreign,
                 jni_class_name!(org.signal.libsignal.protocol.message.SignalMessage),
                 Self::SignalMessage,
             )
@@ -376,7 +395,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         .or_else(|| {
             native_handle_from_message(
                 env,
-                foreign,
+                *foreign,
                 jni_class_name!(org.signal.libsignal.protocol.message.PreKeySignalMessage),
                 Self::PreKeySignalMessage,
             )
@@ -385,7 +404,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         .or_else(|| {
             native_handle_from_message(
                 env,
-                foreign,
+                *foreign,
                 jni_class_name!(org.signal.libsignal.protocol.message.SenderKeyMessage),
                 Self::SenderKeyMessage,
             )
@@ -394,7 +413,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         .or_else(|| {
             native_handle_from_message(
                 env,
-                foreign,
+                *foreign,
                 jni_class_name!(org.signal.libsignal.protocol.message.PlaintextContent),
                 Self::PlaintextContent,
             )
@@ -627,13 +646,16 @@ impl ResultTypeInfo for Option<Vec<u8>> {
     }
 }
 
-impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
-    for &'storage [u8; LEN]
+impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
+    ArgTypeInfo<'storage, 'param, 'context> for &'storage [u8; LEN]
 {
     type ArgType = jbyteArray;
     type StoredType = AutoArray<'context, 'context, jbyte>;
-    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
-        Ok(env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?)
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
+        Ok(env.get_byte_array_elements(*foreign, ReleaseMode::NoCopyBack)?)
     }
     fn load_from(
         _env: &JNIEnv,
@@ -870,15 +892,15 @@ pub trait BridgeHandle: 'static {}
 
 impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for &T {
     type ArgType = ObjectHandle;
-    fn convert_from(_env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
-        Ok(unsafe { native_handle_cast(foreign) }?)
+    fn convert_from(_env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        Ok(unsafe { native_handle_cast(*foreign) }?)
     }
 }
 
 impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for Option<&T> {
     type ArgType = ObjectHandle;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
-        if foreign == 0 {
+    fn convert_from(env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        if *foreign == 0 {
             Ok(None)
         } else {
             <&T>::convert_from(env, foreign).map(Some)
@@ -888,18 +910,21 @@ impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for Option<&T> {
 
 impl<'a, T: BridgeHandle> SimpleArgTypeInfo<'a> for &mut T {
     type ArgType = ObjectHandle;
-    fn convert_from(_env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
-        unsafe { native_handle_cast(foreign) }
+    fn convert_from(_env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        unsafe { native_handle_cast(*foreign) }
     }
 }
 
-impl<'storage, 'context: 'storage, T: BridgeHandle> ArgTypeInfo<'storage, 'context>
-    for &'storage [&'storage T]
+impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
+    ArgTypeInfo<'storage, 'param, 'context> for &'storage [&'storage T]
 {
     type ArgType = jlongArray;
     type StoredType = Vec<&'storage T>;
-    fn borrow(env: &'context JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self::StoredType> {
-        let array = env.get_long_array_elements(foreign, ReleaseMode::NoCopyBack)?;
+    fn borrow(
+        env: &'context JNIEnv,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
+        let array = env.get_long_array_elements(*foreign, ReleaseMode::NoCopyBack)?;
         let len = array.size()? as usize;
         let slice = unsafe { std::slice::from_raw_parts(array.as_ptr(), len) };
         slice
@@ -972,8 +997,8 @@ where
 {
     type ArgType = jbyteArray;
 
-    fn convert_from(env: &jni::JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
-        let borrowed_array = env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?;
+    fn convert_from(env: &jni::JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        let borrowed_array = env.get_byte_array_elements(*foreign, ReleaseMode::NoCopyBack)?;
         let len = borrowed_array.size()? as usize;
         assert!(
             len == T::Array::LEN,
@@ -995,8 +1020,8 @@ where
 
 impl SimpleArgTypeInfo<'_> for ServiceId {
     type ArgType = jbyteArray;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
-        env.convert_byte_array(foreign)
+    fn convert_from(env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        env.convert_byte_array(*foreign)
             .ok()
             .and_then(|vec| vec.try_into().ok())
             .as_ref()
@@ -1012,7 +1037,7 @@ impl SimpleArgTypeInfo<'_> for ServiceId {
 
 impl SimpleArgTypeInfo<'_> for Aci {
     type ArgType = jbyteArray;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
             .map_err(|_| SignalProtocolError::InvalidArgument("not an ACI".to_string()).into())
@@ -1021,7 +1046,7 @@ impl SimpleArgTypeInfo<'_> for Aci {
 
 impl SimpleArgTypeInfo<'_> for Pni {
     type ArgType = jbyteArray;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
             .map_err(|_| SignalProtocolError::InvalidArgument("not a PNI".to_string()).into())
@@ -1067,8 +1092,8 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl<'a> SimpleArgTypeInfo<'a> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &JNIEnv, foreign: Self) -> SignalJniResult<Self> {
-                Ok(foreign)
+            fn convert_from(_env: &JNIEnv, foreign: &Self) -> SignalJniResult<Self> {
+                Ok(*foreign)
             }
         }
         impl ResultTypeInfo for $typ {
@@ -1089,8 +1114,8 @@ macro_rules! trivial_jobject {
     ($typ:ty) => {
         impl<'a> SimpleArgTypeInfo<'a> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &JNIEnv, foreign: Self) -> SignalJniResult<Self> {
-                Ok(foreign)
+            fn convert_from(_env: &JNIEnv, foreign: &Self) -> SignalJniResult<Self> {
+                Ok(*foreign)
             }
         }
         impl ResultTypeInfo for $typ {

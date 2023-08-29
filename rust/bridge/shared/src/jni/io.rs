@@ -35,7 +35,7 @@ impl<'a> JniInputStream<'a> {
         )?;
         let amount_read = match amount_read {
             -1 => 0,
-            _ => u32::convert_from(self.env, amount_read)? as usize,
+            _ => u32::convert_from(self.env, &amount_read)? as usize,
         };
         self.env
             .get_byte_array_region(java_buf, 0, cast_slice_mut(&mut buf[..amount_read]))?;
