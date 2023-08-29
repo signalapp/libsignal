@@ -30,7 +30,7 @@ use super::*;
 /// # }
 /// # fn test(env: &JNIEnv, jni_arg: isize) -> SignalJniResult<()> {
 /// let mut jni_arg_borrowed = Foo::borrow(env, jni_arg)?;
-/// let rust_arg = Foo::load_from(env, &mut jni_arg_borrowed)?;
+/// let rust_arg = Foo::load_from(&mut jni_arg_borrowed);
 /// #     Ok(())
 /// # }
 /// ```
@@ -55,7 +55,7 @@ pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
         foreign: &'param Self::ArgType,
     ) -> SignalJniResult<Self::StoredType>;
     /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
-    fn load_from(env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self>;
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self;
 }
 
 /// A simpler interface for [`ArgTypeInfo`] for when no local storage is needed.
@@ -94,15 +94,15 @@ where
     T: SimpleArgTypeInfo<'context> + 'storage,
 {
     type ArgType = <Self as SimpleArgTypeInfo<'context>>::ArgType;
-    type StoredType = &'param Self::ArgType;
+    type StoredType = Option<Self>;
     fn borrow(
-        _env: &'context JNIEnv,
+        env: &'context JNIEnv,
         foreign: &'param Self::ArgType,
     ) -> SignalJniResult<Self::StoredType> {
-        Ok(foreign)
+        Ok(Some(Self::convert_from(env, foreign)?))
     }
-    fn load_from(env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self> {
-        Self::convert_from(env, stored)
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.take().expect("only called once")
     }
 }
 
@@ -269,13 +269,13 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     ) -> SignalJniResult<Self::StoredType> {
         Ok(env.get_byte_array_elements(*foreign, ReleaseMode::NoCopyBack)?)
     }
-    fn load_from(
-        _env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> SignalJniResult<&'storage [u8]> {
-        Ok(unsafe {
-            std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize)
-        })
+    fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [u8] {
+        unsafe {
+            std::slice::from_raw_parts(
+                stored.as_ptr() as *const u8,
+                stored.size().expect("can always load length") as usize,
+            )
+        }
     }
 }
 
@@ -294,14 +294,8 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
             <&'storage [u8]>::borrow(env, foreign).map(Some)
         }
     }
-    fn load_from(
-        env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> SignalJniResult<Option<&'storage [u8]>> {
-        stored
-            .as_mut()
-            .map(|s| <&'storage [u8]>::load_from(env, s))
-            .transpose()
+    fn load_from(stored: &'storage mut Self::StoredType) -> Option<&'storage [u8]> {
+        stored.as_mut().map(ArgTypeInfo::load_from)
     }
 }
 
@@ -316,13 +310,13 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     ) -> SignalJniResult<Self::StoredType> {
         Ok(env.get_byte_array_elements(*foreign, ReleaseMode::CopyBack)?)
     }
-    fn load_from(
-        _env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> SignalJniResult<&'storage mut [u8]> {
-        Ok(unsafe {
-            std::slice::from_raw_parts_mut(stored.as_ptr() as *mut u8, stored.size()? as usize)
-        })
+    fn load_from(stored: &'storage mut Self::StoredType) -> &'storage mut [u8] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                stored.as_ptr() as *mut u8,
+                stored.size().expect("can always load size") as usize,
+            )
+        }
     }
 }
 
@@ -341,10 +335,9 @@ macro_rules! store {
                     Self::StoredType::new(env, *store)
                 }
                 fn load_from(
-                    _env: &JNIEnv,
                     stored: &'storage mut Self::StoredType,
-                ) -> SignalJniResult<Self> {
-                    Ok(stored)
+                ) -> Self {
+                    stored
                 }
             }
         }
@@ -655,21 +648,29 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
         env: &'context JNIEnv,
         foreign: &'param Self::ArgType,
     ) -> SignalJniResult<Self::StoredType> {
-        Ok(env.get_byte_array_elements(*foreign, ReleaseMode::NoCopyBack)?)
-    }
-    fn load_from(
-        _env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> SignalJniResult<&'storage [u8; LEN]> {
-        let slice = unsafe {
-            std::slice::from_raw_parts(stored.as_ptr() as *const u8, stored.size()? as usize)
-        };
-        slice
-            .try_into()
-            .map_err(|_| SignalJniError::IncorrectArrayLength {
+        let elements = env.get_byte_array_elements(*foreign, ReleaseMode::NoCopyBack)?;
+        let actual_len = elements.size()? as usize;
+        if actual_len != LEN {
+            return Err(SignalJniError::IncorrectArrayLength {
                 expected: LEN,
-                actual: slice.len(),
-            })
+                actual: actual_len,
+            });
+        }
+        Ok(elements)
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [u8; LEN] {
+        if LEN == 0 {
+            &[0; LEN]
+        } else {
+            // Length checked ahead of time.
+            unsafe {
+                stored
+                    .as_ptr()
+                    .cast::<[u8; LEN]>()
+                    .as_ref()
+                    .expect("non-empty arrays are never null")
+            }
+        }
     }
 }
 
@@ -936,11 +937,8 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
             })
             .collect()
     }
-    fn load_from(
-        _env: &JNIEnv,
-        stored: &'storage mut Self::StoredType,
-    ) -> SignalJniResult<&'storage [&'storage T]> {
-        Ok(&*stored)
+    fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [&'storage T] {
+        &*stored
     }
 }
 
