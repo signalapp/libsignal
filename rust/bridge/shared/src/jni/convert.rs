@@ -22,7 +22,7 @@ use super::*;
 ///
 /// ```no_run
 /// # use libsignal_bridge::jni::*;
-/// # use jni_crate::JNIEnv;
+/// # use jni::JNIEnv;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo<'_> for Foo {
 /// #     type ArgType = isize;
@@ -61,8 +61,8 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
 ///
 /// ```no_run
 /// # use libsignal_bridge::jni::*;
-/// # use jni_crate::objects::JObject;
-/// # use jni_crate::JNIEnv;
+/// # use jni::objects::JObject;
+/// # use jni::JNIEnv;
 /// # struct Foo;
 /// impl<'a> SimpleArgTypeInfo<'a> for Foo {
 ///     type ArgType = JObject<'a>;
@@ -108,8 +108,8 @@ where
 ///
 /// ```no_run
 /// # use libsignal_bridge::jni::*;
-/// # use jni_crate::JNIEnv;
-/// # use jni_crate::objects::JObject;
+/// # use jni::JNIEnv;
+/// # use jni::objects::JObject;
 /// # struct Foo;
 /// # impl ResultTypeInfo for Foo {
 /// #     type ResultType = isize;
@@ -972,7 +972,7 @@ where
 {
     type ArgType = jbyteArray;
 
-    fn convert_from(env: &jni_crate::JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &jni::JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         let borrowed_array = env.get_byte_array_elements(foreign, ReleaseMode::NoCopyBack)?;
         let len = borrowed_array.size()? as usize;
         assert!(
@@ -1041,7 +1041,7 @@ where
 
     fn convert_into_jobject(
         signal_jni_result: &SignalJniResult<Self::ResultType>,
-    ) -> jni_crate::objects::JObject {
+    ) -> jni::objects::JObject {
         Vec::<u8>::convert_into_jobject(signal_jni_result)
     }
 }

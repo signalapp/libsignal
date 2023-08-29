@@ -5,7 +5,7 @@
 
 use std::marker::PhantomData;
 
-use jni_crate::objects::JValue;
+use jni::objects::JValue;
 
 /// Takes a Java-esque class name of the form `org.signal.Outer::Inner` and turns it into a
 /// JNI-style name `org/signal/Outer$Inner`.
@@ -169,7 +169,7 @@ fn test_jni_arg() {
     assert!(matches!(jni_arg!(-8.5 => float), JValue::Float(val) if val == -8.5));
     assert!(matches!(jni_arg!(-8.5 => double), JValue::Double(val) if val == -8.5));
     assert!(matches!(
-        jni_arg!(jni_crate::objects::JObject::null() => java.lang.Object),
+        jni_arg!(jni::objects::JObject::null() => java.lang.Object),
         JValue::Object(val) if val.is_null()
     ));
 }
@@ -234,8 +234,8 @@ pub struct JniArgs<'a, R, const LEN: usize> {
 ///
 /// ```
 /// # use libsignal_bridge::jni_args;
-/// # use jni_crate::objects::JValue;
-/// # let name = jni_crate::objects::JObject::null();
+/// # use jni::objects::JValue;
+/// # let name = jni::objects::JObject::null();
 /// let args = jni_args!((name => java.lang.String, 0x3FFF => short) -> void);
 /// assert_eq!(args.sig, "(Ljava/lang/String;S)V");
 /// assert_eq!(args.args.len(), 2);

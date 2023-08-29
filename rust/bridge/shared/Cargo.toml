@@ -37,12 +37,12 @@ uuid = "1.1.2"
 
 bytemuck = { version = "1.13.0", optional = true }
 libc = { version = "0.2", optional = true }
-jni_crate = { version = "0.19", package = "jni", optional = true }
+jni = { version = "0.19", package = "jni", optional = true }
 neon = { version = "0.10.0", optional = true, default-features = false, features = ["napi-6", "promise-api"] }
 linkme = { version = "0.3.9", optional = true }
 signal-neon-futures = { path = "../node/futures", optional = true }
 
 [features]
 ffi = ["libc", "libsignal-bridge-macros/ffi"]
-jni = ["jni_crate", "libsignal-bridge-macros/jni", "bytemuck"]
+jni = ["dep:jni", "libsignal-bridge-macros/jni", "bytemuck"]
 node = ["neon", "linkme", "signal-neon-futures", "libsignal-bridge-macros/node"]
