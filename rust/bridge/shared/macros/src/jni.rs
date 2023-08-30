@@ -68,12 +68,12 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
 
     quote! {
         #[no_mangle]
-        pub unsafe extern "C" fn #name(
-            env: jni::JNIEnv,
+        pub unsafe extern "C" fn #name<'local>(
+            mut env: jni::JNIEnv<'local>,
             _class: jni::JClass,
             #(#input_args),*
         ) #output {
-            jni::run_ffi_safe(&env, |env| {
+            jni::run_ffi_safe(&mut env, |env| {
                 #(#input_processing);*;
                 let __result = #orig_name(#(#input_names),*);
                 #await_if_needed;

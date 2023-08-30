@@ -5,7 +5,7 @@
 
 use std::marker::PhantomData;
 
-use jni::objects::JValue;
+use jni::objects::{JObject, JValue};
 
 /// Takes a Java-esque class name of the form `org.signal.Outer::Inner` and turns it into a
 /// JNI-style name `org/signal/Outer$Inner`.
@@ -153,7 +153,7 @@ macro_rules! jni_arg {
     };
     // Assume anything else is an object. This includes arrays and classes.
     ( $arg:expr => $($_:tt)+) => {
-        JValue::Object($arg.into())
+        JValue::Object($arg.as_ref())
     };
 }
 
@@ -222,10 +222,26 @@ pub type PhantomReturnType<R> = PhantomData<fn() -> R>;
 
 /// A JNI argument list, type-checked with its signature.
 #[derive(Debug, Clone, Copy)]
-pub struct JniArgs<'a, R, const LEN: usize> {
+pub struct JniArgs<'local, 'obj_ref, R, const LEN: usize> {
     pub sig: &'static str,
-    pub args: [JValue<'a>; LEN],
+    pub args: [JValue<'local, 'obj_ref>; LEN],
     pub _return: PhantomReturnType<R>,
+}
+
+impl<'local, 'obj_ref, 'output, const LEN: usize> JniArgs<'local, 'obj_ref, JObject<'output>, LEN> {
+    /// Updates the lifetime of the return type.
+    ///
+    /// May be necessary when passing JniArgs into a "local frame"
+    /// ([`jni::JNIEnv::with_local_frame`]).
+    pub fn for_nested_frame<'new_output: 'output>(
+        self,
+    ) -> JniArgs<'local, 'obj_ref, JObject<'new_output>, LEN> {
+        JniArgs {
+            sig: self.sig,
+            args: self.args,
+            _return: PhantomData,
+        }
+    }
 }
 
 /// Produces a JniArgs struct from the given arguments and return type.

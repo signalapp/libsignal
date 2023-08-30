@@ -209,12 +209,15 @@ pub struct ThrownException {
 
 impl ThrownException {
     /// Gets the wrapped exception as a live object with a lifetime.
-    pub fn as_obj(&self) -> JThrowable<'_> {
+    pub fn as_obj(&self) -> &JThrowable<'static> {
         self.exception_ref.as_obj().into()
     }
 
     /// Persists the given throwable.
-    pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, SignalJniError> {
+    pub fn new<'a>(
+        env: &mut JNIEnv<'a>,
+        throwable: JThrowable<'a>,
+    ) -> Result<Self, SignalJniError> {
         assert!(**throwable != *JObject::null());
         Ok(Self {
             jvm: env.get_java_vm()?,
@@ -222,7 +225,7 @@ impl ThrownException {
         })
     }
 
-    pub fn class_name(&self, env: &JNIEnv) -> Result<String, SignalJniError> {
+    pub fn class_name(&self, env: &mut JNIEnv) -> Result<String, SignalJniError> {
         let class_type = env.get_object_class(self.exception_ref.as_obj())?;
         let class_name: JObject = call_method_checked(
             env,
@@ -231,23 +234,23 @@ impl ThrownException {
             jni_args!(() -> java.lang.String),
         )?;
 
-        Ok(env.get_string(JString::from(class_name))?.into())
+        Ok(env.get_string(&JString::from(class_name))?.into())
     }
 
-    pub fn message(&self, env: &JNIEnv) -> Result<String, SignalJniError> {
+    pub fn message(&self, env: &mut JNIEnv) -> Result<String, SignalJniError> {
         let message: JObject = call_method_checked(
             env,
             self.exception_ref.as_obj(),
             "getMessage",
             jni_args!(() -> java.lang.String),
         )?;
-        Ok(env.get_string(JString::from(message))?.into())
+        Ok(env.get_string(&JString::from(message))?.into())
     }
 }
 
 impl fmt::Display for ThrownException {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let env = &self.jvm.attach_current_thread().map_err(|_| fmt::Error)?;
+        let env = &mut self.jvm.attach_current_thread().map_err(|_| fmt::Error)?;
 
         let exn_type = self.class_name(env);
         let exn_type = exn_type.as_deref().unwrap_or("<unknown>");
@@ -262,12 +265,12 @@ impl fmt::Display for ThrownException {
 
 impl fmt::Debug for ThrownException {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let env = &self.jvm.attach_current_thread().map_err(|_| fmt::Error)?;
+        let env = &mut self.jvm.attach_current_thread().map_err(|_| fmt::Error)?;
 
         let exn_type = self.class_name(env);
         let exn_type = exn_type.as_deref().unwrap_or("<unknown>");
 
-        let obj_addr = *self.exception_ref.as_obj();
+        let obj_addr = **self.exception_ref.as_obj();
 
         if let Ok(message) = self.message(env) {
             write!(f, "exception {} ({:p}) \"{}\"", exn_type, obj_addr, message)

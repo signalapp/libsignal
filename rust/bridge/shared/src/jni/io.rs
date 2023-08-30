@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::cell::RefCell;
 use std::io;
 
 use async_trait::async_trait;
@@ -15,34 +16,38 @@ use crate::io::{InputStream, InputStreamRead};
 pub type JavaInputStream<'a> = JObject<'a>;
 
 pub struct JniInputStream<'a> {
-    env: &'a JNIEnv<'a>,
-    stream: JObject<'a>,
+    env: RefCell<JNIEnv<'a>>,
+    stream: &'a JObject<'a>,
 }
 
 impl<'a> JniInputStream<'a> {
-    pub fn new(env: &'a JNIEnv, stream: JObject<'a>) -> SignalJniResult<Self> {
-        check_jobject_type(env, stream, jni_class_name!(java.io.InputStream))?;
-        Ok(Self { env, stream })
+    pub fn new(mut env: JNIEnv<'a>, stream: &'a JObject<'a>) -> SignalJniResult<Self> {
+        check_jobject_type(&mut env, stream, jni_class_name!(java.io.InputStream))?;
+        Ok(Self {
+            env: env.into(),
+            stream,
+        })
     }
 
     fn do_read(&self, buf: &mut [u8]) -> SignalJniResult<usize> {
-        let java_buf = self.env.new_byte_array(buf.len() as i32)?;
+        let mut env = self.env.borrow_mut();
+        let java_buf = env.new_byte_array(buf.len() as i32)?;
         let amount_read: jint = call_method_checked(
-            self.env,
+            &mut env,
             self.stream,
             "read",
             jni_args!((java_buf => [byte]) -> int),
         )?;
         let amount_read = match amount_read {
             -1 => 0,
-            _ => u32::convert_from(self.env, &amount_read)? as usize,
+            _ => u32::convert_from(&mut env, &amount_read)? as usize,
         };
-        self.env
-            .get_byte_array_region(java_buf, 0, cast_slice_mut(&mut buf[..amount_read]))?;
+        env.get_byte_array_region(java_buf, 0, cast_slice_mut(&mut buf[..amount_read]))?;
         Ok(amount_read)
     }
 
     fn do_skip(&self, amount: u64) -> SignalJniResult<()> {
+        let mut env = self.env.borrow_mut();
         let java_amount = amount.try_into().map_err(|_| {
             SignalJniError::Io(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
@@ -51,7 +56,7 @@ impl<'a> JniInputStream<'a> {
         })?;
 
         let amount_skipped: jlong = call_method_checked(
-            self.env,
+            &mut env,
             self.stream,
             "skip",
             jni_args!((java_amount => long) -> long),
