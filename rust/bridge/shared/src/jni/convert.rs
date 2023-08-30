@@ -321,10 +321,7 @@ macro_rules! store {
                     env: &mut JNIEnv<'context>,
                     store: &'param Self::ArgType,
                 ) -> SignalJniResult<Self::StoredType> {
-                    // SAFETY: The  store must not escape any references to Java objects when it
-                    // uses the JNIEnv.
-                    // TODO: Wrap this in a safer interface.
-                    Self::StoredType::new(unsafe { env.unsafe_clone() }, store)
+                    Self::StoredType::new(env, store)
                 }
                 fn load_from(
                     stored: &'storage mut Self::StoredType,

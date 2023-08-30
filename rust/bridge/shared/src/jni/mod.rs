@@ -677,3 +677,29 @@ macro_rules! jni_bridge_destroy {
         }
     };
 }
+
+/// A wrapper around a cloned [`JNIEnv`] that forces scoped use.
+///
+/// This sidesteps the safety issues with [`JNIEnv::unsafe_clone`] as long as an environment from an
+/// outer frame is not used within an inner frame. (Really, this same condition makes `unsafe_clone`
+/// safe as well, but using `EnvHandle` is a good reminder since it *only* allows scoped access.)
+struct EnvHandle<'a> {
+    env: JNIEnv<'a>,
+}
+
+impl<'a> EnvHandle<'a> {
+    fn new(env: &JNIEnv<'a>) -> Self {
+        Self {
+            env: unsafe { env.unsafe_clone() },
+        }
+    }
+
+    /// See [`JNIEnv::with_local_frame`].
+    fn with_local_frame<F, T, E>(&mut self, capacity: i32, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&mut JNIEnv<'_>) -> Result<T, E>,
+        E: From<jni::errors::Error>,
+    {
+        self.env.with_local_frame(capacity, f)
+    }
+}
