@@ -17,7 +17,7 @@ aes-gcm-siv = "0.11.1"
 arrayref = "0.3.6"
 async-trait = "0.1.41"
 ctr = { version = "0.9.2", features = ["zeroize"] }
-curve25519-dalek = { version = "4.0.0" }
+curve25519-dalek = { version = "4.0.0", features = ["digest"] }
 hkdf = "0.12"
 hmac = "0.12"
 itertools = "0.10.5"
