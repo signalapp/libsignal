@@ -106,6 +106,22 @@ describe('Incremental MAC', () => {
       );
       await assert.isRejected(promise, LibSignalErrorBase);
     });
+
+    it('keeps track of validated size', () => {
+      const validating = new ValidatingWritable(
+        TEST_KEY,
+        CHUNK_SIZE,
+        TEST_DIGEST
+      );
+      validating.write(Buffer.from(TEST_INPUT[0]));
+      assert.equal(0, validating.validatedSize());
+      validating.write(Buffer.from(TEST_INPUT[1]));
+      assert.equal(32, validating.validatedSize());
+      validating.write(Buffer.from(TEST_INPUT[2]));
+      assert.equal(32, validating.validatedSize());
+      validating.end();
+      assert.equal(50, validating.validatedSize());
+    });
   });
 });
 

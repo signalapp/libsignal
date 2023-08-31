@@ -359,9 +359,9 @@ export function Username_Hash(username: string): Buffer;
 export function Username_Proof(username: string, randomness: Buffer): Buffer;
 export function Username_Verify(proof: Buffer, hash: Buffer): void;
 export function UuidCiphertext_CheckValidContents(buffer: Buffer): void;
-export function ValidatingMac_Finalize(mac: Wrapper<ValidatingMac>): boolean;
+export function ValidatingMac_Finalize(mac: Wrapper<ValidatingMac>): number;
 export function ValidatingMac_Initialize(key: Buffer, chunkSize: number, digests: Buffer): ValidatingMac;
-export function ValidatingMac_Update(mac: Wrapper<ValidatingMac>, bytes: Buffer, offset: number, length: number): boolean;
+export function ValidatingMac_Update(mac: Wrapper<ValidatingMac>, bytes: Buffer, offset: number, length: number): number;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthCredential { readonly __type: unique symbol; }

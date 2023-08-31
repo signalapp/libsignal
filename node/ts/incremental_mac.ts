@@ -65,6 +65,8 @@ export class DigestingWritable extends stream.Writable {
 export class ValidatingWritable extends stream.Writable {
   _nativeHandle: Native.ValidatingMac;
 
+  _validatedBytes = 0;
+
   constructor(key: Buffer, sizeChoice: ChunkSizeChoice, digest: Buffer) {
     super();
     this._nativeHandle = Native.ValidatingMac_Initialize(
@@ -72,6 +74,10 @@ export class ValidatingWritable extends stream.Writable {
       chunkSizeInBytes(sizeChoice),
       digest
     );
+  }
+
+  validatedSize(): number {
+    return this._validatedBytes;
   }
 
   _write(
@@ -82,7 +88,14 @@ export class ValidatingWritable extends stream.Writable {
   ): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const buffer = Buffer.from(chunk, 'binary');
-    if (Native.ValidatingMac_Update(this, buffer, 0, buffer.length)) {
+    const validBytes = Native.ValidatingMac_Update(
+      this,
+      buffer,
+      0,
+      buffer.length
+    );
+    if (validBytes >= 0) {
+      this._validatedBytes += validBytes;
       callback();
     } else {
       callback(makeVerificationError('Corrupted input data'));
@@ -90,7 +103,9 @@ export class ValidatingWritable extends stream.Writable {
   }
 
   _final(callback: (error?: Error | null) => void): void {
-    if (Native.ValidatingMac_Finalize(this)) {
+    const validBytes = Native.ValidatingMac_Finalize(this);
+    if (validBytes >= 0) {
+      this._validatedBytes += validBytes;
       callback();
     } else {
       callback(makeVerificationError('Corrupted input data (finalize)'));

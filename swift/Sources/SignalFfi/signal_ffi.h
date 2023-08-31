@@ -1133,9 +1133,9 @@ SignalFfiError *signal_validating_mac_destroy(SignalValidatingMac *p);
 
 SignalFfiError *signal_validating_mac_initialize(SignalValidatingMac **out, SignalBorrowedBuffer key, uint32_t chunk_size, SignalBorrowedBuffer digests);
 
-SignalFfiError *signal_validating_mac_update(bool *out, SignalValidatingMac *mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
+SignalFfiError *signal_validating_mac_update(int32_t *out, SignalValidatingMac *mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
 
-SignalFfiError *signal_validating_mac_finalize(bool *out, SignalValidatingMac *mac);
+SignalFfiError *signal_validating_mac_finalize(int32_t *out, SignalValidatingMac *mac);
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 

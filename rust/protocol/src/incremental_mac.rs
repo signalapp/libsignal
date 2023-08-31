@@ -94,17 +94,22 @@ impl<M: Mac + Clone> Incremental<M> {
             None
         }
     }
+
+    fn pending_bytes_size(&self) -> usize {
+        self.chunk_size - self.unused_length
+    }
 }
 
 impl<M: Mac + Clone> Validating<M> {
-    pub fn update(&mut self, bytes: &[u8]) -> Result<(), MacError> {
-        let mut result = Ok(());
+    pub fn update(&mut self, bytes: &[u8]) -> Result<usize, MacError> {
+        let mut result = Ok(0);
         let macs = self.incremental.update(bytes);
 
-        // for mac in self.incremental.update(bytes) {
+        let mut whole_chunks = 0;
         for mac in macs {
             match self.expected.last() {
                 Some(expected) if expected == &mac => {
+                    whole_chunks += 1;
                     self.expected.pop();
                 }
                 _ => {
@@ -112,13 +117,15 @@ impl<M: Mac + Clone> Validating<M> {
                 }
             }
         }
-        result
+        let validated_bytes = whole_chunks * self.incremental.chunk_size;
+        result.map(|_| validated_bytes)
     }
 
-    pub fn finalize(self) -> Result<(), MacError> {
+    pub fn finalize(self) -> Result<usize, MacError> {
+        let pending_bytes_size = self.incremental.pending_bytes_size();
         let mac = self.incremental.finalize();
         match &self.expected[..] {
-            [expected] if expected == &mac => Ok(()),
+            [expected] if expected == &mac => Ok(pending_bytes_size),
             _ => Err(MacError),
         }
     }
@@ -274,6 +281,43 @@ mod test {
         }
         // To make clippy happy and allow extending the test in the future
         std::hint::black_box(expected_bytes);
+    }
+
+    #[test]
+    fn validating_returns_right_size() {
+        let key = test_key();
+        let input = "this is a simple test input string";
+
+        let bytes = input.as_bytes();
+        let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+        let mut expected_macs: Vec<_> = incremental.update(bytes).collect();
+        expected_macs.push(incremental.finalize());
+
+        let expected_bytes: Vec<[u8; 32]> =
+            expected_macs.into_iter().map(|mac| mac.into()).collect();
+
+        let mut validating = new_incremental(&key, TEST_CHUNK_SIZE).validating(expected_bytes);
+
+        // Splitting input into chunks of 16 will give us one full incremental chunk + 3 bytes
+        // authenticated by call to finalize.
+        let input_chunks = bytes.chunks(16).collect::<Vec<_>>();
+        assert_eq!(3, input_chunks.len());
+        let expected_remainder = bytes.len() - TEST_CHUNK_SIZE;
+
+        for (expected_size, input) in std::iter::zip([0, TEST_CHUNK_SIZE, 0], input_chunks) {
+            assert_eq!(
+                expected_size,
+                validating
+                    .update(input)
+                    .expect("update: validation should succeed")
+            );
+        }
+        assert_eq!(
+            expected_remainder,
+            validating
+                .finalize()
+                .expect("finalize: validation should succeed")
+        );
     }
 
     #[test]
