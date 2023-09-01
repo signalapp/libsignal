@@ -55,7 +55,7 @@ public final class IncrementalMacInputStream extends InputStream {
 
   private int readInternal(byte[] bytes, int offset, int requestedLen) throws IOException {
     if (this.readPos == this.writePos) {
-      int bytesRead = this.inner.readNBytes(this.currentChunk, 0, this.currentChunk.length);
+      int bytesRead = this.readBuffer(this.inner, this.currentChunk);
       if (bytesRead == 0) {
         return -1;
       }
@@ -82,5 +82,17 @@ public final class IncrementalMacInputStream extends InputStream {
     if (validBytes < 0) {
       throw new InvalidMacException();
     }
+  }
+
+  private int readBuffer(InputStream src, byte[] bytes) throws IOException {
+    int totalReadBytes = 0;
+    while (totalReadBytes < bytes.length) {
+      int readBytes = src.read(bytes, totalReadBytes, bytes.length - totalReadBytes);
+      if (readBytes < 0) {
+        break;
+      }
+      totalReadBytes += readBytes;
+    }
+    return totalReadBytes;
   }
 }
