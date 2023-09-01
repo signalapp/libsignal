@@ -83,11 +83,11 @@ pub(crate) fn aes256_ctr_hmacsha256_decrypt(
 #[cfg(test)]
 mod test {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn aes_ctr_test() {
-        let key = hex::decode("603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4")
-            .expect("valid hex");
+        let key = hex!("603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4");
         let ptext = [0u8; 35];
 
         let ctext = aes_256_ctr_encrypt(&ptext, &key).expect("valid key");

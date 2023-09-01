@@ -2229,6 +2229,7 @@ dependencies = [
  "displaydoc",
  "ghash 0.5.0",
  "hex",
+ "hex-literal",
  "hmac",
  "rand",
  "serde",

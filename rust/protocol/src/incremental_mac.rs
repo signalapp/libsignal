@@ -133,6 +133,7 @@ impl<M: Mac + Clone> Validating<M> {
 
 #[cfg(test)]
 mod test {
+    use hex_literal::hex;
     use hmac::Hmac;
     use proptest::prelude::*;
     use rand::distributions::Uniform;
@@ -144,8 +145,8 @@ mod test {
 
     use super::*;
 
-    const TEST_HMAC_KEY_HEX: &str =
-        "a83481457efecc69ad1342e21d9c0297f71debbf5c9304b4c1b2e433c1a78f98";
+    const TEST_HMAC_KEY: &[u8] =
+        &hex!("a83481457efecc69ad1342e21d9c0297f71debbf5c9304b4c1b2e433c1a78f98");
 
     const TEST_CHUNK_SIZE: usize = 32;
 
@@ -155,18 +156,14 @@ mod test {
         Incremental::new(hmac, chunk_size)
     }
 
-    fn test_key() -> Vec<u8> {
-        hex::decode(TEST_HMAC_KEY_HEX).expect("Should be able to decode the key from a hex string")
-    }
-
     #[test]
     fn simple_test() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         let input = "this is a simple test input string which is longer than the chunk";
 
         let bytes = input.as_bytes();
-        let expected = hmac_sha256(&key, bytes);
-        let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+        let expected = hmac_sha256(key, bytes);
+        let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
         let _ = incremental.update(bytes).collect::<Vec<_>>();
         let digest = incremental.finalize();
         let actual: [u8; 32] = digest.into();
@@ -175,11 +172,11 @@ mod test {
 
     #[test]
     fn final_result_should_be_equal_to_non_incremental_hmac() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         proptest!(|(input in ".{0,100}")| {
             let bytes = input.as_bytes();
-            let expected = hmac_sha256(&key, bytes);
-            let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+            let expected = hmac_sha256(key, bytes);
+            let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
             let _ = incremental.update(bytes).collect::<Vec<_>>();
             let actual: [u8; 32] = incremental.finalize().into();
             assert_eq!(actual, expected);
@@ -188,11 +185,11 @@ mod test {
 
     #[test]
     fn incremental_macs_are_valid() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
 
         proptest!(|(input in ".{50,100}")| {
             let bytes = input.as_bytes();
-            let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+            let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
 
             // Manually breaking the input in buffer-sized chunks and calculating the HMACs on the
             // ever-increasing input prefix.
@@ -200,7 +197,7 @@ mod test {
                 .chunks(incremental.chunk_size)
                 .scan(Vec::new(), |acc, chunk| {
                     acc.extend(chunk.iter());
-                    Some(hmac_sha256(&key, acc).to_vec())
+                    Some(hmac_sha256(key, acc).to_vec())
                 })
                 .collect();
 
@@ -222,11 +219,11 @@ mod test {
 
     #[test]
     fn validating_simple_test() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         let input = "this is a simple test input string";
 
         let bytes = input.as_bytes();
-        let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+        let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
         let mut expected_macs: Vec<_> = incremental.update(bytes).collect();
         expected_macs.push(incremental.finalize());
 
@@ -235,7 +232,7 @@ mod test {
 
         {
             let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(expected_bytes.clone());
+                new_incremental(key, TEST_CHUNK_SIZE).validating(expected_bytes.clone());
             validating
                 .update(bytes)
                 .expect("update: validation should succeed");
@@ -250,7 +247,7 @@ mod test {
                 .first_mut()
                 .expect("there must be at least one mac")[0] ^= 0xff;
             let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(failing_first_update);
+                new_incremental(key, TEST_CHUNK_SIZE).validating(failing_first_update);
             validating.update(bytes).expect_err("MacError");
         }
 
@@ -259,16 +256,14 @@ mod test {
             failing_finalize
                 .last_mut()
                 .expect("there must be at least one mac")[0] ^= 0xff;
-            let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(failing_finalize);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(failing_finalize);
             validating.update(bytes).expect("update should succeed");
             validating.finalize().expect_err("MacError");
         }
 
         {
             let missing_last_mac = &expected_bytes[0..expected_bytes.len() - 1];
-            let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(missing_last_mac);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(missing_last_mac);
             validating.update(bytes).expect("update should succeed");
             validating.finalize().expect_err("MacError");
         }
@@ -276,7 +271,7 @@ mod test {
         {
             let missing_first_mac: Vec<_> = expected_bytes.clone().into_iter().skip(1).collect();
             let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(missing_first_mac);
+                new_incremental(key, TEST_CHUNK_SIZE).validating(missing_first_mac);
             validating.update(bytes).expect_err("MacError");
         }
         // To make clippy happy and allow extending the test in the future
@@ -285,18 +280,18 @@ mod test {
 
     #[test]
     fn validating_returns_right_size() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         let input = "this is a simple test input string";
 
         let bytes = input.as_bytes();
-        let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+        let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
         let mut expected_macs: Vec<_> = incremental.update(bytes).collect();
         expected_macs.push(incremental.finalize());
 
         let expected_bytes: Vec<[u8; 32]> =
             expected_macs.into_iter().map(|mac| mac.into()).collect();
 
-        let mut validating = new_incremental(&key, TEST_CHUNK_SIZE).validating(expected_bytes);
+        let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(expected_bytes);
 
         // Splitting input into chunks of 16 will give us one full incremental chunk + 3 bytes
         // authenticated by call to finalize.
@@ -322,11 +317,11 @@ mod test {
 
     #[test]
     fn produce_and_validate() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
 
         proptest!(|(input in ".{0,100}")| {
             let bytes = input.as_bytes();
-            let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+            let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
             let input_chunks = bytes.random_chunks(incremental.chunk_size*2);
 
             let mut produced: Vec<[u8; 32]> = input_chunks.clone()
@@ -335,7 +330,7 @@ mod test {
                 .collect();
             produced.push(incremental.finalize().into());
 
-            let mut validating = new_incremental(&key, TEST_CHUNK_SIZE).validating(produced);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(produced);
             for chunk in input_chunks.clone() {
                 validating.update(chunk).expect("update: validation should succeed");
             }

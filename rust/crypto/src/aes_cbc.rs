@@ -52,14 +52,14 @@ pub fn aes_256_cbc_decrypt(
 #[cfg(test)]
 mod test {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn aes_cbc_test() {
-        let key = hex::decode("4e22eb16d964779994222e82192ce9f747da72dc4abe49dfdeeb71d0ffe3796e")
-            .expect("valid hex");
-        let iv = hex::decode("6f8a557ddc0a140c878063a6d5f31d3d").expect("valid hex");
+        let key = hex!("4e22eb16d964779994222e82192ce9f747da72dc4abe49dfdeeb71d0ffe3796e");
+        let iv = hex!("6f8a557ddc0a140c878063a6d5f31d3d");
 
-        let ptext = hex::decode("30736294a124482a4159").expect("valid hex");
+        let ptext = hex!("30736294a124482a4159");
 
         let ctext = aes_256_cbc_encrypt(&ptext, &key, &iv).expect("valid key and IV");
         assert_eq!(
@@ -75,7 +75,7 @@ mod test {
         assert!(aes_256_cbc_decrypt(&ctext, &key, &ctext).is_err());
 
         // bitflip the IV to cause a change in the recovered text
-        let bad_iv = hex::decode("ef8a557ddc0a140c878063a6d5f31d3d").expect("valid hex");
+        let bad_iv = hex!("ef8a557ddc0a140c878063a6d5f31d3d");
         let recovered = aes_256_cbc_decrypt(&ctext, &key, &bad_iv).expect("still valid");
         assert_eq!(hex::encode(recovered), "b0736294a124482a4159");
     }

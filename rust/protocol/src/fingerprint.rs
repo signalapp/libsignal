@@ -213,10 +213,12 @@ impl Fingerprint {
 #[cfg(test)]
 mod test {
     use super::*;
+    use hex_literal::hex;
 
-    const ALICE_IDENTITY: &str =
-        "0506863bc66d02b40d27b8d49ca7c09e9239236f9d7d25d6fcca5ce13c7064d868";
-    const BOB_IDENTITY: &str = "05f781b6fb32fed9ba1cf2de978d4d5da28dc34046ae814402b5c0dbd96fda907b";
+    const ALICE_IDENTITY: &[u8] =
+        &hex!("0506863bc66d02b40d27b8d49ca7c09e9239236f9d7d25d6fcca5ce13c7064d868");
+    const BOB_IDENTITY: &[u8] =
+        &hex!("05f781b6fb32fed9ba1cf2de978d4d5da28dc34046ae814402b5c0dbd96fda907b");
 
     const DISPLAYABLE_FINGERPRINT_V1: &str =
         "300354477692869396892869876765458257569162576843440918079131";
@@ -248,8 +250,8 @@ mod test {
     fn fingerprint_test_v1() -> Result<()> {
         // testVectorsVersion1 in Java
 
-        let a_key = IdentityKey::decode(&hex::decode(ALICE_IDENTITY).expect("valid hex"))?;
-        let b_key = IdentityKey::decode(&hex::decode(BOB_IDENTITY).expect("valid hex"))?;
+        let a_key = IdentityKey::decode(ALICE_IDENTITY)?;
+        let b_key = IdentityKey::decode(BOB_IDENTITY)?;
 
         let version = 1;
         let iterations = 5200;
@@ -300,8 +302,8 @@ mod test {
     fn fingerprint_test_v2() -> Result<()> {
         // testVectorsVersion2 in Java
 
-        let a_key = IdentityKey::decode(&hex::decode(ALICE_IDENTITY).expect("valid hex"))?;
-        let b_key = IdentityKey::decode(&hex::decode(BOB_IDENTITY).expect("valid hex"))?;
+        let a_key = IdentityKey::decode(ALICE_IDENTITY)?;
+        let b_key = IdentityKey::decode(BOB_IDENTITY)?;
 
         let version = 2;
         let iterations = 5200;
@@ -505,8 +507,8 @@ mod test {
 
     #[test]
     fn fingerprint_mismatching_versions() -> Result<()> {
-        let a_key = IdentityKey::decode(&hex::decode(ALICE_IDENTITY).expect("valid hex"))?;
-        let b_key = IdentityKey::decode(&hex::decode(BOB_IDENTITY).expect("valid hex"))?;
+        let a_key = IdentityKey::decode(ALICE_IDENTITY)?;
+        let b_key = IdentityKey::decode(BOB_IDENTITY)?;
 
         let iterations = 5200;
 
