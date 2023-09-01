@@ -66,7 +66,8 @@ public final class IncrementalMacOutputStream extends OutputStream {
     byte[] digestIncrement = Native.IncrementalMac_Finalize(this.incrementalMac);
     digestStream.write(digestIncrement);
     Native.IncrementalMac_Destroy(this.incrementalMac);
-    this.inner.close();
+    // Intentionally not closing the inner stream, as it seems to be causing
+    // problems on Android
     this.digestStream.close();
     this.closed = true;
   }
