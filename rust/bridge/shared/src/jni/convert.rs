@@ -76,7 +76,7 @@ pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
 ///     }
 /// }
 ///
-/// # fn test(env: &mut JNIEnv, jni_arg: JObject<'_>) -> SignalJniResult<()> {
+/// # fn test<'a>(env: &mut JNIEnv<'a>, jni_arg: JObject<'a>) -> SignalJniResult<()> {
 /// let rust_arg = Foo::convert_from(env, &jni_arg)?;
 /// #     Ok(())
 /// # }
@@ -646,89 +646,10 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
     }
 }
 
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, SignalProtocolError> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, device_transfer::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, attest::hsm_enclave::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, attest::sgx_session::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, signal_pin::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-#[cfg(feature = "signal-media")]
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, signal_media::sanitize::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, signal_crypto::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
-    for Result<T, zkgroup::ZkGroupVerificationFailure>
+impl<'a, T: ResultTypeInfo<'a>, E> ResultTypeInfo<'a> for Result<T, E>
+where
+    SignalJniError: From<E>,
 {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a>
-    for Result<T, zkgroup::ZkGroupDeserializationFailure>
-{
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, usernames::UsernameError> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Result<T, usernames::UsernameLinkError> {
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
-    }
-}
-
-impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for SignalJniResult<T> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
