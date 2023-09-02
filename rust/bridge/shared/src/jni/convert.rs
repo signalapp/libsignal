@@ -87,7 +87,7 @@ pub trait SimpleArgTypeInfo<'a>: Sized {
     /// The JNI form of the argument (e.g. `jint`).
     type ArgType: 'a;
     /// Converts the data in `foreign` to the Rust type.
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self>;
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self>;
 }
 
 impl<'storage, 'param: 'storage, 'context: 'param, T> ArgTypeInfo<'storage, 'param, 'context> for T
@@ -231,7 +231,7 @@ impl<'a> SimpleArgTypeInfo<'a> for String {
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     type ArgType = JString<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &JString<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &JString<'a>) -> SignalJniResult<Self> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -842,16 +842,18 @@ where
 {
     type ArgType = JByteArray<'a>;
 
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
-        let borrowed_array = unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack)? };
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        // Ideally we would deserialize directly to &T::Array. However, trying to require that
+        // T::Array: ArgTypeInfo is pretty much impossible with the lifetimes SimpleArgTypeInfo
+        // provides; we'd have to drop back to ArgTypeInfo for Serialized<T>.
+        let mut borrowed_array = <&[u8]>::borrow(env, foreign)?;
+        let bytes = <&[u8]>::load_from(&mut borrowed_array);
         assert_eq!(
-            borrowed_array.len(),
+            bytes.len(),
             T::Array::LEN,
             "{} should have been validated on creation",
             std::any::type_name::<T>()
         );
-        // Convert from i8 to u8.
-        let bytes = bytemuck::cast_slice(&borrowed_array);
         let result: T = bincode::deserialize(bytes).unwrap_or_else(|_| {
             panic!(
                 "{} should have been validated on creation",
@@ -881,7 +883,7 @@ impl<'a> SimpleArgTypeInfo<'a> for ServiceId {
 
 impl<'a> SimpleArgTypeInfo<'a> for Aci {
     type ArgType = JByteArray<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
             .map_err(|_| SignalProtocolError::InvalidArgument("not an ACI".to_string()).into())
@@ -890,7 +892,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Aci {
 
 impl<'a> SimpleArgTypeInfo<'a> for Pni {
     type ArgType = JByteArray<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
             .map_err(|_| SignalProtocolError::InvalidArgument("not a PNI".to_string()).into())
