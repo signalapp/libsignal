@@ -3,25 +3,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
-
 use hex_literal::hex;
-use lazy_static::lazy_static;
+
 use prost::Message;
 
 use crate::dcap::MREnclave;
 use crate::proto::svr2;
 use crate::sgx_session;
 use crate::sgx_session::{Error, Result};
+use crate::util::SmallMap;
 
-lazy_static! {
-    /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
-    /// build with that MREnclave value
-    static ref ACCEPTABLE_SW_ADVISORIES: HashMap<MREnclave, &'static [&'static str]> = HashMap::from([
-        (hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"), &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str]),
-        (hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"), &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str]),
+/// Map from MREnclave to intel SW advisories that are known to be mitigated in the
+/// build with that MREnclave value
+const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 2> =
+    &SmallMap::new([
+        (
+            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
     ]);
-}
 
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
@@ -45,23 +49,27 @@ impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
     }
 }
 
-lazy_static! {
-    /// Expected raft configuration for a given enclave.
-    static ref EXPECTED_RAFT_CONFIG: HashMap<MREnclave, &'static RaftConfig> = HashMap::from([
-        (hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"), &RaftConfig {
+/// Expected raft configuration for a given enclave.
+static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 2> = SmallMap::new([
+    (
+        hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
+        &RaftConfig {
             min_voting_replicas: 3,
             max_voting_replicas: 5,
             super_majority: 0,
-            group_id: 15525669046665930652
-        }),
-        (hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"), &RaftConfig {
+            group_id: 15525669046665930652,
+        },
+    ),
+    (
+        hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
+        &RaftConfig {
             min_voting_replicas: 4,
             max_voting_replicas: 7,
             super_majority: 2,
-            group_id: 3950115602363750357
-        }),
-    ]);
-}
+            group_id: 3950115602363750357,
+        },
+    ),
+]);
 
 pub struct Svr2Handshake {
     /// The attested handshake that can be used to establish a noise connection
