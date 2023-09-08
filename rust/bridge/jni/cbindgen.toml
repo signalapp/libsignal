@@ -21,4 +21,4 @@ extra_bindings = ["libsignal-bridge"]
 
 [parse.expand]
 crates = ["libsignal-jni", "libsignal-bridge"]
-features = ["libsignal-bridge/jni"]
+features = ["libsignal-bridge/jni", "libsignal-bridge/signal-media"]

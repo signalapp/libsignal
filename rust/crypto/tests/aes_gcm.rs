@@ -99,7 +99,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
             while processed != buf.len() {
                 let remaining = buf.len() - processed;
                 let this_time = if remaining > 1 {
-                    rng.gen_range(1, remaining)
+                    rng.gen_range(1..remaining)
                 } else {
                     remaining
                 };
@@ -120,10 +120,10 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
 
         gcm_dec.decrypt(&mut buf)?;
 
-        assert_eq!(
+        assert!(matches!(
             gcm_dec.verify_tag(&tag),
             Err(signal_crypto::Error::InvalidTag)
-        );
+        ));
     }
 
     Ok(())

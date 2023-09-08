@@ -35,9 +35,20 @@ export abstract class SignedPreKeyStore {
   _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
 }
 
+export abstract class KyberPreKeyStore {
+  _saveKyberPreKey(kyberPreKeyId: number, record: KyberPreKeyRecord): Promise<void>;
+  _getKyberPreKey(kyberPreKeyId: number): Promise<KyberPreKeyRecord>;
+  _markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void>;
+}
+
 export abstract class SenderKeyStore {
   _saveSenderKey(sender: ProtocolAddress, distributionId: Uuid, record: SenderKeyRecord): Promise<void>;
   _getSenderKey(sender: ProtocolAddress, distributionId: Uuid): Promise<SenderKeyRecord | null>;
+}
+
+export abstract class InputStream {
+  _read(amount: number): Promise<Buffer>;
+  _skip(amount: number): Promise<void>;
 }
 
 interface Wrapper<T> {

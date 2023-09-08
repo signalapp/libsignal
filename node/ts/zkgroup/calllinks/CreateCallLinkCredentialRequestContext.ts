@@ -13,7 +13,7 @@ import CreateCallLinkCredentialRequest from './CreateCallLinkCredentialRequest';
 import CreateCallLinkCredentialResponse from './CreateCallLinkCredentialResponse';
 import CreateCallLinkCredential from './CreateCallLinkCredential';
 import GenericServerPublicParams from '../GenericServerPublicParams';
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class CreateCallLinkCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
@@ -50,14 +50,14 @@ export default class CreateCallLinkCredentialRequestContext extends ByteArray {
 
   receive(
     response: CreateCallLinkCredentialResponse,
-    userId: UUIDType,
+    userId: Aci,
     params: GenericServerPublicParams
   ): CreateCallLinkCredential {
     return new CreateCallLinkCredential(
       Native.CreateCallLinkCredentialRequestContext_ReceiveResponse(
         this.contents,
         response.contents,
-        fromUUID(userId),
+        userId.getServiceIdFixedWidthBinary(),
         params.contents
       )
     );

@@ -110,7 +110,7 @@ impl ServerSecretParams {
     pub fn issue_auth_credential(
         &self,
         randomness: RandomnessBytes,
-        uid_bytes: UidBytes,
+        aci: libsignal_protocol::Aci,
         redemption_time: CoarseRedemptionTime,
     ) -> api::auth::AuthCredentialResponse {
         let mut sho = Sho::new(
@@ -118,7 +118,7 @@ impl ServerSecretParams {
             &randomness,
         );
 
-        let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
+        let uid = crypto::uid_struct::UidStruct::from_service_id(aci.into());
         let credential =
             self.auth_credentials_key_pair
                 .create_auth_credential(uid, redemption_time, &mut sho);
@@ -136,28 +136,34 @@ impl ServerSecretParams {
         }
     }
 
-    pub fn issue_auth_credential_with_pni(
+    fn issue_auth_credential_with_pni(
         &self,
         randomness: RandomnessBytes,
-        aci_bytes: UidBytes,
-        pni_bytes: UidBytes,
+        aci: libsignal_protocol::Aci,
+        pni: libsignal_protocol::Pni,
         redemption_time: Timestamp,
+        encode_pni_as_aci_for_backward_compatibility: bool,
     ) -> api::auth::AuthCredentialWithPniResponse {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20220617_Random_ServerSecretParams_IssueAuthCredentialWithPni",
             &randomness,
         );
 
-        let aci = crypto::uid_struct::UidStruct::new(aci_bytes);
-        let pni = crypto::uid_struct::UidStruct::new(pni_bytes);
+        let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
+        let pni_struct = if encode_pni_as_aci_for_backward_compatibility {
+            let pni_as_aci = libsignal_protocol::Aci::from(uuid::Uuid::from(pni));
+            crypto::uid_struct::UidStruct::from_service_id(pni_as_aci.into())
+        } else {
+            crypto::uid_struct::UidStruct::from_service_id(pni.into())
+        };
         let credential = self
             .auth_credentials_with_pni_key_pair
-            .create_auth_credential_with_pni(aci, pni, redemption_time, &mut sho);
+            .create_auth_credential_with_pni(aci_struct, pni_struct, redemption_time, &mut sho);
         let proof = crypto::proofs::AuthCredentialWithPniIssuanceProof::new(
             self.auth_credentials_with_pni_key_pair,
             credential,
-            aci,
-            pni,
+            aci_struct,
+            pni_struct,
             redemption_time,
             &mut sho,
         );
@@ -166,6 +172,26 @@ impl ServerSecretParams {
             credential,
             proof,
         }
+    }
+
+    pub fn issue_auth_credential_with_pni_as_service_id(
+        &self,
+        randomness: RandomnessBytes,
+        aci: libsignal_protocol::Aci,
+        pni: libsignal_protocol::Pni,
+        redemption_time: Timestamp,
+    ) -> api::auth::AuthCredentialWithPniResponse {
+        self.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time, false)
+    }
+
+    pub fn issue_auth_credential_with_pni_as_aci(
+        &self,
+        randomness: RandomnessBytes,
+        aci: libsignal_protocol::Aci,
+        pni: libsignal_protocol::Pni,
+        redemption_time: Timestamp,
+    ) -> api::auth::AuthCredentialWithPniResponse {
+        self.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time, true)
     }
 
     /// Checks that `current_time_in_seconds` is within the validity window defined by
@@ -311,7 +337,7 @@ impl ServerSecretParams {
         &self,
         randomness: RandomnessBytes,
         request: &api::profiles::ProfileKeyCredentialRequest,
-        uid_bytes: UidBytes,
+        aci: libsignal_protocol::Aci,
         commitment: api::profiles::ProfileKeyCommitment,
         credential_expiration_time: Timestamp,
     ) -> Result<api::profiles::ExpiringProfileKeyCredentialResponse, ZkGroupVerificationFailure>
@@ -327,7 +353,7 @@ impl ServerSecretParams {
             commitment.commitment,
         )?;
 
-        let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
+        let uid = crypto::uid_struct::UidStruct::from_service_id(aci.into());
         let blinded_credential_with_secret_nonce = self
             .expiring_profile_key_credentials_key_pair
             .create_blinded_expiring_profile_key_credential(
@@ -421,11 +447,11 @@ impl ServerPublicParams {
 
     pub fn receive_auth_credential(
         &self,
-        uid_bytes: UidBytes,
+        aci: libsignal_protocol::Aci,
         redemption_time: CoarseRedemptionTime,
         response: &api::auth::AuthCredentialResponse,
     ) -> Result<api::auth::AuthCredential, ZkGroupVerificationFailure> {
-        let uid = crypto::uid_struct::UidStruct::new(uid_bytes);
+        let uid = crypto::uid_struct::UidStruct::from_service_id(aci.into());
         response.proof.verify(
             self.auth_credentials_public_key,
             response.credential,
@@ -441,30 +467,59 @@ impl ServerPublicParams {
         })
     }
 
-    pub fn receive_auth_credential_with_pni(
+    fn receive_auth_credential_with_pni(
         &self,
-        aci_bytes: UidBytes,
-        pni_bytes: UidBytes,
+        aci: libsignal_protocol::Aci,
+        pni: libsignal_protocol::Pni,
         redemption_time: Timestamp,
         response: &api::auth::AuthCredentialWithPniResponse,
+        encode_pni_as_aci_for_backward_compatibility: bool,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
-        let aci = crypto::uid_struct::UidStruct::new(aci_bytes);
-        let pni = crypto::uid_struct::UidStruct::new(pni_bytes);
+        let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
+        let pni_struct = if encode_pni_as_aci_for_backward_compatibility {
+            // Older AuthCredentialWithPnis used the same encoding for PNIs as ACIs.
+            // This won't match up with UuidCiphertexts that hold correctly-encoded PNIs,
+            // but can still be used as a valid ACI credential.
+            let pni_as_aci = libsignal_protocol::Aci::from(uuid::Uuid::from(pni));
+            crypto::uid_struct::UidStruct::from_service_id(pni_as_aci.into())
+        } else {
+            crypto::uid_struct::UidStruct::from_service_id(pni.into())
+        };
         response.proof.verify(
             self.auth_credentials_with_pni_public_key,
             response.credential,
-            aci,
-            pni,
+            aci_struct,
+            pni_struct,
             redemption_time,
         )?;
 
         Ok(api::auth::AuthCredentialWithPni {
             reserved: Default::default(),
             credential: response.credential,
-            aci,
-            pni,
+            aci: aci_struct,
+            pni: pni_struct,
             redemption_time,
         })
+    }
+
+    pub fn receive_auth_credential_with_pni_as_service_id(
+        &self,
+        aci: libsignal_protocol::Aci,
+        pni: libsignal_protocol::Pni,
+        redemption_time: Timestamp,
+        response: &api::auth::AuthCredentialWithPniResponse,
+    ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
+        self.receive_auth_credential_with_pni(aci, pni, redemption_time, response, false)
+    }
+
+    pub fn receive_auth_credential_with_pni_as_aci(
+        &self,
+        aci: libsignal_protocol::Aci,
+        pni: libsignal_protocol::Pni,
+        redemption_time: Timestamp,
+        response: &api::auth::AuthCredentialWithPniResponse,
+    ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
+        self.receive_auth_credential_with_pni(aci, pni, redemption_time, response, true)
     }
 
     pub fn create_auth_credential_presentation(
@@ -550,13 +605,14 @@ impl ServerPublicParams {
     pub fn create_profile_key_credential_request_context(
         &self,
         randomness: RandomnessBytes,
-        uid_bytes: UidBytes,
+        aci: libsignal_protocol::Aci,
         profile_key: api::profiles::ProfileKey,
     ) -> api::profiles::ProfileKeyCredentialRequestContext {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20200424_Random_ServerPublicParams_CreateProfileKeyCredentialRequestContext",
             &randomness,
         );
+        let uid_bytes = uuid::Uuid::from(aci).into_bytes();
         let profile_key_struct =
             crypto::profile_key_struct::ProfileKeyStruct::new(profile_key.bytes, uid_bytes);
 
@@ -578,7 +634,7 @@ impl ServerPublicParams {
 
         api::profiles::ProfileKeyCredentialRequestContext {
             reserved: Default::default(),
-            uid_bytes,
+            aci_bytes: uid_bytes,
             profile_key_bytes: profile_key_struct.bytes,
             key_pair,
             ciphertext_with_secret_nonce,
@@ -595,7 +651,7 @@ impl ServerPublicParams {
         response.proof.verify(
             self.expiring_profile_key_credentials_public_key,
             context.key_pair.get_public_key(),
-            context.uid_bytes,
+            context.aci_bytes,
             context.ciphertext_with_secret_nonce.get_ciphertext(),
             response.blinded_credential,
             response.credential_expiration_time,
@@ -619,7 +675,7 @@ impl ServerPublicParams {
         Ok(api::profiles::ExpiringProfileKeyCredential {
             version: Default::default(),
             credential,
-            uid_bytes: context.uid_bytes,
+            aci_bytes: context.aci_bytes,
             profile_key_bytes: context.profile_key_bytes,
             credential_expiration_time: response.credential_expiration_time,
         })
@@ -640,12 +696,10 @@ impl ServerPublicParams {
         let profile_key_enc_key_pair = group_secret_params.profile_key_enc_key_pair;
         let credentials_public_key = self.expiring_profile_key_credentials_public_key;
 
-        let uuid_ciphertext =
-            group_secret_params.encrypt_uuid(expiring_profile_key_credential.uid_bytes);
-        let profile_key_ciphertext = group_secret_params.encrypt_profile_key_bytes(
-            expiring_profile_key_credential.profile_key_bytes,
-            expiring_profile_key_credential.uid_bytes,
-        );
+        let uid = expiring_profile_key_credential.aci();
+        let uuid_ciphertext = group_secret_params.encrypt_service_id(uid.into());
+        let profile_key_ciphertext = group_secret_params
+            .encrypt_profile_key_bytes(expiring_profile_key_credential.profile_key_bytes, uid);
 
         let proof = crypto::proofs::ExpiringProfileKeyCredentialPresentationProof::new(
             uid_enc_key_pair,
@@ -654,7 +708,7 @@ impl ServerPublicParams {
             expiring_profile_key_credential.credential,
             uuid_ciphertext.ciphertext,
             profile_key_ciphertext.ciphertext,
-            expiring_profile_key_credential.uid_bytes,
+            expiring_profile_key_credential.aci_bytes,
             expiring_profile_key_credential.profile_key_bytes,
             &mut sho,
         );

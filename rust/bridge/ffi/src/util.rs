@@ -10,7 +10,7 @@ use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
-use usernames::UsernameError;
+use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 #[derive(Debug)]
@@ -63,6 +63,15 @@ pub enum SignalErrorCode {
     UsernameBadCharacter = 124,
     UsernameTooShort = 125,
     UsernameTooLong = 126,
+
+    UsernameLinkInvalidEntropyDataLength = 127,
+    UsernameLinkInvalid = 128,
+
+    IoError = 130,
+    #[allow(dead_code)]
+    InvalidMediaInput = 131,
+    #[allow(dead_code)]
+    UnsupportedMediaInput = 132,
 }
 
 impl From<&SignalFfiError> for SignalErrorCode {
@@ -87,7 +96,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidPreKeyId)
-            | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
+            | SignalFfiError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
+            | SignalFfiError::Signal(SignalProtocolError::InvalidKyberPreKeyId) => {
                 SignalErrorCode::InvalidKeyIdentifier
             }
 
@@ -102,6 +112,9 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
             | SignalFfiError::Signal(SignalProtocolError::BadKeyType(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKeyLength(_, _))
+            | SignalFfiError::Signal(SignalProtocolError::BadKEMKeyType(_))
+            | SignalFfiError::Signal(SignalProtocolError::WrongKEMKeyType(_, _))
+            | SignalFfiError::Signal(SignalProtocolError::BadKEMKeyLength(_, _))
             | SignalFfiError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
             | SignalFfiError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
@@ -114,7 +127,10 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Pin(PinError::Argon2Error(_))
-            | SignalFfiError::Pin(PinError::DecodingError(_)) => SignalErrorCode::InvalidArgument,
+            | SignalFfiError::Pin(PinError::DecodingError(_))
+            | SignalFfiError::Pin(PinError::MrenclaveLookupError) => {
+                SignalErrorCode::InvalidArgument
+            }
 
             SignalFfiError::Signal(SignalProtocolError::SessionNotFound(_))
             | SignalFfiError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
@@ -145,6 +161,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Signal(SignalProtocolError::InvalidMessage(..))
             | SignalFfiError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
+            | SignalFfiError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
             | SignalFfiError::Sgx(SgxError::DcapError(_))
             | SignalFfiError::Sgx(SgxError::NoiseError(_))
@@ -217,12 +234,38 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UsernameTooShort
             }
 
-            SignalFfiError::UsernameError(UsernameError::NicknameTooLong) => {
+            SignalFfiError::UsernameError(UsernameError::NicknameTooLong)
+            | SignalFfiError::UsernameLinkError(UsernameLinkError::InputDataTooLong) => {
                 SignalErrorCode::UsernameTooLong
             }
 
             SignalFfiError::UsernameError(UsernameError::ProofVerificationFailure) => {
                 SignalErrorCode::VerificationFailure
+            }
+
+            SignalFfiError::UsernameLinkError(UsernameLinkError::InvalidEntropyDataLength) => {
+                SignalErrorCode::UsernameLinkInvalidEntropyDataLength
+            }
+
+            SignalFfiError::UsernameLinkError(_) => SignalErrorCode::UsernameLinkInvalid,
+
+            SignalFfiError::Io(_) => SignalErrorCode::IoError,
+
+            #[cfg(feature = "signal-media")]
+            SignalFfiError::MediaSanitizeParse(err) => {
+                use signal_media::sanitize::ParseError;
+                match err.kind {
+                    ParseError::InvalidBoxLayout { .. }
+                    | ParseError::InvalidInput { .. }
+                    | ParseError::MissingRequiredBox { .. }
+                    | ParseError::TruncatedBox => SignalErrorCode::InvalidMediaInput,
+
+                    ParseError::UnsupportedBoxLayout { .. }
+                    | ParseError::UnsupportedBox { .. }
+                    | ParseError::UnsupportedFormat { .. } => {
+                        SignalErrorCode::UnsupportedMediaInput
+                    }
+                }
             }
         }
     }

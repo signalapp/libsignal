@@ -17,14 +17,12 @@ public class SenderKeyDistributionMessage: NativeHandleOwner {
                             context: StoreContext) throws {
         var result: OpaquePointer?
         try sender.withNativeHandle { senderHandle in
-            try context.withOpaquePointer { context in
-                try withUnsafePointer(to: distributionId.uuid) { distributionId in
-                    try withSenderKeyStore(store) {
-                        try checkError(signal_sender_key_distribution_message_create(&result,
-                                                                                     senderHandle,
-                                                                                     distributionId,
-                                                                                     $0, context))
-                    }
+            try withUnsafePointer(to: distributionId.uuid) { distributionId in
+                try withSenderKeyStore(store, context) {
+                    try checkError(signal_sender_key_distribution_message_create(&result,
+                                                                                 senderHandle,
+                                                                                 distributionId,
+                                                                                 $0))
                 }
             }
         }

@@ -103,6 +103,37 @@ public class SessionCipherTest extends TestCase {
     assertTrue(Arrays.equals(alicePlaintext, bobPlaintext2));
   }
 
+  public void testDecryptAfterDelete() throws Exception {
+    PairOfSessions sessions = initializeSessionsV3();
+
+    SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+    SignalProtocolStore bobStore   = new TestInMemorySignalProtocolStore();
+
+    SignalProtocolAddress aliceAddress = new SignalProtocolAddress("+14159999999", 1);
+    SignalProtocolAddress bobAddress = new SignalProtocolAddress("+141588888888", 1);
+
+    aliceStore.storeSession(bobAddress, sessions.aliceSession);
+    bobStore.storeSession(aliceAddress, sessions.bobSession);
+
+    SessionCipher     aliceCipher    = new SessionCipher(aliceStore, bobAddress);
+    SessionCipher     bobCipher      = new SessionCipher(bobStore, aliceAddress);
+
+    byte[]            alicePlaintext = "This is a plaintext message.".getBytes();
+    CiphertextMessage message        = aliceCipher.encrypt(alicePlaintext);
+    byte[]            bobPlaintext   = bobCipher.decrypt(new SignalMessage(message.serialize()));
+
+    assertTrue(Arrays.equals(alicePlaintext, bobPlaintext));
+
+    CiphertextMessage message2 = aliceCipher.encrypt(alicePlaintext);
+
+    bobStore.deleteSession(aliceAddress);
+    try {
+      bobCipher.decrypt(new SignalMessage(message2.serialize()));
+    } catch (NoSessionException e) {
+      assertEquals(e.getAddress(), aliceAddress);
+    }
+  }
+
   private void runInteraction(SessionRecord aliceSessionRecord, SessionRecord bobSessionRecord)
       throws DuplicateMessageException, LegacyMessageException, InvalidMessageException, InvalidVersionException, InvalidKeyException, NoSuchAlgorithmException, NoSessionException, UntrustedIdentityException {
     SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();

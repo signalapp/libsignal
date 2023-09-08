@@ -83,6 +83,18 @@ internal func withNativeHandles<Result>(_ a: NativeHandleOwner, _ b: NativeHandl
     }
 }
 
+internal func withNativeHandles<Result>(_ a: NativeHandleOwner, _ b: NativeHandleOwner, _ c: NativeHandleOwner, _ d: NativeHandleOwner, _ callback: (OpaquePointer?, OpaquePointer?, OpaquePointer?, OpaquePointer?) throws -> Result) rethrows -> Result {
+    return try a.withNativeHandle { aHandle in
+        try b.withNativeHandle { bHandle in
+            try c.withNativeHandle { cHandle in
+                try d.withNativeHandle { dHandle in
+                    try callback(aHandle, bHandle, cHandle, dHandle)
+                }
+            }
+        }
+    }
+}
+
 public class ClonableHandleOwner: NativeHandleOwner {
     required internal init(owned handle: OpaquePointer) {
         super.init(owned: handle)

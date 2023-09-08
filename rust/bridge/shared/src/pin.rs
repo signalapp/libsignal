@@ -7,7 +7,9 @@ use libsignal_bridge_macros::*;
 
 use crate::support::*;
 use crate::*;
+use ::attest::svr2::lookup_groupid;
 use ::signal_pin::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
+use signal_pin::Error;
 
 bridge_handle!(PinHash, node = false);
 
@@ -27,8 +29,18 @@ pub fn PinHash_FromSalt(pin: &[u8], salt: &[u8; 32]) -> Result<PinHash> {
 }
 
 #[bridge_fn(node = false)]
-pub fn PinHash_FromUsernameGroupId(pin: &[u8], username: &[u8], groupid: u64) -> Result<PinHash> {
-    PinHash::create(pin, &PinHash::make_salt(username, groupid))
+pub fn PinHash_FromUsernameMrenclave(
+    pin: &[u8],
+    username: String,
+    mrenclave: &[u8],
+) -> Result<PinHash> {
+    PinHash::create(
+        pin,
+        &PinHash::make_salt(
+            &username,
+            lookup_groupid(mrenclave).ok_or(Error::MrenclaveLookupError)?,
+        ),
+    )
 }
 
 #[bridge_fn(node = false)]

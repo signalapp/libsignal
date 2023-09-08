@@ -38,12 +38,16 @@ pub use error::*;
 mod grpc;
 pub use grpc::*;
 
+mod io;
+pub use io::*;
+
 mod quic;
 pub use quic::*;
 
 mod storage;
 pub use storage::*;
-use usernames::UsernameError;
+
+use usernames::{UsernameError, UsernameLinkError};
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
@@ -106,6 +110,25 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
             if let Err(e) = result {
                 log::error!("failed to throw exception for {}: {}", error, e);
             }
+            return;
+        }
+
+        SignalJniError::Signal(SignalProtocolError::SessionNotFound(ref addr)) => {
+            let throwable = protocol_address_to_jobject(env, addr)
+                .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
+                .and_then(|(addr_object, message)| {
+                    let args = jni_args!((
+                        addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
+                        message => java.lang.String,
+                    ) -> void);
+                    Ok(env.new_object(
+                        jni_class_name!(org.signal.libsignal.protocol.NoSessionException),
+                        args.sig,
+                        &args.args,
+                    )?)
+                });
+
+            try_throw(env, throwable, error);
             return;
         }
 
@@ -248,7 +271,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId) => {
+        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
+        | SignalJniError::Signal(SignalProtocolError::InvalidKyberPreKeyId) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyIdException)
         }
 
@@ -257,12 +281,14 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
         | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
         | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
+        | SignalJniError::Signal(SignalProtocolError::BadKEMKeyType(_))
+        | SignalJniError::Signal(SignalProtocolError::WrongKEMKeyType(_, _))
+        | SignalJniError::Signal(SignalProtocolError::BadKEMKeyLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::SessionNotFound(_))
-        | SignalJniError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
+        SignalJniError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
             jni_class_name!(org.signal.libsignal.protocol.NoSessionException)
         }
 
@@ -274,6 +300,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
         | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
+        | SignalJniError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidMessageException)
         }
@@ -301,6 +328,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend)
         | SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
         | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _))
+        | SignalJniError::Signal(SignalProtocolError::SessionNotFound(..))
         | SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(..))
         | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
         | SignalJniError::UnexpectedPanic(_)
@@ -344,7 +372,8 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Pin(PinError::Argon2Error(_))
-        | SignalJniError::Pin(PinError::DecodingError(_)) => {
+        | SignalJniError::Pin(PinError::DecodingError(_))
+        | SignalJniError::Pin(PinError::MrenclaveLookupError) => {
             jni_class_name!(java.lang.IllegalArgumentException)
         }
 
@@ -391,6 +420,32 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
                     .usernames
                     .ProofVerificationFailureException
             )
+        }
+
+        SignalJniError::UsernameLinkError(UsernameLinkError::InputDataTooLong) => {
+            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInputDataTooLong)
+        }
+
+        SignalJniError::UsernameLinkError(UsernameLinkError::InvalidEntropyDataLength) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .UsernameLinkInvalidEntropyDataLength
+            )
+        }
+
+        SignalJniError::UsernameLinkError(_) => {
+            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInvalidLinkData)
+        }
+
+        SignalJniError::Io(_) => {
+            jni_class_name!(java.io.IOException)
+        }
+
+        #[cfg(feature = "signal-media")]
+        SignalJniError::MediaSanitizeParse(_) => {
+            jni_class_name!(org.signal.libsignal.media.ParseException)
         }
     };
 

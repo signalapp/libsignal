@@ -1,17 +1,25 @@
 #
-# Copyright 2020-2022 Signal Messenger, LLC.
+# Copyright 2020 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM debian:buster-20220316-slim@sha256:957293d0717a906c3c7b29c72eb5ba1c69359025ee3eee6ca6ce4b375256ff5b
+FROM ubuntu:jammy-20230624@sha256:b060fffe8e1561c9c3e6dea6db487b900100fc26830b9ea2ec966c151ab4c020
 
 COPY java/docker/ docker/
 COPY java/docker/apt.conf java/docker/sources.list /etc/apt/
 
+# Bit of a chicken-and-egg problem.
+# Ubuntu needs the ca-certificates package before it'll trust our mirror.
+# But we can't install it because it doesn't trust our mirror!
+# To resolve, we temporarily disable verification.
+RUN    apt-get update -oAcquire::https::Verify-Peer=false \
+    && apt-get install -oAcquire::https::Verify-Peer=false -y ca-certificates
+# Back to normal, verification back on
+RUN    apt-get update
+
 # Install only what's needed to set up Rust and Android
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN    apt-get update \
-    && apt-get install -y ca-certificates curl openjdk-11-jdk-headless unzip
+RUN    apt-get install -y curl openjdk-11-jdk-headless unzip
 
 ARG UID
 ARG GID

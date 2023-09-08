@@ -14,8 +14,7 @@ import ExpiringProfileKeyCredentialResponse from './ExpiringProfileKeyCredential
 import ProfileKeyCommitment from './ProfileKeyCommitment';
 import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation';
 import ProfileKeyCredentialRequest from './ProfileKeyCredentialRequest';
-
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class ServerZkProfileOperations {
   serverSecretParams: ServerSecretParams;
@@ -26,7 +25,7 @@ export default class ServerZkProfileOperations {
 
   issueExpiringProfileKeyCredential(
     profileKeyCredentialRequest: ProfileKeyCredentialRequest,
-    uuid: UUIDType,
+    userId: Aci,
     profileKeyCommitment: ProfileKeyCommitment,
     expirationInSeconds: number
   ): ExpiringProfileKeyCredentialResponse {
@@ -35,7 +34,7 @@ export default class ServerZkProfileOperations {
     return this.issueExpiringProfileKeyCredentialWithRandom(
       random,
       profileKeyCredentialRequest,
-      uuid,
+      userId,
       profileKeyCommitment,
       expirationInSeconds
     );
@@ -44,7 +43,7 @@ export default class ServerZkProfileOperations {
   issueExpiringProfileKeyCredentialWithRandom(
     random: Buffer,
     profileKeyCredentialRequest: ProfileKeyCredentialRequest,
-    uuid: UUIDType,
+    userId: Aci,
     profileKeyCommitment: ProfileKeyCommitment,
     expirationInSeconds: number
   ): ExpiringProfileKeyCredentialResponse {
@@ -53,7 +52,7 @@ export default class ServerZkProfileOperations {
         this.serverSecretParams.getContents(),
         random,
         profileKeyCredentialRequest.getContents(),
-        fromUUID(uuid),
+        userId.getServiceIdFixedWidthBinary(),
         profileKeyCommitment.getContents(),
         expirationInSeconds
       )

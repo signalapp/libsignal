@@ -8,7 +8,7 @@ import * as Native from '../../../Native';
 
 import CallLinkPublicParams from './CallLinkPublicParams';
 import UuidCiphertext from '../groups/UuidCiphertext';
-import { UUIDType, toUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class CallLinkSecretParams extends ByteArray {
   private readonly __type?: never;
@@ -29,8 +29,8 @@ export default class CallLinkSecretParams extends ByteArray {
     );
   }
 
-  decryptUserId(userId: UuidCiphertext): UUIDType {
-    return toUUID(
+  decryptUserId(userId: UuidCiphertext): Aci {
+    return Aci.parseFromServiceIdFixedWidthBinary(
       Native.CallLinkSecretParams_DecryptUserId(this.contents, userId.contents)
     );
   }

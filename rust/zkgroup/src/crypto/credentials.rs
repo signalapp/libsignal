@@ -548,7 +548,8 @@ mod tests {
 
         let uid_bytes = TEST_ARRAY_16;
         let redemption_time = 37;
-        let uid = uid_struct::UidStruct::new(uid_bytes);
+        let aci = libsignal_protocol::Aci::from_uuid_bytes(uid_bytes);
+        let uid = uid_struct::UidStruct::from_service_id(aci.into());
         let credential = keypair.create_auth_credential(uid, redemption_time, &mut sho);
         let proof = proofs::AuthCredentialIssuanceProof::new(
             keypair,

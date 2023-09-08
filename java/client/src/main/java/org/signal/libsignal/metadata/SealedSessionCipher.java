@@ -14,6 +14,7 @@ import org.signal.libsignal.protocol.InvalidRegistrationIdException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
+import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 import org.signal.libsignal.protocol.UntrustedIdentityException;
@@ -61,8 +62,7 @@ public class SealedSessionCipher {
         paddedPlaintext,
         addressGuard.nativeHandle(),
         this.signalProtocolStore,
-        this.signalProtocolStore,
-        null);
+        this.signalProtocolStore);
       UnidentifiedSenderMessageContent content = new UnidentifiedSenderMessageContent(
         message,
         senderCertificate,
@@ -82,8 +82,7 @@ public class SealedSessionCipher {
       return Native.SealedSessionCipher_Encrypt(
         addressGuard.nativeHandle(),
         contentGuard.nativeHandle(),
-        this.signalProtocolStore,
-        null);
+        this.signalProtocolStore);
     }
   }
 
@@ -116,8 +115,7 @@ public class SealedSessionCipher {
         recipientHandles,
         recipientSessionHandles,
         contentGuard.nativeHandle(),
-        this.signalProtocolStore,
-        null);
+        this.signalProtocolStore);
       // Manually keep the lists of recipients and sessions from being garbage collected
       // while we're using their native handles.
       Native.keepAlive(recipients);
@@ -154,7 +152,7 @@ public class SealedSessionCipher {
     UnidentifiedSenderMessageContent content;
     try {
       content = new UnidentifiedSenderMessageContent(
-        Native.SealedSessionCipher_DecryptToUsmc(ciphertext, this.signalProtocolStore, null));
+        Native.SealedSessionCipher_DecryptToUsmc(ciphertext, this.signalProtocolStore));
       validator.validate(content.getSenderCertificate(), timestamp);
     } catch (Exception e) {
       throw new InvalidMetadataMessageException(e);
@@ -239,6 +237,19 @@ public class SealedSessionCipher {
 
     public String getSenderUuid() {
       return senderUuid;
+    }
+
+    /**
+     * Returns an ACI if the sender is a valid UUID, {@code null} otherwise.
+     *
+     * In a future release DecryptionResult will <em>only</em> support ACIs.
+     */
+    public ServiceId.Aci getSenderAci() {
+      try {
+        return ServiceId.Aci.parseFromString(getSenderUuid());
+      } catch (ServiceId.InvalidServiceIdException e) {
+        return null;
+      }
     }
 
     public Optional<String> getSenderE164() {

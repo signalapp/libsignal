@@ -79,9 +79,9 @@ impl PinHash {
     /// # Arguments
     /// * `username` - The Basic Auth username credential retrieved from the chat service and used to authenticate with the SVR service
     /// * `group_id` - The attested group id returned by the SVR service
-    pub fn make_salt(username: &[u8], group_id: u64) -> [u8; 32] {
+    pub fn make_salt(username: &str, group_id: u64) -> [u8; 32] {
         let mut out = [0u8; 32];
-        Hkdf::<Sha256>::new(Some(&group_id.to_be_bytes()), username)
+        Hkdf::<Sha256>::new(Some(&group_id.to_be_bytes()), username.as_bytes())
             .expand(&[], &mut out)
             .expect("should expand");
         out
@@ -128,7 +128,7 @@ pub fn verify_local_pin_hash(encoded_hash: &str, pin: &[u8]) -> Result<bool> {
 #[cfg(test)]
 mod test {
     use hex_literal::hex;
-    use hmac::{Hmac, Mac, NewMac};
+    use hmac::{Hmac, Mac};
     use sha2::Sha256;
 
     use crate::hash::{local_pin_hash, verify_local_pin_hash, PinHash};
@@ -146,6 +146,7 @@ mod test {
         iv: [u8; 16],
         ciphertext: [u8; 32],
     }
+
     impl Encrypted {
         fn concat(&self) -> [u8; 48] {
             let mut ret = [0u8; 48];
@@ -157,6 +158,7 @@ mod test {
 
     const AUTH_BYTES: &[u8] = "auth".as_bytes();
     const ENC_BYTES: &[u8] = "enc".as_bytes();
+
     fn encrypt_hmac_sha256_siv(k: &[u8; 32], m: &[u8; 32]) -> Encrypted {
         let k_a = hmac_sha256(k, AUTH_BYTES);
         let k_e = hmac_sha256(k, ENC_BYTES);
@@ -193,7 +195,7 @@ mod test {
             hex!("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"),
             hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"),
             hex!("ab7e8499d21f80a6600b3b9ee349ac6d72c07e3359fe885a934ba7aa844429f8"),
-            hex!("3f33ce58eb25b40436592a30eae2a8fabab1899095f4e2fba6e2d0dc43b4a2d9cac5a3931748522393951e0e54dec769")
+            hex!("3f33ce58eb25b40436592a30eae2a8fabab1899095f4e2fba6e2d0dc43b4a2d9cac5a3931748522393951e0e54dec769"),
         );
     }
 
@@ -204,7 +206,7 @@ mod test {
             hex!("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"),
             hex!("88a787415a2ecd79da0d1016a82a27c5c695c9a19b88b0aa1d35683280aa9a67"),
             hex!("301d9dd1e96f20ce51083f67d3298fd37b97525de8324d5e12ed2d407d3d927b"),
-            hex!("9d9b05402ea39c17ff1c9298c8a0e86784a352aa02a74943bf8bcf07ec0f4b574a5b786ad0182c8d308d9eb06538b8c9")
+            hex!("9d9b05402ea39c17ff1c9298c8a0e86784a352aa02a74943bf8bcf07ec0f4b574a5b786ad0182c8d308d9eb06538b8c9"),
         );
     }
 
@@ -231,7 +233,7 @@ mod test {
 
     #[test]
     fn known_salt() {
-        let username = b"username";
+        let username = "username";
         let group_id = 3862621253427332054u64;
         assert_eq!(
             PinHash::make_salt(username, group_id),

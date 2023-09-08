@@ -1,6 +1,7 @@
 package org.signal.libsignal.metadata;
 
 import org.signal.libsignal.metadata.protocol.UnidentifiedSenderMessageContent;
+import org.signal.libsignal.protocol.ServiceId;
 
 import java.util.Optional;
 
@@ -30,6 +31,17 @@ public abstract class ProtocolException extends Exception {
 
   public String getSender() {
     return sender;
+  }
+
+  /**
+   * Returns an Aci if the sender is a valid UUID, {@code null} otherwise.
+   */
+  public ServiceId.Aci getSenderAci() {
+    try {
+      return ServiceId.Aci.parseFromString(getSender());
+    } catch (ServiceId.InvalidServiceIdException e) {
+      return null;
+    }
   }
 
   public int getSenderDevice() {

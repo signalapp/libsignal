@@ -221,7 +221,7 @@ fn char_to_byte(c: char) -> Option<u8> {
 
 fn to_base_37_scalar(bytes: &[u8]) -> Scalar {
     let thirty_seven = Scalar::from(37u8);
-    let mut scalar = Scalar::zero();
+    let mut scalar = Scalar::ZERO;
     for b in bytes.iter().skip(1).rev() {
         scalar *= thirty_seven;
         scalar += Scalar::from(*b);
@@ -238,7 +238,7 @@ fn validate_discriminator<T: FromStr + PartialOrd + From<u8>>(
         return Err(UsernameError::BadDiscriminator);
     }
     let first_ascii_char = discriminator.as_bytes()[0];
-    if !(b'0'..=b'9').contains(&first_ascii_char) {
+    if !first_ascii_char.is_ascii_digit() {
         // "+123" is allowed by Rust u*::from_str, but not by us.
         return Err(UsernameError::BadDiscriminator);
     }
@@ -322,6 +322,7 @@ mod test {
             Username::new(username).map(|name| name.hash()).unwrap();
         }
     }
+
     #[test]
     fn invalid_usernames() {
         for username in [

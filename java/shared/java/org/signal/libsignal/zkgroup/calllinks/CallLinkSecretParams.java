@@ -5,13 +5,13 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import org.signal.libsignal.protocol.ServiceId;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.groups.UuidCiphertext;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
-
-import java.util.UUID;
 
 public final class CallLinkSecretParams extends ByteArray {
 
@@ -40,8 +40,12 @@ public final class CallLinkSecretParams extends ByteArray {
     }
   }
 
-  public UUID decryptUserId(UuidCiphertext ciphertext) throws VerificationFailedException {
-    return Native.CallLinkSecretParams_DecryptUserId(getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI());
+  public Aci decryptUserId(UuidCiphertext ciphertext) throws VerificationFailedException {
+    try {
+      return Aci.parseFromFixedWidthBinary(Native.CallLinkSecretParams_DecryptUserId(getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI()));
+    } catch (ServiceId.InvalidServiceIdException e) {
+      throw new VerificationFailedException();
+    }
   }
 
 }

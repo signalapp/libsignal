@@ -32,13 +32,13 @@ pub struct CallLinkAuthCredentialResponse {
 
 impl CallLinkAuthCredentialResponse {
     pub fn issue_credential(
-        user_id: UidBytes,
+        user_id: libsignal_protocol::Aci,
         redemption_time: Timestamp,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
     ) -> CallLinkAuthCredentialResponse {
         let proof = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
-            .add_attribute(&UidStruct::new(user_id))
+            .add_attribute(&UidStruct::from_service_id(user_id.into()))
             .add_public_attribute(&redemption_time)
             .issue(&params.credential_key, randomness);
         Self {
@@ -49,7 +49,7 @@ impl CallLinkAuthCredentialResponse {
 
     pub fn receive(
         self,
-        user_id: UidBytes,
+        user_id: libsignal_protocol::Aci,
         redemption_time: Timestamp,
         params: &GenericServerPublicParams,
     ) -> Result<CallLinkAuthCredential, ZkGroupVerificationFailure> {
@@ -58,7 +58,7 @@ impl CallLinkAuthCredentialResponse {
         }
 
         let raw_credential = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
-            .add_attribute(&UidStruct::new(user_id))
+            .add_attribute(&UidStruct::from_service_id(user_id.into()))
             .add_public_attribute(&redemption_time)
             .verify(&params.credential_key, self.proof)
             .map_err(|_| ZkGroupVerificationFailure)?;
@@ -80,13 +80,13 @@ pub struct CallLinkAuthCredential {
 impl CallLinkAuthCredential {
     pub fn present(
         &self,
-        user_id: UidBytes,
+        user_id: libsignal_protocol::Aci,
         redemption_time: Timestamp,
         server_params: &GenericServerPublicParams,
         call_link_params: &CallLinkSecretParams,
         randomness: RandomnessBytes,
     ) -> CallLinkAuthCredentialPresentation {
-        let uid_attr = UidStruct::new(user_id);
+        let uid_attr = UidStruct::from_service_id(user_id.into());
         let proof = zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
             .add_attribute(&uid_attr, &call_link_params.uid_enc_key_pair)
             .present(&server_params.credential_key, &self.credential, randomness);

@@ -15,6 +15,24 @@ public struct Username {
         self.hash = try generateHash(self.value)
     }
 
+    public init<
+        LinkBytes: ContiguousBytes,
+        RandBytes: ContiguousBytes
+    >(
+        fromLink bytes: LinkBytes,
+        withRandomness randomness: RandBytes
+    ) throws {
+        let username =
+            try randomness.withUnsafeBorrowedBuffer { randBuffer in
+                try bytes.withUnsafeBorrowedBuffer { bytesBuffer in
+                    try invokeFnReturningString {
+                        signal_username_link_decrypt_username($0, randBuffer, bytesBuffer)
+                    }
+                }
+            }
+        try self.init(username)
+    }
+
     public func generateProof(withRandomness randomness: Randomness? = nil) -> [UInt8] {
         failOnError {
             let randomness = try randomness ?? Randomness.generate()
@@ -28,6 +46,17 @@ public struct Username {
                 }
             }
         }
+    }
+
+    public func createLink() throws -> ([UInt8], [UInt8]) {
+        let bytes = failOnError {
+            return try self.value.withCString { usernamePtr in
+                try invokeFnReturningArray {
+                    signal_username_link_create($0, usernamePtr)
+                }
+            }
+        }
+        return (Array(bytes[..<32]), Array(bytes[32...]))
     }
 
     public static func verify(proof: [UInt8], forHash hash: [UInt8]) throws {
@@ -58,6 +87,8 @@ extension Username: CustomStringConvertible {
         return value
     }
 }
+
+extension Username: Equatable { }
 
 private func generateHash(_ s: String) throws -> [UInt8] {
     try s.withCString { strPtr in

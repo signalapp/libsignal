@@ -12,7 +12,7 @@ import UuidCiphertext from './UuidCiphertext';
 import ProfileKeyCiphertext from './ProfileKeyCiphertext';
 import ProfileKey from '../profiles/ProfileKey';
 import GroupSecretParams from './GroupSecretParams';
-import { UUIDType, fromUUID, toUUID } from '../internal/UUIDUtil';
+import { Aci, ServiceId } from '../../Address';
 
 export default class ClientZkGroupCipher {
   groupSecretParams: GroupSecretParams;
@@ -21,46 +21,43 @@ export default class ClientZkGroupCipher {
     this.groupSecretParams = groupSecretParams;
   }
 
-  encryptUuid(uuid: UUIDType): UuidCiphertext {
+  encryptServiceId(serviceId: ServiceId): UuidCiphertext {
     return new UuidCiphertext(
-      Native.GroupSecretParams_EncryptUuid(
+      Native.GroupSecretParams_EncryptServiceId(
         this.groupSecretParams.getContents(),
-        fromUUID(uuid)
+        serviceId.getServiceIdFixedWidthBinary()
       )
     );
   }
 
-  decryptUuid(uuidCiphertext: UuidCiphertext): UUIDType {
-    return toUUID(
-      Native.GroupSecretParams_DecryptUuid(
+  decryptServiceId(ciphertext: UuidCiphertext): ServiceId {
+    return ServiceId.parseFromServiceIdFixedWidthBinary(
+      Native.GroupSecretParams_DecryptServiceId(
         this.groupSecretParams.getContents(),
-        uuidCiphertext.getContents()
+        ciphertext.getContents()
       )
     );
   }
 
-  encryptProfileKey(
-    profileKey: ProfileKey,
-    uuid: UUIDType
-  ): ProfileKeyCiphertext {
+  encryptProfileKey(profileKey: ProfileKey, userId: Aci): ProfileKeyCiphertext {
     return new ProfileKeyCiphertext(
       Native.GroupSecretParams_EncryptProfileKey(
         this.groupSecretParams.getContents(),
         profileKey.getContents(),
-        fromUUID(uuid)
+        userId.getServiceIdFixedWidthBinary()
       )
     );
   }
 
   decryptProfileKey(
     profileKeyCiphertext: ProfileKeyCiphertext,
-    uuid: UUIDType
+    userId: Aci
   ): ProfileKey {
     return new ProfileKey(
       Native.GroupSecretParams_DecryptProfileKey(
         this.groupSecretParams.getContents(),
         profileKeyCiphertext.getContents(),
-        fromUUID(uuid)
+        userId.getServiceIdFixedWidthBinary()
       )
     );
   }

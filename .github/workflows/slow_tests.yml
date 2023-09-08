@@ -14,7 +14,7 @@ jobs:
   check-up-to-date:
     name: Already up to date?
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' }}
+    if: ${{ github.event_name == 'schedule' && github.repository_owner == 'signalapp' && endsWith(github.repository, '-private') }}
     outputs:
       has-changes: ${{ steps.check.outputs.has-changes }}
     steps:
@@ -26,7 +26,7 @@ jobs:
     name: Java (Docker)
     runs-on: ubuntu-latest
     needs: [check-up-to-date]
-    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
     - uses: actions/checkout@v3
@@ -40,8 +40,8 @@ jobs:
 
   android-emulator-tests:
     name: Android Emulator Tests
-    # For hardware acceleration; see https://github.com/ReactiveCircus/android-emulator-runner/issues/46
-    runs-on: macos-latest
+    # For hardware acceleration; see https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
+    runs-on: ubuntu-latest-4-cores
     needs: [java-docker]
     if: ${{ always() && needs.java-docker.result == 'success' }}
 
@@ -52,6 +52,13 @@ jobs:
 
     steps:
       - run: 'echo "JAVA_HOME=$JAVA_HOME_11_X64" >> "$GITHUB_ENV"'
+
+      # For hardware acceleration; see https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
+      - name: Enable KVM group perms
+        run: |
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
 
       - uses: actions/checkout@v3
 
@@ -70,11 +77,11 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.arch }}-21
+          key: avd-${{ matrix.arch }}-21-linux
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@50986b1464923454c95e261820bc626f38490ec0 # v2.27.0
+        uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
         with:
           arch: ${{ matrix.arch }}
           api-level: 21
@@ -83,7 +90,7 @@ jobs:
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
-        uses: reactivecircus/android-emulator-runner@50986b1464923454c95e261820bc626f38490ec0 # v2.27.0
+        uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
         with:
           arch: ${{ matrix.arch }}
           api-level: 21
@@ -96,17 +103,43 @@ jobs:
     name: Node (Ubuntu via Docker)
     runs-on: ubuntu-latest
     needs: [check-up-to-date]
-    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
     - uses: actions/checkout@v3
     - run: node/docker-prebuildify.sh
 
-  swift_cocoapod:
+  node-windows-arm64:
+    name: Node (Windows ARM64 cross-compile)
+    runs-on: windows-latest
+    needs: [check-up-to-date]
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-pc-windows-msvc
+    # install nasm compiler for boring
+    - name: Install nasm
+      run: choco install nasm
+      shell: cmd
+    - name: Get Node version from .nvmrc
+      id: get-nvm-version
+      shell: bash
+      run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+    - uses: actions/setup-node@v3
+      with:
+        node-version-file: '.nvmrc'
+    - run: npx yarn install --ignore-scripts --frozen-lockfile
+      working-directory: node
+    - name: Build for arm64
+      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+      working-directory: node
+
+  swift-cocoapod:
     name: Swift CocoaPod (with Catalyst)
     runs-on: macOS-latest
     needs: [check-up-to-date]
-    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || needs.check-up-to-date.result == 'skipped') }}
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
       - uses: actions/checkout@v3
@@ -147,3 +180,25 @@ jobs:
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
+
+  report_failures:
+    name: Report Failures
+    runs-on: ubuntu-latest
+    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+
+    permissions:
+      # createCommitComment is supposed to only need the default 'read' permissions...
+      # ...but maybe it's different for private repositories.
+      contents: write
+
+    steps:
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.repos.createCommitComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            commit_sha: context.sha,
+            body: 'Failed Slow Tests: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}>'
+          })

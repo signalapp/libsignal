@@ -53,9 +53,9 @@ public class SgxClientTest {
                 ServiceType.CDS2
             },
             {
-                Hex.fromStringCondensed("f25dfd3b18adc4c0dc190bae1edd603ceca81b42a10b1de52f74db99b338619e"),
+                Hex.fromStringCondensed("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
                 svr2Handshake,
-                Instant.ofEpochSecond(1676529724),
+                Instant.ofEpochSecond(1683836600),
                 ServiceType.SVR2
             }
         });
@@ -65,7 +65,7 @@ public class SgxClientTest {
     private SgxClient getClient(byte[] mrenclave, byte[] attestationMsg, Instant currentTime) throws AttestationDataException {
         switch (serviceType) {
             case SVR2:
-                return Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave, attestationMsg, currentTime);
+                return new Svr2Client(mrenclave, attestationMsg, currentTime);
             case CDS2:
                 return new Cds2Client(mrenclave, attestationMsg, currentTime);
         }

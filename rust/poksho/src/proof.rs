@@ -20,6 +20,7 @@ impl Proof {
             return None;
         }
         let challenge = scalar_from_slice_canonical(&bytes[0..32])?;
+
         let mut response = Vec::<Scalar>::with_capacity(num_scalars - 1);
         for i in 1..num_scalars {
             response.push(scalar_from_slice_canonical(&bytes[32 * i..(32 * i) + 32])?);

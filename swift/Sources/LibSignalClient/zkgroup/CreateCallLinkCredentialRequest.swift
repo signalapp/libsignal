@@ -11,16 +11,16 @@ public class CreateCallLinkCredentialRequest: ByteArray {
     try super.init(contents, checkValid: signal_create_call_link_credential_request_check_valid_contents)
   }
 
-  public func issueCredential(userId: UUID, timestamp: Date, params: GenericServerSecretParams) -> CreateCallLinkCredentialResponse {
+  public func issueCredential(userId: Aci, timestamp: Date, params: GenericServerSecretParams) -> CreateCallLinkCredentialResponse {
     return failOnError {
       issueCredential(userId: userId, timestamp: timestamp, params: params, randomness: try .generate())
     }
   }
 
-  public func issueCredential(userId: UUID, timestamp: Date, params: GenericServerSecretParams, randomness: Randomness) -> CreateCallLinkCredentialResponse {
+  public func issueCredential(userId: Aci, timestamp: Date, params: GenericServerSecretParams, randomness: Randomness) -> CreateCallLinkCredentialResponse {
     return failOnError {
       try withUnsafeBorrowedBuffer { contents in
-        try withUnsafePointer(to: userId.uuid) { userId in
+        try userId.withPointerToFixedWidthBinary { userId in
           try params.withUnsafeBorrowedBuffer { params in
             try randomness.withUnsafePointerToBytes { randomness in
               try invokeFnReturningVariableLengthSerialized {

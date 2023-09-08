@@ -180,6 +180,13 @@ public class SenderCertificate: NativeHandleOwner {
         }
     }
 
+    /// Returns an ACI if the sender is a valid UUID, `nil` otherwise.
+    ///
+    /// In a future release SenderCertificate will *only* support ACIs.
+    public var senderAci: Aci! {
+        return try? Aci.parseFrom(serviceIdString: senderUuid)
+    }
+
     public var senderE164: String? {
         return withNativeHandle { nativeHandle in
             failOnError {

@@ -93,8 +93,7 @@ public class SessionBuilder {
       Native.SessionBuilder_ProcessPreKeyBundle(preKeyGuard.nativeHandle(),
                                                 remoteAddressGuard.nativeHandle(),
                                                 sessionStore,
-                                                identityKeyStore,
-                                                null);
+                                                identityKeyStore);
     }
   }
 }

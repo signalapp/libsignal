@@ -9,6 +9,8 @@ import { randomBytes } from 'crypto';
 import { RANDOM_LENGTH } from './zkgroup/internal/Constants';
 import * as Native from '../Native';
 
+export type UsernameLink = { entropy: Buffer; encryptedUsername: Buffer };
+
 export function generateCandidates(
   nickname: string,
   minNicknameLength: number,
@@ -35,6 +37,20 @@ export function generateProofWithRandom(
   random: Buffer
 ): Buffer {
   return Native.Username_Proof(username, random);
+}
+
+export function decryptUsernameLink(usernameLink: UsernameLink): string {
+  return Native.UsernameLink_DecryptUsername(
+    usernameLink.entropy,
+    usernameLink.encryptedUsername
+  );
+}
+
+export function createUsernameLink(username: string): UsernameLink {
+  const usernameLinkData = Native.UsernameLink_Create(username);
+  const entropy = usernameLinkData.slice(0, 32);
+  const encryptedUsername = usernameLinkData.slice(32);
+  return { entropy, encryptedUsername };
 }
 
 // Only for testing. Will throw on failure.

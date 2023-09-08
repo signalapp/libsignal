@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.GenericServerPublicParams;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -12,7 +13,6 @@ import org.signal.libsignal.internal.Native;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.UUID;
 
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
@@ -23,15 +23,15 @@ public final class CallLinkAuthCredential extends ByteArray {
     Native.CallLinkAuthCredential_CheckValidContents(contents);
   }
 
-  public CallLinkAuthCredentialPresentation present(UUID userId, Instant redemptionTime, GenericServerPublicParams serverParams, CallLinkSecretParams callLinkParams) {
+  public CallLinkAuthCredentialPresentation present(Aci userId, Instant redemptionTime, GenericServerPublicParams serverParams, CallLinkSecretParams callLinkParams) {
     return present(userId, redemptionTime, serverParams, callLinkParams, new SecureRandom());
   }
 
-  public CallLinkAuthCredentialPresentation present(UUID userId, Instant redemptionTime, GenericServerPublicParams serverParams, CallLinkSecretParams callLinkParams, SecureRandom secureRandom) {
+  public CallLinkAuthCredentialPresentation present(Aci userId, Instant redemptionTime, GenericServerPublicParams serverParams, CallLinkSecretParams callLinkParams, SecureRandom secureRandom) {
     byte[] random      = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.CallLinkAuthCredential_PresentDeterministic(getInternalContentsForJNI(), userId, redemptionTime.getEpochSecond(), serverParams.getInternalContentsForJNI(), callLinkParams.getInternalContentsForJNI(), random);
+    byte[] newContents = Native.CallLinkAuthCredential_PresentDeterministic(getInternalContentsForJNI(), userId.toServiceIdFixedWidthBinary(), redemptionTime.getEpochSecond(), serverParams.getInternalContentsForJNI(), callLinkParams.getInternalContentsForJNI(), random);
 
     try {
       return new CallLinkAuthCredentialPresentation(newContents);

@@ -7,7 +7,7 @@ import ByteArray from '../internal/ByteArray';
 import * as Native from '../../../Native';
 import ProfileKeyCommitment from './ProfileKeyCommitment';
 import ProfileKeyVersion from './ProfileKeyVersion';
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class ProfileKey extends ByteArray {
   private readonly __type?: never;
@@ -17,15 +17,21 @@ export default class ProfileKey extends ByteArray {
     super(contents, ProfileKey.checkLength(ProfileKey.SIZE));
   }
 
-  getCommitment(uuid: UUIDType): ProfileKeyCommitment {
+  getCommitment(userId: Aci): ProfileKeyCommitment {
     return new ProfileKeyCommitment(
-      Native.ProfileKey_GetCommitment(this.contents, fromUUID(uuid))
+      Native.ProfileKey_GetCommitment(
+        this.contents,
+        userId.getServiceIdFixedWidthBinary()
+      )
     );
   }
 
-  getProfileKeyVersion(uuid: UUIDType): ProfileKeyVersion {
+  getProfileKeyVersion(userId: Aci): ProfileKeyVersion {
     return new ProfileKeyVersion(
-      Native.ProfileKey_GetProfileKeyVersion(this.contents, fromUUID(uuid))
+      Native.ProfileKey_GetProfileKeyVersion(
+        this.contents,
+        userId.getServiceIdFixedWidthBinary()
+      )
     );
   }
 

@@ -4,6 +4,8 @@
 //
 package org.signal.libsignal.usernames;
 
+import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import org.signal.libsignal.internal.Native;
 
 import java.security.SecureRandom;
@@ -12,16 +14,50 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class Username {
-    private String value;
-    private byte[] hash;
+    private final String username;
+    private final byte[] hash;
+
+    public static class UsernameLink {
+        private final byte[] entropy;
+        private final byte[] encryptedUsername;
+
+        public UsernameLink(final byte[] entropy, final byte[] encryptedUsername) {
+            this.entropy = Objects.requireNonNull(entropy, "entropy");
+            this.encryptedUsername = Objects.requireNonNull(encryptedUsername, "encryptedUsername");
+        }
+
+        public byte[] getEntropy() {
+            return entropy;
+        }
+
+        public byte[] getEncryptedUsername() {
+            return encryptedUsername;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            final UsernameLink that = (UsernameLink) o;
+            return Arrays.equals(entropy, that.entropy) &&
+                Arrays.equals(encryptedUsername, that.encryptedUsername);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Arrays.hashCode(entropy);
+            result = 31 * result + Arrays.hashCode(encryptedUsername);
+            return result;
+        }
+    }
 
     public Username(String username) throws BaseUsernameException {
-        this.value = username;
+        this.username = Objects.requireNonNull(username, "username");
         this.hash = hash(username);
     }
 
     public String getUsername() {
-        return this.value;
+        return this.username;
     }
 
     public byte[] getHash() {
@@ -37,6 +73,11 @@ public final class Username {
         return result;
     }
 
+    public static Username fromLink(final UsernameLink usernameLink) throws BaseUsernameException {
+        final String username = Native.UsernameLink_DecryptUsername(usernameLink.getEntropy(), usernameLink.getEncryptedUsername());
+        return new Username(username);
+    }
+
     public byte[] generateProof() throws BaseUsernameException {
         byte[] randomness = new byte[32];
         SecureRandom r = new SecureRandom();
@@ -45,7 +86,14 @@ public final class Username {
     }
 
     public byte[] generateProofWithRandomness(byte[] randomness) throws BaseUsernameException {
-        return Native.Username_Proof(this.value, randomness);
+        return Native.Username_Proof(this.username, randomness);
+    }
+
+    public UsernameLink generateLink() throws BaseUsernameException  {
+        final byte[] bytes = Native.UsernameLink_Create(username);
+        final byte[] entropy = Arrays.copyOfRange(bytes, 0, 32);
+        final byte[] enctyptedUsername = Arrays.copyOfRange(bytes, 32, bytes.length);
+        return new UsernameLink(entropy, enctyptedUsername);
     }
 
     @Deprecated
@@ -70,6 +118,19 @@ public final class Username {
 
     @Override
     public String toString() {
-        return this.value;
+        return this.username;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final Username username1 = (Username) o;
+        return username.equals(username1.username);
+    }
+
+    @Override
+    public int hashCode() {
+        return username.hashCode();
     }
 }

@@ -23,10 +23,10 @@ class SgxTests: TestCaseBase {
 
         (
             ServiceType.svr2,
-            // echo f25dfd3b18adc4c0dc190bae1edd603ceca81b42a10b1de52f74db99b338619e | xxd -r -p | base64
-            Data(base64Encoded: "8l39OxitxMDcGQuuHt1gPOyoG0KhCx3lL3TbmbM4YZ4=")!,
+            // echo a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95 | xxd -r -p | base64
+            Data(base64Encoded: "qKJhQgprubYaolv4p56L0g12UlMf6zOBy//URtJwvpU=")!,
             SgxTests.readResource(forName: "svr2handshakestart.data"),
-            Date(timeIntervalSince1970: 1_676_529_724)
+            Date(timeIntervalSince1970: 1_683_836_600)
         ),
     ]
 
@@ -43,7 +43,7 @@ class SgxTests: TestCaseBase {
         case .cds2:
             return try Cds2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         case .svr2:
-            return try Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
+            return try Svr2Client(mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
         }
     }
 
@@ -101,27 +101,5 @@ class SgxTests: TestCaseBase {
                 currentDate: currentDate)
             XCTAssertThrowsError(try client.establishedRecv(receivedCiphertext), String(describing: serviceType))
         }
-    }
-
-    func testSvr2PinHash() {
-        for (serviceType, mrenclave, attestationMsg, currentDate) in testCases {
-            guard serviceType == ServiceType.svr2 else { continue }
-
-            let pin = Array("password".utf8)
-            let username = Array("username".utf8)
-
-            // echo "d6159ba30f90b6eb6ccf1ec844427f052baaf0705da849767471744cdb3f8a5e" | xxd -r -p | base64
-            let knownSalt = Data(base64Encoded: "1hWbow+Qtutszx7IREJ/BSuq8HBdqEl2dHF0TNs/il4=")!
-
-            let client = try! Svr2Client.create_NOT_FOR_PRODUCTION(mrenclave: mrenclave, attestationMessage: attestationMsg, currentDate: currentDate)
-            let pinHash = try! client.hashPin(pin, forUser: username)
-
-            let expectedHash = try! PinHash(pin: pin, salt: knownSalt)
-
-            XCTAssertEqual(pinHash.encryptionKey, expectedHash.encryptionKey)
-            XCTAssertEqual(pinHash.accessKey, expectedHash.accessKey)
-
-        }
-
     }
 }

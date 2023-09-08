@@ -30,6 +30,8 @@ pub mod error;
 mod fingerprint;
 mod group_cipher;
 mod identity_key;
+pub mod incremental_mac;
+pub mod kem;
 mod proto;
 mod protocol;
 mod ratchet;
@@ -43,7 +45,9 @@ mod utils;
 
 use error::Result;
 
-pub use address::{DeviceId, ProtocolAddress};
+pub use address::{
+    Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
+};
 pub use curve::{KeyPair, PrivateKey, PublicKey};
 pub use error::SignalProtocolError;
 pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
@@ -54,8 +58,8 @@ pub use group_cipher::{
 pub use identity_key::{IdentityKey, IdentityKeyPair};
 pub use protocol::{
     extract_decryption_error_message_from_serialized_content, CiphertextMessage,
-    CiphertextMessageType, DecryptionErrorMessage, PlaintextContent, PreKeySignalMessage,
-    SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
+    CiphertextMessageType, DecryptionErrorMessage, KyberPayload, PlaintextContent,
+    PreKeySignalMessage, SenderKeyDistributionMessage, SenderKeyMessage, SignalMessage,
 };
 pub use ratchet::{
     initialize_alice_session_record, initialize_bob_session_record, AliceSignalProtocolParameters,
@@ -73,10 +77,11 @@ pub use session_cipher::{
     message_decrypt, message_decrypt_prekey, message_decrypt_signal, message_encrypt,
 };
 pub use state::{
-    PreKeyBundle, PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
+    GenericSignedPreKey, KyberPreKeyId, KyberPreKeyRecord, PreKeyBundle, PreKeyBundleContent,
+    PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId, SignedPreKeyRecord,
 };
 pub use storage::{
-    Context, Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemPreKeyStore,
+    Direction, IdentityKeyStore, InMemIdentityKeyStore, InMemKyberPreKeyStore, InMemPreKeyStore,
     InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
-    PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
+    KyberPreKeyStore, PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
 };

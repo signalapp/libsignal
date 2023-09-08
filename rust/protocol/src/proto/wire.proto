@@ -18,6 +18,8 @@ message PreKeySignalMessage {
   optional uint32 registration_id   = 5;
   optional uint32 pre_key_id        = 1;
   optional uint32 signed_pre_key_id = 6;
+  optional uint32 kyber_pre_key_id  = 7;
+  optional bytes  kyber_ciphertext  = 8;
   optional bytes  base_key          = 2;
   optional bytes  identity_key      = 3;
   optional bytes  message           = 4; // SignalMessage

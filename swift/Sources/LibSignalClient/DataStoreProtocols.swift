@@ -35,6 +35,12 @@ public protocol SignedPreKeyStore: AnyObject {
     func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: StoreContext) throws
 }
 
+public protocol KyberPreKeyStore: AnyObject {
+    func loadKyberPreKey(id: UInt32, context: StoreContext) throws -> KyberPreKeyRecord
+    func storeKyberPreKey(_ record: KyberPreKeyRecord, id: UInt32, context: StoreContext) throws
+    func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws
+}
+
 public protocol SessionStore: AnyObject {
     func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord?
     func loadExistingSessions(for addresses: [ProtocolAddress], context: StoreContext) throws -> [SessionRecord]

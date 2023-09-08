@@ -118,7 +118,7 @@ impl RootKey {
     }
 
     pub(crate) fn create_chain(
-        &self,
+        self,
         their_ratchet_key: &PublicKey,
         our_ratchet_key: &PrivateKey,
     ) -> Result<(RootKey, ChainKey)> {

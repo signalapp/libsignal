@@ -9,40 +9,22 @@
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
-# getrandom + rand*:
-#   curve25519-dalek + x25519-dalek use rand_core 0.5, snow and picky use rand_core 0.6
-# serde:
-#   num_enum_derive indirectly uses serde in a proc-macro;
-#   unfortunately that shows up as a repeat here
-# block-buffer + digest:
-#  argon2 uses digest 0.10, all of the other rust-crypto dependencies are still based
-#  on digest 0.9. 
+# bitflags:
+#  either a dev or a build time dependency.
 # syn:
 #  syn is used in proc-macros only, so it isn't going to cost us in code size.
 EXPECTED="\
-block-buffer v0.9.0
+bitflags v1.3.2
 
-block-buffer v0.10.4
+bitflags v2.3.3
 
-digest v0.9.0
+ctr v0.7.0
 
-digest v0.10.6
-
-getrandom v0.1.16
-
-getrandom v0.2.5
-
-rand_core v0.5.1
-
-rand_core v0.6.4
-
-serde v1.0.136
-
-serde v1.0.136
+ctr v0.8.0
 
 syn v1.0.109
 
-syn v2.0.15"
+syn v2.0.28"
 
 if [[ "$(cargo tree -d -e normal --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
     cargo tree -d -e normal --workspace --locked

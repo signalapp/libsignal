@@ -2,7 +2,7 @@ plugins {
     id "de.undercouch.download" version "5.0.2"
 }
 
-def version_number = "0.23.0-gluon-4-SNAPSHOT"
+def version_number = "0.31.0-gluon-1-SNAPSHOT"
 
 subprojects {
     ext.version_number     = version_number
@@ -11,6 +11,7 @@ subprojects {
     if (JavaVersion.current().isJava8Compatible()) {
         allprojects {
             tasks.withType(Javadoc) {
+                options.encoding = 'UTF-8'
                 options.addStringOption('Xdoclint:none', '-quiet')
             }
         }
@@ -18,6 +19,7 @@ subprojects {
 
     allprojects {
         tasks.withType(JavaCompile) {
+            options.encoding = 'UTF-8'
             options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
         }
     }

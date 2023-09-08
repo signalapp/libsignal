@@ -8,6 +8,7 @@ package org.signal.libsignal.zkgroup.groups;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.UUID;
+import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.internal.Native;
@@ -23,8 +24,8 @@ public class ClientZkGroupCipher {
     this.groupSecretParams = groupSecretParams;
   }
 
-  public UuidCiphertext encryptUuid(UUID uuid) {
-    byte[] newContents = Native.GroupSecretParams_EncryptUuid(groupSecretParams.getInternalContentsForJNI(), uuid);
+  public UuidCiphertext encrypt(ServiceId serviceId) {
+    byte[] newContents = Native.GroupSecretParams_EncryptServiceId(groupSecretParams.getInternalContentsForJNI(), serviceId.toServiceIdFixedWidthBinary());
 
     try {
       return new UuidCiphertext(newContents);
@@ -33,12 +34,16 @@ public class ClientZkGroupCipher {
     }
   }
 
-  public UUID decryptUuid(UuidCiphertext uuidCiphertext) throws VerificationFailedException {
-     return Native.GroupSecretParams_DecryptUuid(groupSecretParams.getInternalContentsForJNI(), uuidCiphertext.getInternalContentsForJNI());
+  public ServiceId decrypt(UuidCiphertext uuidCiphertext) throws VerificationFailedException {
+    try {
+     return ServiceId.parseFromFixedWidthBinary(Native.GroupSecretParams_DecryptServiceId(groupSecretParams.getInternalContentsForJNI(), uuidCiphertext.getInternalContentsForJNI()));
+    } catch (ServiceId.InvalidServiceIdException e) {
+      throw new VerificationFailedException();
+    }
   }
 
-  public ProfileKeyCiphertext encryptProfileKey(ProfileKey profileKey, UUID uuid) {
-     byte[] newContents = Native.GroupSecretParams_EncryptProfileKey(groupSecretParams.getInternalContentsForJNI(), profileKey.getInternalContentsForJNI(), uuid);
+  public ProfileKeyCiphertext encryptProfileKey(ProfileKey profileKey, ServiceId.Aci userId) {
+     byte[] newContents = Native.GroupSecretParams_EncryptProfileKey(groupSecretParams.getInternalContentsForJNI(), profileKey.getInternalContentsForJNI(), userId.toServiceIdFixedWidthBinary());
 
     try {
       return new ProfileKeyCiphertext(newContents);
@@ -47,8 +52,8 @@ public class ClientZkGroupCipher {
     }
   }
 
-  public ProfileKey decryptProfileKey(ProfileKeyCiphertext profileKeyCiphertext, UUID uuid) throws VerificationFailedException {
-    byte[] newContents = Native.GroupSecretParams_DecryptProfileKey(groupSecretParams.getInternalContentsForJNI(), profileKeyCiphertext.getInternalContentsForJNI(), uuid);
+  public ProfileKey decryptProfileKey(ProfileKeyCiphertext profileKeyCiphertext, ServiceId.Aci userId) throws VerificationFailedException {
+    byte[] newContents = Native.GroupSecretParams_DecryptProfileKey(groupSecretParams.getInternalContentsForJNI(), profileKeyCiphertext.getInternalContentsForJNI(), userId.toServiceIdFixedWidthBinary());
 
     try {
       return new ProfileKey(newContents);

@@ -151,7 +151,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store = support::test_in_memory_protocol_store()?;
 
-        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
 
@@ -161,7 +161,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -191,7 +190,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_ptext,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -207,7 +205,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.pre_key_store,
             &mut bob_store.signed_pre_key_store,
-            None,
+            &mut bob_store.kyber_pre_key_store,
         )
         .await?;
 
@@ -224,7 +222,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_ptext,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -240,7 +237,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.pre_key_store,
             &mut bob_store.signed_pre_key_store,
-            None,
+            &mut bob_store.kyber_pre_key_store,
         )
         .await;
 
@@ -262,7 +259,6 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_ptext,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -280,7 +276,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.pre_key_store,
             &mut bob_store.signed_pre_key_store,
-            None,
+            &mut bob_store.kyber_pre_key_store,
         )
         .await;
 
@@ -322,7 +318,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store = support::test_in_memory_protocol_store()?;
 
-        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
 
@@ -332,7 +328,6 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -360,7 +355,6 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             distribution_id,
             &mut alice_store,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -368,7 +362,6 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_uuid_address,
             &distribution_message,
             &mut bob_store,
-            None,
         )
         .await?;
 
@@ -378,7 +371,6 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             distribution_id,
             "swim camp".as_bytes(),
             &mut rng,
-            None,
         )
         .await?;
         let alice_usmc = UnidentifiedSenderMessageContent::new(
@@ -393,27 +385,20 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_uuid_address,
             &alice_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
 
         let bob_usmc =
-            sealed_sender_decrypt_to_usmc(&alice_ctext, &mut bob_store.identity_store, None)
-                .await?;
+            sealed_sender_decrypt_to_usmc(&alice_ctext, &mut bob_store.identity_store).await?;
 
         assert!(matches!(
             bob_usmc.msg_type()?,
             CiphertextMessageType::SenderKey,
         ));
 
-        let bob_plaintext = group_decrypt(
-            bob_usmc.contents()?,
-            &mut bob_store,
-            &alice_uuid_address,
-            None,
-        )
-        .await?;
+        let bob_plaintext =
+            group_decrypt(bob_usmc.contents()?, &mut bob_store, &alice_uuid_address).await?;
 
         assert_eq!(
             String::from_utf8(bob_plaintext).expect("valid UTF-8"),
@@ -445,7 +430,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store = support::test_in_memory_protocol_store()?;
 
-        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
 
@@ -455,7 +440,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -484,7 +468,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &bob_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
         )
         .await?;
 
@@ -504,7 +487,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -523,7 +505,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.pre_key_store,
             &mut bob_store.signed_pre_key_store,
-            None,
+            &mut bob_store.kyber_pre_key_store,
         )
         .await?;
 
@@ -538,7 +520,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &bob_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
         )
         .await?;
 
@@ -558,7 +539,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -577,7 +557,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.pre_key_store,
             &mut bob_store.signed_pre_key_store,
-            None,
+            &mut bob_store.kyber_pre_key_store,
         )
         .await;
 
@@ -598,7 +578,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &bob_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
         )
         .await?;
 
@@ -618,7 +597,6 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
@@ -639,7 +617,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &mut bob_store.session_store,
             &mut bob_store.pre_key_store,
             &mut bob_store.signed_pre_key_store,
-            None,
+            &mut bob_store.kyber_pre_key_store,
         )
         .await;
 
@@ -678,7 +656,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store = support::test_in_memory_protocol_store()?;
 
-        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
 
@@ -688,7 +666,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -717,7 +694,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             &bob_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
         )
         .await?;
 
@@ -732,7 +708,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
         let recipients = [&bob_uuid_address];
         let mut session = alice_store
             .session_store
-            .load_session(&bob_uuid_address, None)
+            .load_session(&bob_uuid_address)
             .await?
             .expect("present");
         session.archive_current_state()?;
@@ -741,7 +717,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
             &[&session],
             &alice_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await
@@ -784,7 +759,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
         let mut bob_store =
             InMemSignalProtocolStore::new(IdentityKeyPair::generate(&mut rng), 0x4000)?;
 
-        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 
         let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
 
@@ -794,7 +769,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -823,7 +797,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             &bob_uuid_address,
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
-            None,
         )
         .await?;
 
@@ -843,7 +816,6 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
                 .load_existing_sessions(&recipients)?,
             &alice_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await
@@ -880,7 +852,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let mut alice_store = support::test_in_memory_protocol_store()?;
         let mut bob_store = support::test_in_memory_protocol_store()?;
 
-        let alice_pubkey = *alice_store.get_identity_key_pair(None).await?.public_key();
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
 
         let alice_pre_key_bundle = create_pre_key_bundle(&mut alice_store, &mut rng).await?;
 
@@ -890,7 +862,6 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut bob_store.identity_store,
             &alice_pre_key_bundle,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -901,7 +872,6 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_uuid_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
-            None,
         )
         .await?;
 
@@ -912,8 +882,8 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut alice_store.identity_store,
             &mut alice_store.pre_key_store,
             &mut alice_store.signed_pre_key_store,
+            &mut alice_store.kyber_pre_key_store,
             &mut rng,
-            None,
         )
         .await?;
 
@@ -924,7 +894,6 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &alice_uuid_address,
             &mut bob_store.session_store,
             &mut bob_store.identity_store,
-            None,
         )
         .await?;
 
@@ -974,14 +943,12 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &bob_uuid_address,
             &error_message_usmc,
             &mut alice_store.identity_store,
-            None,
             &mut rng,
         )
         .await?;
 
         let bob_usmc =
-            sealed_sender_decrypt_to_usmc(&alice_ctext, &mut bob_store.identity_store, None)
-                .await?;
+            sealed_sender_decrypt_to_usmc(&alice_ctext, &mut bob_store.identity_store).await?;
 
         assert!(matches!(
             bob_usmc.msg_type()?,

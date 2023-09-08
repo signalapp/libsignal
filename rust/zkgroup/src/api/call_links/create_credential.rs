@@ -94,7 +94,7 @@ pub struct CreateCallLinkCredentialRequest {
 impl CreateCallLinkCredentialRequest {
     pub fn issue(
         &self,
-        user_id: UidBytes,
+        user_id: libsignal_protocol::Aci,
         timestamp: Timestamp,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
@@ -104,7 +104,7 @@ impl CreateCallLinkCredentialRequest {
             timestamp,
             blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&timestamp)
-                .add_attribute(&UidStruct::new(user_id))
+                .add_attribute(&UidStruct::from_service_id(user_id.into()))
                 .add_blinded_revealed_attribute(&self.blinded_room_id)
                 .issue(&params.credential_key, &self.public_key, randomness),
         }
@@ -123,7 +123,7 @@ impl CreateCallLinkCredentialRequestContext {
     pub fn receive(
         self,
         response: CreateCallLinkCredentialResponse,
-        user_id: UidBytes,
+        user_id: libsignal_protocol::Aci,
         params: &GenericServerPublicParams,
     ) -> Result<CreateCallLinkCredential, ZkGroupVerificationFailure> {
         if response.timestamp % SECONDS_PER_DAY != 0 {
@@ -135,7 +135,7 @@ impl CreateCallLinkCredentialRequestContext {
             timestamp: response.timestamp,
             credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&response.timestamp)
-                .add_attribute(&UidStruct::new(user_id))
+                .add_attribute(&UidStruct::from_service_id(user_id.into()))
                 .add_blinded_revealed_attribute(&self.blinded_room_id)
                 .verify(
                     &params.credential_key,
@@ -161,12 +161,12 @@ impl CreateCallLinkCredential {
     pub fn present(
         &self,
         room_id: &[u8],
-        user_id: UidBytes,
+        user_id: libsignal_protocol::Aci,
         server_params: &GenericServerPublicParams,
         call_link_params: &CallLinkSecretParams,
         randomness: RandomnessBytes,
     ) -> CreateCallLinkCredentialPresentation {
-        let user_id = UidStruct::new(user_id);
+        let user_id = UidStruct::from_service_id(user_id.into());
         let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(user_id);
         CreateCallLinkCredentialPresentation {
             reserved: [0],

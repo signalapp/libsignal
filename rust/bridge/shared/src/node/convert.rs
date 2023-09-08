@@ -12,6 +12,7 @@ use std::hash::Hasher;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
+use crate::io::InputStream;
 use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -245,7 +246,7 @@ fn can_convert_js_number_to_int(value: f64, valid_range: RangeInclusive<f64>) ->
 
 // 2**53 - 1, the maximum "safe" integer representable in an f64.
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
+pub(super) const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
 
 /// Converts non-negative numbers up to [`Number.MAX_SAFE_INTEGER`][].
 ///
@@ -298,6 +299,39 @@ impl SimpleArgTypeInfo for uuid::Uuid {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         uuid::Uuid::from_slice(foreign.as_slice(cx))
             .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        foreign
+            .as_slice(cx)
+            .try_into()
+            .ok()
+            .and_then(Self::parse_from_service_id_fixed_width_binary)
+            .ok_or_else(|| {
+                cx.throw_type_error::<_, ()>("invalid Service-Id-FixedWidthBinary")
+                    .expect_err("throw_type_error always produces Err")
+            })
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_protocol::Aci {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        libsignal_protocol::ServiceId::convert_from(cx, foreign)?
+            .try_into()
+            .or_else(|_| cx.throw_type_error("not an ACI"))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_protocol::Pni {
+    type ArgType = JsBuffer;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        libsignal_protocol::ServiceId::convert_from(cx, foreign)?
+            .try_into()
+            .or_else(|_| cx.throw_type_error("not a PNI"))
     }
 }
 
@@ -498,25 +532,10 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
-static_assertions::assert_type_eq_all!(libsignal_protocol::Context, Option<*mut std::ffi::c_void>);
-impl<'a> AsyncArgTypeInfo<'a> for *mut std::ffi::c_void {
-    type ArgType = JsNull;
-    type StoredType = ();
-    fn save_async_arg(
-        _cx: &mut FunctionContext,
-        _foreign: Handle<Self::ArgType>,
-    ) -> NeonResult<Self::StoredType> {
-        unreachable!() // only used as part of libsignal_protocol::Context
-    }
-    fn load_async_arg(_stored: &'a mut Self::StoredType) -> Self {
-        unreachable!() // only used as part of libsignal_protocol::Context
-    }
-}
-
 macro_rules! store {
     ($name:ident) => {
         paste! {
-            impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn libsignal_protocol::$name {
+            impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn $name {
                 type ArgType = JsObject;
                 type StoredType = [<Node $name>];
                 fn save_async_arg(
@@ -538,6 +557,8 @@ store!(PreKeyStore);
 store!(SenderKeyStore);
 store!(SessionStore);
 store!(SignedPreKeyStore);
+store!(KyberPreKeyStore);
+store!(InputStream);
 
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;
@@ -619,6 +640,24 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
         let mut buffer = cx.buffer(16)?;
         buffer.as_mut_slice(cx).copy_from_slice(self.as_bytes());
         Ok(buffer)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let mut buffer = cx.buffer(17)?;
+        buffer
+            .as_mut_slice(cx)
+            .copy_from_slice(&self.service_id_fixed_width_binary());
+        Ok(buffer)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
+    type ResultType = JsBuffer;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
 }
 

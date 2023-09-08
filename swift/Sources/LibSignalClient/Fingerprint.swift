@@ -8,18 +8,10 @@ import Foundation
 
 public struct DisplayableFingerprint {
     public let formatted: String
-
-    internal init(formatted: String) {
-        self.formatted = formatted
-    }
 }
 
 public struct ScannableFingerprint {
     public let encoding: [UInt8]
-
-    internal init(encoding: [UInt8]) {
-        self.encoding = encoding
-    }
 
     /// Returns `true` if this fingerprint matches the fingerprint encoding `other`, `false` if not.
     ///

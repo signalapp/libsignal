@@ -50,7 +50,7 @@ fn aes_ctr_long_test() -> Result<(), signal_crypto::Error> {
         while processed != buf.len() {
             let remaining = buf.len() - processed;
             let this_time = if remaining > 1 {
-                rng.gen_range(1, remaining)
+                rng.gen_range(1..remaining)
             } else {
                 remaining
             };

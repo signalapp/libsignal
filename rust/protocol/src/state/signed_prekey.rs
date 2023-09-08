@@ -4,14 +4,15 @@
 //
 
 use crate::proto::storage::SignedPreKeyRecordStructure;
-use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{kem, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use prost::Message;
 
+use std::convert::AsRef;
 use std::fmt;
 
 /// A unique identifier selecting among this client's known signed pre-keys.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SignedPreKeyId(u32);
 
 impl From<u32> for SignedPreKeyId {
@@ -38,56 +39,179 @@ pub struct SignedPreKeyRecord {
 }
 
 impl SignedPreKeyRecord {
-    pub fn new(id: SignedPreKeyId, timestamp: u64, key: &KeyPair, signature: &[u8]) -> Self {
-        let public_key = key.public_key.serialize().to_vec();
-        let private_key = key.private_key.serialize().to_vec();
-        let signature = signature.to_vec();
-        Self {
-            signed_pre_key: SignedPreKeyRecordStructure {
-                id: id.into(),
-                timestamp,
-                public_key,
-                private_key,
-                signature,
-            },
-        }
+    pub fn private_key(&self) -> Result<PrivateKey> {
+        PrivateKey::deserialize(&self.get_storage().private_key)
+    }
+}
+
+impl GenericSignedPreKey for SignedPreKeyRecord {
+    type KeyPair = KeyPair;
+    type Id = SignedPreKeyId;
+
+    fn get_storage(&self) -> &SignedPreKeyRecordStructure {
+        &self.signed_pre_key
     }
 
-    pub fn deserialize(data: &[u8]) -> Result<Self> {
-        Ok(Self {
-            signed_pre_key: SignedPreKeyRecordStructure::decode(data)
-                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?,
+    fn from_storage(storage: SignedPreKeyRecordStructure) -> Self {
+        Self {
+            signed_pre_key: storage,
+        }
+    }
+}
+
+pub trait GenericSignedPreKey {
+    type KeyPair: KeyPairSerde;
+    type Id: From<u32> + Into<u32>;
+
+    fn get_storage(&self) -> &SignedPreKeyRecordStructure;
+    fn from_storage(storage: SignedPreKeyRecordStructure) -> Self;
+
+    fn new(id: Self::Id, timestamp: u64, key_pair: &Self::KeyPair, signature: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
+        let public_key = key_pair.get_public().serialize();
+        let private_key = key_pair.get_private().serialize();
+        let signature = signature.to_vec();
+        Self::from_storage(SignedPreKeyRecordStructure {
+            id: id.into(),
+            timestamp,
+            public_key,
+            private_key,
+            signature,
         })
     }
 
-    pub fn id(&self) -> Result<SignedPreKeyId> {
-        Ok(self.signed_pre_key.id.into())
+    fn serialize(&self) -> Result<Vec<u8>> {
+        Ok(self.get_storage().encode_to_vec())
     }
 
-    pub fn timestamp(&self) -> Result<u64> {
-        Ok(self.signed_pre_key.timestamp)
+    fn deserialize(data: &[u8]) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self::from_storage(
+            SignedPreKeyRecordStructure::decode(data)
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?,
+        ))
     }
 
-    pub fn signature(&self) -> Result<Vec<u8>> {
-        Ok(self.signed_pre_key.signature.clone())
+    fn id(&self) -> Result<Self::Id> {
+        Ok(self.get_storage().id.into())
     }
 
-    pub fn public_key(&self) -> Result<PublicKey> {
-        PublicKey::deserialize(&self.signed_pre_key.public_key)
+    fn timestamp(&self) -> Result<u64> {
+        Ok(self.get_storage().timestamp)
     }
 
-    pub fn private_key(&self) -> Result<PrivateKey> {
-        PrivateKey::deserialize(&self.signed_pre_key.private_key)
+    fn signature(&self) -> Result<Vec<u8>> {
+        Ok(self.get_storage().signature.clone())
     }
 
-    pub fn key_pair(&self) -> Result<KeyPair> {
-        KeyPair::from_public_and_private(
-            &self.signed_pre_key.public_key,
-            &self.signed_pre_key.private_key,
+    fn public_key(&self) -> Result<<Self::KeyPair as KeyPairSerde>::PublicKey> {
+        <Self::KeyPair as KeyPairSerde>::PublicKey::deserialize(&self.get_storage().public_key)
+    }
+
+    fn key_pair(&self) -> Result<Self::KeyPair> {
+        Self::KeyPair::from_public_and_private(
+            &self.get_storage().public_key,
+            &self.get_storage().private_key,
         )
     }
+}
 
-    pub fn serialize(&self) -> Result<Vec<u8>> {
-        Ok(self.signed_pre_key.encode_to_vec())
+pub trait KeySerde {
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self>
+    where
+        Self: Sized;
+}
+
+pub trait KeyPairSerde {
+    type PublicKey: KeySerde;
+    type PrivateKey: KeySerde;
+    fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self>
+    where
+        Self: Sized;
+    fn get_public(&self) -> &Self::PublicKey;
+    fn get_private(&self) -> &Self::PrivateKey;
+}
+
+impl KeySerde for PublicKey {
+    fn serialize(&self) -> Vec<u8> {
+        self.serialize().to_vec()
+    }
+
+    fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
+        Self::deserialize(bytes.as_ref())
+    }
+}
+
+impl KeySerde for PrivateKey {
+    fn serialize(&self) -> Vec<u8> {
+        self.serialize()
+    }
+
+    fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
+        Self::deserialize(bytes.as_ref())
+    }
+}
+
+impl KeySerde for kem::PublicKey {
+    fn serialize(&self) -> Vec<u8> {
+        self.serialize().to_vec()
+    }
+
+    fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Self::deserialize(bytes.as_ref())
+    }
+}
+
+impl KeySerde for kem::SecretKey {
+    fn serialize(&self) -> Vec<u8> {
+        self.serialize().to_vec()
+    }
+    fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Self::deserialize(bytes.as_ref())
+    }
+}
+
+impl KeyPairSerde for KeyPair {
+    type PublicKey = PublicKey;
+    type PrivateKey = PrivateKey;
+
+    fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
+        KeyPair::from_public_and_private(public_key, private_key)
+    }
+
+    fn get_public(&self) -> &PublicKey {
+        &self.public_key
+    }
+
+    fn get_private(&self) -> &PrivateKey {
+        &self.private_key
+    }
+}
+
+impl KeyPairSerde for kem::KeyPair {
+    type PublicKey = kem::PublicKey;
+    type PrivateKey = kem::SecretKey;
+
+    fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
+        kem::KeyPair::from_public_and_private(public_key, private_key)
+    }
+
+    fn get_public(&self) -> &kem::PublicKey {
+        &self.public_key
+    }
+
+    fn get_private(&self) -> &kem::SecretKey {
+        &self.secret_key
     }
 }

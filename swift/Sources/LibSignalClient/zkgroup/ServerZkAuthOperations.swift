@@ -14,33 +14,51 @@ public class ServerZkAuthOperations {
     self.serverSecretParams = serverSecretParams
   }
 
-  public func issueAuthCredential(uuid: UUID, redemptionTime: UInt32) throws -> AuthCredentialResponse {
-    return try issueAuthCredential(randomness: Randomness.generate(), uuid: uuid, redemptionTime: redemptionTime)
+  public func issueAuthCredential(aci: Aci, redemptionTime: UInt32) throws -> AuthCredentialResponse {
+    return try issueAuthCredential(randomness: Randomness.generate(), aci: aci, redemptionTime: redemptionTime)
   }
 
-  public func issueAuthCredential(randomness: Randomness, uuid: UUID, redemptionTime: UInt32) throws -> AuthCredentialResponse {
+  public func issueAuthCredential(randomness: Randomness, aci: Aci, redemptionTime: UInt32) throws -> AuthCredentialResponse {
     return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
-        try withUnsafePointer(to: uuid.uuid) { uuid in
+        try aci.withPointerToFixedWidthBinary { aci in
           try invokeFnReturningSerialized {
-            signal_server_secret_params_issue_auth_credential_deterministic($0, serverSecretParams, randomness, uuid, redemptionTime)
+            signal_server_secret_params_issue_auth_credential_deterministic($0, serverSecretParams, randomness, aci, redemptionTime)
           }
         }
       }
     }
   }
 
-  public func issueAuthCredentialWithPni(aci: UUID, pni: UUID, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-    return try issueAuthCredentialWithPni(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
+  public func issueAuthCredentialWithPniAsServiceId(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+    return try issueAuthCredentialWithPniAsServiceId(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
   }
 
-  public func issueAuthCredentialWithPni(randomness: Randomness, aci: UUID, pni: UUID, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+  public func issueAuthCredentialWithPniAsServiceId(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
     return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
       try randomness.withUnsafePointerToBytes { randomness in
-        try withUnsafePointer(to: aci.uuid) { aci in
-          try withUnsafePointer(to: pni.uuid) { pni in
+        try aci.withPointerToFixedWidthBinary { aci in
+          try pni.withPointerToFixedWidthBinary { pni in
             try invokeFnReturningSerialized {
-              signal_server_secret_params_issue_auth_credential_with_pni_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
+              signal_server_secret_params_issue_auth_credential_with_pni_as_service_id_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public func issueAuthCredentialWithPniAsAci(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+    return try issueAuthCredentialWithPniAsAci(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
+  }
+
+  public func issueAuthCredentialWithPniAsAci(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
+    return try serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+      try randomness.withUnsafePointerToBytes { randomness in
+        try aci.withPointerToFixedWidthBinary { aci in
+          try pni.withPointerToFixedWidthBinary { pni in
+            try invokeFnReturningSerialized {
+              signal_server_secret_params_issue_auth_credential_with_pni_as_aci_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
             }
           }
         }

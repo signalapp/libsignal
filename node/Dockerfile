@@ -3,37 +3,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-FROM ubuntu:16.04
+# Debian bullseye is the basis for Ubuntu 20.04.
+FROM debian:bullseye-slim
 
-# Basic dependencies
-RUN apt-get update && apt-get install -y apt-transport-https curl
-
-# Newer Clang
-# https://blog.kowalczyk.info/article/k/how-to-install-latest-clang-6.0-on-ubuntu-16.04-xenial-wsl.html
-RUN curl https://apt.llvm.org/llvm-snapshot.gpg.key 2>/dev/null | apt-key add - \
-    && echo 'deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-12 main' >/etc/apt/sources.list.d/llvm.list \
-    && apt-get update && apt-get install -y clang-12 libclang-12-dev
-
-# Newer CMake
-# https://apt.kitware.com/
-RUN curl https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
-        | gpg --dearmor - >/usr/share/keyrings/kitware-archive-keyring.gpg \
-    && echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ xenial main' >/etc/apt/sources.list.d/kitware.list \
-    && apt-get update && apt-get install -y cmake
-
-# Newer Python
-# https://devguide.python.org/getting-started/setup-building/index.html#install-dependencies
-RUN echo 'deb-src http://archive.ubuntu.com/ubuntu/ xenial main restricted' >> /etc/apt/sources.list.d/deb-src.list \
-    && apt-get update && apt-get build-dep -y python3 && apt-get install -y zlib1g-dev
-
-# ...which we have to build.
-RUN cd /tmp \
-    && curl -O https://www.python.org/ftp/python/3.10.5/Python-3.10.5.tar.xz \
-    && tar -xf Python-3.10.5.tar.xz \
-    && cd Python-3.10.5 \
-    && ./configure && make -j && make install \
-    # Clean up after ourselves, so the final image isn't bigger than it needs to be.
-    && cd / && rm -rf /tmp/Python-3.10.5*
+# Install only what's needed to set up Rust and Node.
+# We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
+RUN apt-get update && apt-get install -y apt-transport-https curl xz-utils
 
 # User-specific setup!
 
@@ -78,7 +53,7 @@ ENV PATH="/home/libsignal/node/bin:${PATH}"
 # And finally any bonus packages we're going to need
 # Note that we jump back to root for this.
 USER root
-RUN apt-get install -y crossbuild-essential-arm64
+RUN apt-get install -y clang cmake crossbuild-essential-arm64 python3
 USER libsignal
 
 CMD [ "/bin/bash" ]

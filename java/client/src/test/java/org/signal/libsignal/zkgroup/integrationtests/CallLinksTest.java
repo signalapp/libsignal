@@ -7,6 +7,7 @@ package org.signal.libsignal.zkgroup.integrationtests;
 
 import java.io.UnsupportedEncodingException;
 import org.junit.Test;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.GenericServerPublicParams;
@@ -36,7 +37,7 @@ import static org.junit.Assert.fail;
 
 public final class CallLinksTest extends SecureRandomTest {
 
-  private static final UUID   TEST_UUID       = UUID.fromString("00010203-0405-0607-0809-0a0b0c0d0e0f");
+  private static final Aci    TEST_USER_ID    = new Aci(UUID.fromString("00010203-0405-0607-0809-0a0b0c0d0e0f"));
 
   private static final byte[] TEST_ARRAY_32   = Hex.fromStringCondensedAssert("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 
@@ -121,12 +122,12 @@ public final class CallLinksTest extends SecureRandomTest {
     // SERVER
     // Issue credential
     Instant timestamp = Instant.now().truncatedTo(ChronoUnit.DAYS);
-    CreateCallLinkCredentialResponse response = request.issueCredential(TEST_UUID, timestamp, serverSecretParams, createSecureRandom(TEST_ARRAY_32_4));
+    CreateCallLinkCredentialResponse response = request.issueCredential(TEST_USER_ID, timestamp, serverSecretParams, createSecureRandom(TEST_ARRAY_32_4));
 
     // CLIENT
     // Gets stored credential
-    CreateCallLinkCredential credential = context.receiveResponse(response, TEST_UUID, serverPublicParams);
-    CreateCallLinkCredentialPresentation presentation = credential.present(roomId, TEST_UUID, serverPublicParams, clientSecretParams, createSecureRandom(TEST_ARRAY_32_5));
+    CreateCallLinkCredential credential = context.receiveResponse(response, TEST_USER_ID, serverPublicParams);
+    CreateCallLinkCredentialPresentation presentation = credential.present(roomId, TEST_USER_ID, serverPublicParams, clientSecretParams, createSecureRandom(TEST_ARRAY_32_5));
 
     // SERVER
     // Verify presentation
@@ -163,12 +164,12 @@ public final class CallLinksTest extends SecureRandomTest {
     // SERVER
     // Issue credential
     Instant redemptionTime = Instant.now().truncatedTo(ChronoUnit.DAYS);
-    CallLinkAuthCredentialResponse response = CallLinkAuthCredentialResponse.issueCredential(TEST_UUID, redemptionTime, serverSecretParams, createSecureRandom(TEST_ARRAY_32_4));
+    CallLinkAuthCredentialResponse response = CallLinkAuthCredentialResponse.issueCredential(TEST_USER_ID, redemptionTime, serverSecretParams, createSecureRandom(TEST_ARRAY_32_4));
 
     // CLIENT
     // Gets stored credential
-    CallLinkAuthCredential credential = response.receive(TEST_UUID, redemptionTime, serverPublicParams);
-    CallLinkAuthCredentialPresentation presentation = credential.present(TEST_UUID, redemptionTime, serverPublicParams, clientSecretParams, createSecureRandom(TEST_ARRAY_32_5));
+    CallLinkAuthCredential credential = response.receive(TEST_USER_ID, redemptionTime, serverPublicParams);
+    CallLinkAuthCredentialPresentation presentation = credential.present(TEST_USER_ID, redemptionTime, serverPublicParams, clientSecretParams, createSecureRandom(TEST_ARRAY_32_5));
 
     // SERVER
     // Verify presentation
@@ -183,7 +184,7 @@ public final class CallLinksTest extends SecureRandomTest {
     }
 
     // CLIENT
-    assertEquals(TEST_UUID, clientSecretParams.decryptUserId(presentation.getUserId()));
+    assertEquals(TEST_USER_ID, clientSecretParams.decryptUserId(presentation.getUserId()));
   }
 }
 

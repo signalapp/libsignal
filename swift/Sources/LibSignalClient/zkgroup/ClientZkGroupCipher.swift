@@ -14,44 +14,44 @@ public class ClientZkGroupCipher {
     self.groupSecretParams = groupSecretParams
   }
 
-  public func encryptUuid(uuid: UUID) throws -> UuidCiphertext {
+  public func encrypt(_ serviceId: ServiceId) throws -> UuidCiphertext {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
-      try withUnsafePointer(to: uuid.uuid) { uuid in
+      try serviceId.withPointerToFixedWidthBinary { serviceId in
         try invokeFnReturningSerialized {
-          signal_group_secret_params_encrypt_uuid($0, groupSecretParams, uuid)
+          signal_group_secret_params_encrypt_service_id($0, groupSecretParams, serviceId)
         }
       }
     }
   }
 
-  public func decryptUuid(uuidCiphertext: UuidCiphertext) throws -> UUID {
+  public func decrypt(_ uuidCiphertext: UuidCiphertext) throws -> ServiceId {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try uuidCiphertext.withUnsafePointerToSerialized { uuidCiphertext in
-        try invokeFnReturningUuid {
-          signal_group_secret_params_decrypt_uuid($0, groupSecretParams, uuidCiphertext)
+        try invokeFnReturningServiceId {
+          signal_group_secret_params_decrypt_service_id($0, groupSecretParams, uuidCiphertext)
         }
       }
     }
   }
 
-  public func encryptProfileKey(profileKey: ProfileKey, uuid: UUID) throws -> ProfileKeyCiphertext {
+  public func encryptProfileKey(profileKey: ProfileKey, userId: Aci) throws -> ProfileKeyCiphertext {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try profileKey.withUnsafePointerToSerialized { profileKey in
-        try withUnsafePointer(to: uuid.uuid) { uuid in
+        try userId.withPointerToFixedWidthBinary { userId in
           try invokeFnReturningSerialized {
-            signal_group_secret_params_encrypt_profile_key($0, groupSecretParams, profileKey, uuid)
+            signal_group_secret_params_encrypt_profile_key($0, groupSecretParams, profileKey, userId)
           }
         }
       }
     }
   }
 
-  public func decryptProfileKey(profileKeyCiphertext: ProfileKeyCiphertext, uuid: UUID) throws -> ProfileKey {
+  public func decryptProfileKey(profileKeyCiphertext: ProfileKeyCiphertext, userId: Aci) throws -> ProfileKey {
     return try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
       try profileKeyCiphertext.withUnsafePointerToSerialized { profileKeyCiphertext in
-        try withUnsafePointer(to: uuid.uuid) { uuid in
+        try userId.withPointerToFixedWidthBinary { userId in
           try invokeFnReturningSerialized {
-            signal_group_secret_params_decrypt_profile_key($0, groupSecretParams, profileKeyCiphertext, uuid)
+            signal_group_secret_params_decrypt_profile_key($0, groupSecretParams, profileKeyCiphertext, userId )
           }
         }
       }

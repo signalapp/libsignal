@@ -10,6 +10,8 @@ pub enum Error {
     Argon2Error(argon2::Error),
     /// Error decoding a verification hash: {0}
     DecodingError(argon2::password_hash::errors::Error),
+    /// Error looking up mrenclave
+    MrenclaveLookupError,
 }
 
 impl From<argon2::Error> for Error {

@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-ffi"
-version = "0.23.0"
+version = "0.31.0"
 authors = ["Signal Messenger LLC"]
 edition = "2018"
 license = "AGPL-3.0-only"
@@ -18,6 +18,10 @@ crate-type = ["staticlib"]
 default = ["armv8"]
 armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
 
+# Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:
+#     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
+signal-media = ["libsignal-bridge/signal-media"]
+
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 device-transfer = { path = "../../device-transfer" }
@@ -26,11 +30,16 @@ signal-crypto = { path = "../../crypto" }
 zkgroup = { path = "../../zkgroup" }
 usernames = { path = "../../usernames" }
 signal-pin = { path = "../../pin" }
+signal-media = { path = "../../media" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.
 futures-util = "0.3"
 libc = "0.2"
-rand = "0.7.3"
+rand = "0.8"
 log = "0.4"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
+
+# cmake 0.1.49 breaks no-toolchain cross-compilation for Mac Catalyst targets
+# https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1570803001
+cmake = ">= 0.1, < 0.1.49"

@@ -54,15 +54,12 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner {
                                                     context: StoreContext) throws {
         var result: OpaquePointer?
         try sealedSenderMessage.withUnsafeBorrowedBuffer { messageBuffer in
-            try context.withOpaquePointer { context in
-                try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                    try checkError(
-                        signal_sealed_session_cipher_decrypt_to_usmc(
-                            &result,
-                            messageBuffer,
-                            ffiIdentityStore,
-                            context))
-                }
+            try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
+                try checkError(
+                    signal_sealed_session_cipher_decrypt_to_usmc(
+                        &result,
+                        messageBuffer,
+                        ffiIdentityStore))
             }
         }
         self.init(owned: result!)
@@ -152,14 +149,12 @@ public func sealedSenderEncrypt(_ content: UnidentifiedSenderMessageContent,
                                 identityStore: IdentityKeyStore,
                                 context: StoreContext) throws -> [UInt8] {
     return try withNativeHandles(recipient, content) { recipientHandle, contentHandle in
-        try context.withOpaquePointer { context in
-            try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                try invokeFnReturningArray {
-                    signal_sealed_session_cipher_encrypt($0,
-                                                         recipientHandle,
-                                                         contentHandle,
-                                                         ffiIdentityStore, context)
-                }
+        try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
+            try invokeFnReturningArray {
+                signal_sealed_session_cipher_encrypt($0,
+                                                     recipientHandle,
+                                                     contentHandle,
+                                                     ffiIdentityStore)
             }
         }
     }
@@ -181,15 +176,13 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
                 let recipientHandlesBuffer = SignalBorrowedSliceOfProtocolAddress(base: recipientHandles.baseAddress, length: UInt(recipientHandles.count))
                 return try sessionHandles.withUnsafeBufferPointer { sessionHandles in
                     let sessionHandlesBuffer = SignalBorrowedSliceOfSessionRecord(base: sessionHandles.baseAddress, length: UInt(sessionHandles.count))
-                    return try context.withOpaquePointer { context in
-                        try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                            try invokeFnReturningArray {
-                                signal_sealed_sender_multi_recipient_encrypt($0,
-                                                                             recipientHandlesBuffer,
-                                                                             sessionHandlesBuffer,
-                                                                             contentHandle,
-                                                                             ffiIdentityStore, context)
-                            }
+                    return try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
+                        try invokeFnReturningArray {
+                            signal_sealed_sender_multi_recipient_encrypt($0,
+                                                                         recipientHandlesBuffer,
+                                                                         sessionHandlesBuffer,
+                                                                         contentHandle,
+                                                                         ffiIdentityStore)
                         }
                     }
                 }
@@ -217,6 +210,19 @@ public struct SealedSenderAddress: Hashable {
         self.uuidString = uuidString
         self.deviceId = deviceId
     }
+
+    public init(e164: String? = nil, aci: Aci, deviceId: UInt32) throws {
+        self.e164 = e164
+        self.uuidString = aci.serviceIdString
+        self.deviceId = deviceId
+    }
+
+    /// Returns an ACI if the sender is a valid UUID, `nil` otherwise.
+    ///
+    /// In a future release SealedSenderAddress will *only* support ACIs.
+    public var senderAci: Aci! {
+        return try? Aci.parseFrom(serviceIdString: uuidString)
+    }
 }
 
 public struct SealedSenderResult {
@@ -239,29 +245,26 @@ public func sealedSenderDecrypt<Bytes: ContiguousBytes>(message: Bytes,
 
     let plaintext = try trustRoot.withNativeHandle { trustRootHandle in
         try message.withUnsafeBorrowedBuffer { messageBuffer in
-            try context.withOpaquePointer { context in
-                try withSessionStore(sessionStore) { ffiSessionStore in
-                    try withIdentityKeyStore(identityStore) { ffiIdentityStore in
-                        try withPreKeyStore(preKeyStore) { ffiPreKeyStore in
-                            try withSignedPreKeyStore(signedPreKeyStore) { ffiSignedPreKeyStore in
-                                try invokeFnReturningArray {
-                                    signal_sealed_session_cipher_decrypt(
-                                        $0,
-                                        &senderE164,
-                                        &senderUUID,
-                                        &senderDeviceId,
-                                        messageBuffer,
-                                        trustRootHandle,
-                                        timestamp,
-                                        localAddress.e164,
-                                        localAddress.uuidString,
-                                        localAddress.deviceId,
-                                        ffiSessionStore,
-                                        ffiIdentityStore,
-                                        ffiPreKeyStore,
-                                        ffiSignedPreKeyStore,
-                                        context)
-                                }
+            try withSessionStore(sessionStore, context) { ffiSessionStore in
+                try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
+                    try withPreKeyStore(preKeyStore, context) { ffiPreKeyStore in
+                        try withSignedPreKeyStore(signedPreKeyStore, context) { ffiSignedPreKeyStore in
+                            try invokeFnReturningArray {
+                                signal_sealed_session_cipher_decrypt(
+                                    $0,
+                                    &senderE164,
+                                    &senderUUID,
+                                    &senderDeviceId,
+                                    messageBuffer,
+                                    trustRootHandle,
+                                    timestamp,
+                                    localAddress.e164,
+                                    localAddress.uuidString,
+                                    localAddress.deviceId,
+                                    ffiSessionStore,
+                                    ffiIdentityStore,
+                                    ffiPreKeyStore,
+                                    ffiSignedPreKeyStore)
                             }
                         }
                     }

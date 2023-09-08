@@ -6,7 +6,8 @@
 package org.signal.libsignal.zkgroup.auth;
 
 import java.security.SecureRandom;
-import java.util.UUID;
+import org.signal.libsignal.protocol.ServiceId.Aci;
+import org.signal.libsignal.protocol.ServiceId.Pni;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.ServerPublicParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -23,8 +24,8 @@ public class ClientZkAuthOperations {
     this.serverPublicParams = serverPublicParams;
   }
 
-  public AuthCredential receiveAuthCredential(UUID uuid, int redemptionTime, AuthCredentialResponse authCredentialResponse) throws VerificationFailedException {
-    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredential(serverPublicParams.getInternalContentsForJNI(), uuid, redemptionTime, authCredentialResponse.getInternalContentsForJNI());
+  public AuthCredential receiveAuthCredential(Aci aci, int redemptionTime, AuthCredentialResponse authCredentialResponse) throws VerificationFailedException {
+    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredential(serverPublicParams.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary(), redemptionTime, authCredentialResponse.getInternalContentsForJNI());
 
     try {
       return new AuthCredential(newContents);
@@ -38,8 +39,26 @@ public class ClientZkAuthOperations {
    * 
    * @param redemptionTime This is provided by the server as an integer, and should be passed through directly.
    */
-  public AuthCredentialWithPni receiveAuthCredentialWithPni(UUID aci, UUID pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
-    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPni(serverPublicParams.getInternalContentsForJNI(), aci, pni, redemptionTime, authCredentialResponse.getInternalContentsForJNI());
+  public AuthCredentialWithPni receiveAuthCredentialWithPniAsServiceId(Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
+    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(serverPublicParams.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime, authCredentialResponse.getInternalContentsForJNI());
+
+    try {
+      return new AuthCredentialWithPni(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  /**
+   * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse.
+   *
+   * This older style of AuthCredentialWithPni will not actually have a usable PNI field,
+   * but can still be used for authenticating with an ACI.
+   * 
+   * @param redemptionTime This is provided by the server as an integer, and should be passed through directly.
+   */
+  public AuthCredentialWithPni receiveAuthCredentialWithPniAsAci(Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse) throws VerificationFailedException {
+    byte[] newContents = Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(serverPublicParams.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary(), pni.toServiceIdFixedWidthBinary(), redemptionTime, authCredentialResponse.getInternalContentsForJNI());
 
     try {
       return new AuthCredentialWithPni(newContents);

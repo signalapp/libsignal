@@ -17,7 +17,7 @@ import ProfileKey from './ProfileKey';
 import ProfileKeyCredentialPresentation from './ProfileKeyCredentialPresentation';
 import ProfileKeyCredentialRequestContext from './ProfileKeyCredentialRequestContext';
 
-import { UUIDType, fromUUID } from '../internal/UUIDUtil';
+import { Aci } from '../../Address';
 
 export default class ClientZkProfileOperations {
   serverPublicParams: ServerPublicParams;
@@ -27,28 +27,28 @@ export default class ClientZkProfileOperations {
   }
 
   createProfileKeyCredentialRequestContext(
-    uuid: UUIDType,
+    userId: Aci,
     profileKey: ProfileKey
   ): ProfileKeyCredentialRequestContext {
     const random = randomBytes(RANDOM_LENGTH);
 
     return this.createProfileKeyCredentialRequestContextWithRandom(
       random,
-      uuid,
+      userId,
       profileKey
     );
   }
 
   createProfileKeyCredentialRequestContextWithRandom(
     random: Buffer,
-    uuid: UUIDType,
+    userId: Aci,
     profileKey: ProfileKey
   ): ProfileKeyCredentialRequestContext {
     return new ProfileKeyCredentialRequestContext(
       Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
         this.serverPublicParams.getContents(),
         random,
-        fromUUID(uuid),
+        userId.getServiceIdFixedWidthBinary(),
         profileKey.getContents()
       )
     );

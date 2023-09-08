@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-jni"
-version = "0.23.0"
+version = "0.31.0"
 authors = ["Signal Messenger LLC"]
 edition = "2018"
 license = "AGPL-3.0-only"
@@ -21,11 +21,11 @@ armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 signal-crypto = { path = "../../crypto" }
-libsignal-bridge = { path = "../shared", features = ["jni"] }
+libsignal-bridge = { path = "../shared", features = ["jni", "signal-media"] }
 async-trait = "0.1.41"
 cfg-if = "1.0.0"
-jni = "0.19"
-rand = "0.7.3"
+jni = "0.19.0"
+rand = "0.8"
 log = "0.4"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 

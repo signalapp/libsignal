@@ -73,11 +73,14 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
 
   @Override
   public boolean equals(Object other) {
-    if (other == null)                      return false;
+    if (other == null)                   return false;
     if (!(other instanceof ECPublicKey)) return false;
-
-    ECPublicKey that = (ECPublicKey)other;
-    return Arrays.equals(this.serialize(), that.serialize());
+    try (
+      NativeHandleGuard thisGuard = new NativeHandleGuard(this);
+      NativeHandleGuard thatGuard = new NativeHandleGuard((ECPublicKey)other);
+    ) {
+      return Native.ECPublicKey_Equals(thisGuard.nativeHandle(), thatGuard.nativeHandle());
+    }
   }
 
   @Override

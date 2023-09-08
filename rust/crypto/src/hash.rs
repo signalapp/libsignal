@@ -5,7 +5,7 @@
 
 use crate::{Error, Result};
 
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Digest, Sha256, Sha512};
 
@@ -34,6 +34,10 @@ impl CryptographicMac {
             Self::HmacSha256(sha256) => sha256.update(input),
         }
         Ok(())
+    }
+
+    pub fn update_and_get(&mut self, input: &[u8]) -> Result<&mut Self> {
+        self.update(input).map(|_| self)
     }
 
     pub fn finalize(&mut self) -> Result<Vec<u8>> {

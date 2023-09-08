@@ -5,7 +5,7 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
-import java.util.UUID;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -18,8 +18,8 @@ public final class ProfileKey extends ByteArray {
     Native.ProfileKey_CheckValidContents(contents);
   }
 
-  public ProfileKeyCommitment getCommitment(UUID uuid) {
-    byte[] newContents = Native.ProfileKey_GetCommitment(contents, uuid);
+  public ProfileKeyCommitment getCommitment(Aci userId) {
+    byte[] newContents = Native.ProfileKey_GetCommitment(contents, userId.toServiceIdFixedWidthBinary());
 
     try {
       return new ProfileKeyCommitment(newContents);
@@ -28,8 +28,8 @@ public final class ProfileKey extends ByteArray {
     }
   }
 
-  public ProfileKeyVersion getProfileKeyVersion(UUID uuid) {
-    byte[] newContents = Native.ProfileKey_GetProfileKeyVersion(contents, uuid);
+  public ProfileKeyVersion getProfileKeyVersion(Aci userId) {
+    byte[] newContents = Native.ProfileKey_GetProfileKeyVersion(contents, userId.toServiceIdFixedWidthBinary());
 
     try {
       return new ProfileKeyVersion(newContents);

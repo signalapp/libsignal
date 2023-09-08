@@ -78,4 +78,35 @@ class UsernameTests: TestCaseBase {
             XCTFail("Unexpected error thrown")
         }
     }
+
+    func testUsernameLinkWorksEndToEnd() throws {
+        let original = try Username("SiGNAl.42")
+        let (randomness, linkBytes) = try original.createLink()
+        let recreated = try Username(fromLink: linkBytes, withRandomness: randomness)
+        XCTAssertEqual(original, recreated)
+    }
+
+    func testUsernameLinkInvalidEntropySize() throws {
+        do {
+            let randomness = [UInt8](repeating: 0, count: 16)
+            let linkBytes = [UInt8](repeating: 0, count: 32)
+            _ = try Username(fromLink: linkBytes, withRandomness: randomness)
+            XCTFail("Should have failed")
+        } catch SignalError.usernameLinkInvalidEntropyDataLength {
+        } catch {
+            XCTFail("Unexpected error thrown")
+        }
+    }
+
+    func testUsernameLinkInvalidLinkBytes() throws {
+        do {
+            let randomness = [UInt8](repeating: 0, count: 32)
+            let linkBytes = [UInt8](repeating: 0, count: 32)
+            _ = try Username(fromLink: linkBytes, withRandomness: randomness)
+            XCTFail("Should have failed")
+        } catch SignalError.usernameLinkInvalid {
+        } catch {
+            XCTFail("Unexpected error thrown")
+        }
+    }
 }

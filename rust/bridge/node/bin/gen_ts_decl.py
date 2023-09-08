@@ -33,7 +33,9 @@ def translate_to_ts(typ):
         "String": "string",
         "&str": "string",
         "Vec<u8>": "Buffer",
-        "Context": "null",
+        "ServiceId": "Buffer",
+        "Aci": "Buffer",
+        "Pni": "Buffer",
     }
 
     if typ in type_map:
@@ -89,13 +91,13 @@ def camelcase(arg):
     return parts[0] + ''.join(x.title() for x in parts[1:])
 
 
-def collect_decls(crate_dir, features=''):
+def collect_decls(crate_dir, features=()):
     args = [
         'cargo',
         'rustc',
         '-q',
         '--profile=check',
-        '--features', features,
+        '--features', ','.join(features),
         '--message-format=short',
         '--',
         '-Zunpretty=expanded']
@@ -146,6 +148,9 @@ def collect_decls(crate_dir, features=''):
         ts_ret_type = translate_to_ts(ret_type)
         ts_args = []
         if args:
+            if '::' in args:
+                raise Exception(f'Paths are not supported. Use alias for the type of \'{args}\'')
+
             for arg in args.split(', '):
                 (arg_name, arg_type) = arg.split(': ')
                 ts_arg_type = translate_to_ts(arg_type)
@@ -166,7 +171,7 @@ our_abs_dir = os.path.dirname(os.path.realpath(__file__))
 
 decls = itertools.chain(
     collect_decls(os.path.join(our_abs_dir, '..')),
-    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features='node'))
+    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media')))
 
 output_file_name = 'Native.d.ts'
 contents = open(os.path.join(our_abs_dir, output_file_name + '.in')).read()

@@ -48,6 +48,18 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(addr.deviceId, 5)
     }
 
+    func testAddressRoundTripServiceId() {
+        let uuid = UUID()
+        let aci = Aci(fromUUID: uuid)
+        let pni = Pni(fromUUID: uuid)
+
+        let aciAddr = ProtocolAddress(aci, deviceId: 1)
+        let pniAddr = ProtocolAddress(pni, deviceId: 1)
+        XCTAssertNotEqual(aciAddr, pniAddr)
+        XCTAssertEqual(aci, aciAddr.serviceId)
+        XCTAssertEqual(pni, pniAddr.serviceId)
+    }
+
     func testPkOperations() {
         let sk = PrivateKey.generate()
         let sk_bytes = sk.serialize()
@@ -236,6 +248,37 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(b_ptext, [1, 2, 3])
     }
 
+    func testGroupCipherWithContext() {
+        class ContextUsingStore: InMemorySignalProtocolStore {
+            var expectedContext: StoreContext & AnyObject
+
+            init(expectedContext: StoreContext & AnyObject) {
+                self.expectedContext = expectedContext
+                super.init()
+            }
+
+            override func loadSenderKey(from sender: ProtocolAddress, distributionId: UUID, context: StoreContext) throws -> SenderKeyRecord? {
+                XCTAssertIdentical(expectedContext, context as AnyObject)
+                return try super.loadSenderKey(from: sender, distributionId: distributionId, context: context)
+            }
+        }
+
+        class ContextWithIdentity: StoreContext {}
+
+        let sender = try! ProtocolAddress(name: "+14159999111", deviceId: 4)
+        let distribution_id = UUID(uuidString: "d1d1d1d1-7000-11eb-b32a-33b8a8a487a6")!
+
+        let a_store = ContextUsingStore(expectedContext: ContextWithIdentity())
+
+        let skdm = try! SenderKeyDistributionMessage(from: sender, distributionId: distribution_id, store: a_store, context: a_store.expectedContext)
+
+        let skdm_bits = skdm.serialize()
+
+        _ = try! SenderKeyDistributionMessage(bytes: skdm_bits)
+
+        _ = try! groupEncrypt([1, 2, 3], from: sender, distributionId: distribution_id, store: a_store, context: a_store.expectedContext).serialize()
+    }
+
     func testSenderCertificates() {
         let senderCertBits: [UInt8] = [
             0x0a, 0xcd, 0x01, 0x0a, 0x0c, 0x2b, 0x31, 0x34, 0x31, 0x35, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x10, 0x2a, 0x19,
@@ -263,6 +306,7 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(senderCert.publicKey.serialize().count, 33)
 
         XCTAssertEqual(senderCert.senderUuid, "9d0652a3-dcc3-4d11-975f-74d61598733f")
+        XCTAssertEqual(senderCert.senderAci.serviceIdString, "9d0652a3-dcc3-4d11-975f-74d61598733f")
         XCTAssertEqual(senderCert.senderE164, Optional("+14152222222"))
 
         let serverCert = senderCert.serverCertificate
@@ -270,6 +314,22 @@ class PublicAPITests: TestCaseBase {
         XCTAssertEqual(serverCert.keyId, 1)
         XCTAssertEqual(serverCert.publicKey.serialize().count, 33)
         XCTAssertEqual(serverCert.signatureBytes.count, 64)
+    }
+
+    func testSenderCertificateGetSenderAci() {
+        let aci = Aci(fromUUID: UUID())
+        let trustRoot = IdentityKeyPair.generate()
+        let serverKeys = IdentityKeyPair.generate()
+        let serverCert = try! ServerCertificate(keyId: 1, publicKey: serverKeys.publicKey, trustRoot: trustRoot.privateKey)
+        let senderAddr = try! SealedSenderAddress(aci: aci, deviceId: 1)
+        let senderCert = try! SenderCertificate(sender: senderAddr,
+                                                publicKey: IdentityKeyPair.generate().publicKey,
+                                                expiration: 31337,
+                                                signerCertificate: serverCert,
+                                                signerKey: serverKeys.privateKey)
+
+        XCTAssertNil(senderCert.senderE164)
+        XCTAssertEqual(aci, senderCert.senderAci)
     }
 
     private func testRoundTrip<Handle>(_ initial: Handle, serialize: (Handle) -> [UInt8], deserialize: ([UInt8]) throws -> Handle, line: UInt = #line) {

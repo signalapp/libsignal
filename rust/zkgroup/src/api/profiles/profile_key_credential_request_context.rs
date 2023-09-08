@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct ProfileKeyCredentialRequestContext {
     pub(crate) reserved: ReservedBytes,
-    pub(crate) uid_bytes: UidBytes,
+    pub(crate) aci_bytes: UidBytes,
     pub(crate) profile_key_bytes: ProfileKeyBytes,
     pub(crate) key_pair: crypto::profile_key_credential_request::KeyPair,
     pub(crate) ciphertext_with_secret_nonce:

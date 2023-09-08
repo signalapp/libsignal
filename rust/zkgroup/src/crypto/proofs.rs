@@ -549,13 +549,14 @@ impl ExpiringProfileKeyCredentialIssuanceProof {
         &self,
         credentials_public_key: credentials::PublicKey,
         request_public_key: profile_key_credential_request::PublicKey,
-        uid_bytes: UidBytes,
+        aci_bytes: UidBytes,
         request: profile_key_credential_request::Ciphertext,
         blinded_credential: credentials::BlindedExpiringProfileKeyCredential,
         credential_expiration_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let credentials_system = credentials::SystemParams::get_hardcoded();
-        let uid = uid_struct::UidStruct::new(uid_bytes);
+        let aci = libsignal_protocol::Aci::from_uuid_bytes(aci_bytes);
+        let uid = uid_struct::UidStruct::from_service_id(aci.into());
 
         let m5 = TimestampStruct::calc_m_from(credential_expiration_time);
         let M5 = m5 * credentials_system.G_m5;
@@ -1100,15 +1101,16 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         credential: credentials::ExpiringProfileKeyCredential,
         uid_ciphertext: uid_encryption::Ciphertext,
         profile_key_ciphertext: profile_key_encryption::Ciphertext,
-        uid_bytes: UidBytes,
+        aci_bytes: UidBytes,
         profile_key_bytes: ProfileKeyBytes,
         sho: &mut Sho,
     ) -> Self {
         let credentials_system = credentials::SystemParams::get_hardcoded();
         let uid_system = uid_encryption::SystemParams::get_hardcoded();
         let profile_key_system = profile_key_encryption::SystemParams::get_hardcoded();
-        let uid = uid_struct::UidStruct::new(uid_bytes);
-        let profile_key = profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, uid_bytes);
+        let aci = libsignal_protocol::Aci::from_uuid_bytes(aci_bytes);
+        let uid = uid_struct::UidStruct::from_service_id(aci.into());
+        let profile_key = profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, aci_bytes);
 
         let z = sho.get_scalar();
 

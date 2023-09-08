@@ -89,6 +89,49 @@ pub const AUTH_CREDENTIAL_PRESENTATION_V3_RESULT: &[u8] = &[
     0x0c, 0x55, 0xf5, 0x55, 0x07, 0x53, 0xad, 0x07, 0x7c, 0xfe, 0x5b, 0xb3, 0xed, 0xee, 0x0b, 0x0e,
     0x2a, 0xb8, 0x08, 0x72, 0x85, 0x65, 0x3d, 0xf8, 0x41, 0x5b, 0x9f, 0xea, 0x2f, 0x54, 0x10, 0xc4,
     0x09, 0x40, 0x59, 0xa2, 0x21, 0x7e, 0x28, 0x08, 0x65, 0xbf, 0xeb, 0xa6, 0x60, 0x53, 0x8d, 0xa2,
+    0x07, 0x86, 0x34, 0x6d, 0xa3, 0x34, 0xc6, 0x7b, 0xfc, 0x4d, 0x70, 0x6f, 0x72, 0x51, 0x17, 0xa7,
+    0x5e, 0x60, 0xc6, 0xfa, 0x24, 0x2e, 0x27, 0x35, 0xfc, 0x23, 0x61, 0xd1, 0x29, 0xb7, 0xab, 0x79,
+    0x3a, 0x10, 0x0a, 0x6a, 0x49, 0x17, 0x95, 0x9f, 0x0f, 0x87, 0xef, 0x75, 0xef, 0x35, 0x35, 0x0e,
+    0x6d, 0xa9, 0xd7, 0xd6, 0x38, 0xcf, 0x8c, 0xf9, 0xf1, 0x06, 0xc9, 0x47, 0x34, 0xa3, 0x2b, 0x85,
+    0x33, 0x74, 0x41, 0xd2, 0x2a, 0x99, 0xcf, 0x08, 0xc2, 0x4d, 0x11, 0xf4, 0xe7, 0xbe, 0xdd, 0xbf,
+    0x7f, 0xc9, 0x1a, 0x10, 0x14, 0x52, 0x15, 0xb9, 0x50, 0xa2, 0xb7, 0x8e, 0x7f, 0xbb, 0xc7, 0x70,
+    0x7f, 0xaa, 0x0d, 0xe2, 0x54, 0x12, 0x5c, 0xba, 0xc9, 0x8f, 0x02, 0x14, 0x67, 0xf5, 0x40, 0x15,
+    0x1c, 0x57, 0x73, 0x66, 0x80, 0x0f, 0xee, 0x1f, 0xc6, 0xea, 0x47, 0x30, 0xee, 0x58, 0xcd, 0x74,
+    0x60, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9e, 0xf8, 0x7a, 0x5e, 0xa8, 0x7d, 0x8b,
+    0xb0, 0x05, 0x16, 0x62, 0x33, 0x94, 0xff, 0x9b, 0x82, 0xce, 0xd6, 0x94, 0x77, 0x36, 0x0c, 0x21,
+    0xe0, 0x0e, 0x44, 0xda, 0x18, 0x71, 0x29, 0xd8, 0x0d, 0x41, 0x4d, 0xa3, 0xf3, 0xd2, 0x6d, 0x2d,
+    0x22, 0xaf, 0x93, 0xd6, 0x59, 0xc4, 0x81, 0x6c, 0x75, 0x04, 0x6e, 0x59, 0x7a, 0xb6, 0x14, 0xf0,
+    0x9e, 0xdd, 0xa5, 0x81, 0xb0, 0x81, 0x62, 0x07, 0x0d, 0xa8, 0xc1, 0x23, 0x4c, 0x65, 0x26, 0x84,
+    0x96, 0xdb, 0x7b, 0xa8, 0xaa, 0x3b, 0x81, 0xe6, 0x73, 0x36, 0xf5, 0x31, 0x74, 0x92, 0x65, 0x73,
+    0xba, 0x5a, 0x00, 0x7b, 0xba, 0xa2, 0xa2, 0x3b, 0x01, 0xd0, 0x9f, 0xa4, 0x19, 0x98, 0xbd, 0xfe,
+    0xb4, 0x9e, 0x4e, 0x7d, 0x07, 0x7b, 0x81, 0x69, 0x34, 0x21, 0xc0, 0x5a, 0xf8, 0x1c, 0x53, 0xa5,
+    0x86, 0x81, 0x03, 0x5b, 0x72, 0xf9, 0xb6, 0xeb, 0x04, 0xe3, 0x66, 0xda, 0x64, 0xca, 0x95, 0xf5,
+    0x27, 0x7e, 0x1a, 0xf3, 0xaa, 0x2f, 0x91, 0x5a, 0xcc, 0xd1, 0x20, 0xca, 0xd6, 0x75, 0x78, 0xf7,
+    0xa4, 0xd0, 0x75, 0xbd, 0x3c, 0xc9, 0x1c, 0x07, 0x09, 0x5d, 0xb5, 0x4b, 0x02, 0x03, 0x95, 0x54,
+    0x19, 0x67, 0x77, 0x23, 0xad, 0x3e, 0xe7, 0xff, 0x95, 0xf3, 0x85, 0x85, 0x58, 0xae, 0xb0, 0x40,
+    0x42, 0x7c, 0xb8, 0x1a, 0xb0, 0x2b, 0xe7, 0xe6, 0x0c, 0xea, 0x45, 0xdc, 0x2f, 0x4a, 0xd1, 0x2e,
+    0x70, 0xd3, 0x2f, 0x67, 0x74, 0x12, 0x28, 0xfd, 0x57, 0x89, 0xb7, 0x11, 0x0b, 0x4a, 0x31, 0x69,
+    0xc1, 0x3a, 0xd6, 0x6e, 0x4c, 0x9a, 0xa3, 0xcd, 0x08, 0x76, 0x5d, 0xe9, 0xdf, 0x4c, 0xfa, 0x54,
+    0x87, 0xf3, 0x60, 0xe2, 0x9e, 0x99, 0x34, 0x3e, 0x91, 0x81, 0x1b, 0xae, 0xc3, 0x31, 0xc4, 0x68,
+    0x09, 0x85, 0xe6, 0x08, 0xca, 0x5d, 0x40, 0x8e, 0x21, 0x72, 0x5c, 0x6a, 0xa1, 0xb6, 0x1d, 0x5a,
+    0x8b, 0x48, 0xd7, 0x5f, 0x4a, 0xaa, 0x9a, 0x3c, 0xbe, 0x88, 0xd3, 0xe0, 0xf1, 0xa5, 0x43, 0x19,
+    0x08, 0x1f, 0x77, 0xc7, 0x2c, 0x8f, 0x52, 0x54, 0x74, 0xde, 0x74, 0x9a, 0x0f, 0xef, 0x17, 0xb0,
+    0x6b, 0xbc, 0xe7, 0x4c, 0xa5, 0xd0, 0xf7, 0xa0, 0xc4, 0x5f, 0x44, 0x3a, 0x19, 0x01, 0xf1, 0xe3,
+    0xe0, 0x16, 0xd3, 0x54, 0x8e, 0x50, 0xa2, 0xfa, 0x19, 0xce, 0x6b, 0x27, 0xac, 0x46, 0x7e, 0xd9,
+    0xc9, 0xf5, 0x01, 0x8b, 0x2a, 0x44, 0x56, 0xb6, 0xc2, 0xb1, 0xa9, 0x14, 0x54, 0x42, 0x2f, 0xdd,
+    0x47, 0x3c, 0x96, 0x36, 0xa8, 0x45, 0x9e, 0x1c, 0x17, 0x00, 0x60, 0xc7, 0x7b, 0x02, 0x00, 0x00,
+    0x00,
+];
+
+pub const AUTH_CREDENTIAL_PRESENTATION_V3_RESULT_WITH_PNI_AS_ACI: &[u8] = &[
+    0x02, 0xec, 0x23, 0x74, 0x62, 0x4e, 0xe8, 0xde, 0x07, 0x39, 0x3f, 0x4c, 0x4f, 0x62, 0x5a, 0xfe,
+    0x17, 0x93, 0xa3, 0xfe, 0x0c, 0xfc, 0xf1, 0x9a, 0x44, 0x7e, 0xe9, 0x36, 0x67, 0xe5, 0x2d, 0xc7,
+    0x76, 0x38, 0x00, 0x38, 0x2c, 0x6e, 0xe4, 0x1e, 0x49, 0xbb, 0x60, 0xc4, 0x0c, 0xbd, 0x76, 0x65,
+    0x7e, 0x1f, 0x6c, 0x73, 0x7f, 0x50, 0x2d, 0x6f, 0x47, 0xab, 0xe1, 0x6b, 0xd4, 0xef, 0xab, 0x1f,
+    0x71, 0x94, 0x8d, 0x76, 0x34, 0x77, 0x1c, 0xd0, 0x45, 0x73, 0xa7, 0x5f, 0x3c, 0x8e, 0x77, 0xe7,
+    0x0c, 0x55, 0xf5, 0x55, 0x07, 0x53, 0xad, 0x07, 0x7c, 0xfe, 0x5b, 0xb3, 0xed, 0xee, 0x0b, 0x0e,
+    0x2a, 0xb8, 0x08, 0x72, 0x85, 0x65, 0x3d, 0xf8, 0x41, 0x5b, 0x9f, 0xea, 0x2f, 0x54, 0x10, 0xc4,
+    0x09, 0x40, 0x59, 0xa2, 0x21, 0x7e, 0x28, 0x08, 0x65, 0xbf, 0xeb, 0xa6, 0x60, 0x53, 0x8d, 0xa2,
     0x07, 0xf8, 0x87, 0x9e, 0x4a, 0xfc, 0x64, 0xbb, 0x83, 0x90, 0xb8, 0xdd, 0xc4, 0x67, 0x61, 0x86,
     0x87, 0x0e, 0x5a, 0x34, 0x5a, 0x85, 0x32, 0x5a, 0xb1, 0xdf, 0xd9, 0x8b, 0xe0, 0x19, 0x53, 0x1a,
     0x16, 0x10, 0x0a, 0x6a, 0x49, 0x17, 0x95, 0x9f, 0x0f, 0x87, 0xef, 0x75, 0xef, 0x35, 0x35, 0x0e,
@@ -280,24 +323,26 @@ fn test_integration_auth() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let uid = zkgroup::TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let redemption_time = 123456u32;
 
     // SERVER
     // Issue credential
     let randomness = zkgroup::TEST_ARRAY_32_2;
     let auth_credential_response =
-        server_secret_params.issue_auth_credential(randomness, uid, redemption_time);
+        server_secret_params.issue_auth_credential(randomness, aci, redemption_time);
 
     // CLIENT
     let auth_credential = server_public_params
-        .receive_auth_credential(uid, redemption_time, &auth_credential_response)
+        .receive_auth_credential(aci, redemption_time, &auth_credential_response)
         .unwrap();
 
     // Create and decrypt user entry
-    let uuid_ciphertext = group_secret_params.encrypt_uuid(uid);
-    let plaintext = group_secret_params.decrypt_uuid(uuid_ciphertext).unwrap();
-    assert!(plaintext == uid);
+    let uuid_ciphertext = group_secret_params.encrypt_service_id(aci.into());
+    let plaintext = group_secret_params
+        .decrypt_service_id(uuid_ciphertext)
+        .unwrap();
+    assert_eq!(plaintext, aci.into());
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
@@ -343,7 +388,7 @@ fn test_integration_auth() {
             &presentation_v2_parsed,
             u64::from(redemption_time + 2) * SECONDS_PER_DAY + 2,
         )
-        .unwrap_err();
+        .expect_err("credential not valid past deadline");
 
     server_secret_params
         .verify_auth_credential_presentation_v2(
@@ -369,7 +414,6 @@ fn test_integration_auth() {
     let mut auth_credential_presentation_v2_bytes =
         [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_PRESENTATION_V2_LEN];
     let mut uuid_ciphertext_bytes = [0u8; zkgroup::common::constants::UUID_CIPHERTEXT_LEN];
-    let mut uid_bytes = [0u8; zkgroup::common::constants::UUID_LEN];
     let mut randomness_bytes = [0u8; zkgroup::common::constants::RANDOMNESS_LEN];
 
     //ccm_bytes.copy_from_slice(&bincode::serialize(&client_credential_manager).unwrap());
@@ -383,7 +427,6 @@ fn test_integration_auth() {
     auth_credential_presentation_v2_bytes
         .copy_from_slice(&bincode::serialize(&presentation_v2).unwrap());
     uuid_ciphertext_bytes.copy_from_slice(&bincode::serialize(&uuid_ciphertext).unwrap());
-    uid_bytes.copy_from_slice(&bincode::serialize(&uid).unwrap());
     randomness_bytes.copy_from_slice(&bincode::serialize(&randomness).unwrap());
 }
 
@@ -405,20 +448,34 @@ fn test_integration_auth_with_pni() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = zkgroup::TEST_ARRAY_16;
-    let pni = zkgroup::TEST_ARRAY_16_1;
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let pni = libsignal_protocol::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
     let redemption_time = 123456 * SECONDS_PER_DAY;
 
     // SERVER
     // Issue credential
     let randomness = zkgroup::TEST_ARRAY_32_2;
-    let auth_credential_response =
-        server_secret_params.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time);
+    let auth_credential_response = server_secret_params
+        .issue_auth_credential_with_pni_as_service_id(randomness, aci, pni, redemption_time);
 
     // CLIENT
     let auth_credential = server_public_params
-        .receive_auth_credential_with_pni(aci, pni, redemption_time, &auth_credential_response)
+        .receive_auth_credential_with_pni_as_service_id(
+            aci,
+            pni,
+            redemption_time,
+            &auth_credential_response,
+        )
         .unwrap();
+
+    assert!(server_public_params
+        .receive_auth_credential_with_pni_as_aci(
+            aci,
+            pni,
+            redemption_time,
+            &auth_credential_response,
+        )
+        .is_err());
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
@@ -447,7 +504,10 @@ fn test_integration_auth_with_pni() {
     >(presentation_bytes)
     .unwrap();
 
-    assert!(presentation_any.get_pni_ciphertext().is_some());
+    assert!(
+        presentation_any.get_pni_ciphertext().unwrap()
+            == group_secret_params.encrypt_service_id(pni.into())
+    );
 
     server_secret_params
         .verify_auth_credential_with_pni_presentation(
@@ -471,7 +531,7 @@ fn test_integration_auth_with_pni() {
             &presentation_any,
             redemption_time - SECONDS_PER_DAY - 1,
         )
-        .unwrap_err();
+        .expect_err("credential not valid before redemption time (allowing for clock skew)");
 
     server_secret_params
         .verify_auth_credential_presentation(
@@ -479,7 +539,7 @@ fn test_integration_auth_with_pni() {
             &presentation_any,
             redemption_time + 2 * SECONDS_PER_DAY + 2,
         )
-        .unwrap_err();
+        .expect_err("credential not valid past deadline");
 
     // test encoding
     // these tests will also discover if the serialized sizes change,
@@ -504,6 +564,118 @@ fn test_integration_auth_with_pni() {
 }
 
 #[test]
+fn test_integration_auth_with_pni_using_pni_as_aci() {
+    let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
+    let server_public_params = server_secret_params.get_public_params();
+
+    let master_key = zkgroup::groups::GroupMasterKey::new(zkgroup::TEST_ARRAY_32_1);
+    let group_secret_params =
+        zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
+    let group_public_params = group_secret_params.get_public_params();
+
+    // Random UID and issueTime
+    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16));
+    let pni = libsignal_protocol::Pni::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16_1));
+    let redemption_time = 123456 * SECONDS_PER_DAY;
+
+    // SERVER
+    // Issue credential
+    let randomness = zkgroup::TEST_ARRAY_32_2;
+    let auth_credential_response = server_secret_params.issue_auth_credential_with_pni_as_aci(
+        randomness,
+        aci,
+        pni,
+        redemption_time,
+    );
+
+    // CLIENT
+    let auth_credential = server_public_params
+        .receive_auth_credential_with_pni_as_aci(
+            aci,
+            pni,
+            redemption_time,
+            &auth_credential_response,
+        )
+        .unwrap();
+
+    assert!(server_public_params
+        .receive_auth_credential_with_pni_as_service_id(
+            aci,
+            pni,
+            redemption_time,
+            &auth_credential_response,
+        )
+        .is_err());
+
+    // Create and receive presentation
+    let randomness = zkgroup::TEST_ARRAY_32_5;
+
+    let presentation = server_public_params.create_auth_credential_with_pni_presentation(
+        randomness,
+        group_secret_params,
+        auth_credential,
+    );
+
+    let presentation_bytes = &bincode::serialize(&presentation).unwrap();
+
+    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation.into();
+
+    let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
+
+    // for b in presentation_bytes.iter() {
+    //     print!("0x{:02x}, ", b);
+    // }
+
+    assert!(AUTH_CREDENTIAL_PRESENTATION_V3_RESULT_WITH_PNI_AS_ACI[..] == presentation_bytes[..]);
+    assert!(
+        AUTH_CREDENTIAL_PRESENTATION_V3_RESULT_WITH_PNI_AS_ACI[..] == presentation_any_bytes[..]
+    );
+
+    let presentation_parsed = bincode::deserialize::<
+        zkgroup::auth::AuthCredentialWithPniPresentation,
+    >(presentation_bytes)
+    .unwrap();
+
+    assert!(
+        presentation_any.get_pni_ciphertext().unwrap()
+            == group_secret_params
+                .encrypt_service_id(libsignal_protocol::Aci::from(uuid::Uuid::from(pni)).into())
+    );
+
+    server_secret_params
+        .verify_auth_credential_with_pni_presentation(
+            group_public_params,
+            &presentation_parsed,
+            redemption_time,
+        )
+        .unwrap();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time,
+        )
+        .unwrap();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time - SECONDS_PER_DAY - 1,
+        )
+        .expect_err("credential not valid before redemption time (allowing for clock skew)");
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time + 2 * SECONDS_PER_DAY + 2,
+        )
+        .expect_err("credential not valid past deadline");
+}
+
+#[test]
 fn test_integration_expiring_profile() {
     // SERVER
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
@@ -515,17 +687,17 @@ fn test_integration_expiring_profile() {
         zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
     let group_public_params = group_secret_params.get_public_params();
 
-    let uid = zkgroup::TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
-    let profile_key_commitment = profile_key.get_commitment(uid);
+    let profile_key_commitment = profile_key.get_commitment(aci);
 
     // Create context and request
     let randomness = zkgroup::TEST_ARRAY_32_3;
 
     let context = server_public_params.create_profile_key_credential_request_context(
         randomness,
-        uid,
+        aci,
         profile_key,
     );
     let request = context.get_request();
@@ -539,7 +711,7 @@ fn test_integration_expiring_profile() {
         .issue_expiring_profile_key_credential(
             randomness,
             &request,
-            uid,
+            aci,
             profile_key_commitment,
             expiration,
         )
@@ -553,13 +725,15 @@ fn test_integration_expiring_profile() {
         .unwrap();
 
     // Create encrypted UID and profile key
-    let uuid_ciphertext = group_secret_params.encrypt_uuid(uid);
-    let plaintext = group_secret_params.decrypt_uuid(uuid_ciphertext).unwrap();
-    assert!(plaintext == uid);
+    let uuid_ciphertext = group_secret_params.encrypt_service_id(aci.into());
+    let plaintext = group_secret_params
+        .decrypt_service_id(uuid_ciphertext)
+        .unwrap();
+    assert_eq!(plaintext, aci.into());
 
-    let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, uid);
+    let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, aci);
     let decrypted_profile_key = group_secret_params
-        .decrypt_profile_key(profile_key_ciphertext, uid)
+        .decrypt_profile_key(profile_key_ciphertext, aci)
         .unwrap();
 
     assert!(decrypted_profile_key.get_bytes() == profile_key.get_bytes());
