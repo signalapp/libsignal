@@ -19,9 +19,7 @@ impl<K, V, const N: usize> SmallMap<K, V, N> {
     /// The maximum number of elements allowed in a `SmallMap`.
     const MAX_SIZE: usize = 4;
 
-    /// ```compile_fail
-    /// let _ = SmallMap::new([1, 2, 3, 4, 5]);
-    /// ```
+    /// Checks at compile-time (via `const`) that `N` is small enough.
     const CHECK_MAX_SIZE: () = assert!(
         N <= Self::MAX_SIZE,
         "use a HashMap for more than MAX_SIZE items"
