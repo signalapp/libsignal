@@ -847,7 +847,7 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
 pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     destination: &ProtocolAddress,
     usmc: &UnidentifiedSenderMessageContent,
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     let our_identity = identity_store.get_identity_key_pair().await?;
@@ -1235,7 +1235,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
     usmc: &UnidentifiedSenderMessageContent,
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     sealed_sender_multi_recipient_encrypt_impl(
@@ -1256,7 +1256,7 @@ pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_deriv
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
     usmc: &UnidentifiedSenderMessageContent,
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
     // When this is flipped, we should use this function to test the legacy encryption instead.
@@ -1278,7 +1278,7 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
     usmc: &UnidentifiedSenderMessageContent,
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
     should_use_legacy_ephemeral_key_derivation: bool,
 ) -> Result<Vec<u8>> {
@@ -1483,7 +1483,7 @@ pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>
 /// before decrypting the underlying message.
 pub async fn sealed_sender_decrypt_to_usmc(
     ciphertext: &[u8],
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
 ) -> Result<UnidentifiedSenderMessageContent> {
     let our_identity = identity_store.get_identity_key_pair().await?;
 
@@ -1674,7 +1674,7 @@ pub async fn sealed_sender_decrypt(
     identity_store: &mut dyn IdentityKeyStore,
     session_store: &mut dyn SessionStore,
     pre_key_store: &mut dyn PreKeyStore,
-    signed_pre_key_store: &mut dyn SignedPreKeyStore,
+    signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store).await?;

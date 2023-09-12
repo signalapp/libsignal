@@ -36,9 +36,9 @@ pub async fn process_prekey(
     remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     identity_store: &mut dyn IdentityKeyStore,
-    pre_key_store: &mut dyn PreKeyStore,
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-    kyber_prekey_store: &mut dyn KyberPreKeyStore,
+    pre_key_store: &dyn PreKeyStore,
+    signed_prekey_store: &dyn SignedPreKeyStore,
+    kyber_prekey_store: &dyn KyberPreKeyStore,
 ) -> Result<PreKeysUsed> {
     let their_identity_key = message.identity_key();
 
@@ -73,10 +73,10 @@ async fn process_prekey_impl(
     message: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-    kyber_prekey_store: &mut dyn KyberPreKeyStore,
-    pre_key_store: &mut dyn PreKeyStore,
-    identity_store: &mut dyn IdentityKeyStore,
+    signed_prekey_store: &dyn SignedPreKeyStore,
+    kyber_prekey_store: &dyn KyberPreKeyStore,
+    pre_key_store: &dyn PreKeyStore,
+    identity_store: &dyn IdentityKeyStore,
 ) -> Result<PreKeysUsed> {
     if session_record.has_session_state(
         message.message_version() as u32,

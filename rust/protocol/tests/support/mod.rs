@@ -55,7 +55,7 @@ pub async fn decrypt(
         &mut store.session_store,
         &mut store.identity_store,
         &mut store.pre_key_store,
-        &mut store.signed_pre_key_store,
+        &store.signed_pre_key_store,
         &mut store.kyber_pre_key_store,
         &mut csprng,
     )

@@ -84,7 +84,7 @@ pub fn verify_signature(
 }
 
 impl CertChain {
-    const COMMON_NAME: &str = "Intel SGX Attestation Report Signing";
+    const COMMON_NAME: &'static str = "Intel SGX Attestation Report Signing";
     const ORGANIZATION_NAME: &'static str = "Intel Corporation";
     const LOCALITY_NAME: &'static str = "Santa Clara";
     const STATE_NAME: &'static str = "CA";

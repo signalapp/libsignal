@@ -380,7 +380,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
 
             let bad_bundle = good_bundle
                 .clone()
-                .modify(|mut content| content.ec_pre_key_signature = Some(bad_signature))
+                .modify(|content| content.ec_pre_key_signature = Some(bad_signature))
                 .expect("can recreate the bundle");
 
             assert!(process_prekey_bundle(
