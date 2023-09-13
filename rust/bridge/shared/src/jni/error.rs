@@ -214,10 +214,7 @@ impl ThrownException {
     }
 
     /// Persists the given throwable.
-    pub fn new<'a>(
-        env: &mut JNIEnv<'a>,
-        throwable: JThrowable<'a>,
-    ) -> Result<Self, SignalJniError> {
+    pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, SignalJniError> {
         assert!(**throwable != *JObject::null());
         Ok(Self {
             jvm: env.get_java_vm()?,
