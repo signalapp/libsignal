@@ -5,24 +5,21 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
+# To keep code size down, we try to avoid depending on multiple versions of crates.
+#
 # For now, these dependencies have conflicting requirements.
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
 # bitflags:
-#  either a dev or a build time dependency.
-# syn:
-#  syn is used in proc-macros only, so it isn't going to cost us in code size.
+#  mostly provides a macro, with only a small bit of code that actually
+#  makes it into the final build.
 EXPECTED="\
 bitflags v1.3.2
 
-bitflags v2.3.3
+bitflags v2.3.3"
 
-syn v1.0.109
-
-syn v2.0.28"
-
-if [[ "$(cargo tree -d -e normal --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
-    cargo tree -d -e normal --workspace --locked
+if [[ "$(cargo tree --duplicates --edges normal,no-proc-macro --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
+    cargo tree --duplicates --edges normal,no-proc-macro --workspace --locked
     exit 1
 fi
