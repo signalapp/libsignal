@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use aes::cipher::Unsigned;
 use hmac::digest::generic_array::{ArrayLength, GenericArray};
-use hmac::digest::typenum::Unsigned;
 use hmac::Mac;
 use sha2::digest::{FixedOutput, MacError, Output};
 
@@ -22,24 +22,27 @@ pub struct Validating<M: Mac + Clone> {
     expected: Vec<Output<M>>,
 }
 
-const MINIMUM_INCREMENTAL_CHUNK_SIZE: usize = 8 * 1024;
-const MAXIMUM_INCREMENTAL_DIGEST_BYTES: usize = 1024;
+const MINIMUM_CHUNK_SIZE: usize = 64 * 1024;
+const MAXIMUM_CHUNK_SIZE: usize = 2 * 1024 * 1024;
+const TARGET_TOTAL_DIGEST_SIZE: usize = 8 * 1024;
 
-#[allow(clippy::manual_clamp)]
-pub fn calculate_chunk_size<D>(data_size: usize) -> usize
+pub const fn calculate_chunk_size<D>(data_size: usize) -> usize
 where
     D: FixedOutput,
     D::OutputSize: ArrayLength<u8>,
 {
-    if data_size == 0 {
-        return MINIMUM_INCREMENTAL_CHUNK_SIZE;
+    assert!(
+        0 == TARGET_TOTAL_DIGEST_SIZE % D::OutputSize::USIZE,
+        "Target digest size should be a multiple of digest size"
+    );
+    let target_chunk_count = TARGET_TOTAL_DIGEST_SIZE / D::OutputSize::USIZE;
+    if data_size < target_chunk_count * MINIMUM_CHUNK_SIZE {
+        return MINIMUM_CHUNK_SIZE;
     }
-    let max_chunks = MAXIMUM_INCREMENTAL_DIGEST_BYTES / D::OutputSize::USIZE;
-    let chunk_size = (data_size + max_chunks - 1) / max_chunks;
-    std::cmp::min(
-        data_size,
-        std::cmp::max(chunk_size, MINIMUM_INCREMENTAL_CHUNK_SIZE),
-    )
+    if data_size < target_chunk_count * MAXIMUM_CHUNK_SIZE {
+        return (data_size + target_chunk_count - 1) / target_chunk_count;
+    }
+    MAXIMUM_CHUNK_SIZE
 }
 
 impl<M: Mac + Clone> Incremental<M> {
@@ -154,6 +157,12 @@ mod test {
         let hmac = Hmac::<Sha256>::new_from_slice(key)
             .expect("Should be able to create a new HMAC instance");
         Incremental::new(hmac, chunk_size)
+    }
+
+    #[test]
+    #[should_panic]
+    fn chunk_size_zero() {
+        new_incremental(&[], 0);
     }
 
     #[test]
@@ -338,15 +347,47 @@ mod test {
         });
     }
 
+    const KIBIBYTES: usize = 1024;
+    const MEBIBYTES: usize = 1024 * KIBIBYTES;
+    const GIBIBYTES: usize = 1024 * MEBIBYTES;
+
     #[test]
-    fn chunk_sizes() {
+    fn chunk_sizes_sha256() {
         for (data_size, expected) in [
-            (1024, 1024),
-            (10 * 1024, MINIMUM_INCREMENTAL_CHUNK_SIZE),
-            (100 * 1024, MINIMUM_INCREMENTAL_CHUNK_SIZE),
-            (1024 * 1024, 65_536),
-            (10 * 1024 * 1024, 10 * 65_536),
-            (100 * 1024 * 1024, 100 * 65_536),
+            (0, MINIMUM_CHUNK_SIZE),
+            (KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (100 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (MEBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * MEBIBYTES, MINIMUM_CHUNK_SIZE),
+            (20 * MEBIBYTES, 80 * KIBIBYTES),
+            (100 * MEBIBYTES, 400 * KIBIBYTES),
+            (200 * MEBIBYTES, 800 * KIBIBYTES),
+            (256 * MEBIBYTES, MEBIBYTES),
+            (512 * MEBIBYTES, 2 * MEBIBYTES),
+            (GIBIBYTES, 2 * MEBIBYTES),
+            (2 * GIBIBYTES, 2 * MEBIBYTES),
+        ] {
+            let actual = calculate_chunk_size::<Sha256>(data_size);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn chunk_sizes_sha512() {
+        for (data_size, expected) in [
+            (0, MINIMUM_CHUNK_SIZE),
+            (KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (100 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (MEBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * MEBIBYTES, 80 * KIBIBYTES),
+            (20 * MEBIBYTES, 160 * KIBIBYTES),
+            (100 * MEBIBYTES, 800 * KIBIBYTES),
+            (200 * MEBIBYTES, 1600 * KIBIBYTES),
+            (256 * MEBIBYTES, 2 * MEBIBYTES),
+            (512 * MEBIBYTES, 2 * MEBIBYTES),
+            (GIBIBYTES, 2 * MEBIBYTES),
         ] {
             let actual = calculate_chunk_size::<sha2::Sha512>(data_size);
             assert_eq!(actual, expected);
@@ -355,28 +396,18 @@ mod test {
 
     #[test]
     fn total_digest_size_is_never_too_big() {
-        proptest!(|(data_size in 256_usize..1_000_000_000)| {
+        fn total_digest_size(data_size: usize) -> usize {
             let chunk_size = calculate_chunk_size::<Sha256>(data_size);
-            let num_increments = std::cmp::max(1, (data_size + chunk_size - 1) / chunk_size);
-            let total_digest_size = num_increments * <Sha256 as OutputSizeUser>::OutputSize::USIZE;
-            assert!(total_digest_size <= MAXIMUM_INCREMENTAL_DIGEST_BYTES)
-        })
-    }
-
-    #[test]
-    fn chunk_size_is_never_larger_than_data_size() {
-        proptest!(|(data_size in 256_usize..1_000_000_000)| {
-            let chunk_size = calculate_chunk_size::<Sha256>(data_size);
-            assert!(chunk_size <= data_size)
-        })
-    }
-
-    #[test]
-    fn chunk_size_for_empty_input() {
-        assert_eq!(
-            MINIMUM_INCREMENTAL_CHUNK_SIZE,
-            calculate_chunk_size::<Sha256>(0)
-        );
+            let num_chunks = std::cmp::max(1, (data_size + chunk_size - 1) / chunk_size);
+            num_chunks * <Sha256 as OutputSizeUser>::OutputSize::USIZE
+        }
+        let config = ProptestConfig::with_cases(10_000);
+        proptest!(config, |(data_size in 256..256*MEBIBYTES)| {
+            assert!(total_digest_size(data_size) <= 8*KIBIBYTES)
+        });
+        proptest!(|(data_size_mib in 256_usize..2048)| {
+            assert!(total_digest_size(data_size_mib*MEBIBYTES) <= 32*KIBIBYTES)
+        });
     }
 
     #[derive(Clone)]

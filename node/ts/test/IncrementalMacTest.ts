@@ -36,10 +36,14 @@ const CHUNK_SIZE = everyNthByte(32);
 
 describe('Incremental MAC', () => {
   it('calculates the chunk size', () => {
-    assert.equal(42, chunkSizeInBytes(inferChunkSize(42)));
-    assert.equal(1024, chunkSizeInBytes(inferChunkSize(1024)));
-    assert.equal(8192, chunkSizeInBytes(inferChunkSize(10 * 1024)));
-    assert.equal(3276800, chunkSizeInBytes(inferChunkSize(100 * 1024 * 1024)));
+    assert.equal(64 * 1024, chunkSizeInBytes(inferChunkSize(0)));
+    assert.equal(64 * 1024, chunkSizeInBytes(inferChunkSize(42)));
+    assert.equal(64 * 1024, chunkSizeInBytes(inferChunkSize(1024)));
+    assert.equal(64 * 1024, chunkSizeInBytes(inferChunkSize(10 * 1024)));
+    assert.equal(
+      400 * 1024,
+      chunkSizeInBytes(inferChunkSize(100 * 1024 * 1024))
+    );
   });
 
   describe('DigestingWritable', () => {
