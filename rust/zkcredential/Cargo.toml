@@ -21,6 +21,7 @@ serde = { version = "1.0.106", features = ["derive"] }
 [dev-dependencies]
 bincode = "1.2.1"
 hex = "0.4"
+hex-literal = "0.4.1"
 
 # Many of zkcredential's tests live in the zkgroup crate,
 # since zkcredential was designed to work with existing verifiably encrypted attribute types.
