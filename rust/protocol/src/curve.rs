@@ -12,6 +12,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use arrayref::array_ref;
+use curve25519_dalek::scalar;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
@@ -220,10 +221,8 @@ impl PrivateKey {
         } else {
             let mut key = [0u8; curve25519::PRIVATE_KEY_LENGTH];
             key.copy_from_slice(&value[..curve25519::PRIVATE_KEY_LENGTH]);
-            // Clamp:
-            key[0] &= 0xF8;
-            key[31] &= 0x7F;
-            key[31] |= 0x40;
+            // Clamping is not necessary but is kept for backward compatibility
+            key = scalar::clamp_integer(key);
             Ok(Self {
                 key: PrivateKeyData::DjbPrivateKey(key),
             })
