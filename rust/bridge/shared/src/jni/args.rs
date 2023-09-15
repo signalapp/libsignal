@@ -274,3 +274,6 @@ macro_rules! jni_args {
         }
     }
 }
+// Expose this for doc comments.
+#[cfg(doc)]
+use jni_args;

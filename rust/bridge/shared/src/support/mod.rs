@@ -75,6 +75,8 @@ pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
 ///   arguments are of the form `Wrapper<Foo>`.
 ///
 /// [`JsBox`]: https://docs.rs/neon/0.7.1-napi/neon/types/struct.JsBox.html
+/// [`node::AsyncArgTypeInfo`]: crate::node::AsyncArgTypeInfo
+#[macro_export]
 macro_rules! bridge_handle {
     ($typ:ty $(, clone = $_clone:tt)? $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
         #[cfg(feature = "ffi")]
@@ -85,6 +87,10 @@ macro_rules! bridge_handle {
         node_bridge_handle!($typ $(as $node_name)? $(, mut = $_mut)?);
     };
 }
+
+// Allow referring to the macro by path in doc comments.
+#[cfg(doc)]
+pub use bridge_handle;
 
 /// Convenience syntax to expose a deserialization method to the bridges.
 ///

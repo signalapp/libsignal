@@ -42,7 +42,7 @@ pub struct IssuanceProof {
 /// calling [`issue`](Self::issue) and the client by calling [`verify`](Self::verify).
 pub struct IssuanceProofBuilder<'a> {
     public_attrs: ShoHmacSha256,
-    // Directly accessed by BlindIssuanceProofBuilder.
+    /// Directly accessed by [`blind::BlindedIssuanceProofBuilder`].
     attr_points: Vec<RistrettoPoint>,
     authenticated_message: &'a [u8],
 }
@@ -136,7 +136,7 @@ impl<'a> IssuanceProofBuilder<'a> {
 
     /// Generates a [`poksho::PointArgs`] to be used in the final proof.
     ///
-    /// `total_attr_count` is passed in for [blind issuance](blind::BlindIssuanceProofBuilder), in
+    /// `total_attr_count` is passed in for [blind issuance](blind::BlindedIssuanceProofBuilder), in
     /// which case the caller may provide additional attributes.
     fn prepare_scalar_args(
         &self,
@@ -168,7 +168,7 @@ impl<'a> IssuanceProofBuilder<'a> {
     /// Generates a [`poksho::PointArgs`] to be used in the final proof.
     ///
     /// The `credential` argument may be `None` when used for [blind
-    /// issuance](blind::BlindIssuanceProofBuilder), in which case the caller is responsible for
+    /// issuance](blind::BlindedIssuanceProofBuilder), in which case the caller is responsible for
     /// adding its own points representing the credential.
     fn prepare_point_args(
         &self,

@@ -46,8 +46,8 @@ pub struct ParseErrorReport {
 
 /// Sanitize an MP4 input.
 ///
-/// The input must implement [`AsyncRead`] + [`AsyncSkip`], where `AsyncSkip` represents a subset of the [`AsyncSeek`]
-/// trait; an input stream which can be skipped forward, but not necessarily seeked to arbitrary positions.
+/// The input must implement [`AsyncRead`] + [`AsyncSkip`], where `AsyncSkip` represents the
+/// ability to skip forward, but not necessarily seek to arbitrary positions.
 ///
 /// # Errors
 ///

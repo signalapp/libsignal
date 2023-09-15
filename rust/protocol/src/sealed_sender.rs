@@ -1101,7 +1101,7 @@ mod sealed_sender_v2 {
 /// 1. it requires a [`SessionRecord`] to exist already for the recipient, i.e. that a Double
 ///    Ratchet message chain has previously been established in the [`SessionStore`] via
 ///    [`process_prekey_bundle`][crate::process_prekey_bundle] after an initial
-///    [`PreKeySignalMessage`][crate::PreKeySignalMessage] is received.
+///    [`PreKeySignalMessage`] is received.
 /// 2. it ferries a lot of additional information in its encoding which makes the resulting message
 ///    bulkier than the message produced by [Sealed Sender v1]. For sending, this will generally
 ///    still be more compact than sending the same message N times, but on the receiver side the

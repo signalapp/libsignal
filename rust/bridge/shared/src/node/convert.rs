@@ -822,7 +822,8 @@ pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
 ///
 /// Since this trait is used as a marker and implemented through a macro,
 /// operations that might differ across types have been factored into the [`BridgeHandleStrategy`]
-/// trait. The [`bridge_handle`] macro will automatically choose the correct strategy.
+/// trait. The [`bridge_handle`](crate::support::bridge_handle) macro will automatically choose the
+/// correct strategy.
 pub trait BridgeHandle: Send + Sync + Sized + 'static {
     /// Factors out operations that differ between mutable and immutable bridge handles.
     type Strategy: BridgeHandleStrategy<Self>;

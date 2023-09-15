@@ -143,6 +143,11 @@ jobs:
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       if: matrix.version == 'nightly'
 
+    - name: Rust docs
+      run: cargo doc --workspace --all-features
+      env:
+        RUSTFLAGS: -D warnings
+
     # We check the fuzz targets on stable because they don't have lockfiles,
     # and crates don't generally support arbitrary nightly versions.
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.

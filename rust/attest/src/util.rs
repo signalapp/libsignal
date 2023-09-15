@@ -9,7 +9,7 @@ use std::time::SystemTime;
 use boring::asn1::Asn1Time;
 use libc::time_t;
 
-/// A replacement for [`HashMap`] that performs linear lookups.
+/// A replacement for [`std::collections::HashMap`] that performs linear lookups.
 ///
 /// This can be used in place of `HashMap` for supporting lookup in `const`
 /// arrays. For small `N`, the linear search will be faster than a hash lookup.

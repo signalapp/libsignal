@@ -146,7 +146,7 @@ pub struct AuthCredentialWithPni {
     pub(crate) V: RistrettoPoint,
 }
 
-/// Unused, kept only because ServerSecretParams contains a KeyPair<ProfileKeyCredential>.
+/// Unused, kept only because ServerSecretParams contains a `KeyPair<ProfileKeyCredential>`.
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProfileKeyCredential {
     pub(crate) t: Scalar,
@@ -178,7 +178,7 @@ pub struct BlindedExpiringProfileKeyCredential {
     pub(crate) S2: RistrettoPoint,
 }
 
-/// Unused, kept only because ServerSecretParams contains a KeyPair<PniCredential>.
+/// Unused, kept only because ServerSecretParams contains a `KeyPair<PniCredential>`.
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PniCredential {
     pub(crate) t: Scalar,
