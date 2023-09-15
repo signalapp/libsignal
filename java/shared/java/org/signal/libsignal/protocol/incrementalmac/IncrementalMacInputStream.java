@@ -7,28 +7,27 @@ package org.signal.libsignal.protocol.incrementalmac;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import org.signal.libsignal.internal.Native;
 
 public final class IncrementalMacInputStream extends InputStream {
+  private static final int MAX_BUFFER_SIZE = 8192;
   private final long validatingMac;
 
-  private final InputStream inner;
+  private final ReadableByteChannel inner;
   private boolean closed = false;
 
-  private byte[] currentChunk;
-  // position in the currentChunk to start reading from
-  private int readPos;
-  // position in the currentChunk past the index of the last readable byte
-  private int writePos;
+  private ByteBuffer currentChunk;
 
   public IncrementalMacInputStream(
       InputStream inner, byte[] key, ChunkSizeChoice sizeChoice, byte[] digest) {
     int chunkSize = sizeChoice.getSizeInBytes();
-    this.readPos = 0;
-    this.writePos = 0;
-    this.currentChunk = new byte[chunkSize];
+    this.currentChunk = ByteBuffer.allocateDirect(chunkSize);
+    this.currentChunk.limit(0);
     this.validatingMac = Native.ValidatingMac_Initialize(key, chunkSize, digest);
-    this.inner = inner;
+    this.inner = Channels.newChannel(inner);
   }
 
   @Override
@@ -54,45 +53,54 @@ public final class IncrementalMacInputStream extends InputStream {
   }
 
   private int readInternal(byte[] bytes, int offset, int requestedLen) throws IOException {
-    if (this.readPos == this.writePos) {
-      int bytesRead = this.readBuffer(this.inner, this.currentChunk);
-      if (bytesRead == 0) {
+    if (!this.currentChunk.hasRemaining()) {
+      this.currentChunk.clear();
+      int bytesRead = this.inner.read(this.currentChunk);
+      this.currentChunk.flip();
+      if (bytesRead <= 0) {
         return -1;
       }
-      this.writePos = bytesRead;
-      this.readPos = 0;
-      this.validateChunk();
+      this.validateChunk(this.currentChunk.slice(), this.currentChunk.capacity());
     }
-    int availableToRead = this.writePos - this.readPos;
-    int bytesToRead = Math.min(availableToRead, requestedLen);
-    System.arraycopy(this.currentChunk, this.readPos, bytes, offset, bytesToRead);
-    this.readPos += bytesToRead;
+    int bytesToRead = Math.min(this.currentChunk.remaining(), requestedLen);
+    this.currentChunk.get(bytes, offset, bytesToRead);
     return bytesToRead;
   }
 
-  private void validateChunk() throws IOException {
-    // Supposed to only be called when the chunk of part thereof is read
-    // readPos will be 0 and writePos will be the amount of data to be verified.
-    int validBytes =
-        Native.ValidatingMac_Update(this.validatingMac, this.currentChunk, 0, this.writePos);
-    if (this.writePos < this.currentChunk.length) {
-      // this is the last sub-chunk
-      validBytes += Native.ValidatingMac_Finalize(this.validatingMac);
+  private void validateChunk(ByteBuffer chunk, int expectedChunkSize) throws IOException {
+    // Should only be called right after the chunk (full or incomplete) is read.
+    // chunk is a slice of this.currentChunk therefore limit() and capacity()
+    // can be used interchangeably.
+    assert chunk.limit() == chunk.capacity() : "Must be invoked with ByteBuffer.slice()";
+    boolean isFullChunkAvailable = chunk.limit() == expectedChunkSize;
+    assertValidBytes(validateChunkImpl(chunk));
+    if (!isFullChunkAvailable) {
+      assertValidBytes(Native.ValidatingMac_Finalize(this.validatingMac));
     }
-    if (validBytes < 0) {
+  }
+
+  private static void assertValidBytes(int validBytesCount) throws InvalidMacException {
+    if (validBytesCount < 0) {
       throw new InvalidMacException();
     }
   }
 
-  private int readBuffer(InputStream src, byte[] bytes) throws IOException {
-    int totalReadBytes = 0;
-    while (totalReadBytes < bytes.length) {
-      int readBytes = src.read(bytes, totalReadBytes, bytes.length - totalReadBytes);
-      if (readBytes < 0) {
-        break;
-      }
-      totalReadBytes += readBytes;
+  private int validateChunkImpl(ByteBuffer chunk) {
+    int validBytes = 0;
+    int bufferSize = Math.min(chunk.limit(), MAX_BUFFER_SIZE);
+    // Using a smaller buffer and a loop because ByteBuffer.get requires a
+    // managed byte[] but we want to avoid allocating whole chunks in managed
+    // heap
+    byte[] buffer = new byte[bufferSize];
+    while (chunk.hasRemaining()) {
+      int currentlyValidating = Math.min(bufferSize, chunk.remaining());
+      chunk.get(buffer, 0, currentlyValidating);
+      // Because we are reading one chunk at a time only the last update will return a non-zero
+      // value
+      validBytes = Native.ValidatingMac_Update(this.validatingMac, buffer, 0, currentlyValidating);
+      assert validBytes == 0 || validBytes == -1 || validBytes == chunk.limit()
+          : "Unexpected incremental mac update result";
     }
-    return totalReadBytes;
+    return validBytes;
   }
 }
