@@ -39,8 +39,10 @@ jobs:
           - '.github/workflows/build_and_test.yml'
           - 'bin/**'
           - 'rust/*'
-          - 'rust/!(bridge)/**'
+          - 'rust/!(bridge|protocol)/**'
           - 'rust/bridge/shared/**'
+          - 'rust/protocol/*'
+          - 'rust/protocol/!(cross-version-testing)/**'
           - 'rust-toolchain'
           - 'Cargo.toml'
           - 'Cargo.lock'
@@ -49,7 +51,7 @@ jobs:
           - '.clippy.toml'
           - '.rustfmt.license-template'
           - '.rustfmt.toml'
-          - 'rust/**' # deliberately re-include the rust/bridge/ directories
+          - 'rust/**' # deliberately re-include rust/bridge/* and rust/protocol/cross-version-testing
           java:
           - *all
           - '.dockerignore'
@@ -117,6 +119,11 @@ jobs:
 
     - name: Rustfmt check
       run: cargo fmt --all -- --check
+      if: matrix.version == 'nightly'
+
+    - name: Rustfmt check for cross-version-testing
+      run: cargo fmt --all -- --check
+      working-directory: rust/protocol/cross-version-testing
       if: matrix.version == 'nightly'
 
     - name: Check bridge versioning
