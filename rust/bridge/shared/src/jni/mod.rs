@@ -48,27 +48,10 @@ pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaMap<'a> = JObject<'a>;
 
-/// Translates errors into Java exceptions.
-///
-/// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
-/// appropriate Java exception class and thrown.
-fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
-    fn try_throw<E: Display>(
-        env: &mut JNIEnv,
-        throwable: Result<JObject, E>,
-        error: SignalJniError,
-    ) {
-        match throwable {
-            Err(failure) => log::error!("failed to create exception for {}: {}", error, failure),
-            Ok(throwable) => {
-                let result = env.throw(JThrowable::from(throwable));
-                if let Err(failure) = result {
-                    log::error!("failed to throw exception for {}: {}", error, failure);
-                }
-            }
-        }
-    }
-
+fn convert_to_exception<'a, F>(env: &mut JNIEnv<'a>, error: SignalJniError, consume: F)
+where
+    F: FnOnce(&mut JNIEnv<'a>, SignalJniResult<JThrowable<'a>>, &dyn Display),
+{
     // Handle special cases first.
     let error = match error {
         SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
@@ -81,9 +64,12 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
             if <dyn Error>::is::<ThrownException>(&*exception) {
                 let exception =
                     <dyn Error>::downcast::<ThrownException>(exception).expect("just checked");
-                if let Err(e) = env.throw(exception.as_obj()) {
-                    log::error!("failed to rethrow exception from {}: {}", callback, e);
-                }
+                let throwable = env.new_local_ref(exception.as_obj()).map(JThrowable::from);
+                consume(
+                    env,
+                    throwable.map_err(Into::into),
+                    &format!("error in method call '{callback}'"),
+                );
                 return;
             }
 
@@ -94,13 +80,19 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(ref addr)) => {
-            let result = env.throw_new(
-                jni_class_name!(org.signal.libsignal.protocol.UntrustedIdentityException),
-                addr.name(),
-            );
-            if let Err(e) = result {
-                log::error!("failed to throw exception for {}: {}", error, e);
-            }
+            let throwable = env
+                .new_string(addr.name())
+                .and_then(|addr_name| {
+                    Ok(new_object(
+                        env,
+                        jni_class_name!(org.signal.libsignal.protocol.UntrustedIdentityException),
+                        jni_args!((addr_name => java.lang.String) -> void),
+                    )?
+                    .into())
+                })
+                .map_err(Into::into);
+
+            consume(env, throwable, &error);
             return;
         }
 
@@ -115,10 +107,11 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                             addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
                             message => java.lang.String,
                         ) -> void),
-                    )?)
+                    )?
+                    .into())
                 });
 
-            try_throw(env, throwable, error);
+            consume(env, throwable, &error);
             return;
         }
 
@@ -135,10 +128,11 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                             addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
                             message => java.lang.String,
                         ) -> void),
-                    )?)
+                    )?
+                    .into())
                 });
 
-            try_throw(env, throwable, error);
+            consume(env, throwable, &error);
             return;
         }
 
@@ -164,10 +158,11 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                             distribution_id_obj => java.util.UUID,
                             message => java.lang.String,
                         ) -> void),
-                    )?)
+                    )?
+                    .into())
                 });
 
-            try_throw(env, throwable, error);
+            consume(env, throwable, &error);
             return;
         }
 
@@ -182,9 +177,10 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                         .FingerprintVersionMismatchException
                 ),
                 jni_args!((theirs as jint => int, ours as jint => int) -> void),
-            );
+            )
+            .map(JThrowable::from);
 
-            try_throw(env, throwable, error);
+            consume(env, throwable.map_err(Into::into), &error);
             return;
         }
 
@@ -193,9 +189,10 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                 env,
                 jni_class_name!(org.signal.libsignal.metadata.SelfSendException),
                 jni_args!(() -> void),
-            );
+            )
+            .map(JThrowable::from);
 
-            try_throw(env, throwable, error);
+            consume(env, throwable.map_err(Into::into), &error);
             return;
         }
 
@@ -204,14 +201,15 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         | SignalJniError::UnexpectedJniResultType(_, _) => {
             // java.lang.AssertionError has a slightly different signature.
             let throwable = env.new_string(error.to_string()).and_then(|message| {
-                new_object(
+                Ok(new_object(
                     env,
                     jni_class_name!(java.lang.AssertionError),
                     jni_args!((message => java.lang.Object) -> void),
-                )
+                )?
+                .into())
             });
 
-            try_throw(env, throwable, error);
+            consume(env, throwable.map_err(Into::into), &error);
             return;
         }
 
@@ -426,9 +424,34 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         }
     };
 
-    if let Err(e) = env.throw_new(exception_type, error.to_string()) {
-        log::error!("failed to throw exception for {}: {}", error, e);
-    }
+    let throwable = env
+        .new_string(error.to_string())
+        .and_then(|message| {
+            Ok(new_object(
+                env,
+                exception_type,
+                jni_args!((message => java.lang.String) -> void),
+            )?
+            .into())
+        })
+        .map_err(Into::into);
+    consume(env, throwable, &error)
+}
+
+/// Translates errors into Java exceptions.
+///
+/// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
+/// appropriate Java exception class and thrown.
+fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
+    convert_to_exception(env, error, |env, throwable, error| match throwable {
+        Err(failure) => log::error!("failed to create exception for {}: {}", error, failure),
+        Ok(throwable) => {
+            let result = env.throw(throwable);
+            if let Err(failure) = result {
+                log::error!("failed to throw exception for {}: {}", error, failure);
+            }
+        }
+    });
 }
 
 #[inline(always)]
