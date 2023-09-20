@@ -28,6 +28,8 @@ jobs:
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
+    - run: brew install protobuf
+
     - name: Build for x86_64-apple-ios
       run: swift/build_ffi.sh --release
       env:

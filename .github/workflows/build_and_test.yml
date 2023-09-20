@@ -102,7 +102,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --component rustfmt,clippy --target i686-unknown-linux-gnu
       if: matrix.version == 'nightly'
@@ -188,6 +188,8 @@ jobs:
     - name: Install NDK
       run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;${NDK_VERSION}"
 
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
     - name: Verify that the JNI bindings are up to date
@@ -221,6 +223,15 @@ jobs:
       if: startsWith(matrix.os, 'windows')
       run: choco install nasm
       shell: cmd
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+      if: matrix.os == 'ubuntu-latest'
+
+    - run: choco install protoc
+      if: matrix.os == 'windows-latest'
+
+    - run: brew install protobuf
+      if: matrix.os == 'macos-latest'
 
     - uses: actions/setup-node@v3
       with:
@@ -261,6 +272,8 @@ jobs:
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+
     - name: Build libsignal-ffi
       run: swift/build_ffi.sh -d -v --verify-ffi
 
@@ -291,6 +304,8 @@ jobs:
           path: SignalCoreKit
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
+
+      - run: brew install protobuf
 
       # Build only the targets that `pod lib lint` will test building.
       - name: Build for x86_64-apple-ios

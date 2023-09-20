@@ -20,7 +20,7 @@ hkdf = "0.12"
 sha2 = "0.10"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
-prost = "0.9"
+prost = "0.12"
 rand = "0.8"
 subtle = "2.5.0"
 thiserror = "1.0.40"
@@ -35,4 +35,4 @@ name = "usernames_benchmarks"
 harness = false
 
 [build-dependencies]
-prost-build = "0.9"
+prost-build = "0.12"

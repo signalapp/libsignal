@@ -48,6 +48,12 @@ jobs:
       run: choco install nasm
       shell: cmd
 
+    - run: choco install protoc
+      if: matrix.os == 'windows-latest'
+
+    - run: brew install protobuf
+      if: matrix.os == 'macos-latest'
+
     - name: Build for host (should be x86_64)
       run: java/build_jni.sh desktop
       shell: bash
@@ -78,6 +84,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify

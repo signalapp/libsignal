@@ -379,11 +379,11 @@ impl From<u32> for ContentHint {
     fn from(raw_value: u32) -> Self {
         use proto::sealed_sender::unidentified_sender_message::message::ContentHint as ProtoContentHint;
         assert!(!ProtoContentHint::is_valid(0));
-        match ProtoContentHint::from_i32(raw_value as i32) {
-            None if raw_value == 0 => ContentHint::Default,
-            None => ContentHint::Unknown(raw_value),
-            Some(ProtoContentHint::Resendable) => ContentHint::Resendable,
-            Some(ProtoContentHint::Implicit) => ContentHint::Implicit,
+        match ProtoContentHint::try_from(raw_value as i32) {
+            Err(_) if raw_value == 0 => ContentHint::Default,
+            Err(_) => ContentHint::Unknown(raw_value),
+            Ok(ProtoContentHint::Resendable) => ContentHint::Resendable,
+            Ok(ProtoContentHint::Implicit) => ContentHint::Implicit,
         }
     }
 }
@@ -410,7 +410,7 @@ impl UnidentifiedSenderMessageContent {
 
         let msg_type = pb
             .r#type
-            .and_then(ProtoMessageType::from_i32)
+            .and_then(|t| ProtoMessageType::try_from(t).ok())
             .map(CiphertextMessageType::from)
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let sender = pb

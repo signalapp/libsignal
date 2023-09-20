@@ -45,7 +45,7 @@ as well as Clang, libclang, [CMake](https://cmake.org), and Make.
 On a Debian-like system, you can get these extra dependencies through `apt`:
 
 ```shell
-$ apt-get install clang libclang-dev cmake make
+$ apt-get install clang libclang-dev cmake make protobuf-compiler
 ```
 
 The build currently uses a specific version of the Rust nightly compiler, which

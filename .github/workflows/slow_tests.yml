@@ -122,6 +122,9 @@ jobs:
     - name: Install nasm
       run: choco install nasm
       shell: cmd
+
+    - run: choco install protoc
+
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
@@ -152,6 +155,8 @@ jobs:
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
+      - run: brew install protobuf
+
       - name: Build for x86_64-apple-ios
         run: swift/build_ffi.sh --release
         env:
@@ -180,7 +185,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
     - run: rustup +stable target add i686-unknown-linux-gnu
 
