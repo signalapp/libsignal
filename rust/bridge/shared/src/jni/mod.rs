@@ -108,14 +108,13 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
-                    let args = jni_args!((
-                        addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
-                        message => java.lang.String,
-                    ) -> void);
-                    Ok(env.new_object(
+                    Ok(new_object(
+                        env,
                         jni_class_name!(org.signal.libsignal.protocol.NoSessionException),
-                        args.sig,
-                        &args.args,
+                        jni_args!((
+                            addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
+                            message => java.lang.String,
+                        ) -> void),
                     )?)
                 });
 
@@ -127,16 +126,15 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
-                    let args = jni_args!((
-                        addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
-                        message => java.lang.String,
-                    ) -> void);
-                    Ok(env.new_object(
+                    Ok(new_object(
+                        env,
                         jni_class_name!(
                             org.signal.libsignal.protocol.InvalidRegistrationIdException
                         ),
-                        args.sig,
-                        &args.args,
+                        jni_args!((
+                            addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
+                            message => java.lang.String,
+                        ) -> void),
                     )?)
                 });
 
@@ -153,11 +151,8 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                     Ok((distribution_id_obj, env.new_string(error.to_string())?))
                 })
                 .and_then(|(distribution_id_obj, message)| {
-                    let args = jni_args!((
-                        distribution_id_obj => java.util.UUID,
-                        message => java.lang.String,
-                    ) -> void);
-                    Ok(env.new_object(
+                    Ok(new_object(
+                        env,
                         jni_class_name!(
                             org.signal
                                 .libsignal
@@ -165,8 +160,10 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                                 .groups
                                 .InvalidSenderKeySessionException
                         ),
-                        args.sig,
-                        &args.args,
+                        jni_args!((
+                            distribution_id_obj => java.util.UUID,
+                            message => java.lang.String,
+                        ) -> void),
                     )?)
                 });
 
@@ -175,8 +172,8 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
-            let args = jni_args!((theirs as jint => int, ours as jint => int) -> void);
-            let throwable = env.new_object(
+            let throwable = new_object(
+                env,
                 jni_class_name!(
                     org.signal
                         .libsignal
@@ -184,8 +181,7 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
                         .fingerprint
                         .FingerprintVersionMismatchException
                 ),
-                args.sig,
-                &args.args,
+                jni_args!((theirs as jint => int, ours as jint => int) -> void),
             );
 
             try_throw(env, throwable, error);
@@ -193,10 +189,10 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         }
 
         SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
-            let throwable = env.new_object(
+            let throwable = new_object(
+                env,
                 jni_class_name!(org.signal.libsignal.metadata.SelfSendException),
-                jni_signature!(() -> void),
-                &[],
+                jni_args!(() -> void),
             );
 
             try_throw(env, throwable, error);
@@ -208,11 +204,10 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         | SignalJniError::UnexpectedJniResultType(_, _) => {
             // java.lang.AssertionError has a slightly different signature.
             let throwable = env.new_string(error.to_string()).and_then(|message| {
-                let args = jni_args!((message => java.lang.Object) -> void);
-                env.new_object(
+                new_object(
+                    env,
                     jni_class_name!(java.lang.AssertionError),
-                    args.sig,
-                    &args.args,
+                    jni_args!((message => java.lang.Object) -> void),
                 )
             });
 
@@ -514,6 +509,22 @@ pub fn call_method_checked<
     }
 }
 
+/// Constructs a new object using [`JniArgs`].
+///
+/// Wraps [`JNIEnv::new_object`]; all arguments are the same.
+pub fn new_object<
+    'output,
+    C: jni::descriptors::Desc<'output, JClass<'output>>,
+    R: TryFrom<JValueOwned<'output>>,
+    const LEN: usize,
+>(
+    env: &mut JNIEnv<'output>,
+    cls: C,
+    args: JniArgs<R, LEN>,
+) -> jni::errors::Result<JObject<'output>> {
+    env.new_object(cls, args.sig, &args.args)
+}
+
 /// Constructs a Java object from the given boxed Rust value.
 ///
 /// Assumes there's a corresponding constructor that takes a single `long` to represent the address.
@@ -522,11 +533,11 @@ pub fn jobject_from_native_handle<'a>(
     class_name: &str,
     boxed_handle: ObjectHandle,
 ) -> Result<JObject<'a>, SignalJniError> {
-    let class_type = env.find_class(class_name)?;
-    let args = jni_args!((
-        boxed_handle => long,
-    ) -> void);
-    Ok(env.new_object(class_type, args.sig, &args.args)?)
+    Ok(new_object(
+        env,
+        class_name,
+        jni_args!((boxed_handle => long) -> void),
+    )?)
 }
 
 /// Constructs a Java SignalProtocolAddress from a ProtocolAddress value.

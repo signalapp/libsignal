@@ -410,17 +410,18 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
     type ResultType = JObject<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        let map_args = jni_args!(() -> void);
-        let jclass = env.find_class(jni_class_name!(java.util.HashMap))?;
-        let jobj = env.new_object(jclass, map_args.sig, &map_args.args)?;
+        let jobj = new_object(
+            env,
+            jni_class_name!(java.util.HashMap),
+            jni_args!(() -> void),
+        )?;
         // Fully-qualified so that we don't need to conditionalize the `use`.
         let jmap = jni::objects::JMap::from_env(env, &jobj)?;
 
         let long_class = env.find_class(jni_class_name!(java.lang.Long))?;
         for (k, v) in self.0 {
             let k = k.convert_into(env)?;
-            let args = jni_args!((v => long) -> void);
-            let v = env.new_object(&long_class, args.sig, &args.args)?;
+            let v = new_object(env, &long_class, jni_args!((v => long) -> void))?;
             jmap.put(env, &k, &v)?;
         }
         Ok(jobj)
@@ -594,14 +595,16 @@ impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
 impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     type ResultType = JObject<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        let uuid_class = env.find_class(jni_class_name!(java.util.UUID))?;
         let uuid_bytes: [u8; 16] = *self.as_bytes();
         let (msb, lsb) = uuid_bytes.split_at(8);
-        let args = jni_args!((
-            jlong::from_be_bytes(msb.try_into().expect("correct length")) => long,
-            jlong::from_be_bytes(lsb.try_into().expect("correct length")) => long,
-        ) -> void);
-        Ok(env.new_object(uuid_class, args.sig, &args.args)?)
+        Ok(new_object(
+            env,
+            jni_class_name!(java.util.UUID),
+            jni_args!((
+                jlong::from_be_bytes(msb.try_into().expect("correct length")) => long,
+                jlong::from_be_bytes(lsb.try_into().expect("correct length")) => long,
+            ) -> void),
+        )?)
     }
 }
 
