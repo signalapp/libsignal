@@ -93,13 +93,13 @@ impl CoseSign1 {
     }
 
     fn validating_new(
-        protected_header: &[u8],
-        payload: &[u8],
-        signature: &[u8],
+        protected_header: Vec<u8>,
+        payload: Vec<u8>,
+        signature: Vec<u8>,
     ) -> Result<Self, NitroError> {
         let is_valid = {
             let mut is_valid = true;
-            is_valid &= Self::is_valid_protected_header(protected_header);
+            is_valid &= Self::is_valid_protected_header(&protected_header);
             is_valid &= (1..16384).contains(&payload.len());
             is_valid &= signature.len() == 96;
             is_valid
@@ -108,9 +108,9 @@ impl CoseSign1 {
             return Err(NitroError::InvalidCoseSign1);
         }
         Ok(CoseSign1 {
-            protected_header: protected_header.to_vec(),
-            payload: payload.to_vec(),
-            signature: signature.to_vec(),
+            protected_header,
+            payload,
+            signature,
         })
     }
 
@@ -147,15 +147,16 @@ impl TryFrom<Value> for CoseSign1 {
 
     // Assumes tagged CBOR encoding of COSE_Sign1
     fn try_from(value: Value) -> Result<CoseSign1, NitroError> {
-        if let Value::Array(parts) = value {
-            match &parts[..] {
-                [Value::Bytes(protected_header), Value::Map(_), Value::Bytes(payload), Value::Bytes(signature)] => {
-                    CoseSign1::validating_new(protected_header, payload, signature)
-                }
-                _ => Err(NitroError::InvalidCoseSign1),
+        let parts: [Value; 4] = value
+            .into_array()
+            .ok()
+            .and_then(|vs| vs.try_into().ok())
+            .ok_or(NitroError::InvalidCoseSign1)?;
+        match parts {
+            [Value::Bytes(protected_header), Value::Map(_), Value::Bytes(payload), Value::Bytes(signature)] => {
+                CoseSign1::validating_new(protected_header, payload, signature)
             }
-        } else {
-            Err(NitroError::InvalidCoseSign1)
+            _ => Err(NitroError::InvalidCoseSign1),
         }
     }
 }
@@ -191,95 +192,109 @@ impl AttestationDoc {
     }
 
     fn parse_as_cbor_map(value: Value) -> Result<CborMap, NitroError> {
-        let Value::Map(pairs) = value else {
-            return Err(NitroError::InvalidAttestationDoc);
-        };
-        pairs
+        value
+            .into_map()
+            .map_err(|_| NitroError::InvalidAttestationDoc)?
             .into_iter()
             .map(|(k, v)| {
-                let k = k.as_text().ok_or(NitroError::InvalidAttestationDoc)?;
-                Ok((k.to_string(), v))
+                let k = k
+                    .into_text()
+                    .map_err(|_| NitroError::InvalidAttestationDoc)?;
+                Ok((k, v))
             })
             .collect()
     }
 
     fn from_cbor_map(mut map: CborMap) -> Result<AttestationDoc, NitroError> {
-        let module_id = map["module_id"]
-            .as_text()
+        let module_id = map
+            .remove("module_id")
+            .and_then(|value| value.into_text().ok())
             .filter(|s| !s.is_empty())
-            .ok_or(NitroError::InvalidAttestationDoc)?
-            .to_string();
-        let digest = map["digest"]
-            .as_text()
-            .filter(|s| s == &"SHA384")
-            .ok_or(NitroError::InvalidAttestationDoc)?
-            .to_string();
-        let timestamp = map["timestamp"]
-            .as_integer()
+            .ok_or(NitroError::InvalidAttestationDoc)?;
+        let digest = map
+            .remove("digest")
+            .and_then(|value| value.into_text().ok())
+            .filter(|s| s == "SHA384")
+            .ok_or(NitroError::InvalidAttestationDoc)?;
+        let timestamp = map
+            .remove("timestamp")
+            .and_then(|value| value.into_integer().ok())
             .and_then(|integer| i64::try_from(integer).ok())
             .filter(|i| i.is_positive())
             .ok_or(NitroError::InvalidAttestationDoc)?;
         let pcrs: Vec<(usize, Vec<u8>)> = map
-            .get_mut("pcrs")
-            .ok_or(NitroError::InvalidAttestationDoc)?
-            .as_map_mut()
+            .remove("pcrs")
+            .and_then(|value| value.into_map().ok())
             .and_then(|pairs| {
                 if !(1..=32).contains(&pairs.len()) {
                     return None;
                 }
                 let mut pcrs = Vec::with_capacity(pairs.len());
-                for (key, value) in pairs.iter() {
+                for (key, value) in pairs.into_iter() {
                     let index = key
-                        .as_integer()
+                        .into_integer()
+                        .ok()
                         .and_then(|n| usize::try_from(n).ok())
                         .filter(|n| (0..32).contains(n))?;
                     let bytes = value
-                        .as_bytes()
+                        .into_bytes()
+                        .ok()
                         .filter(|bs| [32, 48, 64].contains(&bs.len()))?;
-                    pcrs.push((index, bytes.to_vec()))
+                    pcrs.push((index, bytes))
                 }
                 Some(pcrs)
             })
             .ok_or(NitroError::InvalidAttestationDoc)?;
-        let certificate = map["certificate"]
-            .as_bytes()
-            .map(|bs| bs.to_vec())
-            .filter(|bs| (1..=1024).contains(&bs.len()))
+
+        fn into_valid_cert_bytes(value: Value) -> Option<Vec<u8>> {
+            value
+                .into_bytes()
+                .ok()
+                .filter(|bs| (1..=1024).contains(&bs.len()))
+        }
+
+        let certificate = map
+            .remove("certificate")
+            .and_then(into_valid_cert_bytes)
             .ok_or(NitroError::InvalidAttestationDoc)?;
-        let cabundle = map["cabundle"]
-            .as_array()
+
+        let cabundle = map
+            .remove("cabundle")
+            .and_then(|value| value.into_array().ok())
             .and_then(|vals| {
-                if vals.is_empty() {
+                let certs: Vec<_> = vals.into_iter().filter_map(into_valid_cert_bytes).collect();
+                if certs.is_empty() {
                     return None;
-                }
-                let mut certs = Vec::with_capacity(vals.len());
-                for val in vals.iter() {
-                    let bytes = val.as_bytes().filter(|bs| (1..=1024).contains(&bs.len()))?;
-                    certs.push(bytes.to_vec());
                 }
                 Some(certs)
             })
             .ok_or(NitroError::InvalidAttestationDoc)?;
-        let public_key = map["public_key"].as_bytes().map(|bs| bs.to_vec());
-        if let Some(pk) = &public_key {
-            if pk.len() > 1024 {
-                return Err(NitroError::InvalidAttestationDoc);
+
+        fn into_valid_optional_bytes(
+            value: Value,
+            expected_length: usize,
+        ) -> Result<Vec<u8>, NitroError> {
+            match value.into_bytes() {
+                Ok(bytes) if bytes.len() <= expected_length => Ok(bytes),
+                Err(Value::Null) => Ok(vec![]),
+                Ok(_) | Err(_) => Err(NitroError::InvalidAttestationDoc),
             }
         }
 
-        let user_data = map["user_data"].as_bytes().map(|bs| bs.to_vec());
-        if let Some(data) = &user_data {
-            if data.len() > 512 {
-                return Err(NitroError::InvalidAttestationDoc);
-            }
-        }
+        let public_key = map
+            .remove("public_key") // option<value>
+            .map(|value| into_valid_optional_bytes(value, 1024))
+            .transpose()?;
 
-        let nonce = map["nonce"].as_bytes().map(|bs| bs.to_vec());
-        if let Some(nonce) = &nonce {
-            if nonce.len() > 512 {
-                return Err(NitroError::InvalidAttestationDoc);
-            }
-        }
+        let user_data = map
+            .remove("user_data")
+            .map(|value| into_valid_optional_bytes(value, 512))
+            .transpose()?;
+
+        let nonce = map
+            .remove("nonce")
+            .map(|value| into_valid_optional_bytes(value, 10))
+            .transpose()?;
 
         Ok(AttestationDoc {
             module_id,
@@ -406,12 +421,9 @@ mod test {
     {
         let mut subject = CoseSign1::from_bytes(VALID_DOCUMENT_BYTES_1).expect("can parse");
         f(&mut subject);
-        let err = CoseSign1::validating_new(
-            &subject.protected_header,
-            &subject.payload,
-            &subject.signature,
-        )
-        .unwrap_err();
+        let err =
+            CoseSign1::validating_new(subject.protected_header, subject.payload, subject.signature)
+                .unwrap_err();
         assert_eq!(NitroError::InvalidCoseSign1, err);
     }
 
