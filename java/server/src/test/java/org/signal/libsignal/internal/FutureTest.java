@@ -50,15 +50,22 @@ public class FutureTest {
 
   @Test
   public void testSuccessFromRust() throws Exception {
-    Future<Integer> future = Native.Future_success();
+    Future<Integer> future = Native.TESTING_FutureSuccess(1, 21);
     assertEquals(42, (int) future.get());
   }
 
   @Test
   public void testFailureFromRust() throws Exception {
-    Future<Integer> future = Native.Future_failure();
+    Future<Integer> future = Native.TESTING_FutureFailure(1, 21);
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertTrue(e.getCause() instanceof IllegalArgumentException);
+  }
+
+  @Test
+  public void testPanicFromRust() throws Exception {
+    Future<Integer> future = Native.TESTING_FuturePanic(1, 21);
+    ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
+    assertTrue(e.getCause() instanceof AssertionError);
   }
 
   // These multi-threaded tests are inherently racy in whether they actually have one thread wait()

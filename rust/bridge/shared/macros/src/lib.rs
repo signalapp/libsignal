@@ -174,7 +174,18 @@ enum ResultKind {
     Void,
 }
 
-fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind) -> TokenStream {
+#[derive(Clone, Copy)]
+enum BridgingKind {
+    Regular,
+    Io,
+}
+
+fn bridge_fn_impl(
+    attr: TokenStream,
+    item: TokenStream,
+    result_kind: ResultKind,
+    bridging_kind: BridgingKind,
+) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
 
     let item_names =
@@ -207,12 +218,22 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_fn = ffi_name.map(|name| {
-        ffi::bridge_fn(&name, &function.sig, result_kind).unwrap_or_else(Error::into_compile_error)
+        match bridging_kind {
+            BridgingKind::Regular => ffi::bridge_fn(&name, &function.sig, result_kind),
+            BridgingKind::Io => todo!(),
+        }
+        .unwrap_or_else(Error::into_compile_error)
     });
-    let jni_fn = jni_name
-        .map(|name| jni::bridge_fn(&name, &function.sig).unwrap_or_else(Error::into_compile_error));
+    let jni_fn = jni_name.map(|name| {
+        jni::bridge_fn(&name, &function.sig, bridging_kind)
+            .unwrap_or_else(Error::into_compile_error)
+    });
     let node_fn = node_name.map(|name| {
-        node::bridge_fn(&name, &function.sig).unwrap_or_else(Error::into_compile_error)
+        match bridging_kind {
+            BridgingKind::Regular => node::bridge_fn(&name, &function.sig),
+            BridgingKind::Io => todo!(),
+        }
+        .unwrap_or_else(Error::into_compile_error)
     });
 
     quote!(
@@ -248,7 +269,7 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
 /// ```
 #[proc_macro_attribute]
 pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(attr, item, ResultKind::Regular)
+    bridge_fn_impl(attr, item, ResultKind::Regular, BridgingKind::Regular)
 }
 
 /// Generates C, Java, and Node entry points for a Rust function that returns `Result<(), _>`.
@@ -272,5 +293,10 @@ pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn bridge_fn_void(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(attr, item, ResultKind::Void)
+    bridge_fn_impl(attr, item, ResultKind::Void, BridgingKind::Regular)
+}
+
+#[proc_macro_attribute]
+pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
+    bridge_fn_impl(attr, item, ResultKind::Regular, BridgingKind::Io)
 }

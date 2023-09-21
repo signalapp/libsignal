@@ -200,9 +200,6 @@ public final class Native {
   public static native void ExpiringProfileKeyCredential_CheckValidContents(byte[] buffer);
   public static native long ExpiringProfileKeyCredential_GetExpirationTime(byte[] credential);
 
-  public static native Future<Integer> Future_failure();
-  public static native Future<Integer> Future_success();
-
   public static native void GenericServerPublicParams_CheckValidContents(byte[] paramsBytes);
 
   public static native void GenericServerSecretParams_CheckValidContents(byte[] paramsBytes);
@@ -523,6 +520,10 @@ public final class Native {
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
+
+  public static native Future<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
+  public static native Future<Integer> TESTING_FuturePanic(long asyncRuntime, int input);
+  public static native Future<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
