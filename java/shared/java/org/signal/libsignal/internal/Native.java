@@ -199,6 +199,9 @@ public final class Native {
   public static native void ExpiringProfileKeyCredential_CheckValidContents(byte[] buffer);
   public static native long ExpiringProfileKeyCredential_GetExpirationTime(byte[] credential);
 
+  public static native Object Future_failure();
+  public static native Object Future_success();
+
   public static native void GenericServerPublicParams_CheckValidContents(byte[] paramsBytes);
 
   public static native void GenericServerSecretParams_CheckValidContents(byte[] paramsBytes);

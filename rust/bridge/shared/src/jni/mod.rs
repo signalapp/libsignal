@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{JThrowable, JValue, JValueOwned};
+use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
+use jni::JavaVM;
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
@@ -735,5 +736,116 @@ impl<'a> EnvHandle<'a> {
         E: From<jni::errors::Error>,
     {
         self.env.with_local_frame(capacity, f)
+    }
+}
+
+fn convert_to_jobject<'a>(
+    env: &mut JNIEnv<'a>,
+    value: JValueOwned<'a>,
+) -> jni::errors::Result<JObject<'a>> {
+    match value {
+        JValueOwned::Object(object) => Ok(object),
+        JValueOwned::Byte(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Byte),
+            jni_args!((v => byte) -> void),
+        ),
+        JValueOwned::Char(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Character),
+            jni_args!((v => char) -> void),
+        ),
+        JValueOwned::Short(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Short),
+            jni_args!((v => short) -> void),
+        ),
+        JValueOwned::Int(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Integer),
+            jni_args!((v => int) -> void),
+        ),
+        JValueOwned::Long(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Long),
+            jni_args!((v => long) -> void),
+        ),
+        JValueOwned::Bool(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Boolean),
+            jni_args!((v != 0 => boolean) -> void),
+        ),
+        JValueOwned::Float(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Float),
+            jni_args!((v => float) -> void),
+        ),
+        JValueOwned::Double(v) => new_object(
+            env,
+            jni_class_name!(java.lang.Double),
+            jni_args!((v => double) -> void),
+        ),
+        JValueOwned::Void => Ok(JObject::null()),
+    }
+}
+
+pub struct FutureCompleter {
+    jvm: JavaVM,
+    future: GlobalRef,
+}
+
+impl FutureCompleter {
+    pub fn new(env: &mut JNIEnv, future: &JObject) -> jni::errors::Result<Self> {
+        Ok(Self {
+            jvm: env.get_java_vm()?,
+            future: env.new_global_ref(future)?,
+        })
+    }
+
+    pub fn complete<T: for<'a> ResultTypeInfo<'a>>(self, result: T) {
+        let Self { jvm, future } = self;
+
+        let mut env = match jvm.attach_current_thread() {
+            Ok(attach_guard) => attach_guard,
+            Err(e) => {
+                // Most likely this log will fail too,
+                // but really we don't expect attach_current_thread to fail at all.
+                log::error!("failed to attach to JVM: {e}");
+                return;
+            }
+        };
+
+        result
+            .convert_into(&mut env)
+            .and_then(|result| {
+                let result_as_jobject = convert_to_jobject(&mut env, result.into())?;
+                call_method_checked(
+                    &mut env,
+                    &future,
+                    "complete",
+                    jni_args!((result_as_jobject => java.lang.Object) -> boolean),
+                ).map(|_| ())
+            })
+            .unwrap_or_else(|error| {
+                convert_to_exception(&mut env, error, |env, throwable, error| {
+                    throwable
+                        .and_then(|throwable| {
+                            call_method_checked(
+                                env,
+                                &future,
+                                "completeExceptionally",
+                                jni_args!((throwable => java.lang.Throwable) -> boolean),
+                            ).map(|_| ())
+                        })
+                        .unwrap_or_else(|completion_error| {
+                            log::error!(
+                                "failed to complete Future with error \"{error}\": {completion_error}"
+                            );
+                        });
+                })
+            });
+
+        // Explicitly drop this while the thread is still attached to the JVM.
+        drop(future);
     }
 }

@@ -11,6 +11,7 @@ use jni::JNIEnv;
 use std::convert::TryFrom;
 
 use libsignal_bridge::jni::*;
+use libsignal_bridge::{jni_args, jni_class_name};
 use libsignal_protocol::*;
 
 pub mod logging;
@@ -46,4 +47,42 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
     _class: JClass,
     _obj: JObject,
 ) {
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1success<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass,
+) -> JObject<'local> {
+    run_ffi_safe(&mut env, |env| {
+        let future = new_object(
+            env,
+            jni_class_name!(org.signal.libsignal.internal.CompletableFuture),
+            jni_args!(() -> void),
+        )?;
+        let completer = FutureCompleter::new(env, &future)?;
+        std::thread::spawn(move || completer.complete(42));
+        Ok(future)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1failure<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass,
+) -> JObject<'local> {
+    run_ffi_safe(&mut env, |env| {
+        let future = new_object(
+            env,
+            jni_class_name!(org.signal.libsignal.internal.CompletableFuture),
+            jni_args!(() -> void),
+        )?;
+        let completer = FutureCompleter::new(env, &future)?;
+        std::thread::spawn(move || {
+            completer.complete(Err::<(), _>(SignalProtocolError::InvalidArgument(
+                "failure".to_string(),
+            )))
+        });
+        Ok(future)
+    })
 }

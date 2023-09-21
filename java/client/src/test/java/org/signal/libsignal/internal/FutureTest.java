@@ -8,6 +8,7 @@ package org.signal.libsignal.internal;
 import static org.junit.Assert.*;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.junit.Test;
@@ -45,6 +46,19 @@ public class FutureTest {
     assertFalse(future.isCancelled());
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testSuccessFromRust() throws Exception {
+    Future<Integer> future = (Future<Integer>)Native.Future_success();
+    assertEquals(42, (int) future.get());
+  }
+
+  @Test
+  public void testFailureFromRust() throws Exception {
+    Future<Integer> future = (Future<Integer>)Native.Future_failure();
+    ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
+    assertTrue(e.getCause() instanceof IllegalArgumentException);
   }
 
   // These multi-threaded tests are inherently racy in whether they actually have one thread wait()

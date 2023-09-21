@@ -21,6 +21,7 @@
 
 # Keep some types that the Rust library constructs unconditionally.
 # (The constructors are covered by the above -keepclassmembers)
+-keep,includedescriptorclasses class org.signal.libsignal.internal.CompletableFuture
 -keep class org.signal.libsignal.protocol.SignalProtocolAddress
 -keep class org.signal.libsignal.protocol.message.* implements org.signal.libsignal.protocol.message.CiphertextMessage
 

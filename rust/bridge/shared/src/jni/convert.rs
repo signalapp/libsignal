@@ -130,7 +130,7 @@ where
 /// Implementers should also see the `jni_result_type` macro in `convert.rs`.
 pub trait ResultTypeInfo<'a>: Sized {
     /// The JNI form of the result (e.g. `jint`).
-    type ResultType;
+    type ResultType: Into<JValueOwned<'a>>;
     /// Converts the data in `self` to the JNI type, similar to `try_into()`.
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType>;
 }
