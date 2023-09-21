@@ -15,6 +15,7 @@ use signal_pin::Error as PinError;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt::Display;
+use std::marker::PhantomData;
 
 pub(crate) use jni::objects::{
     AutoElements, JByteArray, JClass, JLongArray, JObject, JString, ReleaseMode,
@@ -48,6 +49,28 @@ pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaMap<'a> = JObject<'a>;
+
+#[derive(Default)]
+#[repr(transparent)] // This ensures that JavaFuture has the same representation as JObject.
+pub struct JavaFuture<'a, T> {
+    future_object: JObject<'a>,
+    result: PhantomData<fn(T)>,
+}
+
+impl<'a, T> From<JObject<'a>> for JavaFuture<'a, T> {
+    fn from(future_object: JObject<'a>) -> Self {
+        Self {
+            future_object,
+            result: PhantomData,
+        }
+    }
+}
+
+impl<'a, T> From<JavaFuture<'a, T>> for JObject<'a> {
+    fn from(value: JavaFuture<'a, T>) -> Self {
+        value.future_object
+    }
+}
 
 fn convert_to_exception<'a, F>(env: &mut JNIEnv<'a>, error: SignalJniError, consume: F)
 where

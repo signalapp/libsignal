@@ -50,13 +50,13 @@ public class FutureTest {
 
   @Test
   public void testSuccessFromRust() throws Exception {
-    Future<Integer> future = (Future<Integer>)Native.Future_success();
+    Future<Integer> future = Native.Future_success();
     assertEquals(42, (int) future.get());
   }
 
   @Test
   public void testFailureFromRust() throws Exception {
-    Future<Integer> future = (Future<Integer>)Native.Future_failure();
+    Future<Integer> future = Native.Future_failure();
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertTrue(e.getCause() instanceof IllegalArgumentException);
   }

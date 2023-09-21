@@ -40,7 +40,8 @@ ignore_this_warning = re.compile(
     r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
     r"WARN: Missing `\[defines\]` entry for `feature = \".*\"` in cbindgen config\.|"
     r"WARN: Skip libsignal-bridge::.+ - \(not `(?:pub|no_mangle)`\)\.|"
-    r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants"
+    r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
+    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaFuture\" }.+"
     ")")
 
 unknown_warning = False
@@ -58,7 +59,23 @@ for l in stderr.split('\n'):
 if unknown_warning:
     sys.exit(1)
 
-java_decl = re.compile(r'([a-zA-Z]+) Java_org_signal_libsignal_internal_Native_([A-Z][a-zA-Z0-9]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+java_decl = re.compile(r'([a-zA-Z]+(?:<.+>)?) Java_org_signal_libsignal_internal_Native_([A-Z][a-zA-Z0-9]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+
+
+def box_primitives(typ):
+    type_map = {
+        "void": "Void",
+        "boolean": "Boolean",
+        "char": "Character",
+        "byte": "Byte",
+        "short": "Short",
+        "int": "Integer",
+        "long": "Long",
+        "float": "Float",
+        "double": "Double",
+    }
+
+    return type_map.get(typ, typ)
 
 
 def translate_to_java(typ):
@@ -78,7 +95,11 @@ def translate_to_java(typ):
     if typ in type_map:
         return type_map[typ]
 
-    # Assume anything prefixed with "Java" refers to an object
+    if typ.startswith('JavaFuture<'):
+        assert typ.endswith('>')
+        return 'Future<' + box_primitives(translate_to_java(typ[11:-1])) + '>'
+
+    # Assume anything else prefixed with "Java" refers to an object
     if typ.startswith('Java'):
         return typ[4:]
 

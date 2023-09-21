@@ -7,6 +7,7 @@
 #![deny(clippy::unwrap_used)]
 
 use jni::objects::{JByteArray, JClass, JLongArray, JObject};
+use jni::sys::jint;
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -53,7 +54,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1success<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass,
-) -> JObject<'local> {
+) -> JavaFuture<'local, jint> {
     run_ffi_safe(&mut env, |env| {
         let future = new_object(
             env,
@@ -62,7 +63,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1succe
         )?;
         let completer = FutureCompleter::new(env, &future)?;
         std::thread::spawn(move || completer.complete(42));
-        Ok(future)
+        Ok(future.into())
     })
 }
 
@@ -70,7 +71,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1succe
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1failure<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass,
-) -> JObject<'local> {
+) -> JavaFuture<'local, jint> {
     run_ffi_safe(&mut env, |env| {
         let future = new_object(
             env,
@@ -83,6 +84,6 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Future_1failu
                 "failure".to_string(),
             )))
         });
-        Ok(future)
+        Ok(future.into())
     })
 }

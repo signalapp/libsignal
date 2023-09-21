@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.concurrent.Future;
 import java.util.UUID;
 import java.util.Map;
 
@@ -199,8 +200,8 @@ public final class Native {
   public static native void ExpiringProfileKeyCredential_CheckValidContents(byte[] buffer);
   public static native long ExpiringProfileKeyCredential_GetExpirationTime(byte[] credential);
 
-  public static native Object Future_failure();
-  public static native Object Future_success();
+  public static native Future<Integer> Future_failure();
+  public static native Future<Integer> Future_success();
 
   public static native void GenericServerPublicParams_CheckValidContents(byte[] paramsBytes);
 
