@@ -4,6 +4,7 @@ members = [
     "rust/crypto",
     "rust/device-transfer",
     "rust/media",
+    "rust/net",
     "rust/pin",
     "rust/poksho",
     "rust/protocol",
