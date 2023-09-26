@@ -39,6 +39,7 @@ ignore_this_warning = re.compile(
     "("
     r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
     r"WARN: Missing `\[defines\]` entry for `feature = \".*\"` in cbindgen config\.|"
+    r"WARN: Missing `\[defines\]` entry for `target_os = \"android\"` in cbindgen config\.|"
     r"WARN: Skip libsignal-bridge::.+ - \(not `(?:pub|no_mangle)`\)\.|"
     r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
     r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaFuture\" }.+"
