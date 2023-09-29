@@ -5,74 +5,53 @@
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::*;
-use syn::spanned::Spanned;
 use syn::*;
-use syn_mid::{FnArg, Pat, PatType, Signature};
-use unzip3::Unzip3;
+use syn_mid::Signature;
 
-use crate::ResultKind;
+use crate::util::{extract_arg_names_and_types, result_type};
 
-pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) -> TokenStream2 {
+pub(crate) fn bridge_fn(name: &str, sig: &Signature) -> Result<TokenStream2> {
+    // Scroll down to the end of the function to see the quote template.
+    // This is the best way to understand what we're trying to produce.
+
+    // Generate a static method on org.signal.libsignal.internal.Native.
+    // This naming convention comes from JNI:
+    // https://docs.oracle.com/en/java/javase/20/docs/specs/jni/design.html#resolving-native-method-names
     let name = format_ident!("Java_org_signal_libsignal_internal_Native_{}", name);
+    let orig_name = &sig.ident;
 
-    let output = match (result_kind, &sig.output) {
-        (ResultKind::Regular, ReturnType::Default) => quote!(),
-        (ResultKind::Regular, ReturnType::Type(_, ty)) => quote!(-> jni_result_type!(#ty)),
-        (ResultKind::Void, _) => quote!(),
-    };
+    let input_names_and_types = extract_arg_names_and_types(sig)?;
 
+    let input_names = input_names_and_types.iter().map(|(name, _ty)| name);
+    let input_args = input_names_and_types
+        .iter()
+        .map(|(name, ty)| quote!(#name: jni_arg_type!(#ty)));
+    let input_processing = input_names_and_types.iter().map(|(name, ty)| {
+        quote! {
+            // See jni::ArgTypeInfo for information on this two-step process.
+            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(env, &#name)?;
+            let #name = <#ty as jni::ArgTypeInfo>::load_from(&mut #name)
+        }
+    });
+
+    // "Support" async operations by requiring them to complete synchronously.
     let await_if_needed = sig.asyncness.map(|_| {
         quote! {
             let __result = __result.now_or_never().unwrap();
         }
     });
 
-    let (input_names, input_args, input_processing): (Vec<_>, Vec<_>, Vec<_>) = sig
-        .inputs
-        .iter()
-        .map(|arg| match arg {
-            FnArg::Receiver(tokens) => (
-                Ident::new("self", tokens.self_token.span),
-                Error::new(tokens.self_token.span, "cannot have 'self' parameter")
-                    .to_compile_error(),
-                quote!(),
-            ),
-            FnArg::Typed(PatType {
-                attrs,
-                pat,
-                colon_token,
-                ty,
-            }) => {
-                if let Pat::Ident(name) = pat.as_ref() {
-                    (
-                        name.ident.clone(),
-                        quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
-                        quote! {
-                            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(env, &#name)?;
-                            let #name = <#ty as jni::ArgTypeInfo>::load_from(&mut #name)
-                        },
-                    )
-                } else {
-                    (
-                        Ident::new("unexpected", pat.span()),
-                        Error::new(pat.span(), "cannot use patterns in parameter")
-                            .to_compile_error(),
-                        quote!(),
-                    )
-                }
-            }
-        })
-        .unzip3();
+    let output = result_type(&sig.output);
 
-    let orig_name = sig.ident.clone();
-
-    quote! {
+    Ok(quote! {
+        #[cfg(feature = "jni")]
         #[no_mangle]
         pub unsafe extern "C" fn #name<'local>(
             mut env: jni::JNIEnv<'local>,
+            // We only generate static methods.
             _class: jni::JClass,
             #(#input_args),*
-        ) #output {
+        ) -> jni_result_type!(#output) {
             jni::run_ffi_safe(&mut env, |env| {
                 #(#input_processing);*;
                 let __result = #orig_name(#(#input_names),*);
@@ -80,7 +59,7 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
                 jni::ResultTypeInfo::convert_into(__result, env)
             })
         }
-    }
+    })
 }
 
 pub(crate) fn name_from_ident(ident: &Ident) -> String {

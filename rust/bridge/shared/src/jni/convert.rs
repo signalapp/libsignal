@@ -980,6 +980,9 @@ macro_rules! jni_result_type {
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
         jni_result_type!($typ<$($args),+>)
     };
+    (()) => {
+        ()
+    };
     (bool) => {
         jni::jboolean
     };

@@ -116,7 +116,7 @@
 //!
 //! 2. Argument types conform to one or more of the following bridge-specific traits:
 //!
-//!     - `ffi::ArgTypeInfo` or `ffi::SizedArgTypeInfo`
+//!     - `ffi::ArgTypeInfo`
 //!     - `jni::ArgTypeInfo`
 //!     - `node::ArgTypeInfo` and/or `node::AsyncArgTypeInfo`
 //!
@@ -131,13 +131,6 @@
 //!
 //! # Limitations
 //!
-//! - Input buffers require special treatment for FFI so that their size can be passed in.
-//!   This needs special handling in the implementation of the macros to generate multiple
-//!   parameters in the FFI entry point that map to a single parameter in the corresponding Rust
-//!   function. Supporting more types that would require multiple parameters is non-trivial,
-//!   particularly when trying to do so on the syntactic representation of the AST that macros are
-//!   restricted to.
-//!
 //! - There is no support for multiple return values, even though some of the FFI entry points
 //!   use multiple output parameters. These functions must be implemented manually.
 
@@ -150,6 +143,7 @@ use syn_mid::ItemFn;
 mod ffi;
 mod jni;
 mod node;
+mod util;
 
 fn value_for_meta_key<'a>(
     meta_values: &'a Punctuated<MetaNameValue, Token![,]>,
@@ -164,12 +158,8 @@ fn value_for_meta_key<'a>(
 fn name_for_meta_key(
     meta_values: &Punctuated<MetaNameValue, Token![,]>,
     key: &str,
-    enabled: bool,
     default: impl FnOnce() -> String,
 ) -> Result<Option<String>> {
-    if !enabled {
-        return Ok(None);
-    }
     match value_for_meta_key(meta_values, key) {
         Some(Lit::Str(name_str)) => Ok(Some(name_str.value())),
         Some(Lit::Bool(LitBool { value: false, .. })) => Ok(None),
@@ -189,19 +179,19 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
 
     let item_names =
         parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
-    let ffi_name = match name_for_meta_key(&item_names, "ffi", cfg!(feature = "ffi"), || {
+    let ffi_name = match name_for_meta_key(&item_names, "ffi", || {
         ffi::name_from_ident(&function.sig.ident)
     }) {
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
     };
-    let jni_name = match name_for_meta_key(&item_names, "jni", cfg!(feature = "jni"), || {
+    let jni_name = match name_for_meta_key(&item_names, "jni", || {
         jni::name_from_ident(&function.sig.ident)
     }) {
         Ok(name) => name,
         Err(error) => return error.to_compile_error().into(),
     };
-    let node_name = match name_for_meta_key(&item_names, "node", cfg!(feature = "node"), || {
+    let node_name = match name_for_meta_key(&item_names, "node", || {
         node::name_from_ident(&function.sig.ident)
     }) {
         Ok(name) => name,
@@ -214,9 +204,16 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
     let maybe_features = [ffi_feature, jni_feature, node_feature];
     let feature_list = maybe_features.iter().flatten();
 
-    let ffi_fn = ffi_name.map(|name| ffi::bridge_fn(name, &function.sig, result_kind));
-    let jni_fn = jni_name.map(|name| jni::bridge_fn(name, &function.sig, result_kind));
-    let node_fn = node_name.map(|name| node::bridge_fn(name, &function.sig, result_kind));
+    // We could early-exit on the Errors returned from generating each wrapper,
+    // but since they could be for unrelated issues, it's better to show all of them to the user.
+    let ffi_fn = ffi_name.map(|name| {
+        ffi::bridge_fn(&name, &function.sig, result_kind).unwrap_or_else(Error::into_compile_error)
+    });
+    let jni_fn = jni_name
+        .map(|name| jni::bridge_fn(&name, &function.sig).unwrap_or_else(Error::into_compile_error));
+    let node_fn = node_name.map(|name| {
+        node::bridge_fn(&name, &function.sig).unwrap_or_else(Error::into_compile_error)
+    });
 
     quote!(
         #[allow(non_snake_case, clippy::needless_pass_by_ref_mut)]

@@ -43,6 +43,6 @@ linkme = { version = "0.3.9", optional = true }
 signal-neon-futures = { path = "../node/futures", optional = true }
 
 [features]
-ffi = ["libc", "libsignal-bridge-macros/ffi"]
-jni = ["dep:jni", "libsignal-bridge-macros/jni", "bytemuck"]
-node = ["neon", "linkme", "signal-neon-futures", "libsignal-bridge-macros/node"]
+ffi = ["libc"]
+jni = ["dep:jni", "bytemuck"]
+node = ["neon", "linkme", "signal-neon-futures"]
