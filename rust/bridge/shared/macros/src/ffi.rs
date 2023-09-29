@@ -33,7 +33,7 @@ pub(crate) fn bridge_fn(
         quote! {
             // See ffi::ArgTypeInfo for information on this two-step process.
             let mut #name = <#ty as ffi::ArgTypeInfo>::borrow(#name)?;
-            let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name)?
+            let #name = <#ty as ffi::ArgTypeInfo>::load_from(&mut #name);
         }
     });
 
@@ -61,7 +61,7 @@ pub(crate) fn bridge_fn(
             #(#input_args),*
         ) -> *mut ffi::SignalFfiError {
             ffi::run_ffi_safe(|| {
-                #(#input_processing);*;
+                #(#input_processing)*
                 let __result = #orig_name(#(#input_names),*);
                 #await_if_needed;
                 #output_processing;
