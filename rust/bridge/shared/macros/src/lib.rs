@@ -136,7 +136,9 @@
 
 use proc_macro::TokenStream;
 use quote::*;
+use syn::parse::Parse;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::*;
 use syn_mid::ItemFn;
 
@@ -174,22 +176,68 @@ enum ResultKind {
     Void,
 }
 
-#[derive(Clone, Copy)]
-enum BridgingKind {
+enum BridgingKind<T = Type> {
     Regular,
-    Io,
+    Io { runtime: T },
+}
+
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+struct BridgeIoParams {
+    runtime: Type,
+    item_names: Punctuated<MetaNameValue, Token![,]>,
+}
+
+impl Parse for BridgeIoParams {
+    fn parse(input: parse::ParseStream) -> Result<Self> {
+        let runtime: Type = input.parse()?;
+        if input.is_empty() {
+            // bridge_io(MyRuntime)
+            return Ok(Self {
+                runtime,
+                item_names: Default::default(),
+            });
+        }
+        if input.peek(Token![=]) {
+            // bridge_io(jni = "blah")
+            return Err(Error::new(
+                runtime.span(),
+                "missing async runtime type in #[bridge_io]",
+            ));
+        }
+        input.parse::<Token![,]>()?;
+        // bridge_io(MyRuntime, jni = "blah")
+        let item_names = Punctuated::<MetaNameValue, Token![,]>::parse_terminated(input)?;
+        Ok(Self {
+            runtime,
+            item_names,
+        })
+    }
 }
 
 fn bridge_fn_impl(
     attr: TokenStream,
     item: TokenStream,
     result_kind: ResultKind,
-    bridging_kind: BridgingKind,
+    bridging_kind: BridgingKind<()>,
 ) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
 
-    let item_names =
-        parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated);
+    let (bridging_kind, item_names) = match bridging_kind {
+        BridgingKind::Regular => (
+            BridgingKind::Regular,
+            parse_macro_input!(attr with Punctuated<MetaNameValue, Token![,]>::parse_terminated),
+        ),
+        BridgingKind::Io { runtime: () } => {
+            let params = parse_macro_input!(attr as BridgeIoParams);
+            (
+                BridgingKind::Io {
+                    runtime: params.runtime,
+                },
+                params.item_names,
+            )
+        }
+    };
+
     let ffi_name = match name_for_meta_key(&item_names, "ffi", || {
         ffi::name_from_ident(&function.sig.ident)
     }) {
@@ -218,20 +266,20 @@ fn bridge_fn_impl(
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_fn = ffi_name.map(|name| {
-        match bridging_kind {
+        match &bridging_kind {
             BridgingKind::Regular => ffi::bridge_fn(&name, &function.sig, result_kind),
-            BridgingKind::Io => todo!(),
+            BridgingKind::Io { .. } => todo!(),
         }
         .unwrap_or_else(Error::into_compile_error)
     });
     let jni_fn = jni_name.map(|name| {
-        jni::bridge_fn(&name, &function.sig, bridging_kind)
+        jni::bridge_fn(&name, &function.sig, &bridging_kind)
             .unwrap_or_else(Error::into_compile_error)
     });
     let node_fn = node_name.map(|name| {
-        match bridging_kind {
+        match &bridging_kind {
             BridgingKind::Regular => node::bridge_fn(&name, &function.sig),
-            BridgingKind::Io => todo!(),
+            BridgingKind::Io { .. } => todo!(),
         }
         .unwrap_or_else(Error::into_compile_error)
     });
@@ -298,5 +346,57 @@ pub fn bridge_fn_void(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(attr, item, ResultKind::Regular, BridgingKind::Io)
+    bridge_fn_impl(
+        attr,
+        item,
+        ResultKind::Regular,
+        BridgingKind::Io { runtime: () },
+    )
+}
+
+#[cfg(test)]
+mod bridge_io_params_tests {
+    use super::*;
+
+    #[test]
+    fn invalid() {
+        assert!(parse2::<BridgeIoParams>(quote!()).is_err());
+        assert!(parse2::<BridgeIoParams>(quote!(-notAType)).is_err());
+        assert!(parse2::<BridgeIoParams>(quote!(ffi = false)).is_err());
+    }
+
+    #[test]
+    fn just_runtime() {
+        let params: BridgeIoParams = parse2(quote!(some::Runtime)).expect("valid");
+        assert_eq!(
+            params,
+            BridgeIoParams {
+                runtime: parse_quote!(some::Runtime),
+                item_names: Default::default()
+            }
+        );
+
+        // Check that a trailing comma produces the same result.
+        assert_eq!(params, parse2(quote!(some::Runtime,)).expect("valid"))
+    }
+
+    #[test]
+    fn runtime_plus_renaming() {
+        let params: BridgeIoParams =
+            parse2(quote!(some::Runtime, a = "1", b = "2")).expect("valid");
+        assert_eq!(params.runtime, parse_quote!(some::Runtime));
+        assert_eq!(params.item_names, parse_quote!(a = "1", b = "2"));
+
+        let params_with_trailing_comma: BridgeIoParams =
+            parse2(quote!(some::Runtime, a = "1", b = "2")).expect("valid");
+        assert_eq!(params.runtime, params_with_trailing_comma.runtime);
+        // The trailing comma makes `item_names` unequal, but the items within are still equal.
+        assert_eq!(
+            params.item_names.into_iter().collect::<Vec<_>>(),
+            params_with_trailing_comma
+                .item_names
+                .into_iter()
+                .collect::<Vec<_>>(),
+        );
+    }
 }

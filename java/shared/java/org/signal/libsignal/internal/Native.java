@@ -524,6 +524,7 @@ public final class Native {
   public static native Future<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
   public static native Future<Integer> TESTING_FuturePanic(long asyncRuntime, int input);
   public static native Future<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
+  public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);

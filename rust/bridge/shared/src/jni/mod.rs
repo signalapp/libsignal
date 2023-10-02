@@ -44,6 +44,8 @@ pub use storage::*;
 
 use usernames::{UsernameError, UsernameLinkError};
 
+use crate::support::AsyncRuntime;
+
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
 
@@ -922,17 +924,6 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
     }
 }
 
-/// Placeholder for an actual async runtime.
-pub struct TemporaryAsyncRuntime {}
-
-/// Loads an async context from an opaque handle passed down by JNI.
-pub fn async_runtime_from_opaque<'local>(
-    _env: &mut JNIEnv<'local>,
-    opaque: ObjectHandle,
-) -> SignalJniResult<&'local TemporaryAsyncRuntime> {
-    Ok(unsafe { native_handle_cast(opaque)? })
-}
-
 /// Runs a future as a task on the given async runtime, and saves the result in a new Java Future
 /// object (the return value).
 ///
@@ -945,7 +936,8 @@ pub fn async_runtime_from_opaque<'local>(
 /// ```no_run
 /// # use jni::JNIEnv;
 /// # use libsignal_bridge::jni::*;
-/// # fn test(env: &mut JNIEnv, async_runtime: &TemporaryAsyncRuntime) -> SignalJniResult<()> {
+/// # use libsignal_bridge::AsyncRuntime;
+/// # fn test(env: &mut JNIEnv, async_runtime: &impl AsyncRuntime) -> SignalJniResult<()> {
 /// let java_future = run_future_on_runtime(env, async_runtime, |completer| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
@@ -955,8 +947,8 @@ pub fn async_runtime_from_opaque<'local>(
 /// # }
 pub fn run_future_on_runtime<'local, F, O>(
     env: &mut JNIEnv<'local>,
-    _runtime: &TemporaryAsyncRuntime,
-    make_future: impl FnOnce(FutureCompleter<O>) -> F + Send + 'static,
+    runtime: &impl AsyncRuntime,
+    make_future: impl FnOnce(FutureCompleter<O>) -> F,
 ) -> SignalJniResult<JavaFuture<'local, <O as ResultTypeInfo<'local>>::ResultType>>
 where
     F: Future<Output = ()> + Send + std::panic::UnwindSafe + 'static,
@@ -968,11 +960,7 @@ where
         jni_args!(() -> void),
     )?;
     let completer = FutureCompleter::new(env, &java_future)?;
-    std::thread::spawn(move || {
-        make_future(completer).now_or_never().unwrap_or_else(|| {
-            log::error!("suspending isn't supported yet");
-        });
-    });
+    runtime.run_future(make_future(completer));
     Ok(java_future.into())
 }
 

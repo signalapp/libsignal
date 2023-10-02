@@ -61,7 +61,14 @@ for l in stderr.split('\n'):
 if unknown_warning:
     sys.exit(1)
 
-java_decl = re.compile(r'([a-zA-Z]+(?:<.+>)?) Java_org_signal_libsignal_internal_Native_([A-Z][a-zA-Z0-9]+)_1([A-Za-z0-9]+)\(JNIEnv .?env, JClass class_(, .*)?\);')
+java_decl = re.compile(r"""
+    ([a-zA-Z0-9]+(?:<.+>)?)[ ]                 # (0) A possibly-generic return type
+    Java_org_signal_libsignal_internal_Native_ # The required JNI prefix
+    (([a-zA-Z0-9]+)                            # (1) The method name, with (2) a grouping prefix
+     (?:_1[a-zA-Z0-9_]*)?)                     # ...possibly followed by an underscore and then more name
+    \(JNIEnv[ ].?env,[ ]JClass[ ]class_        # and then the required JNI args,
+     (,[ ].*)?\);                              # then (3) actual args
+    """, re.VERBOSE)
 
 
 def box_primitive_if_needed(typ):
@@ -119,14 +126,14 @@ for line in stdout.split('\n'):
     if match is None:
         raise Exception("Could not understand", line)
 
-    (ret_type, this_type, method_name, args) = match.groups()
+    (ret_type, method_name, this_type, args) = match.groups()
 
     # Add newlines between groups of functions for readability
     if cur_type is None or this_type != cur_type:
         decls.append("")
         cur_type = this_type
 
-    java_fn_name = '%s_%s' % (this_type, method_name)
+    java_fn_name = method_name.replace('_1', '_')
     java_ret_type = translate_to_java(ret_type)
     java_args = []
 
