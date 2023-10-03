@@ -2,6 +2,8 @@
 // Copyright 2020 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::borrow::Cow;
+use std::collections::HashMap;
 
 use crate::args::*;
 use crate::errors::*;
@@ -14,7 +16,6 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::MultiscalarMul;
-use std::collections::HashMap;
 
 // POKSHO implements the "Sigma protocol for arbitrary linear relations" described in section
 // 19.5.3 of https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_4.pdf
@@ -123,17 +124,17 @@ pub struct Statement {
     // and the latter is used when instantiating these indices with
     // concrete values.
     equations: Vec<Equation>,
-    scalar_map: HashMap<String, ScalarIndex>,
-    scalar_vec: Vec<String>,
-    point_map: HashMap<String, PointIndex>,
-    point_vec: Vec<String>,
+    scalar_map: HashMap<Cow<'static, str>, ScalarIndex>,
+    scalar_vec: Vec<Cow<'static, str>>,
+    point_map: HashMap<Cow<'static, str>, PointIndex>,
+    point_vec: Vec<Cow<'static, str>>,
 }
 
 impl Statement {
     pub fn new() -> Self {
         let mut point_map = HashMap::new();
-        point_map.insert("G".to_string(), 0); // G is base point
-        let point_vec = vec!["G".to_string()];
+        point_map.insert("G".into(), 0); // G is base point
+        let point_vec = vec!["G".into()];
         Statement {
             equations: Vec::new(),
             scalar_map: HashMap::new(),
@@ -291,7 +292,11 @@ impl Statement {
         }
     }
 
-    fn add_scalar(&mut self, scalar_name: String) -> Result<ScalarIndex, PokshoError> {
+    fn add_scalar(
+        &mut self,
+        scalar_name: impl Into<Cow<'static, str>>,
+    ) -> Result<ScalarIndex, PokshoError> {
+        let scalar_name = scalar_name.into();
         match self.scalar_map.get(&scalar_name) {
             Some(index) => Ok(*index),
             None => {
@@ -308,7 +313,11 @@ impl Statement {
         }
     }
 
-    fn add_point(&mut self, point_name: String) -> Result<PointIndex, PokshoError> {
+    fn add_point(
+        &mut self,
+        point_name: impl Into<Cow<'static, str>>,
+    ) -> Result<PointIndex, PokshoError> {
+        let point_name = point_name.into();
         match self.point_map.get(&point_name) {
             Some(index) => Ok(*index),
             None => {

@@ -407,7 +407,7 @@ impl BlindedIssuanceProofBuilder<'_> {
             ("D1_6", "D2_6"),
         ];
         for ((d1_name, d2_name), point) in point_names
-            .iter()
+            .into_iter()
             .skip(self.inner.attr_points.len())
             .zip(&self.blinded_attr_points)
         {

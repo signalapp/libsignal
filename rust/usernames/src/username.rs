@@ -175,7 +175,7 @@ impl Username {
         let mut args = PointArgs::new();
         for (idx, point) in BASE_POINTS.iter().enumerate() {
             let name = format!("G{}", idx + 1);
-            args.add(&name, *point);
+            args.add(name, *point);
         }
         args.add("username_hash", lhs);
         args
