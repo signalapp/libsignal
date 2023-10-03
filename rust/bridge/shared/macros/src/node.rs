@@ -9,22 +9,16 @@ use syn::*;
 use syn_mid::Signature;
 
 use crate::util::{extract_arg_names_and_types, result_type};
+use crate::BridgingKind;
 
 fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
 
-    let input_processing = input_args.iter().zip(0..).map(|((name, ty), i)| {
-        let name_arg = format_ident!("{}_arg", name);
-        let name_stored = format_ident!("{}_stored", name);
-        quote! {
-            // First, get the argument from Neon.
-            let #name_arg = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#i)?;
-            // Then load the value; see node::ArgTypeInfo for more information.
-            let mut #name_stored = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name_arg)?;
-            let #name = <#ty as node::ArgTypeInfo>::load_from(&mut #name_stored);
-        }
-    });
+    let input_processing = input_args
+        .iter()
+        .zip(0..)
+        .map(|((name, ty), i)| generate_code_to_load_input(name, ty, i));
 
     let input_names = input_args.iter().map(|(name, _ty)| name);
 
@@ -42,13 +36,49 @@ fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStr
     }
 }
 
+/// Produces code to synchronously load an input of type `ty` from argument #`arg_index` into a
+/// local variable named `name`.
+///
+/// "Synchronously load" = "using `node::ArgTypeInfo`"
+fn generate_code_to_load_input(
+    name: impl IdentFragment,
+    ty: impl ToTokens,
+    arg_index: i32,
+) -> TokenStream2 {
+    let name = format_ident!("{}", name);
+    let name_arg = format_ident!("{}_arg", name);
+    let name_stored = format_ident!("{}_stored", name);
+    quote! {
+        // First, get the argument from Neon.
+        let #name_arg = cx.argument::<<#ty as node::ArgTypeInfo>::ArgType>(#arg_index)?;
+        // Then load the value; see node::ArgTypeInfo for more information.
+        let mut #name_stored = <#ty as node::ArgTypeInfo>::borrow(&mut cx, #name_arg)?;
+        let #name = <#ty as node::ArgTypeInfo>::load_from(&mut #name_stored);
+    }
+}
+
 fn bridge_fn_async_body(
     orig_name: &Ident,
     custom_name: &str,
+    kind: &BridgingKind,
     input_args: &[(&Ident, &Type)],
 ) -> TokenStream2 {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
+
+    let implicit_arg_count = match kind {
+        BridgingKind::Regular => 0,
+        BridgingKind::Io { .. } => 1,
+    };
+
+    let set_up_async_runtime = match kind {
+        BridgingKind::Regular => quote! {
+            let async_runtime = &node::ChannelOnItsOriginalThread::new(&mut cx);
+        },
+        BridgingKind::Io { runtime } => {
+            generate_code_to_load_input("async_runtime", quote!(&#runtime), 0)
+        }
+    };
 
     fn storage_ident_for(name: &Ident) -> Ident {
         format_ident!("{}_stored", name)
@@ -57,7 +87,7 @@ fn bridge_fn_async_body(
         format_ident!("{}_guard", name)
     }
 
-    let input_saving = input_args.iter().zip(0..).map(|((name, ty), i)| {
+    let input_saving = input_args.iter().zip(implicit_arg_count..).map(|((name, ty), i)| {
         let name_arg = format_ident!("{}_arg", name);
         let name_stored = storage_ident_for(name);
         let name_guard = scopeguard_ident_for(name);
@@ -93,15 +123,15 @@ fn bridge_fn_async_body(
 
     let input_names = input_args.iter().map(|(name, _ty)| name);
 
-    let input_finalization = input_args.iter().map(|(name, _ty)| {
-        let name_stored = storage_ident_for(name);
-        quote! {
-            // Clean up all the stored values at the end.
-            neon::prelude::Finalize::finalize(#name_stored, cx);
-        }
+    // Chunk the input storage in groups of 8, which is the largest tuple size Neon supports
+    // Finalize for.
+    let inputs_to_finalize = input_args.chunks(8).map(|chunk| {
+        let names_stored = chunk.iter().map(|(name, _ty)| storage_ident_for(name));
+        quote!((#(#names_stored),*))
     });
 
     quote! {
+        #set_up_async_runtime
         // Use a RefCell so that the early-exit cleanup functions can reference the Neon context
         // without taking ownership.
         let cx = std::cell::RefCell::new(cx);
@@ -109,53 +139,53 @@ fn bridge_fn_async_body(
         #(#input_unwrapping)*
         // Okay, we're done sharing the Neon context
         let mut cx = cx.into_inner();
-        // Save "this", the module that contains our errors.
-        let __this = cx.this();
-        let __this = neon::object::Object::root(&*__this, &mut cx);
-        Ok(signal_neon_futures::promise(
+        Ok(node::run_future_on_runtime(
             &mut cx,
-            std::panic::AssertUnwindSafe(async move {
-                #(#input_loading)*
-                let __result = #orig_name(#(#input_names),*).await;
-                // Send the result back to JavaScript.
-                signal_neon_futures::settle_promise(move |cx| {
-                    // Make sure we clean up our arguments even if we early-exit or panic.
-                    // (Hopefully it's not Neon that panics...)
-                    let mut cx = scopeguard::guard(cx, |cx| {
-                        #(#input_finalization)*
-                    });
-                    let __this = __this.into_inner(*cx);
-                    match __result {
-                        Ok(success) => Ok(
-                            node::ResultTypeInfo::convert_into(success, *cx)?.upcast(),
-                        ),
-                        Err(failure) => node::SignalNodeError::throw(
-                            failure,
-                            *cx,
-                            __this,
-                            #custom_name,
-                        ),
-                    }
-                })
-            })
+            async_runtime,
+            #custom_name,
+            move |completer| async move {
+                // Wrap the actual work to catch any panics.
+                let __future = node::catch_unwind(std::panic::AssertUnwindSafe(async {
+                    #(#input_loading)*
+                    let __result = #orig_name(#(#input_names),*).await;
+                    // If the original function can't fail, wrap the result in Ok for uniformity.
+                    // See TransformHelper::ok_if_needed.
+                    TransformHelper(__result).ok_if_needed().map(|x| x.0)
+                }));
+                // Pass the stored inputs to the completer to finalize them .
+                completer.complete_with_extra_args_to_finalize(
+                    __future.await,
+                    (#(#inputs_to_finalize),*),
+                )
+            }
         )?.upcast())
     }
 }
 
-pub(crate) fn bridge_fn(name: &str, sig: &Signature) -> Result<TokenStream2> {
+pub(crate) fn bridge_fn(
+    name: &str,
+    sig: &Signature,
+    bridging_kind: &BridgingKind,
+) -> Result<TokenStream2> {
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
 
     let name_with_prefix = format_ident!("node_{}", name);
     let name_without_prefix = Ident::new(name, Span::call_site());
 
-    let ts_signature_comment = generate_ts_signature_comment(name, sig);
+    let ts_signature_comment = generate_ts_signature_comment(name, sig, bridging_kind);
 
     let input_args = extract_arg_names_and_types(sig)?;
 
-    let body = match sig.asyncness {
-        Some(_) => bridge_fn_async_body(&sig.ident, name, &input_args),
-        None => bridge_fn_body(&sig.ident, &input_args),
+    let body = match (sig.asyncness, bridging_kind) {
+        (Some(_), _) => bridge_fn_async_body(&sig.ident, name, bridging_kind, &input_args),
+        (None, BridgingKind::Regular) => bridge_fn_body(&sig.ident, &input_args),
+        (None, BridgingKind::Io { .. }) => {
+            return Err(Error::new(
+                sig.ident.span(),
+                format_args!("non-async function '{}' cannot use #[bridge_io]", sig.ident),
+            ));
+        }
     };
 
     Ok(quote! {
@@ -175,12 +205,23 @@ pub(crate) fn bridge_fn(name: &str, sig: &Signature) -> Result<TokenStream2> {
 
 /// Generates a string, containing the *Rust* signature of a bridged function, that gen_ts_decl.py
 /// can use to generate Native.d.ts.
-fn generate_ts_signature_comment(name_without_prefix: &str, sig: &Signature) -> String {
-    let ts_args: Vec<_> = sig
-        .inputs
-        .iter()
-        .map(|arg| quote!(#arg).to_string())
-        .collect();
+fn generate_ts_signature_comment(
+    name_without_prefix: &str,
+    sig: &Signature,
+    bridging_kind: &BridgingKind,
+) -> String {
+    let mut ts_args = vec![];
+    match bridging_kind {
+        BridgingKind::Regular => {}
+        BridgingKind::Io { runtime } => {
+            ts_args.push(format!("async_runtime: &{}", runtime.to_token_stream()))
+        }
+    }
+    ts_args.extend(
+        sig.inputs
+            .iter()
+            .map(|arg| arg.to_token_stream().to_string()),
+    );
 
     let result_type_format = if sig.asyncness.is_some() {
         |ty| format!("Promise<{}>", ty)

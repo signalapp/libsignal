@@ -87,8 +87,12 @@ ignore_this_warning = re.compile(
 
 
 def camelcase(arg):
-    parts = arg.split('_')
-    return parts[0] + ''.join(x.title() for x in parts[1:])
+    return re.sub(
+        # Preserve double-underscores and leading underscores,
+        # but remove single underscores and capitalize the following letter.
+        r'([^_])_([^_])',
+        lambda match: match.group(1) + match.group(2).upper(),
+        arg)
 
 
 def collect_decls(crate_dir, features=()):

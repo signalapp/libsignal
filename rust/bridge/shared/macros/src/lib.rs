@@ -277,11 +277,8 @@ fn bridge_fn_impl(
             .unwrap_or_else(Error::into_compile_error)
     });
     let node_fn = node_name.map(|name| {
-        match &bridging_kind {
-            BridgingKind::Regular => node::bridge_fn(&name, &function.sig),
-            BridgingKind::Io { .. } => todo!(),
-        }
-        .unwrap_or_else(Error::into_compile_error)
+        node::bridge_fn(&name, &function.sig, &bridging_kind)
+            .unwrap_or_else(Error::into_compile_error)
     });
 
     quote!(

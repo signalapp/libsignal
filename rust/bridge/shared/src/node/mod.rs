@@ -35,6 +35,9 @@ pub use convert::*;
 mod error;
 pub use error::*;
 
+mod futures;
+pub use futures::*;
+
 mod io;
 pub use io::*;
 

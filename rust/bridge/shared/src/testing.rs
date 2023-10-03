@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![allow(unused_imports)]
+#![allow(unused_imports, dead_code)]
 
 use futures_util::FutureExt;
 use libsignal_bridge_macros::*;
@@ -18,8 +18,7 @@ struct NonSuspendingBackgroundThreadRuntime;
 bridge_handle!(
     NonSuspendingBackgroundThreadRuntime,
     ffi = false,
-    jni = TESTING_1NonSuspendingBackgroundThreadRuntime,
-    node = false
+    jni = TESTING_1NonSuspendingBackgroundThreadRuntime
 );
 
 impl<F> AsyncRuntime<F> for NonSuspendingBackgroundThreadRuntime
@@ -35,17 +34,22 @@ where
     }
 }
 
-#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false, node = false)]
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_NonSuspendingBackgroundThreadRuntime_New() -> NonSuspendingBackgroundThreadRuntime {
+    NonSuspendingBackgroundThreadRuntime
+}
+
+#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false)]
 async fn TESTING_FutureSuccess(input: u8) -> i32 {
     i32::from(input) * 2
 }
 
-#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false, node = false)]
+#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false)]
 async fn TESTING_FuturePanic(_input: u8) -> i32 {
     panic!("failure")
 }
 
-#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false, node = false)]
+#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false)]
 async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
     Err(SignalProtocolError::InvalidArgument("failure".to_string()))
 }

@@ -344,6 +344,10 @@ export function SignedPreKeyRecord_GetSignature(obj: Wrapper<SignedPreKeyRecord>
 export function SignedPreKeyRecord_GetTimestamp(obj: Wrapper<SignedPreKeyRecord>): Timestamp;
 export function SignedPreKeyRecord_New(id: number, timestamp: Timestamp, pubKey: Wrapper<PublicKey>, privKey: Wrapper<PrivateKey>, signature: Buffer): SignedPreKeyRecord;
 export function SignedPreKeyRecord_Serialize(obj: Wrapper<SignedPreKeyRecord>): Buffer;
+export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): Promise<number>;
+export function TESTING_FuturePanic(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): Promise<number>;
+export function TESTING_FutureSuccess(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): Promise<number>;
+export function TESTING_NonSuspendingBackgroundThreadRuntime_New(): NonSuspendingBackgroundThreadRuntime;
 export function UnidentifiedSenderMessageContent_Deserialize(data: Buffer): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_GetContentHint(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetContents(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
@@ -382,6 +386,7 @@ interface KyberKeyPair { readonly __type: unique symbol; }
 interface KyberPreKeyRecord { readonly __type: unique symbol; }
 interface KyberPublicKey { readonly __type: unique symbol; }
 interface KyberSecretKey { readonly __type: unique symbol; }
+interface NonSuspendingBackgroundThreadRuntime { readonly __type: unique symbol; }
 interface PlaintextContent { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }
 interface PreKeyRecord { readonly __type: unique symbol; }
