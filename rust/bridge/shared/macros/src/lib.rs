@@ -266,11 +266,8 @@ fn bridge_fn_impl(
     // We could early-exit on the Errors returned from generating each wrapper,
     // but since they could be for unrelated issues, it's better to show all of them to the user.
     let ffi_fn = ffi_name.map(|name| {
-        match &bridging_kind {
-            BridgingKind::Regular => ffi::bridge_fn(&name, &function.sig, result_kind),
-            BridgingKind::Io { .. } => todo!(),
-        }
-        .unwrap_or_else(Error::into_compile_error)
+        ffi::bridge_fn(&name, &function.sig, result_kind, &bridging_kind)
+            .unwrap_or_else(Error::into_compile_error)
     });
     let jni_fn = jni_name.map(|name| {
         jni::bridge_fn(&name, &function.sig, &bridging_kind)

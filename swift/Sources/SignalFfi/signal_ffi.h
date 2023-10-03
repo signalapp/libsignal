@@ -200,6 +200,8 @@ typedef struct SignalKeySecret SignalKeySecret;
 
 typedef struct SignalKyberPreKeyRecord SignalKyberPreKeyRecord;
 
+typedef struct SignalNonSuspendingBackgroundThreadRuntime SignalNonSuspendingBackgroundThreadRuntime;
+
 typedef struct SignalPinHash SignalPinHash;
 
 typedef struct SignalPlaintextContent SignalPlaintextContent;
@@ -390,6 +392,14 @@ typedef struct {
   SignalRead read;
   SignalSkip skip;
 } SignalInputStream;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromisei32)(SignalFfiError *error, const int32_t *result, const void *context);
 
 typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
 
@@ -1176,5 +1186,13 @@ SignalFfiError *signal_sanitized_metadata_get_data_offset(uint64_t *out, const S
 #if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_get_data_len(uint64_t *out, const SignalSanitizedMetadata *sanitized);
 #endif
+
+SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(SignalNonSuspendingBackgroundThreadRuntime *p);
+
+SignalFfiError *signal_testing_future_success(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t input);
+
+SignalFfiError *signal_testing_future_panic(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t _input);
+
+SignalFfiError *signal_testing_future_failure(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t _input);
 
 #endif /* SIGNAL_FFI_H_ */

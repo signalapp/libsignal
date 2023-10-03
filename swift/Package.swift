@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.2
 
 //
 // Copyright 2020-2021 Signal Messenger, LLC.
@@ -11,6 +11,9 @@ let rustBuildDir = "../target/debug/"
 
 let package = Package(
     name: "LibSignalClient",
+    platforms: [
+        .macOS(.v10_15), .iOS(.v13)
+    ],
     products: [
         .library(
             name: "LibSignalClient",

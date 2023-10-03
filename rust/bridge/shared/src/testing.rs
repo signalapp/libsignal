@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#![allow(unused_imports, dead_code)]
+#![allow(unused_imports)]
 
 use futures_util::FutureExt;
 use libsignal_bridge_macros::*;
@@ -14,10 +14,11 @@ use std::future::Future;
 use crate::support::*;
 use crate::*;
 
-struct NonSuspendingBackgroundThreadRuntime;
+pub struct NonSuspendingBackgroundThreadRuntime;
 bridge_handle!(
     NonSuspendingBackgroundThreadRuntime,
-    ffi = false,
+    clone = false,
+    ffi = testing_NonSuspendingBackgroundThreadRuntime,
     jni = TESTING_1NonSuspendingBackgroundThreadRuntime
 );
 
@@ -27,9 +28,15 @@ where
 {
     fn run_future(&self, future: F) {
         std::thread::spawn(move || {
-            future
-                .now_or_never()
-                .expect("no need to suspend in testing methods")
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+                future
+                    .now_or_never()
+                    .expect("no need to suspend in testing methods")
+            }))
+            .unwrap_or_else(|_| {
+                // Since this is a testing method, make sure we crash on uncaught panics.
+                std::process::abort()
+            })
         });
     }
 }
@@ -39,17 +46,17 @@ fn TESTING_NonSuspendingBackgroundThreadRuntime_New() -> NonSuspendingBackground
     NonSuspendingBackgroundThreadRuntime
 }
 
-#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false)]
+#[bridge_io(NonSuspendingBackgroundThreadRuntime)]
 async fn TESTING_FutureSuccess(input: u8) -> i32 {
     i32::from(input) * 2
 }
 
-#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false)]
+#[bridge_io(NonSuspendingBackgroundThreadRuntime)]
 async fn TESTING_FuturePanic(_input: u8) -> i32 {
     panic!("failure")
 }
 
-#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false)]
+#[bridge_io(NonSuspendingBackgroundThreadRuntime)]
 async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
     Err(SignalProtocolError::InvalidArgument("failure".to_string()))
 }
