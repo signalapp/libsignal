@@ -22,8 +22,11 @@ bridge_handle!(
     node = false
 );
 
-impl AsyncRuntime for NonSuspendingBackgroundThreadRuntime {
-    fn run_future(&self, future: impl Future<Output = ()> + Send + 'static) {
+impl<F> AsyncRuntime<F> for NonSuspendingBackgroundThreadRuntime
+where
+    F: Future<Output = ()> + Send + 'static,
+{
+    fn run_future(&self, future: F) {
         std::thread::spawn(move || {
             future
                 .now_or_never()

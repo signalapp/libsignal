@@ -186,7 +186,10 @@ macro_rules! bridge_get {
     };
 }
 
-/// Abstracts over executing a future.
-pub trait AsyncRuntime {
-    fn run_future(&self, future: impl Future<Output = ()> + Send + 'static);
+/// Abstracts over executing a future with type `F`.
+///
+/// Putting the future type in the trait signature allows runtimes to impose additional
+/// requirements, such as `Send`, on the Futures they can run.
+pub trait AsyncRuntime<F: Future<Output = ()>> {
+    fn run_future(&self, future: F);
 }
