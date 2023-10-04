@@ -36,6 +36,9 @@ thiserror = "1.0.30"
 pqcrypto-kyber = { version = "0.7.6", default-features = false, features = ["std"] }
 pqcrypto-traits = "0.3.4"
 
+[features]
+kyber768 = []
+
 [dev-dependencies]
 criterion = "0.5"
 hex-literal = "0.4.1"
@@ -65,3 +68,4 @@ harness = false
 [[bench]]
 name = "kem"
 harness = false
+required-features = ["kyber768"]

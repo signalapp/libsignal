@@ -38,19 +38,20 @@
 //! Serialization:
 //! ```
 //! # use libsignal_protocol::kem::*;
-//! // Generate a Kyber768 key pair
-//! let kp = KeyPair::generate(KeyType::Kyber768);
+//! // Generate a Kyber1024 key pair
+//! let kp = KeyPair::generate(KeyType::Kyber1024);
 //!
 //! let pk_for_wire = kp.public_key.serialize();
 //! // serialized form has an extra byte to encode the protocol
-//! assert_eq!(pk_for_wire.len(), 1184 + 1);
+//! assert_eq!(pk_for_wire.len(), 1568 + 1);
 //!
 //! let kp_reconstituted = PublicKey::deserialize(pk_for_wire.as_ref()).expect("deserialized correctly");
-//! assert_eq!(kp_reconstituted.key_type(), KeyType::Kyber768);
+//! assert_eq!(kp_reconstituted.key_type(), KeyType::Kyber1024);
 //!
 //! ```
 //!
 mod kyber1024;
+#[cfg(any(feature = "kyber768", test))]
 mod kyber768;
 
 use crate::{Result, SignalProtocolError};
@@ -142,6 +143,7 @@ impl<T: Parameters> DynParameters for T {
 #[derive(Display, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum KeyType {
     /// Kyber768 key
+    #[cfg(any(feature = "kyber768", test))]
     Kyber768,
     /// Kyber1024 key
     Kyber1024,
@@ -150,6 +152,7 @@ pub enum KeyType {
 impl KeyType {
     fn value(&self) -> u8 {
         match self {
+            #[cfg(any(feature = "kyber768", test))]
             KeyType::Kyber768 => 0x07,
             KeyType::Kyber1024 => 0x08,
         }
@@ -160,6 +163,7 @@ impl KeyType {
     /// Declared `const` to encourage inlining.
     const fn parameters(&self) -> &'static dyn DynParameters {
         match self {
+            #[cfg(any(feature = "kyber768", test))]
             KeyType::Kyber768 => &kyber768::Parameters,
             KeyType::Kyber1024 => &kyber1024::Parameters,
         }
@@ -171,6 +175,7 @@ impl TryFrom<u8> for KeyType {
 
     fn try_from(x: u8) -> Result<Self> {
         match x {
+            #[cfg(any(feature = "kyber768", test))]
             0x07 => Ok(KeyType::Kyber768),
             0x08 => Ok(KeyType::Kyber1024),
             t => Err(SignalProtocolError::BadKEMKeyType(t)),
