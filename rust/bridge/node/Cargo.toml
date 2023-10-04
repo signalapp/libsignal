@@ -24,6 +24,7 @@ log = "0.4"
 log-panics = { version = "2.0.0", features = ["with-backtrace"] }
 async-trait = "0.1.41"
 
+[build-dependencies]
 # cmake 0.1.49 breaks no-toolchain Windows cross-compilation using Visual Studio
 # https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1544695163
 cmake = ">= 0.1, < 0.1.49"
