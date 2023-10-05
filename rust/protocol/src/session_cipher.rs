@@ -55,15 +55,16 @@ pub async fn message_encrypt(
             })?;
 
     let message = if let Some(items) = session_state.unacknowledged_pre_key_message_items()? {
+        let timestamp_as_unix_time = items
+            .timestamp()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         if items.timestamp() + MAX_UNACKNOWLEDGED_SESSION_AGE < now {
             log::warn!(
                 "stale unacknowledged session for {} (created at {})",
                 remote_address,
-                items
-                    .timestamp()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()
+                timestamp_as_unix_time
             );
             return Err(SignalProtocolError::SessionNotFound(remote_address.clone()));
         }
@@ -71,11 +72,12 @@ pub async fn message_encrypt(
         let local_registration_id = session_state.local_registration_id();
 
         log::info!(
-            "Building PreKeyWhisperMessage for: {} with preKeyId: {}",
+            "Building PreKeyWhisperMessage for: {} with preKeyId: {} (session created at {})",
             remote_address,
             items
                 .pre_key_id()
-                .map_or_else(|| "<none>".to_string(), |id| id.to_string())
+                .map_or_else(|| "<none>".to_string(), |id| id.to_string()),
+            timestamp_as_unix_time,
         );
 
         let message = SignalMessage::new(
