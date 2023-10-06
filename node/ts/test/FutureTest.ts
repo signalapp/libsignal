@@ -34,14 +34,4 @@ describe('Async runtime not on the Node executor', () => {
       assert.equal(err.code, ErrorCode.Generic);
     }
   });
-
-  it('handles panics', async () => {
-    try {
-      const runtime = makeAsyncRuntime();
-      await Native.TESTING_FuturePanic(runtime, 21);
-      assert.fail('should have thrown an error');
-    } catch (e) {
-      assert.instanceOf(e, Error);
-    }
-  });
 });

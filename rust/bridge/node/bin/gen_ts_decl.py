@@ -77,6 +77,10 @@ def translate_to_ts(typ):
         assert typ.endswith('>')
         return 'Promise<' + translate_to_ts(typ[8:-1]) + '>'
 
+    if typ.startswith('Ignored<'):
+        assert typ.endswith('>')
+        return 'null'
+
     return typ
 
 

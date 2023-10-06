@@ -509,6 +509,15 @@ where
     }
 }
 
+impl ResultTypeInfo for () {
+    /// Ideally we wouldn't return *anything,* but C doesn't support that.
+    type ResultType = bool;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(false)
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -593,6 +602,8 @@ macro_rules! ffi_arg_type {
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
 
+    (Ignored<$typ:ty>) => (*const libc::c_void);
+
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
     (Serialized<$typ:ident>) => (*const [libc::c_uchar; paste!([<$typ:snake:upper _LEN>])]);
@@ -612,6 +623,8 @@ macro_rules! ffi_result_type {
     (Result<&$typ:tt $(, $_:ty)?>) => (ffi_result_type!(&$typ));
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => (ffi_result_type!(&$typ));
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => (ffi_result_type!($typ<$($args)+>));
+
+    (()) => (bool); // Only relevant for Futures.
 
     (u8) => (u8);
     (i32) => (i32);
@@ -636,6 +649,8 @@ macro_rules! ffi_result_type {
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
     (Serialized<$typ:ident>) => ([libc::c_uchar; paste!([<$typ:snake:upper _LEN>])]);
+
+    (Ignored<$typ:ty>) => (*const libc::c_void);
 
     ( $typ:ty ) => (*mut $typ);
 }

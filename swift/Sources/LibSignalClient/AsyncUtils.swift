@@ -17,8 +17,16 @@ internal protocol Completable {
     associatedtype PromiseCallback
 }
 
+extension Bool: Completable {
+    typealias PromiseCallback = SignalCPromisebool
+}
+
 extension Int32: Completable {
     typealias PromiseCallback = SignalCPromisei32
+}
+
+extension UnsafeRawPointer: Completable {
+    typealias PromiseCallback = SignalCPromiseRawPointer
 }
 
 /// A type-erased version of ``Completer``.

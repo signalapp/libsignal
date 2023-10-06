@@ -521,10 +521,27 @@ public final class Native {
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
+  public static native void TESTING_ErrorOnBorrowAsync(Object input);
+  public static native Future TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
+  public static native void TESTING_ErrorOnBorrowSync(Object input);
+  public static native Object TESTING_ErrorOnReturnAsync(Object needsCleanup);
+  public static native Future<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
+  public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
   public static native Future<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
-  public static native Future<Integer> TESTING_FuturePanic(long asyncRuntime, int input);
   public static native Future<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
+  public static native void TESTING_PanicInBodyAsync(Object input);
+  public static native Future TESTING_PanicInBodyIo(long asyncRuntime, Object input);
+  public static native void TESTING_PanicInBodySync(Object input);
+  public static native void TESTING_PanicOnBorrowAsync(Object input);
+  public static native Future TESTING_PanicOnBorrowIo(long asyncRuntime, Object input);
+  public static native void TESTING_PanicOnBorrowSync(Object input);
+  public static native void TESTING_PanicOnLoadAsync(Object needsCleanup, Object input);
+  public static native Future TESTING_PanicOnLoadIo(long asyncRuntime, Object needsCleanup, Object input);
+  public static native void TESTING_PanicOnLoadSync(Object needsCleanup, Object input);
+  public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
+  public static native Future<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
+  public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);

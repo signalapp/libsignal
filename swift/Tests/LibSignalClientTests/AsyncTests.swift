@@ -28,17 +28,6 @@ final class AsyncTests: XCTestCase {
             // good
         }
     }
-
-    func testPanic() async throws {
-        do {
-            let _: Int32 = try await invokeAsyncFunction {
-                signal_testing_future_panic($0, $1, OpaquePointer(bitPattern: -1), 21)
-            }
-            XCTFail("should have failed")
-        } catch SignalError.internalError(_) {
-            // good
-        }
-    }
 }
 
 #endif

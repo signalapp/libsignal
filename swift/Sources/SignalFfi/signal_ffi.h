@@ -401,6 +401,22 @@ typedef struct {
  */
 typedef void (*SignalCPromisei32)(SignalFfiError *error, const int32_t *result, const void *context);
 
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromisebool)(SignalFfiError *error, const bool *result, const void *context);
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseRawPointer)(SignalFfiError *error, const void *const *result, const void *context);
+
 typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
 
 void signal_print_ptr(const void *p);
@@ -1191,8 +1207,42 @@ SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(Sign
 
 SignalFfiError *signal_testing_future_success(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t input);
 
-SignalFfiError *signal_testing_future_panic(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t _input);
-
 SignalFfiError *signal_testing_future_failure(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t _input);
+
+SignalFfiError *signal_testing_panic_on_borrow_sync(const void *_input);
+
+SignalFfiError *signal_testing_panic_on_borrow_async(const void *_input);
+
+SignalFfiError *signal_testing_panic_on_borrow_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
+
+SignalFfiError *signal_testing_error_on_borrow_sync(const void *_input);
+
+SignalFfiError *signal_testing_error_on_borrow_async(const void *_input);
+
+SignalFfiError *signal_testing_error_on_borrow_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
+
+SignalFfiError *signal_testing_panic_on_load_sync(const void *_needs_cleanup, const void *_input);
+
+SignalFfiError *signal_testing_panic_on_load_async(const void *_needs_cleanup, const void *_input);
+
+SignalFfiError *signal_testing_panic_on_load_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup, const void *_input);
+
+SignalFfiError *signal_testing_panic_in_body_sync(const void *_input);
+
+SignalFfiError *signal_testing_panic_in_body_async(const void *_input);
+
+SignalFfiError *signal_testing_panic_in_body_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
+
+SignalFfiError *signal_testing_panic_on_return_sync(const void **out, const void *_needs_cleanup);
+
+SignalFfiError *signal_testing_panic_on_return_async(const void **out, const void *_needs_cleanup);
+
+SignalFfiError *signal_testing_panic_on_return_io(SignalCPromiseRawPointer promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
+
+SignalFfiError *signal_testing_error_on_return_sync(const void **out, const void *_needs_cleanup);
+
+SignalFfiError *signal_testing_error_on_return_async(const void **out, const void *_needs_cleanup);
+
+SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
 
 #endif /* SIGNAL_FFI_H_ */

@@ -42,6 +42,7 @@ renaming_overrides_prefixing = true
 "BorrowedSliceOfc_uchar" = "SignalBorrowedBuffer"
 "BorrowedMutableSliceOfc_uchar" = "SignalBorrowedMutableBuffer"
 "OwnedBufferOfc_uchar" = "SignalOwnedBuffer"
+"CPromisec_void" = "SignalCPromiseRawPointer"
 
 # Avoid double-prefixing these
 "SignalFfiError" = "SignalFfiError"

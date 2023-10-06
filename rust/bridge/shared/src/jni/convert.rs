@@ -949,6 +949,8 @@ macro_rules! jni_arg_type {
     (Serialized<$typ:ident>) => {
         jni::JByteArray<'local>
     };
+
+    (Ignored<$typ:ty>) => (jni::JObject<'local>);
 }
 
 /// Syntactically translates `bridge_fn` result types to JNI types for `cbindgen` and
@@ -1046,6 +1048,9 @@ macro_rules! jni_result_type {
     };
     (Serialized<$typ:ident>) => {
         jni::JByteArray<'local>
+    };
+    (Ignored<$typ:ty>) => {
+        jni::JObject<'local>
     };
     ( $handle:ty ) => {
         jni::ObjectHandle
