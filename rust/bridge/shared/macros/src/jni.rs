@@ -149,13 +149,13 @@ fn bridge_io_body(
             #(#input_saving)*
             jni::run_future_on_runtime(env, async_runtime, move |completer| async move {
                 // Wrap the actual work to catch any panics.
-                let __future = jni::catch_unwind(async move {
+                let __future = jni::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*
                     let __result = #orig_name(#(#input_names),*).await;
                     // If the original function can't fail, wrap the result in Ok for uniformity.
                     // See TransformHelper::ok_if_needed.
                     Ok(TransformHelper(__result).ok_if_needed()?.0)
-                });
+                }));
                 // Pass the stored inputs to the completer to drop them while attached to the JVM.
                 completer.complete_with_extra_args_to_drop(__future.await, (#(#input_stored_names),*))
             })

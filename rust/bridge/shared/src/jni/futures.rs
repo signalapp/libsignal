@@ -159,9 +159,9 @@ where
 }
 
 /// Catches panics that occur in `future` and converts them to [`SignalJniError::UnexpectedPanic`].
-pub fn catch_unwind<O>(
-    future: impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'static,
-) -> impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'static {
+pub fn catch_unwind<'a, O>(
+    future: impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'a,
+) -> impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'a {
     future
         .catch_unwind()
         .unwrap_or_else(|panic| Err(SignalJniError::UnexpectedPanic(panic)))
