@@ -5,9 +5,9 @@ name: Lints
 on:
   push:
     branches: [ main ]
-    paths: ['**/*.sh', '**/*.py']
+    paths: ['**/*.sh', '**/*.py', '.github/workflows/lints.yml']
   pull_request:
-    paths: ['**/*.sh', '**/*.py']
+    paths: ['**/*.sh', '**/*.py', '.github/workflows/lints.yml']
 
 jobs:
   lint:
@@ -21,4 +21,4 @@ jobs:
     - run: shellcheck **/*.sh
     - run: python3 -m flake8 .
     # Only include typed Python scripts here.
-    - run: python3 -m mypy bin/fetch_archive.py --python-version 3.6 --strict
+    - run: python3 -m mypy bin/fetch_archive.py --python-version 3.8 --strict
