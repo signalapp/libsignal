@@ -97,9 +97,9 @@ impl Attribute for [RistrettoPoint; 2] {
 /// # Example
 ///
 /// ```
-/// # type UserId = [RistrettoPoint; 2];
+/// # type UserId = [curve25519_dalek::RistrettoPoint; 2];
 /// struct UserIdEncryption;
-/// impl Domain for UserIdEncryption {
+/// impl zkcredential::attributes::Domain for UserIdEncryption {
 ///   type Attribute = UserId;
 ///   const ID: &'static str = "MyCompany_UserIdEncryption_20231011";
 /// }
@@ -202,10 +202,14 @@ impl<D: Domain> KeyPair<D> {
         let a1 = sho.get_scalar();
         let a2 = sho.get_scalar();
 
+        Self::from_scalars(a1, a2)
+    }
+
+    fn from_scalars(a1: Scalar, a2: Scalar) -> Self {
         let [G_a1, G_a2] = D::G_a();
         let A = a1 * G_a1 + a2 * G_a2;
 
-        KeyPair {
+        Self {
             a1,
             a2,
             public_key: PublicKey {
@@ -213,6 +217,27 @@ impl<D: Domain> KeyPair<D> {
                 domain: PhantomData,
             },
         }
+    }
+
+    /// Creates a KeyPair that's the inverse of `other`.
+    ///
+    /// That is, if `k_inv` is `KeyPair::inverse_of(k)`, then `attr.as_points() ==
+    /// k_inv.encrypt(k.encrypt(&attr))`.
+    ///
+    /// Note that the domain of `Self` doesn't have to be related to the domain of `other`. This can
+    /// be useful when the inverted key is used on derived values.
+    ///
+    /// Don't use this to decrypt points; there are more efficient ways to do that. See
+    /// [`Self::decrypt_to_second_point`].
+    pub fn inverse_of<D2: Domain>(other: &KeyPair<D2>) -> Self {
+        assert_ne!(
+            D::ID,
+            D2::ID,
+            "You must provide a new domain for an inverse key"
+        );
+        let a1 = other.a1.invert();
+        let a2 = -(other.a1 * other.a2);
+        Self::from_scalars(a1, a2)
     }
 
     /// Encrypts `attr` according to Chase-Perrin-Zaverucha section 4.1.

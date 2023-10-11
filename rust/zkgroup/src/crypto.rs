@@ -16,5 +16,5 @@ pub mod timestamp_struct;
 pub mod uid_encryption;
 pub mod uid_struct;
 
-// #[cfg(test)]
-// mod zkcredential_examples;
+#[cfg(test)]
+mod zkcredential_examples;

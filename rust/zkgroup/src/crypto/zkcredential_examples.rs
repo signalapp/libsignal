@@ -8,10 +8,9 @@
 //! Has to live in zkgroup because they implement zkcredential traits on zkgroup types.
 
 use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
 use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
-use zkcredential::attributes::{self, Attribute, PublicKey, RevealedAttribute, KeyPair};
+use zkcredential::attributes::{Attribute, RevealedAttribute};
 use zkcredential::credentials::CredentialKeyPair;
 use zkcredential::issuance::blind::{
     BlindedAttribute, BlindedPoint, BlindingKeyPair, BlindingPublicKey, WithoutNonce,
@@ -54,8 +53,8 @@ fn test_mac_generic() {
         .verify(keypair.public_key(), proof)
         .unwrap();
 
-    let uid_encryption_key = uid_encryption::KeyPair::derive_from(&mut Sho::new(b"test", b""));
-    let uid_encryption_public_key = uid_encryption_key.get_public_key();
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(Sho::new(b"test", b"").as_mut());
+    let uid_encryption_public_key = uid_encryption_key.public_key;
 
     let proof = PresentationProofBuilder::new(label)
         .add_attribute(&uid, &uid_encryption_key)
@@ -67,7 +66,10 @@ fn test_mac_generic() {
 
     PresentationProofVerifier::new(label)
         .add_public_attribute(&[1, 2, 3])
-        .add_attribute(&uid_encryption_key.encrypt(&uid), &uid_encryption_public_key)
+        .add_attribute(
+            &uid_encryption_key.encrypt(&uid),
+            &uid_encryption_public_key,
+        )
         .verify(&keypair, &proof)
         .unwrap()
 }
@@ -127,8 +129,9 @@ fn test_profile_key_credential() {
         .unwrap();
 
     let mut zkgroup_sho = Sho::new(b"test", b"");
-    let uid_encryption_key = uid_encryption::KeyPair::derive_from(&mut zkgroup_sho);
-    let profile_key_encryption_key = profile_key_encryption::KeyPair::derive_from(&mut zkgroup_sho);
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(zkgroup_sho.as_mut());
+    let profile_key_encryption_key =
+        profile_key_encryption::KeyPair::derive_from(zkgroup_sho.as_mut());
 
     let proof = PresentationProofBuilder::with_authenticated_message(label, b"v1")
         .add_attribute(&uid, &uid_encryption_key)
@@ -152,8 +155,8 @@ fn test_profile_key_credential() {
         proof,
         encrypted_uid: uid_encryption_key.encrypt(&uid),
         encrypted_profile_key: profile_key_encryption_key.encrypt(&profile_key),
-        uid_encryption_public_key: uid_encryption_key.get_public_key(),
-        profile_key_encryption_public_key: profile_key_encryption_key.get_public_key(),
+        uid_encryption_public_key: uid_encryption_key.public_key,
+        profile_key_encryption_public_key: profile_key_encryption_key.public_key,
     })
     .unwrap();
 
@@ -297,4 +300,31 @@ fn test_room_credential() {
         .add_revealed_attribute(&presentation.room_id)
         .verify(&keypair, &presentation.proof)
         .unwrap();
+}
+
+struct InverseUidDecryptionKey;
+impl zkcredential::attributes::Domain for InverseUidDecryptionKey {
+    type Attribute = uid_encryption::Ciphertext;
+    const ID: &'static str = "InverseUidEncryptionDomain_20231011";
+}
+
+#[test]
+fn test_inverse_key() {
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+    let uid = UidStruct::from_service_id(aci.into());
+
+    let mut sho = Sho::new(b"test_inverse_key", b"");
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(sho.as_mut());
+
+    let encrypted = uid_encryption_key.encrypt(&uid);
+
+    let inverse = zkcredential::attributes::KeyPair::<InverseUidDecryptionKey>::inverse_of(
+        &uid_encryption_key,
+    );
+
+    #[allow(non_snake_case)]
+    let [E_A1_prime, E_A2_prime] = inverse.encrypt(&encrypted).as_points();
+
+    assert_eq!(uid.M1, E_A1_prime);
+    assert_eq!(uid.M2, E_A2_prime);
 }
