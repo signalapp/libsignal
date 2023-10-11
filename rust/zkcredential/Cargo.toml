@@ -14,9 +14,11 @@ license = "AGPL-3.0-only"
 poksho = { path = "../poksho" }
 
 curve25519-dalek = { version = "4.0", features = ["serde"] }
+derive-where = "1.2.5"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
 serde = { version = "1.0.106", features = ["derive"] }
+subtle = "2.3"
 
 [dev-dependencies]
 bincode = "1.2.1"

@@ -15,11 +15,17 @@
 //! - [`RevealedAttribute`], which is hidden from the issuing server and then revealed to the
 //!   verifying server.
 
+use std::marker::PhantomData;
+
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use derive_where::derive_where;
 use poksho::ShoApi;
+use serde::{Deserialize, Serialize};
+use subtle::ConstantTimeEq;
 
+use crate::sho::ShoExt;
 use crate::VerificationFailure;
 
 /// An attribute that doesn't need to be hidden from the issuing server or verifying server.
@@ -83,6 +89,81 @@ impl Attribute for [RistrettoPoint; 2] {
     }
 }
 
+/// A domain for a [`KeyPair`].
+///
+/// This provides separation between different keys and ciphertexts, so that statically and
+/// dynamically they can't get mixed up or substituted for one another.
+///
+/// # Example
+///
+/// ```
+/// # type UserId = [RistrettoPoint; 2];
+/// struct UserIdEncryption;
+/// impl Domain for UserIdEncryption {
+///   type Attribute = UserId;
+///   const ID: &'static str = "MyCompany_UserIdEncryption_20231011";
+/// }
+/// ```
+pub trait Domain {
+    /// The attribute type used in this encryption domain.
+    type Attribute: Attribute;
+
+    /// A unique ID for this key (and its corresponding key pair)
+    ///
+    /// This is used to identify and distinguish keys when constructing or validating a proof,
+    /// so make sure it's unique!
+    const ID: &'static str;
+
+    /// The "generator points" for this key
+    ///
+    /// This can be a statically-chosen pair of points; it's used to construct the `A` point for a
+    /// [`PublicKey`]. The default implementation derives the generator points from the ID. The most
+    /// common reason to provide your own implementation would be to cache the points in a
+    /// `lazy_static` or similar.
+    fn G_a() -> [RistrettoPoint; 2] {
+        let mut sho = poksho::ShoHmacSha256::new(b"Signal_ZKCredential_Domain_20231011");
+        sho.absorb_and_ratchet(Self::ID.as_bytes());
+        let G_a1 = sho.get_point();
+        let G_a2 = sho.get_point();
+        [G_a1, G_a2]
+    }
+}
+
+/// A key used to encrypt attributes.
+///
+/// Using different keys for different attribute types prevents "type confusion", where two
+/// attributes coincidentally have the same encoding as RistrettoPoints. The encryption may also
+/// have other purposes, such as the encryption of UUIDs and profile keys in a Signal group, and
+/// therefore being able to use existing keys is important.
+///
+/// The private key in this system is a pair of scalars `a1` and `a2`. Attributes are encrypted as
+/// `E_A1 = a1 * M1; E_A2 = a2 * E_A1 + M2`.
+///
+/// Defined in Chase-Perrin-Zaverucha section 4.1.
+///
+/// See also [`PublicKey`].
+#[derive(Serialize, Deserialize)]
+#[derive_where(Clone, Copy, Eq)]
+#[non_exhaustive]
+#[allow(missing_docs)]
+pub struct KeyPair<D> {
+    pub a1: Scalar,
+    pub a2: Scalar,
+    #[serde(bound = "")]
+    pub public_key: PublicKey<D>,
+}
+
+impl<D> subtle::ConstantTimeEq for KeyPair<D> {
+    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+        self.a1.ct_eq(&other.a1) & self.a2.ct_eq(&other.a2)
+    }
+}
+impl<D> PartialEq for KeyPair<D> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other).into()
+    }
+}
+
 /// A key used to validate encrypted attributes.
 ///
 /// Using different keys for different attribute types prevents "type confusion", where two
@@ -93,46 +174,66 @@ impl Attribute for [RistrettoPoint; 2] {
 /// Defined in Chase-Perrin-Zaverucha section 4.1.
 ///
 /// See also [`KeyPair`].
-pub trait PublicKey {
-    /// A unique ID for this key (and its corresponding key pair)
-    ///
-    /// This is used to identify and distinguish keys when constructing or validating a proof,
-    /// so make sure it's unique!
-    fn id(&self) -> &'static str;
-    /// The "generator points" for this key
-    ///
-    /// This can be a statically-chosen pair of points; it's used to construct [`A`](Self::A).
-    fn G_a(&self) -> [RistrettoPoint; 2];
-    /// The public key point, a commitment to the two scalars that make up the private key
-    ///
-    /// `A = a1 * G_a1 + a2 * G_a2`
-    fn A(&self) -> RistrettoPoint;
+#[derive(Serialize, Deserialize)]
+#[derive_where(Clone, Copy, Eq)]
+pub struct PublicKey<D> {
+    #[allow(missing_docs)]
+    pub A: RistrettoPoint,
+    #[serde(skip)]
+    domain: PhantomData<fn(D) -> D>,
 }
 
-/// A key used to encrypt attributes.
-///
-/// Using different keys for different attribute types prevents "type confusion", where two
-/// attributes coincidentally have the same encoding as RistrettoPoints. The encryption may also
-/// have other purposes, such as the encryption of UUIDs and profile keys in a Signal group, and
-/// therefore being able to use existing keys is important.
-///
-/// Defined in Chase-Perrin-Zaverucha section 4.1.
-///
-/// See also [`PublicKey`].
-pub trait KeyPair: PublicKey {
-    /// The private key as a pair of scalars.
-    ///
-    /// Attributes are encrypted as `E_A1 = a1 * M1; E_A2 = a2 * E_A1 + M2`.
-    fn a(&self) -> [Scalar; 2];
+impl<D> subtle::ConstantTimeEq for PublicKey<D> {
+    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+        self.A.ct_eq(&other.A)
+    }
+}
+impl<D> PartialEq for PublicKey<D> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other).into()
+    }
 }
 
-impl dyn KeyPair {
+impl<D: Domain> KeyPair<D> {
+    /// Generates a new KeyPair from the hash state in `sho`.
+    ///
+    /// Passing the same `sho` state in will produce the same key pair every time.
+    pub fn derive_from(sho: &mut dyn ShoApi) -> Self {
+        let a1 = sho.get_scalar();
+        let a2 = sho.get_scalar();
+
+        let [G_a1, G_a2] = D::G_a();
+        let A = a1 * G_a1 + a2 * G_a2;
+
+        KeyPair {
+            a1,
+            a2,
+            public_key: PublicKey {
+                A,
+                domain: PhantomData,
+            },
+        }
+    }
+
+    /// Encrypts `attr` according to Chase-Perrin-Zaverucha section 4.1.
+    #[inline]
+    pub fn encrypt(&self, attr: &D::Attribute) -> Ciphertext<D> {
+        let [M1, M2] = attr.as_points();
+        let E_A1 = self.a1 * M1;
+        let E_A2 = (self.a2 * E_A1) + M2;
+        Ciphertext {
+            E_A1,
+            E_A2,
+            domain: PhantomData,
+        }
+    }
+
     /// Returns the second point from the plaintext that produced `ciphertext`
     ///
-    /// The encryption form (described in [`KeyPair::a`]) allows recovering M2 from the ciphertext
-    /// as `M2 = E_A2 - a2 * E_A1`. For certain attributes, this may be enough to recover the value,
-    /// making this a reversible encryption system. However, it is **critical** to check that the
-    /// decoded value produces the same `E_A1` when re-encrypted:
+    /// The encryption form allows recovering M2 from the ciphertext as `M2 = E_A2 - a2 * E_A1`. For
+    /// certain attributes, this may be enough to recover the value, making this a reversible
+    /// encryption system. However, it is **critical** to check that the decoded value produces the
+    /// same `E_A1` when re-encrypted:
     ///
     /// ```ignored
     /// a1 * HashToPoint(DecodeFromPoint(M2)) == E_A1
@@ -148,14 +249,41 @@ impl dyn KeyPair {
     /// Defined in Chase-Perrin-Zaverucha section 3.1.
     pub fn decrypt_to_second_point(
         &self,
-        ciphertext: &dyn Attribute,
+        ciphertext: &Ciphertext<D>,
     ) -> Result<RistrettoPoint, VerificationFailure> {
-        let [E_A1, E_A2] = ciphertext.as_points();
-        if E_A1 == RISTRETTO_BASEPOINT_POINT {
+        if ciphertext.E_A1 == RISTRETTO_BASEPOINT_POINT {
             return Err(VerificationFailure);
         }
-        let [_, a2] = self.a();
-        Ok(E_A2 - a2 * E_A1)
+        Ok(ciphertext.E_A2 - self.a2 * ciphertext.E_A1)
+    }
+}
+
+/// An attribute encrypted with [`KeyPair::encrypt`].
+#[derive(Serialize, Deserialize)]
+#[derive_where(Clone, Copy, Eq)]
+pub struct Ciphertext<D> {
+    E_A1: RistrettoPoint,
+    E_A2: RistrettoPoint,
+    #[serde(skip)]
+    domain: PhantomData<fn(D) -> D>,
+}
+
+impl<D> subtle::ConstantTimeEq for Ciphertext<D> {
+    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+        self.E_A1.ct_eq(&other.E_A1) & self.E_A2.ct_eq(&other.E_A2)
+    }
+}
+
+impl<D> PartialEq for Ciphertext<D> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other).into()
+    }
+}
+
+impl<D> Attribute for Ciphertext<D> {
+    #[inline]
+    fn as_points(&self) -> [RistrettoPoint; 2] {
+        [self.E_A1, self.E_A2]
     }
 }
 

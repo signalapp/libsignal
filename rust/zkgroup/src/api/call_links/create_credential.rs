@@ -167,7 +167,7 @@ impl CreateCallLinkCredential {
         randomness: RandomnessBytes,
     ) -> CreateCallLinkCredentialPresentation {
         let user_id = UidStruct::from_service_id(user_id.into());
-        let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(user_id);
+        let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(&user_id);
         CreateCallLinkCredentialPresentation {
             reserved: [0],
             timestamp: self.timestamp,
@@ -184,7 +184,7 @@ impl CreateCallLinkCredential {
 pub struct CreateCallLinkCredentialPresentation {
     reserved: ReservedBytes,
     // The room ID is provided externally as part of the request.
-    user_id: uid_encryption::Ciphertext,
+    user_id: zkcredential::attributes::Ciphertext<uid_encryption::UidEncryptionDomain>,
     timestamp: Timestamp,
     proof: zkcredential::presentation::PresentationProof,
 }

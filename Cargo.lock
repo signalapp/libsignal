@@ -796,9 +796,9 @@ checksum = "c2e66c9d817f1720209181c316d28635c050fa304f9c79e47a520882661b7308"
 
 [[package]]
 name = "derive-where"
-version = "1.2.1"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bc1955a640c4464859ae700fbe48e666da6fdce99ce5fe1acd08dd295889d10"
+checksum = "146398d62142a0f35248a608f17edf0dde57338354966d6e41d0eb2d16980ccb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3276,12 +3276,14 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "curve25519-dalek",
+ "derive-where",
  "displaydoc",
  "hex",
  "hex-literal",
  "lazy_static",
  "poksho",
  "serde",
+ "subtle",
 ]
 
 [[package]]

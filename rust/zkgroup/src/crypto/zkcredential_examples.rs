@@ -11,7 +11,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
-use zkcredential::attributes::{self, Attribute, PublicKey, RevealedAttribute};
+use zkcredential::attributes::{self, Attribute, PublicKey, RevealedAttribute, KeyPair};
 use zkcredential::credentials::CredentialKeyPair;
 use zkcredential::issuance::blind::{
     BlindedAttribute, BlindedPoint, BlindingKeyPair, BlindingPublicKey, WithoutNonce,
@@ -27,56 +27,6 @@ use crate::crypto::profile_key_struct::ProfileKeyStruct;
 use crate::crypto::uid_struct::UidStruct;
 use crate::crypto::{profile_key_encryption, uid_encryption};
 use crate::{RANDOMNESS_LEN, TEST_ARRAY_16, TEST_ARRAY_32};
-
-impl Attribute for ProfileKeyStruct {
-    fn as_points(&self) -> [RistrettoPoint; 2] {
-        [self.M3, self.M4]
-    }
-}
-
-impl Attribute for profile_key_encryption::Ciphertext {
-    fn as_points(&self) -> [RistrettoPoint; 2] {
-        [self.E_B1, self.E_B2]
-    }
-}
-
-const PROFILE_KEY_ENCRYPTION_ID: &str = "20220725-zkgroup-profilekey";
-
-impl PublicKey for profile_key_encryption::PublicKey {
-    fn A(&self) -> RistrettoPoint {
-        self.B
-    }
-
-    fn G_a(&self) -> [RistrettoPoint; 2] {
-        let system = profile_key_encryption::SystemParams::get_hardcoded();
-        [system.G_b1, system.G_b2]
-    }
-
-    fn id(&self) -> &'static str {
-        PROFILE_KEY_ENCRYPTION_ID
-    }
-}
-
-impl PublicKey for profile_key_encryption::KeyPair {
-    fn A(&self) -> RistrettoPoint {
-        self.B
-    }
-
-    fn G_a(&self) -> [RistrettoPoint; 2] {
-        let system = profile_key_encryption::SystemParams::get_hardcoded();
-        [system.G_b1, system.G_b2]
-    }
-
-    fn id(&self) -> &'static str {
-        PROFILE_KEY_ENCRYPTION_ID
-    }
-}
-
-impl attributes::KeyPair for profile_key_encryption::KeyPair {
-    fn a(&self) -> [Scalar; 2] {
-        [self.b1, self.b2]
-    }
-}
 
 #[test]
 fn test_mac_generic() {
@@ -117,7 +67,7 @@ fn test_mac_generic() {
 
     PresentationProofVerifier::new(label)
         .add_public_attribute(&[1, 2, 3])
-        .add_attribute(&uid_encryption_key.encrypt(uid), &uid_encryption_public_key)
+        .add_attribute(&uid_encryption_key.encrypt(&uid), &uid_encryption_public_key)
         .verify(&keypair, &proof)
         .unwrap()
 }
@@ -200,8 +150,8 @@ fn test_profile_key_credential() {
 
     let presentation_serialized = bincode::serialize(&Presentation {
         proof,
-        encrypted_uid: uid_encryption_key.encrypt(uid),
-        encrypted_profile_key: profile_key_encryption_key.encrypt(profile_key),
+        encrypted_uid: uid_encryption_key.encrypt(&uid),
+        encrypted_profile_key: profile_key_encryption_key.encrypt(&profile_key),
         uid_encryption_public_key: uid_encryption_key.get_public_key(),
         profile_key_encryption_public_key: profile_key_encryption_key.get_public_key(),
     })

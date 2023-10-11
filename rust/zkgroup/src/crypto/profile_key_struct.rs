@@ -70,3 +70,9 @@ impl ConditionallySelectable for ProfileKeyStruct {
         }
     }
 }
+
+impl zkcredential::attributes::Attribute for ProfileKeyStruct {
+    fn as_points(&self) -> [RistrettoPoint; 2] {
+        [self.M3, self.M4]
+    }
+}

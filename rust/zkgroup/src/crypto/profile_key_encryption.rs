@@ -9,14 +9,13 @@ use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::profile_key_struct;
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use lazy_static::lazy_static;
+use zkcredential::attributes::Attribute;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
@@ -29,23 +28,9 @@ pub struct SystemParams {
     pub(crate) G_b2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KeyPair {
-    pub(crate) b1: Scalar,
-    pub(crate) b2: Scalar,
-    pub(crate) B: RistrettoPoint,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PublicKey {
-    pub(crate) B: RistrettoPoint,
-}
-
-#[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Ciphertext {
-    pub(crate) E_B1: RistrettoPoint,
-    pub(crate) E_B2: RistrettoPoint,
-}
+pub type KeyPair = zkcredential::attributes::KeyPair<ProfileKeyEncryptionDomain>;
+pub type PublicKey = zkcredential::attributes::PublicKey<ProfileKeyEncryptionDomain>;
+pub type Ciphertext = zkcredential::attributes::Ciphertext<ProfileKeyEncryptionDomain>;
 
 impl SystemParams {
     pub fn generate() -> Self {
@@ -71,39 +56,34 @@ impl SystemParams {
     ];
 }
 
-impl KeyPair {
-    pub fn derive_from(sho: &mut Sho) -> Self {
+pub struct ProfileKeyEncryptionDomain;
+impl zkcredential::attributes::Domain for ProfileKeyEncryptionDomain {
+    type Attribute = profile_key_struct::ProfileKeyStruct;
+
+    const ID: &'static str = "Signal_ZKGroup_20231011_ProfileKeyEncryption";
+
+    fn G_a() -> [RistrettoPoint; 2] {
         let system = SystemParams::get_hardcoded();
-
-        let b1 = sho.get_scalar();
-        let b2 = sho.get_scalar();
-
-        let B = b1 * system.G_b1 + b2 * system.G_b2;
-        KeyPair { b1, b2, B }
+        [system.G_b1, system.G_b2]
     }
+}
 
-    pub fn encrypt(&self, profile_key: profile_key_struct::ProfileKeyStruct) -> Ciphertext {
-        let E_B1 = self.calc_E_B1(profile_key);
-        let E_B2 = (self.b2 * E_B1) + profile_key.M4;
-        Ciphertext { E_B1, E_B2 }
-    }
-
-    #[allow(clippy::needless_range_loop)]
-    pub fn decrypt(
-        &self,
-        ciphertext: Ciphertext,
+impl ProfileKeyEncryptionDomain {
+    pub(crate) fn decrypt(
+        key_pair: &KeyPair,
+        ciphertext: &Ciphertext,
         uid_bytes: UidBytes,
     ) -> Result<profile_key_struct::ProfileKeyStruct, ZkGroupVerificationFailure> {
-        if ciphertext.E_B1 == RISTRETTO_BASEPOINT_POINT {
-            return Err(ZkGroupVerificationFailure);
-        }
-        let M4 = ciphertext.E_B2 - (self.b2 * ciphertext.E_B1);
+        let M4 = key_pair
+            .decrypt_to_second_point(ciphertext)
+            .map_err(|_| ZkGroupVerificationFailure)?;
         let (mask, candidates) = M4.decode_253_bits();
 
-        let target_M3 = self.b1.invert() * ciphertext.E_B1;
+        let target_M3 = key_pair.a1.invert() * ciphertext.as_points()[0];
 
         let mut retval: profile_key_struct::ProfileKeyStruct = Default::default();
         let mut n_found = 0;
+        #[allow(clippy::needless_range_loop)]
         for i in 0..8 {
             let is_valid_fe = Choice::from((mask >> i) & 1);
             let profile_key_bytes: ProfileKeyBytes = candidates[i];
@@ -131,14 +111,6 @@ impl KeyPair {
             Err(ZkGroupVerificationFailure)
         }
     }
-
-    fn calc_E_B1(&self, profile_key: profile_key_struct::ProfileKeyStruct) -> RistrettoPoint {
-        self.b1 * profile_key.M3
-    }
-
-    pub fn get_public_key(&self) -> PublicKey {
-        PublicKey { B: self.B }
-    }
 }
 
 #[cfg(test)]
@@ -155,7 +127,7 @@ mod tests {
         //println!("PARAMS = {:#x?}", bincode::serialize(&system));
         assert!(SystemParams::generate() == SystemParams::get_hardcoded());
 
-        let key_pair = KeyPair::derive_from(&mut sho);
+        let key_pair = KeyPair::derive_from(sho.as_mut());
 
         // Test serialize of key_pair
         let key_pair_bytes = bincode::serialize(&key_pair).unwrap();
@@ -169,7 +141,7 @@ mod tests {
         let profile_key_bytes = TEST_ARRAY_32_1;
         let uid_bytes = TEST_ARRAY_16_1;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, uid_bytes);
-        let ciphertext = key_pair.encrypt(profile_key);
+        let ciphertext = key_pair.encrypt(&profile_key);
 
         // Test serialize / deserialize of Ciphertext
         let ciphertext_bytes = bincode::serialize(&ciphertext).unwrap();
@@ -188,7 +160,8 @@ mod tests {
                 ]
         );
 
-        let plaintext = key_pair.decrypt(ciphertext2, uid_bytes).unwrap();
+        let plaintext =
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext2, uid_bytes).unwrap();
         assert!(plaintext == profile_key);
 
         let mut sho = Sho::new(b"Test_Repeated_ProfileKeyEnc/Dec", b"seed");
@@ -201,28 +174,43 @@ mod tests {
 
             let profile_key =
                 profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, uid_bytes);
-            let ciphertext = key_pair.encrypt(profile_key);
-            assert!(key_pair.decrypt(ciphertext, uid_bytes).unwrap() == profile_key);
+            let ciphertext = key_pair.encrypt(&profile_key);
+            assert!(
+                ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
+                    == profile_key
+            );
         }
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32, TEST_ARRAY_16);
-        let ciphertext = key_pair.encrypt(profile_key);
-        assert!(key_pair.decrypt(ciphertext, uid_bytes).unwrap() == profile_key);
+        let ciphertext = key_pair.encrypt(&profile_key);
+        assert!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
+                == profile_key
+        );
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32_2, TEST_ARRAY_16);
-        let ciphertext = key_pair.encrypt(profile_key);
-        assert!(key_pair.decrypt(ciphertext, uid_bytes).unwrap() == profile_key);
+        let ciphertext = key_pair.encrypt(&profile_key);
+        assert!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
+                == profile_key
+        );
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32_3, TEST_ARRAY_16);
-        let ciphertext = key_pair.encrypt(profile_key);
-        assert!(key_pair.decrypt(ciphertext, uid_bytes).unwrap() == profile_key);
+        let ciphertext = key_pair.encrypt(&profile_key);
+        assert!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
+                == profile_key
+        );
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32_4, TEST_ARRAY_16);
-        let ciphertext = key_pair.encrypt(profile_key);
-        assert!(key_pair.decrypt(ciphertext, uid_bytes).unwrap() == profile_key);
+        let ciphertext = key_pair.encrypt(&profile_key);
+        assert!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
+                == profile_key
+        );
     }
 }
