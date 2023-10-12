@@ -77,9 +77,29 @@ impl<D: attributes::Domain> From<attributes::PublicKey<D>> for AnyPublicKey {
     }
 }
 
-impl AsRef<AnyPublicKey> for AnyPublicKey {
-    fn as_ref(&self) -> &AnyPublicKey {
-        self
+enum PublicKeyOrId {
+    PublicKey(AnyPublicKey),
+    Id(&'static str),
+}
+
+trait MayHavePublicKey {
+    fn id(&self) -> &'static str;
+    fn public_key(&self) -> Option<&AnyPublicKey>;
+}
+
+impl MayHavePublicKey for PublicKeyOrId {
+    fn id(&self) -> &'static str {
+        match self {
+            PublicKeyOrId::PublicKey(key) => key.id,
+            PublicKeyOrId::Id(id) => id,
+        }
+    }
+    fn public_key(&self) -> Option<&AnyPublicKey> {
+        if let PublicKeyOrId::PublicKey(public_key) = &self {
+            Some(public_key)
+        } else {
+            None
+        }
     }
 }
 
@@ -88,7 +108,16 @@ impl AsRef<AnyPublicKey> for AnyPublicKey {
 struct AnyKeyPair {
     a1: Scalar,
     a2: Scalar,
-    public_key: AnyPublicKey,
+    public_key_or_id: PublicKeyOrId,
+}
+
+impl AnyKeyPair {
+    fn without_public_key(self) -> Self {
+        Self {
+            public_key_or_id: PublicKeyOrId::Id(self.public_key_or_id.id()),
+            ..self
+        }
+    }
 }
 
 impl<D: attributes::Domain> From<attributes::KeyPair<D>> for AnyKeyPair {
@@ -96,18 +125,22 @@ impl<D: attributes::Domain> From<attributes::KeyPair<D>> for AnyKeyPair {
         Self {
             a1: value.a1,
             a2: value.a2,
-            public_key: AnyPublicKey::from(value.public_key),
+            public_key_or_id: PublicKeyOrId::PublicKey(value.public_key.into()),
         }
     }
 }
 
-impl AsRef<AnyPublicKey> for AnyKeyPair {
-    fn as_ref(&self) -> &AnyPublicKey {
-        &self.public_key
+impl MayHavePublicKey for AnyKeyPair {
+    fn id(&self) -> &'static str {
+        self.public_key_or_id.id()
+    }
+
+    fn public_key(&self) -> Option<&AnyPublicKey> {
+        self.public_key_or_id.public_key()
     }
 }
 
-struct PresentationProofBuilderCore<'a, T: AsRef<AnyPublicKey>> {
+struct PresentationProofBuilderCore<'a, T: MayHavePublicKey> {
     encryption_keys: Vec<T>,
     attributes: Vec<AttributeRef>,
     attr_points: Vec<RistrettoPoint>,
@@ -136,11 +169,11 @@ pub struct PresentationProofBuilder<'a> {
 ///
 /// See also [`PresentationProofBuilder`].
 pub struct PresentationProofVerifier<'a> {
-    core: PresentationProofBuilderCore<'a, AnyPublicKey>,
+    core: PresentationProofBuilderCore<'a, PublicKeyOrId>,
     public_attrs: ShoHmacSha256,
 }
 
-impl<'a, T: AsRef<AnyPublicKey>> PresentationProofBuilderCore<'a, T> {
+impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
     fn with_authenticated_message(message: &'a [u8]) -> Self {
         Self {
             encryption_keys: vec![],
@@ -161,11 +194,11 @@ impl<'a, T: AsRef<AnyPublicKey>> PresentationProofBuilderCore<'a, T> {
         );
 
         let key_index = key.map(|key| {
-            let key_id = key.as_ref().id;
+            let key_id = key.id();
             match self
                 .encryption_keys
                 .iter()
-                .position(|key| key.as_ref().id == key_id)
+                .position(|key| key.id() == key_id)
             {
                 Some(idx) => idx,
                 None => {
@@ -194,18 +227,20 @@ impl<'a, T: AsRef<AnyPublicKey>> PresentationProofBuilderCore<'a, T> {
         // proving the validity of the encryption keys.
         let mut encryption_sum_terms = vec![];
         for key in &self.encryption_keys {
-            let key = key.as_ref().id;
-            let a1 = format!("a1_{}", key);
+            let key_id = key.id();
+            let a1 = format!("a1_{}", key_id);
 
             // These terms are an addition by Trevor Perrin to the original paper to more carefully
             // ensure the validity of the encryption keys used.
             // 0 = z1_uid * I + a1_uid * Z
-            st.add("0", &[(&format!("z1_{}", key), "I"), (&a1, "Z")]);
+            st.add("0", &[(&format!("z1_{}", key_id), "I"), (&a1, "Z")]);
 
-            encryption_sum_terms.push((a1, format!("G_a1_{}", key)));
-            encryption_sum_terms.push((format!("a2_{}", key), format!("G_a2_{}", key)));
+            if key.public_key().is_some() {
+                encryption_sum_terms.push((a1, format!("G_a1_{}", key_id)));
+                encryption_sum_terms.push((format!("a2_{}", key_id), format!("G_a2_{}", key_id)));
+            }
         }
-        if !self.encryption_keys.is_empty() {
+        if !encryption_sum_terms.is_empty() {
             // sum(A) = (a1_uid * G_a1_uid) + (a2_uid * G_a2_uid) +
             //          (a1_profilekey * G_a1_profilekey) + (a2_profilekey * G_a2_profilekey) +
             //          ...
@@ -223,7 +258,7 @@ impl<'a, T: AsRef<AnyPublicKey>> PresentationProofBuilderCore<'a, T> {
                 // If this attribute uses a key, it's a verifiably encrypted Attribute.
                 // These terms are from Chase-Perrin-Zaverucha section 4.1,
                 // proving that the ciphertext matches the attribute in the credential.
-                let key_id = self.encryption_keys[key_index].as_ref().id;
+                let key_id = self.encryption_keys[key_index].id();
                 // E_A1 = a1_uid * C_y1 + z1_uid * G_y1
                 st.add(
                     &format!("E_A{}", attr.first_point_index),
@@ -298,13 +333,16 @@ impl<'a, T: AsRef<AnyPublicKey>> PresentationProofBuilderCore<'a, T> {
             point_args.add("0", RistrettoPoint::identity());
             let mut sum_A = RistrettoPoint::identity();
             for key in &self.encryption_keys {
-                let key = key.as_ref();
-                let [G_a1, G_a2] = (key.G_a)();
-                point_args.add(format!("G_a1_{}", key.id), G_a1);
-                point_args.add(format!("G_a2_{}", key.id), G_a2);
-                sum_A += key.A;
+                if let Some(key) = key.public_key() {
+                    let [G_a1, G_a2] = (key.G_a)();
+                    point_args.add(format!("G_a1_{}", key.id), G_a1);
+                    point_args.add(format!("G_a2_{}", key.id), G_a2);
+                    sum_A += key.A;
+                }
             }
-            point_args.add("sum(A)", sum_A);
+            if sum_A != RistrettoPoint::identity() {
+                point_args.add("sum(A)", sum_A);
+            }
         }
 
         let G_y_names: [_; NUM_SUPPORTED_ATTRS] =
@@ -367,6 +405,24 @@ impl<'a> PresentationProofBuilder<'a> {
     ) -> Self {
         self.core
             .add_attribute(&attr.as_points(), Some(AnyKeyPair::from(*key)));
+        self
+    }
+
+    /// Adds an attribute to the proof, which will be encrypted using `key`.
+    ///
+    /// This still includes a proof that the attribute was correctly encrypted; however, the
+    /// verifying server will not be able to check which key performed that encryption.
+    ///
+    /// This is order-sensitive.
+    pub fn add_attribute_without_verified_key(
+        mut self,
+        attr: &dyn Attribute,
+        key: &attributes::KeyPair<impl attributes::Domain>,
+    ) -> Self {
+        self.core.add_attribute(
+            &attr.as_points(),
+            Some(AnyKeyPair::from(*key).without_public_key()),
+        );
         self
     }
 
@@ -443,9 +499,10 @@ impl<'a> PresentationProofBuilder<'a> {
         scalar_args.add("t", credential.t);
         scalar_args.add("z0", z0);
         for key in &self.core.encryption_keys {
-            scalar_args.add(format!("a1_{}", key.public_key.id), key.a1);
-            scalar_args.add(format!("a2_{}", key.public_key.id), key.a2);
-            scalar_args.add(format!("z1_{}", key.public_key.id), -z * key.a1);
+            let key_id = key.id();
+            scalar_args.add(format!("a1_{}", key_id), key.a1);
+            scalar_args.add(format!("a2_{}", key_id), key.a2);
+            scalar_args.add(format!("z1_{}", key_id), -z * key.a1);
         }
 
         let mut point_args = self.core.prepare_non_attribute_point_args(I, &commitments);
@@ -536,8 +593,27 @@ impl<'a> PresentationProofVerifier<'a> {
         attr: &dyn Attribute,
         key: &attributes::PublicKey<impl attributes::Domain>,
     ) -> Self {
+        self.core.add_attribute(
+            &attr.as_points(),
+            Some(PublicKeyOrId::PublicKey(AnyPublicKey::from(*key))),
+        );
+        self
+    }
+
+    /// Adds an encrypted attribute to check against the credential, omitting the key it was
+    /// encrypted with.
+    ///
+    /// This still checks that the attribute was correctly encrypted; it just can't enforce which
+    /// key did so.
+    ///
+    /// This is order-sensitive.
+    pub fn add_attribute_without_verified_key(
+        mut self,
+        attr: &dyn Attribute,
+        key_id: &'static str,
+    ) -> Self {
         self.core
-            .add_attribute(&attr.as_points(), Some(AnyPublicKey::from(*key)));
+            .add_attribute(&attr.as_points(), Some(PublicKeyOrId::Id(key_id)));
         self
     }
 

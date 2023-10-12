@@ -10,7 +10,7 @@
 use curve25519_dalek::ristretto::RistrettoPoint;
 use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
-use zkcredential::attributes::{Attribute, RevealedAttribute};
+use zkcredential::attributes::{Attribute, Domain, RevealedAttribute};
 use zkcredential::credentials::CredentialKeyPair;
 use zkcredential::issuance::blind::{
     BlindedAttribute, BlindedPoint, BlindingKeyPair, BlindingPublicKey, WithoutNonce,
@@ -69,6 +69,52 @@ fn test_mac_generic() {
         .add_attribute(
             &uid_encryption_key.encrypt(&uid),
             &uid_encryption_public_key,
+        )
+        .verify(&keypair, &proof)
+        .unwrap()
+}
+
+#[test]
+fn test_mac_generic_without_verifying_encryption_key() {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let keypair =
+        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+
+    let label = b"20221221_AuthCredentialLike";
+
+    let uid_bytes = TEST_ARRAY_16;
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(uid_bytes);
+    let uid = UidStruct::from_service_id(aci.into());
+
+    let proof = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_public_attribute(&[1, 2, 3])
+        .issue(
+            &keypair,
+            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+        );
+
+    let credential = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_public_attribute(&[1, 2, 3])
+        .verify(keypair.public_key(), proof)
+        .unwrap();
+
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(Sho::new(b"test", b"").as_mut());
+
+    let proof = PresentationProofBuilder::new(label)
+        .add_attribute_without_verified_key(&uid, &uid_encryption_key)
+        .present(
+            keypair.public_key(),
+            &credential,
+            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+        );
+
+    PresentationProofVerifier::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_attribute_without_verified_key(
+            &uid_encryption_key.encrypt(&uid),
+            uid_encryption::UidEncryptionDomain::ID,
         )
         .verify(&keypair, &proof)
         .unwrap()
@@ -166,6 +212,107 @@ fn test_profile_key_credential() {
         .add_attribute(
             &presentation.encrypted_uid,
             &presentation.uid_encryption_public_key,
+        )
+        .add_attribute(
+            &presentation.encrypted_profile_key,
+            &presentation.profile_key_encryption_public_key,
+        )
+        .verify(&keypair, &presentation.proof)
+        .unwrap();
+}
+
+#[test]
+fn test_profile_key_credential_only_verifying_one_encryption_key() {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let keypair =
+        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+    let blinding_keypair = BlindingKeyPair::generate(&mut sho);
+
+    let label = b"20221221_ProfileKeyCredentialLike";
+
+    let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+    let uid = UidStruct::from_service_id(aci.into());
+    let profile_key = ProfileKeyStruct::new(TEST_ARRAY_32, TEST_ARRAY_16);
+    let encrypted_profile_key = blinding_keypair.encrypt(&profile_key, &mut sho).into();
+
+    #[derive(Serialize, Deserialize)]
+    struct Request {
+        uid: UidStruct,
+        encrypted_profile_key: BlindedAttribute,
+        blinding_public_key: BlindingPublicKey,
+    }
+
+    // Client
+    let request_serialized = bincode::serialize(&Request {
+        uid,
+        encrypted_profile_key,
+        blinding_public_key: *blinding_keypair.public_key(),
+    })
+    .unwrap();
+
+    // Issuing server
+    let request: Request = bincode::deserialize(&request_serialized).unwrap();
+
+    let proof = IssuanceProofBuilder::with_authenticated_message(label, b"abc")
+        .add_attribute(&request.uid)
+        .add_blinded_attribute(&request.encrypted_profile_key)
+        .issue(
+            &keypair,
+            &request.blinding_public_key,
+            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+        );
+
+    let proof_serialized = bincode::serialize(&proof).unwrap();
+
+    // Client
+    let credential = IssuanceProofBuilder::with_authenticated_message(label, b"abc")
+        .add_attribute(&uid)
+        .add_blinded_attribute(&encrypted_profile_key)
+        .verify(
+            keypair.public_key(),
+            &blinding_keypair,
+            bincode::deserialize(&proof_serialized).unwrap(),
+        )
+        .unwrap();
+
+    let mut zkgroup_sho = Sho::new(b"test", b"");
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(zkgroup_sho.as_mut());
+    let profile_key_encryption_key =
+        profile_key_encryption::KeyPair::derive_from(zkgroup_sho.as_mut());
+
+    let proof = PresentationProofBuilder::with_authenticated_message(label, b"v1")
+        .add_attribute_without_verified_key(&uid, &uid_encryption_key)
+        .add_attribute(&profile_key, &profile_key_encryption_key)
+        .present(
+            keypair.public_key(),
+            &credential,
+            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+        );
+
+    #[derive(Serialize, Deserialize)]
+    struct Presentation {
+        proof: PresentationProof,
+        encrypted_uid: uid_encryption::Ciphertext,
+        encrypted_profile_key: profile_key_encryption::Ciphertext,
+        uid_encryption_public_key: uid_encryption::PublicKey,
+        profile_key_encryption_public_key: profile_key_encryption::PublicKey,
+    }
+
+    let presentation_serialized = bincode::serialize(&Presentation {
+        proof,
+        encrypted_uid: uid_encryption_key.encrypt(&uid),
+        encrypted_profile_key: profile_key_encryption_key.encrypt(&profile_key),
+        uid_encryption_public_key: uid_encryption_key.public_key,
+        profile_key_encryption_public_key: profile_key_encryption_key.public_key,
+    })
+    .unwrap();
+
+    // Verifying server
+    let presentation: Presentation = bincode::deserialize(&presentation_serialized).unwrap();
+    PresentationProofVerifier::with_authenticated_message(label, b"v1")
+        .add_attribute_without_verified_key(
+            &presentation.encrypted_uid,
+            uid_encryption::UidEncryptionDomain::ID,
         )
         .add_attribute(
             &presentation.encrypted_profile_key,
