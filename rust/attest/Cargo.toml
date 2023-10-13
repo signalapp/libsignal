@@ -12,7 +12,6 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
-boring-sys = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
 
 asn1 = "0.15.4"
 bitflags = "2.3.3"

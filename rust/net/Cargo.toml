@@ -9,7 +9,6 @@ license = "AGPL-3.0-only"
 async-trait = "0.1.41"
 base64 = "0.21"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
-boring-sys = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
 bytes = "1.4.0"
 displaydoc = "0.2"
 futures-util = "0.3.7"
