@@ -6,7 +6,7 @@ edition = "2018"
 license = "AGPL-3.0-only"
 
 [dependencies]
-boring = { version = "2.0.0", default-features = false }
+boring = { version = "3.1.0", default-features = false }
 libc = "0.2"
 
 [dev-dependencies]

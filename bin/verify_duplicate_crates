@@ -7,16 +7,12 @@
 
 # To keep code size down, we try to avoid depending on multiple versions of crates.
 #
-# For now, these dependencies have conflicting requirements.
+# Sometimes we decide it's okay for certain dependencies.
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
-# bitflags:
-#  mostly provides a macro, with only a small bit of code that actually
-#  makes it into the final build.
-EXPECTED="
-bitflags v1.3.2
-bitflags v2.3.3"
+# (no duplicate crates at this time)
+EXPECTED=""
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.
