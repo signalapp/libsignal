@@ -14,12 +14,21 @@
 # bitflags:
 #  mostly provides a macro, with only a small bit of code that actually
 #  makes it into the final build.
-EXPECTED="\
+EXPECTED="
 bitflags v1.3.2
-
 bitflags v2.3.3"
 
-if [[ "$(cargo tree --duplicates --edges normal,no-proc-macro --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
-    cargo tree --duplicates --edges normal,no-proc-macro --workspace --locked
+check_cargo_tree() {
+    # Only check the mobile targets, where we care most about code size.
+    cargo tree --quiet --duplicates --edges normal,no-proc-macro \
+        --workspace --all-features --locked \
+        --target aarch64-apple-ios \
+        --target armv7-linux-androideabi \
+        --target aarch64-linux-android \
+        "$@"
+}
+
+if [[ "$(check_cargo_tree --depth 0 | sort -u -V)" != "${EXPECTED}" ]]; then
+    check_cargo_tree
     exit 1
 fi
