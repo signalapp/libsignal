@@ -1513,6 +1513,7 @@ dependencies = [
  "signal-neon-futures",
  "signal-pin",
  "static_assertions",
+ "subtle",
  "usernames",
  "uuid",
  "zkgroup",
