@@ -53,6 +53,8 @@
 mod kyber1024;
 #[cfg(any(feature = "kyber768", test))]
 mod kyber768;
+#[cfg(any(feature = "mlkem1024", test))]
+mod mlkem1024;
 
 use crate::{Result, SignalProtocolError};
 
@@ -147,6 +149,9 @@ pub enum KeyType {
     Kyber768,
     /// Kyber1024 key
     Kyber1024,
+    /// ML-KEM 1024 key
+    #[cfg(any(feature = "mlkem1024", test))]
+    MLKEM1024,
 }
 
 impl KeyType {
@@ -155,6 +160,8 @@ impl KeyType {
             #[cfg(any(feature = "kyber768", test))]
             KeyType::Kyber768 => 0x07,
             KeyType::Kyber1024 => 0x08,
+            #[cfg(any(feature = "mlkem1024", test))]
+            KeyType::MLKEM1024 => 0x0A,
         }
     }
 
@@ -166,6 +173,8 @@ impl KeyType {
             #[cfg(any(feature = "kyber768", test))]
             KeyType::Kyber768 => &kyber768::Parameters,
             KeyType::Kyber1024 => &kyber1024::Parameters,
+            #[cfg(any(feature = "mlkem1024", test))]
+            KeyType::MLKEM1024 => &mlkem1024::Parameters,
         }
     }
 }
@@ -178,6 +187,8 @@ impl TryFrom<u8> for KeyType {
             #[cfg(any(feature = "kyber768", test))]
             0x07 => Ok(KeyType::Kyber768),
             0x08 => Ok(KeyType::Kyber1024),
+            #[cfg(any(feature = "mlkem1024", test))]
+            0x0A => Ok(KeyType::MLKEM1024),
             t => Err(SignalProtocolError::BadKEMKeyType(t)),
         }
     }
@@ -496,6 +507,23 @@ mod tests {
     }
 
     #[test]
+    fn test_mlkem1024_kem() -> Result<()> {
+        // test data for kyber1024
+        let pk_bytes = include_bytes!("kem/test-data/mlkem-pk.dat");
+        let sk_bytes = include_bytes!("kem/test-data/mlkem-sk.dat");
+
+        let pubkey = PublicKey::deserialize(pk_bytes).expect("deserialize pubkey");
+        let secretkey = SecretKey::deserialize(sk_bytes).expect("deserialize secretkey");
+
+        assert_eq!(pubkey.key_type, KeyType::MLKEM1024);
+        let (ss_for_sender, ct) = pubkey.encapsulate();
+        let ss_for_recipient = secretkey.decapsulate(&ct).expect("decapsulation works");
+
+        assert_eq!(ss_for_sender, ss_for_recipient);
+
+        Ok(())
+    }
+    #[test]
     fn test_kyber1024_keypair() -> Result<()> {
         let kp = KeyPair::generate(KeyType::Kyber1024);
         let (ss_for_sender, ct) = kp.public_key.encapsulate();
@@ -507,6 +535,15 @@ mod tests {
     #[test]
     fn test_kyber768_keypair() -> Result<()> {
         let kp = KeyPair::generate(KeyType::Kyber768);
+        let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        let ss_for_recipient = kp.secret_key.decapsulate(&ct).expect("decapsulation works");
+        assert_eq!(ss_for_recipient, ss_for_sender);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mlkem1024_keypair() -> Result<()> {
+        let kp = KeyPair::generate(KeyType::MLKEM1024);
         let (ss_for_sender, ct) = kp.public_key.encapsulate();
         let ss_for_recipient = kp.secret_key.decapsulate(&ct).expect("decapsulation works");
         assert_eq!(ss_for_recipient, ss_for_sender);

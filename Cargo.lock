@@ -1644,7 +1644,8 @@ dependencies = [
  "itertools",
  "log",
  "num_enum",
- "pqcrypto-kyber",
+ "pqcrypto-kyber 0.7.6",
+ "pqcrypto-kyber 0.8.0",
  "pqcrypto-traits",
  "proptest",
  "prost",
@@ -2097,10 +2098,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "pqcrypto-traits"
-version = "0.3.4"
+name = "pqcrypto-kyber"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97e91cb6af081c6daad5fa705f8adb0634c027662052cb3174bdf2957bf07e25"
+checksum = "2bc5d857fb0a0a0695dbe379f449a185bf73d0173cdcaffa86c015b5d1b11490"
+dependencies = [
+ "cc",
+ "glob",
+ "libc",
+ "pqcrypto-internals",
+ "pqcrypto-traits",
+]
+
+[[package]]
+name = "pqcrypto-traits"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94e851c7654eed9e68d7d27164c454961a616cf8c203d500607ef22c737b51bb"
 
 [[package]]
 name = "prettyplease"
