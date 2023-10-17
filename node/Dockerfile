@@ -53,7 +53,7 @@ ENV PATH="/home/libsignal/node/bin:${PATH}"
 # And finally any bonus packages we're going to need
 # Note that we jump back to root for this.
 USER root
-RUN apt-get install -y clang cmake crossbuild-essential-arm64 python3 protobuf-compiler
+RUN apt-get install -y clang cmake crossbuild-essential-arm64 git python3 protobuf-compiler
 USER libsignal
 
 CMD [ "/bin/bash" ]
