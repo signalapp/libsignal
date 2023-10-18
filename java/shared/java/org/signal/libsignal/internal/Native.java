@@ -7,8 +7,9 @@
 
 package org.signal.libsignal.internal;
 
+import org.signal.chat.profile.GetVersionedProfileResponse;
+
 import org.signal.libsignal.grpc.GrpcReplyListener;
-import org.signal.libsignal.grpc.SignalRpcReply;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.SessionStore;
@@ -552,13 +553,14 @@ public final class Native {
 
   public static native long GrpcClient_New(String target);
   public static native void GrpcClient_Destroy(long handle);
-  public static native SignalRpcReply GrpcClient_SendDirectMessage(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
-  public static native long GrpcClient_OpenStream(long cli, String uri, Map<String, List<String>> headers, GrpcReplyListener listener);
-  public static native void GrpcClient_SendMessageOnStream(long cli, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
+  public static native GetVersionedProfileResponse GrpcClient_GetProfileVersion(long handle, int type, byte[] uuid, String version);
+  public static native byte[] GrpcClient_SendDirectMessage(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
+  public static native void GrpcClient_OpenStream(long handle, String uri, Map<String, List<String>> headers, GrpcReplyListener listener);
+  public static native void GrpcClient_SendMessageOnStream(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
 
   public static native long QuicClient_New(String target);
   public static native void QuicClient_Destroy(long handle);
   public static native byte[] QuicClient_SendMessage(long handle, byte[] data);
-  public static native long QuicClient_OpenControlledStream(long cli, String baseUrl, Map<String, String> headers, QuicCallbackListener listener);
-  public static native void QuicClient_WriteMessageToStream(long cli, byte[] payload);
+  public static native void QuicClient_OpenControlledStream(long handle, String baseUrl, Map<String, String> headers, QuicCallbackListener listener);
+  public static native void QuicClient_WriteMessageToStream(long handle, byte[] payload);
 }

@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id "com.google.protobuf" version "0.9.4"
 }
 
 sourceCompatibility = 1.8
@@ -23,10 +24,20 @@ sourceSets {
         resources {
             srcDir '../shared/resources'
         }
+        proto {
+            srcDir '../../proto'
+        }
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.24.4'
     }
 }
 
 dependencies {
+    implementation group: 'com.google.protobuf', name: 'protobuf-java', version: '3.24.4'
     testImplementation 'junit:junit:4.12'
 }
 

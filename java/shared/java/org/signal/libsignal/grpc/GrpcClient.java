@@ -8,6 +8,9 @@ package org.signal.libsignal.grpc;
 import java.util.List;
 import java.util.Map;
 
+import org.signal.chat.profile.GetVersionedProfileRequest;
+import org.signal.chat.profile.GetVersionedProfileResponse;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
@@ -33,15 +36,19 @@ public class GrpcClient implements NativeHandleGuard.Owner {
     return this.unsafeHandle;
   }
 
+  public GetVersionedProfileResponse getProfileVersion(GetVersionedProfileRequest request) {
+    return Native.GrpcClient_GetProfileVersion(this.unsafeHandle, request.getAccountIdentifier().getIdentityType().getNumber(), request.getAccountIdentifier().getUuid().toByteArray(), request.getVersion());
+  }
+
+  public byte[] sendDirectMessage(String method, String urlFragment, byte[] body, Map<String, List<String>> headers) {
+    return Native.GrpcClient_SendDirectMessage(this.unsafeHandle, method, urlFragment, body, headers);
+  }
+
   public void openStream(String uri, Map<String, List<String>> headers, GrpcReplyListener replyListener) {
     Native.GrpcClient_OpenStream(this.unsafeHandle, uri, headers, replyListener);
   }
 
-  public SignalRpcReply sendDirectMessage(SignalRpcMessage message) {
-    return Native.GrpcClient_SendDirectMessage(this.unsafeHandle, message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
-  }
-
-  public void sendMessageOnStream(SignalRpcMessage message) {
-    Native.GrpcClient_SendMessageOnStream(this.unsafeHandle, message.getMethod(), message.getUrlFragment(), message.getBody(), message.getHeaders());
+  public void sendMessageOnStream(String method, String urlFragment, byte[] body, Map<String, List<String>> headers) {
+    Native.GrpcClient_SendMessageOnStream(this.unsafeHandle, method, urlFragment, body, headers);
   }
 }

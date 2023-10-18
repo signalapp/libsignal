@@ -58,6 +58,7 @@ pub type JavaArgMap<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaReturnCiphertextMessage = jobject;
+pub type JavaReturnGetVersionedProfileResponse = jobject;
 pub type JavaReturnGrpcReply = jobject;
 pub type JavaReturnMap = jobject;
 

@@ -4,10 +4,19 @@
 //
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let protos = ["src/proto/proxy.proto"];
+    let protos = [
+        "src/proto/proxy.proto",
+        "../../proto/org/signal/chat/calling.proto",
+        "../../proto/org/signal/chat/common.proto",
+        "../../proto/org/signal/chat/credentials.proto",
+        "../../proto/org/signal/chat/device.proto",
+        "../../proto/org/signal/chat/keys.proto",
+        "../../proto/org/signal/chat/payments.proto",
+        "../../proto/org/signal/chat/profile.proto",
+    ];
     tonic_build::configure()
         .build_server(false)
-        .compile(&protos, &["src"])?;
+        .compile(&protos, &["src/proto", "../../proto"])?;
     for proto in &protos {
         println!("cargo:rerun-if-changed={}", proto);
     }

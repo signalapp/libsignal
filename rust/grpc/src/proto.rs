@@ -4,3 +4,4 @@
 //
 
 pub mod proxy;
+pub mod signal;

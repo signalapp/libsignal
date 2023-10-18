@@ -5,6 +5,7 @@
 
 use crate::error::{Error, Result};
 use crate::{proto, GrpcReplyListener};
+use crate::proto::signal::profile::{GetVersionedProfileRequest, GetVersionedProfileResponse};
 use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 use tokio_stream::StreamExt;
@@ -60,6 +61,24 @@ impl GrpcClient {
 
     pub fn target(&mut self, target: &str) {
         self.target = target.to_owned();
+    }
+
+    pub fn get_versioned_profile(&self, request: GetVersionedProfileRequest) -> Result<GetVersionedProfileResponse> {
+        self.tokio_runtime
+            .block_on(async { self.async_get_versioned_profile(request).await })
+    }
+
+    async fn async_get_versioned_profile(&self, request: proto::signal::profile::GetVersionedProfileRequest) -> Result<GetVersionedProfileResponse> {
+        let mut profile_client = proto::signal::profile::profile_client::ProfileClient::connect(self.target.clone())
+            .await
+            .map_err(|e| Error::InvalidArgument(format!("profile_client.connect: {:?}", e)))?;
+
+        let response = profile_client
+            .get_versioned_profile(request)
+            .await
+            .map_err(|e| Error::InvalidArgument(format!("get_versioned_profile: {:?}", e)))?;
+
+        Ok(response.get_ref().clone())
     }
 
     pub fn echo_message(&self, message: &str) -> Result<String> {
