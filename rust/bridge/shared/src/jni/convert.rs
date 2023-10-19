@@ -438,7 +438,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
-    type ArgType = JavaArgMap<'a>;
+    type ArgType = JavaMap<'a>;
     fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         if foreign.is_null() {
             return Err(SignalJniError::NullHandle);
@@ -462,37 +462,6 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
         }
 
         Ok(crate::grpc::GrpcHeaders(headers))
-    }
-}
-
-impl ResultTypeInfo for signal_grpc::GetVersionedProfileResponse {
-    type ResultType = jobject;
-
-    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
-        let name = env.byte_array_from_slice(&self.name)?;
-        let about = env.byte_array_from_slice(&self.about)?;
-        let about_emoji = env.byte_array_from_slice(&self.about_emoji)?;
-        let avatar = env.new_string(&self.avatar)?;
-        let payment_address = env.byte_array_from_slice(&self.payment_address)?;
-        let args = jni_args!((
-            name => [byte],
-            about => [byte],
-            about_emoji => [byte],
-            avatar => java.lang.String,
-            payment_address => [byte],
-        ) -> void);
-        let jobj = env.new_object(
-            env.find_class(jni_class_name!(org.signal.chat.profile.GetVersionedProfileResponse))?,
-            args.sig,
-            &args.args,
-        )?;
-        Ok(jobj.into_inner())
-    }
-
-    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
-        signal_jni_result
-            .as_ref()
-            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
     }
 }
 
@@ -521,7 +490,7 @@ impl ResultTypeInfo for signal_grpc::GrpcReply {
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for crate::quic::QuicHeaders {
-    type ArgType = JavaArgMap<'a>;
+    type ArgType = JavaMap<'a>;
     fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
         if foreign.is_null() {
             return Err(SignalJniError::NullHandle);
@@ -866,6 +835,16 @@ impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
 }
 
 impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
+    type ResultType = T::ResultType;
+    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+        T::convert_into(self?, env)
+    }
+    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
+        <T as ResultTypeInfo>::convert_into_jobject(signal_jni_result)
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_chat::Error> {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
         T::convert_into(self?, env)
@@ -1325,10 +1304,10 @@ macro_rules! jni_arg_type {
         jni::JavaUUID
     };
     (GrpcHeaders) => {
-        jni::JavaArgMap
+        jni::JavaMap
     };
     (QuicHeaders) => {
-        jni::JavaArgMap
+        jni::JavaMap
     };
     (jni::CiphertextMessageRef) => {
         jni::JavaCiphertextMessage
@@ -1416,11 +1395,8 @@ macro_rules! jni_result_type {
     (Vec<u8>) => {
         jni::jbyteArray
     };
-    (GetVersionedProfileResponse) => {
-        jni::JavaReturnGetVersionedProfileResponse
-    };
     (GrpcReply) => {
-        jni::JavaReturnGrpcReply
+        jni::jbyteArray
     };
     (Cds2Metrics) => {
         jni::JavaReturnMap

@@ -4,7 +4,7 @@
 //
 
 use libsignal_bridge_macros::*;
-use signal_grpc::{GetVersionedProfileRequest, GetVersionedProfileResponse, GrpcClient, GrpcReply, GrpcReplyListener, Result, ServiceIdentifier};
+use signal_grpc::{GrpcClient, GrpcReply, GrpcReplyListener, Result};
 
 use crate::support::*;
 use crate::*;
@@ -19,23 +19,6 @@ bridge_handle!(GrpcClient, clone = false, mut = true);
 #[bridge_fn(ffi = false, node = false)]
 pub fn GrpcClient_New(target: String) -> Result<GrpcClient> {
     GrpcClient::new(target)
-}
-
-#[bridge_fn(ffi = false, node = false)]
-pub fn GrpcClient_GetVersionedProfile(
-    grpc_client: &mut GrpcClient,
-    service_identity_type: u32,
-    service_identity_uuid: &[u8],
-    version: String,
-) -> Result<GetVersionedProfileResponse> {
-    let request = GetVersionedProfileRequest {
-        account_identifier: Some(ServiceIdentifier {
-            identity_type: service_identity_type as i32,
-            uuid: service_identity_uuid.to_vec(),
-        }),
-        version,
-    };
-    grpc_client.get_versioned_profile(request)
 }
 
 #[bridge_fn(ffi = false, node = false)]

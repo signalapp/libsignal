@@ -40,6 +40,6 @@ public class QuicClient {
   }
 
   public void writeMessageOnStream(byte[] payload) {
-    Native.QuicClient_WriteMessageToStream(this.unsafeHandle, payload);
+    Native.QuicClient_WriteMessageOnStream(this.unsafeHandle, payload);
   }
 }

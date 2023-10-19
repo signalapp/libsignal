@@ -11,6 +11,7 @@ use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
+use signal_chat::Error as SignalChatError;
 use signal_crypto::Error as SignalCryptoError;
 use signal_grpc::Error as GrpcError;
 use signal_pin::Error as PinError;
@@ -27,6 +28,7 @@ use super::*;
 pub enum SignalJniError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
+    SignalChat(SignalChatError),
     Grpc(GrpcError),
     Quic(QuicError),
     SignalCrypto(SignalCryptoError),
@@ -57,6 +59,7 @@ impl fmt::Display for SignalJniError {
         match self {
             SignalJniError::Signal(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
+            SignalJniError::SignalChat(e) => write!(f, "{}", e),
             SignalJniError::Grpc(e) => write!(f, "{}", e),
             SignalJniError::Quic(e) => write!(f, "{}", e),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
@@ -102,6 +105,12 @@ impl From<SignalProtocolError> for SignalJniError {
 impl From<DeviceTransferError> for SignalJniError {
     fn from(e: DeviceTransferError) -> SignalJniError {
         SignalJniError::DeviceTransfer(e)
+    }
+}
+
+impl From<SignalChatError> for SignalJniError {
+    fn from(e: SignalChatError) -> SignalJniError {
+        SignalJniError::SignalChat(e)
     }
 }
 

@@ -3,6 +3,7 @@ members = [
     "rust/attest",
     "rust/crypto",
     "rust/device-transfer",
+    "rust/chat",
     "rust/grpc",
     "rust/media",
     "rust/pin",

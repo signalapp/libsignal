@@ -8,9 +8,6 @@ package org.signal.libsignal.grpc;
 import java.util.List;
 import java.util.Map;
 
-import org.signal.chat.profile.GetVersionedProfileRequest;
-import org.signal.chat.profile.GetVersionedProfileResponse;
-
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
@@ -34,10 +31,6 @@ public class GrpcClient implements NativeHandleGuard.Owner {
 
   public long unsafeNativeHandleWithoutGuard() {
     return this.unsafeHandle;
-  }
-
-  public GetVersionedProfileResponse getProfileVersion(GetVersionedProfileRequest request) {
-    return Native.GrpcClient_GetProfileVersion(this.unsafeHandle, request.getAccountIdentifier().getIdentityType().getNumber(), request.getAccountIdentifier().getUuid().toByteArray(), request.getVersion());
   }
 
   public byte[] sendDirectMessage(String method, String urlFragment, byte[] body, Map<String, List<String>> headers) {

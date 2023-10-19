@@ -3,4 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-pub mod proxy;
+mod error;
+pub mod profile;
+mod proto;
+
+pub use error::{Error, Result};

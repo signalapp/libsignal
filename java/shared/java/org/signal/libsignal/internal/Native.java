@@ -8,7 +8,6 @@
 package org.signal.libsignal.internal;
 
 import org.signal.chat.profile.GetVersionedProfileResponse;
-
 import org.signal.libsignal.grpc.GrpcReplyListener;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
@@ -27,7 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.UUID;
 import java.util.Map;
 
@@ -233,6 +231,12 @@ public final class Native {
   public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store);
 
+  public static native void GrpcClient_Destroy(long handle);
+  public static native long GrpcClient_New(String target);
+  public static native void GrpcClient_OpenStream(long grpcClient, String uri, Map headers, GrpcReplyListener listener);
+  public static native byte[] GrpcClient_SendDirectMessage(long grpcClient, String method, String urlFragment, byte[] body, Map headers);
+  public static native void GrpcClient_SendMessageOnStream(long grpcClient, String method, String urlFragment, byte[] body, Map headers);
+
   public static native byte[] HKDF_DeriveSecrets(int outputLength, byte[] ikm, byte[] label, byte[] salt);
 
   public static native void HsmEnclaveClient_CompleteHandshake(long cli, byte[] handshakeReceived);
@@ -339,6 +343,10 @@ public final class Native {
   public static native int PreKeySignalMessage_GetVersion(long obj);
   public static native long PreKeySignalMessage_New(int messageVersion, int registrationId, int preKeyId, int signedPreKeyId, long baseKey, long identityKey, long signalMessage);
 
+  public static native void ProfileClient_Destroy(long handle);
+  public static native byte[] ProfileClient_GetVersionedProfile(long profileClient, byte[] request);
+  public static native long ProfileClient_New(String target);
+
   public static native void ProfileKeyCiphertext_CheckValidContents(byte[] buffer);
 
   public static native void ProfileKeyCommitment_CheckValidContents(byte[] buffer);
@@ -362,6 +370,12 @@ public final class Native {
   public static native int ProtocolAddress_DeviceId(long obj);
   public static native String ProtocolAddress_Name(long obj);
   public static native long ProtocolAddress_New(String name, int deviceId);
+
+  public static native void QuicClient_Destroy(long handle);
+  public static native long QuicClient_New(String target);
+  public static native void QuicClient_OpenControlledStream(long quicClient, String baseUrl, Map headers, QuicCallbackListener listener);
+  public static native byte[] QuicClient_SendMessage(long quicClient, byte[] data);
+  public static native void QuicClient_WriteMessageOnStream(long quicClient, byte[] payload);
 
   public static native void ReceiptCredentialPresentation_CheckValidContents(byte[] buffer);
   public static native long ReceiptCredentialPresentation_GetReceiptExpirationTime(byte[] presentation);
@@ -550,17 +564,4 @@ public final class Native {
   public static native boolean ValidatingMac_Finalize(long mac);
   public static native long ValidatingMac_Initialize(byte[] key, int chunkSize, byte[] digests);
   public static native boolean ValidatingMac_Update(long mac, byte[] bytes, int offset, int length);
-
-  public static native long GrpcClient_New(String target);
-  public static native void GrpcClient_Destroy(long handle);
-  public static native GetVersionedProfileResponse GrpcClient_GetProfileVersion(long handle, int type, byte[] uuid, String version);
-  public static native byte[] GrpcClient_SendDirectMessage(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
-  public static native void GrpcClient_OpenStream(long handle, String uri, Map<String, List<String>> headers, GrpcReplyListener listener);
-  public static native void GrpcClient_SendMessageOnStream(long handle, String method, String urlFragment, byte[] body, Map<String, List<String>> headers);
-
-  public static native long QuicClient_New(String target);
-  public static native void QuicClient_Destroy(long handle);
-  public static native byte[] QuicClient_SendMessage(long handle, byte[] data);
-  public static native void QuicClient_OpenControlledStream(long handle, String baseUrl, Map<String, String> headers, QuicCallbackListener listener);
-  public static native void QuicClient_WriteMessageToStream(long handle, byte[] payload);
 }

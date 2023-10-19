@@ -1497,6 +1497,7 @@ dependencies = [
  "scopeguard",
  "serde",
  "sha2",
+ "signal-chat",
  "signal-crypto",
  "signal-grpc",
  "signal-media",
@@ -2547,6 +2548,20 @@ name = "shlex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
+
+[[package]]
+name = "signal-chat"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "displaydoc",
+ "prost 0.11.9",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+]
 
 [[package]]
 name = "signal-crypto"

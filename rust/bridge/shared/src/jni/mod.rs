@@ -12,6 +12,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
+use signal_chat::Error as SignalChatError;
 use signal_crypto::Error as SignalCryptoError;
 use signal_grpc::{Error as GrpcError, GrpcReply, GrpcReplyListener};
 use signal_pin::Error as PinError;
@@ -54,12 +55,10 @@ pub type ObjectHandle = jlong;
 
 pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
-pub type JavaArgMap<'a> = JObject<'a>;
+pub type JavaMap<'a> = JObject<'a>;
 pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaReturnCiphertextMessage = jobject;
-pub type JavaReturnGetVersionedProfileResponse = jobject;
-pub type JavaReturnGrpcReply = jobject;
 pub type JavaReturnMap = jobject;
 
 /// Translates errors into Java exceptions.
@@ -237,6 +236,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
+        | SignalJniError::SignalChat(SignalChatError::StreamNotOpened())
         | SignalJniError::Grpc(GrpcError::StreamNotOpened())
         | SignalJniError::Quic(QuicError::StreamNotOpened())
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
@@ -257,6 +257,7 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
+        | SignalJniError::SignalChat(SignalChatError::InvalidArgument(_))
         | SignalJniError::Grpc(GrpcError::InvalidArgument(_))
         | SignalJniError::Quic(QuicError::InvalidArgument(_)) => {
             jni_class_name!(java.lang.RuntimeException)
