@@ -4,6 +4,9 @@
 //
 
 use crate::infra::{certs, dns};
+use std::fmt::Display;
+
+pub trait LogSafeDisplay: Display {}
 
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
 pub enum NetError {
@@ -25,9 +28,13 @@ pub enum NetError {
     WsFailedHandshake,
     /// Failed to upgrade to H2
     Http2FailedHandshake,
+    /// Operation timed out
+    Timeout,
     /// Failure
     Failure,
 }
+
+impl LogSafeDisplay for NetError {}
 
 impl From<std::io::Error> for NetError {
     fn from(_value: std::io::Error) -> Self {

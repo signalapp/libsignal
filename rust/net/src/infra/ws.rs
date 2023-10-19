@@ -14,20 +14,19 @@ pub type WebSocketStream = tt::WebSocketStream<tokio_boring::SslStream<tokio::ne
 
 const WS_ALPN: &[u8] = b"\x08http/1.1";
 
-#[allow(dead_code)]
 pub(crate) async fn connect_websocket(
-    connection_params: ConnectionParams,
+    connection_params: &ConnectionParams,
     endpoint: &str,
     ws_config: WebSocketConfig,
 ) -> Result<WebSocketStream, NetError> {
-    let ssl_stream = connect_ssl(&connection_params, WS_ALPN).await?;
+    let ssl_stream = connect_ssl(connection_params, WS_ALPN).await?;
     // we need to explicitly create upgrade request
     // because request decorators require a request `Builder`
     let request_builder = http::Request::builder()
         .method("GET")
         .header(
             http::header::HOST,
-            http::HeaderValue::from_str(connection_params.host.as_str())
+            http::HeaderValue::from_str(&connection_params.host)
                 .expect("valid `HOST` header value"),
         )
         .header("Connection", "Upgrade")

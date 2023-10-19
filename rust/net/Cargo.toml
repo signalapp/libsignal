@@ -16,10 +16,16 @@ http = "0.2.9"
 http-body-util = "0.1.0-rc.3"
 hyper = { version = "1.0.0-rc.4", features = ["http1", "http2", "client"] }
 lazy_static = "1.4.0"
+log = "0.4.19"
 pin-project-lite = "0.2.4"
+prost = "0.12.1"
 rustls-native-certs = "0.6.3"
 thiserror = "1.0.38"
-tokio = { version = "1", features = ["rt"] }
+tokio = { version = "1", features = ["rt", "time", "macros"] }
 tokio-boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
 tokio-tungstenite = { version = "0.19.0" }
+tokio-util = "0.7.9"
 tungstenite = { version = "0.19.0" }
+
+[build-dependencies]
+prost-build = "0.12.1"

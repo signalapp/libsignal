@@ -3,9 +3,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-pub mod chat;
-pub mod env;
-pub mod infra;
-pub mod proto;
-
-mod utils;
+pub mod chat_websocket;

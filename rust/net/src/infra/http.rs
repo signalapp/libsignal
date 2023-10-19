@@ -22,7 +22,7 @@ pub(crate) type Http2Connection =
     http2::Connection<TokioIo<SslStream<TcpStream>>, Full<Bytes>, TokioExecutor>;
 
 #[async_trait]
-pub(crate) trait AggregatingHttpClient: Send + Sync + Clone {
+pub trait AggregatingHttpClient: Send + Sync + Clone {
     async fn send_request_aggregate_response(
         &mut self,
         path_and_query: &str,
@@ -31,19 +31,13 @@ pub(crate) trait AggregatingHttpClient: Send + Sync + Clone {
     ) -> Result<(Parts, Bytes), NetError>;
 }
 
-pub(crate) struct Http2Channel<T>
-where
-    T: AggregatingHttpClient,
-{
-    // fields are to be used in a later change
-    #[allow(dead_code)]
+pub struct Http2Channel<T> {
     pub aggregating_client: T,
-    #[allow(dead_code)]
     pub connection: Http2Connection,
 }
 
 #[derive(Clone)]
-pub(crate) struct AggregatingHttp2Client {
+pub struct AggregatingHttp2Client {
     service: http2::SendRequest<Full<Bytes>>,
     connection_params: ConnectionParams,
 }
@@ -111,11 +105,10 @@ impl AggregatingHttpClient for AggregatingHttp2Client {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) async fn http2_channel(
-    connection_params: ConnectionParams,
+    connection_params: &ConnectionParams,
 ) -> Result<Http2Channel<AggregatingHttp2Client>, NetError> {
-    let ssl_stream = connect_ssl(&connection_params, HTTP_ALPN_H2_ONLY).await?;
+    let ssl_stream = connect_ssl(connection_params, HTTP_ALPN_H2_ONLY).await?;
     let io = TokioIo::new(ssl_stream);
     let (sender, connection) = http2::handshake::<_, _, Full<Bytes>>(TokioExecutor::new(), io)
         .await
@@ -126,7 +119,7 @@ pub(crate) async fn http2_channel(
         aggregating_client: AggregatingHttp2Client {
             service: sender,
             connection_params: ConnectionParams {
-                sni: connection_params.host,
+                sni: connection_params.host.clone(),
                 ..clone
             },
         },

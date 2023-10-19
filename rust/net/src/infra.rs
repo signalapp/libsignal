@@ -5,6 +5,7 @@
 
 use std::str::FromStr;
 use std::string::ToString;
+use std::sync::Arc;
 
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
@@ -17,9 +18,11 @@ use crate::infra::dns::DnsResolver;
 use crate::infra::errors::NetError;
 
 pub mod certs;
+pub(crate) mod connection_manager;
 pub mod dns;
 pub mod errors;
 pub(crate) mod http;
+pub(crate) mod reconnect;
 pub(crate) mod tokio_executor;
 pub(crate) mod tokio_io;
 pub(crate) mod ws;
@@ -32,11 +35,6 @@ pub enum HttpRequestDecorator {
     /// Authorization: Basic base64(<username>:<password>)
     /// ```
     HeaderAuth(String),
-    /// Adds the following query params:
-    /// ```text
-    /// login=<username>&password=<password>
-    /// ```
-    QueryParamAuth { username: String, password: String },
     /// Prefixes the path portion of the request with the given string.
     PathPrefix(&'static str),
     /// Applies generic decoration logic.
@@ -63,8 +61,8 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 /// only be apllied to the initial connection upgrade request).
 #[derive(Clone)]
 pub struct ConnectionParams {
-    pub sni: String,
-    pub host: String,
+    pub sni: Arc<str>,
+    pub host: Arc<str>,
     pub port: u16,
     pub http_request_decorator: HttpRequestDecoratorSeq,
     pub certs: RootCertificates,
@@ -97,35 +95,7 @@ impl HttpRequestDecorator {
     ) -> hyper::http::request::Builder {
         match self {
             Self::Generic(decorator) => decorator(request_builder),
-            Self::HeaderAuth(auth) => {
-                request_builder.header(hyper::http::header::AUTHORIZATION, auth)
-            }
-            Self::QueryParamAuth { username, password } => match request_builder.uri_ref() {
-                Some(uri) => {
-                    let mut parts = (*uri).clone().into_parts();
-                    let decorated_pq = match parts.path_and_query {
-                        Some(pq) => {
-                            let path = pq.path();
-                            match pq.query() {
-                                Some(query) => format!(
-                                    "{}?{}&login={}&password={}",
-                                    path, query, username, password
-                                ),
-                                None => {
-                                    format!("{}?login={}&password={}", path, username, password)
-                                }
-                            }
-                        }
-                        None => format!("/?login={}&password={}", username, password),
-                    };
-                    parts.path_and_query = Some(
-                        PathAndQuery::from_str(decorated_pq.as_str())
-                            .expect("valid path and query"),
-                    );
-                    request_builder.uri(Uri::from_parts(parts).expect("valid uri"))
-                }
-                None => request_builder,
-            },
+            Self::HeaderAuth(auth) => request_builder.header(::http::header::AUTHORIZATION, auth),
             Self::PathPrefix(prefix) => {
                 let uri = request_builder.uri_ref().expect("request has URI set");
                 let mut parts = (*uri).clone().into_parts();
@@ -148,7 +118,7 @@ pub(crate) async fn connect_ssl(
 ) -> Result<SslStream<TcpStream>, NetError> {
     let tcp_stream = connect_tcp(
         &connection_params.dns_resolver,
-        connection_params.sni.as_str(),
+        &connection_params.sni,
         connection_params.port,
     )
     .await?;
@@ -157,7 +127,7 @@ pub(crate) async fn connect_ssl(
         .build()
         .configure()?;
 
-    let ssl_stream = tokio_boring::connect(ssl_config, connection_params.sni.as_str(), tcp_stream)
+    let ssl_stream = tokio_boring::connect(ssl_config, &connection_params.sni, tcp_stream)
         .await
         .map_err(|_| NetError::SslFailedHandshake)?;
 
@@ -198,34 +168,6 @@ mod test {
 
     use crate::infra::HttpRequestDecorator;
     use crate::utils::basic_authorization;
-
-    #[test]
-    fn test_query_param_auth_decorator() {
-        let expected = "login=usrnm&password=psswd";
-        let cases = vec![
-            ("https://chat.signal.org/", expected.to_string()),
-            ("https://chat.signal.org/v1", expected.to_string()),
-            (
-                "https://chat.signal.org/v1?a=b",
-                format!("a=b&{}", expected),
-            ),
-        ];
-        for (input, expected_query) in cases {
-            let builder = Request::get(input);
-            let builder = HttpRequestDecorator::QueryParamAuth {
-                username: "usrnm".to_string(),
-                password: "psswd".to_string(),
-            }
-            .decorate_request(builder);
-            let (parts, _) = builder.body(()).unwrap().into_parts();
-            assert_eq!(
-                &expected_query,
-                parts.uri.query().unwrap(),
-                "for input [{}]",
-                input
-            )
-        }
-    }
 
     #[test]
     fn test_path_prefix_decorator() {
