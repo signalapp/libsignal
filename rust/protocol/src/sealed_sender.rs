@@ -4,10 +4,10 @@
 //
 
 use crate::{
-    message_encrypt, CiphertextMessageType, DeviceId, Direction, IdentityKey, IdentityKeyPair,
+    message_encrypt, Aci, CiphertextMessageType, DeviceId, Direction, IdentityKey, IdentityKeyPair,
     IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey,
-    ProtocolAddress, PublicKey, Result, ServiceId, SessionRecord, SessionStore, SignalMessage,
-    SignalProtocolError, SignedPreKeyStore,
+    ProtocolAddress, PublicKey, Result, ServiceId, ServiceIdFixedWidthBinaryBytes, SessionRecord,
+    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
 };
 
 use crate::{crypto, curve, proto, session_cipher};
@@ -1472,9 +1472,17 @@ impl<'a> SealedSenderV2SentMessage<'a> {
 
         let mut recipients = Vec::with_capacity(recipient_count as usize);
         for _ in 0..recipient_count {
-            let service_id =
-                ServiceId::parse_from_service_id_fixed_width_binary(advance::<17>(&mut data)?)
-                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+            let service_id = if version & 0xF == SEALED_SENDER_V2_VERSION {
+                // The original version of SSv2 assumed ACIs here, and only encoded the raw UUID.
+                ServiceId::from(Aci::from_uuid_bytes(*advance::<
+                    { std::mem::size_of::<uuid::Bytes>() },
+                >(&mut data)?))
+            } else {
+                ServiceId::parse_from_service_id_fixed_width_binary(advance::<
+                    { std::mem::size_of::<ServiceIdFixedWidthBinaryBytes>() },
+                >(&mut data)?)
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
+            };
             let device_id = DeviceId::from(decode_varint(&mut data)?);
             let registration_id = u16::from_be_bytes(*advance::<2>(&mut data)?);
             let c_and_at = advance::<
