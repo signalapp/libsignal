@@ -499,8 +499,8 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
-            .expect("only one recipient");
+        let (recipient_addr, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
+        assert_eq!(recipient_addr.service_id_string(), bob_uuid);
 
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
@@ -552,8 +552,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         )
         .await?;
 
-        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
-            .expect("only one recipient");
+        let (_, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
 
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
@@ -613,8 +612,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 
         let wrong_trust_root = KeyPair::generate(&mut rng);
 
-        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
-            .expect("only one recipient");
+        let (_, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
 
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
@@ -729,8 +727,8 @@ fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProto
         )
         .await?;
 
-        let [bob_ctext] = <[_; 1]>::try_from(sealed_sender_multi_recipient_fan_out(&alice_ctext)?)
-            .expect("only one recipient");
+        let (recipient_addr, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
+        assert_eq!(recipient_addr.service_id_string(), bob_uuid);
 
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
@@ -1096,4 +1094,9 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
     }
     .now_or_never()
     .expect("sync")
+}
+
+#[test]
+fn parse_empty_multi_recipient_sealed_sender() {
+    assert!(SealedSenderV2SentMessage::parse(&[]).is_err());
 }

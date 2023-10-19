@@ -180,14 +180,12 @@ pub fn v2(c: &mut Criterion) {
     };
     let outgoing = encrypt_it();
 
-    let incoming = sealed_sender_multi_recipient_fan_out(&outgoing)
-        .expect("valid")
-        .into_iter()
-        .next()
-        .expect("at least one destination");
+    let (incoming_recipient, incoming_message) =
+        support::extract_single_ssv2_received_message(&outgoing);
+    assert_eq!(&incoming_recipient.service_id_string(), bob_address.name());
 
     let mut decrypt_it = || {
-        sealed_sender_decrypt_to_usmc(&incoming, &bob_store.identity_store)
+        sealed_sender_decrypt_to_usmc(&incoming_message, &bob_store.identity_store)
             .now_or_never()
             .expect("sync")
             .expect("valid")
@@ -216,14 +214,12 @@ pub fn v2(c: &mut Criterion) {
         };
         let outgoing = encrypt_it();
 
-        let incoming = sealed_sender_multi_recipient_fan_out(&outgoing)
-            .expect("valid")
-            .into_iter()
-            .next()
-            .expect("at least one destination");
+        let (incoming_recipient, incoming_message) =
+            support::extract_single_ssv2_received_message(&outgoing);
+        assert_eq!(&incoming_recipient.service_id_string(), bob_address.name());
 
         let mut decrypt_it = || {
-            sealed_sender_decrypt_to_usmc(&incoming, &bob_store.identity_store)
+            sealed_sender_decrypt_to_usmc(&incoming_message, &bob_store.identity_store)
                 .now_or_never()
                 .expect("sync")
                 .expect("valid")

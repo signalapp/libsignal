@@ -68,8 +68,8 @@ pub use ratchet::{
 pub use sealed_sender::{
     sealed_sender_decrypt, sealed_sender_decrypt_to_usmc, sealed_sender_encrypt,
     sealed_sender_encrypt_from_usmc, sealed_sender_multi_recipient_encrypt,
-    sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation,
-    sealed_sender_multi_recipient_fan_out, ContentHint, SealedSenderDecryptionResult,
+    sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation, ContentHint,
+    SealedSenderDecryptionResult, SealedSenderV2SentMessage, SealedSenderV2SentMessageRecipient,
     SenderCertificate, ServerCertificate, UnidentifiedSenderMessageContent,
 };
 pub use sender_keys::SenderKeyRecord;

@@ -1091,13 +1091,13 @@ mod sealed_sender_v2 {
 ///
 /// # Contrast with Sealed Sender v1
 /// The KEM scheme implemented by this method uses the "Generic Construction" in `4.1` of [Barbosa's
-/// paper]["Randomness Reuse: Extensions and Improvements"], instantiated with [ElGamal
-/// encryption]. This technique enables reusing a single sequence of random bytes across multiple
-/// messages with the same content, which reduces computation time for clients sending the same
-/// message to multiple recipients (without compromising the message security).
+/// paper]["Randomness Reuse: Extensions and Improvements"], instantiated with [ElGamal encryption].
+/// This technique enables reusing a single sequence of random bytes across multiple messages with
+/// the same content, which reduces computation time for clients sending the same message to
+/// multiple recipients (without compromising the message security).
 ///
-/// There are a few additional design tradeoffs this method makes vs [Sealed Sender v1]
-/// which may make it comparatively unwieldy for certain scenarios:
+/// There are a few additional design tradeoffs this method makes vs [Sealed Sender v1] which may
+/// make it comparatively unwieldy for certain scenarios:
 /// 1. it requires a [`SessionRecord`] to exist already for the recipient, i.e. that a Double
 ///    Ratchet message chain has previously been established in the [`SessionStore`] via
 ///    [`process_prekey_bundle`][crate::process_prekey_bundle] after an initial
@@ -1128,7 +1128,8 @@ mod sealed_sender_v2 {
 /// 6. Send the public ephemeral key (2) to the server, along with the sequence of encrypted random
 ///    bytes (3) and authentication tags (4), and the single encrypted message (5).
 ///
-/// [AEAD encryption]: https://en.wikipedia.org/wiki/Authenticated_encryption#Authenticated_encryption_with_associated_data_(AEAD)
+/// [AEAD encryption]:
+///    https://en.wikipedia.org/wiki/Authenticated_encryption#Authenticated_encryption_with_associated_data_(AEAD)
 ///
 /// ## Pseudocode
 ///```text
@@ -1160,18 +1161,14 @@ mod sealed_sender_v2 {
 /// # Routing messages to recipients
 ///
 /// The server will split up the set of messages and securely route each individual [received
-/// message][receiving] to its intended recipient.
-///
-/// For testing purposes, [`sealed_sender_multi_recipient_fan_out`] can be used to convert such
-/// a bulk message produced by Sealed Sender v2 into a sequence of [received messages][receiving];
-/// however, in doing so it will drop all of the metadata necessary to identify the message's
-/// intended recipients.
+/// message][receiving] to its intended recipient. [`SealedSenderV2SentMessage`] can perform this
+/// fan-out operation.
 ///
 /// # Wire Format
-/// Multi-recipient sealed-sender does not use protobufs for its payload format. Instead, it uses
-/// a flat format marked with a [version byte](#the-version-byte). The format is different for
-/// [sending] and [receiving]. The decrypted content is
-/// a protobuf-encoded `UnidentifiedSenderMessage.Message` from `sealed_sender.proto`.
+/// Multi-recipient sealed-sender does not use protobufs for its payload format. Instead, it uses a
+/// flat format marked with a [version byte](#the-version-byte). The format is different for
+/// [sending] and [receiving]. The decrypted content is a protobuf-encoded
+/// `UnidentifiedSenderMessage.Message` from `sealed_sender.proto`.
 ///
 /// The public key used in Sealed Sender v2 is always a Curve25519 DJB key.
 ///
@@ -1180,16 +1177,16 @@ mod sealed_sender_v2 {
 ///
 /// ## The version byte
 ///
-/// Sealed sender messages (v1 and v2) in serialized form begin with a version [byte][u8].
-/// This byte has the form:
+/// Sealed sender messages (v1 and v2) in serialized form begin with a version [byte][u8]. This byte
+/// has the form:
 ///
 /// ```text
 /// (requiredVersion << 4) | currentVersion
 /// ```
 ///
-/// v1 messages thus have a version byte of `0x11`. v2 messages have a version byte
-/// of `0x22`. A hypothetical version byte `0x34` would indicate a message encoded
-/// as Sealed Sender v4, but decodable by any client that supports Sealed Sender v3.
+/// v1 messages thus have a version byte of `0x11`. v2 messages have a version byte of `0x22` or
+/// `0x23`. A hypothetical version byte `0x34` would indicate a message encoded as Sealed Sender v4,
+/// but decodable by any client that supports Sealed Sender v3.
 ///
 /// ## Received messages
 ///
@@ -1203,8 +1200,8 @@ mod sealed_sender_v2 {
 /// }
 /// ```
 ///
-/// Each individual Sealed Sender message received from the server is decoded in the Signal
-/// client by calling [`sealed_sender_decrypt`].
+/// Each individual Sealed Sender message received from the server is decoded in the Signal client
+/// by calling [`sealed_sender_decrypt`].
 ///
 /// ## Sent messages
 ///
@@ -1412,69 +1409,111 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
     Ok(serialized)
 }
 
-/// Split out the encoded message from [`sealed_sender_multi_recipient_encrypt`] into a sequence of
-/// individual encrypted [`UnidentifiedSenderMessageContent`]s. **Note: this method is only used in
-/// testing.**
+/// Represents a single recipient in an SSv2 SentMessage.
 ///
-/// This method strips recipients' metadata and splits a bulk v2 sealed-sender message into byte
-/// strings which can be processed by [`sealed_sender_decrypt_to_usmc`]. For the Signal app, this
-/// process of splitting out a v2 sealed-sender message into individual messages and using the
-/// metadata to correctly route the result to recipients is performed by the Signal server (see
-/// **[Routing messages to recipients]**).
-///
-/// [Routing messages to recipients]: sealed_sender_multi_recipient_encrypt#routing-messages-to-recipients
-pub fn sealed_sender_multi_recipient_fan_out(data: &[u8]) -> Result<Vec<Vec<u8>>> {
-    let version = data[0] >> 4;
-    if version != SEALED_SENDER_V2_VERSION {
-        return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
-    }
+/// See [`SealedSenderV2SentMessage`].
+pub struct SealedSenderV2SentMessageRecipient<'a> {
+    /// The recipient's service ID.
+    pub service_id: ServiceId,
+    /// The recipient's device ID.
+    pub device_id: DeviceId,
+    /// The recipient device's registration ID.
+    pub registration_id: u16,
+    /// A concatenation of the `C_i` and `AT_i` SSv2 fields for this recipient.
+    c_and_at: &'a [u8],
+}
 
-    fn advance<'a>(buf: &mut &'a [u8], n: usize) -> Result<&'a [u8]> {
-        if n > buf.len() {
-            return Err(SignalProtocolError::InvalidProtobufEncoding);
+/// A parsed representation of a Sealed Sender v2 SentMessage.
+///
+/// This only parses enough to fan out the message as a series of ReceivedMessages.
+pub struct SealedSenderV2SentMessage<'a> {
+    /// The version byte at the head of the message.
+    pub version: u8,
+    /// The parsed list of recipients.
+    pub recipients: Vec<SealedSenderV2SentMessageRecipient<'a>>,
+    /// A concatenation of the `e_pub` and `message` SSv2 fields for this recipient.
+    shared_bytes: &'a [u8],
+}
+
+impl<'a> SealedSenderV2SentMessage<'a> {
+    /// Parses the message, or produces an error if the message is invalid.
+    pub fn parse(data: &'a [u8]) -> Result<Self> {
+        if data.is_empty() {
+            return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                "Message was empty".to_owned(),
+            ));
         }
-        let (prefix, remaining) = buf.split_at(n);
-        *buf = remaining;
-        Ok(prefix)
+
+        let version = data[0];
+        if version >> 4 != SEALED_SENDER_V2_VERSION {
+            return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
+        }
+
+        fn advance<'a, const N: usize>(buf: &mut &'a [u8]) -> Result<&'a [u8; N]> {
+            if N > buf.len() {
+                return Err(SignalProtocolError::InvalidProtobufEncoding);
+            }
+            // TODO: Replace with split_array_ref or split_first_chunk when stabilized.
+            let (prefix, remaining) = buf.split_at(N);
+            *buf = remaining;
+            Ok(prefix.try_into().expect("checked length"))
+        }
+        fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
+            let result: usize = prost::decode_length_delimiter(*buf)
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
+            *buf = &buf[prost::length_delimiter_len(result)..];
+            result
+                .try_into()
+                .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)
+        }
+
+        let mut data = &data[1..];
+        let recipient_count = decode_varint(&mut data)?;
+
+        let mut recipients = Vec::with_capacity(recipient_count as usize);
+        for _ in 0..recipient_count {
+            let service_id =
+                ServiceId::parse_from_service_id_fixed_width_binary(advance::<17>(&mut data)?)
+                    .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+            let device_id = DeviceId::from(decode_varint(&mut data)?);
+            let registration_id = u16::from_be_bytes(*advance::<2>(&mut data)?);
+            let c_and_at = advance::<
+                { sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN },
+            >(&mut data)?;
+
+            recipients.push(SealedSenderV2SentMessageRecipient {
+                service_id,
+                device_id,
+                registration_id,
+                c_and_at,
+            });
+        }
+
+        Ok(Self {
+            version,
+            recipients,
+            shared_bytes: data,
+        })
     }
-    fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
-        let result: usize = prost::decode_length_delimiter(*buf)
-            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
-        let _ = advance(buf, prost::length_delimiter_len(result))
-            .expect("just decoded that many bytes");
-        result
-            .try_into()
-            .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)
+
+    /// Returns a slice of slices that, when concatenated, form the ReceivedMessage appropriate for
+    /// `recipient`.
+    ///
+    /// If `recipient` is not one of the recipients in `self`, the resulting message will not be
+    /// decryptable.
+    #[inline]
+    pub fn received_message_parts_for_recipient(
+        &self,
+        recipient: &SealedSenderV2SentMessageRecipient<'a>,
+    ) -> impl AsRef<[&[u8]]> {
+        // Why not use `IntoIterator<Item = &[u8]>` as the result? Because the `concat` method on
+        // slices is more efficient when the caller just wants a `Vec<u8>`.
+        [
+            std::slice::from_ref(&self.version),
+            recipient.c_and_at,
+            self.shared_bytes,
+        ]
     }
-
-    let mut remaining = &data[1..];
-    let recipient_count = decode_varint(&mut remaining)?;
-
-    let mut messages: Vec<Vec<u8>> = Vec::new();
-    for _ in 0..recipient_count {
-        // Skip ServiceId.
-        let _ = advance(&mut remaining, 17)?;
-        // Skip device ID.
-        let _ = decode_varint(&mut remaining)?;
-        // Skip registration ID.
-        let _ = advance(&mut remaining, 2)?;
-        // Read C_i and AT_i.
-        let c_and_at = advance(
-            &mut remaining,
-            sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN,
-        )?;
-
-        let mut next_message = vec![data[0]];
-        next_message.extend_from_slice(c_and_at);
-        messages.push(next_message);
-    }
-
-    // Remaining data is shared among all messages.
-    for message in messages.iter_mut() {
-        message.extend_from_slice(remaining)
-    }
-
-    Ok(messages)
 }
 
 /// Decrypt the payload of a sealed-sender message in either the v1 or v2 format.

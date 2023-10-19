@@ -1212,11 +1212,17 @@ async fn SealedSender_MultiRecipientEncryptNode(
 fn SealedSender_MultiRecipientMessageForSingleRecipient(
     encoded_multi_recipient_message: &[u8],
 ) -> Result<Vec<u8>> {
-    let messages = sealed_sender_multi_recipient_fan_out(encoded_multi_recipient_message)?;
-    let [single_message] = <[_; 1]>::try_from(messages).map_err(|_| {
-        SignalProtocolError::InvalidArgument("encoded for more than one recipient".to_owned())
-    })?;
-    Ok(single_message)
+    let messages = SealedSenderV2SentMessage::parse(encoded_multi_recipient_message)?;
+    if messages.recipients.len() != 1 {
+        return Err(SignalProtocolError::InvalidArgument(
+            "only supports messages with exactly one recipient".to_owned(),
+        ));
+    }
+    let result = messages
+        .received_message_parts_for_recipient(&messages.recipients[0])
+        .as_ref()
+        .concat();
+    Ok(result)
 }
 
 #[bridge_fn(node = "SealedSender_DecryptToUsmc")]
