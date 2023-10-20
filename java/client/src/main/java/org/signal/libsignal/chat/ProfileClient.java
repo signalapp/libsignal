@@ -1,9 +1,8 @@
-package org.signal.libsignal.profile;
+package org.signal.libsignal.chat;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.signal.chat.profile.GetVersionedProfileRequest;
 import org.signal.chat.profile.GetVersionedProfileResponse;
-import org.signal.libsignal.SignalChatCommunicationFailureException;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 

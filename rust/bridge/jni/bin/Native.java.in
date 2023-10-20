@@ -7,7 +7,6 @@
 
 package org.signal.libsignal.internal;
 
-import org.signal.chat.profile.GetVersionedProfileResponse;
 import org.signal.libsignal.grpc.GrpcReplyListener;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;

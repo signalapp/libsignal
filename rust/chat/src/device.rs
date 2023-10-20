@@ -3,9 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-mod error;
-pub mod device;
-pub mod profile;
-mod proto;
+pub mod client;
 
-pub use error::{Error, Result};
+pub use client::DeviceClient;

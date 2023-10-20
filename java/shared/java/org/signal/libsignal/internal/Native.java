@@ -7,7 +7,6 @@
 
 package org.signal.libsignal.internal;
 
-import org.signal.chat.profile.GetVersionedProfileResponse;
 import org.signal.libsignal.grpc.GrpcReplyListener;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
@@ -177,6 +176,10 @@ public final class Native {
   public static native long DecryptionErrorMessage_GetRatchetKey(long m);
   public static native byte[] DecryptionErrorMessage_GetSerialized(long obj);
   public static native long DecryptionErrorMessage_GetTimestamp(long obj);
+
+  public static native void DeviceClient_Destroy(long handle);
+  public static native byte[] DeviceClient_GetDevices(long deviceClient, byte[] request, String authorization);
+  public static native long DeviceClient_New(String target);
 
   public static native byte[] DeviceTransfer_GenerateCertificate(byte[] privateKey, String name, int daysToExpire);
   public static native byte[] DeviceTransfer_GeneratePrivateKey();
