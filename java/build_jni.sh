@@ -16,15 +16,15 @@ ANDROID_LIB_DIR=java/android/src/main/jniLibs
 DESKTOP_LIB_DIR=java/shared/resources
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-# On Linux, cdylibs don't include public symbols from their dependencies,
-# even if those symbols have been re-exported in the Rust source.
-# Using LTO works around this at the cost of a slightly slower build.
-# https://github.com/rust-lang/rfcs/issues/2771
-export CARGO_PROFILE_RELEASE_LTO=thin
 export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 
 case "$1" in
     desktop )
+        # On Linux, cdylibs don't include public symbols from their dependencies,
+        # even if those symbols have been re-exported in the Rust source.
+        # Using LTO works around this at the cost of a slightly slower build.
+        # https://github.com/rust-lang/rfcs/issues/2771
+        export CARGO_PROFILE_RELEASE_LTO=thin
         echo_then_run cargo build -p libsignal-jni --release
         if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
             copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
@@ -52,8 +52,12 @@ case "$1" in
         ;;
 esac
 
-# Use small BoringSSL curve tables to reduce binary size on Android.
-export CFLAGS="-DOPENSSL_SMALL -flto=thin ${CFLAGS:-}"
+# Everything from here down is Android-only.
+
+# Use full LTO and small BoringSSL curve tables to reduce binary size.
+export CFLAGS="-DOPENSSL_SMALL -flto=full ${CFLAGS:-}"
+export CARGO_PROFILE_RELEASE_LTO=fat
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 
 # Use the Android NDK's prebuilt Clang+lld as pqcrypto's compiler and Rust's linker.
 ANDROID_TOOLCHAIN_DIR=$(echo "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt"/*/bin/)
@@ -68,7 +72,6 @@ export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${CC_x86_64_linux_android}"
 export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${CC_i686_linux_android}"
 
 export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
-export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
 export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
 # The 64-bit curve25519-dalek backend is faster than the 32-bit one on at least some armv7a phones.

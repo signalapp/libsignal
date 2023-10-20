@@ -12,7 +12,6 @@ cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-export CARGO_PROFILE_RELEASE_LTO=fat # use fat LTO to reduce binary size
 export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
 
 if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
@@ -26,6 +25,15 @@ export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS
 
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
   export IPHONEOS_DEPLOYMENT_TARGET=13
+  # Use full LTO to reduce binary size
+  export CARGO_PROFILE_RELEASE_LTO=fat
+  export CFLAGS="-flto=full ${CFLAGS:-}"
+else
+  # On Linux, cdylibs don't include public symbols from their dependencies,
+  # even if those symbols have been re-exported in the Rust source.
+  # Using LTO works around this at the cost of a slightly slower build.
+  # https://github.com/rust-lang/rfcs/issues/2771
+  export CARGO_PROFILE_RELEASE_LTO=thin
 fi
 
 usage() {
