@@ -118,7 +118,7 @@ impl<T: Parameters> DynParameters for T {
     }
 
     fn shared_secret_length(&self) -> usize {
-        Self::SECRET_KEY_LENGTH
+        Self::SHARED_SECRET_LENGTH
     }
 
     fn generate(&self) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
