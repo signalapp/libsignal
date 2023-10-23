@@ -121,7 +121,7 @@ impl<T: Parameters> DynParameters for T {
     }
 
     fn shared_secret_length(&self) -> usize {
-        Self::SECRET_KEY_LENGTH
+        Self::SHARED_SECRET_LENGTH
     }
 
     fn generate(&self) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
@@ -442,11 +442,9 @@ impl<'a> Ciphertext<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Result;
-    use pqcrypto_kyber::kyber1024::{decapsulate, encapsulate, keypair};
 
     #[test]
-    fn test_serialize() -> Result<()> {
+    fn test_serialize() {
         let pk_bytes = include_bytes!("kem/test-data/pk.dat");
         let sk_bytes = include_bytes!("kem/test-data/sk.dat");
 
@@ -466,21 +464,19 @@ mod tests {
 
         assert_eq!(serialized_pk, reserialized_pk.into_vec());
         assert_eq!(serialized_sk, reserialized_sk.into_vec());
-
-        Ok(())
     }
 
     #[test]
-    fn test_raw_kem() -> Result<()> {
+    fn test_raw_kem() {
+        use pqcrypto_kyber::kyber1024::{decapsulate, encapsulate, keypair};
         let (pk, sk) = keypair();
         let (ss1, ct) = encapsulate(&pk);
         let ss2 = decapsulate(&ct, &sk);
         assert!(ss1 == ss2);
-        Ok(())
     }
 
     #[test]
-    fn test_kyber1024_kem() -> Result<()> {
+    fn test_kyber1024_kem() {
         // test data for kyber1024
         let pk_bytes = include_bytes!("kem/test-data/pk.dat");
         let sk_bytes = include_bytes!("kem/test-data/sk.dat");
@@ -502,12 +498,10 @@ mod tests {
         let ss_for_recipient = secretkey.decapsulate(&ct).expect("decapsulation works");
 
         assert_eq!(ss_for_sender, ss_for_recipient);
-
-        Ok(())
     }
 
     #[test]
-    fn test_mlkem1024_kem() -> Result<()> {
+    fn test_mlkem1024_kem() {
         // test data for kyber1024
         let pk_bytes = include_bytes!("kem/test-data/mlkem-pk.dat");
         let sk_bytes = include_bytes!("kem/test-data/mlkem-sk.dat");
@@ -520,33 +514,88 @@ mod tests {
         let ss_for_recipient = secretkey.decapsulate(&ct).expect("decapsulation works");
 
         assert_eq!(ss_for_sender, ss_for_recipient);
-
-        Ok(())
     }
+
     #[test]
-    fn test_kyber1024_keypair() -> Result<()> {
+    fn test_kyber1024_keypair() {
         let kp = KeyPair::generate(KeyType::Kyber1024);
+        assert_eq!(
+            kyber1024::Parameters::SECRET_KEY_LENGTH + 1,
+            kp.secret_key.serialize().len()
+        );
+        assert_eq!(
+            kyber1024::Parameters::PUBLIC_KEY_LENGTH + 1,
+            kp.public_key.serialize().len()
+        );
         let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        assert_eq!(kyber1024::Parameters::CIPHERTEXT_LENGTH + 1, ct.len());
+        assert_eq!(
+            kyber1024::Parameters::SHARED_SECRET_LENGTH,
+            ss_for_sender.len()
+        );
         let ss_for_recipient = kp.secret_key.decapsulate(&ct).expect("decapsulation works");
         assert_eq!(ss_for_recipient, ss_for_sender);
-        Ok(())
     }
 
     #[test]
-    fn test_kyber768_keypair() -> Result<()> {
+    fn test_kyber768_keypair() {
         let kp = KeyPair::generate(KeyType::Kyber768);
+        assert_eq!(
+            kyber768::Parameters::SECRET_KEY_LENGTH + 1,
+            kp.secret_key.serialize().len()
+        );
+        assert_eq!(
+            kyber768::Parameters::PUBLIC_KEY_LENGTH + 1,
+            kp.public_key.serialize().len()
+        );
         let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        assert_eq!(kyber768::Parameters::CIPHERTEXT_LENGTH + 1, ct.len());
+        assert_eq!(
+            kyber768::Parameters::SHARED_SECRET_LENGTH,
+            ss_for_sender.len()
+        );
         let ss_for_recipient = kp.secret_key.decapsulate(&ct).expect("decapsulation works");
         assert_eq!(ss_for_recipient, ss_for_sender);
-        Ok(())
     }
 
     #[test]
-    fn test_mlkem1024_keypair() -> Result<()> {
+    fn test_mlkem1024_keypair() {
         let kp = KeyPair::generate(KeyType::MLKEM1024);
+        assert_eq!(
+            mlkem1024::Parameters::SECRET_KEY_LENGTH + 1,
+            kp.secret_key.serialize().len()
+        );
+        assert_eq!(
+            mlkem1024::Parameters::PUBLIC_KEY_LENGTH + 1,
+            kp.public_key.serialize().len()
+        );
         let (ss_for_sender, ct) = kp.public_key.encapsulate();
+        assert_eq!(mlkem1024::Parameters::CIPHERTEXT_LENGTH + 1, ct.len());
+        assert_eq!(
+            mlkem1024::Parameters::SHARED_SECRET_LENGTH,
+            ss_for_sender.len()
+        );
         let ss_for_recipient = kp.secret_key.decapsulate(&ct).expect("decapsulation works");
         assert_eq!(ss_for_recipient, ss_for_sender);
-        Ok(())
+    }
+
+    #[test]
+    fn test_dyn_parameters_consts() {
+        assert_eq!(
+            kyber1024::Parameters::SECRET_KEY_LENGTH,
+            kyber1024::Parameters.secret_key_length()
+        );
+        assert_eq!(
+            kyber1024::Parameters::PUBLIC_KEY_LENGTH,
+            kyber1024::Parameters.public_key_length()
+        );
+        assert_eq!(
+            kyber1024::Parameters::CIPHERTEXT_LENGTH,
+            kyber1024::Parameters.ciphertext_length()
+        );
+        assert_eq!(
+            kyber1024::Parameters::SHARED_SECRET_LENGTH,
+            kyber1024::Parameters.shared_secret_length()
+        );
     }
 }
