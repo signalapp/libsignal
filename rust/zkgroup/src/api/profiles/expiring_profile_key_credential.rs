@@ -5,9 +5,10 @@
 
 use crate::common::simple_types::*;
 use crate::crypto;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredential {
     pub(crate) version: ReservedBytes,
     pub(crate) credential: crypto::credentials::ExpiringProfileKeyCredential,

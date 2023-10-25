@@ -9,10 +9,11 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use libsignal_protocol::ServiceId;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct UidStruct {
     // Currently unused. It would be possible to convert this back to the correct kind of ServiceId
     // using the same technique as decryption: comparing possible M1 points and seeing which one

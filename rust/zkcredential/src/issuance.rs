@@ -17,6 +17,7 @@ pub mod blind;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
+use partial_default::PartialDefault;
 use poksho::{ShoApi, ShoHmacSha256};
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +31,7 @@ use crate::{VerificationFailure, RANDOMNESS_LEN};
 /// Contains a [`Credential`] along with a proof of its validity.
 ///
 /// Use [`IssuanceProofBuilder`] to validate and extract the credential.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct IssuanceProof {
     credential: Credential,
     poksho_proof: Vec<u8>,

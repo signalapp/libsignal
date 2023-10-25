@@ -11,6 +11,7 @@ use crate::common::simple_types::*;
 use crate::crypto::profile_key_struct;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use lazy_static::lazy_static;
@@ -35,7 +36,7 @@ pub struct CommitmentWithSecretNonce {
     pub(crate) j3: Scalar,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct Commitment {
     pub(crate) J1: RistrettoPoint,
     pub(crate) J2: RistrettoPoint,

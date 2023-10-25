@@ -7,10 +7,11 @@ use crate::common::constants::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use signal_crypto::Aes256GcmEncryption;
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKey {
     pub bytes: ProfileKeyBytes,
 }

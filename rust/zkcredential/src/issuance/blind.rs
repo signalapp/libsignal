@@ -54,6 +54,7 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use partial_default::PartialDefault;
 use poksho::{ShoApi, ShoHmacSha256};
 use serde::{Deserialize, Serialize};
 
@@ -80,7 +81,7 @@ pub struct WithNonce(pub Scalar);
 impl BlindedPointNonce for WithNonce {}
 
 /// Marks that a blinded point or attribute does not carry a nonce.
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Default)]
 pub struct WithoutNonce;
 impl BlindedPointNonce for WithoutNonce {}
 
@@ -88,7 +89,7 @@ impl BlindedPointNonce for WithoutNonce {}
 ///
 /// Fully public so that other proofs can be made about blinded attributes. May or may not contain a
 /// nonce, depending on `N`. The nonce can be discarded using the standard `From` trait.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialDefault)]
 pub struct BlindedPoint<N: BlindedPointNonce = WithoutNonce> {
     /// Present only when `N` is [`WithNonce`].
     pub r: N,
@@ -129,7 +130,7 @@ impl From<BlindedAttribute<WithNonce>> for BlindedAttribute<WithoutNonce> {
 /// A key used by the client to blind attributes to the issuing server.
 ///
 /// Fully public so that other proofs can be made about blinded attributes.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct BlindingPrivateKey {
     #[allow(missing_docs)]
     pub y: Scalar,
@@ -138,7 +139,7 @@ pub struct BlindingPrivateKey {
 /// A key used by the issuing server to work with blinded attributes.
 ///
 /// Fully public so that other proofs can be made about blinded attributes.
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialDefault)]
 pub struct BlindingPublicKey {
     #[allow(missing_docs)]
     pub Y: RistrettoPoint,
@@ -162,7 +163,7 @@ impl<'a> From<&'a BlindingPrivateKey> for BlindingPublicKey {
 }
 
 /// A key pair used by the client to blind attributes to the issuing server.
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialDefault)]
 #[serde(from = "BlindingPrivateKey")]
 pub struct BlindingKeyPair {
     private_key: BlindingPrivateKey,
@@ -242,7 +243,7 @@ impl Serialize for BlindingKeyPair {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 struct BlindedCredential {
     t: Scalar,
     U: RistrettoPoint,
@@ -255,7 +256,7 @@ struct BlindedCredential {
 /// Slightly larger than a typical [`IssuanceProof`] (which is why it's a separate type at all).
 ///
 /// Use [`IssuanceProofBuilder`] to validate and extract the credential.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BlindedIssuanceProof {
     credential: BlindedCredential,
     poksho_proof: Vec<u8>,

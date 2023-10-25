@@ -7,9 +7,10 @@ use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialPresentationV2 {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::AuthCredentialPresentationProofV2,
@@ -30,7 +31,7 @@ impl AuthCredentialPresentationV2 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialWithPniPresentation {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::AuthCredentialWithPniPresentationProof,

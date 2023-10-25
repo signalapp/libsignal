@@ -9,6 +9,7 @@
 //! - the user's ACI (provided by the chat server at issuance, passed encrypted to the calling server for verification)
 //! - a "redemption time", truncated to day granularity (chosen by the chat server at issuance based on parameters from the client, passed publicly to the calling server for verification)
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::simple_types::*;
@@ -22,7 +23,7 @@ use super::{CallLinkPublicParams, CallLinkSecretParams};
 
 const CREDENTIAL_LABEL: &[u8] = b"20230421_Signal_CallLinkAuthCredential";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredentialResponse {
     reserved: ReservedBytes,
     proof: zkcredential::issuance::IssuanceProof,
@@ -69,7 +70,7 @@ impl CallLinkAuthCredentialResponse {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredential {
     reserved: ReservedBytes,
     credential: zkcredential::credentials::Credential,
@@ -99,7 +100,7 @@ impl CallLinkAuthCredential {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredentialPresentation {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: zkcredential::presentation::PresentationProof,

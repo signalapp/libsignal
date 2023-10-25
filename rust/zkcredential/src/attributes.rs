@@ -21,6 +21,7 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use derive_where::derive_where;
+use partial_default::PartialDefault;
 use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
@@ -181,8 +182,9 @@ pub fn derive_default_generator_points<D: Domain>(
 /// Defined in Chase-Perrin-Zaverucha section 4.1.
 ///
 /// See also [`PublicKey`].
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 #[derive_where(Clone, Copy, Eq)]
+#[partial_default(bound = "")]
 #[non_exhaustive]
 #[allow(missing_docs)]
 pub struct KeyPair<D> {
@@ -213,8 +215,9 @@ impl<D> PartialEq for KeyPair<D> {
 /// Defined in Chase-Perrin-Zaverucha section 4.1.
 ///
 /// See also [`KeyPair`].
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 #[derive_where(Clone, Copy, Eq)]
+#[partial_default(bound = "")]
 pub struct PublicKey<D> {
     #[allow(missing_docs)]
     pub A: RistrettoPoint,
@@ -323,8 +326,9 @@ impl<D: Domain> KeyPair<D> {
 }
 
 /// An attribute encrypted with [`KeyPair::encrypt`].
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 #[derive_where(Clone, Copy, Eq)]
+#[partial_default(bound = "")]
 pub struct Ciphertext<D> {
     E_A1: RistrettoPoint,
     E_A2: RistrettoPoint,

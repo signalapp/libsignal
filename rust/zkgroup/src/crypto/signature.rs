@@ -10,15 +10,16 @@ use crate::common::simple_types::*;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct KeyPair {
     pub(crate) signing_key: Scalar,
     pub(crate) public_key: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct PublicKey {
     pub(crate) public_key: RistrettoPoint,
 }

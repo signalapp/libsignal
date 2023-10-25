@@ -5,9 +5,10 @@
 
 use crate::common::simple_types::*;
 use crate::{api, crypto};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialRequestContext {
     pub(crate) reserved: ReservedBytes,
     pub(crate) aci_bytes: UidBytes,

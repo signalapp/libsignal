@@ -7,9 +7,10 @@ use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV1 {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: crypto::proofs::ProfileKeyCredentialPresentationProofV1,
@@ -34,7 +35,7 @@ impl ProfileKeyCredentialPresentationV1 {
 }
 
 /// Like [`ProfileKeyCredentialPresentationV1`], but with an optimized proof.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV2 {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::ProfileKeyCredentialPresentationProofV2,
@@ -58,7 +59,7 @@ impl ProfileKeyCredentialPresentationV2 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialPresentation {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::ExpiringProfileKeyCredentialPresentationProof,

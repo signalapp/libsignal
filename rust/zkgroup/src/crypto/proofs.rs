@@ -9,6 +9,7 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::Attribute;
 
@@ -24,32 +25,32 @@ use crate::crypto::{
     profile_key_struct, receipt_credential_request, uid_encryption, uid_struct,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialWithPniIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ProfileKeyCredentialRequestProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ReceiptCredentialIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialPresentationProofV2 {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -60,7 +61,7 @@ pub struct AuthCredentialPresentationProofV2 {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialWithPniPresentationProof {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -77,7 +78,7 @@ pub struct AuthCredentialWithPniPresentationProof {
 ///
 /// Kept around so that v1 ProfileKeyCredentialPresentations can still be deserialized,
 /// even though they can't be verified.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationProofV1 {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -94,7 +95,7 @@ pub struct ProfileKeyCredentialPresentationProofV1 {
 ///
 /// Kept around so that v2 ProfileKeyCredentialPresentations can still be deserialized,
 /// even though they can't be verified.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationProofV2 {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -107,7 +108,7 @@ pub struct ProfileKeyCredentialPresentationProofV2 {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialPresentationProof {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -120,7 +121,7 @@ pub struct ExpiringProfileKeyCredentialPresentationProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ReceiptCredentialPresentationProof {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,

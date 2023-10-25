@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::constants::*;
@@ -11,7 +12,7 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerSecretParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_key_pair:
@@ -34,7 +35,7 @@ pub struct ServerSecretParams {
         crypto::credentials::KeyPair<crypto::credentials::AuthCredentialWithPni>,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerPublicParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_public_key: crypto::credentials::PublicKey,

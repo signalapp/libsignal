@@ -25,6 +25,7 @@
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
 use curve25519_dalek::Scalar;
+use partial_default::PartialDefault;
 use poksho::{ShoApi, ShoHmacSha256};
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +37,7 @@ use crate::credentials::{
 use crate::sho::ShoExt;
 use crate::{VerificationFailure, RANDOMNESS_LEN};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 struct PresentationProofCommitments {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -47,7 +48,7 @@ struct PresentationProofCommitments {
 /// Demonstrates to the _verifying server_ that the client holds a particular credential.
 ///
 /// Use [`PresentationProofVerifier`] to validate the proof.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct PresentationProof {
     commitments: PresentationProofCommitments,
     poksho_proof: Vec<u8>,

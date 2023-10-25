@@ -17,6 +17,7 @@ curve25519-dalek = { version = "4.0", features = ["serde"] }
 derive-where = "1.2.5"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
+partial-default = { version = "0.1.0", features = ["derive"] }
 serde = { version = "1.0.106", features = ["derive"] }
 subtle = "2.3"
 

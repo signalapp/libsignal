@@ -5,9 +5,10 @@
 
 use crate::common::simple_types::*;
 use crate::crypto;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, PartialDefault)]
 pub struct UuidCiphertext {
     pub(crate) reserved: ReservedBytes,
     pub(crate) ciphertext: crypto::uid_encryption::Ciphertext,

@@ -17,6 +17,7 @@
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use hkdf::Hkdf;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
@@ -44,7 +45,7 @@ impl zkcredential::attributes::RevealedAttribute for BackupIdPoint {
 
 const CREDENTIAL_LABEL: &[u8] = b"20231003_Signal_BackupAuthCredential";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequestContext {
     reserved: ReservedBytes,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
@@ -95,7 +96,7 @@ impl BackupAuthCredentialRequestContext {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequest {
     reserved: ReservedBytes,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
@@ -123,7 +124,7 @@ impl BackupAuthCredentialRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialResponse {
     reserved: ReservedBytes,
     redemption_time: Timestamp,
@@ -165,7 +166,7 @@ impl BackupAuthCredentialRequestContext {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredential {
     reserved: ReservedBytes,
     redemption_time: Timestamp,
@@ -196,7 +197,7 @@ impl BackupAuthCredential {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialPresentation {
     reserved: ReservedBytes,
     receipt_level: ReceiptLevel,
