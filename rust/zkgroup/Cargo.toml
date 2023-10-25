@@ -47,6 +47,10 @@ criterion = "0.5"
 name = "zkgroup_benchmarks"
 harness = false
 
+[[bench]]
+name = "serialization"
+harness = false
+
 [[bin]]
 name = "generate_server_params"
 required-features = ["base64", "rand"]
