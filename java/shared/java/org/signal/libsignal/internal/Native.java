@@ -117,6 +117,25 @@ public final class Native {
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer);
 
+  public static native void BackupAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes);
+  public static native byte[] BackupAuthCredentialPresentation_GetBackupId(byte[] presentationBytes);
+  public static native long BackupAuthCredentialPresentation_GetReceiptLevel(byte[] presentationBytes);
+  public static native void BackupAuthCredentialPresentation_Verify(byte[] presentationBytes, long now, byte[] serverParamsBytes);
+
+  public static native void BackupAuthCredentialRequestContext_CheckValidContents(byte[] contextBytes);
+  public static native byte[] BackupAuthCredentialRequestContext_GetRequest(byte[] contextBytes);
+  public static native byte[] BackupAuthCredentialRequestContext_New(byte[] backupKey, UUID uuid);
+  public static native byte[] BackupAuthCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, byte[] paramsBytes, long expectedReceiptLevel);
+
+  public static native void BackupAuthCredentialRequest_CheckValidContents(byte[] requestBytes);
+  public static native byte[] BackupAuthCredentialRequest_IssueDeterministic(byte[] requestBytes, long redemptionTime, long receiptLevel, byte[] paramsBytes, byte[] randomness);
+
+  public static native void BackupAuthCredentialResponse_CheckValidContents(byte[] responseBytes);
+
+  public static native void BackupAuthCredential_CheckValidContents(byte[] paramsBytes);
+  public static native byte[] BackupAuthCredential_GetBackupId(byte[] credentialBytes);
+  public static native byte[] BackupAuthCredential_PresentDeterministic(byte[] credentialBytes, byte[] serverParamsBytes, byte[] randomness);
+
   public static native void CallLinkAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes);
   public static native byte[] CallLinkAuthCredentialPresentation_GetUserId(byte[] presentationBytes);
   public static native void CallLinkAuthCredentialPresentation_Verify(byte[] presentationBytes, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes);

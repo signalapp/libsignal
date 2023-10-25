@@ -458,4 +458,62 @@ class ZKGroupTests: TestCaseBase {
     let result = try ProfileKey(contents: profileKeyBytes).deriveAccessKey()
     XCTAssertEqual(expectedAccessKey, result)
   }
+
+  func testBackupAuthCredentialDeterministic() throws {
+    let backupKey: [UInt8] = [
+        0xf9, 0xab, 0xbb, 0xff, 0xa7, 0xd4, 0x24, 0x92,
+        0x97, 0x65, 0xae, 0xcc, 0x84, 0xb6, 0x04, 0x63,
+        0x3c, 0x55, 0xac, 0x1b, 0xce, 0x82, 0xe1, 0xee,
+        0x06, 0xb7, 0x9b, 0xc9, 0xa5, 0x62, 0x93, 0x38]
+    let aci = UUID(uuidString: "e74beed0-e70f-4cfd-abbb-7e3eb333bbac")!
+    let serializedBackupID: [UInt8] = [0xe3, 0x92, 0x6f, 0x11, 0xdd, 0xd1, 0x43, 0xe6, 0xdd, 0x0f, 0x20, 0xbf, 0xcb, 0x08, 0x34, 0x9e]
+    let serializedRequestCredential = Data(base64Encoded: "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3994Aersq2yNRgcARBoedBeoEfKIXdty6X7l6+TiPFAqDvojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==")!
+    let receiptLevel: UInt64 = 1
+
+    let context = BackupAuthCredentialRequestContext.create(backupKey: backupKey, aci: aci)
+    let request = context.getRequest()
+    let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = serverSecretParams.getPublicParams()
+    XCTAssertEqual(request.serialize(), Array(serializedRequestCredential))
+
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = request.issueCredential(timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), receiptLevel: receiptLevel, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+    let credential = try context.receive(response, params: serverPublicParams, expectedReceiptLevel: receiptLevel)
+    XCTAssertEqual(credential.backupID, serializedBackupID)
+  }
+
+  func testBackupAuthCredential() throws {
+    let receiptLevel: UInt64 = 10
+
+    let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = serverSecretParams.getPublicParams()
+
+    // Client
+    let backupKey = TEST_ARRAY_32_1
+    let aci = UUID(uuidString: "e74beed0-e70f-4cfd-abbb-7e3eb333bbac")!
+    let context = BackupAuthCredentialRequestContext.create(backupKey: backupKey, aci: aci)
+    let request = context.getRequest()
+
+    // Server
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = request.issueCredential(timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), receiptLevel: receiptLevel, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+
+    // Client
+    let credential = try context.receive(response, params: serverPublicParams, expectedReceiptLevel: receiptLevel)
+    XCTAssertThrowsError(try context.receive(response, params: serverPublicParams, expectedReceiptLevel: receiptLevel + 1))
+
+    let presentation = credential.present(serverParams: serverPublicParams, randomness: TEST_ARRAY_32_3)
+
+    // Server
+    try presentation.verify(serverParams: serverSecretParams)
+    try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams)
+
+    // credential should be expired after 2 days
+    XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 1 + SECONDS_PER_DAY * 2)), serverParams: serverSecretParams))
+
+    // future credential should be invalid
+    XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay - 1 - SECONDS_PER_DAY)), serverParams: serverSecretParams))
+  }
 }

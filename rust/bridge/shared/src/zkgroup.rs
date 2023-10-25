@@ -18,6 +18,11 @@ use bincode::Options;
 use serde::Deserialize;
 
 use std::convert::TryInto;
+use uuid::Uuid;
+use zkgroup::backups::{
+    BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequest,
+    BackupAuthCredentialRequestContext, BackupAuthCredentialResponse,
+};
 
 use crate::support::*;
 use crate::*;
@@ -985,4 +990,144 @@ fn CallLinkAuthCredentialPresentation_GetUserId(
             .expect("should have been parsed previously");
 
     presentation.get_user_id().into()
+}
+
+#[bridge_fn]
+fn BackupAuthCredentialRequestContext_New(backup_key: &[u8; 32], uuid: Uuid) -> Vec<u8> {
+    let context = BackupAuthCredentialRequestContext::new(backup_key, &uuid);
+    bincode::serialize(&context).expect("can serialize")
+}
+
+#[bridge_fn_void]
+fn BackupAuthCredentialRequestContext_CheckValidContents(
+    context_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<BackupAuthCredentialRequestContext>(context_bytes)
+}
+
+#[bridge_fn]
+fn BackupAuthCredentialRequestContext_GetRequest(context_bytes: &[u8]) -> Vec<u8> {
+    let context = bincode::deserialize::<BackupAuthCredentialRequestContext>(context_bytes)
+        .expect("should have been parsed previously");
+
+    let request = context.get_request();
+    bincode::serialize(&request).expect("can serialize")
+}
+
+#[bridge_fn_void]
+fn BackupAuthCredentialRequest_CheckValidContents(
+    request_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<BackupAuthCredentialRequest>(request_bytes)
+}
+
+#[bridge_fn]
+fn BackupAuthCredentialRequest_IssueDeterministic(
+    request_bytes: &[u8],
+    redemption_time: Timestamp,
+    receipt_level: u64,
+    params_bytes: &[u8],
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Vec<u8> {
+    let request = bincode::deserialize::<BackupAuthCredentialRequest>(request_bytes)
+        .expect("should have been parsed previously");
+    let params = bincode::deserialize::<GenericServerSecretParams>(params_bytes)
+        .expect("should have been parsed previously");
+
+    let response = request.issue(
+        redemption_time.as_seconds(),
+        receipt_level,
+        &params,
+        *randomness,
+    );
+    bincode::serialize(&response).expect("can serialize")
+}
+
+#[bridge_fn_void]
+fn BackupAuthCredentialResponse_CheckValidContents(
+    response_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<BackupAuthCredentialResponse>(response_bytes)
+}
+
+#[bridge_fn]
+fn BackupAuthCredentialRequestContext_ReceiveResponse(
+    context_bytes: &[u8],
+    response_bytes: &[u8],
+    params_bytes: &[u8],
+    expected_receipt_level: u64,
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let context = bincode::deserialize::<BackupAuthCredentialRequestContext>(context_bytes)
+        .expect("should have been parsed previously");
+    let response = bincode::deserialize::<BackupAuthCredentialResponse>(response_bytes)
+        .expect("should have been parsed previously");
+    let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
+        .expect("should have been parsed previously");
+
+    let credential = context.receive(response, &params, expected_receipt_level)?;
+    Ok(bincode::serialize(&credential).expect("can serialize"))
+}
+
+#[bridge_fn_void]
+fn BackupAuthCredential_CheckValidContents(
+    params_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<BackupAuthCredential>(params_bytes)
+}
+
+#[bridge_fn]
+fn BackupAuthCredential_GetBackupId(credential_bytes: &[u8]) -> [u8; 16] {
+    let credential = bincode::deserialize::<BackupAuthCredential>(credential_bytes)
+        .expect("should have been parsed previously");
+    credential.backup_id()
+}
+
+#[bridge_fn]
+fn BackupAuthCredential_PresentDeterministic(
+    credential_bytes: &[u8],
+    server_params_bytes: &[u8],
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let credential = bincode::deserialize::<BackupAuthCredential>(credential_bytes)
+        .expect("should have been parsed previously");
+    let server_params = bincode::deserialize::<GenericServerPublicParams>(server_params_bytes)
+        .expect("should have been parsed previously");
+
+    let presentation = credential.present(&server_params, *randomness);
+    Ok(bincode::serialize(&presentation).expect("can serialize"))
+}
+
+#[bridge_fn_void]
+fn BackupAuthCredentialPresentation_CheckValidContents(
+    presentation_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<BackupAuthCredentialPresentation>(presentation_bytes)
+}
+
+#[bridge_fn_void]
+fn BackupAuthCredentialPresentation_Verify(
+    presentation_bytes: &[u8],
+    now: Timestamp,
+    server_params_bytes: &[u8],
+) -> Result<(), ZkGroupVerificationFailure> {
+    let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
+        .expect("should have been parsed previously");
+    let server_params = bincode::deserialize::<GenericServerSecretParams>(server_params_bytes)
+        .expect("should have been parsed previously");
+
+    presentation.verify(now.as_seconds(), &server_params)
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn BackupAuthCredentialPresentation_GetBackupId(presentation_bytes: &[u8]) -> [u8; 16] {
+    let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
+        .expect("should have been parsed previously");
+    presentation.backup_id()
+}
+
+#[bridge_fn(ffi = false, node = false)]
+fn BackupAuthCredentialPresentation_GetReceiptLevel(presentation_bytes: &[u8]) -> ReceiptLevel {
+    let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
+        .expect("should have been parsed previously");
+    presentation.receipt_level()
 }

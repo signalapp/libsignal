@@ -69,3 +69,10 @@ export { default as CreateCallLinkCredentialPresentation } from './calllinks/Cre
 export { default as CreateCallLinkCredentialRequest } from './calllinks/CreateCallLinkCredentialRequest';
 export { default as CreateCallLinkCredentialRequestContext } from './calllinks/CreateCallLinkCredentialRequestContext';
 export { default as CreateCallLinkCredentialResponse } from './calllinks/CreateCallLinkCredentialResponse';
+
+// Backup Auth
+export { default as BackupAuthCredential } from './backups/BackupAuthCredential';
+export { default as BackupAuthCredentialPresentation } from './backups/BackupAuthCredentialPresentation';
+export { default as BackupAuthCredentialRequest } from './backups/BackupAuthCredentialRequest';
+export { default as BackupAuthCredentialRequestContext } from './backups/BackupAuthCredentialRequestContext';
+export { default as BackupAuthCredentialResponse } from './backups/BackupAuthCredentialResponse';

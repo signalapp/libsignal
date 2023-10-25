@@ -3390,6 +3390,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex-literal",
+ "hkdf",
  "lazy_static",
  "libsignal-protocol",
  "poksho",

@@ -22,8 +22,10 @@ import {
   CreateCallLinkCredentialRequestContext,
   CallLinkSecretParams,
   CallLinkAuthCredentialResponse,
+  BackupAuthCredentialRequestContext,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
+import { Uuid } from '..';
 
 const SECONDS_PER_DAY = 86400;
 
@@ -684,5 +686,116 @@ describe('ZKGroup', () => {
 
     const result = new ProfileKey(profileKey).deriveAccessKey();
     assertArrayEquals(expectedAccessKey, result);
+  });
+
+  describe('BackupAuthCredential', () => {
+    const SERVER_SECRET_RANDOM = hexToBuffer(
+      '6987b92bdea075d3f8b42b39d780a5be0bc264874a18e11cac694e4fe28f6cca'
+    );
+    const BACKUP_KEY = hexToBuffer(
+      'f9abbbffa7d424929765aecc84b604633c55ac1bce82e1ee06b79bc9a5629338'
+    );
+    const TEST_USER_ID: Uuid = 'e74beed0-e70f-4cfd-abbb-7e3eb333bbac';
+
+    const SERIALIZED_BACKUP_ID = hexToBuffer(
+      'e3926f11ddd143e6dd0f20bfcb08349e'
+    );
+    const SERIALIZED_REQUEST_CREDENTIAL = Buffer.from(
+      'AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3994Aersq2yNRgcARBoedBeoEfKIXdty6X7l6+TiPFAqDvojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==',
+      'base64'
+    );
+
+    it('testDeterministic', () => {
+      const receiptLevel = BigInt('1');
+      const context = BackupAuthCredentialRequestContext.create(
+        BACKUP_KEY,
+        TEST_USER_ID
+      );
+      const request = context.getRequest();
+      assertArrayEquals(request.serialize(), SERIALIZED_REQUEST_CREDENTIAL);
+
+      const serverSecretParams =
+        GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
+
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const response = request.issueCredential(
+        startOfDay,
+        receiptLevel,
+        serverSecretParams
+      );
+      const credential = context.receive(
+        response,
+        serverSecretParams.getPublicParams(),
+        receiptLevel
+      );
+      assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
+    });
+
+    it('testIntegration', () => {
+      const receiptLevel = BigInt('10');
+
+      const serverSecretParams =
+        GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      // client
+      const context = BackupAuthCredentialRequestContext.create(
+        BACKUP_KEY,
+        TEST_USER_ID
+      );
+      const request = context.getRequest();
+
+      // issuance server
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const response = request.issueCredentialWithRandom(
+        startOfDay,
+        receiptLevel,
+        serverSecretParams,
+        TEST_ARRAY_32_1
+      );
+
+      // client
+      const credential = context.receive(
+        response,
+        serverPublicParams,
+        receiptLevel
+      );
+      assert.throws(() =>
+        context.receive(
+          response,
+          serverPublicParams,
+          receiptLevel + BigInt('1')
+        )
+      );
+      const presentation = credential.presentWithRandom(
+        serverPublicParams,
+        TEST_ARRAY_32_2
+      );
+
+      // redemption server
+      presentation.verify(serverSecretParams);
+      presentation.verify(
+        serverSecretParams,
+        new Date(1000 * (startOfDay + SECONDS_PER_DAY))
+      );
+
+      // credential should be expired after 2 days
+      assert.throws(() =>
+        presentation.verify(
+          serverSecretParams,
+          new Date(1000 * (startOfDay + 1 + SECONDS_PER_DAY * 2))
+        )
+      );
+
+      // future credential should be invalid
+      assert.throws(() =>
+        presentation.verify(
+          serverSecretParams,
+          new Date(1000 * (startOfDay - 1 - SECONDS_PER_DAY))
+        )
+      );
+    });
   });
 });

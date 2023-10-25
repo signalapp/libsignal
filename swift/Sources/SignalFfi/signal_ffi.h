@@ -1125,6 +1125,30 @@ SignalFfiError *signal_call_link_auth_credential_presentation_verify(SignalBorro
 
 SignalFfiError *signal_call_link_auth_credential_presentation_get_user_id(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN], SignalBorrowedBuffer presentation_bytes);
 
+SignalFfiError *signal_backup_auth_credential_request_context_new(SignalOwnedBuffer *out, const uint8_t (*backup_key)[32], const uint8_t (*uuid)[16]);
+
+SignalFfiError *signal_backup_auth_credential_request_context_check_valid_contents(SignalBorrowedBuffer context_bytes);
+
+SignalFfiError *signal_backup_auth_credential_request_context_get_request(SignalOwnedBuffer *out, SignalBorrowedBuffer context_bytes);
+
+SignalFfiError *signal_backup_auth_credential_request_check_valid_contents(SignalBorrowedBuffer request_bytes);
+
+SignalFfiError *signal_backup_auth_credential_request_issue_deterministic(SignalOwnedBuffer *out, SignalBorrowedBuffer request_bytes, uint64_t redemption_time, uint64_t receipt_level, SignalBorrowedBuffer params_bytes, const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_backup_auth_credential_response_check_valid_contents(SignalBorrowedBuffer response_bytes);
+
+SignalFfiError *signal_backup_auth_credential_request_context_receive_response(SignalOwnedBuffer *out, SignalBorrowedBuffer context_bytes, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer params_bytes, uint64_t expected_receipt_level);
+
+SignalFfiError *signal_backup_auth_credential_check_valid_contents(SignalBorrowedBuffer params_bytes);
+
+SignalFfiError *signal_backup_auth_credential_get_backup_id(uint8_t (*out)[16], SignalBorrowedBuffer credential_bytes);
+
+SignalFfiError *signal_backup_auth_credential_present_deterministic(SignalOwnedBuffer *out, SignalBorrowedBuffer credential_bytes, SignalBorrowedBuffer server_params_bytes, const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_backup_auth_credential_presentation_check_valid_contents(SignalBorrowedBuffer presentation_bytes);
+
+SignalFfiError *signal_backup_auth_credential_presentation_verify(SignalBorrowedBuffer presentation_bytes, uint64_t now, SignalBorrowedBuffer server_params_bytes);
+
 SignalFfiError *signal_verify_signature(bool *out, SignalBorrowedBuffer cert_pem, SignalBorrowedBuffer body, SignalBorrowedBuffer signature, uint64_t current_timestamp);
 
 SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
