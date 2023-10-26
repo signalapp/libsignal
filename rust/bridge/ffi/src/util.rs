@@ -252,8 +252,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Io(_) => SignalErrorCode::IoError,
 
             #[cfg(feature = "signal-media")]
-            SignalFfiError::MediaSanitizeParse(err) => {
-                use signal_media::sanitize::ParseError;
+            SignalFfiError::Mp4SanitizeParse(err) => {
+                use signal_media::sanitize::mp4::ParseError;
                 match err.kind {
                     ParseError::InvalidBoxLayout { .. }
                     | ParseError::InvalidInput { .. }
@@ -263,6 +263,23 @@ impl From<&SignalFfiError> for SignalErrorCode {
                     ParseError::UnsupportedBoxLayout { .. }
                     | ParseError::UnsupportedBox { .. }
                     | ParseError::UnsupportedFormat { .. } => {
+                        SignalErrorCode::UnsupportedMediaInput
+                    }
+                }
+            }
+
+            #[cfg(feature = "signal-media")]
+            SignalFfiError::WebpSanitizeParse(err) => {
+                use signal_media::sanitize::webp::ParseError;
+                match err.kind {
+                    ParseError::InvalidChunkLayout { .. }
+                    | ParseError::InvalidInput { .. }
+                    | ParseError::InvalidVp8lPrefixCode { .. }
+                    | ParseError::MissingRequiredChunk { .. }
+                    | ParseError::TruncatedChunk => SignalErrorCode::InvalidMediaInput,
+
+                    ParseError::UnsupportedChunk { .. }
+                    | ParseError::UnsupportedVp8lVersion { .. } => {
                         SignalErrorCode::UnsupportedMediaInput
                     }
                 }

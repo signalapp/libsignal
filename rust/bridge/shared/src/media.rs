@@ -4,6 +4,7 @@
 //
 
 use std::io;
+use std::io::Read;
 use std::mem::take;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -11,9 +12,10 @@ use std::task::{Context, Poll};
 use futures_util::future::LocalBoxFuture;
 use futures_util::AsyncRead;
 use libsignal_bridge_macros::*;
-use signal_media::sanitize::{sanitize_mp4, AsyncSkip, Error, SanitizedMetadata};
+use signal_media::sanitize::mp4::SanitizedMetadata;
+use signal_media::sanitize::{mp4, webp, AsyncSkip, Skip};
 
-use crate::io::{InputStream, InputStreamRead};
+use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 // Not used by the Java bridge.
 #[allow(unused_imports)]
@@ -23,6 +25,12 @@ use crate::*;
 // Will be unused when building for Node only.
 #[allow(unused_imports)]
 use futures_util::FutureExt;
+
+struct SyncSanitizerInput<'a> {
+    stream: &'a dyn SyncInputStream,
+    pos: u64,
+    len: u64,
+}
 
 struct SanitizerInput<'a> {
     stream: &'a dyn InputStream,
@@ -48,15 +56,26 @@ fn SignalMedia_CheckAvailable() {}
 async fn Mp4Sanitizer_Sanitize(
     input: &mut dyn InputStream,
     len: u64,
-) -> Result<SanitizedMetadata, Error> {
+) -> Result<SanitizedMetadata, mp4::Error> {
     let input = SanitizerInput {
         stream: input,
         state: Default::default(),
         pos: 0,
         len,
     };
-    let metadata = sanitize_mp4(input).await?;
+    let metadata = mp4::sanitize(input).await?;
     Ok(metadata)
+}
+
+#[bridge_fn]
+fn WebpSanitizer_Sanitize(input: &mut dyn SyncInputStream, len: u64) -> Result<(), webp::Error> {
+    let input = SyncSanitizerInput {
+        stream: input,
+        pos: 0,
+        len,
+    };
+    webp::sanitize(input)?;
+    Ok(())
 }
 
 bridge_handle!(SanitizedMetadata);
@@ -74,6 +93,35 @@ fn SanitizedMetadata_GetDataOffset(sanitized: &SanitizedMetadata) -> u64 {
 #[bridge_fn]
 fn SanitizedMetadata_GetDataLen(sanitized: &SanitizedMetadata) -> u64 {
     sanitized.data.len
+}
+
+impl Read for SyncSanitizerInput<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let amount_read = self.stream.read(buf)?;
+        let new_pos = self.pos.checked_add(amount_read as u64);
+        self.pos = new_pos
+            .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "input length overflow"))?;
+        Ok(amount_read)
+    }
+}
+
+impl Skip for SyncSanitizerInput<'_> {
+    fn skip(&mut self, amount: u64) -> io::Result<()> {
+        self.stream.skip(amount)?;
+        self.pos = self
+            .pos
+            .checked_add(amount)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "input length overflow"))?;
+        Ok(())
+    }
+
+    fn stream_position(&mut self) -> io::Result<u64> {
+        Ok(self.pos)
+    }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        Ok(self.len)
+    }
 }
 
 impl AsyncRead for SanitizerInput<'_> {

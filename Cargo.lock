@@ -171,6 +171,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_matches"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
+
+[[package]]
 name = "async-trait"
 version = "0.1.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -300,6 +306,12 @@ name = "bitflags"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
+
+[[package]]
+name = "bitstream-io"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82704769cb85a22df2c54d6bdd6a158b7931d256cf3248a07d6ecbe9d58b31d7"
 
 [[package]]
 name = "blake2"
@@ -1717,6 +1729,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mediasan-common"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eb0015f4b8adfa4609dc68c52461ef8cba6b598cd82d28b0cb1333bda30bcea"
+dependencies = [
+ "bytes",
+ "derive_more",
+ "futures-util",
+ "thiserror",
+]
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1759,9 +1783,9 @@ dependencies = [
 
 [[package]]
 name = "mp4san"
-version = "0.3.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f5a9d33916d7d0afbbdec30dbceabe84640cf354f4f612f25d4a25e0ce9f07"
+checksum = "d87e85bbe9678b0282ffb3f6758140cf4d3481c6aac6e0204fc846ae763505da"
 dependencies = [
  "bytes",
  "derive-where",
@@ -1771,7 +1795,22 @@ dependencies = [
  "dyn-clonable",
  "futures-util",
  "log",
+ "mediasan-common",
+ "mp4san-derive",
+ "paste",
  "thiserror",
+]
+
+[[package]]
+name = "mp4san-derive"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22b4dc034541e3b4faddfcbf8ace28473246299591441e35a46c6c5fbd42d27d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "uuid",
 ]
 
 [[package]]
@@ -1829,6 +1868,16 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "num-integer"
+version = "0.1.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
+dependencies = [
+ "autocfg",
+ "num-traits",
 ]
 
 [[package]]
@@ -2579,8 +2628,10 @@ name = "signal-media"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "mediasan-common",
  "mp4san",
  "thiserror",
+ "webpsan",
 ]
 
 [[package]]
@@ -3136,6 +3187,25 @@ checksum = "9b85cbef8c220a6abc02aefd892dfc0fc23afb1c6a426316ec33253a3877249b"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "webpsan"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dec2958dd1bc6d77ef844ffd836fc11e4ca4ccca7b5d3b1fb188f32a1daa4b14"
+dependencies = [
+ "assert_matches",
+ "bitflags 2.4.0",
+ "bitstream-io",
+ "bytes",
+ "derive_builder",
+ "derive_more",
+ "log",
+ "mediasan-common",
+ "num-integer",
+ "num-traits",
+ "thiserror",
 ]
 
 [[package]]

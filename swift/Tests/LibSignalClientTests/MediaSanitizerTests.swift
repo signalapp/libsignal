@@ -46,6 +46,33 @@ class Mp4SanitizerTests: TestCaseBase {
     }
 }
 
+class WebpSanitizerTests: TestCaseBase {
+    func testEmptyWebp() {
+        let input: [UInt8] = []
+        XCTAssertThrowsError(try sanitizeWebp(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) { error in
+            if case SignalError.invalidMediaInput = error {} else { XCTFail("\(error)") }
+        }
+    }
+
+    func testTruncatedWebp() {
+        let input: [UInt8] = [0, 0, 0, 0]
+        XCTAssertThrowsError(try sanitizeWebp(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) { error in
+            if case SignalError.invalidMediaInput = error {} else { XCTFail("\(error)") }
+        }
+    }
+
+    func testMinimalWebp() throws {
+        let input = webp()
+        try sanitizeWebp(input: SignalInputStreamAdapter(input), len: UInt64(input.count))
+    }
+
+    func testWebpIoError() throws {
+        XCTAssertThrowsError(try sanitizeWebp(input: ErrorInputStream(), len: 1)) { error in
+            if case SignalError.ioError = error {} else { XCTFail("\(error)") }
+        }
+    }
+}
+
 private struct TestIoError: Error {}
 
 private class ErrorInputStream: SignalInputStream {
@@ -104,6 +131,19 @@ private func mdat() -> [UInt8] {
     mdat.append(contentsOf: [0, 0, 0, 8]) // box size
     mdat.append(contentsOf: "mdat".utf8) // box type
     return mdat
+}
+
+private func webp() -> [UInt8] {
+    var webp: [UInt8] = []
+    webp.append(contentsOf: "RIFF") // chunk type
+    webp.append(contentsOf: [20, 0, 0, 0]) // chunk size
+    webp.append(contentsOf: "WEBP") // webp header
+
+    webp.append(contentsOf: "VP8L") // chunk type
+    webp.append(contentsOf: [8, 0, 0, 0]) // chunk size
+    webp.append(contentsOf: [0x2f, 0, 0, 0, 0, 0x88, 0x88, 8]) // VP8L data
+
+    return webp
 }
 
 private func assertSanitizedMetadataEqual(_ sanitized: SanitizedMetadata, dataOffset: Int, dataLen: Int, metadata: (any Sequence<UInt8>)?) {

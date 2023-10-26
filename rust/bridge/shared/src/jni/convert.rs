@@ -10,7 +10,7 @@ use paste::paste;
 use std::convert::TryInto;
 use std::ops::Deref;
 
-use crate::io::InputStream;
+use crate::io::{InputStream, SyncInputStream};
 use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -309,7 +309,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     }
 }
 
-macro_rules! store {
+macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
             impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
@@ -333,13 +333,14 @@ macro_rules! store {
     };
 }
 
-store!(IdentityKeyStore);
-store!(PreKeyStore);
-store!(SenderKeyStore);
-store!(SessionStore);
-store!(SignedPreKeyStore);
-store!(KyberPreKeyStore);
-store!(InputStream);
+bridge_trait!(IdentityKeyStore);
+bridge_trait!(PreKeyStore);
+bridge_trait!(SenderKeyStore);
+bridge_trait!(SessionStore);
+bridge_trait!(SignedPreKeyStore);
+bridge_trait!(KyberPreKeyStore);
+bridge_trait!(InputStream);
+bridge_trait!(SyncInputStream);
 
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {

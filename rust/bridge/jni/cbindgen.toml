@@ -9,6 +9,9 @@ no_includes = true
 [export]
 item_types = ["functions"]
 
+[export.rename]
+"JavaSyncInputStream" = "JavaInputStream"
+
 [fn]
 args = "horizontal"
 sort_by = "Name"

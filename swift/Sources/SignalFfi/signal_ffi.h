@@ -14,6 +14,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdint.h>
 #include <stdlib.h>
 
+/**
+ * The encoded length of a [`FourCC`], in bytes.
+ */
+#define SignalFourCC_ENCODED_LEN 4
+
 #define SignalBoxHeader_MAX_SIZE 32
 
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
@@ -392,6 +397,8 @@ typedef struct {
   SignalRead read;
   SignalSkip skip;
 } SignalInputStream;
+
+typedef SignalInputStream SignalSyncInputStream;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -1205,6 +1212,10 @@ SignalFfiError *signal_signal_media_check_available(void);
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_mp4_sanitizer_sanitize(SignalSanitizedMetadata **out, const SignalInputStream *input, uint64_t len);
+#endif
+
+#if defined(SIGNAL_MEDIA_SUPPORTED)
+SignalFfiError *signal_webp_sanitizer_sanitize(bool *out, const SignalSyncInputStream *input, uint64_t len);
 #endif
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)

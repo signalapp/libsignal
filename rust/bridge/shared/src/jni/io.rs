@@ -11,14 +11,17 @@ use bytemuck::cast_slice_mut;
 
 use super::*;
 
-use crate::io::{InputStream, InputStreamRead};
+use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 pub type JavaInputStream<'a> = JObject<'a>;
+pub type JavaSyncInputStream<'a> = JObject<'a>;
 
 pub struct JniInputStream<'a> {
     env: RefCell<EnvHandle<'a>>,
     stream: &'a JObject<'a>,
 }
+
+pub type JniSyncInputStream<'a> = JniInputStream<'a>;
 
 impl<'a> JniInputStream<'a> {
     pub fn new<'context: 'a>(
@@ -87,5 +90,15 @@ impl InputStream for JniInputStream<'_> {
     async fn skip(&self, amount: u64) -> io::Result<()> {
         self.do_skip(amount)?;
         Ok(())
+    }
+}
+
+impl SyncInputStream for JniInputStream<'_> {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(self.do_read(buf)?)
+    }
+
+    fn skip(&self, amount: u64) -> io::Result<()> {
+        Ok(self.do_skip(amount)?)
     }
 }

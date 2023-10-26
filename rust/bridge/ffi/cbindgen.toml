@@ -38,6 +38,7 @@ renaming_overrides_prefixing = true
 "FfiCiphertextMessageType" = "SignalCiphertextMessageType"
 "FfiContentHint" = "SignalContentHint"
 "FfiInputStreamStruct" = "SignalInputStream"
+"FfiSyncInputStreamStruct" = "SignalSyncInputStream"
 
 "BorrowedSliceOfc_uchar" = "SignalBorrowedBuffer"
 "BorrowedMutableSliceOfc_uchar" = "SignalBorrowedMutableBuffer"
@@ -58,7 +59,7 @@ args = "horizontal"
 
 [parse]
 parse_deps = true
-include = ["libsignal-protocol", "signal-crypto", "signal-pin", "zkgroup", "signal-media", "mp4san"]
+include = ["libsignal-protocol", "signal-crypto", "signal-pin", "zkgroup", "signal-media", "mediasan-common", "mp4san", "webpsan"]
 extra_bindings = ["libsignal-bridge", "zkgroup"]
 
 [parse.expand]

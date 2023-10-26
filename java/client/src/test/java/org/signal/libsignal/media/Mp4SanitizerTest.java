@@ -5,7 +5,7 @@
 
 package org.signal.libsignal.media;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThrows;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,25 +30,21 @@ public class Mp4SanitizerTest {
   }
 
   @Test
-  public void testEmptyMp4() throws Exception {
+  public void testEmptyMp4() {
     byte[] data = new byte[] {};
-    try {
-      Mp4Sanitizer.sanitize(new ByteArrayInputStream(data), data.length);
-      fail("empty mp4 accepted");
-    } catch (ParseException e) {
-      // good
-    }
+    assertThrows(
+        "empty mp4 accepted",
+        ParseException.class,
+        () -> Mp4Sanitizer.sanitize(new ByteArrayInputStream(data), data.length));
   }
 
   @Test
-  public void testTruncatedMp4() throws Exception {
+  public void testTruncatedMp4() {
     byte[] data = new byte[] {0, 0, 0, 0};
-    try {
-      Mp4Sanitizer.sanitize(new ByteArrayInputStream(data), data.length);
-      fail("truncated mp4 accepted");
-    } catch (ParseException e) {
-      // good
-    }
+    assertThrows(
+        "truncated mp4 accepted",
+        ParseException.class,
+        () -> Mp4Sanitizer.sanitize(new ByteArrayInputStream(data), data.length));
   }
 
   @Test
@@ -77,18 +73,11 @@ public class Mp4SanitizerTest {
 
   @Test
   public void testMp4IoError() throws Exception {
-    InputStream ioErrorStream =
-        new InputStream() {
-          @Override
-          public int read() throws IOException {
-            throw new IOException("test io error");
-          }
-        };
-    try {
-      Mp4Sanitizer.sanitize(ioErrorStream, 1);
-      fail("InputStream exception not propagated");
-    } catch (IOException e) {
-      // good
+    try (InputStream ioErrorStream = new IoErrorInputStream()) {
+      assertThrows(
+          "InputStream exception not propagated",
+          IOException.class,
+          () -> Mp4Sanitizer.sanitize(ioErrorStream, 1));
     }
   }
 
@@ -153,5 +142,12 @@ public class Mp4SanitizerTest {
     Assert.assertArrayEquals(sanitized.getSanitizedMetadata(), metadata);
     Assert.assertEquals(sanitized.getDataOffset(), dataOffset);
     Assert.assertEquals(sanitized.getDataLength(), dataLength);
+  }
+
+  private static class IoErrorInputStream extends InputStream {
+    @Override
+    public int read() throws IOException {
+      throw new IOException("test io error");
+    }
   }
 }

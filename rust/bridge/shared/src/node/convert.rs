@@ -12,7 +12,7 @@ use std::hash::Hasher;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
-use crate::io::InputStream;
+use crate::io::{InputStream, SyncInputStream};
 use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -424,6 +424,13 @@ impl<'a> AssumedImmutableBuffer<'a> {
     }
 }
 
+impl Deref for AssumedImmutableBuffer<'_> {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        self.buffer
+    }
+}
+
 /// Logs an error (but does not panic) if the buffer's contents have changed.
 impl Drop for AssumedImmutableBuffer<'_> {
     fn drop(&mut self) {
@@ -532,7 +539,7 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
-macro_rules! store {
+macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
             impl<'a> AsyncArgTypeInfo<'a> for &'a mut dyn $name {
@@ -552,13 +559,33 @@ macro_rules! store {
     };
 }
 
-store!(IdentityKeyStore);
-store!(PreKeyStore);
-store!(SenderKeyStore);
-store!(SessionStore);
-store!(SignedPreKeyStore);
-store!(KyberPreKeyStore);
-store!(InputStream);
+bridge_trait!(IdentityKeyStore);
+bridge_trait!(PreKeyStore);
+bridge_trait!(SenderKeyStore);
+bridge_trait!(SessionStore);
+bridge_trait!(SignedPreKeyStore);
+bridge_trait!(KyberPreKeyStore);
+bridge_trait!(InputStream);
+
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for &'storage mut dyn SyncInputStream
+{
+    type ArgType = JsBuffer;
+    type StoredType = NodeSyncInputStream<'context>;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(NodeSyncInputStream::new(AssumedImmutableBuffer::new(
+            cx, foreign,
+        )))
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+    }
+}
 
 impl<'a> ResultTypeInfo<'a> for bool {
     type ResultType = JsBoolean;

@@ -35,7 +35,9 @@ pub enum SignalFfiError {
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     #[cfg(feature = "signal-media")]
-    MediaSanitizeParse(signal_media::sanitize::ParseErrorReport),
+    Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
+    #[cfg(feature = "signal-media")]
+    WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -64,8 +66,12 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
             #[cfg(feature = "signal-media")]
-            SignalFfiError::MediaSanitizeParse(e) => {
-                write!(f, "Media sanitizer failed to parse media file: {}", e)
+            SignalFfiError::Mp4SanitizeParse(e) => {
+                write!(f, "Mp4 sanitizer failed to parse mp4 file: {}", e)
+            }
+            #[cfg(feature = "signal-media")]
+            SignalFfiError::WebpSanitizeParse(e) => {
+                write!(f, "WebP sanitizer failed to parse webp file: {}", e)
             }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
@@ -143,12 +149,23 @@ impl From<IoError> for SignalFfiError {
 }
 
 #[cfg(feature = "signal-media")]
-impl From<signal_media::sanitize::Error> for SignalFfiError {
-    fn from(e: signal_media::sanitize::Error) -> SignalFfiError {
-        use signal_media::sanitize::Error;
+impl From<signal_media::sanitize::mp4::Error> for SignalFfiError {
+    fn from(e: signal_media::sanitize::mp4::Error) -> SignalFfiError {
+        use signal_media::sanitize::mp4::Error;
         match e {
             Error::Io(e) => Self::Io(e.into()),
-            Error::Parse(e) => Self::MediaSanitizeParse(e),
+            Error::Parse(e) => Self::Mp4SanitizeParse(e),
+        }
+    }
+}
+
+#[cfg(feature = "signal-media")]
+impl From<signal_media::sanitize::webp::Error> for SignalFfiError {
+    fn from(e: signal_media::sanitize::webp::Error) -> SignalFfiError {
+        use signal_media::sanitize::webp::Error;
+        match e {
+            Error::Io(e) => Self::Io(e.into()),
+            Error::Parse(e) => Self::WebpSanitizeParse(e),
         }
     }
 }

@@ -35,7 +35,9 @@ pub enum SignalJniError {
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     #[cfg(feature = "signal-media")]
-    MediaSanitizeParse(signal_media::sanitize::ParseErrorReport),
+    Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
+    #[cfg(feature = "signal-media")]
+    WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -63,7 +65,9 @@ impl fmt::Display for SignalJniError {
             SignalJniError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalJniError::Io(e) => write!(f, "{}", e),
             #[cfg(feature = "signal-media")]
-            SignalJniError::MediaSanitizeParse(e) => write!(f, "{}", e),
+            SignalJniError::Mp4SanitizeParse(e) => write!(f, "{}", e),
+            #[cfg(feature = "signal-media")]
+            SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -154,12 +158,23 @@ impl From<IoError> for SignalJniError {
 }
 
 #[cfg(feature = "signal-media")]
-impl From<signal_media::sanitize::Error> for SignalJniError {
-    fn from(e: signal_media::sanitize::Error) -> Self {
-        use signal_media::sanitize::Error;
+impl From<signal_media::sanitize::mp4::Error> for SignalJniError {
+    fn from(e: signal_media::sanitize::mp4::Error) -> Self {
+        use signal_media::sanitize::mp4::Error;
         match e {
             Error::Io(e) => Self::Io(e.into()),
-            Error::Parse(e) => Self::MediaSanitizeParse(e),
+            Error::Parse(e) => Self::Mp4SanitizeParse(e),
+        }
+    }
+}
+
+#[cfg(feature = "signal-media")]
+impl From<signal_media::sanitize::webp::Error> for SignalJniError {
+    fn from(e: signal_media::sanitize::webp::Error) -> Self {
+        use signal_media::sanitize::webp::Error;
+        match e {
+            Error::Io(e) => Self::Io(e.into()),
+            Error::Parse(e) => Self::WebpSanitizeParse(e),
         }
     }
 }

@@ -446,7 +446,7 @@ where
         }
 
         #[cfg(feature = "signal-media")]
-        SignalJniError::MediaSanitizeParse(_) => {
+        SignalJniError::Mp4SanitizeParse(_) | SignalJniError::WebpSanitizeParse(_) => {
             jni_class_name!(org.signal.libsignal.media.ParseException)
         }
     };

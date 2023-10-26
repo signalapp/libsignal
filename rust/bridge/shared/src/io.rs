@@ -54,3 +54,28 @@ pub trait InputStream {
     /// reached, an error must be returned.
     async fn skip(&self, amount: u64) -> io::Result<()>;
 }
+
+/// An input stream of bytes.
+pub trait SyncInputStream {
+    /// Read an amount of bytes from the input stream.
+    ///
+    /// The actual amount of bytes returned may be smaller than the buffer provided by the caller, for any reason;
+    /// however, reading zero bytes always indicates that the end of the stream has been reached.
+    ///
+    /// # Returns
+    ///
+    /// The number of bytes read and copied into the provided buffer `buf`.
+    ///
+    /// # Errors
+    ///
+    /// If an I/O error occurred while reading from the input, an [`io::Error`] is returned.
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize>;
+
+    /// Skip an amount of bytes in the input stream.
+    ///
+    /// # Errors
+    ///
+    /// If the requested number of bytes could not be skipped for any reason, including if the end of stream was
+    /// reached, an error must be returned.
+    fn skip(&self, amount: u64) -> io::Result<()>;
+}

@@ -51,6 +51,9 @@ export abstract class InputStream {
   _skip(amount: number): Promise<void>;
 }
 
+export abstract class SyncInputStream extends Buffer {
+}
+
 interface Wrapper<T> {
   readonly _nativeHandle: T
 }

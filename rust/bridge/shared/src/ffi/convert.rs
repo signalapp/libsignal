@@ -10,7 +10,7 @@ use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ops::Deref;
 
-use crate::io::InputStream;
+use crate::io::{InputStream, SyncInputStream};
 use crate::support::{FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -279,7 +279,7 @@ impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     }
 }
 
-macro_rules! store {
+macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
@@ -300,13 +300,14 @@ macro_rules! store {
     };
 }
 
-store!(IdentityKeyStore);
-store!(PreKeyStore);
-store!(SenderKeyStore);
-store!(SessionStore);
-store!(SignedPreKeyStore);
-store!(KyberPreKeyStore);
-store!(InputStream);
+bridge_trait!(IdentityKeyStore);
+bridge_trait!(PreKeyStore);
+bridge_trait!(SenderKeyStore);
+bridge_trait!(SessionStore);
+bridge_trait!(SignedPreKeyStore);
+bridge_trait!(KyberPreKeyStore);
+bridge_trait!(InputStream);
+bridge_trait!(SyncInputStream);
 
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where

@@ -6,6 +6,7 @@
 import { assert } from 'chai';
 import { InputStream } from '../io';
 import * as Mp4Sanitizer from '../Mp4Sanitizer';
+import * as WebpSanitizer from '../WebpSanitizer';
 import { SanitizedMetadata } from '../Mp4Sanitizer';
 import * as util from './util';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
@@ -84,14 +85,45 @@ describe('Mp4Sanitizer', () => {
   });
 });
 
+describe('WebpSanitizer', () => {
+  describe('sanitize', () => {
+    it('throws on empty input', () => {
+      const input = new Uint8Array([]);
+      try {
+        WebpSanitizer.sanitize(Buffer.from(input));
+        assert.fail('did not throw');
+      } catch (e) {
+        assert(e instanceof LibSignalErrorBase);
+        assert.equal(e.code, ErrorCode.InvalidMediaInput);
+      }
+    });
+
+    it('throws on truncated input', () => {
+      const input = new Uint8Array([0, 0, 0, 0]);
+      try {
+        WebpSanitizer.sanitize(Buffer.from(input));
+        assert.fail('did not throw');
+      } catch (e) {
+        assert(e instanceof LibSignalErrorBase);
+        assert.equal(e.code, ErrorCode.InvalidMediaInput);
+      }
+    });
+
+    it('accepts a minimal webp', () => {
+      const input = new Uint8Array(webp());
+      WebpSanitizer.sanitize(Buffer.from(input));
+    });
+  });
+});
+
 function ftyp(): Array<number> {
   const array: number[] = [];
   return array.concat(
     [0, 0, 0, 20], // box size
-    boxType('ftyp'), // box type
-    boxType('isom'), // major_brand
+    fourcc('ftyp'), // box type
+    fourcc('isom'), // major_brand
     [0, 0, 0, 0], // minor_version
-    boxType('isom') // compatible_brands
+    fourcc('isom') // compatible_brands
   );
 }
 
@@ -100,27 +132,27 @@ function moov(): Array<number> {
   return array.concat(
     // moov box header
     [0, 0, 0, 56], // box size
-    boxType('moov'), // box type
+    fourcc('moov'), // box type
 
     // trak box (inside moov box)
     [0, 0, 0, 48], // box size
-    boxType('trak'), // box type
+    fourcc('trak'), // box type
 
     // mdia box (inside trak box)
     [0, 0, 0, 40], // box size
-    boxType('mdia'), // box type
+    fourcc('mdia'), // box type
 
     // minf box (inside mdia box)
     [0, 0, 0, 32], // box size
-    boxType('minf'), // box type
+    fourcc('minf'), // box type
 
     // stbl box (inside minf box)
     [0, 0, 0, 24], // box size
-    boxType('stbl'), // box type
+    fourcc('stbl'), // box type
 
     // stco box (inside stbl box)
     [0, 0, 0, 16], // box size
-    boxType('stco'), // box type
+    fourcc('stco'), // box type
     [0, 0, 0, 0], // box version & flags
     [0, 0, 0, 0] // entry count
   );
@@ -131,16 +163,29 @@ function mdat(): Array<number> {
   return array.concat(
     // mdat box
     [0, 0, 0, 8], // box size
-    boxType('mdat') // box type
+    fourcc('mdat') // box type
   );
 }
 
-function boxType(boxTypeStr: string): Array<number> {
+function webp(): Array<number> {
+  const array: number[] = [];
+  return array.concat(
+    fourcc('RIFF'), // chunk type
+    [20, 0, 0, 0], // chunk size
+    fourcc('WEBP'), // webp header
+
+    fourcc('VP8L'), // chunk type
+    [8, 0, 0, 0], // chunk size
+    [0x2f, 0, 0, 0, 0, 0x88, 0x88, 8] // VP8L data
+  );
+}
+
+function fourcc(fourccStr: string): Array<number> {
   return [
-    boxTypeStr.charCodeAt(0),
-    boxTypeStr.charCodeAt(1),
-    boxTypeStr.charCodeAt(2),
-    boxTypeStr.charCodeAt(3),
+    fourccStr.charCodeAt(0),
+    fourccStr.charCodeAt(1),
+    fourccStr.charCodeAt(2),
+    fourccStr.charCodeAt(3),
   ];
 }
 
