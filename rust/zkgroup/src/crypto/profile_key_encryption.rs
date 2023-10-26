@@ -10,6 +10,7 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::profile_key_struct;
 use curve25519_dalek::ristretto::RistrettoPoint;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
@@ -81,7 +82,7 @@ impl ProfileKeyEncryptionDomain {
 
         let target_M3 = key_pair.a1.invert() * ciphertext.as_points()[0];
 
-        let mut retval: profile_key_struct::ProfileKeyStruct = Default::default();
+        let mut retval: profile_key_struct::ProfileKeyStruct = PartialDefault::partial_default();
         let mut n_found = 0;
         #[allow(clippy::needless_range_loop)]
         for i in 0..8 {
