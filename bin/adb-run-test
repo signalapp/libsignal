@@ -1,0 +1,20 @@
+#!/bin/sh
+
+#
+# Copyright 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+set -e
+
+ADB=${ADB:-adb}
+
+executable="$1"
+shift
+basename=$(basename "$executable")
+
+# We have to use /data/local/tmp on modern Android systems;
+# other locations don't allow executables or don't allow non-root adb access by default.
+
+"$ADB" push -z any "$executable" "/data/local/tmp/$basename"
+"$ADB" shell "cd /data/local/tmp/ && chmod 744 $basename && ./$basename" "$@"
