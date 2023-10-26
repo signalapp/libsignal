@@ -20,10 +20,10 @@ use zkcredential::attributes::Attribute;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
+        crate::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct SystemParams {
     pub(crate) G_b1: RistrettoPoint,
     pub(crate) G_b2: RistrettoPoint,

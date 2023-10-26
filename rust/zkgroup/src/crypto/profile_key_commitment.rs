@@ -18,10 +18,10 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
+        crate::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct SystemParams {
     pub(crate) G_j1: RistrettoPoint,
     pub(crate) G_j2: RistrettoPoint,

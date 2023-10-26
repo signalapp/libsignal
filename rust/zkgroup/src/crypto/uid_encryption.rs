@@ -11,16 +11,17 @@ use crate::crypto::uid_struct;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use lazy_static::lazy_static;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 use zkcredential::attributes::Attribute;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
-        bincode::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
+        crate::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct SystemParams {
     pub(crate) G_a1: RistrettoPoint,
     pub(crate) G_a2: RistrettoPoint,

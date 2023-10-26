@@ -28,7 +28,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
-        bincode::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap();
+        crate::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap();
 }
 
 const NUM_SUPPORTED_ATTRS: usize = 6;
