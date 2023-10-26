@@ -22,6 +22,11 @@ sourceSets {
             srcDir '../shared/resources'
         }
     }
+    test {
+        java {
+            srcDir '../shared/test/java'
+        }
+    }
 }
 
 dependencies {

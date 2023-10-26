@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-package org.signal.libsignal.zkgroup.integrationtests;
+package org.signal.libsignal.zkgroup;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -13,12 +13,14 @@ import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
-import org.signal.libsignal.zkgroup.GenericServerPublicParams;
-import org.signal.libsignal.zkgroup.GenericServerSecretParams;
-import org.signal.libsignal.zkgroup.SecureRandomTest;
-import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.backups.*;
 
+/**
+ * Tests the BackupAuthCredential
+ *
+ * <p>Normally, we'd like to run this test on both android and non-android platforms, but Android 21
+ * doesn't have java.util.Base64 and non-android hosts don't have android.util.Base64
+ */
 public final class BackupAuthTest extends SecureRandomTest {
 
   private static final UUID TEST_USER_ID = UUID.fromString("e74beed0-e70f-4cfd-abbb-7e3eb333bbac");
