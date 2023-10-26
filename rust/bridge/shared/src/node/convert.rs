@@ -801,7 +801,9 @@ full_range_integer!(i32);
 
 impl<T> SimpleArgTypeInfo for Serialized<T>
 where
-    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+    T: FixedLengthBincodeSerializable
+        + for<'a> serde::Deserialize<'a>
+        + partial_default::PartialDefault,
 {
     type ArgType = JsBuffer;
 
@@ -812,7 +814,7 @@ where
             "{} should have been validated on creation",
             std::any::type_name::<T>()
         );
-        let result: T = bincode::deserialize(bytes).unwrap_or_else(|_| {
+        let result: T = zkgroup::deserialize(bytes).unwrap_or_else(|_| {
             panic!(
                 "{} should have been validated on creation",
                 std::any::type_name::<T>()
@@ -829,7 +831,7 @@ where
     type ResultType = JsBuffer;
 
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        let result = zkgroup::serialize(self.deref());
         result.convert_into(cx)
     }
 }

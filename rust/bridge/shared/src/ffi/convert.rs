@@ -482,13 +482,15 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
 
 impl<T> SimpleArgTypeInfo for Serialized<T>
 where
-    T: FixedLengthBincodeSerializable + for<'a> serde::Deserialize<'a>,
+    T: FixedLengthBincodeSerializable
+        + for<'a> serde::Deserialize<'a>
+        + partial_default::PartialDefault,
 {
     type ArgType = *const T::Array;
 
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let array = unsafe { foreign.as_ref() }.ok_or(SignalFfiError::NullPointer)?;
-        let result: T = bincode::deserialize(array.as_ref()).unwrap_or_else(|_| {
+        let result: T = zkgroup::deserialize(array.as_ref()).unwrap_or_else(|_| {
             panic!(
                 "{} should have been validated on creation",
                 std::any::type_name::<T>()
@@ -505,7 +507,7 @@ where
     type ResultType = T::Array;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        let result = zkgroup::serialize(self.deref());
         Ok(result.as_slice().try_into().expect("wrong serialized size"))
     }
 }

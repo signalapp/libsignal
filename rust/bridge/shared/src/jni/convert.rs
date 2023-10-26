@@ -763,7 +763,9 @@ impl<'a> ResultTypeInfo<'a> for Aci {
 
 impl<'a, T> SimpleArgTypeInfo<'a> for Serialized<T>
 where
-    T: FixedLengthBincodeSerializable + for<'x> serde::Deserialize<'x>,
+    T: FixedLengthBincodeSerializable
+        + for<'x> serde::Deserialize<'x>
+        + partial_default::PartialDefault,
 {
     type ArgType = JByteArray<'a>;
 
@@ -779,7 +781,7 @@ where
             "{} should have been validated on creation",
             std::any::type_name::<T>()
         );
-        let result: T = bincode::deserialize(bytes).unwrap_or_else(|_| {
+        let result: T = zkgroup::deserialize(bytes).unwrap_or_else(|_| {
             panic!(
                 "{} should have been validated on creation",
                 std::any::type_name::<T>()
@@ -831,7 +833,7 @@ where
     type ResultType = JByteArray<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        let result = bincode::serialize(self.deref()).expect("can always serialize a value");
+        let result = zkgroup::serialize(self.deref());
         result.convert_into(env)
     }
 }

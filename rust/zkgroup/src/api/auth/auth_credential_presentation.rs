@@ -74,14 +74,13 @@ impl AnyAuthCredentialPresentation {
                 Err(ZkGroupDeserializationFailure)
             }
             PRESENTATION_VERSION_2 => {
-                match bincode::deserialize::<AuthCredentialPresentationV2>(presentation_bytes) {
+                match crate::deserialize::<AuthCredentialPresentationV2>(presentation_bytes) {
                     Ok(presentation) => Ok(AnyAuthCredentialPresentation::V2(presentation)),
                     Err(_) => Err(ZkGroupDeserializationFailure),
                 }
             }
             PRESENTATION_VERSION_3 => {
-                match bincode::deserialize::<AuthCredentialWithPniPresentation>(presentation_bytes)
-                {
+                match crate::deserialize::<AuthCredentialWithPniPresentation>(presentation_bytes) {
                     Ok(presentation) => Ok(AnyAuthCredentialPresentation::V3(presentation)),
                     Err(_) => Err(ZkGroupDeserializationFailure),
                 }
