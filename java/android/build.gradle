@@ -35,6 +35,7 @@ android {
             java {
                 // Also run all the Android-agnostic tests by default.
                 srcDir '../client/src/test/java'
+                srcDir '../shared/test/java'
             }
             resources {
                 srcDir '../client/src/test/resources'
