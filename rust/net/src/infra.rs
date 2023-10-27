@@ -51,8 +51,8 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 }
 
 /// Contains all information required to establish an HTTP connection to the remote endpoint:
-/// - `sni` value to be used in TLS,
-/// - `host` value to be used for DNS resolution an in the HTTP requests headers,
+/// - `sni` value to be used in TLS and for DNS resolution.
+/// - `host` value to be used in the HTTP request's headers,
 /// - `port` to connect to,
 /// - `http_request_decorator`, a [HttpRequestDecorator] to apply to all HTTP requests,
 /// - `certs`, [RootCertificates] representing trusted certificates,

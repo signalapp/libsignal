@@ -9,6 +9,7 @@ use std::fmt::Display;
 pub trait LogSafeDisplay: Display {}
 
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum NetError {
     /// Failed to load certificates
     CertError,

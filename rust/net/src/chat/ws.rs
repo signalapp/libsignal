@@ -74,7 +74,7 @@ impl ServerRequest {
 #[derive(Debug, Clone)]
 pub struct ChatOverWebsocketConfig {
     pub ws_config: WebSocketConfig,
-    pub endpoint: String,
+    pub endpoint: http::uri::PathAndQuery,
     pub max_connection_time: Duration,
     pub keep_alive_interval: Duration,
     pub max_idle_time: Duration,
@@ -86,7 +86,7 @@ impl Default for ChatOverWebsocketConfig {
     fn default() -> Self {
         Self {
             ws_config: WebSocketConfig::default(),
-            endpoint: WEB_SOCKET_PATH.to_string(),
+            endpoint: http::uri::PathAndQuery::from_static(WEB_SOCKET_PATH),
             max_connection_time: Duration::from_secs(1),
             keep_alive_interval: Duration::from_secs(5),
             max_idle_time: Duration::from_secs(15),
@@ -125,7 +125,7 @@ impl ServiceConnector for ChatOverWebSocketServiceConnector {
     ) -> Result<Self::Channel, Self::Error> {
         let connect_future = connect_websocket(
             connection_params,
-            self.config.endpoint.as_str(),
+            self.config.endpoint.clone(),
             self.config.ws_config,
         )
         .map_err(|_| ChatNetworkError::FailedToConnectWebSocket);

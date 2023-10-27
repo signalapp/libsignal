@@ -176,20 +176,38 @@ impl Handshake {
     }
 }
 
-#[cfg(test)]
-mod tests {
+pub mod testutil {
     use std::time::{Duration, SystemTime};
 
     use super::*;
 
-    fn handshake_from_tests_data() -> Result<Handshake> {
-        // Read test data files, de-hex-stringing as necessary.
-        const EVIDENCE_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.evidence");
-        const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.endorsements");
+    pub const EVIDENCE_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.evidence");
+    pub const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.endorsements");
+
+    pub fn mrenclave_bytes() -> Vec<u8> {
         let mut mrenclave_bytes = vec![0u8; 32];
         let mrenclave_str = include_bytes!("../tests/data/cds2_test.mrenclave");
         hex::decode_to_slice(mrenclave_str, &mut mrenclave_bytes)
             .expect("Failed to decode mrenclave from hex string");
+        mrenclave_bytes
+    }
+
+    pub fn private_key() -> [u8; 32] {
+        let mut private_key = [0; 32];
+        let private_key_hex = include_bytes!("../tests/data/cds2_test.privatekey");
+        hex::decode_to_slice(private_key_hex, &mut private_key)
+            .expect("Failed to decode private key from hex string");
+        private_key
+    }
+
+    pub fn valid_start() -> SystemTime {
+        // the test pck crl starts being valid at Jun 21 21:15:11 2022 GMT
+        SystemTime::UNIX_EPOCH + Duration::from_secs(1655846111)
+    }
+
+    pub fn handshake_from_tests_data() -> Result<Handshake> {
+        // Read test data files, de-hex-stringing as necessary.
+        let mrenclave_bytes = mrenclave_bytes();
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
         Handshake::new(
             &mrenclave_bytes,
@@ -199,29 +217,30 @@ mod tests {
             current_time,
         )
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, SystemTime};
+
+    use super::*;
 
     #[test]
     fn test_clock_skew() {
-        const EVIDENCE_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.evidence");
-        const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.endorsements");
-        let mut mrenclave_bytes = vec![0u8; 32];
-        let mrenclave_str = include_bytes!("../tests/data/cds2_test.mrenclave");
-        hex::decode_to_slice(mrenclave_str, &mut mrenclave_bytes)
-            .expect("Failed to decode mrenclave from hex string");
+        let mrenclave_bytes = testutil::mrenclave_bytes();
 
         let test = |time: SystemTime, expect_success: bool| {
             let result = Handshake::new(
                 &mrenclave_bytes,
-                EVIDENCE_BYTES,
-                ENDORSEMENT_BYTES,
+                testutil::EVIDENCE_BYTES,
+                testutil::ENDORSEMENT_BYTES,
                 &[],
                 time,
             );
             assert_eq!(result.is_ok(), expect_success);
         };
 
-        // the test pck crl starts being valid at Jun 21 21:15:11 2022 GMT
-        let valid_start = SystemTime::UNIX_EPOCH + Duration::from_secs(1655846111);
+        let valid_start = testutil::valid_start();
 
         // and expires 30 days later on Jul 21 21:15:11 2022 GMT
         let valid_end = valid_start + Duration::from_secs(30 * 24 * 60 * 60);
@@ -245,18 +264,14 @@ mod tests {
     #[test]
     fn test_happy_path() -> Result<()> {
         // Spin up a handshake for the server-side.
-        let mut private_key = [0u8; 32];
-        let private_key_hex = include_bytes!("../tests/data/cds2_test.privatekey");
-        hex::decode_to_slice(private_key_hex, &mut private_key)
-            .expect("Failed to decode private key from hex string");
-
+        let private_key = testutil::private_key();
         // Start the server with a known private key (K of NK).
         let mut server_hs = snow::Builder::new(client_connection::NOISE_PATTERN.parse()?)
             .local_private_key(&private_key)
             .build_responder()?;
 
         // Spin up the client connection establishment.
-        let establishment = handshake_from_tests_data()?;
+        let establishment = testutil::handshake_from_tests_data()?;
 
         // Give the establishment message to the server.
         let read_size = server_hs.read_message(establishment.initial_request(), &mut [])?;
@@ -303,7 +318,7 @@ mod tests {
             .build_responder()?;
 
         // Spin up the client connection establishment.
-        let establishment = handshake_from_tests_data()?;
+        let establishment = testutil::handshake_from_tests_data()?;
 
         // Establishment message fails for key mismatch.
         let mut payload = vec![0u8; 32];
@@ -325,7 +340,7 @@ mod tests {
             .build_responder()?;
 
         // Spin up the client connection establishment.
-        let establishment = handshake_from_tests_data()?;
+        let establishment = testutil::handshake_from_tests_data()?;
 
         // Establishment message fails for key mismatch.
         let mut payload = vec![0u8; 32];

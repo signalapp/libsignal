@@ -17,15 +17,19 @@ pub struct CdsiRequest<'a> {
     password: &'a str,
 }
 
+impl CdsiRequest<'_> {
+    pub(crate) fn uri(&self) -> String {
+        format!(
+            "wss://{}/v1/{}/discovery",
+            self.base_url,
+            hex::encode(self.mr_enclave)
+        )
+    }
+}
+
 impl IntoClientRequest for CdsiRequest<'_> {
     fn into_client_request(self) -> tungstenite::Result<Request> {
-        let url = format!(
-            "wss://{}/{}/{}/{}",
-            &self.base_url,
-            "v1",
-            &hex::encode(self.mr_enclave),
-            "discovery",
-        );
+        let url = self.uri();
         let auth = basic_authorization(self.username, self.password);
         let mut request = url.into_client_request()?;
         let headers = request.headers_mut();

@@ -6,6 +6,7 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [dependencies]
+attest = { path = "../attest" }
 async-trait = "0.1.41"
 base64 = "0.21"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
@@ -37,4 +38,6 @@ prost-build = "0.12.1"
 assert_matches = "1.5.0"
 env_logger = "0.10.0"
 rand = "0.8.5"
+snow = "0.9.3"
 tokio = { version = "1", features = ["test-util", "rt-multi-thread"] }
+tokio-stream = "0.1.14"

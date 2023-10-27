@@ -1603,6 +1603,7 @@ version = "0.1.0"
 dependencies = [
  "assert_matches",
  "async-trait",
+ "attest",
  "base64",
  "boring",
  "bytes",
@@ -1622,9 +1623,11 @@ dependencies = [
  "prost-build",
  "rand",
  "rustls-native-certs",
+ "snow",
  "thiserror",
  "tokio",
  "tokio-boring",
+ "tokio-stream",
  "tokio-tungstenite",
  "tokio-util",
  "tungstenite",
@@ -2882,6 +2885,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.28",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "397c988d37662c7dda6d2208364a706264bf3d6138b11d436cbac0ad38832842"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]
