@@ -62,7 +62,6 @@ pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::util::testio::read_test_file;
     use std::time::{Duration, SystemTime};
 
     #[test]
@@ -71,8 +70,8 @@ mod test {
         let mrenclave = hex!("39d78f17f8aa9a8e9cdaf16595947a057bac21f014d1abfd6a99b2dfd4e18d1d");
 
         let attestation_msg = cds2::ClientHandshakeStart {
-            evidence: read_test_file("tests/data/cds2_test.evidence"),
-            endorsement: read_test_file("tests/data/cds2_test.endorsements"),
+            evidence: include_bytes!("../tests/data/cds2_test.evidence").to_vec(),
+            endorsement: include_bytes!("../tests/data/cds2_test.endorsements").to_vec(),
             ..Default::default()
         };
 

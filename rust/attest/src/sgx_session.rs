@@ -178,24 +178,23 @@ impl Handshake {
 
 #[cfg(test)]
 mod tests {
-    use crate::util::testio::read_test_file;
     use std::time::{Duration, SystemTime};
 
     use super::*;
 
     fn handshake_from_tests_data() -> Result<Handshake> {
         // Read test data files, de-hex-stringing as necessary.
-        let evidence_bytes = read_test_file("tests/data/cds2_test.evidence");
-        let endorsement_bytes = read_test_file("tests/data/cds2_test.endorsements");
+        const EVIDENCE_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.evidence");
+        const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.endorsements");
         let mut mrenclave_bytes = vec![0u8; 32];
-        let mrenclave_str = read_test_file("tests/data/cds2_test.mrenclave");
+        let mrenclave_str = include_bytes!("../tests/data/cds2_test.mrenclave");
         hex::decode_to_slice(mrenclave_str, &mut mrenclave_bytes)
             .expect("Failed to decode mrenclave from hex string");
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
         Handshake::new(
             &mrenclave_bytes,
-            &evidence_bytes,
-            &endorsement_bytes,
+            EVIDENCE_BYTES,
+            ENDORSEMENT_BYTES,
             &[],
             current_time,
         )
@@ -203,18 +202,18 @@ mod tests {
 
     #[test]
     fn test_clock_skew() {
-        let evidence_bytes = read_test_file("tests/data/cds2_test.evidence");
-        let endorsement_bytes = read_test_file("tests/data/cds2_test.endorsements");
+        const EVIDENCE_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.evidence");
+        const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../tests/data/cds2_test.endorsements");
         let mut mrenclave_bytes = vec![0u8; 32];
-        let mrenclave_str = read_test_file("tests/data/cds2_test.mrenclave");
+        let mrenclave_str = include_bytes!("../tests/data/cds2_test.mrenclave");
         hex::decode_to_slice(mrenclave_str, &mut mrenclave_bytes)
             .expect("Failed to decode mrenclave from hex string");
 
         let test = |time: SystemTime, expect_success: bool| {
             let result = Handshake::new(
                 &mrenclave_bytes,
-                &evidence_bytes,
-                &endorsement_bytes,
+                EVIDENCE_BYTES,
+                ENDORSEMENT_BYTES,
                 &[],
                 time,
             );
@@ -247,7 +246,7 @@ mod tests {
     fn test_happy_path() -> Result<()> {
         // Spin up a handshake for the server-side.
         let mut private_key = [0u8; 32];
-        let private_key_hex = read_test_file("tests/data/cds2_test.privatekey");
+        let private_key_hex = include_bytes!("../tests/data/cds2_test.privatekey");
         hex::decode_to_slice(private_key_hex, &mut private_key)
             .expect("Failed to decode private key from hex string");
 

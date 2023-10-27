@@ -99,6 +99,24 @@ pub(crate) fn read_array<const N: usize>(bytes: &mut &[u8]) -> [u8; N] {
     res
 }
 
+#[derive(Debug)]
+pub(crate) struct FailedToConvertToAsn1Time;
+
+pub(crate) fn system_time_to_asn1_time(
+    timestamp: SystemTime,
+) -> Result<Asn1Time, FailedToConvertToAsn1Time> {
+    let epoch_duration = timestamp
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map_err(|_| FailedToConvertToAsn1Time)?;
+
+    let t: time_t = epoch_duration
+        .as_secs()
+        .try_into()
+        .map_err(|_| FailedToConvertToAsn1Time)?;
+
+    Asn1Time::from_unix(t).map_err(|_| FailedToConvertToAsn1Time)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -135,36 +153,5 @@ mod test {
 
         assert_eq!(&[0u8, 1], front);
         assert_eq!(&[2u8, 3, 4, 5], slice);
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct FailedToConvertToAsn1Time;
-
-pub(crate) fn system_time_to_asn1_time(
-    timestamp: SystemTime,
-) -> Result<Asn1Time, FailedToConvertToAsn1Time> {
-    let epoch_duration = timestamp
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|_| FailedToConvertToAsn1Time)?;
-
-    let t: time_t = epoch_duration
-        .as_secs()
-        .try_into()
-        .map_err(|_| FailedToConvertToAsn1Time)?;
-
-    Asn1Time::from_unix(t).map_err(|_| FailedToConvertToAsn1Time)
-}
-
-#[cfg(test)]
-pub(crate) mod testio {
-    use std::fs;
-    use std::path::Path;
-
-    /// Read a file to bytes, panicking on errors or if the file does not exist
-    ///
-    /// `path` should be relative to the package root directory
-    pub(crate) fn read_test_file(path: &str) -> Vec<u8> {
-        fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).expect("Failed to read file")
     }
 }

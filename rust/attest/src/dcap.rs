@@ -678,7 +678,6 @@ mod test {
 
     use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
     use crate::dcap::fakes::FakeAttestation;
-    use crate::util::testio::read_test_file;
     use boring::bn::BigNum;
     use hex_literal::hex;
 
@@ -694,8 +693,8 @@ mod test {
         let current_time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(1674105089000);
 
-        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
-        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
+        let evidence_bytes = include_bytes!("../tests/data/dcap.evidence");
+        let endorsements_bytes = include_bytes!("../tests/data/dcap.endorsements");
 
         let pubkey = verify_remote_attestation(
             evidence_bytes.as_ref(),
@@ -709,7 +708,7 @@ mod test {
         .unwrap()
         .to_owned();
 
-        let expected_pubkey = hex::decode(read_test_file("tests/data/dcap.pubkey")).unwrap();
+        let expected_pubkey = hex::decode(include_bytes!("../tests/data/dcap.pubkey")).unwrap();
         assert_eq!(&expected_pubkey, pubkey.as_slice());
     }
 
@@ -720,8 +719,8 @@ mod test {
         let current_time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(1657856984000);
 
-        let evidence_bytes = read_test_file("tests/data/dcap_v3.evidence");
-        let endorsements_bytes = read_test_file("tests/data/dcap_v3.endorsements");
+        let evidence_bytes = include_bytes!("../tests/data/dcap_v3.evidence");
+        let endorsements_bytes = include_bytes!("../tests/data/dcap_v3.endorsements");
 
         let pubkey = verify_remote_attestation(
             evidence_bytes.as_ref(),
@@ -735,7 +734,7 @@ mod test {
         .unwrap()
         .to_owned();
 
-        let expected_pubkey = hex::decode(read_test_file("tests/data/dcap_v3.pubkey")).unwrap();
+        let expected_pubkey = hex::decode(include_bytes!("../tests/data/dcap_v3.pubkey")).unwrap();
         assert_eq!(&expected_pubkey, pubkey.as_slice());
     }
 
@@ -744,8 +743,8 @@ mod test {
         let current_time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(1674105089000);
 
-        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
-        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
+        let evidence_bytes = include_bytes!("../tests/data/dcap.evidence");
+        let endorsements_bytes = include_bytes!("../tests/data/dcap.endorsements");
 
         let sw_advisories = &[ACCEPTED_SW_ADVISORIES, &["INTEL-SA-1234"]].concat();
 
@@ -761,15 +760,15 @@ mod test {
         .unwrap()
         .to_owned();
 
-        let expected_pubkey = hex::decode(read_test_file("tests/data/dcap.pubkey")).unwrap();
+        let expected_pubkey = hex::decode(include_bytes!("../tests/data/dcap.pubkey")).unwrap();
         assert_eq!(expected_pubkey, pubkey.as_slice());
     }
 
     #[test]
     fn test_attestation_metrics() {
-        let evidence_bytes = read_test_file("tests/data/dcap.evidence");
-        let endorsements_bytes = read_test_file("tests/data/dcap.endorsements");
-        let metrics = attestation_metrics(&evidence_bytes, &endorsements_bytes).unwrap();
+        const EVIDENCE_BYTES: &[u8] = include_bytes!("../tests/data/dcap.evidence");
+        const ENDORSEMENTS_BYTES: &[u8] = include_bytes!("../tests/data/dcap.endorsements");
+        let metrics = attestation_metrics(EVIDENCE_BYTES, ENDORSEMENTS_BYTES).unwrap();
         // 2023-02-17 21:56:09 UTC
         assert_eq!(
             *metrics.get("tcb_info_expiration_ts").unwrap(),
@@ -792,8 +791,8 @@ mod test {
         let current_time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(1652744306000);
 
-        let evidence_bytes = read_test_file("tests/data/dcap-expired.evidence");
-        let endorsements_bytes = read_test_file("tests/data/dcap-expired.endorsements");
+        let evidence_bytes = include_bytes!("../tests/data/dcap-expired.evidence");
+        let endorsements_bytes = include_bytes!("../tests/data/dcap-expired.endorsements");
 
         assert!(verify_remote_attestation(
             evidence_bytes.as_ref(),

@@ -298,7 +298,6 @@ impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHe
 
 #[cfg(test)]
 mod tests {
-    use crate::util::testio::read_test_file;
     use hex_literal::hex;
     use std::convert::{TryFrom, TryInto};
 
@@ -306,17 +305,16 @@ mod tests {
 
     #[test]
     fn verify_signature_chain_integrity() {
-        let _data = read_test_file("tests/data/dcap.endorsements");
+        let _data = include_bytes!("../../tests/data/dcap.endorsements");
 
         // let endorsements = Endorsements::from_bytes(data.as_slice());
     }
 
     #[test]
     fn make_endorsements() {
-        let data = read_test_file("tests/data/dcap.endorsements");
+        const DATA: &[u8] = include_bytes!("../../tests/data/dcap.endorsements");
 
-        let endorsements =
-            SgxEndorsements::try_from(data.as_slice()).expect("failed to parse endorsements");
+        let endorsements = SgxEndorsements::try_from(DATA).expect("failed to parse endorsements");
 
         assert_eq!(1, endorsements._version)
     }
@@ -324,7 +322,7 @@ mod tests {
     #[test]
     fn make_endorsements_header() {
         let data: [u8; std::mem::size_of::<EndorsementsHeader>()] =
-            read_test_file("tests/data/dcap.endorsements")
+            include_bytes!("../../tests/data/dcap.endorsements")
                 [..std::mem::size_of::<EndorsementsHeader>()]
                 .try_into()
                 .unwrap();
@@ -337,8 +335,8 @@ mod tests {
 
     #[test]
     fn parse_tcb_info_v3() {
-        let data = read_test_file("tests/data/tcb_info_v3.json");
-        let tcb_info: TcbInfo = serde_json::from_slice(&data).unwrap();
+        const DATA: &[u8] = include_bytes!("../../tests/data/tcb_info_v3.json");
+        let tcb_info: TcbInfo = serde_json::from_slice(DATA).unwrap();
         assert_eq!(TcbInfoVersion::V3, tcb_info.version);
         assert_eq!(hex!("00606A000000"), tcb_info.fmspc);
         assert_eq!(
@@ -356,8 +354,8 @@ mod tests {
 
     #[test]
     fn parse_tcb_info_v2() {
-        let data = read_test_file("tests/data/tcb_info_v2.json");
-        let tcb_info: TcbInfo = serde_json::from_slice(&data).unwrap();
+        const DATA: &[u8] = include_bytes!("../../tests/data/tcb_info_v2.json");
+        let tcb_info: TcbInfo = serde_json::from_slice(DATA).unwrap();
         assert_eq!(TcbInfoVersion::V2, tcb_info.version);
         assert_eq!(hex!("00606A000000"), tcb_info.fmspc);
         assert_eq!(

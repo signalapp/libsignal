@@ -142,7 +142,6 @@ fn new_handshake_with_constants(
 
 #[cfg(test)]
 mod tests {
-    use crate::util::testio::read_test_file;
     use std::time::{Duration, SystemTime};
 
     use hex_literal::hex;
@@ -151,23 +150,23 @@ mod tests {
 
     #[test]
     fn attest_svr2() {
-        let handshake_bytes = read_test_file("tests/data/svr2handshakestart.data");
+        const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
         let mrenclave_bytes =
             hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
-        new_handshake(&mrenclave_bytes, &handshake_bytes, current_time).unwrap();
+        new_handshake(&mrenclave_bytes, HANDSHAKE_BYTES, current_time).unwrap();
     }
 
     #[test]
     fn attest_svr2_bad_config() {
-        let handshake_bytes = read_test_file("tests/data/svr2handshakestart.data");
+        const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
         let mrenclave_bytes =
             hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
 
         assert!(new_handshake_with_constants(
             &mrenclave_bytes,
-            &handshake_bytes,
+            HANDSHAKE_BYTES,
             current_time,
             &[],
             &RaftConfig {
