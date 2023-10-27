@@ -12,6 +12,8 @@ boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
 bytes = "1.4.0"
 displaydoc = "0.2"
 futures-util = "0.3.7"
+hex = "0.4"
+hex-literal = "0.4.1"
 http = "0.2.9"
 http-body-util = "0.1.0-rc.3"
 hyper = { version = "1.0.0-rc.4", features = ["http1", "http2", "client"] }

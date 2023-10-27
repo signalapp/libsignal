@@ -1607,6 +1607,8 @@ dependencies = [
  "bytes",
  "displaydoc",
  "futures-util",
+ "hex",
+ "hex-literal",
  "http",
  "http-body-util",
  "hyper",
