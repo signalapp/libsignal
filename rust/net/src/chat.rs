@@ -31,6 +31,8 @@ pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
 const HTTP_ONLY_ENDPOINTS: [&str; 2] = ["/v1/accounts", "/v2/keys"];
+const ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
+const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[async_trait]
 pub trait ChatService {
@@ -249,13 +251,19 @@ fn build_authorized_chat_service(
 
     // http authorized
     let connection_manager_auth_http = multi_route_manager(&connection_params_list_auth);
-    let chat_over_h2_auth =
-        ServiceWithReconnect::start(service_connector_http.clone(), connection_manager_auth_http);
+    let chat_over_h2_auth = ServiceWithReconnect::new(
+        service_connector_http.clone(),
+        connection_manager_auth_http,
+        TOTAL_CONNECTION_TIMEOUT,
+    );
 
     // ws authorized
     let connection_manager_auth_ws = multi_route_manager(&connection_params_list_auth);
-    let chat_over_ws_auth =
-        ServiceWithReconnect::start(service_connector_ws.clone(), connection_manager_auth_ws);
+    let chat_over_ws_auth = ServiceWithReconnect::new(
+        service_connector_ws.clone(),
+        connection_manager_auth_ws,
+        TOTAL_CONNECTION_TIMEOUT,
+    );
 
     AuthorizedChatService {
         inner: ChatServiceImpl::new(chat_over_ws_auth, chat_over_h2_auth),
@@ -269,13 +277,19 @@ fn build_anonymous_chat_service(
 ) -> AnonymousChatService<impl ChatService> {
     // http authorized
     let connection_manager_auth_http = multi_route_manager(connection_params_list);
-    let chat_over_h2_auth =
-        ServiceWithReconnect::start(service_connector_http.clone(), connection_manager_auth_http);
+    let chat_over_h2_auth = ServiceWithReconnect::new(
+        service_connector_http.clone(),
+        connection_manager_auth_http,
+        TOTAL_CONNECTION_TIMEOUT,
+    );
 
     // ws authorized
     let connection_manager_auth_ws = multi_route_manager(connection_params_list);
-    let chat_over_ws_auth =
-        ServiceWithReconnect::start(service_connector_ws.clone(), connection_manager_auth_ws);
+    let chat_over_ws_auth = ServiceWithReconnect::new(
+        service_connector_ws.clone(),
+        connection_manager_auth_ws,
+        TOTAL_CONNECTION_TIMEOUT,
+    );
 
     AnonymousChatService {
         inner: ChatServiceImpl::new(chat_over_ws_auth, chat_over_h2_auth),
@@ -312,7 +326,7 @@ pub(crate) fn chat_service(
 fn multi_route_manager(routes: &[ConnectionParams]) -> MultiRouteConnectionManager {
     let single_route_managers = routes
         .iter()
-        .map(|cp| SingleRouteThrottlingConnectionManager::new(cp.clone()))
+        .map(|cp| SingleRouteThrottlingConnectionManager::new(cp.clone(), ROUTE_CONNECTION_TIMEOUT))
         .collect();
-    MultiRouteConnectionManager::new(single_route_managers)
+    MultiRouteConnectionManager::new(single_route_managers, TOTAL_CONNECTION_TIMEOUT)
 }

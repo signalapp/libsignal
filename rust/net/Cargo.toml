@@ -10,6 +10,7 @@ async-trait = "0.1.41"
 base64 = "0.21"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
 bytes = "1.4.0"
+derive-where = "1.2.5"
 displaydoc = "0.2"
 futures-util = "0.3.7"
 hex = "0.4"
@@ -31,3 +32,9 @@ tungstenite = { version = "0.19.0" }
 
 [build-dependencies]
 prost-build = "0.12.1"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+env_logger = "0.10.0"
+rand = "0.8.5"
+tokio = { version = "1", features = ["test-util", "rt-multi-thread"] }

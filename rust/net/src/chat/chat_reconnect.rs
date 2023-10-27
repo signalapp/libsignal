@@ -3,18 +3,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt::Debug;
 use std::time::Duration;
 
 use async_trait::async_trait;
 
 use crate::chat::errors::ChatNetworkError;
 use crate::chat::{ChatService, MessageProto, ResponseProto};
-use crate::infra::reconnect::ServiceWithReconnect;
+use crate::infra::connection_manager::ConnectionManager;
+use crate::infra::errors::LogSafeDisplay;
+use crate::infra::reconnect::{ServiceConnector, ServiceWithReconnect};
 
 #[async_trait]
-impl<T> ChatService for ServiceWithReconnect<T>
+impl<C, M> ChatService for ServiceWithReconnect<C, M>
 where
-    T: ChatService + Clone + Sync + Send + 'static,
+    M: ConnectionManager + 'static,
+    C: ServiceConnector + Send + Sync + 'static,
+    C::Service: ChatService + Clone + Sync + Send + 'static,
+    C::Channel: Send + Sync,
+    C::Error: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send(
         &mut self,

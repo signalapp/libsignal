@@ -13,13 +13,12 @@ use futures_util::{SinkExt, StreamExt, TryFutureExt};
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::Instant;
-use tokio_util::sync::CancellationToken;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::chat::errors::ChatNetworkError;
 use crate::chat::{ChatMessageType, ChatService, MessageProto, RequestProto, ResponseProto};
 use crate::env::constants::WEB_SOCKET_PATH;
-use crate::infra::reconnect::{ServiceConnector, ServiceControls, ERRORS_CHANNEL_BUFFER_SIZE};
+use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ws::{connect_websocket, WebSocketStream};
 use crate::infra::ConnectionParams;
 use crate::utils::timeout;
@@ -138,15 +137,11 @@ impl ServiceConnector for ChatOverWebSocketServiceConnector {
         .await
     }
 
-    fn start_service(
-        &self,
-        channel: Self::Channel,
-    ) -> (Self::Service, ServiceControls<Self::Error>) {
+    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
         let (outgoing_tx, outgoing_rx) =
             mpsc::channel::<Vec<u8>>(self.config.outgoing_messages_queue_size);
-        let (errors_tx, errors_rx) = mpsc::channel::<Self::Error>(ERRORS_CHANNEL_BUFFER_SIZE);
+        let service_status = ServiceStatus::new();
         let (ws_outgoing, ws_incoming) = channel.split();
-        let channel_cancellation = CancellationToken::new();
         let pending_messages: Arc<Mutex<PendingMessagesMap>> = Default::default();
         tokio::spawn(reader_task(
             ws_incoming,
@@ -154,23 +149,21 @@ impl ServiceConnector for ChatOverWebSocketServiceConnector {
             pending_messages.clone(),
             self.incoming_tx.clone(),
             outgoing_tx.clone(),
-            errors_tx.clone(),
-            channel_cancellation.clone(),
+            service_status.clone(),
         ));
         tokio::spawn(writer_task(
             ws_outgoing,
             self.config.keep_alive_interval,
             outgoing_rx,
-            errors_tx,
-            channel_cancellation.clone(),
+            service_status.clone(),
         ));
         (
             ChatOverWebSocket {
                 outgoing_tx,
-                channel_cancellation: channel_cancellation.clone(),
+                service_status: service_status.clone(),
                 pending_messages,
             },
-            ServiceControls::new(errors_rx, channel_cancellation),
+            service_status,
         )
     }
 }
@@ -178,7 +171,7 @@ impl ServiceConnector for ChatOverWebSocketServiceConnector {
 #[derive(Clone)]
 pub struct ChatOverWebSocket {
     outgoing_tx: mpsc::Sender<Vec<u8>>,
-    channel_cancellation: CancellationToken,
+    service_status: ServiceStatus<ChatNetworkError>,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
 }
 
@@ -195,7 +188,7 @@ impl ChatService for ChatOverWebSocket {
             .ok_or(ChatNetworkError::UnexpectedMessageType)?;
 
         // checking if channel has been closed
-        if self.channel_cancellation.is_cancelled() {
+        if self.service_status.is_stopped() {
             return Err(ChatNetworkError::ChannelClosed);
         }
 
@@ -221,7 +214,7 @@ impl ChatService for ChatOverWebSocket {
         let res = tokio::select! {
             result = response_rx => Ok(result.expect("sender is not dropped before receiver")),
             _ = tokio::time::sleep(timeout) => Err(ChatNetworkError::Timeout),
-            _ = self.channel_cancellation.cancelled() => Err(ChatNetworkError::ChannelClosed)
+            _ = self.service_status.stopped() => Err(ChatNetworkError::ChannelClosed)
         };
         if res.is_err() {
             // in case of an error we need to clean up the listener from the `pending_messages` map
@@ -236,8 +229,7 @@ async fn writer_task(
     mut ws_stream: SplitSink<WebSocketStream, tungstenite::Message>,
     keep_alive_interval: Duration,
     mut outgoing_rx: mpsc::Receiver<Vec<u8>>,
-    errors_tx: mpsc::Sender<ChatNetworkError>,
-    channel_cancellation: CancellationToken,
+    service_status: ServiceStatus<ChatNetworkError>,
 ) {
     // events specific to the logic within this method
     enum Event {
@@ -249,29 +241,27 @@ async fn writer_task(
         match tokio::select! {
             maybe_msg = outgoing_rx.recv() => Event::Message(maybe_msg),
             _ = tokio::time::sleep(keep_alive_interval) => Event::KeepAlive,
-            _ = channel_cancellation.cancelled() => Event::Cancellation,
+            _ = service_status.stopped() => Event::Cancellation,
         } {
             Event::Message(Some(msg)) => {
                 send_and_validate(
                     &mut ws_stream,
                     tungstenite::Message::binary(msg),
-                    &errors_tx,
-                    &channel_cancellation,
+                    &service_status,
                 )
                 .await;
             }
             Event::Message(None) => {
                 // looks like all possible publishers are dropped,
                 // channel can be closed
-                channel_cancellation.cancel();
+                service_status.stop_service();
                 break;
             }
             Event::KeepAlive => {
                 send_and_validate(
                     &mut ws_stream,
                     tungstenite::Message::Ping(vec![]),
-                    &errors_tx,
-                    &channel_cancellation,
+                    &service_status,
                 )
                 .await;
             }
@@ -282,7 +272,7 @@ async fn writer_task(
         }
     }
     // before terminating the task, marking channel as inactive and closing
-    channel_cancellation.cancel();
+    service_status.stop_service();
     let _ignore_closing_result = ws_stream.close().await;
 }
 
@@ -292,8 +282,7 @@ async fn reader_task(
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
     incoming_tx: mpsc::Sender<ServerRequest>,
     outgoing_tx: mpsc::Sender<Vec<u8>>,
-    errors_tx: mpsc::Sender<ChatNetworkError>,
-    channel_cancellation: CancellationToken,
+    service_status: ServiceStatus<ChatNetworkError>,
 ) {
     enum Event {
         WsEvent(Option<Result<tungstenite::Message, tungstenite::Error>>),
@@ -310,16 +299,16 @@ async fn reader_task(
                 // connection is about to be closed
                 // not immediately terminating the task,
                 // but marking our channel as closed
-                channel_cancellation.cancel();
+                service_status.stop_service();
                 continue;
             }
             Event::WsEvent(Some(Ok(tungstenite::Message::Pong(_)))) => {
                 continue;
             }
-            Event::WsEvent(Some(Ok(_))) => {
+            Event::WsEvent(Some(Ok(unexpected_frame))) => {
                 // unexpected frame received
-                let _ignore_failed_send =
-                    errors_tx.try_send(ChatNetworkError::UnexpectedFrameReceived);
+                log::debug!("Unexpected frame received: [{:?}]", unexpected_frame);
+                service_status.stop_service_with_error(ChatNetworkError::UnexpectedFrameReceived);
                 continue;
             }
             Event::WsEvent(Some(Err(tungstenite::Error::ConnectionClosed))) => {
@@ -328,7 +317,7 @@ async fn reader_task(
             }
             Event::WsEvent(Some(Err(err))) => {
                 // error, possibly connection closed
-                let _ignore_failed_send = errors_tx.try_send(ChatNetworkError::WebSocketError(err));
+                service_status.stop_service_with_error(ChatNetworkError::WebSocketError(err));
                 continue;
             }
             Event::WsEvent(None) => {
@@ -338,7 +327,7 @@ async fn reader_task(
             Event::IdleCheck => {
                 if Instant::now() - last_event_ts > max_idle_time {
                     // channel is idle
-                    let _ignore_failed_send = errors_tx.try_send(ChatNetworkError::ChannelIdle);
+                    service_status.stop_service_with_error(ChatNetworkError::ChannelIdle);
                     break;
                 }
                 continue;
@@ -352,8 +341,9 @@ async fn reader_task(
                     .send(ServerRequest::new(req, outgoing_tx.clone()))
                     .await;
                 if delivery_result.is_err() {
-                    let _ignore_failed_send =
-                        errors_tx.try_send(ChatNetworkError::FailedToPassMessageToIncomingChannel);
+                    service_status.stop_service_with_error(
+                        ChatNetworkError::FailedToPassMessageToIncomingChannel,
+                    );
                 }
             }
             Ok(ChatMessage::Response(id, res)) => {
@@ -365,24 +355,22 @@ async fn reader_task(
                 }
             }
             Err(e) => {
-                let _ignore_failed_send = errors_tx.try_send(e);
+                service_status.stop_service_with_error(e);
             }
         }
     }
     // before terminating the task, marking channel as inactive
-    channel_cancellation.cancel();
+    service_status.stop_service();
 }
 
 async fn send_and_validate(
     ws_stream: &mut SplitSink<WebSocketStream, tungstenite::Message>,
     msg: tungstenite::Message,
-    errors_tx: &mpsc::Sender<ChatNetworkError>,
-    channel_cancellation: &CancellationToken,
+    service_status: &ServiceStatus<ChatNetworkError>,
 ) {
     let result = send_and_flush(ws_stream, msg).await;
     if let Err(e) = result {
-        let _ignore_failed_send = errors_tx.try_send(e);
-        channel_cancellation.cancel();
+        service_status.stop_service_with_error(e);
     }
 }
 

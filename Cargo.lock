@@ -1601,11 +1601,14 @@ dependencies = [
 name = "libsignal-net"
 version = "0.1.0"
 dependencies = [
+ "assert_matches",
  "async-trait",
  "base64",
  "boring",
  "bytes",
+ "derive-where",
  "displaydoc",
+ "env_logger",
  "futures-util",
  "hex",
  "hex-literal",
@@ -1617,6 +1620,7 @@ dependencies = [
  "pin-project-lite",
  "prost",
  "prost-build",
+ "rand",
  "rustls-native-certs",
  "thiserror",
  "tokio",

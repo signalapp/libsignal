@@ -9,15 +9,12 @@ use crate::infra::errors::NetError;
 use crate::infra::http::{
     http2_channel, AggregatingHttp2Client, AggregatingHttpClient, Http2Channel, Http2Connection,
 };
-use crate::infra::reconnect::{ServiceConnector, ServiceControls, ERRORS_CHANNEL_BUFFER_SIZE};
+use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ConnectionParams;
 use crate::utils::timeout;
 use async_trait::async_trait;
 use futures_util::TryFutureExt;
 use std::time::Duration;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
-use tokio_util::sync::CancellationToken;
 
 #[derive(Clone)]
 pub struct ChatOverHttp2ServiceConnector {}
@@ -42,27 +39,14 @@ impl ServiceConnector for ChatOverHttp2ServiceConnector {
         .await
     }
 
-    fn start_service(
-        &self,
-        channel: Self::Channel,
-    ) -> (Self::Service, ServiceControls<Self::Error>) {
+    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
         let Http2Channel {
             aggregating_client: request_sender,
             connection,
         } = channel;
-
-        let (errors_tx, errors_rx) = mpsc::channel::<Self::Error>(ERRORS_CHANNEL_BUFFER_SIZE);
-        let service_cancellation = CancellationToken::new();
-
-        start_event_listener(connection, errors_tx, service_cancellation.clone());
-
-        (
-            ChatOverHttp2 { request_sender },
-            ServiceControls {
-                errors_rx,
-                service_cancellation,
-            },
-        )
+        let service_status = ServiceStatus::new();
+        start_event_listener(connection, service_status.clone());
+        (ChatOverHttp2 { request_sender }, service_status)
     }
 }
 
@@ -123,8 +107,7 @@ pub struct ChatOverHttp2 {
 
 fn start_event_listener(
     connection: Http2Connection,
-    errors_tx: Sender<ChatNetworkError>,
-    channel_cancellation: CancellationToken,
+    service_status: ServiceStatus<ChatNetworkError>,
 ) {
     tokio::spawn(async move {
         enum Event {
@@ -132,14 +115,13 @@ fn start_event_listener(
             ChannelClosed(Result<(), hyper::Error>),
         }
         let outcome = match tokio::select! {
-            _ = channel_cancellation.cancelled() => Event::Cancellation,
+            _ = service_status.stopped() => Event::Cancellation,
             r = connection => Event::ChannelClosed(r),
         } {
             Event::Cancellation => ChatNetworkError::ChannelClosedByLocalPeer,
             Event::ChannelClosed(Ok(_)) => ChatNetworkError::ChannelClosedByRemotePeer,
             Event::ChannelClosed(Err(e)) => ChatNetworkError::ChannelClosedWithError(e),
         };
-        channel_cancellation.cancel();
-        let _ignore_failed_send = errors_tx.try_send(outcome);
+        service_status.stop_service_with_error(outcome);
     });
 }
