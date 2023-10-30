@@ -97,11 +97,17 @@ impl Attribute for [RistrettoPoint; 2] {
 /// # Example
 ///
 /// ```
-/// # type UserId = [curve25519_dalek::RistrettoPoint; 2];
+/// # use curve25519_dalek::RistrettoPoint;
+/// # type UserId = [RistrettoPoint; 2];
 /// struct UserIdEncryption;
 /// impl zkcredential::attributes::Domain for UserIdEncryption {
 ///   type Attribute = UserId;
 ///   const ID: &'static str = "MyCompany_UserIdEncryption_20231011";
+///
+///   fn G_a() -> [RistrettoPoint; 2] {
+///     static STORAGE: std::sync::OnceLock<[RistrettoPoint; 2]> = std::sync::OnceLock::new();
+///     *zkcredential::attributes::derive_default_generator_points::<Self>(&STORAGE)
+///   }
 /// }
 /// ```
 pub trait Domain {
@@ -117,16 +123,49 @@ pub trait Domain {
     /// The "generator points" for this key
     ///
     /// This can be a statically-chosen pair of points; it's used to construct the `A` point for a
-    /// [`PublicKey`]. The default implementation derives the generator points from the ID. The most
-    /// common reason to provide your own implementation would be to cache the points in a
-    /// `lazy_static` or similar.
-    fn G_a() -> [RistrettoPoint; 2] {
+    /// [`PublicKey`].
+    ///
+    /// A reasonable default implementation would use `derive_default_generator_points` with static
+    /// storage, for caching the resulting points:
+    ///
+    /// ```
+    /// # use curve25519_dalek::RistrettoPoint;
+    /// # struct Example;
+    /// # impl zkcredential::attributes::Domain for Example {
+    /// #   type Attribute = [RistrettoPoint; 2];
+    /// #   const ID: &'static str = "20231030_Example";
+    /// fn G_a() -> [RistrettoPoint; 2] {
+    ///   static STORAGE: std::sync::OnceLock<[RistrettoPoint; 2]> = std::sync::OnceLock::new();
+    ///   *zkcredential::attributes::derive_default_generator_points::<Self>(&STORAGE)
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// Unfortunately this can't be provided as a default implementation, because that would result
+    /// in every domain sharing the same `STORAGE`, as if it were declared outside the trait.
+    fn G_a() -> [RistrettoPoint; 2];
+}
+
+/// Derives reasonable generator points `G_a` for `D`, based on its [`ID`][Domain::ID], and caches
+/// them in `storage`.
+pub fn derive_default_generator_points<D: Domain>(
+    storage: &std::sync::OnceLock<[RistrettoPoint; 2]>,
+) -> &[RistrettoPoint; 2] {
+    fn derive_impl<D: Domain>() -> [RistrettoPoint; 2] {
         let mut sho = poksho::ShoHmacSha256::new(b"Signal_ZKCredential_Domain_20231011");
-        sho.absorb_and_ratchet(Self::ID.as_bytes());
+        sho.absorb_and_ratchet(D::ID.as_bytes());
         let G_a1 = sho.get_point();
         let G_a2 = sho.get_point();
         [G_a1, G_a2]
     }
+
+    let result = storage.get_or_init(derive_impl::<D>);
+    debug_assert!(
+        result == &derive_impl::<D>(),
+        "initialized with non-default points for {}",
+        D::ID,
+    );
+    result
 }
 
 /// A key used to encrypt attributes.
@@ -332,5 +371,36 @@ pub trait RevealedAttribute {
 impl RevealedAttribute for RistrettoPoint {
     fn as_point(&self) -> RistrettoPoint {
         *self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::OnceLock;
+
+    use super::*;
+
+    struct ExampleDomain;
+    impl Domain for ExampleDomain {
+        type Attribute = [RistrettoPoint; 2];
+        const ID: &'static str = "TestDomain";
+
+        fn G_a() -> [RistrettoPoint; 2] {
+            static STORAGE: OnceLock<[RistrettoPoint; 2]> = OnceLock::new();
+            *derive_default_generator_points::<Self>(&STORAGE)
+        }
+    }
+
+    #[test]
+    fn derive_default_generator_points_works() {
+        let _ = ExampleDomain::G_a();
+    }
+
+    #[test]
+    #[should_panic]
+    #[cfg(debug_assertions)]
+    fn derive_default_generator_points_checks_for_reuse_in_debug_builds() {
+        let storage = std::sync::OnceLock::from([RistrettoPoint::default(); 2]);
+        derive_default_generator_points::<ExampleDomain>(&storage);
     }
 }

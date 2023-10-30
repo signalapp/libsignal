@@ -453,6 +453,11 @@ struct InverseUidDecryptionKey;
 impl zkcredential::attributes::Domain for InverseUidDecryptionKey {
     type Attribute = uid_encryption::Ciphertext;
     const ID: &'static str = "InverseUidEncryptionDomain_20231011";
+    fn G_a() -> [curve25519_dalek::RistrettoPoint; 2] {
+        static STORAGE: std::sync::OnceLock<[curve25519_dalek::RistrettoPoint; 2]> =
+            std::sync::OnceLock::new();
+        *zkcredential::attributes::derive_default_generator_points::<Self>(&STORAGE)
+    }
 }
 
 #[test]
