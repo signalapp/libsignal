@@ -3457,6 +3457,7 @@ name = "zkcredential"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "criterion",
  "curve25519-dalek",
  "derive-where",
  "displaydoc",

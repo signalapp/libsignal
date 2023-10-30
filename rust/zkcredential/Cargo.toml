@@ -25,5 +25,12 @@ bincode = "1.2.1"
 hex = "0.4"
 hex-literal = "0.4.1"
 
+# For benchmarking
+criterion = "0.5"
+
 # Many of zkcredential's tests live in the zkgroup crate,
 # since zkcredential was designed to work with existing verifiably encrypted attribute types.
+
+[[bench]]
+name = "zkcredential_benchmarks"
+harness = false
