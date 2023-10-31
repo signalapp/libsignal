@@ -18,7 +18,7 @@ pub enum Error {
 
 pub type ResolveFn = fn(&str) -> BoxFuture<Result<LookupResult, Error>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DnsResolver {
     Static,
     System,

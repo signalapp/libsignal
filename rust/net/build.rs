@@ -4,7 +4,7 @@
 //
 
 fn main() {
-    let protos = ["src/proto/chat_websocket.proto"];
+    let protos = ["src/proto/chat_websocket.proto", "src/proto/cds2.proto"];
     prost_build::compile_protos(&protos, &["src"]).expect("Protobufs in src are valid");
     for proto in &protos {
         println!("cargo:rerun-if-changed={}", proto);

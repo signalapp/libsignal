@@ -143,8 +143,8 @@ jobs:
     - name: Test run benches
       run: cargo ${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
 
-    - name: Build bins
-      run: cargo ${{ matrix.toolchain }} build  --bins --all-features --verbose
+    - name: Build bins and examples
+      run: cargo ${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose
 
     - name: Clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings

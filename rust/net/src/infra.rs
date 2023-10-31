@@ -41,7 +41,7 @@ pub enum HttpRequestDecorator {
     Generic(fn(hyper::http::request::Builder) -> hyper::http::request::Builder),
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct HttpRequestDecoratorSeq(Vec<HttpRequestDecorator>);
 
 impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
@@ -51,15 +51,15 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 }
 
 /// Contains all information required to establish an HTTP connection to the remote endpoint:
-/// - `sni` value to be used in TLS and for DNS resolution.
-/// - `host` value to be used in the HTTP request's headers,
+/// - `sni` value to be used in TLS,
+/// - `host` value to be used for DNS resolution an in the HTTP requests headers,
 /// - `port` to connect to,
 /// - `http_request_decorator`, a [HttpRequestDecorator] to apply to all HTTP requests,
 /// - `certs`, [RootCertificates] representing trusted certificates,
 /// - `dns_resolver`, a [DnsResolver] to use when resolving DNS.
 /// This is also applicable to WebSocket connections (in this case, `http_request_decorator` will
 /// only be apllied to the initial connection upgrade request).
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConnectionParams {
     pub sni: Arc<str>,
     pub host: Arc<str>,

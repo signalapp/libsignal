@@ -51,7 +51,7 @@ pub enum ConnectionAttemptOutcome<T, E> {
 pub trait ConnectionManager: Send + Sync {
     async fn connect_or_wait<'a, T, E, Fun, Fut>(
         &'a self,
-        connection_fn: &Fun,
+        connection_fn: Fun,
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
@@ -111,7 +111,7 @@ impl ConnectionManager for MultiRouteConnectionManager {
     /// connection attempt, except maybe the case of the few first requests.
     async fn connect_or_wait<'a, T, E, Fun, Fut>(
         &'a self,
-        connection_fn: &Fun,
+        connection_fn: Fun,
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
@@ -125,7 +125,7 @@ impl ConnectionManager for MultiRouteConnectionManager {
         for route_manager in self.route_managers.iter() {
             loop {
                 let result_or_timeout =
-                    timeout_at(deadline, route_manager.connect_or_wait(connection_fn)).await;
+                    timeout_at(deadline, route_manager.connect_or_wait(&connection_fn)).await;
                 let result = match result_or_timeout {
                     Ok(r) => r,
                     Err(_) => return ConnectionAttemptOutcome::TimedOut,
@@ -174,7 +174,7 @@ impl SingleRouteThrottlingConnectionManager {
 impl ConnectionManager for SingleRouteThrottlingConnectionManager {
     async fn connect_or_wait<'a, T, E, Fun, Fut>(
         &'a self,
-        connection_fn: &Fun,
+        connection_fn: Fun,
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
@@ -262,7 +262,7 @@ mod test {
         );
         for _ in 0..FEW_ATTEMPTS {
             let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
-                manager.connect_or_wait(&|_| future::ready(Ok(()))).await;
+                manager.connect_or_wait(|_| future::ready(Ok(()))).await;
             assert_matches!(attempt_outcome, ConnectionAttemptOutcome::Attempted(Ok(())));
         }
     }
@@ -275,14 +275,14 @@ mod test {
         );
         for _ in 0..FEW_ATTEMPTS {
             let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
-                .connect_or_wait(&|_| future::ready(Err(TestError::Expected)))
+                .connect_or_wait(|_| future::ready(Err(TestError::Expected)))
                 .await;
             assert_matches!(
                 attempt_outcome,
                 ConnectionAttemptOutcome::Attempted(Err(TestError::Expected))
             );
             let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
-                manager.connect_or_wait(&|_| future::ready(Ok(()))).await;
+                manager.connect_or_wait(|_| future::ready(Ok(()))).await;
             assert_matches!(attempt_outcome, ConnectionAttemptOutcome::Attempted(Ok(())));
         }
     }
@@ -297,7 +297,7 @@ mod test {
         time::advance(TIME_ADVANCE_VALUE).await;
         // first attempt
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
-            .connect_or_wait(&|_| async {
+            .connect_or_wait(|_| async {
                 tokio::time::sleep(time_over_timeout).await;
                 future::ready(Err(TestError::Expected)).await
             })
@@ -306,7 +306,7 @@ mod test {
 
         // second attempt
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
-            .connect_or_wait(&|_| async {
+            .connect_or_wait(|_| async {
                 tokio::time::sleep(time_over_timeout).await;
                 future::ready(Err(TestError::Expected)).await
             })
@@ -315,7 +315,7 @@ mod test {
 
         // third attempt: cooling down
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
-            .connect_or_wait(&|_| async {
+            .connect_or_wait(|_| async {
                 tokio::time::sleep(time_over_timeout).await;
                 future::ready(Err(TestError::Expected)).await
             })
@@ -332,19 +332,19 @@ mod test {
         for _ in 0..MANY_ATTEMPTS {
             time::advance(TIME_ADVANCE_VALUE).await;
             let _attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
-                .connect_or_wait(&|_| future::ready(Err(TestError::Expected)))
+                .connect_or_wait(|_| future::ready(Err(TestError::Expected)))
                 .await;
         }
         // now checking to see if we're in `Cooldown`
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
-            .connect_or_wait(&|_| future::ready(Err(TestError::Expected)))
+            .connect_or_wait(|_| future::ready(Err(TestError::Expected)))
             .await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::WaitUntil(_));
 
         // now let's advance the time to the point after the cooldown period
         time::advance(MAX_COOLDOWN_INTERVAL).await;
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
-            manager.connect_or_wait(&|_| future::ready(Ok(()))).await;
+            manager.connect_or_wait(|_| future::ready(Ok(()))).await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::Attempted(Ok(())));
     }
 
@@ -414,9 +414,7 @@ mod test {
 
         time::advance(TIME_ADVANCE_VALUE).await;
         let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
-            .connect_or_wait(&|connection_params| async {
-                simulate_connect(connection_params, true).await
-            })
+            .connect_or_wait(|connection_params| simulate_connect(connection_params, true))
             .await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::TimedOut);
     }
@@ -427,7 +425,7 @@ mod test {
         expected_route: &str,
     ) {
         let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
-            .connect_or_wait(&|connection_params| async {
+            .connect_or_wait(|connection_params| async move {
                 simulate_connect(connection_params, route1_healthy).await
             })
             .await;

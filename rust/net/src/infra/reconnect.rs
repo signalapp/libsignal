@@ -173,7 +173,7 @@ where
             let connection_attempt_result = self
                 .data
                 .connection_manager
-                .connect_or_wait(&|connection_params| {
+                .connect_or_wait(|connection_params| {
                     self.data
                         .service_connector
                         .connect_channel(connection_params)

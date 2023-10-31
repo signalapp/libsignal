@@ -6,6 +6,7 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [dependencies]
+libsignal-protocol = { path = "../protocol" }
 attest = { path = "../attest" }
 async-trait = "0.1.41"
 base64 = "0.21"
@@ -30,6 +31,9 @@ tokio-boring = { git = "https://github.com/signalapp/boring", branch = "libsigna
 tokio-tungstenite = { version = "0.19.0" }
 tokio-util = "0.7.9"
 tungstenite = { version = "0.19.0" }
+uuid = "1.1.2"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.12.1"

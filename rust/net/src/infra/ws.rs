@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[cfg(test)]
+use std::fmt::Debug;
+
 use attest::client_connection::ClientConnection;
-#[cfg(test)]
 use attest::sgx_session::Handshake;
-#[cfg(test)]
 use futures_util::{Sink, SinkExt as _, Stream, StreamExt as _};
+use http::uri::PathAndQuery;
 use tokio_tungstenite as tt;
 use tungstenite::handshake::client::generate_key;
-use tungstenite::protocol::WebSocketConfig;
+use tungstenite::protocol::{CloseFrame, WebSocketConfig};
 use tungstenite::{http, Message};
 
 use crate::infra::errors::NetError;
@@ -23,7 +23,7 @@ const WS_ALPN: &[u8] = b"\x08http/1.1";
 
 pub(crate) async fn connect_websocket(
     connection_params: &ConnectionParams,
-    endpoint: http::uri::PathAndQuery,
+    endpoint: PathAndQuery,
     ws_config: WebSocketConfig,
 ) -> Result<WebSocketStream, NetError> {
     let ssl_stream = connect_ssl(connection_params, WS_ALPN).await?;
@@ -40,7 +40,14 @@ pub(crate) async fn connect_websocket(
         .header("Upgrade", "websocket")
         .header("Sec-WebSocket-Version", "13")
         .header("Sec-WebSocket-Key", generate_key())
-        .uri(endpoint);
+        .uri(
+            http::uri::Builder::new()
+                .authority(connection_params.host.to_string())
+                .path_and_query(endpoint)
+                .scheme("wss")
+                .build()
+                .unwrap(),
+        );
 
     let request_builder = connection_params
         .http_request_decorator
@@ -83,11 +90,9 @@ impl From<TextOrBinary> for Message {
 }
 
 /// Wrapper for a websocket that can be used to send [`TextOrBinary`] messages.
-#[cfg(test)]
 #[derive(Debug)]
 pub(crate) struct WebSocket<S = WebSocketStream>(S);
 
-#[cfg(test)]
 impl<S> WebSocket<S> {
     pub(crate) fn new(stream: S) -> Self {
         Self(stream)
@@ -112,7 +117,7 @@ impl<S> WebSocket<S> {
     ///
     /// Returns the next text or binary message received on the wrapped socket.
     /// If the next response received is a [`Message::Close`], returns `None`.
-    pub(crate) async fn receive(&mut self) -> Result<Option<TextOrBinary>, NetError>
+    pub(crate) async fn receive(&mut self) -> Result<NextOrClose<TextOrBinary>, NetError>
     where
         S: Sink<Message, Error = tungstenite::Error>
             + Stream<Item = tungstenite::Result<Message>>
@@ -120,23 +125,22 @@ impl<S> WebSocket<S> {
     {
         while let Some(message) = self.0.next().await {
             let output = match message {
-                Ok(Message::Text(t)) => Some(t.into()),
-                Ok(Message::Binary(b)) => Some(b.into()),
-                Ok(Message::Close(_)) => None,
+                Ok(Message::Text(t)) => NextOrClose::Next(t.into()),
+                Ok(Message::Binary(b)) => NextOrClose::Next(b.into()),
+                Ok(Message::Close(frame)) => NextOrClose::Close(frame),
                 Ok(Message::Ping(_) | Message::Pong(_)) => continue,
                 Ok(Message::Frame(_)) => unreachable!("only for sending"),
-                Err(tungstenite::Error::ConnectionClosed) => None,
+                Err(tungstenite::Error::ConnectionClosed) => NextOrClose::Close(None),
                 Err(_) => return Err(NetError::Failure),
             };
             return Ok(output);
         }
-        Ok(None)
+        Ok(NextOrClose::Close(None))
     }
 }
 
 #[derive(Debug)]
 pub enum AttestedConnectionError {
-    #[cfg(test)]
     Protocol,
     ClientConnection(attest::client_connection::Error),
     Sgx(attest::sgx_session::Error),
@@ -162,14 +166,28 @@ impl From<attest::client_connection::Error> for AttestedConnectionError {
 }
 
 /// Encrypted connection to an attested host.
-#[cfg(test)]
 #[derive(Debug)]
 pub struct AttestedConnection<S = WebSocketStream> {
     websocket: WebSocket<S>,
     client_connection: ClientConnection,
 }
 
-#[cfg(test)]
+#[derive(Clone, Eq, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
+pub(crate) enum NextOrClose<T> {
+    Next(T),
+    Close(Option<CloseFrame<'static>>),
+}
+
+impl<T> NextOrClose<T> {
+    pub(crate) fn next_or<E>(self, failure: E) -> Result<T, E> {
+        match self {
+            Self::Close(_) => Err(failure),
+            Self::Next(t) => Ok(t),
+        }
+    }
+}
+
 impl<S> AttestedConnection<S>
 where
     S: Sink<Message, Error = tungstenite::Error>
@@ -203,32 +221,31 @@ where
 
     pub(crate) async fn receive<T: prost::Message + Default>(
         &mut self,
-    ) -> Result<Option<T>, AttestedConnectionError> {
+    ) -> Result<NextOrClose<T>, AttestedConnectionError> {
         let received = match self.receive_bytes().await? {
-            None => return Ok(None),
-            Some(b) => b,
+            NextOrClose::Close(frame) => return Ok(NextOrClose::Close(frame)),
+            NextOrClose::Next(b) => b,
         };
         T::decode(received.as_ref())
             .map_err(|_| AttestedConnectionError::Protocol)
-            .map(Some)
+            .map(NextOrClose::Next)
     }
 
     pub(crate) async fn receive_bytes(
         &mut self,
-    ) -> Result<Option<Vec<u8>>, AttestedConnectionError> {
+    ) -> Result<NextOrClose<Vec<u8>>, AttestedConnectionError> {
         let received = self.websocket.receive().await?;
         let received = match received {
-            None => return Ok(None),
-            Some(t) => t.try_into_binary()?,
+            NextOrClose::Close(frame) => return Ok(NextOrClose::Close(frame)),
+            NextOrClose::Next(t) => t.try_into_binary()?,
         };
         self.client_connection
             .recv(&received)
-            .map(Some)
+            .map(NextOrClose::Next)
             .map_err(Into::into)
     }
 }
 
-#[cfg(test)]
 impl TextOrBinary {
     fn try_into_binary(self) -> Result<Vec<u8>, AttestedConnectionError> {
         match self {
@@ -238,7 +255,6 @@ impl TextOrBinary {
     }
 }
 
-#[cfg(test)]
 async fn authenticate<
     S: Stream<Item = tungstenite::Result<Message>> + Sink<Message, Error = tungstenite::Error> + Unpin,
 >(
@@ -248,7 +264,7 @@ async fn authenticate<
     let attestation_msg = websocket
         .receive()
         .await?
-        .ok_or(NetError::Failure)?
+        .next_or(NetError::Failure)?
         .try_into_binary()?;
     let handshake = new_handshake(attestation_msg.as_ref())?;
 
@@ -259,7 +275,7 @@ async fn authenticate<
     let initial_response = websocket
         .receive()
         .await?
-        .ok_or(NetError::Failure)?
+        .next_or(NetError::Failure)?
         .try_into_binary()?;
 
     Ok(handshake.complete(&initial_response)?)
@@ -276,6 +292,18 @@ mod test {
     use tokio_util::sync::PollSender;
 
     use super::*;
+
+    impl<T: Debug> NextOrClose<T> {
+        fn unwrap_next(self) -> T
+        where
+            T: Debug,
+        {
+            match self {
+                Self::Next(t) => t,
+                s @ Self::Close(_) => panic!("unwrap called on {s:?}"),
+            }
+        }
+    }
 
     #[derive(Debug)]
     struct FakeWebsocket {
@@ -381,7 +409,7 @@ mod test {
 
         synchronous.send(item.clone()).await.unwrap();
         let response = synchronous.receive().await.unwrap();
-        assert_eq!(response, Some(item));
+        assert_eq!(response, NextOrClose::Next(item));
     }
 
     #[tokio::test]
@@ -397,7 +425,7 @@ mod test {
         let item = TextOrBinary::Text(MESSAGE_TEXT.into());
         server.send(item.clone().into()).await.unwrap();
 
-        assert_eq!(receive_unsolicited.await, Ok(Some(item)));
+        assert_eq!(receive_unsolicited.await, Ok(NextOrClose::Next(item)));
     }
 
     #[tokio::test]
@@ -450,7 +478,7 @@ mod test {
             .receive()
             .await
             .unwrap()
-            .unwrap()
+            .unwrap_next()
             .try_into_binary()
             .unwrap();
         assert_eq!(server_hs.read_message(&incoming, &mut []).unwrap(), 0);
@@ -465,7 +493,7 @@ mod test {
 
         let mut server_transport = server_hs.into_transport_mode().unwrap();
 
-        while let Some(incoming) = websocket.receive().await.unwrap() {
+        while let NextOrClose::Next(incoming) = websocket.receive().await.unwrap() {
             let incoming = incoming.try_into_binary().unwrap();
             let mut payload = vec![0; incoming.len()];
             let read = server_transport
@@ -502,7 +530,7 @@ mod test {
             .unwrap();
 
         connection.send(Vec::from(ECHO_BYTES)).await.unwrap();
-        let response: Vec<u8> = connection.receive().await.unwrap().expect("didn't hang up");
+        let response: Vec<u8> = connection.receive().await.unwrap().unwrap_next();
         assert_eq!(&response, ECHO_BYTES);
     }
 

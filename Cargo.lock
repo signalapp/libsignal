@@ -1617,12 +1617,15 @@ dependencies = [
  "http-body-util",
  "hyper",
  "lazy_static",
+ "libsignal-protocol",
  "log",
  "pin-project-lite",
  "prost",
  "prost-build",
  "rand",
  "rustls-native-certs",
+ "serde",
+ "serde_json",
  "snow",
  "thiserror",
  "tokio",
@@ -1631,6 +1634,7 @@ dependencies = [
  "tokio-tungstenite",
  "tokio-util",
  "tungstenite",
+ "uuid",
 ]
 
 [[package]]
