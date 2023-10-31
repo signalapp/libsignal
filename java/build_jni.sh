@@ -71,8 +71,9 @@ export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
 export RUSTFLAGS="-C link-arg=-fuse-ld=lld ${RUSTFLAGS:-}"
 export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
-# Uncomment the following to force the 64-bit curve25519-dalek backend on 32-bit targets.
-# export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
+# The 64-bit curve25519-dalek backend is faster than the 32-bit one on at least some armv7a phones.
+# Comment out the following to allow the 32-bit backend on 32-bit targets.
+export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
 
 target_for_abi() {
     case "$1" in
