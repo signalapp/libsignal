@@ -16,16 +16,23 @@ use crate::constants::{
 };
 use crate::{proto, UsernameLinkError};
 
+/// Generates the encrypted buffer used for a username link, decryptable by [`decrypt_username`].
+///
+/// The encryption key will be derived from `entropy` is provided, and generated from `rng` if not.
+/// (An ephemeral IV will be generated from `rng` regardless.) The entropy used will be returned
+/// along with the encrypted buffer.
 pub fn create_for_username<R: Rng + CryptoRng>(
     rng: &mut R,
     username: String,
-) -> Result<Vec<u8>, UsernameLinkError> {
+    entropy: Option<&[u8; USERNAME_LINK_ENTROPY_SIZE]>,
+) -> Result<([u8; USERNAME_LINK_ENTROPY_SIZE], Vec<u8>), UsernameLinkError> {
     let username_data = proto::username::UsernameData { username };
     let ptext = username_data.encode_to_vec();
     if ptext.len() >= USERNAME_LINK_MAX_PTEXT_SIZE {
         return Err(UsernameLinkError::InputDataTooLong);
     }
-    let entropy: [u8; USERNAME_LINK_ENTROPY_SIZE] = random_bytes(rng);
+    let entropy: [u8; USERNAME_LINK_ENTROPY_SIZE] =
+        entropy.copied().unwrap_or_else(|| random_bytes(rng));
     let iv: [u8; USERNAME_LINK_IV_SIZE] = random_bytes(rng);
     let aes_key = hkdf(&entropy, USERNAME_LINK_LABEL_ENCRYPTION_KEY);
     let mac_key = hkdf(&entropy, USERNAME_LINK_LABEL_AUTHENTICATION_KEY);
@@ -36,20 +43,13 @@ pub fn create_for_username<R: Rng + CryptoRng>(
     buf.extend(iv.as_slice());
     buf.extend(ctext);
     buf.extend(hmac(&mac_key, buf.as_slice()));
-
-    let mut result: Vec<u8> = Vec::with_capacity(USERNAME_LINK_ENTROPY_SIZE + buf.len());
-    result.extend(entropy);
-    result.extend(buf);
-    Ok(result)
+    Ok((entropy, buf))
 }
 
 pub fn decrypt_username(
-    entropy: &[u8],
+    entropy: &[u8; USERNAME_LINK_ENTROPY_SIZE],
     encrypted_username: &[u8],
 ) -> Result<String, UsernameLinkError> {
-    if entropy.len() != USERNAME_LINK_ENTROPY_SIZE {
-        return Err(UsernameLinkError::InvalidEntropyDataLength);
-    }
     let len = encrypted_username.len();
     if len <= USERNAME_LINK_IV_SIZE + USERNAME_LINK_HMAC_LEN {
         return Err(UsernameLinkError::UsernameLinkDataTooShort);
@@ -115,7 +115,7 @@ mod test {
             abcdefghijklmnopqrstuvwxyz\
             abcdefghijklmnopqrstuvwxyz";
         assert!(matches!(
-            create_for_username(&mut csprng, long_username.to_string()),
+            create_for_username(&mut csprng, long_username.to_string(), None),
             Err(UsernameLinkError::InputDataTooLong)
         ));
     }
@@ -127,17 +127,6 @@ mod test {
         assert!(matches!(
             decrypt_username(&entropy, &encrypted_username),
             Err(UsernameLinkError::UsernameLinkDataTooShort)
-        ));
-    }
-
-    #[test]
-    fn username_link_invalid_entropy_size() {
-        let entropy = [0u8; USERNAME_LINK_ENTROPY_SIZE - 1];
-        let encrypted_username =
-            [0u8; USERNAME_LINK_IV_SIZE + USERNAME_LINK_HMAC_LEN + TEST_CTEXT_SIZE];
-        assert!(matches!(
-            decrypt_username(&entropy, &encrypted_username),
-            Err(UsernameLinkError::InvalidEntropyDataLength)
         ));
     }
 
@@ -202,9 +191,28 @@ mod test {
     fn happy_case() {
         let expected_username = "test_username.42";
         let mut csprng = OsRng;
-        let result = create_for_username(&mut csprng, expected_username.into()).expect("no error");
-        let (entropy, encrypted_username) = result.split_at(USERNAME_LINK_ENTROPY_SIZE);
-        let actual_username = decrypt_username(entropy, encrypted_username).expect("no error");
+        let (entropy, encrypted_username) =
+            create_for_username(&mut csprng, expected_username.into(), None).expect("no error");
+        let actual_username = decrypt_username(&entropy, &encrypted_username).expect("no error");
+        assert_eq!(expected_username, actual_username);
+    }
+
+    #[test]
+    fn reuse_entropy() {
+        let expected_username = "test_username.42";
+        let mut csprng = OsRng;
+        let (entropy, encrypted_username) =
+            create_for_username(&mut csprng, expected_username.into(), None).expect("no error");
+        let actual_username = decrypt_username(&entropy, &encrypted_username).expect("no error");
+        assert_eq!(expected_username, actual_username);
+
+        let (new_entropy, new_encrypted_username) =
+            create_for_username(&mut csprng, expected_username.into(), Some(&entropy))
+                .expect("no error");
+        assert_eq!(entropy, new_entropy);
+        assert_ne!(encrypted_username, new_encrypted_username);
+        let actual_username =
+            decrypt_username(&entropy, &new_encrypted_username).expect("no error");
         assert_eq!(expected_username, actual_username);
     }
 }

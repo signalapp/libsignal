@@ -96,6 +96,30 @@ describe('usernames', () => {
       });
       assert.equal(expectedUsername, actualUsername);
     });
+    it('can reuse entropy', () => {
+      const expectedUsername = 'signal_test.42';
+      const usernameLinkData = usernames.createUsernameLink(expectedUsername);
+      const actualUsername = decryptUsernameLink({
+        entropy: usernameLinkData.entropy,
+        encryptedUsername: usernameLinkData.encryptedUsername,
+      });
+      assert.equal(expectedUsername, actualUsername);
+
+      const newLinkData = usernames.createUsernameLink(
+        expectedUsername,
+        usernameLinkData.entropy
+      );
+      assert.deepEqual(usernameLinkData.entropy, newLinkData.entropy);
+      assert.notDeepEqual(
+        usernameLinkData.encryptedUsername,
+        newLinkData.encryptedUsername
+      );
+      const newActualUsername = decryptUsernameLink({
+        entropy: newLinkData.entropy,
+        encryptedUsername: newLinkData.encryptedUsername,
+      });
+      assert.equal(expectedUsername, newActualUsername);
+    });
     it('will error on too long input data', () => {
       const longUsername = 'a'.repeat(128);
       expect(() => usernames.createUsernameLink(longUsername))

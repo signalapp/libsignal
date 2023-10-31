@@ -86,6 +86,19 @@ class UsernameTests: TestCaseBase {
         XCTAssertEqual(original, recreated)
     }
 
+    func testUsernameLinkWithReusedEntropy() throws {
+        let original = try Username("SiGNAl.42")
+        let (randomness, linkBytes) = try original.createLink()
+        let recreated = try Username(fromLink: linkBytes, withRandomness: randomness)
+        XCTAssertEqual(original, recreated)
+
+        let (newRandomness, newLinkBytes) = try original.createLink(previousEntropy: randomness)
+        XCTAssertEqual(randomness, newRandomness)
+        XCTAssertNotEqual(linkBytes, newLinkBytes)
+        let newRecreated = try Username(fromLink: newLinkBytes, withRandomness: randomness)
+        XCTAssertEqual(original, newRecreated)
+    }
+
     func testUsernameLinkInvalidEntropySize() throws {
         do {
             let randomness = [UInt8](repeating: 0, count: 16)

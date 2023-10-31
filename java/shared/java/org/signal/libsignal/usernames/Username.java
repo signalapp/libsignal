@@ -92,7 +92,11 @@ public final class Username {
   }
 
   public UsernameLink generateLink() throws BaseUsernameException {
-    final byte[] bytes = Native.UsernameLink_Create(username);
+    return generateLink(null);
+  }
+
+  public UsernameLink generateLink(byte[] previousEntropy) throws BaseUsernameException {
+    final byte[] bytes = Native.UsernameLink_Create(username, previousEntropy);
     final byte[] entropy = Arrays.copyOfRange(bytes, 0, 32);
     final byte[] enctyptedUsername = Arrays.copyOfRange(bytes, 32, bytes.length);
     return new UsernameLink(entropy, enctyptedUsername);

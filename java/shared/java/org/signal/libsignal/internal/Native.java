@@ -572,7 +572,7 @@ public final class Native {
   public static native byte[] UnidentifiedSenderMessageContent_GetSerialized(long obj);
   public static native long UnidentifiedSenderMessageContent_New(CiphertextMessage message, long sender, int contentHint, byte[] groupId);
 
-  public static native byte[] UsernameLink_Create(String username);
+  public static native byte[] UsernameLink_Create(String username, byte[] entropy);
   public static native String UsernameLink_DecryptUsername(byte[] entropy, byte[] encryptedUsername);
 
   public static native String Username_CandidatesFrom(String nickname, int minLen, int maxLen);

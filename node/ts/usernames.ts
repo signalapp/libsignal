@@ -46,8 +46,14 @@ export function decryptUsernameLink(usernameLink: UsernameLink): string {
   );
 }
 
-export function createUsernameLink(username: string): UsernameLink {
-  const usernameLinkData = Native.UsernameLink_Create(username);
+export function createUsernameLink(
+  username: string,
+  previousEntropy?: Buffer
+): UsernameLink {
+  const usernameLinkData = Native.UsernameLink_Create(
+    username,
+    previousEntropy ?? null
+  );
   const entropy = usernameLinkData.slice(0, 32);
   const encryptedUsername = usernameLinkData.slice(32);
   return { entropy, encryptedUsername };

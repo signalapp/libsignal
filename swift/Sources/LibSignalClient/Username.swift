@@ -48,11 +48,13 @@ public struct Username {
         }
     }
 
-    public func createLink() throws -> ([UInt8], [UInt8]) {
+    public func createLink(previousEntropy: [UInt8]? = nil) throws -> ([UInt8], [UInt8]) {
         let bytes = failOnError {
             return try self.value.withCString { usernamePtr in
-                try invokeFnReturningArray {
-                    signal_username_link_create($0, usernamePtr)
+                try (previousEntropy ?? []).withUnsafeBorrowedBuffer { entropyPtr in
+                    try invokeFnReturningArray {
+                        signal_username_link_create($0, usernamePtr, entropyPtr)
+                    }
                 }
             }
         }
