@@ -8,7 +8,6 @@
 
 use jni::objects::{JByteArray, JClass, JLongArray, JObject};
 use jni::JNIEnv;
-use std::convert::TryFrom;
 
 use libsignal_bridge::jni::*;
 use libsignal_protocol::*;

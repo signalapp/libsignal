@@ -70,6 +70,8 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
             let env_for_catch_unwind = std::panic::AssertUnwindSafe(&mut env);
             let future_for_catch_unwind = &future;
             std::panic::catch_unwind(move || {
+                // Force the lambda to capture the whole struct instead of an individual field.
+                let _ = &env_for_catch_unwind;
                 let env = env_for_catch_unwind.0;
                 result.convert_into(env).and_then(|result| {
                     let result_as_jobject = box_primitive_if_needed(env, result.into())?;

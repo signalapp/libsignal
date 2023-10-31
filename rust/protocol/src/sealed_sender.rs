@@ -22,7 +22,6 @@ use subtle::ConstantTimeEq;
 
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 
-use std::convert::{TryFrom, TryInto};
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]

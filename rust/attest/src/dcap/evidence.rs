@@ -7,7 +7,6 @@
 
 use sha2::Digest;
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
 
 use crate::dcap::sgx_quote::SgxQuote;
 use crate::dcap::{Error, Expireable};
@@ -141,7 +140,6 @@ mod test {
     use super::*;
     use crate::dcap::MREnclave;
     use hex_literal::hex;
-    use std::convert::TryFrom;
 
     const EXPECTED_MRENCLAVE: MREnclave =
         hex!("337ac97ce088a132daeb1308ea3159f807de4a827e875b2c90ce21bf4751196f");

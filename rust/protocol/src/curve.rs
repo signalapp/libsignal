@@ -8,7 +8,7 @@ pub(crate) mod curve25519;
 use crate::{Result, SignalProtocolError};
 
 use std::cmp::Ordering;
-use std::convert::TryFrom;
+
 use std::fmt;
 
 use arrayref::array_ref;

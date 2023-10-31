@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryInto;
 use std::result::Result;
 
 use aes::cipher::{KeyIvInit, StreamCipher};

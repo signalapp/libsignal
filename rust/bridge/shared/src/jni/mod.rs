@@ -12,7 +12,7 @@ use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
-use std::convert::{TryFrom, TryInto};
+
 use std::error::Error;
 use std::fmt::Display;
 use std::marker::PhantomData;

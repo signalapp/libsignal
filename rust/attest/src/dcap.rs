@@ -22,7 +22,7 @@
 // Curve signing key, using the NIST p-256 curve.
 
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
+
 use std::time::SystemTime;
 
 use boring::asn1::{Asn1Time, Asn1TimeRef};
@@ -673,7 +673,7 @@ impl TcbStanding {
 
 #[cfg(test)]
 mod test {
-    use std::convert::TryInto;
+
     use std::time::{Duration, SystemTime};
 
     use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};

@@ -10,7 +10,6 @@
 use crate::{proto, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 use rand::{CryptoRng, Rng};
-use std::convert::TryFrom;
 
 use prost::Message;
 

@@ -7,7 +7,7 @@ use libsignal_bridge_macros::*;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
-use std::convert::TryFrom;
+
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 

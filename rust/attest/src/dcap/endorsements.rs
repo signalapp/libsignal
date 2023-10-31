@@ -14,7 +14,7 @@ use boring::pkey::Public;
 use chrono::Utc;
 use serde::Deserialize;
 use serde_json::value::RawValue;
-use std::convert::{TryFrom, TryInto};
+
 use std::intrinsics::transmute;
 use std::time::SystemTime;
 use variant_count::VariantCount;
@@ -299,7 +299,6 @@ impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHe
 #[cfg(test)]
 mod tests {
     use hex_literal::hex;
-    use std::convert::{TryFrom, TryInto};
 
     use super::*;
 

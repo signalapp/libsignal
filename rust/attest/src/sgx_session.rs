@@ -11,7 +11,7 @@
 //! must contain a custom claim with the key name "pk" that represents the enclave's
 //! public key.
 use std::collections::HashMap;
-use std::convert::{From, TryInto};
+
 use std::time::Duration;
 
 use displaydoc::Display;

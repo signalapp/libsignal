@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryInto;
 use std::time::SystemTime;
 
 use boring::asn1::Asn1Time;

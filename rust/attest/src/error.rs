@@ -101,8 +101,6 @@ impl<D, E: Error> From<E> for ContextError<D> {
 mod tests {
     use super::*;
 
-    use std::convert::TryFrom;
-
     struct D1;
     struct D2;
 

@@ -6,7 +6,7 @@
 use criterion::{criterion_group, criterion_main, Criterion, SamplingMode};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
-use std::convert::TryFrom;
+
 use uuid::Uuid;
 
 #[path = "../tests/support/mod.rs"]

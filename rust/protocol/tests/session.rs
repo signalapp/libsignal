@@ -7,7 +7,7 @@ mod support;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
-use std::convert::TryFrom;
+
 use std::time::{Duration, SystemTime};
 use support::*;
 

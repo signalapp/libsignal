@@ -4,7 +4,6 @@
 //
 
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
 
 use crate::dcap::{Error, Result};
 use crate::error::Context;

@@ -10,7 +10,7 @@ use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use std::convert::TryFrom;
+
 use std::time::SystemTime;
 use support::*;
 use uuid::Uuid;

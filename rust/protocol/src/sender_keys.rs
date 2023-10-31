@@ -4,7 +4,6 @@
 //
 
 use std::collections::VecDeque;
-use std::convert::TryFrom;
 
 use itertools::Itertools;
 use prost::Message;

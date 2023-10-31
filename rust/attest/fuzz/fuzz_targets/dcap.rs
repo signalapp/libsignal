@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use std::convert::{TryFrom, TryInto};
+
 use std::time::{Duration, SystemTime};
 
 fuzz_target!(

@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryFrom;
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 

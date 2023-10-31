@@ -5,8 +5,6 @@
 
 #![warn(clippy::unwrap_used)]
 
-use std::convert::TryFrom;
-
 use libsignal_bridge::node::{ResultTypeInfo, SignalNodeError};
 use libsignal_protocol::IdentityKeyPair;
 use neon::prelude::*;

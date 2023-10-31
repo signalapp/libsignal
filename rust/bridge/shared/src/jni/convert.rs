@@ -7,7 +7,7 @@ use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_protocol::*;
 use paste::paste;
-use std::convert::TryInto;
+
 use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};

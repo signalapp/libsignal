@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::{TryFrom, TryInto};
-
 use hex::FromHex;
 
 #[derive(Debug, Clone, Copy)]

@@ -10,7 +10,7 @@ use futures_util::FutureExt;
 use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
-use std::convert::TryFrom;
+
 use std::ffi::CString;
 use std::panic::AssertUnwindSafe;
 

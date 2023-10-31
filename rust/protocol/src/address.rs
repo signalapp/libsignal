@@ -12,7 +12,6 @@ use uuid::Uuid;
 #[cfg(doc)]
 use crate::SignalMessage;
 
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 /// Known types of [ServiceId].

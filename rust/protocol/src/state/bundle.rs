@@ -6,7 +6,6 @@
 use crate::state::{PreKeyId, SignedPreKeyId};
 use crate::{kem, DeviceId, IdentityKey, KyberPreKeyId, PublicKey, Result, SignalProtocolError};
 use std::clone::Clone;
-use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone)]
 struct SignedPreKey {

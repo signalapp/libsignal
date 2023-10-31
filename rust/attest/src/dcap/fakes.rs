@@ -27,7 +27,7 @@ use boring::hash::{Hasher, MessageDigest};
 use boring::nid::Nid;
 use boring::pkey::{PKey, Private, Public};
 use chrono::Utc;
-use std::convert::TryFrom;
+
 use std::time::SystemTime;
 
 const EVIDENCE_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.evidence");

@@ -17,7 +17,6 @@ use zkgroup::*;
 use bincode::Options;
 use serde::Deserialize;
 
-use std::convert::TryInto;
 use uuid::Uuid;
 use zkgroup::backups::{
     BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequest,

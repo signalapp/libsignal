@@ -4,7 +4,7 @@
 //
 
 use libsignal_protocol::*;
-use std::convert::TryFrom;
+
 use std::ops::Deref;
 
 pub(crate) use neon::context::Context;

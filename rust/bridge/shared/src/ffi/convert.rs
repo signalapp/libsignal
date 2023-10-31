@@ -6,7 +6,7 @@
 use libc::{c_char, c_uchar};
 use libsignal_protocol::*;
 use paste::paste;
-use std::convert::TryInto;
+
 use std::ffi::CStr;
 use std::ops::Deref;
 

@@ -59,7 +59,7 @@ mod mlkem1024;
 use crate::{Result, SignalProtocolError};
 
 use displaydoc::Display;
-use std::convert::TryFrom;
+
 use std::marker::PhantomData;
 use std::ops::Deref;
 use subtle::ConstantTimeEq;

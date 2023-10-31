@@ -7,7 +7,7 @@ use neon::prelude::*;
 use paste::paste;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
-use std::convert::TryInto;
+
 use std::hash::Hasher;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
