@@ -23,6 +23,7 @@ use subtle::ConstantTimeEq;
 
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 
+use std::ops::Range;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
@@ -1423,6 +1424,8 @@ pub struct SealedSenderV2SentMessageRecipient<'a> {
 ///
 /// This only parses enough to fan out the message as a series of ReceivedMessages.
 pub struct SealedSenderV2SentMessage<'a> {
+    /// The full message, for calculating offsets.
+    full_message: &'a [u8],
     /// The version byte at the head of the message.
     pub version: u8,
     /// The parsed list of recipients, grouped by ServiceId.
@@ -1467,8 +1470,10 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                 .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)
         }
 
-        let mut data = &data[1..];
-        let recipient_count = decode_varint(&mut data)?.try_into().unwrap_or(usize::MAX);
+        let mut remaining = &data[1..];
+        let recipient_count = decode_varint(&mut remaining)?
+            .try_into()
+            .unwrap_or(usize::MAX);
 
         // Cap our preallocated capacity; anything higher than this is *probably* a mistake, but
         // could just be a very large message.
@@ -1479,18 +1484,20 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                 // The original version of SSv2 assumed ACIs here, and only encoded the raw UUID.
                 ServiceId::from(Aci::from_uuid_bytes(*advance::<
                     { std::mem::size_of::<uuid::Bytes>() },
-                >(&mut data)?))
+                >(&mut remaining)?))
             } else {
                 ServiceId::parse_from_service_id_fixed_width_binary(advance::<
                     { std::mem::size_of::<ServiceIdFixedWidthBinaryBytes>() },
-                >(&mut data)?)
+                >(
+                    &mut remaining
+                )?)
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
             };
-            let device_id = DeviceId::from(decode_varint(&mut data)?);
-            let registration_id = u16::from_be_bytes(*advance::<2>(&mut data)?);
+            let device_id = DeviceId::from(decode_varint(&mut remaining)?);
+            let registration_id = u16::from_be_bytes(*advance::<2>(&mut remaining)?);
             let c_and_at = advance::<
                 { sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN },
-            >(&mut data)?;
+            >(&mut remaining)?;
 
             recipients
                 .entry(service_id)
@@ -1509,9 +1516,10 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         }
 
         Ok(Self {
+            full_message: data,
             version,
             recipients,
-            shared_bytes: data,
+            shared_bytes: remaining,
         })
     }
 
@@ -1532,6 +1540,68 @@ impl<'a> SealedSenderV2SentMessage<'a> {
             recipient.c_and_at,
             self.shared_bytes,
         ]
+    }
+
+    /// Returns the offset of `addr` within `self.full_message`, or `None` if `addr` does not lie
+    /// within `self.full_message`.
+    ///
+    /// A stripped-down version of [a dormant Rust RFC][subslice-offset].
+    ///
+    /// [subslice-offset]: https://github.com/rust-lang/rfcs/pull/2796
+    #[inline]
+    fn offset_within_full_message(&self, addr: *const u8) -> Option<usize> {
+        // Arithmetic on addresses is valid for offsets within a byte array.
+        // If addr < start, we'll wrap around to a very large value, which will be out of range just
+        // like if addr > end.
+        let offset = (addr as usize).wrapping_sub(self.full_message.as_ptr() as usize);
+        // We *do* want to allow the "one-past-the-end" offset here, because the offset might be
+        // used as part of a range (e.g. 0..end).
+        if offset <= self.full_message.len() {
+            debug_assert!(
+                offset == self.full_message.len() || std::ptr::eq(&self.full_message[offset], addr)
+            );
+            Some(offset)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the range within the full message of `recipient`'s user-specific key material.
+    ///
+    /// This can be concatenated as `[version, recipient_key_material, shared_bytes]` to produce a
+    /// valid SSv2 ReceivedMessage, the payload delivered to recipients.
+    ///
+    /// **Panics** if `recipient` is not one of the recipients in `self`.
+    pub fn range_for_recipient_key_material(
+        &self,
+        recipient: &SealedSenderV2SentMessageRecipient<'a>,
+    ) -> Range<usize> {
+        if recipient.c_and_at.is_empty() {
+            return 0..0;
+        }
+        let offset = self
+            .offset_within_full_message(recipient.c_and_at.as_ptr())
+            .expect("'recipient' is not one of the recipients in this SealedSenderV2SentMessage");
+        let end_offset = offset.saturating_add(recipient.c_and_at.len());
+        assert!(
+            end_offset <= self.full_message.len(),
+            "invalid 'recipient' passed to range_for_recipient_key_material"
+        );
+        offset..end_offset
+    }
+
+    /// Returns the offset of the shared bytes within the full message.
+    ///
+    /// This can be concatenated as `[version, recipient_key_material, shared_bytes]` to produce a
+    /// valid SSv2 ReceivedMessage, the payload delivered to recipients.
+    pub fn offset_of_shared_bytes(&self) -> usize {
+        debug_assert_eq!(
+            self.full_message.as_ptr_range().end,
+            self.shared_bytes.as_ptr_range().end,
+            "SealedSenderV2SentMessage parsed incorrectly"
+        );
+        self.offset_within_full_message(self.shared_bytes.as_ptr())
+            .expect("constructed correctly")
     }
 }
 
