@@ -18,14 +18,17 @@ bitflags = "2.3.3"
 chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 ciborium = "0.2"
+curve25519-dalek = { version = "4.0", features = ["rand_core"] }
 displaydoc = "0.2"
 hex = { version = "0.4", features = ["serde"] }
 hex-literal = "0.4.1"
+hkdf = "0.12"
 lazy_static = "1.4.0"
 libc = "0.2"
 log = "0.4"
 num_enum = "0.6.1"
 prost = "0.12"
+rand = "0.8"
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -39,6 +42,11 @@ x25519-dalek = "2.0.0"
 
 [dev-dependencies]
 snow = { version = "0.9.3", features = ["default-resolver"] }
+criterion = "0.5"
 
 [build-dependencies]
 prost-build = "0.12"
+
+[[bench]]
+name = "gf256_benchmarks"
+harness = false
