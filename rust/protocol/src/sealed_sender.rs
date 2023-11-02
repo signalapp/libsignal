@@ -16,6 +16,7 @@ use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
 use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
 use arrayref::array_ref;
 use curve25519_dalek::scalar::Scalar;
+use indexmap::IndexMap;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
@@ -1412,12 +1413,8 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
 ///
 /// See [`SealedSenderV2SentMessage`].
 pub struct SealedSenderV2SentMessageRecipient<'a> {
-    /// The recipient's service ID.
-    pub service_id: ServiceId,
-    /// The recipient's device ID.
-    pub device_id: DeviceId,
-    /// The recipient device's registration ID.
-    pub registration_id: u16,
+    /// The recipient's devices and their registration IDs.
+    pub devices: Vec<(DeviceId, u16)>,
     /// A concatenation of the `C_i` and `AT_i` SSv2 fields for this recipient.
     c_and_at: &'a [u8],
 }
@@ -1428,8 +1425,12 @@ pub struct SealedSenderV2SentMessageRecipient<'a> {
 pub struct SealedSenderV2SentMessage<'a> {
     /// The version byte at the head of the message.
     pub version: u8,
-    /// The parsed list of recipients.
-    pub recipients: Vec<SealedSenderV2SentMessageRecipient<'a>>,
+    /// The parsed list of recipients, grouped by ServiceId.
+    ///
+    /// The map is ordered by when a recipient first appears in the full message, even if they
+    /// appear again later with more devices. This makes iteration over the full set of recipients
+    /// deterministic.
+    pub recipients: IndexMap<ServiceId, SealedSenderV2SentMessageRecipient<'a>>,
     /// A concatenation of the `e_pub` and `message` SSv2 fields for this recipient.
     shared_bytes: &'a [u8],
 }
@@ -1467,9 +1468,12 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         }
 
         let mut data = &data[1..];
-        let recipient_count = decode_varint(&mut data)?;
+        let recipient_count = decode_varint(&mut data)?.try_into().unwrap_or(usize::MAX);
 
-        let mut recipients = Vec::with_capacity(recipient_count as usize);
+        // Cap our preallocated capacity; anything higher than this is *probably* a mistake, but
+        // could just be a very large message.
+        // (Callers can of course refuse to process messages with too many recipients.)
+        let mut recipients = IndexMap::with_capacity(std::cmp::min(recipient_count as usize, 6000));
         for _ in 0..recipient_count {
             let service_id = if version & 0xF == SEALED_SENDER_V2_VERSION {
                 // The original version of SSv2 assumed ACIs here, and only encoded the raw UUID.
@@ -1488,12 +1492,20 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                 { sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN },
             >(&mut data)?;
 
-            recipients.push(SealedSenderV2SentMessageRecipient {
-                service_id,
-                device_id,
-                registration_id,
-                c_and_at,
-            });
+            recipients
+                .entry(service_id)
+                .and_modify(|existing: &mut SealedSenderV2SentMessageRecipient| {
+                    // We don't unique the recipient devices; if a client is sending the same device
+                    // multiple messages, they can get punished for it (with a mismatch).
+                    existing.devices.push((device_id, registration_id));
+                    // Note that we don't check that c_and_at matches. Any case where it doesn't
+                    // match would already result in a decryption error for at least one of the
+                    // recipient's devices, though.
+                })
+                .or_insert_with(|| SealedSenderV2SentMessageRecipient {
+                    devices: vec![(device_id, registration_id)],
+                    c_and_at,
+                });
         }
 
         Ok(Self {

@@ -199,11 +199,12 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
 pub fn extract_single_ssv2_received_message(input: &[u8]) -> (ServiceId, Vec<u8>) {
     let message = SealedSenderV2SentMessage::parse(input).expect("valid");
     assert_eq!(1, message.recipients.len());
+    let (service_id, recipient) = message.recipients.first().expect("checked length");
     let result = message
-        .received_message_parts_for_recipient(&message.recipients[0])
+        .received_message_parts_for_recipient(recipient)
         .as_ref()
         .concat();
-    (message.recipients[0].service_id, result)
+    (*service_id, result)
 }
 
 pub enum IdChoice {

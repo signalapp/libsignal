@@ -270,19 +270,30 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
         let alice_ctext_parsed = SealedSenderV2SentMessage::parse(&alice_ctext)?;
         assert_eq!(alice_ctext_parsed.recipients.len(), 2);
         assert_eq!(
-            alice_ctext_parsed.recipients[0]
-                .service_id
+            alice_ctext_parsed
+                .recipients
+                .get_index(0)
+                .expect("checked length")
+                .0
                 .service_id_string(),
             bob_uuid
         );
-        assert_eq!(alice_ctext_parsed.recipients[0].device_id, bob_device_id);
+        assert_eq!(alice_ctext_parsed.recipients[0].devices.len(), 1);
+        assert_eq!(alice_ctext_parsed.recipients[0].devices[0].0, bob_device_id);
         assert_eq!(
-            alice_ctext_parsed.recipients[1]
-                .service_id
+            alice_ctext_parsed
+                .recipients
+                .get_index(1)
+                .expect("checked length")
+                .0
                 .service_id_string(),
             carol_uuid
         );
-        assert_eq!(alice_ctext_parsed.recipients[1].device_id, carol_device_id);
+        assert_eq!(alice_ctext_parsed.recipients[1].devices.len(), 1);
+        assert_eq!(
+            alice_ctext_parsed.recipients[1].devices[0].0,
+            carol_device_id
+        );
 
         let bob_ctext = alice_ctext_parsed
             .received_message_parts_for_recipient(&alice_ctext_parsed.recipients[0])
@@ -484,28 +495,36 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
         .await?;
 
         let alice_ctext_parsed = SealedSenderV2SentMessage::parse(&alice_ctext)?;
-        assert_eq!(alice_ctext_parsed.recipients.len(), 3);
+        assert_eq!(alice_ctext_parsed.recipients.len(), 2);
         assert_eq!(
-            alice_ctext_parsed.recipients[0]
-                .service_id
+            alice_ctext_parsed
+                .recipients
+                .get_index(0)
+                .expect("checked length")
+                .0
                 .service_id_string(),
             bob_uuid
         );
-        assert_eq!(alice_ctext_parsed.recipients[0].device_id, bob_device_id);
+        assert_eq!(alice_ctext_parsed.recipients[0].devices.len(), 1);
+        assert_eq!(alice_ctext_parsed.recipients[0].devices[0].0, bob_device_id);
         assert_eq!(
-            alice_ctext_parsed.recipients[1]
-                .service_id
+            alice_ctext_parsed
+                .recipients
+                .get_index(1)
+                .expect("checked length")
+                .0
                 .service_id_string(),
             carol_uuid
         );
-        assert_eq!(alice_ctext_parsed.recipients[1].device_id, carol_device_id);
+        assert_eq!(alice_ctext_parsed.recipients[1].devices.len(), 2);
         assert_eq!(
-            alice_ctext_parsed.recipients[2]
-                .service_id
-                .service_id_string(),
-            carol_uuid
+            alice_ctext_parsed.recipients[1].devices[0].0,
+            carol_device_id
         );
-        assert_eq!(alice_ctext_parsed.recipients[2].device_id, carol2_device_id);
+        assert_eq!(
+            alice_ctext_parsed.recipients[1].devices[1].0,
+            carol2_device_id
+        );
 
         let bob_ctext = alice_ctext_parsed
             .received_message_parts_for_recipient(&alice_ctext_parsed.recipients[0])
@@ -515,11 +534,6 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
             .received_message_parts_for_recipient(&alice_ctext_parsed.recipients[1])
             .as_ref()
             .concat();
-        let carol2_ctext = alice_ctext_parsed
-            .received_message_parts_for_recipient(&alice_ctext_parsed.recipients[2])
-            .as_ref()
-            .concat();
-        assert_eq!(carol_ctext, carol2_ctext);
 
         let bob_usmc = sealed_sender_decrypt_to_usmc(&bob_ctext, &bob_store.identity_store).await?;
 
