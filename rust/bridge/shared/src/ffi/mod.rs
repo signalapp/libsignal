@@ -135,9 +135,15 @@ macro_rules! ffi_bridge_destroy {
             pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](
                 p: *mut $typ
             ) -> *mut ffi::SignalFfiError {
+                // The only thing the closure does is drop the value if there is
+                // one. Drop shouldn't panic, and if it does and leaves the
+                // value in an (internally) inconsistent state, that's fine
+                // for the purposes of unwind safety since this is the last
+                // reference to the value.
+                let p = std::panic::AssertUnwindSafe(p);
                 ffi::run_ffi_safe(|| {
                     if !p.is_null() {
-                        drop(Box::from_raw(p));
+                        drop(Box::from_raw(*p));
                     }
                     Ok(())
                 })

@@ -32,7 +32,7 @@ pub struct Auth {
 pub struct E164(NonZeroU64);
 
 impl E164 {
-    pub fn new(number: NonZeroU64) -> Self {
+    pub const fn new(number: NonZeroU64) -> Self {
         Self(number)
     }
 }

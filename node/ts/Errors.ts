@@ -163,6 +163,10 @@ export type UnsupportedMediaInputError = LibSignalErrorCommon & {
   code: ErrorCode.UnsupportedMediaInput;
 };
 
+export type RateLimitedError = LibSignalErrorBase & {
+  readonly retryAfterSecs: number;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError

@@ -84,6 +84,7 @@ pub trait SignalNodeError: Sized + fmt::Display {
     }
 }
 
+const RATE_LIMITED_ERROR: &str = "RateLimitedError";
 const IO_ERROR: &str = "IoError";
 const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
@@ -311,6 +312,44 @@ impl SignalNodeError for WebpError {
                 cx.throw_error(&message)
             }
         }
+    }
+}
+
+impl SignalNodeError for libsignal_net::cdsi::Error {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let (name, extra_props) = match self {
+            Self::RateLimited { retry_after } => (
+                RATE_LIMITED_ERROR,
+                Some({
+                    let props = cx.empty_object();
+                    let retry_after = retry_after.as_secs().convert_into(cx)?;
+                    props.set(cx, "retryAfterSecs", retry_after)?;
+                    props
+                }),
+            ),
+            Self::Net(_)
+            | Self::Protocol
+            | Self::AttestationError
+            | Self::InvalidResponse
+            | Self::ParseError => (IO_ERROR, None),
+        };
+        let message = self.to_string();
+        new_js_error(
+            cx,
+            module,
+            Some(name),
+            &message,
+            operation_name,
+            extra_props,
+        )
+        .map(|e| cx.throw(e))
+        // Make sure we still throw something.
+        .unwrap_or_else(|| cx.throw_error(&message))
     }
 }
 

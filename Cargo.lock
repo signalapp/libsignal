@@ -1533,10 +1533,13 @@ dependencies = [
  "jni",
  "libc",
  "libsignal-bridge-macros",
+ "libsignal-net",
  "libsignal-protocol",
  "linkme",
  "log",
  "neon",
+ "nonzero_ext",
+ "num_enum",
  "partial-default",
  "paste",
  "rand",
@@ -1550,6 +1553,7 @@ dependencies = [
  "signal-pin",
  "static_assertions",
  "subtle",
+ "tokio",
  "usernames",
  "uuid",
  "zkgroup",
@@ -1889,6 +1893,12 @@ dependencies = [
  "memchr",
  "minimal-lexical",
 ]
+
+[[package]]
+name = "nonzero_ext"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38bf9645c8b145698bb0b18a4637dcacbc421ea49bef2317e4fd8065a387cf21"
 
 [[package]]
 name = "num-integer"

@@ -7,7 +7,7 @@
 use std::time::Duration;
 
 use libsignal_net::cdsi::*;
-use libsignal_net::env::CdsiDirectConnectionParams;
+use libsignal_net::env::CdsiEndpointConnection;
 use tokio::io::AsyncBufReadExt as _;
 
 #[tokio::main]
@@ -31,7 +31,7 @@ async fn main() {
     let env = &libsignal_net::env::PROD;
     let cdsi_response = cdsi_lookup(
         Auth { username, password },
-        &CdsiDirectConnectionParams::new(env.cdsi, Duration::from_secs(10)),
+        &CdsiEndpointConnection::new(env.cdsi, Duration::from_secs(10)),
         request,
         Duration::from_secs(10),
     )

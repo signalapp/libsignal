@@ -7,6 +7,7 @@ use std::cmp::{max, min};
 use std::fmt::Debug;
 use std::future::Future;
 use std::ops::Add;
+use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -65,6 +66,39 @@ struct ThrottlingConnectionManagerState {
     consecutive_fails: u16,
     next_attempt: Instant,
     latest_attempt: Instant,
+}
+impl ThrottlingConnectionManagerState {
+    /// Produces a new state after a success or failure.
+    ///
+    /// The logic here is to track an attempt start time and to take it into
+    /// account when updating the state. Then, if we see failed attempts that
+    /// started before some successful attempt, those failed attempts are
+    /// discarded. If, however, outcomes of failed attempts are arriving out of
+    /// order in which attempts started, those failures will still be reflected
+    /// in `consecutive_fails`.
+    fn after_attempt(self, was_successful: bool, attempt_start_time: Instant) -> Self {
+        let mut s = self;
+        if was_successful {
+            // comparing using `>=` to guarantee that succesful attempt takes precedence
+            if attempt_start_time >= s.latest_attempt {
+                s.latest_attempt = attempt_start_time;
+                s.consecutive_fails = 0;
+                s.next_attempt = attempt_start_time;
+            }
+        } else if attempt_start_time > s.latest_attempt || s.consecutive_fails > 0 {
+            s.latest_attempt = max(attempt_start_time, s.latest_attempt);
+            let idx: usize = s.consecutive_fails.into();
+            let cooldown_interval = COOLDOWN_INTERVALS
+                .get(idx)
+                .unwrap_or(&MAX_COOLDOWN_INTERVAL);
+            s.next_attempt = Instant::now() + *cooldown_interval;
+            s.consecutive_fails = min(
+                s.consecutive_fails.saturating_add(1),
+                (COOLDOWN_INTERVALS.len() - 1).try_into().unwrap(),
+            );
+        }
+        s
+    }
 }
 
 /// A connection manager that only attempts one route (i.e. one [ConnectionParams])
@@ -170,6 +204,12 @@ impl SingleRouteThrottlingConnectionManager {
     }
 }
 
+/// Declare &SingleRouteThrottlingConnectionManager unwind-safe.
+///
+/// This is guaranteed by the impl blocks, which only update locked state
+/// atomically to avoid logic errors.
+impl RefUnwindSafe for SingleRouteThrottlingConnectionManager {}
+
 #[async_trait]
 impl ConnectionManager for SingleRouteThrottlingConnectionManager {
     async fn connect_or_wait<'a, T, E, Fun, Fut>(
@@ -193,37 +233,16 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
         )
         .await;
 
-        let s = &mut self.state.lock().await;
-        // The logic here is to track an attempt start time
-        // and to take it into account when updating the state.
-        // Then, if we see failed attempts that started before some successful attempt,
-        // those failed attempts are discarded. If, however, outcomes of failed attempts
-        // are arriving out of order in which attempts started,
-        // those failures will still be reflected in `consecutive_fails`.
-        match &connection_result_or_timeout {
-            Ok(Ok(_)) => {
-                // comparing using `>=` to guarantee that succesful attempt takes precedence
-                if attempt_start_time >= s.latest_attempt {
-                    s.latest_attempt = attempt_start_time;
-                    s.consecutive_fails = 0;
-                    s.next_attempt = attempt_start_time;
-                }
-            }
-            Ok(Err(_)) | Err(_) => {
-                if attempt_start_time > s.latest_attempt || s.consecutive_fails > 0 {
-                    s.latest_attempt = max(attempt_start_time, s.latest_attempt);
-                    let idx: usize = s.consecutive_fails.into();
-                    let cooldown_interval = COOLDOWN_INTERVALS
-                        .get(idx)
-                        .unwrap_or(&MAX_COOLDOWN_INTERVAL);
-                    s.next_attempt = Instant::now() + *cooldown_interval;
-                    s.consecutive_fails = min(
-                        s.consecutive_fails.saturating_add(1),
-                        (COOLDOWN_INTERVALS.len() - 1).try_into().unwrap(),
-                    );
-                }
-            }
-        }
+        let mut s = self.state.lock().await;
+
+        // Ensure unwind safety by atomically updating the locked state with
+        // respect to panics.
+        let was_successful = connection_result_or_timeout
+            .as_ref()
+            .map_or(false, |r| r.is_ok());
+        let new_state = s.clone().after_attempt(was_successful, attempt_start_time);
+        *s = new_state;
+
         connection_result_or_timeout.map_or(ConnectionAttemptOutcome::TimedOut, |result| {
             ConnectionAttemptOutcome::Attempted(result)
         })

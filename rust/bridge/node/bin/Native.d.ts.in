@@ -11,6 +11,13 @@ type Uuid = Buffer;
 /// what's important is that it's an integer less than Number.MAX_SAFE_INTEGER.
 type Timestamp = number;
 
+type LookupResponse = Map<string, LookupResponseEntry>;
+
+interface LookupResponseEntry {
+  readonly aci: string | undefined;
+  readonly pni: string | undefined;
+}
+
 export abstract class IdentityKeyStore {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;

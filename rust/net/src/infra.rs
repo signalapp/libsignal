@@ -18,7 +18,7 @@ use crate::infra::dns::DnsResolver;
 use crate::infra::errors::NetError;
 
 pub mod certs;
-pub(crate) mod connection_manager;
+pub mod connection_manager;
 pub mod dns;
 pub mod errors;
 pub(crate) mod http;

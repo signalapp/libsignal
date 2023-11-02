@@ -15,6 +15,8 @@ export * as usernames from './usernames';
 
 export * as io from './io';
 
+export * as Net from './net';
+
 export * as Mp4Sanitizer from './Mp4Sanitizer';
 export * as WebpSanitizer from './WebpSanitizer';
 
