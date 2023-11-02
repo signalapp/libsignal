@@ -28,6 +28,12 @@ path = "fuzz_targets/interaction.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "sealed_sender_v2"
+path = "fuzz_targets/sealed_sender_v2.rs"
+test = false
+doc = false
+
 [patch.crates-io]
 # Use our fork of curve25519-dalek for zkgroup support.
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.0.0' }
