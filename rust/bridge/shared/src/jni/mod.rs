@@ -522,7 +522,7 @@ pub unsafe fn native_handle_cast<T>(
 /// Calls a method and translates any thrown exceptions to
 /// [`SignalProtocolError::ApplicationCallbackError`].
 ///
-/// Wraps [`JNIEnv::call_method`]; all arguments are the same.
+/// Wraps [`JNIEnv::call_method`].
 /// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
 /// returned instead.
 pub fn call_method_checked<
@@ -540,7 +540,38 @@ pub fn call_method_checked<
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
     let result = env.call_method(obj, fn_name, args.sig, &args.args);
+    check_exceptions_and_convert_result(env, fn_name, result)
+}
 
+/// Calls a method and translates any thrown exceptions to
+/// [`SignalProtocolError::ApplicationCallbackError`].
+///
+/// Wraps [`JNIEnv::call_static_method`].
+/// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
+/// returned instead.
+pub fn call_static_method_checked<
+    'input,
+    'output,
+    C: jni::descriptors::Desc<'output, JClass<'input>>,
+    R: TryFrom<JValueOwned<'output>>,
+    const LEN: usize,
+>(
+    env: &mut JNIEnv<'output>,
+    cls: C,
+    fn_name: &'static str,
+    args: JniArgs<R, LEN>,
+) -> Result<R, SignalJniError> {
+    // Note that we are *not* unwrapping the result yet!
+    // We need to check for exceptions *first*.
+    let result = env.call_static_method(cls, fn_name, args.sig, &args.args);
+    check_exceptions_and_convert_result(env, fn_name, result)
+}
+
+fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>>(
+    env: &mut JNIEnv<'output>,
+    fn_name: &'static str,
+    result: jni::errors::Result<JValueOwned<'output>>,
+) -> Result<R, SignalJniError> {
     let throwable = env.exception_occurred()?;
     if **throwable == *JObject::null() {
         let result = result?;
@@ -565,12 +596,11 @@ pub fn call_method_checked<
 pub fn new_object<
     'output,
     C: jni::descriptors::Desc<'output, JClass<'output>>,
-    R: TryFrom<JValueOwned<'output>>,
     const LEN: usize,
 >(
     env: &mut JNIEnv<'output>,
     cls: C,
-    args: JniArgs<R, LEN>,
+    args: JniArgs<(), LEN>,
 ) -> jni::errors::Result<JObject<'output>> {
     env.new_object(cls, args.sig, &args.args)
 }
