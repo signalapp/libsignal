@@ -12,7 +12,7 @@ use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt, CryptographicMac};
 use crate::constants::{
     USERNAME_LINK_ENTROPY_SIZE, USERNAME_LINK_HMAC_ALGORITHM, USERNAME_LINK_HMAC_LEN,
     USERNAME_LINK_IV_SIZE, USERNAME_LINK_KEY_SIZE, USERNAME_LINK_LABEL_AUTHENTICATION_KEY,
-    USERNAME_LINK_LABEL_ENCRYPTION_KEY, USERNAME_LINK_MAX_PTEXT_SIZE,
+    USERNAME_LINK_LABEL_ENCRYPTION_KEY,
 };
 use crate::{proto, UsernameLinkError};
 
@@ -26,9 +26,16 @@ pub fn create_for_username<R: Rng + CryptoRng>(
     username: String,
     entropy: Option<&[u8; USERNAME_LINK_ENTROPY_SIZE]>,
 ) -> Result<([u8; USERNAME_LINK_ENTROPY_SIZE], Vec<u8>), UsernameLinkError> {
-    let username_data = proto::username::UsernameData { username };
+    const AES_BLOCK_SIZE: usize = 16;
+    let padding = vec![0; (AES_BLOCK_SIZE * 3).saturating_sub(username.len())];
+
+    let username_data = proto::username::UsernameData { username, padding };
     let ptext = username_data.encode_to_vec();
-    if ptext.len() >= USERNAME_LINK_MAX_PTEXT_SIZE {
+    debug_assert!(
+        ptext.len() > AES_BLOCK_SIZE * 3,
+        "padded to fill four AES blocks (with room for PKCS#7 padding in the last block"
+    );
+    if ptext.len() >= AES_BLOCK_SIZE * 4 {
         return Err(UsernameLinkError::InputDataTooLong);
     }
     let entropy: [u8; USERNAME_LINK_ENTROPY_SIZE] =
@@ -100,6 +107,8 @@ fn random_bytes<const SIZE: usize, R: Rng + CryptoRng>(rng: &mut R) -> [u8; SIZE
 #[cfg(test)]
 mod test {
     use rand::rngs::OsRng;
+
+    use crate::constants::{DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH};
 
     use super::*;
 
@@ -198,6 +207,20 @@ mod test {
     }
 
     #[test]
+    fn longest_valid_username() {
+        let expected_username = format!(
+            "{}.{}",
+            ["a"; MAX_NICKNAME_LENGTH].join(""),
+            DISCRIMINATOR_RANGES.last().expect("non-empty").end - 1
+        );
+        let mut csprng = OsRng;
+        let (entropy, encrypted_username) =
+            create_for_username(&mut csprng, expected_username.clone(), None).expect("no error");
+        let actual_username = decrypt_username(&entropy, &encrypted_username).expect("no error");
+        assert_eq!(expected_username, actual_username);
+    }
+
+    #[test]
     fn reuse_entropy() {
         let expected_username = "test_username.42";
         let mut csprng = OsRng;
@@ -214,5 +237,17 @@ mod test {
         let actual_username =
             decrypt_username(&entropy, &new_encrypted_username).expect("no error");
         assert_eq!(expected_username, actual_username);
+    }
+
+    #[test]
+    fn prost_ignores_unknown_fields_and_handles_missing_ones() {
+        // Field # 0b1111111_1111 (way higher than anything we'd use) with a type of VARINT (0) and a value of 0
+        // See https://protobuf.dev/programming-guides/encoding/
+        #[allow(clippy::unusual_byte_groupings)]
+        let not_an_encoded_username_proto = [0b1_1111_000, 0b0_1111111, 0];
+        let username_message =
+            proto::username::UsernameData::decode(not_an_encoded_username_proto.as_slice())
+                .expect("valid if vacuous");
+        assert_eq!("", &username_message.username);
     }
 }

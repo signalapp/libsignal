@@ -58,9 +58,6 @@ pub(crate) const USERNAME_LINK_HMAC_ALGORITHM: &str = "HmacSha256";
 pub(crate) const USERNAME_LINK_HMAC_LEN: usize = 32;
 pub(crate) const USERNAME_LINK_KEY_SIZE: usize = 32;
 pub(crate) const USERNAME_LINK_IV_SIZE: usize = 16;
-pub(crate) const USERNAME_LINK_MAX_DATA_SIZE: usize = 128;
-pub(crate) const USERNAME_LINK_MAX_PTEXT_SIZE: usize =
-    USERNAME_LINK_MAX_DATA_SIZE - USERNAME_LINK_IV_SIZE - USERNAME_LINK_HMAC_LEN;
 
 #[cfg(test)]
 mod test {
