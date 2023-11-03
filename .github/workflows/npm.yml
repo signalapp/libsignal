@@ -25,6 +25,8 @@ jobs:
           arm64-rust-target: aarch64-apple-darwin
         - os: windows-latest
           arm64-rust-target: aarch64-pc-windows-msvc
+          # This can be removed when we update to a Node version that officially supports win-arm64.
+          custom-arm64-dist-url: https://unofficial-builds.nodejs.org/download/release
         # Ubuntu binaries are built using Docker, below
 
     steps:
@@ -59,6 +61,8 @@ jobs:
     - name: Build for arm64
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
+      env:
+        npm_config_dist_url: ${{ matrix.custom-arm64-dist-url }}
 
     - name: Build for the host (should be x64)
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}

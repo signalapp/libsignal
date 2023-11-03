@@ -137,6 +137,8 @@ jobs:
     - name: Build for arm64
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
+      env:
+        npm_config_dist_url: https://unofficial-builds.nodejs.org/download/release
 
   swift-cocoapod:
     name: Swift CocoaPod (all architectures)
