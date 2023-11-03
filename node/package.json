@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "node-gyp-build": "^4.2.3",
+    "type-fest": "^3.5.0",
     "uuid": "^8.3.0"
   },
   "devDependencies": {

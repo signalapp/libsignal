@@ -32,6 +32,8 @@ export enum ErrorCode {
   InputDataTooLong,
   InvalidEntropyDataLength,
   InvalidUsernameLinkEncryptedData,
+
+  RateLimitedError,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -164,6 +166,7 @@ export type UnsupportedMediaInputError = LibSignalErrorCommon & {
 };
 
 export type RateLimitedError = LibSignalErrorBase & {
+  code: ErrorCode.RateLimitedError;
   readonly retryAfterSecs: number;
 };
 

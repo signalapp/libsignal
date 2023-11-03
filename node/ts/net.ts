@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { ReadonlyDeep } from 'type-fest';
 import * as Native from '../Native';
 import { Aci } from './Address';
 
@@ -44,13 +45,13 @@ export class Net {
   }
 
   async cdsiLookup(
-    { username, password }: CDSAuthType,
+    { username, password }: Readonly<CDSAuthType>,
     {
       e164s,
       acisAndAccessKeys,
       timeout,
       returnAcisWithoutUaks,
-    }: CDSRequestOptionsType
+    }: ReadonlyDeep<CDSRequestOptionsType>
   ): Promise<CDSResponseType<string, string>> {
     const request = { _nativeHandle: Native.LookupRequest_new() };
     e164s.forEach((e164) => {
