@@ -28,7 +28,9 @@ pub enum ServiceState<T, E> {
     /// The service is inactive and no initialization attempts are to be made
     /// until the `Instant` held by this object.
     Cooldown(Instant),
-    /// Last connection attempt timed out
+    /// Last connection attempt resulted in an error.
+    Error(E),
+    /// Last connection attempt timed out.
     TimedOut,
 }
 
@@ -86,10 +88,67 @@ impl<E> ServiceStatus<E> {
     }
 }
 
-struct ServiceWithReconnectData<C: ServiceConnector, M> {
-    state: Mutex<ServiceState<C::Service, C::Error>>,
+pub struct ServiceInitializer<C: ServiceConnector, M> {
     service_connector: C,
     connection_manager: M,
+}
+
+impl<C, M> ServiceInitializer<C, M>
+where
+    M: ConnectionManager + 'static,
+    C: ServiceConnector + Send + Sync + 'static,
+    C::Service: Clone + Send + Sync + 'static,
+    C::Channel: Send + Sync,
+    C::Error: Send + Sync + Debug + LogSafeDisplay,
+{
+    pub fn new(service_connector: C, connection_manager: M) -> Self {
+        Self {
+            service_connector,
+            connection_manager,
+        }
+    }
+
+    pub async fn connect(&self, deadline: Instant) -> ServiceState<C::Service, C::Error> {
+        log::debug!("attempting a connection");
+        let connection_attempt_future =
+            self.connection_manager
+                .connect_or_wait(|connection_params| {
+                    self.service_connector.connect_channel(connection_params)
+                });
+        let connection_attempt_result = match timeout_at(deadline, connection_attempt_future).await
+        {
+            Ok(result) => result,
+            Err(_) => return ServiceState::TimedOut,
+        };
+
+        match connection_attempt_result {
+            ConnectionAttemptOutcome::Attempted(Ok(channel)) => {
+                log::debug!("connection attempt succeeded");
+                let (service, service_status) = self.service_connector.start_service(channel);
+                ServiceState::Active(service, service_status)
+            }
+            ConnectionAttemptOutcome::Attempted(Err(e)) => {
+                log::debug!("connection attempt failed due to an error: {:?}", e);
+                ServiceState::Error(e)
+            }
+            ConnectionAttemptOutcome::WaitUntil(i) => {
+                log::debug!(
+                    "connection will not be attempted for another {} seconds",
+                    i.duration_since(Instant::now()).as_secs()
+                );
+                ServiceState::Cooldown(i)
+            }
+            ConnectionAttemptOutcome::TimedOut => {
+                log::debug!("connection attempt timed out");
+                ServiceState::TimedOut
+            }
+        }
+    }
+}
+
+struct ServiceWithReconnectData<C: ServiceConnector, M> {
+    state: Mutex<ServiceState<C::Service, C::Error>>,
+    service_initializer: ServiceInitializer<C, M>,
     connection_timeout: Duration,
 }
 
@@ -112,8 +171,7 @@ where
         Self {
             data: Arc::new(ServiceWithReconnectData {
                 state: Mutex::new(ServiceState::Cooldown(Instant::now())),
-                service_connector,
-                connection_manager,
+                service_initializer: ServiceInitializer::new(service_connector, connection_manager),
                 connection_timeout,
             }),
         }
@@ -154,59 +212,18 @@ where
                 ServiceState::TimedOut => {
                     // keep trying until we hit our own timeout deadline
                     log::info!("Connection attempt timed out");
+                    if Instant::now() >= deadline {
+                        return None;
+                    }
+                }
+                ServiceState::Error(e) => {
+                    // short circuiting mechanism is responsibility of the `ConnectionManager`,
+                    // so here we're just going to keep trying until we get into
+                    // one of the non-retryable states, `Cooldown` or time out.
+                    log::info!("Connection attempt resulted in an error: {}", e);
                 }
             };
-            match timeout_at(deadline, self.reconnect()).await {
-                Ok(next_state) => *guard = next_state,
-                Err(_) => {
-                    log::info!("Timed out waiting for a connection attempt to finish");
-                    return None;
-                }
-            }
-        }
-    }
-
-    async fn reconnect(&self) -> ServiceState<C::Service, C::Error> {
-        // attempting to establish a connection until we're connected or instructed to cooldown
-        loop {
-            log::debug!("attempting a connection");
-            let connection_attempt_result = self
-                .data
-                .connection_manager
-                .connect_or_wait(|connection_params| {
-                    self.data
-                        .service_connector
-                        .connect_channel(connection_params)
-                })
-                .await;
-
-            match connection_attempt_result {
-                ConnectionAttemptOutcome::Attempted(Ok(channel)) => {
-                    log::debug!("connection attempt succeeded");
-                    let (service, service_status) =
-                        self.data.service_connector.start_service(channel);
-                    return ServiceState::Active(service, service_status);
-                }
-                ConnectionAttemptOutcome::Attempted(Err(e)) => {
-                    log::debug!("connection attempt failed due to an error: {:?}", e);
-                    continue;
-                }
-                ConnectionAttemptOutcome::WaitUntil(i) if i <= Instant::now() => {
-                    log::debug!("cooldown time is in the past, retrying immediately");
-                    continue;
-                }
-                ConnectionAttemptOutcome::WaitUntil(i) => {
-                    log::debug!(
-                        "connection will not be attempted for another {} seconds",
-                        i.duration_since(Instant::now()).as_secs()
-                    );
-                    return ServiceState::Cooldown(i);
-                }
-                ConnectionAttemptOutcome::TimedOut => {
-                    log::debug!("connection attempt timed out");
-                    return ServiceState::TimedOut;
-                }
-            }
+            *guard = self.data.service_initializer.connect(deadline).await;
         }
     }
 }

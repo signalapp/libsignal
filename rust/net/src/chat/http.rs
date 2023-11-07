@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::Duration;
+
+use async_trait::async_trait;
+use futures_util::TryFutureExt;
+
 use crate::chat::errors::ChatNetworkError;
 use crate::chat::{proto_to_request, ChatService, MessageProto, ResponseProto};
 use crate::infra::errors::NetError;
@@ -10,27 +15,34 @@ use crate::infra::http::{
     http2_channel, AggregatingHttp2Client, AggregatingHttpClient, Http2Channel, Http2Connection,
 };
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
-use crate::infra::ConnectionParams;
+use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
 use crate::utils::timeout;
-use async_trait::async_trait;
-use futures_util::TryFutureExt;
-use std::time::Duration;
 
 #[derive(Clone)]
-pub struct ChatOverHttp2ServiceConnector {}
+pub struct ChatOverHttp2ServiceConnector<C> {
+    transport_connector: C,
+}
+
+impl<C> ChatOverHttp2ServiceConnector<C> {
+    pub fn new(transport_connector: C) -> Self {
+        Self {
+            transport_connector,
+        }
+    }
+}
 
 #[async_trait]
-impl ServiceConnector for ChatOverHttp2ServiceConnector {
+impl<C: TransportConnector> ServiceConnector for ChatOverHttp2ServiceConnector<C> {
     type Service = ChatOverHttp2;
-    type Channel = Http2Channel<AggregatingHttp2Client>;
+    type Channel = Http2Channel<AggregatingHttp2Client, C::Stream>;
     type Error = ChatNetworkError;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
     ) -> Result<Self::Channel, Self::Error> {
-        let connect_future =
-            http2_channel(connection_params).map_err(ChatNetworkError::FailedToConnectHttp);
+        let connect_future = http2_channel(&self.transport_connector, connection_params)
+            .map_err(ChatNetworkError::FailedToConnectHttp);
         timeout(
             Duration::from_secs(2),
             ChatNetworkError::Timeout,
@@ -106,7 +118,7 @@ pub struct ChatOverHttp2 {
 }
 
 fn start_event_listener(
-    connection: Http2Connection,
+    connection: Http2Connection<impl AsyncDuplexStream>,
     service_status: ServiceStatus<ChatNetworkError>,
 ) {
     tokio::spawn(async move {

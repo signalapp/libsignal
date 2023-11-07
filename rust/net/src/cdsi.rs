@@ -19,6 +19,7 @@ use crate::infra::errors::NetError;
 use crate::infra::ws::{
     connect_websocket, AttestedConnection, AttestedConnectionError, NextOrClose, WebSocket,
 };
+use crate::infra::TcpSslTransportConnector;
 
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::utils::{basic_authorization, timeout};
@@ -264,8 +265,13 @@ impl CdsiConnection {
                     let connection_params = connection_params
                         .clone()
                         .with_decorator(header_auth_decorator.clone());
-                    connect_websocket(&connection_params, endpoint.clone(), Default::default())
-                        .await
+                    connect_websocket(
+                        &connection_params,
+                        endpoint.clone(),
+                        Default::default(),
+                        &TcpSslTransportConnector,
+                    )
+                    .await
                 })
                 .await
             {

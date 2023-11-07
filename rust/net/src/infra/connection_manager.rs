@@ -116,16 +116,13 @@ pub struct SingleRouteThrottlingConnectionManager {
 /// If none did, it will return [ConnectionAttemptOutcome::WaitUntil] with the minimum possible
 /// cooldown time (based on cooldown times returned by all throttling connection managers).
 #[derive(Clone)]
-pub struct MultiRouteConnectionManager {
-    route_managers: Vec<SingleRouteThrottlingConnectionManager>,
+pub struct MultiRouteConnectionManager<M = SingleRouteThrottlingConnectionManager> {
+    route_managers: Vec<M>,
     connection_timeout: Duration,
 }
 
-impl MultiRouteConnectionManager {
-    pub fn new(
-        route_managers: Vec<SingleRouteThrottlingConnectionManager>,
-        connection_timeout: Duration,
-    ) -> Self {
+impl<M> MultiRouteConnectionManager<M> {
+    pub fn new(route_managers: Vec<M>, connection_timeout: Duration) -> Self {
         Self {
             route_managers,
             connection_timeout,
@@ -134,7 +131,10 @@ impl MultiRouteConnectionManager {
 }
 
 #[async_trait]
-impl ConnectionManager for MultiRouteConnectionManager {
+impl<M> ConnectionManager for MultiRouteConnectionManager<M>
+where
+    M: ConnectionManager,
+{
     /// Tries to establish a connection using one of the configured options.
     ///
     /// In the case of the `MultiRouteConnectionManager`, we have a list of options
@@ -469,7 +469,7 @@ mod test {
                 tokio::time::sleep(LONG_CONNECTION_TIME).await;
                 future::ready(Ok(ROUTE_THAT_TIMES_OUT)).await
             }
-            _ => future::ready(Err(TestError::Unexpected)).await,
+            _ => future::ready(Err(TestError::Unexpected("not configured for the route"))).await,
         }
     }
 

@@ -9,24 +9,26 @@ use attest::client_connection::ClientConnection;
 use attest::sgx_session::Handshake;
 use futures_util::{Sink, SinkExt as _, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
-use tokio_tungstenite as tt;
+use tokio_tungstenite::WebSocketStream;
 use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::{CloseFrame, WebSocketConfig};
 use tungstenite::{http, Message};
 
 use crate::infra::errors::NetError;
-use crate::infra::{connect_ssl, ConnectionParams};
-
-pub type WebSocketStream = tt::WebSocketStream<tokio_boring::SslStream<tokio::net::TcpStream>>;
+use crate::infra::{ConnectionParams, TransportConnector};
 
 const WS_ALPN: &[u8] = b"\x08http/1.1";
 
-pub(crate) async fn connect_websocket(
+pub(crate) async fn connect_websocket<T: TransportConnector>(
     connection_params: &ConnectionParams,
     endpoint: PathAndQuery,
     ws_config: WebSocketConfig,
-) -> Result<WebSocketStream, NetError> {
-    let ssl_stream = connect_ssl(connection_params, WS_ALPN).await?;
+    transport_connector: &T,
+) -> Result<WebSocketStream<T::Stream>, NetError> {
+    let ssl_stream = transport_connector
+        .connect(connection_params, WS_ALPN)
+        .await?;
+
     // we need to explicitly create upgrade request
     // because request decorators require a request `Builder`
     let request_builder = http::Request::builder()
@@ -91,7 +93,7 @@ impl From<TextOrBinary> for Message {
 
 /// Wrapper for a websocket that can be used to send [`TextOrBinary`] messages.
 #[derive(Debug)]
-pub(crate) struct WebSocket<S = WebSocketStream>(S);
+pub(crate) struct WebSocket<S = WebSocketStream<tokio_boring::SslStream<tokio::net::TcpStream>>>(S);
 
 impl<S> WebSocket<S> {
     pub(crate) fn new(stream: S) -> Self {
@@ -167,7 +169,7 @@ impl From<attest::client_connection::Error> for AttestedConnectionError {
 
 /// Encrypted connection to an attested host.
 #[derive(Debug)]
-pub struct AttestedConnection<S = WebSocketStream> {
+pub struct AttestedConnection<S = WebSocketStream<tokio_boring::SslStream<tokio::net::TcpStream>>> {
     websocket: WebSocket<S>,
     client_connection: ClientConnection,
 }

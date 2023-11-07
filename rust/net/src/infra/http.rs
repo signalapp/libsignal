@@ -3,23 +3,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::errors::NetError;
-use crate::infra::tokio_executor::TokioExecutor;
-use crate::infra::tokio_io::TokioIo;
-use crate::infra::{connect_ssl, ConnectionParams};
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::request::Builder;
 use http::response::Parts;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
-use tokio::net::TcpStream;
-use tokio_boring::SslStream;
+
+use crate::infra::errors::NetError;
+use crate::infra::tokio_executor::TokioExecutor;
+use crate::infra::tokio_io::TokioIo;
+use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
 
 const HTTP_ALPN_H2_ONLY: &[u8] = b"\x02h2";
 
-pub(crate) type Http2Connection =
-    http2::Connection<TokioIo<SslStream<TcpStream>>, Full<Bytes>, TokioExecutor>;
+pub(crate) type Http2Connection<S> = http2::Connection<TokioIo<S>, Full<Bytes>, TokioExecutor>;
 
 #[async_trait]
 pub trait AggregatingHttpClient: Send + Sync + Clone {
@@ -31,9 +29,9 @@ pub trait AggregatingHttpClient: Send + Sync + Clone {
     ) -> Result<(Parts, Bytes), NetError>;
 }
 
-pub struct Http2Channel<T> {
+pub struct Http2Channel<T, S: AsyncDuplexStream + 'static> {
     pub aggregating_client: T,
-    pub connection: Http2Connection,
+    pub connection: Http2Connection<S>,
 }
 
 #[derive(Clone)]
@@ -105,10 +103,13 @@ impl AggregatingHttpClient for AggregatingHttp2Client {
     }
 }
 
-pub(crate) async fn http2_channel(
+pub(crate) async fn http2_channel<C: TransportConnector>(
+    transport_connector: &C,
     connection_params: &ConnectionParams,
-) -> Result<Http2Channel<AggregatingHttp2Client>, NetError> {
-    let ssl_stream = connect_ssl(connection_params, HTTP_ALPN_H2_ONLY).await?;
+) -> Result<Http2Channel<AggregatingHttp2Client, C::Stream>, NetError> {
+    let ssl_stream = transport_connector
+        .connect(connection_params, HTTP_ALPN_H2_ONLY)
+        .await?;
     let io = TokioIo::new(ssl_stream);
     let (sender, connection) = http2::handshake::<_, _, Full<Bytes>>(TokioExecutor::new(), io)
         .await

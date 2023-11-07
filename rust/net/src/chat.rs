@@ -3,6 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+
+use ::http::{HeaderName, HeaderValue};
+use async_trait::async_trait;
+use bytes::Bytes;
+use tokio::sync::mpsc;
+
 use crate::chat::errors::ChatNetworkError;
 use crate::chat::http::ChatOverHttp2ServiceConnector;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ChatOverWebsocketConfig, ServerRequest};
@@ -10,16 +19,11 @@ use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use crate::infra::reconnect::ServiceWithReconnect;
-use crate::infra::{ConnectionParams, HttpRequestDecorator};
+use crate::infra::{
+    ConnectionParams, HttpRequestDecorator, TcpSslTransportConnector, TransportConnector,
+};
 use crate::proto;
 use crate::utils::basic_authorization;
-use ::http::{HeaderName, HeaderValue};
-use async_trait::async_trait;
-use bytes::Bytes;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::mpsc;
 
 pub mod chat_reconnect;
 pub mod errors;
@@ -276,8 +280,8 @@ impl ChatService for Arc<dyn ChatService + Send + Sync> {
 
 fn build_authorized_chat_service(
     connection_params_list: &[ConnectionParams],
-    service_connector_http: &ChatOverHttp2ServiceConnector,
-    service_connector_ws: &ChatOverWebSocketServiceConnector,
+    service_connector_http: &ChatOverHttp2ServiceConnector<impl TransportConnector + 'static>,
+    service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
     username: String,
     password: String,
 ) -> AuthorizedChatService<impl ChatService> {
@@ -314,8 +318,8 @@ fn build_authorized_chat_service(
 
 fn build_anonymous_chat_service(
     connection_params_list: &[ConnectionParams],
-    service_connector_http: &ChatOverHttp2ServiceConnector,
-    service_connector_ws: &ChatOverWebSocketServiceConnector,
+    service_connector_http: &ChatOverHttp2ServiceConnector<impl TransportConnector + 'static>,
+    service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
 ) -> AnonymousChatService<impl ChatService> {
     // http authorized
     let connection_manager_auth_http = multi_route_manager(connection_params_list);
@@ -344,9 +348,12 @@ pub fn chat_service(
     incoming_tx: mpsc::Sender<ServerRequest>,
     connection_params_list: Vec<ConnectionParams>,
 ) -> Chat<impl ChatService, impl ChatService> {
-    let service_connector_ws =
-        ChatOverWebSocketServiceConnector::new(ChatOverWebsocketConfig::default(), incoming_tx);
-    let service_connector_http = ChatOverHttp2ServiceConnector {};
+    let service_connector_ws = ChatOverWebSocketServiceConnector::new(
+        ChatOverWebsocketConfig::default(),
+        incoming_tx,
+        TcpSslTransportConnector,
+    );
+    let service_connector_http = ChatOverHttp2ServiceConnector::new(TcpSslTransportConnector);
 
     Chat::new(
         build_authorized_chat_service(
@@ -370,4 +377,120 @@ fn multi_route_manager(routes: &[ConnectionParams]) -> MultiRouteConnectionManag
         .map(|cp| SingleRouteThrottlingConnectionManager::new(cp.clone(), ROUTE_CONNECTION_TIMEOUT))
         .collect();
     MultiRouteConnectionManager::new(single_route_managers, TOTAL_CONNECTION_TIMEOUT)
+}
+
+#[cfg(test)]
+pub(crate) mod test {
+    use std::time::Duration;
+
+    use tokio::time::Instant;
+    use warp::Filter;
+
+    use crate::chat::http::ChatOverHttp2ServiceConnector;
+    use crate::chat::test::shared::{connection_manager, test_request};
+    use crate::chat::ChatService;
+    use crate::infra::test::shared::{InMemoryWarpConnector, NoReconnectService, TIMEOUT_DURATION};
+
+    pub(crate) mod shared {
+        use std::fmt::Debug;
+        use std::time::Duration;
+
+        use async_trait::async_trait;
+        use rand::RngCore;
+
+        use crate::chat::errors::ChatNetworkError;
+        use crate::chat::{
+            ChatMessageType, ChatService, MessageProto, RequestProto, ResponseProto,
+        };
+        use crate::infra::certs::RootCertificates;
+        use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
+        use crate::infra::dns::DnsResolver;
+        use crate::infra::errors::LogSafeDisplay;
+        use crate::infra::reconnect::{ServiceConnector, ServiceState};
+        use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
+        use crate::infra::ConnectionParams;
+
+        #[async_trait]
+        impl<C> ChatService for NoReconnectService<C>
+        where
+            C: ServiceConnector + Send + Sync + 'static,
+            C::Service: ChatService + Clone + Send + Sync + 'static,
+            C::Channel: Send + Sync,
+            C::Error: Send + Sync + Debug + LogSafeDisplay,
+        {
+            async fn send(
+                &self,
+                msg: &MessageProto,
+                timeout: Duration,
+            ) -> Result<ResponseProto, ChatNetworkError> {
+                match &*self.inner {
+                    ServiceState::Active(service, status) if !status.is_stopped() => {
+                        service.clone().send(msg, timeout).await
+                    }
+                    _ => Err(ChatNetworkError::NoServiceConnection),
+                }
+            }
+        }
+
+        pub fn test_request(method: &str, endpoint: &str) -> MessageProto {
+            let request = RequestProto {
+                verb: Some(method.to_owned()),
+                path: Some(endpoint.to_owned()),
+                body: None,
+                headers: vec![],
+                id: Some(rand::thread_rng().next_u64()),
+            };
+            MessageProto {
+                r#type: Some(ChatMessageType::Request.into()),
+                request: Some(request),
+                response: None,
+            }
+        }
+
+        pub fn connection_manager() -> SingleRouteThrottlingConnectionManager {
+            let connection_params = ConnectionParams::new(
+                "test.signal.org",
+                "test.signal.org",
+                443,
+                Default::default(),
+                RootCertificates::Signal,
+                DnsResolver::System,
+            );
+            SingleRouteThrottlingConnectionManager::new(connection_params, TIMEOUT_DURATION)
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn h2_service_correctly_handles_multiple_in_flight_requests() {
+        // creating a server that responds to requests with 200 after some request processing time
+        let start = Instant::now();
+        const REQUEST_PROCESSING_DURATION: Duration =
+            Duration::from_millis(TIMEOUT_DURATION.as_millis() as u64 / 2);
+
+        let h2_server = warp::get().then(|| async move {
+            tokio::time::sleep(REQUEST_PROCESSING_DURATION).await;
+            warp::reply()
+        });
+        let h2_connector =
+            ChatOverHttp2ServiceConnector::new(InMemoryWarpConnector::new(h2_server));
+        let h2_chat = NoReconnectService::start(h2_connector, connection_manager()).await;
+
+        let req1 = test_request("GET", "/1");
+        let response1_future = h2_chat.send(&req1, TIMEOUT_DURATION);
+
+        let req2 = test_request("GET", "/2");
+        let response2_future = h2_chat.send(&req2, TIMEOUT_DURATION);
+
+        // Making sure that at this point the clock has not advanced from the initial instant.
+        // This is a way to indirectly make sure that neither of the futures is yet completed.
+        assert_eq!(start, Instant::now());
+
+        let (response1, response2) = tokio::join!(response1_future, response2_future);
+        assert_eq!(200, response1.unwrap().status.unwrap());
+        assert_eq!(200, response2.unwrap().status.unwrap());
+
+        // And now making sure that both requests were in fact processed asynchronously,
+        // i.e. one was not blocked on the other.
+        assert_eq!(start + REQUEST_PROCESSING_DURATION, Instant::now());
+    }
 }

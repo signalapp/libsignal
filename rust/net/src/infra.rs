@@ -9,7 +9,9 @@ use std::sync::Arc;
 
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
+use async_trait::async_trait;
 use boring::ssl::{SslConnector, SslConnectorBuilder, SslMethod};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring::SslStream;
 
@@ -71,7 +73,7 @@ pub struct ConnectionParams {
 
 impl ConnectionParams {
     #[cfg(test)]
-    fn new(
+    pub fn new(
         sni: &str,
         host: &str,
         port: u16,
@@ -131,26 +133,50 @@ impl HttpRequestDecorator {
     }
 }
 
-pub(crate) async fn connect_ssl(
-    connection_params: &ConnectionParams,
-    alpn: &[u8],
-) -> Result<SslStream<TcpStream>, NetError> {
-    let tcp_stream = connect_tcp(
-        &connection_params.dns_resolver,
-        &connection_params.sni,
-        connection_params.port,
-    )
-    .await?;
+pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send + Sync {}
 
-    let ssl_config = client_ssl_connector_builder(connection_params.certs.clone(), alpn)?
-        .build()
-        .configure()?;
+impl<S: AsyncRead + AsyncWrite + Unpin + Send + Sync> AsyncDuplexStream for S {}
 
-    let ssl_stream = tokio_boring::connect(ssl_config, &connection_params.sni, tcp_stream)
-        .await
-        .map_err(|_| NetError::SslFailedHandshake)?;
+#[async_trait]
+pub trait TransportConnector: Clone + Send + Sync {
+    type Stream: AsyncDuplexStream + 'static;
 
-    Ok(ssl_stream)
+    async fn connect(
+        &self,
+        connection_params: &ConnectionParams,
+        alpn: &[u8],
+    ) -> Result<Self::Stream, NetError>;
+}
+
+#[derive(Clone)]
+pub(crate) struct TcpSslTransportConnector;
+
+#[async_trait]
+impl TransportConnector for TcpSslTransportConnector {
+    type Stream = SslStream<TcpStream>;
+
+    async fn connect(
+        &self,
+        connection_params: &ConnectionParams,
+        alpn: &[u8],
+    ) -> Result<Self::Stream, NetError> {
+        let tcp_stream = connect_tcp(
+            &connection_params.dns_resolver,
+            &connection_params.sni,
+            connection_params.port,
+        )
+        .await?;
+
+        let ssl_config = client_ssl_connector_builder(connection_params.certs.clone(), alpn)?
+            .build()
+            .configure()?;
+
+        let ssl_stream = tokio_boring::connect(ssl_config, &connection_params.sni, tcp_stream)
+            .await
+            .map_err(|_| NetError::SslFailedHandshake)?;
+
+        Ok(ssl_stream)
+    }
 }
 
 pub(crate) async fn connect_tcp(
@@ -189,16 +215,31 @@ pub(crate) mod test {
     use crate::utils::basic_authorization;
 
     pub(crate) mod shared {
-        use crate::infra::errors::LogSafeDisplay;
-        use displaydoc::Display;
+        use std::fmt::Debug;
+        use std::io;
+        use std::sync::Arc;
         use std::time::Duration;
+
+        use async_trait::async_trait;
+        use derive_where::derive_where;
+        use displaydoc::Display;
+        use tokio::io::DuplexStream;
+        use tokio::time::Instant;
+        use warp::{Filter, Reply};
+
+        use crate::infra::connection_manager::ConnectionManager;
+        use crate::infra::errors::{LogSafeDisplay, NetError};
+        use crate::infra::reconnect::{
+            ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
+        };
+        use crate::infra::{ConnectionParams, TransportConnector};
 
         #[derive(Debug, Display)]
         pub(crate) enum TestError {
             /// expected error
             Expected,
             /// unexpected error
-            Unexpected,
+            Unexpected(&'static str),
         }
 
         impl LogSafeDisplay for TestError {}
@@ -219,6 +260,73 @@ pub(crate) mod test {
         // of attempts starting at the same time, but also by not too much so that we
         // don't step over the cool down time
         pub(crate) const TIME_ADVANCE_VALUE: Duration = Duration::from_millis(5);
+
+        #[derive(Clone)]
+        pub(crate) struct InMemoryWarpConnector<F> {
+            filter: F,
+        }
+
+        impl<F> InMemoryWarpConnector<F> {
+            pub fn new(filter: F) -> Self {
+                Self { filter }
+            }
+        }
+
+        #[async_trait]
+        impl<F> TransportConnector for InMemoryWarpConnector<F>
+        where
+            F: Filter + Clone + Send + Sync + 'static,
+            F::Extract: Reply,
+        {
+            type Stream = DuplexStream;
+
+            async fn connect(
+                &self,
+                _connection_params: &ConnectionParams,
+                _alpn: &[u8],
+            ) -> Result<Self::Stream, NetError> {
+                let (client, server) = tokio::io::duplex(1024);
+                let routes = self.filter.clone();
+                tokio::spawn(async {
+                    let one_element_iter =
+                        futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
+                    warp::serve(routes).run_incoming(one_element_iter).await;
+                });
+                Ok(client)
+            }
+        }
+
+        #[derive_where(Clone)]
+        pub struct NoReconnectService<C: ServiceConnector> {
+            pub(crate) inner: Arc<ServiceState<C::Service, C::Error>>,
+        }
+
+        impl<C> NoReconnectService<C>
+        where
+            C: ServiceConnector + Send + Sync + 'static,
+            C::Service: Clone + Send + Sync + 'static,
+            C::Channel: Send + Sync,
+            C::Error: Send + Sync + Debug + LogSafeDisplay,
+        {
+            pub async fn start<M>(service_connector: C, connection_manager: M) -> Self
+            where
+                M: ConnectionManager + 'static,
+            {
+                let status = ServiceInitializer::new(service_connector, connection_manager)
+                    .connect(Instant::now() + Duration::from_secs(1))
+                    .await;
+                Self {
+                    inner: Arc::new(status),
+                }
+            }
+
+            pub fn service_status(&self) -> Option<&ServiceStatus<C::Error>> {
+                match &*self.inner {
+                    ServiceState::Active(_, status) => Some(status),
+                    _ => None,
+                }
+            }
+        }
     }
 
     #[test]
