@@ -255,4 +255,121 @@ public class SealedSenderMultiRecipientMessageTest {
         Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
   }
+
+  @Test
+  public void serviceIdsWithCompactDeviceList() throws Exception {
+    byte[] input =
+        Hex.fromStringsCondensedAssert(
+            VERSION_SERVICE_ID_AWARE,
+            // Count
+            "02",
+            // Recipient 1: ServiceId, Device ID and Registration ID, Key Material
+            ACI_MARKER,
+            ALICE_UUID_BYTES,
+            "0111aa",
+            ALICE_KEY_MATERIAL,
+            // Recipient 2
+            PNI_MARKER,
+            BOB_UUID_BYTES,
+            "0191bb", // high bit in registration ID flags another device
+            "0333bb",
+            BOB_KEY_MATERIAL,
+            // Shared data
+            SHARED_BYTES);
+
+    SealedSenderMultiRecipientMessage message = SealedSenderMultiRecipientMessage.parse(input);
+    assertEquals(message.getRecipients().size(), 2);
+
+    SealedSenderMultiRecipientMessage.Recipient alice =
+        message
+            .getRecipients()
+            .get(ServiceId.parseFromBinary(Hex.fromStringCondensedAssert(ALICE_UUID_BYTES)));
+    assertNotNull(alice);
+    assertArrayEquals(
+        alice.getDevicesAndRegistrationIds().toArray(),
+        new Pair[] {
+          new Pair<>((byte) 0x01, (short) 0x11aa),
+        });
+    assertArrayEquals(
+        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        message.messageForRecipient(alice));
+
+    SealedSenderMultiRecipientMessage.Recipient bob =
+        message
+            .getRecipients()
+            .get(
+                ServiceId.parseFromBinary(
+                    Hex.fromStringsCondensedAssert(PNI_MARKER, BOB_UUID_BYTES)));
+    assertNotNull(bob);
+    assertArrayEquals(
+        bob.getDevicesAndRegistrationIds().toArray(),
+        new Pair[] {
+          new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
+        });
+    assertArrayEquals(
+        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        message.messageForRecipient(bob));
+  }
+
+  @Test
+  public void serviceIdsWithCompactDeviceListAndRepeatedRecipient() throws Exception {
+    byte[] input =
+        Hex.fromStringsCondensedAssert(
+            VERSION_SERVICE_ID_AWARE,
+            // Count
+            "03",
+            // Recipient 1: ServiceId, Device ID and Registration ID, Key Material
+            ACI_MARKER,
+            ALICE_UUID_BYTES,
+            "0191aa", // high bit in registration ID flags another device
+            "0333aa",
+            ALICE_KEY_MATERIAL,
+            // Recipient 2
+            PNI_MARKER,
+            BOB_UUID_BYTES,
+            "0111bb",
+            BOB_KEY_MATERIAL,
+            // Recipient 3 (note that it's another device of Alice's)
+            ACI_MARKER,
+            ALICE_UUID_BYTES,
+            "0505aa",
+            ALICE_KEY_MATERIAL,
+            // Shared data
+            SHARED_BYTES);
+
+    SealedSenderMultiRecipientMessage message = SealedSenderMultiRecipientMessage.parse(input);
+    assertEquals(message.getRecipients().size(), 2);
+
+    SealedSenderMultiRecipientMessage.Recipient alice =
+        message
+            .getRecipients()
+            .get(ServiceId.parseFromBinary(Hex.fromStringCondensedAssert(ALICE_UUID_BYTES)));
+    assertNotNull(alice);
+    assertArrayEquals(
+        alice.getDevicesAndRegistrationIds().toArray(),
+        new Pair[] {
+          new Pair<>((byte) 0x01, (short) 0x11aa),
+          new Pair<>((byte) 0x03, (short) 0x33aa),
+          new Pair<>((byte) 0x05, (short) 0x05aa),
+        });
+    assertArrayEquals(
+        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        message.messageForRecipient(alice));
+
+    SealedSenderMultiRecipientMessage.Recipient bob =
+        message
+            .getRecipients()
+            .get(
+                ServiceId.parseFromBinary(
+                    Hex.fromStringsCondensedAssert(PNI_MARKER, BOB_UUID_BYTES)));
+    assertNotNull(bob);
+    assertArrayEquals(
+        bob.getDevicesAndRegistrationIds().toArray(),
+        new Pair[] {
+          new Pair<>((byte) 0x01, (short) 0x11bb),
+        });
+    assertArrayEquals(
+        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        message.messageForRecipient(bob));
+  }
 }

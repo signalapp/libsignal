@@ -45,6 +45,13 @@ with this test certificate ID, Bad Things will happen.
 */
 const REVOKED_SERVER_CERTIFICATE_KEY_IDS: &[u32] = &[0xDEADC357];
 
+// Valid registration IDs fit in 14 bits.
+// TODO: move this into a RegistrationId strong type.
+const VALID_REGISTRATION_ID_MASK: u16 = 0x3FFF;
+
+// TODO: validate this as part of constructing DeviceId.
+const MAX_VALID_DEVICE_ID: u32 = 127;
+
 impl ServerCertificate {
     pub fn deserialize(data: &[u8]) -> Result<Self> {
         let pb = proto::sealed_sender::ServerCertificate::decode(data)
@@ -1207,20 +1214,35 @@ mod sealed_sender_v2 {
 /// ## Sent messages
 ///
 /// ```text
+/// SentMessage {
+///     version_byte: u8,
+///     count: varint,
+///     recipients: [PerRecipientData | ExcludedRecipient; count],
+///     e_pub: [u8; 32],
+///     message: [u8] // remaining bytes
+/// }
+///
 /// PerRecipientData {
-///     service_id_fixed_width_binary: [u8; 17],
-///     device_id: varint,
-///     registration_id: u16,
+///     recipient: Recipient,
+///     devices: [DeviceList], // last element's has_more = 0
 ///     c: [u8; 32],
 ///     at: [u8; 16],
 /// }
 ///
-/// SentMessage {
-///     version_byte: u8,
-///     count: varint,
-///     recipients: [PerRecipientData; count],
-///     e_pub: [u8; 32],
-///     message: [u8] // remaining bytes
+/// ExcludedRecipient {
+///     recipient: Recipient,
+///     no_devices_marker: u8 = 0, // never a valid device ID
+/// }
+///
+/// DeviceList {
+///     device_id: u8,
+///     has_more: u1, // high bit of following field
+///     unused: u1,   // high bit of following field
+///     registration_id: u14,
+/// }
+///
+/// Recipient {
+///     service_id_fixed_width_binary: [u8; 17],
 /// }
 /// ```
 ///
@@ -1353,9 +1375,7 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
                 ),
             )
         })?;
-        // Valid registration IDs fit in 14 bits.
-        // TODO: move this into a RegistrationId strong type.
-        if their_registration_id & 0x3FFF != their_registration_id {
+        if their_registration_id & u32::from(VALID_REGISTRATION_ID_MASK) != their_registration_id {
             return Err(SignalProtocolError::InvalidRegistrationId(
                 destination.clone(),
                 their_registration_id,
@@ -1493,8 +1513,23 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                 )?)
                 .ok_or(SignalProtocolError::InvalidProtobufEncoding)?
             };
-            let device_id = DeviceId::from(decode_varint(&mut remaining)?);
-            let registration_id = u16::from_be_bytes(*advance::<2>(&mut remaining)?);
+            let mut devices = Vec::new();
+            loop {
+                let device_id: u32 = advance::<1>(&mut remaining)?[0].into();
+                if device_id > MAX_VALID_DEVICE_ID {
+                    return Err(SignalProtocolError::InvalidProtobufEncoding);
+                }
+                let registration_id_and_has_more =
+                    u16::from_be_bytes(*advance::<2>(&mut remaining)?);
+                devices.push((
+                    device_id.into(),
+                    registration_id_and_has_more & VALID_REGISTRATION_ID_MASK,
+                ));
+                let has_more = (registration_id_and_has_more & 0x8000) != 0;
+                if !has_more {
+                    break;
+                }
+            }
             let c_and_at = advance::<
                 { sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN },
             >(&mut remaining)?;
@@ -1504,15 +1539,12 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                 .and_modify(|existing: &mut SealedSenderV2SentMessageRecipient| {
                     // We don't unique the recipient devices; if a client is sending the same device
                     // multiple messages, they can get punished for it (with a mismatch).
-                    existing.devices.push((device_id, registration_id));
+                    existing.devices.extend(std::mem::take(&mut devices));
                     // Note that we don't check that c_and_at matches. Any case where it doesn't
                     // match would already result in a decryption error for at least one of the
                     // recipient's devices, though.
                 })
-                .or_insert_with(|| SealedSenderV2SentMessageRecipient {
-                    devices: vec![(device_id, registration_id)],
-                    c_and_at,
-                });
+                .or_insert_with(|| SealedSenderV2SentMessageRecipient { devices, c_and_at });
         }
 
         Ok(Self {
