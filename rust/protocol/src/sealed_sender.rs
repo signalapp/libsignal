@@ -1434,9 +1434,10 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
 ///
 /// See [`SealedSenderV2SentMessage`].
 pub struct SealedSenderV2SentMessageRecipient<'a> {
-    /// The recipient's devices and their registration IDs.
+    /// The recipient's devices and their registration IDs. May be empty.
     pub devices: Vec<(DeviceId, u16)>,
-    /// A concatenation of the `C_i` and `AT_i` SSv2 fields for this recipient.
+    /// A concatenation of the `C_i` and `AT_i` SSv2 fields for this recipient, or an empty slice if
+    /// the recipient has no devices.
     c_and_at: &'a [u8],
 }
 
@@ -1501,7 +1502,8 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         // Cap our preallocated capacity; anything higher than this is *probably* a mistake, but
         // could just be a very large message.
         // (Callers can of course refuse to process messages with too many recipients.)
-        let mut recipients = IndexMap::with_capacity(std::cmp::min(recipient_count as usize, 6000));
+        let mut recipients: IndexMap<ServiceId, SealedSenderV2SentMessageRecipient<'a>> =
+            IndexMap::with_capacity(std::cmp::min(recipient_count as usize, 6000));
         for _ in 0..recipient_count {
             let service_id = if version == SEALED_SENDER_V2_UUID_FULL_VERSION {
                 // The original version of SSv2 assumed ACIs here, and only encoded the raw UUID.
@@ -1519,6 +1521,12 @@ impl<'a> SealedSenderV2SentMessage<'a> {
             let mut devices = Vec::new();
             loop {
                 let device_id: u32 = advance::<1>(&mut remaining)?[0].into();
+                if device_id == 0 {
+                    if !devices.is_empty() {
+                        return Err(SignalProtocolError::InvalidProtobufEncoding);
+                    }
+                    break;
+                }
                 if device_id > MAX_VALID_DEVICE_ID {
                     return Err(SignalProtocolError::InvalidProtobufEncoding);
                 }
@@ -1533,21 +1541,33 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                     break;
                 }
             }
-            let c_and_at = advance::<
-                { sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN },
-            >(&mut remaining)?;
 
-            recipients
-                .entry(service_id)
-                .and_modify(|existing: &mut SealedSenderV2SentMessageRecipient| {
-                    // We don't unique the recipient devices; if a client is sending the same device
-                    // multiple messages, they can get punished for it (with a mismatch).
-                    existing.devices.extend(std::mem::take(&mut devices));
+            let c_and_at: &[u8] = if devices.is_empty() {
+                &[]
+            } else {
+                advance::<{ sealed_sender_v2::MESSAGE_KEY_LEN + sealed_sender_v2::AUTH_TAG_LEN }>(
+                    &mut remaining,
+                )?
+            };
+
+            match recipients.entry(service_id) {
+                indexmap::map::Entry::Occupied(mut existing) => {
+                    if existing.get().devices.is_empty() || devices.is_empty() {
+                        return Err(SignalProtocolError::InvalidSealedSenderMessage(
+                            "recipient redundantly encoded as empty".to_owned(),
+                        ));
+                    }
+                    // We don't unique the recipient devices; the server is going to check this
+                    // against the account's canonical list of devices anyway.
+                    existing.get_mut().devices.extend(devices);
                     // Note that we don't check that c_and_at matches. Any case where it doesn't
                     // match would already result in a decryption error for at least one of the
                     // recipient's devices, though.
-                })
-                .or_insert_with(|| SealedSenderV2SentMessageRecipient { devices, c_and_at });
+                }
+                indexmap::map::Entry::Vacant(entry) => {
+                    entry.insert(SealedSenderV2SentMessageRecipient { devices, c_and_at });
+                }
+            };
         }
 
         if remaining.len() < curve::curve25519::PUBLIC_KEY_LENGTH {

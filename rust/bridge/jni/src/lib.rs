@@ -60,11 +60,11 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
         let recipient_map: JMap = JMap::from_env(env, &recipient_map_object)?;
 
         const NUMBER_OF_OBJECTS_PER_RECIPIENT: usize = 5; // ServiceId + service ID bytes + Recipient + array of device IDs + array of registration IDs
-        env.with_local_frame(
+        let excluded_recipients_array = env.with_local_frame_returning_local(
             (messages.recipients.len() * NUMBER_OF_OBJECTS_PER_RECIPIENT)
                 .try_into()
                 .expect("too many recipients"),
-            |env| -> SignalJniResult<()> {
+            |env| -> SignalJniResult<_> {
                 let recipient_class = env.find_class(jni_class_name!(
                     org.signal
                         .libsignal
@@ -74,6 +74,8 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 ))?;
                 let service_id_class =
                     env.find_class(jni_class_name!(org.signal.libsignal.protocol.ServiceId))?;
+
+                let mut excluded_recipient_java_service_ids = vec![];
 
                 for (service_id, recipient) in &messages.recipients {
                     let java_service_id_bytes = service_id.convert_into(env)?;
@@ -85,6 +87,11 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                             java_service_id_bytes => [byte]
                         ) -> org.signal.libsignal.protocol.ServiceId),
                     )?;
+
+                    if recipient.devices.is_empty() {
+                        excluded_recipient_java_service_ids.push(java_service_id);
+                        continue;
+                    }
 
                     let (device_ids, registration_ids): (Vec<u8>, Vec<i16>) = recipient
                         .devices
@@ -118,7 +125,25 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
 
                     recipient_map.put(env, &java_service_id, &java_recipient)?;
                 }
-                Ok(())
+
+                let excluded_recipients_array = env.new_object_array(
+                    excluded_recipient_java_service_ids
+                        .len()
+                        .try_into()
+                        .expect("too many excluded recipients"),
+                    jni_class_name!(org.signal.libsignal.protocol.ServiceId),
+                    JObject::null(),
+                )?;
+                for (java_excluded_recipient, i) in
+                    excluded_recipient_java_service_ids.into_iter().zip(0i32..)
+                {
+                    env.set_object_array_element(
+                        &excluded_recipients_array,
+                        i,
+                        java_excluded_recipient,
+                    )?;
+                }
+                Ok(excluded_recipients_array.into())
             },
         )?;
 
@@ -135,6 +160,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             jni_args!((
                 data => [byte],
                 recipient_map => java.util.Map,
+                excluded_recipients_array => [org.signal.libsignal.protocol.ServiceId],
                 offset_of_shared_bytes.try_into().expect("data too large") => int,
             ) -> void),
         )?)

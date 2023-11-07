@@ -7,6 +7,7 @@ package org.signal.libsignal.protocol;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -22,6 +23,7 @@ import org.signal.libsignal.protocol.util.Pair;
 public class SealedSenderMultiRecipientMessage {
   private final byte[] fullMessageData;
   private final Map<ServiceId, Recipient> recipients;
+  private final ServiceId[] excludedRecipients;
   private final int offsetOfSharedData;
 
   /**
@@ -111,9 +113,13 @@ public class SealedSenderMultiRecipientMessage {
   }
 
   private SealedSenderMultiRecipientMessage(
-      byte[] fullMessageData, Map<ServiceId, Recipient> recipients, int offsetOfSharedData) {
+      byte[] fullMessageData,
+      Map<ServiceId, Recipient> recipients,
+      ServiceId[] excludedRecipients,
+      int offsetOfSharedData) {
     this.fullMessageData = fullMessageData;
     this.recipients = recipients;
+    this.excludedRecipients = excludedRecipients;
     this.offsetOfSharedData = offsetOfSharedData;
   }
 
@@ -127,6 +133,22 @@ public class SealedSenderMultiRecipientMessage {
    */
   public Map<ServiceId, Recipient> getRecipients() {
     return recipients;
+  }
+
+  /**
+   * Returns the recipients excluded from receiving the message.
+   *
+   * <p>This is enforced to be disjoint from the recipients in {@link #getRecipients}; it may be
+   * used for authorization purposes or just to check that certain recipients were deliberately
+   * excluded rather than accidentally.
+   *
+   * <p>The iteration order is deterministic: the same input message data will produce the same
+   * output even across multiple runs.
+   *
+   * <p>The result is returned by reference; mutate it at your own detriment.
+   */
+  public List<ServiceId> getExcludedRecipients() {
+    return Arrays.asList(excludedRecipients);
   }
 
   /**
