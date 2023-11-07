@@ -24,13 +24,13 @@ where
     C::Error: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
         let service = self.service_clone().await;
         match service {
-            Some(mut s) => s.send(msg, timeout).await,
+            Some(s) => s.send(msg, timeout).await,
             None => Err(ChatNetworkError::NoServiceConnection),
         }
     }

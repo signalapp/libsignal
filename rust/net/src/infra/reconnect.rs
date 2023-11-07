@@ -119,7 +119,7 @@ where
         }
     }
 
-    pub(crate) async fn service_clone(&mut self) -> Option<C::Service> {
+    pub(crate) async fn service_clone(&self) -> Option<C::Service> {
         let deadline = Instant::now() + self.data.connection_timeout;
         let mut guard = match timeout_at(deadline, self.data.state.lock()).await {
             Ok(guard) => guard,
@@ -344,7 +344,7 @@ mod test {
             example_connection_params(),
             TIMEOUT_DURATION,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
         let _service = service_with_reconnect.service_clone().await;
         assert_eq!(connector.attempts_made(), 1);
@@ -357,7 +357,7 @@ mod test {
             example_connection_params(),
             TIMEOUT_DURATION,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
         let service = service_with_reconnect.service_clone().await;
 
@@ -383,7 +383,7 @@ mod test {
             example_connection_params(),
             TIMEOUT_DURATION,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
         let service = service_with_reconnect.service_clone().await;
         assert!(service.is_none());
@@ -408,7 +408,7 @@ mod test {
             example_connection_params(),
             TIMEOUT_DURATION,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
         let service = service_with_reconnect.service_clone().await;
         service.expect("service is present").close_channel();
@@ -427,10 +427,10 @@ mod test {
         let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
 
-        let mut aaa1 = service_with_reconnect.clone();
+        let aaa1 = service_with_reconnect.clone();
         let handle1 = tokio::spawn(async move { aaa1.service_clone().await });
 
-        let mut aaa2 = service_with_reconnect.clone();
+        let aaa2 = service_with_reconnect.clone();
         let handle2 = tokio::spawn(async move { aaa2.service_clone().await });
 
         let (s1, s2) = tokio::join!(handle1, handle2);
@@ -452,7 +452,7 @@ mod test {
             example_connection_params(),
             connection_timeout,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, service_with_reconnect_timeout);
         let res = service_with_reconnect.service_clone().await;
 
@@ -475,7 +475,7 @@ mod test {
             example_connection_params(),
             connection_timeout,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, service_with_reconnect_timeout);
         let res = service_with_reconnect.service_clone().await;
 
@@ -491,7 +491,7 @@ mod test {
             example_connection_params(),
             TIMEOUT_DURATION,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
 
         time::advance(TIME_ADVANCE_VALUE).await;
@@ -515,7 +515,7 @@ mod test {
             example_connection_params(),
             TIMEOUT_DURATION,
         );
-        let mut service_with_reconnect =
+        let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
 
         time::advance(TIME_ADVANCE_VALUE).await;

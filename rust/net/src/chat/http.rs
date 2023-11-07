@@ -53,7 +53,7 @@ impl ServiceConnector for ChatOverHttp2ServiceConnector {
 #[async_trait]
 impl ChatService for ChatOverHttp2 {
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout_duration: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
@@ -63,9 +63,9 @@ impl ChatService for ChatOverHttp2 {
             .ok_or(ChatNetworkError::UnexpectedMessageType)?;
         let id = req.id;
         let (path, builder, body) = proto_to_request(req)?;
+        let mut request_sender = self.request_sender.clone();
         let response_future =
-            self.request_sender
-                .send_request_aggregate_response(path.as_str(), builder, body);
+            request_sender.send_request_aggregate_response(path.as_str(), builder, body);
         match timeout(timeout_duration, NetError::Timeout, response_future).await {
             Ok((parts, aggregated_body)) => {
                 let status: Option<u32> = Some(parts.status.as_u16().into());

@@ -40,7 +40,7 @@ enum ChatMessage {
 }
 
 pub struct ServerRequest {
-    request_proto: RequestProto,
+    pub request_proto: RequestProto,
     outgoing_tx: mpsc::Sender<Vec<u8>>,
 }
 
@@ -178,7 +178,7 @@ pub struct ChatOverWebSocket {
 #[async_trait]
 impl ChatService for ChatOverWebSocket {
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {

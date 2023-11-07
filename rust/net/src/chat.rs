@@ -17,6 +17,7 @@ use ::http::{HeaderName, HeaderValue};
 use async_trait::async_trait;
 use bytes::Bytes;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
@@ -46,7 +47,7 @@ pub trait ChatService {
     /// its content, so passing request by reference would not be possible without neccessarily
     /// cloning the request.
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError>;
@@ -59,8 +60,8 @@ pub struct Chat<AuthService, UnauthService> {
 
 impl<AuthService, UnauthService> Chat<AuthService, UnauthService>
 where
-    AuthService: ChatService + Send,
-    UnauthService: ChatService + Send,
+    AuthService: ChatService + Send + Sync,
+    UnauthService: ChatService + Send + Sync,
 {
     pub fn new(
         auth_service: AuthorizedChatService<AuthService>,
@@ -73,7 +74,7 @@ where
     }
 
     pub async fn send_authenticated(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
@@ -81,11 +82,25 @@ where
     }
 
     pub async fn send_unauthenticated(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
         self.unauth_service.send(msg, timeout).await
+    }
+
+    pub fn into_dyn(
+        self,
+    ) -> Chat<Arc<dyn ChatService + Send + Sync>, Arc<dyn ChatService + Send + Sync>>
+    where
+        AuthService: 'static,
+        UnauthService: 'static,
+    {
+        let Self {
+            auth_service,
+            unauth_service,
+        } = self;
+        Chat::new(auth_service.into_dyn(), unauth_service.into_dyn())
     }
 }
 
@@ -109,7 +124,7 @@ where
     }
 
     async fn send_ws(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
@@ -122,7 +137,7 @@ where
     }
 
     async fn send_http(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
@@ -133,11 +148,11 @@ where
 #[async_trait]
 impl<WsService, HttpService> ChatService for ChatServiceImpl<WsService, HttpService>
 where
-    WsService: ChatService + Send,
-    HttpService: ChatService + Send,
+    WsService: ChatService + Send + Sync,
+    HttpService: ChatService + Send + Sync,
 {
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
@@ -200,13 +215,21 @@ pub struct AnonymousChatService<T> {
     inner: T,
 }
 
+impl<T: ChatService + Send + Sync + 'static> AnonymousChatService<T> {
+    fn into_dyn(self) -> AnonymousChatService<Arc<dyn ChatService + Send + Sync>> {
+        AnonymousChatService {
+            inner: Arc::new(self.inner),
+        }
+    }
+}
+
 #[async_trait]
 impl<T> ChatService for AnonymousChatService<T>
 where
-    T: ChatService + Send,
+    T: ChatService + Send + Sync,
 {
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
@@ -218,17 +241,36 @@ pub struct AuthorizedChatService<T> {
     inner: T,
 }
 
+impl<T: ChatService + Send + Sync + 'static> AuthorizedChatService<T> {
+    fn into_dyn(self) -> AuthorizedChatService<Arc<dyn ChatService + Send + Sync>> {
+        AuthorizedChatService {
+            inner: Arc::new(self.inner),
+        }
+    }
+}
+
 #[async_trait]
 impl<T> ChatService for AuthorizedChatService<T>
 where
-    T: ChatService + Send,
+    T: ChatService + Send + Sync,
 {
     async fn send(
-        &mut self,
+        &self,
         msg: &MessageProto,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
         self.inner.send(msg, timeout).await
+    }
+}
+
+#[async_trait]
+impl ChatService for Arc<dyn ChatService + Send + Sync> {
+    async fn send(
+        &self,
+        msg: &MessageProto,
+        timeout: Duration,
+    ) -> Result<ResponseProto, ChatNetworkError> {
+        self.as_ref().send(msg, timeout).await
     }
 }
 
@@ -296,8 +338,7 @@ fn build_anonymous_chat_service(
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn chat_service(
+pub fn chat_service(
     username: String,
     password: String,
     incoming_tx: mpsc::Sender<ServerRequest>,
