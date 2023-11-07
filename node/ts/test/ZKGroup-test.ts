@@ -553,7 +553,7 @@ describe('ZKGroup', () => {
 
     // issuance server
     const receiptExpirationTime = 31337;
-    const receiptLevel = BigInt('3');
+    const receiptLevel = 3n;
     const response = serverOps.issueReceiptCredential(
       request,
       receiptExpirationTime,
@@ -706,7 +706,7 @@ describe('ZKGroup', () => {
     );
 
     it('testDeterministic', () => {
-      const receiptLevel = BigInt('1');
+      const receiptLevel = 1n;
       const context = BackupAuthCredentialRequestContext.create(
         BACKUP_KEY,
         TEST_USER_ID
@@ -733,7 +733,7 @@ describe('ZKGroup', () => {
     });
 
     it('testIntegration', () => {
-      const receiptLevel = BigInt('10');
+      const receiptLevel = 10n;
 
       const serverSecretParams =
         GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
@@ -763,11 +763,7 @@ describe('ZKGroup', () => {
         receiptLevel
       );
       assert.throws(() =>
-        context.receive(
-          response,
-          serverPublicParams,
-          receiptLevel + BigInt('1')
-        )
+        context.receive(response, serverPublicParams, receiptLevel + 1n)
       );
       const presentation = credential.presentWithRandom(
         serverPublicParams,

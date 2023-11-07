@@ -75,7 +75,7 @@ describe('Mp4Sanitizer', () => {
 
     it('propagates an io error', async () => {
       try {
-        await Mp4Sanitizer.sanitize(new ErrorInputStream(), BigInt(0));
+        await Mp4Sanitizer.sanitize(new ErrorInputStream(), 0n);
         assert.fail('did not throw');
       } catch (e) {
         assert(e instanceof LibSignalErrorBase);
