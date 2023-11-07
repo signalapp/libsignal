@@ -546,6 +546,21 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     }
 }
 
+/// See [`PersistentAssumedImmutableBuffer`].
+impl<'a> AsyncArgTypeInfo<'a> for crate::protocol::ServiceIdSequence<'a> {
+    type ArgType = JsBuffer;
+    type StoredType = PersistentAssumedImmutableBuffer;
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(PersistentAssumedImmutableBuffer::new(cx, foreign))
+    }
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        Self::parse(&*stored)
+    }
+}
+
 macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {

@@ -170,6 +170,7 @@ pub fn v2(c: &mut Criterion) {
                 .session_store
                 .load_existing_sessions(&[&bob_address])
                 .expect("present"),
+            [],
             &usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -204,6 +205,7 @@ pub fn v2(c: &mut Criterion) {
                     .session_store
                     .load_existing_sessions(&[&bob_address])
                     .expect("present"),
+                [],
                 &usmc,
                 &alice_store.identity_store,
                 &mut rng,
@@ -271,6 +273,7 @@ pub fn v2(c: &mut Criterion) {
                             .session_store
                             .load_existing_sessions(&recipients)
                             .expect("present"),
+                        [],
                         &usmc,
                         &alice_store.identity_store,
                         &mut rng,
@@ -298,6 +301,7 @@ pub fn v2(c: &mut Criterion) {
                             .session_store
                             .load_existing_sessions(&recipients)
                             .expect("present"),
+                        [],
                         &usmc,
                         &alice_store.identity_store,
                         &mut rng,

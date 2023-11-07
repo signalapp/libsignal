@@ -1255,6 +1255,7 @@ mod sealed_sender_v2 {
 pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
+    excluded_recipients: impl IntoIterator<Item = ServiceId>,
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
@@ -1262,6 +1263,7 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
     sealed_sender_multi_recipient_encrypt_impl(
         destinations,
         destination_sessions,
+        excluded_recipients,
         usmc,
         identity_store,
         rng,
@@ -1276,6 +1278,7 @@ pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_deriv
 >(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
+    excluded_recipients: impl IntoIterator<Item = ServiceId>,
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
@@ -1287,6 +1290,7 @@ pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_deriv
     sealed_sender_multi_recipient_encrypt_impl(
         destinations,
         destination_sessions,
+        excluded_recipients,
         usmc,
         identity_store,
         rng,
@@ -1298,6 +1302,7 @@ pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_deriv
 async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
+    excluded_recipients: impl IntoIterator<Item = ServiceId>,
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
@@ -1438,7 +1443,12 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
         count_of_recipients += 1;
     }
 
-    // TODO: Add excluded users as well.
+    for excluded in excluded_recipients {
+        serialized.extend_from_slice(&excluded.service_id_fixed_width_binary());
+        serialized.push(0);
+
+        count_of_recipients += 1;
+    }
 
     match prost::length_delimiter_len(count_of_recipients) {
         1 => {

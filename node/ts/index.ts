@@ -8,7 +8,7 @@ import * as uuid from 'uuid';
 import * as Errors from './Errors';
 export * from './Errors';
 
-import { Aci, ProtocolAddress } from './Address';
+import { Aci, ProtocolAddress, ServiceId } from './Address';
 export * from './Address';
 
 export * as usernames from './usernames';
@@ -1602,17 +1602,53 @@ export function sealedSenderEncrypt(
   return Native.SealedSender_Encrypt(address, content, identityStore);
 }
 
+type SealedSenderMultiRecipientEncryptOptions = {
+  content: UnidentifiedSenderMessageContent;
+  recipients: ProtocolAddress[];
+  excludedRecipients?: ServiceId[];
+  identityStore: IdentityKeyStore;
+  sessionStore: SessionStore;
+};
+
+export async function sealedSenderMultiRecipientEncrypt(
+  options: SealedSenderMultiRecipientEncryptOptions
+): Promise<Buffer>;
 export async function sealedSenderMultiRecipientEncrypt(
   content: UnidentifiedSenderMessageContent,
   recipients: ProtocolAddress[],
   identityStore: IdentityKeyStore,
   sessionStore: SessionStore
+): Promise<Buffer>;
+
+export async function sealedSenderMultiRecipientEncrypt(
+  contentOrOptions:
+    | UnidentifiedSenderMessageContent
+    | SealedSenderMultiRecipientEncryptOptions,
+  recipients?: ProtocolAddress[],
+  identityStore?: IdentityKeyStore,
+  sessionStore?: SessionStore
 ): Promise<Buffer> {
+  let excludedRecipients: ServiceId[] | undefined = undefined;
+  if (contentOrOptions instanceof UnidentifiedSenderMessageContent) {
+    if (!recipients || !identityStore || !sessionStore) {
+      throw Error('missing arguments for sealedSenderMultiRecipientEncrypt');
+    }
+  } else {
+    ({
+      content: contentOrOptions,
+      recipients,
+      excludedRecipients,
+      identityStore,
+      sessionStore,
+    } = contentOrOptions);
+  }
+
   const recipientSessions = await sessionStore.getExistingSessions(recipients);
   return await Native.SealedSender_MultiRecipientEncrypt(
     recipients,
     recipientSessions,
-    content,
+    ServiceId.toConcatenatedFixedWidthBinary(excludedRecipients ?? []),
+    contentOrOptions,
     identityStore
   );
 }

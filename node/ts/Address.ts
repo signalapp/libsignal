@@ -118,6 +118,18 @@ export abstract class ServiceId extends Object {
       other.serviceIdFixedWidthBinary
     );
   }
+
+  static toConcatenatedFixedWidthBinary(serviceIds: ServiceId[]): Buffer {
+    const result = Buffer.alloc(
+      serviceIds.length * SERVICE_ID_FIXED_WIDTH_BINARY_LEN
+    );
+    let offset = 0;
+    for (const serviceId of serviceIds) {
+      result.set(serviceId.serviceIdFixedWidthBinary, offset);
+      offset += SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
+    }
+    return result;
+  }
 }
 
 export class Aci extends ServiceId {

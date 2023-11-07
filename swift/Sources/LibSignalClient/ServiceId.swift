@@ -101,6 +101,10 @@ public class ServiceId {
         }
     }
 
+    public var serviceIdFixedWidthBinary: [UInt8] {
+        return withUnsafeBytes(of: self.storage) { Array($0) }
+    }
+
     private func downcast<SpecificId: ServiceId>(to subclass: SpecificId.Type) throws -> SpecificId {
         guard let downcastResult = self as? SpecificId else {
             throw ServiceIdError.wrongServiceIdKind
@@ -143,6 +147,18 @@ public class ServiceId {
 
     internal func withPointerToFixedWidthBinary<R>(_ callback: (UnsafePointer<ServiceIdStorage>) throws -> R) rethrows -> R {
         return try callback(&self.storage)
+    }
+
+    internal static func concatenatedFixedWidthBinary(_ serviceIds: [ServiceId]) -> [UInt8] {
+        var result = Array(repeating: 0 as UInt8, count: serviceIds.count * MemoryLayout<ServiceIdStorage>.size)
+        var offset = 0
+        for next in serviceIds {
+            withUnsafeBytes(of: next.storage) {
+                result.replaceSubrange(offset..<(offset + $0.count), with: $0)
+            }
+            offset += MemoryLayout<ServiceIdStorage>.size
+        }
+        return result
     }
 }
 

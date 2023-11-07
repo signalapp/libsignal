@@ -146,6 +146,20 @@ impl<'a> ArgTypeInfo<'a> for &'a mut [u8] {
     }
 }
 
+impl<'a> ArgTypeInfo<'a> for crate::protocol::ServiceIdSequence<'a> {
+    type ArgType = <&'a [u8] as ArgTypeInfo<'a>>::ArgType;
+    type StoredType = Self::ArgType;
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        <&'a [u8]>::borrow(foreign)
+    }
+
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        let buffer = <&'a [u8]>::load_from(stored);
+        Self::parse(buffer)
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
     type ArgType = *mut [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -593,6 +607,7 @@ macro_rules! ffi_arg_type {
     (bool) => (bool);
     (&[u8]) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (&mut [u8]) => (ffi::BorrowedMutableSliceOf<std::ffi::c_uchar>);
+    (ServiceIdSequence<'_>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (String) => (*const std::ffi::c_char);
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);

@@ -493,6 +493,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
+            [],
             &alice_usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -559,6 +560,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
+            [],
             &alice_usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -617,6 +619,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
+            [],
             &alice_usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -734,6 +737,7 @@ fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProto
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
+            [],
             &alice_usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -849,6 +853,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
         match sealed_sender_multi_recipient_encrypt(
             &recipients,
             &[&session],
+            [],
             &alice_usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -950,6 +955,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             &alice_store
                 .session_store
                 .load_existing_sessions(&recipients)?,
+            [],
             &alice_usmc,
             &alice_store.identity_store,
             &mut rng,
@@ -1112,4 +1118,99 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
 #[test]
 fn parse_empty_multi_recipient_sealed_sender() {
     assert!(SealedSenderV2SentMessage::parse(&[]).is_err());
+}
+
+#[test]
+fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), SignalProtocolError> {
+    async {
+        let mut csprng = OsRng;
+
+        let alice_device_id: DeviceId = 23.into();
+        let bob_device_id: DeviceId = 42.into();
+
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+
+        let bob_uuid_address = ProtocolAddress::new(bob_uuid.clone(), bob_device_id);
+
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let mut bob_store = support::test_in_memory_protocol_store()?;
+
+        let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
+
+        let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut csprng).await?;
+
+        process_prekey_bundle(
+            &bob_uuid_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+        )
+        .await?;
+
+        let trust_root = KeyPair::generate(&mut csprng);
+        let server_key = KeyPair::generate(&mut csprng);
+
+        let server_cert = ServerCertificate::new(
+            1,
+            server_key.public_key,
+            &trust_root.private_key,
+            &mut csprng,
+        )?;
+
+        let expires = 1605722925;
+
+        let sender_cert = SenderCertificate::new(
+            alice_uuid.clone(),
+            None,
+            alice_pubkey,
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut csprng,
+        )?;
+
+        let alice_usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::SenderKey,
+            sender_cert.clone(),
+            vec![],
+            ContentHint::Implicit,
+            Some([42].to_vec()),
+        )?;
+
+        let recipients = [&bob_uuid_address];
+        let recipient_excluded_and_included = sealed_sender_multi_recipient_encrypt(
+            &recipients,
+            &alice_store
+                .session_store
+                .load_existing_sessions(&recipients)?,
+            [ServiceId::parse_from_service_id_string(&bob_uuid).unwrap()],
+            &alice_usmc,
+            &alice_store.identity_store,
+            &mut csprng,
+        )
+        .await?;
+        assert!(SealedSenderV2SentMessage::parse(&recipient_excluded_and_included).is_err());
+
+        let recipient_excluded_twice = sealed_sender_multi_recipient_encrypt(
+            &[],
+            &[],
+            [
+                ServiceId::parse_from_service_id_string(&bob_uuid).unwrap(),
+                ServiceId::parse_from_service_id_string(&bob_uuid).unwrap(),
+            ],
+            &alice_usmc,
+            &alice_store.identity_store,
+            &mut csprng,
+        )
+        .await?;
+        assert!(SealedSenderV2SentMessage::parse(&recipient_excluded_twice).is_err());
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
 }

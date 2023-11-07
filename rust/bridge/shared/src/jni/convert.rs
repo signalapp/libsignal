@@ -312,6 +312,25 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     }
 }
 
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for crate::protocol::ServiceIdSequence<'storage>
+{
+    type ArgType = JByteArray<'context>;
+    type StoredType = AutoElements<'context, 'context, 'param, jbyte>;
+
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        foreign: &'param Self::ArgType,
+    ) -> SignalJniResult<Self::StoredType> {
+        <&'storage [u8]>::borrow(env, foreign)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        let buffer = <&'storage [u8]>::load_from(stored);
+        Self::parse(buffer)
+    }
+}
+
 macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
@@ -988,6 +1007,9 @@ macro_rules! jni_arg_type {
         jni::JByteArray<'local>
     };
     (Pni) => {
+        jni::JByteArray<'local>
+    };
+    (ServiceIdSequence<'_>) => {
         jni::JByteArray<'local>
     };
     (Timestamp) => {

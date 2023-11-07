@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.metadata;
 
+import static org.junit.Assert.assertNotEquals;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
@@ -25,6 +27,8 @@ import org.signal.libsignal.protocol.InvalidRegistrationIdException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
+import org.signal.libsignal.protocol.ServiceId;
+import org.signal.libsignal.protocol.ServiceId.InvalidServiceIdException;
 import org.signal.libsignal.protocol.SessionBuilder;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
@@ -603,6 +607,134 @@ public class SealedSessionCipherTest extends TestCase {
     } catch (NoSessionException e) {
       assertEquals(e.getAddress(), carolAddress);
     }
+  }
+
+  public void testEncryptGroupWithExcludedRecipients()
+      throws UntrustedIdentityException,
+          InvalidKeyException,
+          InvalidCertificateException,
+          InvalidMessageException,
+          InvalidMetadataMessageException,
+          InvalidRegistrationIdException,
+          InvalidServiceIdException,
+          LegacyMessageException,
+          NoSessionException,
+          ProtocolDuplicateMessageException,
+          ProtocolUntrustedIdentityException,
+          ProtocolLegacyMessageException,
+          ProtocolInvalidKeyException,
+          InvalidMetadataVersionException,
+          ProtocolInvalidVersionException,
+          ProtocolInvalidMessageException,
+          ProtocolInvalidKeyIdException,
+          ProtocolNoSessionException,
+          SelfSendException {
+    TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+    TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+    TestInMemorySignalProtocolStore carolStore = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress =
+        new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
+    SignalProtocolAddress carolAddress =
+        new SignalProtocolAddress("38381c3b-2606-4ca7-9310-7cb927f2ab4a", 1);
+
+    ECKeyPair bobPreKey = Curve.generateKeyPair();
+    IdentityKeyPair bobIdentityKey = bobStore.getIdentityKeyPair();
+    SignedPreKeyRecord bobSignedPreKey = generateSignedPreKey(bobIdentityKey, 2);
+    KyberPreKeyRecord bobKyberPreKey = generateKyberPreKey(bobIdentityKey, 12);
+
+    PreKeyBundle bobBundle =
+        new PreKeyBundle(
+            0x1234,
+            1,
+            1,
+            bobPreKey.getPublicKey(),
+            2,
+            bobSignedPreKey.getKeyPair().getPublicKey(),
+            bobSignedPreKey.getSignature(),
+            bobIdentityKey.getPublicKey(),
+            12,
+            bobKyberPreKey.getKeyPair().getPublicKey(),
+            bobKyberPreKey.getSignature());
+    SessionBuilder aliceSessionBuilderForBob = new SessionBuilder(aliceStore, bobAddress);
+    aliceSessionBuilderForBob.process(bobBundle);
+
+    ECKeyPair carolPreKey = Curve.generateKeyPair();
+    IdentityKeyPair carolIdentityKey = carolStore.getIdentityKeyPair();
+    SignedPreKeyRecord carolSignedPreKey = generateSignedPreKey(carolIdentityKey, 2);
+    KyberPreKeyRecord carolKyberPreKey = generateKyberPreKey(carolIdentityKey, 12);
+
+    PreKeyBundle carolBundle =
+        new PreKeyBundle(
+            0x1111,
+            1,
+            1,
+            carolPreKey.getPublicKey(),
+            2,
+            carolSignedPreKey.getKeyPair().getPublicKey(),
+            carolSignedPreKey.getSignature(),
+            carolIdentityKey.getPublicKey(),
+            12,
+            carolKyberPreKey.getKeyPair().getPublicKey(),
+            carolKyberPreKey.getSignature());
+    SessionBuilder aliceSessionBuilderForCarol = new SessionBuilder(aliceStore, carolAddress);
+    aliceSessionBuilderForCarol.process(carolBundle);
+
+    ECKeyPair trustRoot = Curve.generateKeyPair();
+    SenderCertificate senderCertificate =
+        createCertificateFor(
+            trustRoot,
+            UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"),
+            "+14151111111",
+            1,
+            aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(),
+            31337);
+    SealedSessionCipher aliceCipher =
+        new SealedSessionCipher(
+            aliceStore, UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f"), "+14151111111", 1);
+
+    SignalProtocolAddress senderAddress =
+        new SignalProtocolAddress("9d0652a3-dcc3-4d11-975f-74d61598733f", 1);
+    UUID distributionId = UUID.fromString("d1d1d1d1-7000-11eb-b32a-33b8a8a487a6");
+
+    GroupSessionBuilder aliceGroupSessionBuilder = new GroupSessionBuilder(aliceStore);
+    SenderKeyDistributionMessage sentAliceDistributionMessage =
+        aliceGroupSessionBuilder.create(senderAddress, distributionId);
+
+    GroupCipher aliceGroupCipher = new GroupCipher(aliceStore, senderAddress);
+    CiphertextMessage ciphertextFromAlice =
+        aliceGroupCipher.encrypt(distributionId, "smert ze smert".getBytes());
+
+    UnidentifiedSenderMessageContent usmcFromAlice =
+        new UnidentifiedSenderMessageContent(
+            ciphertextFromAlice,
+            senderCertificate,
+            UnidentifiedSenderMessageContent.CONTENT_HINT_IMPLICIT,
+            Optional.of(new byte[] {42, 43}));
+
+    ServiceId eveServiceId = ServiceId.parseFromString("3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7");
+    ServiceId malloryServiceId = ServiceId.parseFromString("5d088142-6fd7-4dbd-af00-fdda1b3ce988");
+
+    byte[] aliceMessage =
+        aliceCipher.multiRecipientEncrypt(
+            Arrays.asList(bobAddress, carolAddress),
+            usmcFromAlice,
+            Arrays.asList(eveServiceId, malloryServiceId));
+
+    // Clients can't directly parse arbitrary SSv2 SentMessages, so just check that it contains
+    // the excluded recipient service IDs followed by a device ID of 0.
+    String hexEncodedSentMessage = Hex.toStringCondensed(aliceMessage);
+
+    int indexOfE =
+        hexEncodedSentMessage.indexOf(
+            Hex.toStringCondensed(eveServiceId.toServiceIdFixedWidthBinary()));
+    assertNotEquals(-1, indexOfE);
+    assertEquals(0, aliceMessage[indexOfE / 2 + 17]);
+
+    int indexOfM =
+        hexEncodedSentMessage.indexOf(
+            Hex.toStringCondensed(malloryServiceId.toServiceIdFixedWidthBinary()));
+    assertNotEquals(-1, indexOfM);
+    assertEquals(0, aliceMessage[indexOfM / 2 + 17]);
   }
 
   public void testProtocolException()
