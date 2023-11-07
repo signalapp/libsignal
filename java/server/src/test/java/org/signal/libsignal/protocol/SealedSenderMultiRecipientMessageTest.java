@@ -372,4 +372,17 @@ public class SealedSenderMultiRecipientMessageTest {
         Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
   }
+
+  @Test
+  public void rejectsUnknownVersions() throws Exception {
+    assertThrows(
+        InvalidVersionException.class,
+        () -> SealedSenderMultiRecipientMessage.parse(new byte[] {0x11}));
+    assertThrows(
+        InvalidVersionException.class,
+        () -> SealedSenderMultiRecipientMessage.parse(new byte[] {0x2F}));
+    assertThrows(
+        InvalidVersionException.class,
+        () -> SealedSenderMultiRecipientMessage.parse(new byte[] {0x77}));
+  }
 }

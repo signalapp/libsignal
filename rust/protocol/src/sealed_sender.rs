@@ -527,9 +527,11 @@ enum UnidentifiedSenderMessage {
     },
 }
 
-const SEALED_SENDER_V1_VERSION: u8 = 1;
-const SEALED_SENDER_V2_VERSION: u8 = 2;
-const SERVICE_ID_AWARE_VERSION: u8 = 3;
+const SEALED_SENDER_V1_MAJOR_VERSION: u8 = 1;
+const SEALED_SENDER_V1_FULL_VERSION: u8 = 0x11;
+const SEALED_SENDER_V2_MAJOR_VERSION: u8 = 2;
+const SEALED_SENDER_V2_UUID_FULL_VERSION: u8 = 0x22;
+const SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION: u8 = 0x23;
 
 impl UnidentifiedSenderMessage {
     fn deserialize(data: &[u8]) -> Result<Self> {
@@ -545,7 +547,7 @@ impl UnidentifiedSenderMessage {
         );
 
         match version {
-            0 | SEALED_SENDER_V1_VERSION => {
+            0 | SEALED_SENDER_V1_MAJOR_VERSION => {
                 // XXX should we really be accepted version == 0 here?
                 let pb = proto::sealed_sender::UnidentifiedSenderMessage::decode(&data[1..])
                     .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
@@ -568,7 +570,7 @@ impl UnidentifiedSenderMessage {
                     encrypted_message,
                 })
             }
-            SEALED_SENDER_V2_VERSION => {
+            SEALED_SENDER_V2_MAJOR_VERSION => {
                 // Uses a flat representation: C || AT || E.pub || ciphertext
                 let remaining = &data[1..];
                 if remaining.len()
@@ -893,8 +895,7 @@ pub async fn sealed_sender_encrypt_from_usmc<R: Rng + CryptoRng>(
     )
     .expect("just generated these keys, they should be correct");
 
-    let version = SEALED_SENDER_V1_VERSION;
-    let mut serialized = vec![version | (version << 4)];
+    let mut serialized = vec![SEALED_SENDER_V1_FULL_VERSION];
     let pb = proto::sealed_sender::UnidentifiedSenderMessage {
         ephemeral_public: Some(ephemeral.public_key.serialize().to_vec()),
         encrypted_static: Some(static_key_ctext),
@@ -1335,8 +1336,7 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
     };
 
     // Uses a flat representation: count || ServiceId_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
-    let mut serialized: Vec<u8> =
-        vec![(SERVICE_ID_AWARE_VERSION | (SEALED_SENDER_V2_VERSION << 4))];
+    let mut serialized: Vec<u8> = vec![SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION];
 
     prost::encode_length_delimiter(destinations.len(), &mut serialized)
         .expect("cannot fail encoding to Vec");
@@ -1468,7 +1468,10 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         }
 
         let version = data[0];
-        if version >> 4 != SEALED_SENDER_V2_VERSION {
+        if !matches!(
+            version,
+            SEALED_SENDER_V2_UUID_FULL_VERSION | SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION
+        ) {
             return Err(SignalProtocolError::UnknownSealedSenderVersion(version));
         }
 
@@ -1500,7 +1503,7 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         // (Callers can of course refuse to process messages with too many recipients.)
         let mut recipients = IndexMap::with_capacity(std::cmp::min(recipient_count as usize, 6000));
         for _ in 0..recipient_count {
-            let service_id = if version & 0xF == SEALED_SENDER_V2_VERSION {
+            let service_id = if version == SEALED_SENDER_V2_UUID_FULL_VERSION {
                 // The original version of SSv2 assumed ACIs here, and only encoded the raw UUID.
                 ServiceId::from(Aci::from_uuid_bytes(*advance::<
                     { std::mem::size_of::<uuid::Bytes>() },
@@ -1545,6 +1548,10 @@ impl<'a> SealedSenderV2SentMessage<'a> {
                     // recipient's devices, though.
                 })
                 .or_insert_with(|| SealedSenderV2SentMessageRecipient { devices, c_and_at });
+        }
+
+        if remaining.len() < curve::curve25519::PUBLIC_KEY_LENGTH {
+            return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
 
         Ok(Self {
