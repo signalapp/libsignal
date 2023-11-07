@@ -1335,15 +1335,17 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
         ciphertext
     };
 
-    // Uses a flat representation: count || ServiceId_i || deviceId_i || registrationId_i || C_i || AT_i || ... || E.pub || ciphertext
-    let mut serialized: Vec<u8> = vec![SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION];
-
-    prost::encode_length_delimiter(destinations.len(), &mut serialized)
-        .expect("cannot fail encoding to Vec");
+    let mut serialized: Vec<u8> = vec![
+        SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION,
+        // This will be replaced by the count, which is *usually* a single byte.
+        // In that case the data after the count won't need to be memmoved.
+        0,
+    ];
 
     let our_identity = identity_store.get_identity_key_pair().await?;
-    let mut previous_their_identity = None;
-    for (&destination, session) in destinations.iter().zip(destination_sessions) {
+    let mut destinations_and_sessions = destinations.iter().zip(destination_sessions).peekable();
+    let mut count_of_recipients = 0;
+    while let Some((&(mut destination), &(mut session))) = destinations_and_sessions.next() {
         let their_service_id = ServiceId::parse_from_service_id_string(destination.name())
             .ok_or_else(|| {
                 SignalProtocolError::InvalidArgument(format!(
@@ -1363,65 +1365,95 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
                 SignalProtocolError::SessionNotFound(destination.clone())
             })?;
 
-        let their_registration_id = session.remote_registration_id().map_err(|_| {
-            SignalProtocolError::InvalidState(
-                "sealed_sender_multi_recipient_encrypt",
-                format!(
-                    concat!(
-                        "cannot get registration ID from session with {} ",
-                        "(maybe it was recently archived)"
-                    ),
-                    destination
-                ),
-            )
-        })?;
-        if their_registration_id & u32::from(VALID_REGISTRATION_ID_MASK) != their_registration_id {
-            return Err(SignalProtocolError::InvalidRegistrationId(
-                destination.clone(),
-                their_registration_id,
-            ));
-        }
-        let their_registration_id =
-            u16::try_from(their_registration_id).expect("just checked range");
-
-        let end_of_previous_recipient_data = serialized.len();
-
         serialized.extend_from_slice(&their_service_id.service_id_fixed_width_binary());
-        let device_id: u32 = destination.device_id().into();
-        prost::encode_length_delimiter(device_id as usize, &mut serialized)
-            .expect("cannot fail encoding to Vec");
-        serialized.extend_from_slice(&their_registration_id.to_be_bytes());
 
-        if Some(their_identity) == previous_their_identity {
-            // We often send to the same user multiple times, once per device.
-            // Since the encoding of the message key and attachment tag only depends
-            // on the identity key, we can reuse the work from the previous destination.
-            let start_of_previous_recipient_c_and_at = end_of_previous_recipient_data
-                - sealed_sender_v2::MESSAGE_KEY_LEN
-                - sealed_sender_v2::AUTH_TAG_LEN;
-            serialized.extend_from_within(
-                start_of_previous_recipient_c_and_at..end_of_previous_recipient_data,
-            )
-        } else {
-            let c_i = sealed_sender_v2::apply_agreement_xor(
-                &e,
-                their_identity.public_key(),
-                Direction::Sending,
-                &m,
-            )?;
-            serialized.extend_from_slice(&c_i);
+        let mut write_device_id_and_registration_id =
+            |destination: &ProtocolAddress, session: &SessionRecord, has_more_devices: bool| {
+                let their_registration_id = session.remote_registration_id().map_err(|_| {
+                    SignalProtocolError::InvalidState(
+                        "sealed_sender_multi_recipient_encrypt",
+                        format!(
+                            concat!(
+                                "cannot get registration ID from session with {} ",
+                                "(maybe it was recently archived)"
+                            ),
+                            destination
+                        ),
+                    )
+                })?;
+                if their_registration_id & u32::from(VALID_REGISTRATION_ID_MASK)
+                    != their_registration_id
+                {
+                    return Err(SignalProtocolError::InvalidRegistrationId(
+                        destination.clone(),
+                        their_registration_id,
+                    ));
+                }
+                let mut their_registration_id =
+                    u16::try_from(their_registration_id).expect("just checked range");
+                if has_more_devices {
+                    their_registration_id |= 0x8000;
+                }
 
-            let at_i = sealed_sender_v2::compute_authentication_tag(
-                &our_identity,
-                &their_identity,
-                Direction::Sending,
-                e_pub,
-                &c_i,
-            )?;
-            serialized.extend_from_slice(&at_i);
+                let device_id: u32 = destination.device_id().into();
+                if device_id == 0 || device_id > MAX_VALID_DEVICE_ID {
+                    return Err(SignalProtocolError::InvalidState(
+                        "sealed_sender_multi_recipient_encrypt",
+                        format!("destination {destination} has invalid device ID"),
+                    ));
+                }
+                serialized.push(device_id.try_into().expect("just checked range"));
+                serialized.extend_from_slice(&their_registration_id.to_be_bytes());
+
+                Ok(())
+            };
+
+        while let Some((next_destination, next_session)) =
+            destinations_and_sessions.next_if(|(dest, _session)| dest.name() == destination.name())
+        {
+            write_device_id_and_registration_id(destination, session, true)?;
+            destination = next_destination;
+            session = next_session;
         }
 
-        previous_their_identity = Some(their_identity);
+        write_device_id_and_registration_id(destination, session, false)?;
+
+        let c_i = sealed_sender_v2::apply_agreement_xor(
+            &e,
+            their_identity.public_key(),
+            Direction::Sending,
+            &m,
+        )?;
+        serialized.extend_from_slice(&c_i);
+
+        let at_i = sealed_sender_v2::compute_authentication_tag(
+            &our_identity,
+            &their_identity,
+            Direction::Sending,
+            e_pub,
+            &c_i,
+        )?;
+        serialized.extend_from_slice(&at_i);
+
+        count_of_recipients += 1;
+    }
+
+    // TODO: Add excluded users as well.
+
+    match prost::length_delimiter_len(count_of_recipients) {
+        1 => {
+            // The common case, we reserved 1 byte ahead of time for this.
+            serialized[1] = count_of_recipients
+                .try_into()
+                .expect("checked length already");
+        }
+        len => {
+            // Resize first, then fill the spot we made.
+            serialized.splice(1..=1, std::iter::repeat(0).take(len));
+            // Work around prost accidentally requiring Sized here with an extra `&mut`.
+            prost::encode_length_delimiter(count_of_recipients, &mut &mut serialized[1..][..len])
+                .expect("have enough space because we measured ahead of time");
+        }
     }
 
     serialized.extend_from_slice(e_pub.public_key_bytes()?);
