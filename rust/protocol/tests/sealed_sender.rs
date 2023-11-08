@@ -501,7 +501,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 
         let (recipient_addr, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
         assert_eq!(recipient_addr.service_id_string(), bob_uuid);
-        assert_eq!(bob_ctext[0], alice_ctext[0]);
+        assert_eq!(bob_ctext[0], 0x22); // Use the original SSv2 version byte.
 
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,

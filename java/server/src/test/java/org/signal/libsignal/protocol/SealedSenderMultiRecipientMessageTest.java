@@ -18,6 +18,7 @@ import org.signal.libsignal.protocol.util.Pair;
 public class SealedSenderMultiRecipientMessageTest {
   static final String VERSION_ACI_ONLY = "22";
   static final String VERSION_SERVICE_ID_AWARE = "23";
+  static final String VERSION_RECIPIENT_MESSAGE = "22";
 
   static final String ACI_MARKER = "00";
   static final String PNI_MARKER = "01";
@@ -182,7 +183,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(alice));
 
     SealedSenderMultiRecipientMessage.Recipient bob =
@@ -198,7 +199,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
   }
 
@@ -241,7 +242,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(alice));
 
     SealedSenderMultiRecipientMessage.Recipient bob =
@@ -257,7 +258,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
   }
 
@@ -302,7 +303,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x03, (short) 0x33ff),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(alice));
   }
 
@@ -341,7 +342,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(alice));
 
     SealedSenderMultiRecipientMessage.Recipient bob =
@@ -357,7 +358,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
   }
 
@@ -403,7 +404,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x05, (short) 0x05aa),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(alice));
 
     SealedSenderMultiRecipientMessage.Recipient bob =
@@ -419,7 +420,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
   }
 
@@ -466,7 +467,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, ALICE_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(alice));
 
     SealedSenderMultiRecipientMessage.Recipient bob =
@@ -482,7 +483,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
     assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_SERVICE_ID_AWARE, BOB_KEY_MATERIAL, SHARED_BYTES),
+        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
         message.messageForRecipient(bob));
 
     assertEquals(

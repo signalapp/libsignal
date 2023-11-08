@@ -161,7 +161,7 @@ public class SealedSenderMultiRecipientMessage {
     final ByteBuffer bbuf =
         ByteBuffer.allocate(
             1 + recipient.lengthOfRecipientSpecificKeyMaterial + lengthOfSharedData);
-    bbuf.put(fullMessageData[0]);
+    bbuf.put((byte) 0x22); // The "original" Sealed Sender V2 version
     bbuf.put(
         fullMessageData,
         recipient.offsetOfRecipientSpecificKeyMaterial,

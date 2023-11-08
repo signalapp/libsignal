@@ -1594,8 +1594,10 @@ impl<'a> SealedSenderV2SentMessage<'a> {
     ) -> impl AsRef<[&[u8]]> {
         // Why not use `IntoIterator<Item = &[u8]>` as the result? Because the `concat` method on
         // slices is more efficient when the caller just wants a `Vec<u8>`.
+        // Why use SEALED_SENDER_V2_UUID_FULL_VERSION as the version? Because the ReceivedMessage
+        // format hasn't changed since then.
         [
-            std::slice::from_ref(&self.version),
+            &[SEALED_SENDER_V2_UUID_FULL_VERSION],
             recipient.c_and_at,
             self.shared_bytes,
         ]
