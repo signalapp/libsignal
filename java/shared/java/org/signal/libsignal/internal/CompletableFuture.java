@@ -5,19 +5,26 @@
 
 package org.signal.libsignal.internal;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /** A stripped-down, Android-21-compatible version of java.util.concurrent.CompletableFuture. */
 public class CompletableFuture<T> implements Future<T> {
   private boolean completed;
   private T result;
   private Throwable exception;
+  private List<ThenApplyCompleter> consumers;
 
-  public CompletableFuture() {}
+  public CompletableFuture() {
+    this.consumers = new ArrayList<>();
+  }
 
   @Override
   public synchronized boolean cancel(boolean mayInterruptIfRunning) {
@@ -42,6 +49,11 @@ public class CompletableFuture<T> implements Future<T> {
     this.completed = true;
 
     notifyAll();
+
+    for (ThenApplyCompleter completer : this.consumers) {
+      completer.complete.accept(result);
+    }
+
     return true;
   }
 
@@ -56,6 +68,11 @@ public class CompletableFuture<T> implements Future<T> {
     this.completed = true;
 
     notifyAll();
+
+    for (ThenApplyCompleter completer : this.consumers) {
+      completer.completeExceptionally.accept(throwable);
+    }
+
     return true;
   }
 
@@ -84,5 +101,33 @@ public class CompletableFuture<T> implements Future<T> {
     }
 
     return get();
+  }
+
+  public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> fn) {
+    CompletableFuture<U> future = new CompletableFuture<>();
+    ThenApplyCompleter completer = new ThenApplyCompleter(future, fn);
+
+    synchronized (this) {
+      this.consumers.add(completer);
+    }
+
+    return future;
+  }
+
+  private class ThenApplyCompleter {
+    private <U> ThenApplyCompleter(
+        CompletableFuture<U> future, Function<? super T, ? extends U> fn) {
+      this.complete =
+          (T value) -> {
+            future.complete(fn.apply(value));
+          };
+      this.completeExceptionally =
+          (Throwable throwable) -> {
+            future.completeExceptionally(throwable);
+          };
+    }
+
+    private Consumer<T> complete;
+    private Consumer<Throwable> completeExceptionally;
   }
 }

@@ -49,6 +49,44 @@ public class FutureTest {
   }
 
   @Test
+  public void testThenApplySuccess() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    CompletableFuture<Boolean> chained = future.thenApply((Integer i) -> (i == 0));
+    assertFalse(chained.isDone());
+    future.complete(21);
+    assertTrue(chained.isDone());
+    assertEquals(false, chained.get());
+  }
+
+  @Test
+  public void testThenApplyFailure() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    CompletableFuture<Boolean> chained = future.thenApply((Integer i) -> (i == 0));
+    Exception exception = new RuntimeException("error!");
+    assertFalse(chained.isDone());
+    future.completeExceptionally(exception);
+
+    assertTrue(chained.isDone());
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testThenApplyFirstCompletionOnly() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    CompletableFuture<Boolean> chained = future.thenApply((Integer i) -> (i == 0));
+
+    assertFalse(chained.isDone());
+    future.complete(55);
+
+    assertTrue(chained.isDone());
+    future.complete(33);
+    future.complete(0);
+
+    assertEquals(false, chained.get());
+  }
+
+  @Test
   public void testSuccessFromRust() throws Exception {
     Future<Integer> future = Native.TESTING_FutureSuccess(1, 21);
     assertEquals(42, (int) future.get());
