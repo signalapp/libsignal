@@ -10,6 +10,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt, TryFutureExt};
+use http::header::ToStrError;
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::{timeout_at, Instant};
@@ -17,11 +18,14 @@ use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::chat::errors::ChatNetworkError;
-use crate::chat::{ChatMessageType, ChatService, MessageProto, RequestProto, ResponseProto};
+use crate::chat::{
+    ChatMessageType, ChatService, MessageProto, Request, RequestProto, ResponseProto,
+};
 use crate::env::constants::WEB_SOCKET_PATH;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ws::connect_websocket;
 use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
+use crate::proto::chat_websocket::web_socket_message::Type;
 use crate::utils::timeout;
 
 #[derive(Default, Eq, Hash, PartialEq, Clone, Copy)]
@@ -97,7 +101,28 @@ impl Default for ChatOverWebsocketConfig {
     }
 }
 
-type PendingMessagesMap = HashMap<RequestId, oneshot::Sender<ResponseProto>>;
+#[derive(Default)]
+struct PendingMessagesMap {
+    pending: HashMap<RequestId, oneshot::Sender<ResponseProto>>,
+    next_id: u64,
+}
+
+impl PendingMessagesMap {
+    fn insert(&mut self, responder: oneshot::Sender<ResponseProto>) -> RequestId {
+        let id = RequestId::new(self.next_id);
+        let prev = self.pending.insert(id, responder);
+        assert!(
+            prev.is_none(),
+            "IDs are picked uniquely and shouldn't wrap around in a reasonable amount of time"
+        );
+        self.next_id += 1;
+        id
+    }
+
+    fn remove(&mut self, id: &RequestId) -> Option<oneshot::Sender<ResponseProto>> {
+        self.pending.remove(id)
+    }
+}
 
 #[derive(Clone)]
 pub struct ChatOverWebSocketServiceConnector<C> {
@@ -187,32 +212,23 @@ pub struct ChatOverWebSocket {
 impl ChatService for ChatOverWebSocket {
     async fn send(
         &self,
-        msg: &MessageProto,
+        msg: Request,
         timeout: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
-        let req = msg
-            .request
-            .as_ref()
-            .ok_or(ChatNetworkError::UnexpectedMessageType)?;
-
         // checking if channel has been closed
         if self.service_status.is_stopped() {
             return Err(ChatNetworkError::ChannelClosed);
         }
 
-        // `id` must be present on the request object
-        let id = RequestId::new(req.id.ok_or(ChatNetworkError::RequestMissingId)?);
-
         let (response_tx, response_rx) = oneshot::channel::<ResponseProto>();
 
         // defining a scope here to release the lock ASAP
-        {
+        let id = {
             let map = &mut self.pending_messages.lock().await;
-            if map.contains_key(&id) {
-                return Err(ChatNetworkError::RequestIdCollision);
-            }
-            map.insert(id, response_tx);
-        }
+            map.insert(response_tx)
+        };
+
+        let msg = request_to_websocket_proto(msg, id)?;
 
         self.outgoing_tx
             .send(msg.encode_to_vec())
@@ -450,6 +466,30 @@ fn response_for_code(id: u64, code: http::status::StatusCode) -> ResponseProto {
     }
 }
 
+fn request_to_websocket_proto(
+    msg: Request,
+    id: RequestId,
+) -> Result<MessageProto, ChatNetworkError> {
+    let headers = msg
+        .headers
+        .iter()
+        .map(|(name, value)| Ok(format!("{name}: {}", value.to_str()?)))
+        .collect::<Result<_, _>>()
+        .map_err(|_: ToStrError| ChatNetworkError::RequestHasInvalidHeader)?;
+
+    Ok(MessageProto {
+        r#type: Some(Type::Request.into()),
+        request: Some(RequestProto {
+            verb: Some(msg.method.to_string()),
+            path: Some(msg.path.to_string()),
+            body: msg.body.map(Into::into),
+            headers,
+            id: Some(id.id),
+        }),
+        response: None,
+    })
+}
+
 #[cfg(test)]
 mod test {
     use std::default::Default;
@@ -460,7 +500,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use futures_util::{SinkExt, StreamExt};
-    use http::StatusCode;
+    use http::{Method, StatusCode};
     use prost::Message;
     use tokio::sync::mpsc::Receiver;
     use tokio::sync::{mpsc, Mutex};
@@ -470,8 +510,8 @@ mod test {
     use crate::chat::errors::ChatNetworkError;
     use crate::chat::test::shared::{connection_manager, test_request};
     use crate::chat::ws::{
-        decode_and_validate, ChatMessage, ChatOverWebSocketServiceConnector,
-        ChatOverWebsocketConfig, ServerRequest,
+        decode_and_validate, request_to_websocket_proto, ChatMessage,
+        ChatOverWebSocketServiceConnector, ChatOverWebsocketConfig, RequestId, ServerRequest,
     };
     use crate::chat::{ChatMessageType, ChatService, MessageProto, ResponseProto};
     use crate::infra::test::shared::{
@@ -617,7 +657,7 @@ mod test {
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
 
         let response = ws_chat
-            .send(&test_request("GET", "/"), TIMEOUT_DURATION)
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
         response.expect("response");
         validate_server_running(server_res_rx).await;
@@ -653,7 +693,7 @@ mod test {
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
 
         let response = ws_chat
-            .send(&test_request("GET", "/"), TIMEOUT_DURATION)
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
         assert_matches!(response, Err(ChatNetworkError::Timeout));
         validate_server_running(server_res_rx).await;
@@ -675,7 +715,7 @@ mod test {
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
 
         let response = ws_chat
-            .send(&test_request("GET", "/"), TIMEOUT_DURATION)
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
         assert_matches!(response, Err(ChatNetworkError::ChannelClosed));
         validate_server_stopped_successfully(server_res_rx).await;
@@ -687,9 +727,13 @@ mod test {
         // sends an unexpected frame to the chat service client
         let (ws_server, _) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
-            let request = test_request("GET", "/");
+            let request = test_request(Method::GET, "/");
             let _ = tx
-                .send(warp::filters::ws::Message::binary(request.encode_to_vec()))
+                .send(warp::filters::ws::Message::binary(
+                    request_to_websocket_proto(request, RequestId::new(100))
+                        .expect("is valid")
+                        .encode_to_vec(),
+                ))
                 .await;
             if (rx.next().await).is_some() {
                 ServerExitStatus::Success
@@ -735,11 +779,11 @@ mod test {
         let ws_config = ChatOverWebsocketConfig::default();
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
 
-        let req1 = test_request("GET", "/");
-        let response1_future = ws_chat.send(&req1, TIMEOUT_DURATION);
+        let req1 = test_request(Method::GET, "/");
+        let response1_future = ws_chat.send(req1, TIMEOUT_DURATION);
 
-        let req2 = test_request("GET", "/");
-        let response2_future = ws_chat.send(&req2, TIMEOUT_DURATION);
+        let req2 = test_request(Method::GET, "/");
+        let response2_future = ws_chat.send(req2, TIMEOUT_DURATION);
 
         // Making sure that at this point the clock has not advanced from the initial instant.
         // This is a way to indirectly make sure that neither of the futures is yet completed.
@@ -772,7 +816,7 @@ mod test {
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
 
         let response = ws_chat
-            .send(&test_request("GET", "/"), TIMEOUT_DURATION)
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
         assert_matches!(response, Err(ChatNetworkError::ChannelClosed));
         validate_server_stopped_successfully(server_res_rx).await;

@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use http::request::Builder;
 use http::response::Parts;
+use http::uri::PathAndQuery;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 
@@ -23,7 +24,7 @@ pub(crate) type Http2Connection<S> = http2::Connection<TokioIo<S>, Full<Bytes>, 
 pub trait AggregatingHttpClient: Send + Sync + Clone {
     async fn send_request_aggregate_response(
         &mut self,
-        path_and_query: &str,
+        path_and_query: PathAndQuery,
         request_builder: Builder,
         body: Bytes,
     ) -> Result<(Parts, Bytes), NetError>;
@@ -57,7 +58,7 @@ impl AggregatingHttp2Client {
 impl AggregatingHttpClient for AggregatingHttp2Client {
     async fn send_request_aggregate_response(
         &mut self,
-        path_and_query: &str,
+        path_and_query: PathAndQuery,
         request_builder: Builder,
         body: Bytes,
     ) -> Result<(Parts, Bytes), NetError> {

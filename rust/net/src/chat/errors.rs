@@ -9,12 +9,8 @@ use crate::infra::errors::{LogSafeDisplay, NetError};
 pub enum ChatNetworkError {
     /// Failed to decode data received from the server
     IncomingDataInvalid,
-    /// Request object must have an `id` field to be sent over WebSockets
-    RequestMissingId,
-    /// Request object must have an `verb` and `path` fields to be sent over HTTP
-    RequestMissingVerbOrPath,
-    /// Requested HTTP method is not recognized
-    UnknownVerbInRequest,
+    /// Request object must contain only ASCII text as header names and values.
+    RequestHasInvalidHeader,
     /// Failed to send message over WebSocket
     FailedToSendWebSocket(tungstenite::Error),
     /// Failed to send message over HTTP
@@ -45,14 +41,10 @@ pub enum ChatNetworkError {
     NoServiceConnection,
     /// Failed to establish WebSocket connection
     FailedToConnectWebSocket,
-    /// Unexpected message type
-    UnexpectedMessageType,
     /// Request message from the server is missing the `id` field
     ServerRequestMissingId,
     /// Failed while sending a request from the server to the incoming  messages channel
     FailedToPassMessageToIncomingChannel,
-    /// Request with the same `id` is already in-flight
-    RequestIdCollision,
 }
 
 impl LogSafeDisplay for ChatNetworkError {}

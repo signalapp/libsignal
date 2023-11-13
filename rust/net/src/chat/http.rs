@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use futures_util::TryFutureExt;
 
 use crate::chat::errors::ChatNetworkError;
-use crate::chat::{proto_to_request, ChatService, MessageProto, ResponseProto};
+use crate::chat::{ChatService, Request, ResponseProto};
 use crate::infra::errors::NetError;
 use crate::infra::http::{
     http2_channel, AggregatingHttp2Client, AggregatingHttpClient, Http2Channel, Http2Connection,
@@ -66,18 +66,12 @@ impl<C: TransportConnector> ServiceConnector for ChatOverHttp2ServiceConnector<C
 impl ChatService for ChatOverHttp2 {
     async fn send(
         &self,
-        msg: &MessageProto,
+        msg: Request,
         timeout_duration: Duration,
     ) -> Result<ResponseProto, ChatNetworkError> {
-        let req = msg
-            .request
-            .as_ref()
-            .ok_or(ChatNetworkError::UnexpectedMessageType)?;
-        let id = req.id;
-        let (path, builder, body) = proto_to_request(req)?;
+        let (path, builder, body) = msg.into_parts();
         let mut request_sender = self.request_sender.clone();
-        let response_future =
-            request_sender.send_request_aggregate_response(path.as_str(), builder, body);
+        let response_future = request_sender.send_request_aggregate_response(path, builder, body);
         match timeout(timeout_duration, NetError::Timeout, response_future).await {
             Ok((parts, aggregated_body)) => {
                 let status: Option<u32> = Some(parts.status.as_u16().into());
@@ -100,7 +94,7 @@ impl ChatService for ChatOverHttp2 {
                     .collect();
 
                 Ok(ResponseProto {
-                    id,
+                    id: None,
                     status,
                     message,
                     body,
