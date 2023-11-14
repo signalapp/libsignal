@@ -27,14 +27,17 @@ bridge_handle!(
 
 impl<F> AsyncRuntime<F> for NonSuspendingBackgroundThreadRuntime
 where
-    F: Future<Output = ()> + Send + 'static,
+    F: Future + Send + 'static,
+    F::Output: ResultReporter,
+    <F::Output as ResultReporter>::Receiver: Send,
 {
-    fn run_future(&self, future: F) {
+    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver) {
         std::thread::spawn(move || {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                 future
                     .now_or_never()
                     .expect("no need to suspend in testing methods")
+                    .report_to(completer);
             }))
             .unwrap_or_else(|_| {
                 // Since this is a testing method, make sure we crash on uncaught panics.

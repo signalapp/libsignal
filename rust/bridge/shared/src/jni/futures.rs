@@ -4,7 +4,7 @@
 //
 
 use super::*;
-use crate::support::AsyncRuntime;
+use crate::support::{AsyncRuntime, ResultReporter};
 
 use futures_util::{FutureExt, TryFutureExt};
 
@@ -15,6 +15,18 @@ pub struct FutureCompleter<T> {
     jvm: JavaVM,
     future: GlobalRef,
     complete_signature: PhantomData<fn(T)>,
+}
+
+/// [`ResultReporter`] that drops values after reporting an outcome.
+pub struct FutureResultReporter<T, U> {
+    result: SignalJniResult<T>,
+    to_drop: U,
+}
+
+impl<T, U> FutureResultReporter<T, U> {
+    pub fn new(result: SignalJniResult<T>, to_drop: U) -> Self {
+        Self { result, to_drop }
+    }
 }
 
 impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> {
@@ -29,27 +41,23 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
             complete_signature: PhantomData,
         })
     }
+}
 
-    /// Converts `result` to a Java value and completes the future in `self`.
-    pub fn complete(self, result: SignalJniResult<T>) {
-        self.complete_with_extra_args_to_drop(result, ())
-    }
+impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
+    for FutureResultReporter<T, U>
+{
+    type Receiver = FutureCompleter<T>;
 
-    /// Converts `result` to a Java value and completes the future in `self`.
-    ///
-    /// Additionally, drops `extra_args_to_drop` while attached to the JVM.
-    /// This is important if `extra_args_to_drop` contains global references,
-    /// or other data that requires an attached JVM to clean up.
-    pub fn complete_with_extra_args_to_drop<U>(
-        self,
-        result: SignalJniResult<T>,
-        extra_args_to_drop: U,
-    ) {
+    fn report_to(self, receiver: Self::Receiver) {
         let Self {
+            result,
+            to_drop: extra_args_to_drop,
+        } = self;
+        let FutureCompleter {
             jvm,
             future,
             complete_signature: _,
-        } = self;
+        } = receiver;
 
         let mut env = match jvm.attach_current_thread() {
             Ok(attach_guard) => attach_guard,
@@ -128,27 +136,29 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
 /// ```no_run
 /// # use jni::JNIEnv;
 /// # use libsignal_bridge::jni::*;
-/// # use libsignal_bridge::AsyncRuntime;
+/// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
 /// # struct ExampleAsyncRuntime;
-/// # impl<F: std::future::Future<Output = ()>> AsyncRuntime<F> for ExampleAsyncRuntime {
-/// #   fn run_future(&self, future: F) { unimplemented!() }
+/// # impl<F: std::future::Future> AsyncRuntime<F> for ExampleAsyncRuntime
+/// # where F::Output: ResultReporter {
+/// #   fn run_future(&self, future: F, receiver: <F::Output as ResultReporter>::Receiver) { unimplemented!() }
 /// # }
 /// # fn test(env: &mut JNIEnv, async_runtime: &ExampleAsyncRuntime) -> SignalJniResult<()> {
-/// let java_future = run_future_on_runtime(env, async_runtime, |completer| async {
+/// let java_future = run_future_on_runtime(env, async_runtime, async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
-///     completer.complete(Ok(result));
+///     FutureResultReporter::new(Ok(result), ())
 /// })?;
 /// # Ok(())
 /// # }
 pub fn run_future_on_runtime<'local, F, O>(
     env: &mut JNIEnv<'local>,
     runtime: &impl AsyncRuntime<F>,
-    make_future: impl FnOnce(FutureCompleter<O>) -> F,
+    future: F,
 ) -> SignalJniResult<JavaFuture<'local, <O as ResultTypeInfo<'local>>::ResultType>>
 where
-    F: Future<Output = ()> + std::panic::UnwindSafe + 'static,
+    F: Future + std::panic::UnwindSafe + 'static,
     O: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + 'static,
+    F::Output: ResultReporter<Receiver = FutureCompleter<O>>,
 {
     let java_future = new_object(
         env,
@@ -156,7 +166,7 @@ where
         jni_args!(() -> void),
     )?;
     let completer = FutureCompleter::new(env, &java_future)?;
-    runtime.run_future(make_future(completer));
+    runtime.run_future(future, completer);
     Ok(java_future.into())
 }
 

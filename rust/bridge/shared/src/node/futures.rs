@@ -10,7 +10,7 @@ use futures_util::FutureExt;
 use neon::types::Deferred;
 use signal_neon_futures::ChannelEx;
 
-use crate::support::{describe_panic, AsyncRuntime};
+use crate::support::{describe_panic, AsyncRuntime, ResultReporter};
 
 use super::*;
 
@@ -47,31 +47,48 @@ where
             complete_signature: PhantomData,
         }
     }
+}
 
-    /// Converts `result` to a JS value and completes the promise in `self`.
-    pub fn complete(self, result: std::thread::Result<Result<T, E>>) {
-        self.complete_with_extra_args_to_finalize(result, ())
+/// [`ResultReporter`] that finalizes values after converting the outcome to a
+/// JS value and reporting it.
+pub struct FutureResultReporter<T, E, U> {
+    to_finalize: U,
+    result: std::thread::Result<Result<T, E>>,
+}
+
+impl<T, E, U: Finalize + Send + 'static> FutureResultReporter<T, E, U> {
+    pub fn new(result: std::thread::Result<Result<T, E>>, to_finalize: U) -> Self {
+        Self {
+            to_finalize,
+            result,
+        }
     }
+}
 
+impl<T, E, U> ResultReporter for FutureResultReporter<T, E, U>
+where
+    T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + Send + 'static,
+    E: SignalNodeError + std::panic::UnwindSafe + Send + 'static,
+    U: Finalize + Send + 'static,
+{
+    type Receiver = PromiseSettler<T, E>;
     /// Converts `result` to a JS value and completes the promise in `self`.
     ///
     /// Additionally, finalizes `extra_args_to_finalize` while completing the promise.
     /// This is important if `extra_args_to_finalize` contains root references to JS objects,
     /// or other data that requires a Neon context to clean up.
-    pub fn complete_with_extra_args_to_finalize<U>(
-        self,
-        result: std::thread::Result<Result<T, E>>,
-        extra_args_to_finalize: U,
-    ) where
-        U: Finalize + Send + 'static,
-    {
+    fn report_to(self, receiver: Self::Receiver) {
         let Self {
+            result,
+            to_finalize: extra_args_to_finalize,
+        } = self;
+        let PromiseSettler {
             deferred,
             channel,
             error_module,
             node_function_name,
             complete_signature: _,
-        } = self;
+        } = receiver;
 
         deferred.settle_with(&channel, move |mut cx| {
             // Finalize all the extra args and unwrap our globals before anything else, so we don't
@@ -122,10 +139,11 @@ where
 /// # use futures_util::FutureExt;
 /// # use neon::prelude::*;
 /// # use libsignal_bridge::node::*;
-/// # use libsignal_bridge::AsyncRuntime;
+/// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
 /// # struct ExampleAsyncRuntime;
-/// # impl<F: std::future::Future<Output = ()>> AsyncRuntime<F> for ExampleAsyncRuntime {
-/// #   fn run_future(&self, future: F) { unimplemented!() }
+/// # impl<F: std::future::Future> AsyncRuntime<F> for ExampleAsyncRuntime
+/// # where F::Output: ResultReporter {
+/// #   fn run_future(&self, future: F, receiver: <F::Output as ResultReporter>::Receiver) { unimplemented!() }
 /// # }
 /// # struct MyError;
 /// # impl std::fmt::Display for MyError {
@@ -133,13 +151,13 @@ where
 /// # }
 /// # impl SignalNodeError for MyError {}
 /// # fn test(cx: &mut FunctionContext, async_runtime: &ExampleAsyncRuntime) -> NeonResult<()> {
-/// let js_promise = run_future_on_runtime(cx, async_runtime, "example", |completer| async {
+/// let js_promise = run_future_on_runtime(cx, async_runtime, "example", async {
 ///     let future = async {
 ///         let result: i32 = 1 + 2;
 ///         // Do some complicated awaiting here.
 ///         Ok::<_, MyError>(result)
 ///     }.catch_unwind();
-///     completer.complete(future.await);
+///     FutureResultReporter::new(future.await, ())
 /// })?;
 /// # Ok(())
 /// # }
@@ -147,16 +165,17 @@ pub fn run_future_on_runtime<'cx, F, O, E>(
     cx: &mut FunctionContext<'cx>,
     runtime: &impl AsyncRuntime<F>,
     node_function_name: &'static str,
-    make_future: impl FnOnce(PromiseSettler<O, E>) -> F,
+    future: F,
 ) -> JsResult<'cx, JsPromise>
 where
-    F: Future<Output = ()> + std::panic::UnwindSafe + 'static,
+    F: Future + std::panic::UnwindSafe + 'static,
+    F::Output: ResultReporter<Receiver = PromiseSettler<O, E>>,
     O: for<'a> ResultTypeInfo<'a> + Send + std::panic::UnwindSafe + 'static,
     E: SignalNodeError + Send + std::panic::UnwindSafe + 'static,
 {
     let (deferred, promise) = cx.promise();
     let completer = PromiseSettler::new(cx, deferred, node_function_name);
-    runtime.run_future(make_future(completer));
+    runtime.run_future(future, completer);
     Ok(promise)
 }
 
@@ -210,13 +229,17 @@ impl<'a> ChannelOnItsOriginalThread<'a> {
 
 impl<F> AsyncRuntime<F> for ChannelOnItsOriginalThread<'_>
 where
-    F: Future<Output = ()> + 'static,
+    F: Future + 'static,
+    F::Output: ResultReporter,
+    <F::Output as ResultReporter>::Receiver: Send,
 {
-    fn run_future(&self, future: F) {
+    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver) {
         // Because we're on the JS main thread, we don't need `future` to be Send; it will only be
         // run synchronously with other JS tasks by the Node microtask queue.
         let future = AssertSendSafe(future);
         // Note that this will poll the future *synchronously* first, to minimize context switches.
-        self.channel.start_future(future);
+        self.channel.start_future(async move {
+            future.await.report_to(completer);
+        });
     }
 }

@@ -143,7 +143,7 @@ fn bridge_fn_async_body(
             &mut cx,
             async_runtime,
             #custom_name,
-            move |completer| async move {
+            async move {
                 // Wrap the actual work to catch any panics.
                 let __future = node::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*
@@ -152,10 +152,10 @@ fn bridge_fn_async_body(
                     // See TransformHelper::ok_if_needed.
                     TransformHelper(__result).ok_if_needed().map(|x| x.0)
                 }));
-                // Pass the stored inputs to the completer to finalize them .
-                completer.complete_with_extra_args_to_finalize(
+                // Pass the stored inputs to the reporter to finalize them before reporting the result.
+                node::FutureResultReporter::new(
                     __future.await,
-                    (#(#inputs_to_finalize),*),
+                    (#(#inputs_to_finalize),*)
                 )
             }
         )?.upcast())

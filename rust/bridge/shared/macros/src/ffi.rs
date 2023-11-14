@@ -162,7 +162,7 @@ fn bridge_io_body(
                 async_runtime,
                 promise,
                 promise_context,
-                move |completer| async move {
+                async move {
                     let __future = ffi::catch_unwind(std::panic::AssertUnwindSafe(async move {
                         #(#input_loading)*
                         let __result = #orig_name(#(#input_names),*).await;
@@ -170,7 +170,7 @@ fn bridge_io_body(
                         // See TransformHelper::ok_if_needed.
                         Ok(TransformHelper(__result).ok_if_needed()?.0)
                     }));
-                    completer.complete(__future.await)
+                    ffi::FutureResultReporter::new(__future.await)
                 }
             );
             Ok(())

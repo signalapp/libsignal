@@ -24,7 +24,7 @@ pub mod node;
 #[macro_use]
 mod support;
 
-pub use support::{describe_panic, AsyncRuntime};
+pub use support::{describe_panic, AsyncRuntime, ResultReporter};
 
 pub mod crypto;
 pub mod protocol;

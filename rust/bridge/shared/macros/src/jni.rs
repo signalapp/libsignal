@@ -147,7 +147,7 @@ fn bridge_io_body(
         jni::run_ffi_safe(&mut env, |env| {
             #load_async_runtime
             #(#input_saving)*
-            jni::run_future_on_runtime(env, async_runtime, move |completer| async move {
+            jni::run_future_on_runtime(env, async_runtime, async move {
                 // Wrap the actual work to catch any panics.
                 let __future = jni::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*
@@ -156,8 +156,9 @@ fn bridge_io_body(
                     // See TransformHelper::ok_if_needed.
                     Ok(TransformHelper(__result).ok_if_needed()?.0)
                 }));
-                // Pass the stored inputs to the completer to drop them while attached to the JVM.
-                completer.complete_with_extra_args_to_drop(__future.await, (#(#input_stored_names),*))
+                // Pass the stored inputs to the reporter to drop them while attached to the JVM.
+
+                jni::FutureResultReporter::new(__future.await, (#(#input_stored_names),*))
             })
         })
     }

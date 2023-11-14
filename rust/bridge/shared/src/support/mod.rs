@@ -186,10 +186,26 @@ macro_rules! bridge_get {
     };
 }
 
+/// Reports a result from a future to some receiver.
+pub trait ResultReporter {
+    /// The type that will receive the result.
+    type Receiver;
+
+    /// Reports the result to the provided completer.
+    fn report_to(self, receiver: Self::Receiver);
+}
+
 /// Abstracts over executing a future with type `F`.
 ///
 /// Putting the future type in the trait signature allows runtimes to impose additional
 /// requirements, such as `Send`, on the Futures they can run.
-pub trait AsyncRuntime<F: Future<Output = ()>> {
-    fn run_future(&self, future: F);
+pub trait AsyncRuntime<F: Future>
+where
+    F::Output: ResultReporter,
+{
+    /// Runs the provided future to completion, then reports the result.
+    ///
+    /// Executes the provided future to completion, then reports the output to
+    /// the provided completer.
+    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver);
 }
