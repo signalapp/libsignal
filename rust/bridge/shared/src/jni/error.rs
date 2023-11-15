@@ -38,6 +38,7 @@ pub enum SignalJniError {
     Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
+    Cdsi(libsignal_net::cdsi::Error),
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
@@ -68,6 +69,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Mp4SanitizeParse(e) => write!(f, "{}", e),
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
+            SignalJniError::Cdsi(e) => write!(f, "{}", e),
             SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
             SignalJniError::NullHandle => write!(f, "null handle"),
             SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
@@ -176,6 +178,12 @@ impl From<signal_media::sanitize::webp::Error> for SignalJniError {
             Error::Io(e) => Self::Io(e.into()),
             Error::Parse(e) => Self::WebpSanitizeParse(e),
         }
+    }
+}
+
+impl From<libsignal_net::cdsi::Error> for SignalJniError {
+    fn from(e: libsignal_net::cdsi::Error) -> SignalJniError {
+        SignalJniError::Cdsi(e)
     }
 }
 

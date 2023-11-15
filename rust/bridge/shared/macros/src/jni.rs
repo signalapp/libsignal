@@ -47,7 +47,9 @@ pub(crate) fn bridge_fn(
     let output = result_type(&sig.output);
     let result_ty = match bridging_kind {
         BridgingKind::Regular => quote!(jni_result_type!(#output)),
-        BridgingKind::Io { .. } => quote!(jni::JavaFuture<'local, jni_result_type!(#output)>),
+        BridgingKind::Io { .. } => {
+            quote!(jni::JavaCompletableFuture<'local, jni_result_type!(#output)>)
+        }
     };
 
     let body = match bridging_kind {

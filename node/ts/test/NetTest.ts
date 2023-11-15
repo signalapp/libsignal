@@ -14,7 +14,6 @@ config.truncateThreshold = 0;
 describe('cdsi lookup', () => {
   const e164Both = '+18005551011';
   const e164Pni = '+18005551012';
-  const e164Neither = '+18005551013';
 
   const aciUuid = '9d0652a3-dcc3-4d11-975f-74d61598733f';
   const pniUuid = '796abedb-ca4e-4f18-8803-1fde5b921f9f';
@@ -26,7 +25,6 @@ describe('cdsi lookup', () => {
     it('converts to native', () => {
       const expected = new Map([
         [e164Both, { aci: aci, pni: pni }],
-        [e164Neither, { aci: undefined, pni: undefined }],
         [e164Pni, { aci: undefined, pni: pni }],
       ]);
 

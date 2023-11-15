@@ -9,14 +9,14 @@ use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
+#[cfg(feature = "node")]
 use crate::support::*;
 use crate::*;
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     const E164_BOTH: E164 = E164::new(nonzero!(18005551011u64));
     const E164_PNI: E164 = E164::new(nonzero!(18005551012u64));
-    const E164_NEITHER: E164 = E164::new(nonzero!(18005551013u64));
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
     const PNI_UUID: &str = "796abedb-ca4e-4f18-8803-1fde5b921f9f";
 
@@ -34,11 +34,6 @@ fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
                 e164: E164_PNI,
                 pni: Some(pni),
                 aci: None,
-            },
-            LookupResponseEntry {
-                e164: E164_NEITHER,
-                aci: None,
-                pni: None,
             },
         ],
     }

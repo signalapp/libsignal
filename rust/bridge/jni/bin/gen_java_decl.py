@@ -43,7 +43,7 @@ ignore_this_warning = re.compile(
     r"WARN: Missing `\[defines\]` entry for `ios_device_as_detected_in_build_rs` in cbindgen config\.|"
     r"WARN: Skip libsignal-bridge::.+ - \(not `(?:pub|no_mangle)`\)\.|"
     r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
-    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaFuture\" }.+"
+    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaCompletableFuture\" }.+"
     ")")
 
 unknown_warning = False
@@ -104,9 +104,10 @@ def translate_to_java(typ):
     if typ in type_map:
         return type_map[typ]
 
-    if typ.startswith('JavaFuture<'):
-        assert typ.endswith('>')
-        return 'Future<' + box_primitive_if_needed(translate_to_java(typ[11:-1])) + '>'
+    if (stripped := typ.removeprefix('JavaCompletableFuture<')) != typ:
+        assert stripped.endswith('>')
+        inner = translate_to_java(stripped.removesuffix('>'))
+        return f'CompletableFuture<{box_primitive_if_needed(inner)}>'
 
     # Assume anything else prefixed with "Java" refers to an object
     if typ.startswith('Java'):

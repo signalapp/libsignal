@@ -158,6 +158,11 @@ public final class Native {
 
   public static native Map Cds2Metrics_extract(byte[] attestationMsg);
 
+  public static native CompletableFuture<Map> CdsiLookup(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
+
+  public static native void ConnectionManager_Destroy(long handle);
+  public static native long ConnectionManager_new(int environment);
+
   public static native void CreateCallLinkCredentialPresentation_CheckValidContents(byte[] presentationBytes);
   public static native void CreateCallLinkCredentialPresentation_Verify(byte[] presentationBytes, byte[] roomId, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes);
 
@@ -296,6 +301,14 @@ public final class Native {
 
   public static native void Logger_Initialize(int maxLevel, Class loggerClass);
   public static native void Logger_SetMaxLevel(int maxLevel);
+
+  public static native void LookupRequest_Destroy(long handle);
+  public static native void LookupRequest_addAciAndAccessKey(long request, byte[] aci, byte[] accessKey);
+  public static native void LookupRequest_addE164(long request, String e164);
+  public static native void LookupRequest_addPreviousE164(long request, String e164);
+  public static native long LookupRequest_new();
+  public static native void LookupRequest_setReturnAcisWithoutUaks(long request, boolean returnAcisWithoutUaks);
+  public static native void LookupRequest_setToken(long request, byte[] token);
 
   public static native long Mp4Sanitizer_Sanitize(InputStream input, long len);
 
@@ -542,27 +555,31 @@ public final class Native {
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
+  public static native Map TESTING_CdsiLookupResponseConvert();
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
-  public static native Future TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
+  public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);
   public static native Object TESTING_ErrorOnReturnAsync(Object needsCleanup);
-  public static native Future<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
+  public static native CompletableFuture<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
-  public static native Future<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
-  public static native Future<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
+  public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
+  public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
   public static native void TESTING_PanicInBodyAsync(Object input);
-  public static native Future TESTING_PanicInBodyIo(long asyncRuntime, Object input);
+  public static native CompletableFuture TESTING_PanicInBodyIo(long asyncRuntime, Object input);
   public static native void TESTING_PanicInBodySync(Object input);
   public static native void TESTING_PanicOnBorrowAsync(Object input);
-  public static native Future TESTING_PanicOnBorrowIo(long asyncRuntime, Object input);
+  public static native CompletableFuture TESTING_PanicOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_PanicOnBorrowSync(Object input);
   public static native void TESTING_PanicOnLoadAsync(Object needsCleanup, Object input);
-  public static native Future TESTING_PanicOnLoadIo(long asyncRuntime, Object needsCleanup, Object input);
+  public static native CompletableFuture TESTING_PanicOnLoadIo(long asyncRuntime, Object needsCleanup, Object input);
   public static native void TESTING_PanicOnLoadSync(Object needsCleanup, Object input);
   public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
-  public static native Future<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
+  public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
+
+  public static native void TokioAsyncContext_Destroy(long handle);
+  public static native long TokioAsyncContext_new();
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data);
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);

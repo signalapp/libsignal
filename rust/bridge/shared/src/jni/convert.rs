@@ -3,9 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use jni::objects::{AutoLocal, JMap};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
+use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_protocol::*;
+
 use paste::paste;
 
 use std::ops::Deref;
@@ -416,8 +419,7 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
             jni_class_name!(java.util.HashMap),
             jni_args!(() -> void),
         )?;
-        // Fully-qualified so that we don't need to conditionalize the `use`.
-        let jmap = jni::objects::JMap::from_env(env, &jobj)?;
+        let jmap = JMap::from_env(env, &jobj)?;
 
         let long_class = env.find_class(jni_class_name!(java.lang.Long))?;
         for (k, v) in self.0 {
@@ -761,6 +763,13 @@ impl<'a> ResultTypeInfo<'a> for Aci {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for Pni {
+    type ResultType = JByteArray<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+        ServiceId::from(self).convert_into(env)
+    }
+}
+
 impl<'a, T> SimpleArgTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable
@@ -826,6 +835,13 @@ impl<'a> SimpleArgTypeInfo<'a> for Pni {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for bool {
+    type ArgType = jboolean;
+    fn convert_from(_: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        Ok(*foreign != 0)
+    }
+}
+
 impl<'a, T> ResultTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + serde::Serialize,
@@ -835,6 +851,52 @@ where
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
         let result = zkgroup::serialize(self.deref());
         result.convert_into(env)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+        let output_hashmap = new_object(
+            env,
+            jni_class_name!(java.util.HashMap),
+            jni_args!(() -> void),
+        )?;
+        let output_jmap = JMap::from_env(env, &output_hashmap)?;
+
+        let entry_class =
+            env.find_class(jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry))?;
+
+        for entry in self.records {
+            let LookupResponseEntry { aci, e164, pni } = entry;
+            let aci = AutoLocal::new(
+                aci.map(|aci| aci.convert_into(env))
+                    .transpose()?
+                    .unwrap_or_default(),
+                env,
+            );
+            let pni = AutoLocal::new(
+                pni.map(|pni| pni.convert_into(env))
+                    .transpose()?
+                    .unwrap_or_default(),
+                env,
+            );
+            let e164 = AutoLocal::new(JObject::from(env.new_string(e164.to_string())?), env);
+
+            let entry = AutoLocal::new(
+                new_object(
+                    env,
+                    &entry_class,
+                    jni_args!( (aci => [byte], pni => [byte]) -> void),
+                )?,
+                env,
+            );
+
+            output_jmap.put(env, &e164, &entry)?;
+        }
+
+        Ok(output_hashmap)
     }
 }
 
@@ -897,6 +959,9 @@ macro_rules! jni_arg_type {
     };
     (u64) => {
         jni::jlong
+    };
+    (bool) => {
+        jni::jboolean
     };
     (String) => {
         jni::JString<'local>
@@ -1039,6 +1104,9 @@ macro_rules! jni_result_type {
     };
     (Pni) => {
         jni::JByteArray<'local>
+    };
+    (LookupResponse) => {
+        jni::JavaMap<'local>
     };
     (Option<$typ:tt>) => {
         jni_result_type!($typ)

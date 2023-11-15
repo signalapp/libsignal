@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import org.junit.Test;
 
 public class FutureTest {
@@ -71,10 +72,29 @@ public class FutureTest {
     assertEquals(exception, e.getCause());
   }
 
+  private class CountingFunction<T, U> implements Function<T, U> {
+    public CountingFunction(Function<T, U> f) {
+      this.f = f;
+    }
+
+    public U apply(T value) {
+      this.applicationCount++;
+      return this.f.apply(value);
+    }
+
+    public long getApplicationCount() {
+      return this.applicationCount;
+    }
+
+    private long applicationCount = 0;
+    private Function<T, U> f;
+  }
+
   @Test
-  public void testThenApplyFirstCompletionOnly() throws Exception {
+  public void testThenApplyOnceFirstCompletionOnly() throws Exception {
     CompletableFuture<Integer> future = new CompletableFuture<>();
-    CompletableFuture<Boolean> chained = future.thenApply((Integer i) -> (i == 0));
+    CountingFunction<Integer, Boolean> function = new CountingFunction<>((Integer i) -> (i == 0));
+    CompletableFuture<Boolean> chained = future.thenApply(function);
 
     assertFalse(chained.isDone());
     future.complete(55);
@@ -84,6 +104,7 @@ public class FutureTest {
     future.complete(0);
 
     assertEquals(false, chained.get());
+    assertEquals(function.getApplicationCount(), 1);
   }
 
   @Test

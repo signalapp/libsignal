@@ -53,14 +53,15 @@ pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaMap<'a> = JObject<'a>;
 
+/// A Java wrapper for a `CompletableFuture` type.
 #[derive(Default)]
-#[repr(transparent)] // This ensures that JavaFuture has the same representation as JObject.
-pub struct JavaFuture<'a, T> {
+#[repr(transparent)] // Ensures that the representation is the same as JObject.
+pub struct JavaCompletableFuture<'a, T> {
     future_object: JObject<'a>,
     result: PhantomData<fn(T)>,
 }
 
-impl<'a, T> From<JObject<'a>> for JavaFuture<'a, T> {
+impl<'a, T> From<JObject<'a>> for JavaCompletableFuture<'a, T> {
     fn from(future_object: JObject<'a>) -> Self {
         Self {
             future_object,
@@ -69,8 +70,8 @@ impl<'a, T> From<JObject<'a>> for JavaFuture<'a, T> {
     }
 }
 
-impl<'a, T> From<JavaFuture<'a, T>> for JObject<'a> {
-    fn from(value: JavaFuture<'a, T>) -> Self {
+impl<'a, T> From<JavaCompletableFuture<'a, T>> for JObject<'a> {
+    fn from(value: JavaCompletableFuture<'a, T>) -> Self {
         value.future_object
     }
 }
@@ -449,6 +450,8 @@ where
         SignalJniError::Mp4SanitizeParse(_) | SignalJniError::WebpSanitizeParse(_) => {
             jni_class_name!(org.signal.libsignal.media.ParseException)
         }
+
+        SignalJniError::Cdsi(_) => jni_class_name!(org.signal.libsignal.cds2.CdsiLookupException),
     };
 
     let throwable = env

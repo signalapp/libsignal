@@ -142,7 +142,33 @@ fn LookupRequest_addE164(request: &LookupRequest, e164: String) -> Result<(), Si
     let e164: libsignal_net::cdsi::E164 = e164.parse().map_err(|_: ParseIntError| {
         SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
     })?;
-    request.0.lock().expect("not poisoned").e164s.push(e164);
+    request.0.lock().expect("not poisoned").new_e164s.push(e164);
+    Ok(())
+}
+
+#[bridge_fn]
+fn LookupRequest_addPreviousE164(
+    request: &LookupRequest,
+    e164: String,
+) -> Result<(), SignalProtocolError> {
+    let e164: libsignal_net::cdsi::E164 = e164.parse().map_err(|_: ParseIntError| {
+        SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
+    })?;
+    request
+        .0
+        .lock()
+        .expect("not poisoned")
+        .prev_e164s
+        .push(e164);
+    Ok(())
+}
+
+#[bridge_fn]
+fn LookupRequest_setToken(
+    request: &LookupRequest,
+    token: &[u8],
+) -> Result<(), SignalProtocolError> {
+    request.0.lock().expect("not poisoned").token = token.into();
     Ok(())
 }
 
@@ -166,7 +192,7 @@ fn LookupRequest_addAciAndAccessKey(
     Ok(())
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn]
 fn LookupRequest_setReturnAcisWithoutUaks(
     request: &LookupRequest,
     return_acis_without_uaks: bool,
@@ -181,7 +207,7 @@ fn LookupRequest_setReturnAcisWithoutUaks(
 
 bridge_handle!(LookupRequest, clone = false);
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn CdsiLookup(
     connection_manager: &ConnectionManager,
     username: String,

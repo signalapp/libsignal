@@ -36,6 +36,9 @@ android {
                 // Also run all the Android-agnostic tests by default.
                 srcDir '../client/src/test/java'
                 srcDir '../shared/test/java'
+                // Exclude tests that depend on libsignal TESTING_ functions,
+                // which aren't exported on Android.
+                exclude '../client/src/test/java/org/signal/libsignal/net/**'
             }
             resources {
                 srcDir '../client/src/test/resources'

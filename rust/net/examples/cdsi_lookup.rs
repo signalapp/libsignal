@@ -16,17 +16,18 @@ async fn main() {
 
     let username = std::env::var("USERNAME").unwrap();
     let password = std::env::var("PASSWORD").unwrap();
-    let mut e164s = vec![];
+    let mut new_e164s = vec![];
     let mut lines = tokio::io::BufReader::new(tokio::io::stdin()).lines();
 
     while let Some(line) = lines.next_line().await.unwrap() {
-        e164s.push(line.parse().unwrap());
+        new_e164s.push(line.parse().unwrap());
     }
 
     let request = LookupRequest {
-        e164s,
+        new_e164s,
         acis_and_access_keys: vec![],
         return_acis_without_uaks: true,
+        ..Default::default()
     };
     let env = &libsignal_net::env::PROD;
     let cdsi_response = cdsi_lookup(

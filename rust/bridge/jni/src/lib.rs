@@ -6,10 +6,13 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
-use jni::objects::{JByteArray, JClass, JLongArray, JMap, JObject, JValue};
+use jni::objects::{JByteArray, JClass, JLongArray, JObject};
+#[cfg(not(target_os = "android"))]
+use jni::objects::{JMap, JValue};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
+#[cfg(not(target_os = "android"))]
 use libsignal_bridge::{jni_args, jni_class_name};
 use libsignal_protocol::*;
 

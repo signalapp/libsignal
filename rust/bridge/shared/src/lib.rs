@@ -43,7 +43,7 @@ pub mod zkgroup;
 #[cfg(feature = "ffi")]
 pub mod ias;
 
-#[cfg(feature = "node")]
+#[cfg(any(feature = "node", feature = "jni"))]
 pub mod net;
 
 // Desktop does not use SVR

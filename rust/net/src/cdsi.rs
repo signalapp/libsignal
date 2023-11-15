@@ -29,12 +29,39 @@ pub struct Auth {
     pub password: String,
 }
 
+trait FixedLengthSerializable {
+    const SERIALIZED_LEN: usize;
+
+    // TODO: when feature(generic_const_exprs) is stabilized, make the target an
+    // array reference instead of a slice.
+    fn serialize_into(&self, target: &mut [u8]);
+}
+
+trait CollectSerialized {
+    fn collect_serialized(self) -> Vec<u8>;
+}
+
+impl<It: ExactSizeIterator<Item = T>, T: FixedLengthSerializable> CollectSerialized for It {
+    fn collect_serialized(self) -> Vec<u8> {
+        let mut output = vec![0; T::SERIALIZED_LEN * self.len()];
+        for (item, chunk) in self.zip(output.chunks_mut(T::SERIALIZED_LEN)) {
+            item.serialize_into(chunk)
+        }
+
+        output
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct E164(NonZeroU64);
 
 impl E164 {
     pub const fn new(number: NonZeroU64) -> Self {
         Self(number)
+    }
+
+    fn from_serialized(bytes: [u8; E164::SERIALIZED_LEN]) -> Option<Self> {
+        NonZeroU64::new(u64::from_be_bytes(bytes)).map(Self)
     }
 }
 
@@ -52,15 +79,11 @@ impl Display for E164 {
     }
 }
 
-impl E164 {
+impl FixedLengthSerializable for E164 {
     const SERIALIZED_LEN: usize = 8;
 
-    pub fn serialize_into(&self, target: &mut [u8; Self::SERIALIZED_LEN]) {
+    fn serialize_into(&self, target: &mut [u8]) {
         target.copy_from_slice(&self.0.get().to_be_bytes())
-    }
-
-    fn from_serialized(bytes: [u8; E164::SERIALIZED_LEN]) -> Option<Self> {
-        NonZeroU64::new(u64::from_be_bytes(bytes)).map(Self)
     }
 }
 
@@ -69,10 +92,10 @@ pub struct AciAndAccessKey {
     pub access_key: [u8; 16],
 }
 
-impl AciAndAccessKey {
+impl FixedLengthSerializable for AciAndAccessKey {
     const SERIALIZED_LEN: usize = 32;
 
-    pub fn serialize_into(&self, target: &mut [u8; Self::SERIALIZED_LEN]) {
+    fn serialize_into(&self, target: &mut [u8]) {
         let uuid_bytes = Uuid::from(self.aci).into_bytes();
 
         target[0..uuid_bytes.len()].copy_from_slice(&uuid_bytes);
@@ -82,43 +105,36 @@ impl AciAndAccessKey {
 
 #[derive(Default)]
 pub struct LookupRequest {
-    pub e164s: Vec<E164>,
+    pub new_e164s: Vec<E164>,
+    pub prev_e164s: Vec<E164>,
     pub acis_and_access_keys: Vec<AciAndAccessKey>,
     pub return_acis_without_uaks: bool,
+    pub token: Box<[u8]>,
 }
 
 impl LookupRequest {
     fn into_client_request(self) -> ClientRequest {
         let Self {
-            e164s,
+            new_e164s,
+            prev_e164s,
             acis_and_access_keys,
             return_acis_without_uaks,
+            token,
         } = self;
 
-        let mut aci_uak_pairs =
-            vec![0; acis_and_access_keys.len() * AciAndAccessKey::SERIALIZED_LEN];
-        for (aci_and_access_key, chunk) in acis_and_access_keys
-            .iter()
-            .zip(aci_uak_pairs.chunks_mut(AciAndAccessKey::SERIALIZED_LEN))
-        {
-            aci_and_access_key
-                .serialize_into(chunk.try_into().expect("chunk size chosen correctly"));
-        }
-
-        let mut new_e164s = vec![0; e164s.len() * E164::SERIALIZED_LEN];
-        for (e164, chunk) in e164s.iter().zip(new_e164s.chunks_mut(E164::SERIALIZED_LEN)) {
-            e164.serialize_into(chunk.try_into().expect("chunk size chosen correctly"))
-        }
+        let aci_uak_pairs = acis_and_access_keys.into_iter().collect_serialized();
+        let new_e164s = new_e164s.into_iter().collect_serialized();
+        let prev_e164s = prev_e164s.into_iter().collect_serialized();
 
         ClientRequest {
             aci_uak_pairs,
             new_e164s,
+            prev_e164s,
             return_acis_without_uaks,
+            token: token.into_vec(),
             token_ack: false,
             // TODO: use these for supporting non-desktop client requirements.
-            prev_e164s: Vec::new(),
             discard_e164s: Vec::new(),
-            token: Vec::new(),
         }
     }
 }
@@ -403,6 +419,46 @@ mod test {
                     NUM_REPEATS
                 ]
             })
+        );
+    }
+
+    #[test]
+    fn serialize_e164s() {
+        let e164s: Vec<E164> = (18005551001..)
+            .take(5)
+            .map(|n| E164(NonZeroU64::new(n).unwrap()))
+            .collect();
+        let serialized = e164s.into_iter().collect_serialized();
+
+        assert_eq!(
+            serialized.as_slice(),
+            &hex!(
+                "000000043136e799"
+                "000000043136e79a"
+                "000000043136e79b"
+                "000000043136e79c"
+                "000000043136e79d"
+            )
+        );
+    }
+
+    #[test]
+    fn serialize_acis_and_access_keys() {
+        let pairs = [1, 2, 3, 4, 5].map(|i| AciAndAccessKey {
+            access_key: [i; 16],
+            aci: Aci::from_uuid_bytes([i | 0x80; 16]),
+        });
+        let serialized = pairs.into_iter().collect_serialized();
+
+        assert_eq!(
+            serialized.as_slice(),
+            &hex!(
+                "8181818181818181818181818181818101010101010101010101010101010101"
+                "8282828282828282828282828282828202020202020202020202020202020202"
+                "8383838383838383838383838383838303030303030303030303030303030303"
+                "8484848484848484848484848484848404040404040404040404040404040404"
+                "8585858585858585858585858585858505050505050505050505050505050505"
+            )
         );
     }
 }

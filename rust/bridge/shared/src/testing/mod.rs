@@ -12,7 +12,6 @@ use std::future::Future;
 use crate::support::*;
 use crate::*;
 
-#[cfg(feature = "node")]
 mod net;
 mod types;
 use types::*;
