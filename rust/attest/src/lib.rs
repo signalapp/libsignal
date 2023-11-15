@@ -8,9 +8,9 @@ pub mod client_connection;
 pub mod dcap;
 pub mod hsm_enclave;
 pub mod ias;
+pub mod nitro;
 pub mod sgx_session;
 pub mod svr2;
-pub mod svr3;
 
 mod endian;
 mod error;

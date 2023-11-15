@@ -1,10 +1,14 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 use curve25519_dalek::scalar::Scalar;
 
 const SHARE_SET: u8 = 1u8;
 const MASK_SET: u8 = 2u8;
 const MASKED_SHARE_SET: u8 = 4u8;
 
-pub(crate) struct ServerSession {
+pub struct ServerSession {
     pub id: [u8; 16],
     share: [u8; 33],
     mask: [u8; 33],
@@ -23,7 +27,7 @@ fn arr_xor<const N: usize>(lhs: &[u8; N], rhs: &[u8; N], dest: &mut [u8; N]) {
 }
 
 impl ServerSession {
-    pub(crate) fn new(id: [u8; 16], context: &'static str) -> Self {
+    pub fn new(id: [u8; 16], context: &'static str) -> Self {
         let mut oprf_input_bytes = Vec::<u8>::new();
         oprf_input_bytes.extend_from_slice(context.as_bytes());
         oprf_input_bytes.extend_from_slice(&id);
@@ -40,7 +44,7 @@ impl ServerSession {
         }
     }
 
-    pub(crate) fn get_share(&self) -> &[u8; 33] {
+    pub fn get_share(&self) -> &[u8; 33] {
         if self.share_state & SHARE_SET != 0u8 {
             &self.share
         } else {
@@ -49,7 +53,7 @@ impl ServerSession {
     }
 
     #[cfg(test)]
-    pub(crate) fn get_mask(&self) -> &[u8; 33] {
+    pub fn get_mask(&self) -> &[u8; 33] {
         if self.share_state & MASK_SET != 0u8 {
             &self.mask
         } else {
@@ -57,7 +61,7 @@ impl ServerSession {
         }
     }
 
-    pub(crate) fn get_masked_share(&self) -> &[u8; 33] {
+    pub fn get_masked_share(&self) -> &[u8; 33] {
         if self.share_state & MASKED_SHARE_SET != 0u8 {
             &self.masked_share
         } else {
@@ -65,7 +69,7 @@ impl ServerSession {
         }
     }
 
-    pub(crate) fn set_share(&mut self, bytes: &[u8; 33]) {
+    pub fn set_share(&mut self, bytes: &[u8; 33]) {
         if (self.share_state & SHARE_SET) == SHARE_SET {
             debug_assert_eq!(bytes, &self.share);
         }
@@ -81,7 +85,7 @@ impl ServerSession {
         }
     }
 
-    pub(crate) fn set_mask(&mut self, bytes: &[u8; 33]) {
+    pub fn set_mask(&mut self, bytes: &[u8; 33]) {
         self.mask.copy_from_slice(bytes);
         self.share_state |= MASK_SET;
         if self.share_state & SHARE_SET != 0u8 {
@@ -93,7 +97,7 @@ impl ServerSession {
         }
     }
 
-    pub(crate) fn set_masked_share(&mut self, bytes: &[u8; 33]) {
+    pub fn set_masked_share(&mut self, bytes: &[u8; 33]) {
         self.masked_share.copy_from_slice(bytes);
         self.share_state |= MASKED_SHARE_SET;
         if self.share_state & MASK_SET != 0u8 {
@@ -105,7 +109,7 @@ impl ServerSession {
         }
     }
 
-    pub(crate) fn set_oprf_input(&mut self, input: &[u8]) {
+    pub fn set_oprf_input(&mut self, input: &[u8]) {
         if self.oprf_input_ready {
             panic!("setting oprf input more than once.")
         }
@@ -113,7 +117,7 @@ impl ServerSession {
         self.oprf_input_bytes.extend_from_slice(input);
     }
 
-    pub(crate) fn qualified_oprf_input(&self) -> &[u8] {
+    pub fn qualified_oprf_input(&self) -> &[u8] {
         if !self.oprf_input_ready {
             panic!("computing qualified oprf input before value was set.")
         }

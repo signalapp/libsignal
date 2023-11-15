@@ -1,0 +1,29 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+[package]
+name = "libsignal-svr3"
+version = "0.1.0"
+edition = "2021"
+authors = ["Signal Messenger LLC"]
+license = "AGPL-3.0-only"
+
+[dependencies]
+attest = { path = "../attest" }
+curve25519-dalek = { version = "4.0", features = ["rand_core"] }
+hkdf = "0.12"
+libsignal-net = { path = "../net" }
+rand = "0.8"
+rand_core = { version = "0.6", features = ["getrandom"] }
+sha2 = "0.10"
+subtle = "2.5"
+
+[dev-dependencies]
+hex = "0.4"
+hex-literal = "0.4.1"
+criterion = "0.5"
+
+[[bench]]
+name = "gf256_benchmarks"
+harness = false

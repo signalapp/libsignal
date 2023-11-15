@@ -1,11 +1,15 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use hkdf::Hkdf;
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha256};
 use std::convert::TryInto;
 
-use crate::svr3::oprf::client::{blind, finalize};
-use crate::svr3::ppss::gf256v32::polynomial::lagrange_interpolant;
+use crate::oprf::client::{blind, finalize};
+use crate::ppss::gf256v32::polynomial::lagrange_interpolant;
 
 use super::gf256v32::polynomial::Polynomial;
 use super::gf256v32::ring_ops::RingElt;

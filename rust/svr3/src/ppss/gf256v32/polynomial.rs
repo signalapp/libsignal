@@ -1,7 +1,11 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 use rand::{CryptoRng, Rng};
 use std::ops::{Add, AddAssign, Mul, MulAssign};
 
-use crate::svr3::ppss::gf256v32::ring_ops::RingElt;
+use crate::ppss::gf256v32::ring_ops::RingElt;
 
 // Polynomials over the ring GF256^32 with coordinatewise arithmetic.
 
@@ -80,9 +84,7 @@ impl<const N: usize> Polynomial<N> {
         lc
     }
 
-    /***
-     * Return the (quotient, remainder) when dividing this polynomial by (x - constant_term)
-     */
+    /// Return the (quotient, remainder) when dividing this polynomial by (x - constant_term)
     pub fn div_by_linear(&self, constant_term: RingElt) -> (Self, RingElt) {
         let mut q = Self::ZERO;
         let mut r = *self;
@@ -96,9 +98,7 @@ impl<const N: usize> Polynomial<N> {
         (q, r.coeffs[0])
     }
 
-    /***
-     * Return the (quotient, remainder) when dividing this x^N + this polynomial by (x - constant_term)
-     */
+    /// Return the (quotient, remainder) when dividing this x^N + this polynomial by (x - constant_term)
     pub fn div_xn_plus_poly_by_linear(&self, constant_term: RingElt) -> (Self, RingElt) {
         assert!(N > 1);
         let mut q = Self::ZERO;

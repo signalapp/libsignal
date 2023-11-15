@@ -5,9 +5,8 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::rngs::OsRng;
 
-extern crate attest;
-use attest::svr3::ppss::gf256v32::polynomial::Polynomial;
-use attest::svr3::ppss::gf256v32::ring_ops::RingElt;
+use libsignal_svr3::ppss::gf256v32::polynomial::Polynomial;
+use libsignal_svr3::ppss::gf256v32::ring_ops::RingElt;
 
 fn bench_gf256(c: &mut Criterion) {
     let mut rng = OsRng;

@@ -197,19 +197,14 @@ dependencies = [
  "chacha20poly1305 0.10.1",
  "chrono",
  "ciborium",
- "criterion",
- "curve25519-dalek",
  "displaydoc",
  "hex",
  "hex-literal",
- "hkdf",
  "lazy_static",
  "libc",
  "log",
- "num_enum",
  "prost",
  "prost-build",
- "rand",
  "rand_core",
  "serde",
  "serde_json",
@@ -1765,6 +1760,23 @@ dependencies = [
  "thiserror",
  "uuid",
  "x25519-dalek",
+]
+
+[[package]]
+name = "libsignal-svr3"
+version = "0.1.0"
+dependencies = [
+ "attest",
+ "criterion",
+ "curve25519-dalek",
+ "hex",
+ "hex-literal",
+ "hkdf",
+ "libsignal-net",
+ "rand",
+ "rand_core",
+ "sha2",
+ "subtle",
 ]
 
 [[package]]

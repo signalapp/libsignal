@@ -1,3 +1,7 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 use super::util::expand_message_xmd_sha512;
 use curve25519_dalek::ristretto::RistrettoPoint;
 
@@ -11,9 +15,9 @@ pub fn hash_to_group(data: &[u8]) -> RistrettoPoint {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
-    use crate::svr3::oprf::errors::OPRFError;
-    use crate::svr3::oprf::util::{expand_message_xmd_sha512, i2osp_u16};
+pub mod tests {
+    use crate::oprf::errors::OPRFError;
+    use crate::oprf::util::{expand_message_xmd_sha512, i2osp_u16};
     use curve25519_dalek::constants;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use curve25519_dalek::scalar::Scalar;

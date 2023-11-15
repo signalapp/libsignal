@@ -8,6 +8,7 @@ members = [
     "rust/pin",
     "rust/poksho",
     "rust/protocol",
+    "rust/svr3",
     "rust/usernames",
     "rust/zkcredential",
     "rust/zkgroup",

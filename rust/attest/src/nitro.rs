@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 use subtle::ConstantTimeEq;
 
-const PUBLIC_KEY_LENGTH: usize = 32;
+pub const PUBLIC_KEY_LENGTH: usize = 32;
 
 pub type PublicKeyBytes = [u8; PUBLIC_KEY_LENGTH];
 
@@ -59,8 +59,7 @@ impl From<boring::error::ErrorStack> for NitroError {
     }
 }
 
-#[derive(Debug)]
-pub struct CoseSign1 {
+struct CoseSign1 {
     protected_header: Vec<u8>,
     // nitro has no unprotected header
     payload: Vec<u8>,
@@ -161,17 +160,20 @@ impl TryFrom<Value> for CoseSign1 {
     }
 }
 
-#[derive(Debug)]
-pub struct AttestationDoc {
-    pub module_id: String,
-    pub digest: String,
-    pub timestamp: i64,
-    pub pcrs: Vec<(usize, Vec<u8>)>,
+// Values of the fields are validated as they are read from the CBOR value and are not used beyond
+// that. Marking them as allowed dead code for now until it is clear we don't really even need them
+// after extracting the public key.
+#[allow(dead_code)]
+struct AttestationDoc {
+    module_id: String,
+    digest: String,
+    timestamp: i64,
+    pcrs: Vec<(usize, Vec<u8>)>,
     certificate: Vec<u8>,
     cabundle: Vec<Vec<u8>>,
     public_key: Option<Vec<u8>>,
-    pub user_data: Option<Vec<u8>>,
-    pub nonce: Option<Vec<u8>>,
+    user_data: Option<Vec<u8>>,
+    nonce: Option<Vec<u8>>,
 }
 
 impl TryFrom<Value> for AttestationDoc {
@@ -186,7 +188,7 @@ impl TryFrom<Value> for AttestationDoc {
 type CborMap = HashMap<String, Value>;
 
 impl AttestationDoc {
-    pub fn from_bytes(bytes: &[u8]) -> Result<AttestationDoc, NitroError> {
+    fn from_bytes(bytes: &[u8]) -> Result<AttestationDoc, NitroError> {
         let value: Value = ciborium::from_reader(bytes)?;
         value.try_into()
     }
@@ -339,7 +341,7 @@ impl AttestationDoc {
         Ok(certificate)
     }
 
-    pub fn extract_public_key(
+    fn extract_public_key(
         &self,
         expected_pcrs: &HashMap<usize, Vec<u8>>,
     ) -> Result<PublicKeyBytes, NitroError> {
@@ -391,19 +393,19 @@ mod test {
     #[test]
     fn test_expired_cert() {
         let cose_sign1 = CoseSign1::from_bytes(VALID_DOCUMENT_BYTES_1).expect("can parse");
-        let err = cose_sign1
-            .extract_attestation_doc(SystemTime::now())
-            .unwrap_err();
-        assert!(format!("{err:?}").contains("expired"));
+        match cose_sign1.extract_attestation_doc(SystemTime::now()) {
+            Err(err) => assert!(format!("{err:?}").contains("expired")),
+            Ok(_) => panic!("Should have failed"),
+        }
     }
 
     #[test]
     fn test_not_yet_valid_cert() {
         let cose_sign1 = CoseSign1::from_bytes(VALID_DOCUMENT_BYTES_1).expect("can parse");
-        let err = cose_sign1
-            .extract_attestation_doc(SystemTime::UNIX_EPOCH)
-            .unwrap_err();
-        assert!(format!("{err:?}").contains("not yet valid"));
+        match cose_sign1.extract_attestation_doc(SystemTime::UNIX_EPOCH) {
+            Err(err) => assert!(format!("{err:?}").contains("not yet valid")),
+            Ok(_) => panic!("Should have failed"),
+        }
     }
 
     #[test]
@@ -411,8 +413,10 @@ mod test {
         let timestamp = SystemTime::UNIX_EPOCH + Duration::from_secs(1684362463);
         let mut cose_sign1 = CoseSign1::from_bytes(VALID_DOCUMENT_BYTES_1).expect("can parse");
         cose_sign1.signature[0] ^= 0xff;
-        let err = cose_sign1.extract_attestation_doc(timestamp).unwrap_err();
-        assert_eq!(NitroError::InvalidSignature, err);
+        match cose_sign1.extract_attestation_doc(timestamp) {
+            Err(err) => assert_eq!(NitroError::InvalidSignature, err),
+            Ok(_) => panic!("Should have failed"),
+        }
     }
 
     fn invalid_cose_sign1_test<F>(mut f: F)
@@ -421,10 +425,14 @@ mod test {
     {
         let mut subject = CoseSign1::from_bytes(VALID_DOCUMENT_BYTES_1).expect("can parse");
         f(&mut subject);
-        let err =
-            CoseSign1::validating_new(subject.protected_header, subject.payload, subject.signature)
-                .unwrap_err();
-        assert_eq!(NitroError::InvalidCoseSign1, err);
+        match CoseSign1::validating_new(
+            subject.protected_header,
+            subject.payload,
+            subject.signature,
+        ) {
+            Err(err) => assert_eq!(NitroError::InvalidCoseSign1, err),
+            Ok(_) => panic!("Should have failed"),
+        }
     }
 
     #[test]
@@ -470,8 +478,10 @@ mod test {
             ciborium::from_reader(cose_sign1.payload.as_slice()).expect("valid cbor");
         let mut map = AttestationDoc::parse_as_cbor_map(value).expect("valid cbor map");
         f(&mut map);
-        let err = AttestationDoc::from_cbor_map(map).unwrap_err();
-        assert_eq!(NitroError::InvalidAttestationDoc, err);
+        match AttestationDoc::from_cbor_map(map) {
+            Err(err) => assert_eq!(NitroError::InvalidAttestationDoc, err),
+            Ok(_) => panic!("Should have failed"),
+        }
     }
 
     #[test]
@@ -567,10 +577,10 @@ mod test {
         });
     }
 
-    const VALID_DOCUMENT_BYTES_1: &[u8] = include_bytes!("../../tests/data/test_cose_sign1_01.dat");
+    const VALID_DOCUMENT_BYTES_1: &[u8] = include_bytes!("../tests/data/test_cose_sign1_01.dat");
     const VALID_DOCUMENT_BYTES_1_CANONICAL: &[u8] =
-        include_bytes!("../../tests/data/cose_sign1_canonical.dat");
-    const VALID_DOCUMENT_BYTES_2: &[u8] = include_bytes!("../../tests/data/test_cose_sign1_02.dat");
+        include_bytes!("../tests/data/cose_sign1_canonical.dat");
+    const VALID_DOCUMENT_BYTES_2: &[u8] = include_bytes!("../tests/data/test_cose_sign1_02.dat");
 
     fn get_test_pcrs() -> HashMap<usize, Vec<u8>> {
         let mut map = HashMap::<usize, _>::new();
