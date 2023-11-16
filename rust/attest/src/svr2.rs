@@ -15,7 +15,7 @@ use crate::util::SmallMap;
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 2> =
+const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 4> =
     &SmallMap::new([
         (
             hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
@@ -23,6 +23,14 @@ const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 2>
         ),
         (
             hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"),
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97"),
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
         ),
     ]);
@@ -50,7 +58,7 @@ impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
 }
 
 /// Expected raft configuration for a given enclave.
-static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 2> = SmallMap::new([
+static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 4> = SmallMap::new([
     (
         hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
         &RaftConfig {
@@ -67,6 +75,24 @@ static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 2> = Small
             max_voting_replicas: 7,
             super_majority: 2,
             group_id: 3950115602363750357,
+        },
+    ),
+    (
+        hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"),
+        &RaftConfig {
+            min_voting_replicas: 3,
+            max_voting_replicas: 5,
+            super_majority: 0,
+            group_id: 16934825672495360159,
+        },
+    ),
+    (
+        hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97"),
+        &RaftConfig {
+            min_voting_replicas: 4,
+            max_voting_replicas: 7,
+            super_majority: 2,
+            group_id: 1230918306983775578,
         },
     ),
 ]);
