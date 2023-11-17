@@ -119,7 +119,14 @@ impl Iterator for ServiceIdSequence<'_> {
             )
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.0.len() / Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
+        (len, Some(len))
+    }
 }
+
+impl ExactSizeIterator for ServiceIdSequence<'_> {}
 
 #[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(

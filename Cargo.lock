@@ -1753,6 +1753,7 @@ dependencies = [
  "prost",
  "prost-build",
  "rand",
+ "rayon",
  "sha2",
  "signal-crypto",
  "static_assertions",

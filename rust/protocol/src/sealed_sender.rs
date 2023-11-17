@@ -17,6 +17,7 @@ use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
 use arrayref::array_ref;
 use curve25519_dalek::scalar::Scalar;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
@@ -1252,14 +1253,20 @@ mod sealed_sender_v2 {
 /// Fixed-width integers are unaligned and in network byte order (big-endian).
 ///
 /// [varint]: https://developers.google.com/protocol-buffers/docs/encoding#varints
-pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
+pub async fn sealed_sender_multi_recipient_encrypt<
+    R: Rng + CryptoRng,
+    X: IntoIterator<Item = ServiceId>,
+>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
-    excluded_recipients: impl IntoIterator<Item = ServiceId>,
+    excluded_recipients: X,
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>>
+where
+    X::IntoIter: ExactSizeIterator,
+{
     sealed_sender_multi_recipient_encrypt_impl(
         destinations,
         destination_sessions,
@@ -1275,14 +1282,18 @@ pub async fn sealed_sender_multi_recipient_encrypt<R: Rng + CryptoRng>(
 /// For testing only.
 pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation<
     R: Rng + CryptoRng,
+    X: IntoIterator<Item = ServiceId>,
 >(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
-    excluded_recipients: impl IntoIterator<Item = ServiceId>,
+    excluded_recipients: X,
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>>
+where
+    X::IntoIter: ExactSizeIterator,
+{
     // When this is flipped, we should use this function to test the legacy encryption instead.
     static_assertions::const_assert!(
         sealed_sender_v2::USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT,
@@ -1299,20 +1310,29 @@ pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_deriv
     .await
 }
 
-async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
+async fn sealed_sender_multi_recipient_encrypt_impl<
+    R: Rng + CryptoRng,
+    X: IntoIterator<Item = ServiceId>,
+>(
     destinations: &[&ProtocolAddress],
     destination_sessions: &[&SessionRecord],
-    excluded_recipients: impl IntoIterator<Item = ServiceId>,
+    excluded_recipients: X,
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
     should_use_legacy_ephemeral_key_derivation: bool,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>>
+where
+    X::IntoIter: ExactSizeIterator,
+{
     if destinations.len() != destination_sessions.len() {
         return Err(SignalProtocolError::InvalidArgument(
             "must have the same number of destination sessions as addresses".to_string(),
         ));
     }
+
+    let excluded_recipients = excluded_recipients.into_iter();
+    let our_identity = identity_store.get_identity_key_pair().await?;
 
     let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.gen();
     let keys = sealed_sender_v2::DerivedKeys::new(&m);
@@ -1323,6 +1343,7 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
     };
     let e_pub = &e.public_key;
 
+    // Encrypt the shared ciphertext using AES-GCM-SIV.
     let ciphertext = {
         let mut ciphertext = usmc.serialized()?.to_vec();
         let symmetric_authentication_tag = Aes256GcmSiv::new(&keys.derive_k().into())
@@ -1340,88 +1361,102 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
         ciphertext
     };
 
-    let mut serialized: Vec<u8> = vec![
-        SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION,
-        // This will be replaced by the count, which is *usually* a single byte.
-        // In that case the data after the count won't need to be memmoved.
-        0,
-    ];
+    // Group the destinations by name, and fetch identity keys once for each name. This optimizes
+    // for the common case where all of a recipient's devices are included contiguously in the
+    // destination list. (If the caller *doesn't* do this, that's on them; the message will still be
+    // valid but some key material will be redundantly computed and encoded in the output.)
+    let identity_keys_and_ranges: Vec<(IdentityKey, Range<usize>)> = {
+        let mut identity_keys_and_ranges = vec![];
+        for (_, mut next_group) in &destinations
+            .iter()
+            .enumerate()
+            .group_by(|(_i, next)| next.name())
+        {
+            let (i, &destination) = next_group
+                .next()
+                .expect("at least one element in every group");
+            // We can't put this before the call to `next()` because `count` consumes the rest of
+            // the iterator.
+            let count = 1 + next_group.count();
+            let their_identity =
+                identity_store
+                    .get_identity(destination)
+                    .await?
+                    .ok_or_else(|| {
+                        log::error!("missing identity key for {}", destination);
+                        // Returned as a SessionNotFound error because (a) we don't have an identity
+                        // error that includes the address, and (b) re-establishing the session should
+                        // re-fetch the identity.
+                        SignalProtocolError::SessionNotFound(destination.clone())
+                    })?;
+            identity_keys_and_ranges.push((their_identity, i..i + count));
+        }
+        identity_keys_and_ranges
+    };
 
-    let our_identity = identity_store.get_identity_key_pair().await?;
-    let mut destinations_and_sessions = destinations.iter().zip(destination_sessions).peekable();
-    let mut count_of_recipients = 0;
-    while let Some((&(mut destination), &(mut session))) = destinations_and_sessions.next() {
-        let their_service_id = ServiceId::parse_from_service_id_string(destination.name())
+    // Next, fan out the work of generating the per-recipient to multiple cores, since we do two key
+    // agreements per recipient (though not per device) and those are CPU-bound.
+
+    // I know this looks complicated enough to pull out into a separate function altogether, but it
+    // also depends on a bunch of local state: our identity, E and E_pub, and M.
+    let serialize_recipient_destinations_into = |serialized: &mut Vec<u8>,
+                                                 destinations: &[&ProtocolAddress],
+                                                 sessions: &[&SessionRecord],
+                                                 their_identity: &IdentityKey|
+     -> Result<()> {
+        let their_service_id = ServiceId::parse_from_service_id_string(destinations[0].name())
             .ok_or_else(|| {
                 SignalProtocolError::InvalidArgument(format!(
                     "multi-recipient sealed sender requires recipients' ServiceId (not {})",
-                    destination.name()
+                    destinations[0].name()
                 ))
-            })?;
-
-        let their_identity = identity_store
-            .get_identity(destination)
-            .await?
-            .ok_or_else(|| {
-                log::error!("missing identity key for {}", destination);
-                // Returned as a SessionNotFound error because (a) we don't have an identity error
-                // that includes the address, and (b) re-establishing the session should re-fetch
-                // the identity.
-                SignalProtocolError::SessionNotFound(destination.clone())
             })?;
 
         serialized.extend_from_slice(&their_service_id.service_id_fixed_width_binary());
 
-        let mut write_device_id_and_registration_id =
-            |destination: &ProtocolAddress, session: &SessionRecord, has_more_devices: bool| {
-                let their_registration_id = session.remote_registration_id().map_err(|_| {
-                    SignalProtocolError::InvalidState(
-                        "sealed_sender_multi_recipient_encrypt",
-                        format!(
-                            concat!(
-                                "cannot get registration ID from session with {} ",
-                                "(maybe it was recently archived)"
-                            ),
-                            destination
+        debug_assert_eq!(
+            destinations.len(),
+            sessions.len(),
+            "should be sliced with the same range"
+        );
+        let mut destinations_and_sessions = destinations.iter().zip(sessions);
+        while let Some((&destination, session)) = destinations_and_sessions.next() {
+            let their_registration_id = session.remote_registration_id().map_err(|_| {
+                SignalProtocolError::InvalidState(
+                    "sealed_sender_multi_recipient_encrypt",
+                    format!(
+                        concat!(
+                            "cannot get registration ID from session with {} ",
+                            "(maybe it was recently archived)"
                         ),
-                    )
-                })?;
-                if their_registration_id & u32::from(VALID_REGISTRATION_ID_MASK)
-                    != their_registration_id
-                {
-                    return Err(SignalProtocolError::InvalidRegistrationId(
-                        destination.clone(),
-                        their_registration_id,
-                    ));
-                }
-                let mut their_registration_id =
-                    u16::try_from(their_registration_id).expect("just checked range");
-                if has_more_devices {
-                    their_registration_id |= 0x8000;
-                }
+                        destination
+                    ),
+                )
+            })?;
+            if their_registration_id & u32::from(VALID_REGISTRATION_ID_MASK)
+                != their_registration_id
+            {
+                return Err(SignalProtocolError::InvalidRegistrationId(
+                    destination.clone(),
+                    their_registration_id,
+                ));
+            }
+            let mut their_registration_id =
+                u16::try_from(their_registration_id).expect("just checked range");
+            if destinations_and_sessions.len() > 0 {
+                their_registration_id |= 0x8000;
+            }
 
-                let device_id: u32 = destination.device_id().into();
-                if device_id == 0 || device_id > MAX_VALID_DEVICE_ID {
-                    return Err(SignalProtocolError::InvalidState(
-                        "sealed_sender_multi_recipient_encrypt",
-                        format!("destination {destination} has invalid device ID"),
-                    ));
-                }
-                serialized.push(device_id.try_into().expect("just checked range"));
-                serialized.extend_from_slice(&their_registration_id.to_be_bytes());
-
-                Ok(())
-            };
-
-        while let Some((next_destination, next_session)) =
-            destinations_and_sessions.next_if(|(dest, _session)| dest.name() == destination.name())
-        {
-            write_device_id_and_registration_id(destination, session, true)?;
-            destination = next_destination;
-            session = next_session;
+            let device_id: u32 = destination.device_id().into();
+            if device_id == 0 || device_id > MAX_VALID_DEVICE_ID {
+                return Err(SignalProtocolError::InvalidState(
+                    "sealed_sender_multi_recipient_encrypt",
+                    format!("destination {destination} has invalid device ID"),
+                ));
+            }
+            serialized.push(device_id.try_into().expect("just checked range"));
+            serialized.extend_from_slice(&their_registration_id.to_be_bytes());
         }
-
-        write_device_id_and_registration_id(destination, session, false)?;
 
         let c_i = sealed_sender_v2::apply_agreement_xor(
             &e,
@@ -1433,37 +1468,77 @@ async fn sealed_sender_multi_recipient_encrypt_impl<R: Rng + CryptoRng>(
 
         let at_i = sealed_sender_v2::compute_authentication_tag(
             &our_identity,
-            &their_identity,
+            their_identity,
             Direction::Sending,
             e_pub,
             &c_i,
         )?;
         serialized.extend_from_slice(&at_i);
 
-        count_of_recipients += 1;
+        Ok(())
+    };
+
+    let process_chunk =
+        |serialized: &mut Vec<u8>, chunk: &[(IdentityKey, Range<usize>)]| -> Result<()> {
+            for (their_identity, destination_range) in chunk {
+                let these_destinations = &destinations[destination_range.clone()];
+                let these_sessions = &destination_sessions[destination_range.clone()];
+                serialize_recipient_destinations_into(
+                    serialized,
+                    these_destinations,
+                    these_sessions,
+                    their_identity,
+                )?;
+            }
+            Ok(())
+        };
+
+    let mut serialized: Vec<u8> = vec![SEALED_SENDER_V2_SERVICE_ID_FULL_VERSION];
+
+    let count_of_recipients = identity_keys_and_ranges.len() + excluded_recipients.len();
+    prost::encode_length_delimiter(count_of_recipients, &mut serialized)
+        .expect("can always resize a Vec");
+
+    // Fan out to N threads, like Rayon would. But don't bother for less than 6 items.
+    let parallelism = std::thread::available_parallelism()
+        .map(usize::from)
+        .unwrap_or(1);
+    let chunk_size = std::cmp::max(6, identity_keys_and_ranges.len().div_ceil(parallelism));
+
+    if parallelism == 1 || chunk_size >= identity_keys_and_ranges.len() {
+        process_chunk(&mut serialized, &identity_keys_and_ranges)?;
+    } else {
+        let mut chunks = identity_keys_and_ranges.chunks(chunk_size);
+        // We'll process the first chunk on the current thread once we've spawned all the others.
+        let first_chunk = chunks.next().expect("at least one chunk, tested above");
+
+        let mut all_outputs = Vec::new();
+        all_outputs.resize_with(chunks.len(), || Ok(vec![]));
+
+        rayon::scope(|scope| -> Result<()> {
+            let mut outputs = &mut all_outputs[..];
+            for chunk in chunks {
+                let (next_output, remaining_outputs) = outputs
+                    .split_first_mut()
+                    .expect("as many outputs as remaining chunks");
+                scope.spawn(|_| {
+                    let mut serialized = vec![];
+                    *next_output = process_chunk(&mut serialized, chunk).map(|_| serialized);
+                });
+                outputs = remaining_outputs;
+            }
+
+            process_chunk(&mut serialized, first_chunk)
+        })?;
+
+        for output in all_outputs {
+            serialized.extend(output?);
+        }
     }
 
     for excluded in excluded_recipients {
         serialized.extend_from_slice(&excluded.service_id_fixed_width_binary());
         serialized.push(0);
-
-        count_of_recipients += 1;
-    }
-
-    match prost::length_delimiter_len(count_of_recipients) {
-        1 => {
-            // The common case, we reserved 1 byte ahead of time for this.
-            serialized[1] = count_of_recipients
-                .try_into()
-                .expect("checked length already");
-        }
-        len => {
-            // Resize first, then fill the spot we made.
-            serialized.splice(1..=1, std::iter::repeat(0).take(len));
-            // Work around prost accidentally requiring Sized here with an extra `&mut`.
-            prost::encode_length_delimiter(count_of_recipients, &mut &mut serialized[1..][..len])
-                .expect("have enough space because we measured ahead of time");
-        }
     }
 
     serialized.extend_from_slice(e_pub.public_key_bytes()?);
