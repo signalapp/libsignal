@@ -517,6 +517,7 @@ impl SessionState {
 
     pub(crate) fn clear_unacknowledged_pre_key_message(&mut self) {
         self.session.pending_pre_key = None;
+        self.session.pending_kyber_pre_key = None;
     }
 
     pub(crate) fn set_remote_registration_id(&mut self, registration_id: u32) {
@@ -659,10 +660,11 @@ impl SessionRecord {
     //
     // Returns `true` if there was a session to archive, `false` if not.
     fn archive_current_state_inner(&mut self) -> bool {
-        if let Some(current_session) = self.current_session.take() {
+        if let Some(mut current_session) = self.current_session.take() {
             if self.previous_sessions.len() >= consts::ARCHIVED_STATES_MAX_LENGTH {
                 self.previous_sessions.pop();
             }
+            current_session.clear_unacknowledged_pre_key_message();
             self.previous_sessions
                 .insert(0, current_session.session.encode_to_vec());
             true
