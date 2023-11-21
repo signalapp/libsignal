@@ -1767,8 +1767,10 @@ name = "libsignal-svr3"
 version = "0.1.0"
 dependencies = [
  "attest",
+ "bytemuck",
  "criterion",
  "curve25519-dalek",
+ "displaydoc",
  "hex",
  "hex-literal",
  "hkdf",

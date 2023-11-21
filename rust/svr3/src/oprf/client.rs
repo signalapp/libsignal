@@ -4,6 +4,7 @@
 //
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::Identity;
 use rand_core::OsRng;
 use sha2::{Digest, Sha512};
 
@@ -19,9 +20,12 @@ pub fn apply_blind(oprf_input: &[u8], blind: &Scalar) -> RistrettoPoint {
 pub fn blind(oprf_input: &[u8]) -> Result<(Scalar, RistrettoPoint), OPRFError> {
     let blind = Scalar::random(&mut OsRng);
 
-    // TODO: check it is not equal to the identity
     let blinded_element = apply_blind(oprf_input, &blind);
-    Ok((blind, blinded_element))
+    if blinded_element == RistrettoPoint::identity() {
+        Err(OPRFError::BlindError)
+    } else {
+        Ok((blind, blinded_element))
+    }
 }
 
 pub fn finalize(oprf_input: &[u8], blind: &Scalar, evaluated_element: &RistrettoPoint) -> [u8; 64] {

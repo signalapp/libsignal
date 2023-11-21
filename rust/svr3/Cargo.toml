@@ -12,6 +12,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 attest = { path = "../attest" }
 curve25519-dalek = { version = "4.0", features = ["rand_core"] }
+displaydoc = "0.2"
 hkdf = "0.12"
 libsignal-net = { path = "../net" }
 rand = "0.8"
@@ -23,7 +24,4 @@ subtle = "2.5"
 hex = "0.4"
 hex-literal = "0.4.1"
 criterion = "0.5"
-
-[[bench]]
-name = "gf256_benchmarks"
-harness = false
+bytemuck = "1.13.0"
