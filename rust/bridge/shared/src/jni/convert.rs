@@ -344,33 +344,33 @@ store!(SignedPreKeyStore);
 store!(KyberPreKeyStore);
 store!(InputStream);
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
     for &'storage mut dyn GrpcReplyListener
 {
-    type ArgType = JavaGrpcReplyListener<'context>;
-    type StoredType = JniGrpcReplyListener<'context>;
+    type ArgType = JavaGrpcReplyListener<'param>;
+    type StoredType = JniGrpcReplyListener<'storage>;
 
-    fn borrow(env: &'context JNIEnv, store: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+    fn borrow(env: &mut JNIEnv<'context>, store: &'param Self::ArgType) -> SignalJniResult<Self::StoredType> {
         Self::StoredType::new(env, store)
     }
 
-    fn load_from(_env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self> {
-        Ok(stored)
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
     }
 }
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
     for &'storage mut dyn QuicCallbackListener
 {
-    type ArgType = JavaQuicCallbackListener<'context>;
-    type StoredType = JniQuicCallbackListener<'context>;
+    type ArgType = JavaQuicCallbackListener<'param>;
+    type StoredType = JniQuicCallbackListener<'storage>;
 
-    fn borrow(env: &'context JNIEnv, store: Self::ArgType) -> SignalJniResult<Self::StoredType> {
+    fn borrow(env: &mut JNIEnv<'context>, store: &'param Self::ArgType) -> SignalJniResult<Self::StoredType> {
         Self::StoredType::new(env, store)
     }
 
-    fn load_from(_env: &JNIEnv, stored: &'storage mut Self::StoredType) -> SignalJniResult<Self> {
-        Ok(stored)
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
     }
 }
 
@@ -440,7 +440,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
 
 impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
     type ArgType = JavaMap<'a>;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &JavaMap<'a>) -> SignalJniResult<Self> {
         if foreign.is_null() {
             return Err(SignalJniError::NullHandle);
         }
@@ -448,13 +448,13 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
         let mut headers = HashMap::new();
 
         let jmap = env.get_map(foreign)?;
-        let mut jmap_iter = jmap.iter()?;
-        while let Some((key, value)) = jmap_iter.next() {
-            let header_key: String = env.get_string(key.into())?.into();
-            let values = env.get_list(value)?;
-            let mut values_iter = values.iter()?;
-            while let Some(value) = values_iter.next() {
-                let header_value: String = env.get_string(value.into())?.into();
+        let mut jmap_iter = jmap.iter(env)?;
+        while let Ok(Some((key, value))) = jmap_iter.next(env) {
+            let header_key: String = env.get_string(&key.into())?.into();
+            let values = env.get_list(&value)?;
+            let mut values_iter = values.iter(env)?;
+            while let Ok(Some(value)) = values_iter.next(env) {
+                let header_value: String = env.get_string(&value.into())?.into();
                 headers
                     .entry(header_key.clone())
                     .and_modify(|l: &mut Vec<String>| l.push(header_value.clone()))
@@ -466,33 +466,28 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
     }
 }
 
-impl ResultTypeInfo for signal_grpc::GrpcReply {
-    type ResultType = jobject;
+impl <'a> ResultTypeInfo<'a> for signal_grpc::GrpcReply {
+    type ResultType = JByteArray<'a>;
 
-    fn convert_into(self, env: &JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
         let message = env.byte_array_from_slice(&self.message)?;
         let args = jni_args!((
             self.statuscode => int,
             message => [byte],
         ) -> void);
+        let class_name = env.find_class(jni_class_name!(org.signal.libsignal.grpc.SignalRpcReply))?;
         let jobj = env.new_object(
-            env.find_class(jni_class_name!(org.signal.libsignal.grpc.SignalRpcReply))?,
+            class_name,
             args.sig,
             &args.args,
         )?;
-        Ok(jobj.into_inner())
-    }
-
-    fn convert_into_jobject(signal_jni_result: &SignalJniResult<Self::ResultType>) -> JObject {
-        signal_jni_result
-            .as_ref()
-            .map_or(JObject::null(), |&jobj| JObject::from(jobj))
+        Ok(jobj.into())
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for crate::quic::QuicHeaders {
     type ArgType = JavaMap<'a>;
-    fn convert_from(env: &JNIEnv, foreign: Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &JavaMap<'a>) -> SignalJniResult<Self> {
         if foreign.is_null() {
             return Err(SignalJniError::NullHandle);
         }
@@ -500,10 +495,10 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::quic::QuicHeaders {
         let mut headers = HashMap::new();
 
         let jmap = env.get_map(foreign)?;
-        let mut jmap_iter = jmap.iter()?;
-        while let Some((key, value)) = jmap_iter.next() {
-            let header_key: String = env.get_string(key.into())?.into();
-            let header_value: String = env.get_string(value.into())?.into();
+        let mut jmap_iter = jmap.iter(env)?;
+        while let Ok(Some((key, value))) = jmap_iter.next(env) {
+            let header_key: String = env.get_string(&key.into())?.into();
+            let header_value: String = env.get_string(&value.into())?.into();
             headers.insert(header_key.clone(), header_value.clone());
         }
 
@@ -1032,10 +1027,10 @@ macro_rules! jni_arg_type {
         jni::JavaUUID<'local>
     };
     (GrpcHeaders) => {
-        jni::JavaMap
+        jni::JavaMap<'local>
     };
     (QuicHeaders) => {
-        jni::JavaMap
+        jni::JavaMap<'local>
     };
     (jni::CiphertextMessageRef) => {
         jni::JavaCiphertextMessage<'local>
@@ -1127,7 +1122,7 @@ macro_rules! jni_result_type {
         jni::JByteArray<'local>
     };
     (GrpcReply) => {
-        jni::jbyteArray
+        jni::JByteArray<'local>
     };
     (Cds2Metrics) => {
         jni::JavaMap<'local>

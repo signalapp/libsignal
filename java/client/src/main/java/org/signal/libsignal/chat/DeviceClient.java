@@ -1,3 +1,8 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.chat;
 
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -20,7 +25,8 @@ public class DeviceClient implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.DeviceClient_New(target);
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.ProfileClient_Destroy(this.unsafeHandle);
   }
@@ -29,9 +35,12 @@ public class DeviceClient implements NativeHandleGuard.Owner {
     return this.unsafeHandle;
   }
 
-  public GetDevicesResponse getDevices(GetDevicesRequest request, String authorization) throws SignalChatCommunicationFailureException {
+  public GetDevicesResponse getDevices(GetDevicesRequest request, String authorization)
+      throws SignalChatCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      byte[] serializedResponse = Native.DeviceClient_GetDevices(guard.nativeHandle(), request.toByteArray(), authorization);
+      byte[] serializedResponse =
+          Native.DeviceClient_GetDevices(
+              guard.nativeHandle(), request.toByteArray(), authorization);
       return GetDevicesResponse.parseFrom(serializedResponse);
     } catch (InvalidProtocolBufferException e) {
       throw new SignalChatCommunicationFailureException(e);

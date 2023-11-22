@@ -10,8 +10,7 @@ public class SignalRpcReply {
   private int statusCode;
   private byte[] message;
 
-  public SignalRpcReply() {
-  }
+  public SignalRpcReply() {}
 
   public SignalRpcReply(int statusCode, byte[] message) {
     this.statusCode = statusCode;

@@ -100,7 +100,7 @@ impl<'r> QuicCallbackListener for PwaveQuicCallbackListener<'r> {
                 let cloned_buf = self.buf.clone();
                 self.len = vec![];
                 self.buf = vec![];
-                self.wrapped.on_data(cloned_buf);
+                let _ = self.wrapped.on_data(cloned_buf);
             }
         }
 

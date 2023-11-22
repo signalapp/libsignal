@@ -6,7 +6,6 @@
 package org.signal.libsignal.quic;
 
 import java.util.Map;
-
 import org.signal.libsignal.internal.Native;
 
 public class QuicClient {
@@ -22,11 +21,12 @@ public class QuicClient {
     this.unsafeHandle = Native.QuicClient_New(target);
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.QuicClient_Destroy(this.unsafeHandle);
   }
-  
+
   public long unsafeNativeHandleWithoutGuard() {
     return this.unsafeHandle;
   }
@@ -35,7 +35,8 @@ public class QuicClient {
     return Native.QuicClient_SendMessage(this.unsafeHandle, data);
   }
 
-  public void openControlledStream(String baseUrl, Map<String, String> headers, QuicCallbackListener listener) {
+  public void openControlledStream(
+      String baseUrl, Map<String, String> headers, QuicCallbackListener listener) {
     Native.QuicClient_OpenControlledStream(this.unsafeHandle, baseUrl, headers, listener);
   }
 
