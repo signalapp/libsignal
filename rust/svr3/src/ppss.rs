@@ -75,13 +75,13 @@ fn combine_xor_keyshares(keyshares: &[KeyShare]) -> Secret256 {
 /// to the OPRF server as well as private information that will be needed to process
 /// the server's response.
 pub struct OPRFSession {
-    pub server_id: u32,
+    pub server_id: u64,
     pub blinded_elt_bytes: [u8; 32],
     blind: Scalar,
     oprf_input: Vec<u8>,
 }
 
-fn prepare_oprf_input(context: &'static str, server_id: u32, input: &str) -> Vec<u8> {
+fn prepare_oprf_input(context: &'static str, server_id: u64, input: &str) -> Vec<u8> {
     let mut oprf_input_bytes = Vec::<u8>::new();
     oprf_input_bytes.extend_from_slice(context.as_bytes());
     oprf_input_bytes.extend_from_slice(&server_id.to_le_bytes());
@@ -91,7 +91,7 @@ fn prepare_oprf_input(context: &'static str, server_id: u32, input: &str) -> Vec
 
 fn oprf_session_from_inputs(
     context: &'static str,
-    server_id: u32,
+    server_id: u64,
     input: &str,
 ) -> Result<OPRFSession, OPRFError> {
     let oprf_input = prepare_oprf_input(context, server_id, input);
@@ -111,7 +111,7 @@ fn oprf_session_from_inputs(
 /// This is would happen if the OPRF input were constructed so that it hashed to the identity.
 pub fn begin_oprfs(
     context: &'static str,
-    server_ids: &[u32],
+    server_ids: &[u64],
     input: &str,
 ) -> Result<Vec<OPRFSession>, OPRFError> {
     server_ids
@@ -155,7 +155,7 @@ pub fn finalize_oprfs(
 // Password Protected Secret Sharing (PPSS) functions
 /// A `MaskedShareSet` contains the information needed to restore a secret using a password.
 pub struct MaskedShareSet {
-    pub server_ids: Vec<u32>,
+    pub server_ids: Vec<u64>,
     pub masked_shares: Vec<KeyShare>,
     pub commitment: [u8; 32],
 }
@@ -201,7 +201,7 @@ fn derive_key_and_bits_from_secret(secret: &Secret256, context: &'static str) ->
 pub fn backup_secret<R: Rng + CryptoRng>(
     context: &'static str,
     password: &[u8],
-    server_ids: Vec<u32>,
+    server_ids: Vec<u64>,
     oprf_outputs: Vec<[u8; 64]>,
     secret: &Secret256,
     rng: &mut R,
@@ -278,21 +278,21 @@ mod tests {
     use curve25519_dalek::RistrettoPoint;
 
     struct OPRFServerSet {
-        server_secrets: HashMap<u32, [u8; 32]>,
+        server_secrets: HashMap<u64, [u8; 32]>,
     }
 
     impl OPRFServerSet {
-        fn new(server_ids: &[u32]) -> Self {
-            let server_secrets: HashMap<u32, [u8; 32]> = server_ids
+        fn new(server_ids: &[u64]) -> Self {
+            let server_secrets: HashMap<u64, [u8; 32]> = server_ids
                 .iter()
                 .cloned()
-                .map(|sid| (sid, bytemuck::cast::<[u32; 8], [u8; 32]>([sid; 8])))
+                .map(|sid| (sid, bytemuck::cast::<[u64; 4], [u8; 32]>([sid; 4])))
                 .collect();
 
             Self { server_secrets }
         }
 
-        fn eval(&self, server_id: &u32, blinded_elt_bytes: &[u8; 32]) -> [u8; 32] {
+        fn eval(&self, server_id: &u64, blinded_elt_bytes: &[u8; 32]) -> [u8; 32] {
             let secret = Scalar::from_bytes_mod_order(*self.server_secrets.get(server_id).unwrap());
             oprf_eval_bytes(&secret, blinded_elt_bytes)
         }
@@ -321,7 +321,7 @@ mod tests {
         let secret = [42u8; 32];
         let password = "supahsecretpassword";
 
-        let server_ids = vec![4u32, 1, 6];
+        let server_ids = vec![4u64, 1, 6];
         let oprf_servers = OPRFServerSet::new(&server_ids);
         // get the blinds - they are in order of server_id
         let oprf_init_sessions = begin_oprfs(CONTEXT, &server_ids, password).unwrap();
