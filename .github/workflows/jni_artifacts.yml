@@ -52,6 +52,12 @@ jobs:
       run: java/build_jni.sh desktop
       shell: bash
 
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+      with:
+        version: '3.x'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build for alternate target (arm64)
       run: java/build_jni.sh desktop
       if: matrix.os == 'macos-latest'

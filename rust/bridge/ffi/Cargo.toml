@@ -36,3 +36,7 @@ libc = "0.2"
 rand = "0.8"
 log = "0.4"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
+
+# cmake 0.1.49 breaks no-toolchain cross-compilation for Mac Catalyst targets
+# https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1570803001
+cmake = ">= 0.1, < 0.1.49"

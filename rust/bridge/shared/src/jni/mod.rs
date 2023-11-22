@@ -9,8 +9,11 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
+use signal_chat::Error as SignalChatError;
 use signal_crypto::Error as SignalCryptoError;
+use signal_grpc::{Error as GrpcError, GrpcReply, GrpcReplyListener};
 use signal_pin::Error as PinError;
+use signal_quic::{Error as QuicError, QuicCallbackListener};
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt::Display;
@@ -32,8 +35,14 @@ pub use convert::*;
 mod error;
 pub use error::*;
 
+mod grpc;
+pub use grpc::*;
+
 mod io;
 pub use io::*;
+
+mod quic;
+pub use quic::*;
 
 mod storage;
 pub use storage::*;
@@ -227,6 +236,9 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
 
         SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
+        | SignalJniError::SignalChat(SignalChatError::StreamNotOpened())
+        | SignalJniError::Grpc(GrpcError::StreamNotOpened())
+        | SignalJniError::Quic(QuicError::StreamNotOpened())
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
@@ -244,8 +256,16 @@ fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
         | SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(_, _))
         | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
-        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed) => {
+        | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed)
+        | SignalJniError::SignalChat(SignalChatError::InvalidArgument(_))
+        | SignalJniError::Grpc(GrpcError::InvalidArgument(_))
+        | SignalJniError::Quic(QuicError::InvalidArgument(_)) => {
             jni_class_name!(java.lang.RuntimeException)
+        }
+
+        SignalJniError::Quic(QuicError::RecvFailed(_))
+        | SignalJniError::Quic(QuicError::SendFailed(_)) => {
+            jni_class_name!(java.io.IOException)
         }
 
         SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
