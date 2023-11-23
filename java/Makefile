@@ -30,13 +30,14 @@ publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && ech
 publish_java: docker_image
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
+		-e ORG_GRADLE_PROJECT_sonatypeRepo \
 		-e ORG_GRADLE_PROJECT_sonatypeUsername \
 		-e ORG_GRADLE_PROJECT_sonatypePassword \
 		-e ORG_GRADLE_PROJECT_signingKeyId \
 		-e ORG_GRADLE_PROJECT_signingPassword \
 		-e ORG_GRADLE_PROJECT_signingKey \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew publish -PskipSigning closeSonatypeStagingRepository"
+		sh -c "cd src/java; ./gradlew publish -PskipSigning -PskipAndroid closeSonatypeStagingRepository"
 
 # We could run these through Docker, but they would have the same result anyway.
 
