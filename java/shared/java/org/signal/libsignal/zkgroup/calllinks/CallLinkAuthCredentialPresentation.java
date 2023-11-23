@@ -5,14 +5,13 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import java.time.Instant;
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.GenericServerSecretParams;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.groups.UuidCiphertext;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
-
-import java.time.Instant;
 
 public final class CallLinkAuthCredentialPresentation extends ByteArray {
 
@@ -21,12 +20,21 @@ public final class CallLinkAuthCredentialPresentation extends ByteArray {
     Native.CallLinkAuthCredentialPresentation_CheckValidContents(contents);
   }
 
-  public void verify(GenericServerSecretParams serverParams, CallLinkPublicParams callLinkParams) throws VerificationFailedException {
+  public void verify(GenericServerSecretParams serverParams, CallLinkPublicParams callLinkParams)
+      throws VerificationFailedException {
     verify(Instant.now(), serverParams, callLinkParams);
   }
 
-  public void verify(Instant currentTime, GenericServerSecretParams serverParams, CallLinkPublicParams callLinkParams) throws VerificationFailedException {
-    Native.CallLinkAuthCredentialPresentation_Verify(getInternalContentsForJNI(), currentTime.getEpochSecond(), serverParams.getInternalContentsForJNI(), callLinkParams.getInternalContentsForJNI());
+  public void verify(
+      Instant currentTime,
+      GenericServerSecretParams serverParams,
+      CallLinkPublicParams callLinkParams)
+      throws VerificationFailedException {
+    Native.CallLinkAuthCredentialPresentation_Verify(
+        getInternalContentsForJNI(),
+        currentTime.getEpochSecond(),
+        serverParams.getInternalContentsForJNI(),
+        callLinkParams.getInternalContentsForJNI());
   }
 
   public UuidCiphertext getUserId() {
@@ -38,5 +46,4 @@ public final class CallLinkAuthCredentialPresentation extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

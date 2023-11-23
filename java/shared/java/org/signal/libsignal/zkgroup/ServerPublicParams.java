@@ -5,8 +5,8 @@
 
 package org.signal.libsignal.zkgroup;
 
-import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.zkgroup.internal.ByteArray;
 
 public final class ServerPublicParams extends ByteArray {
   public ServerPublicParams(byte[] contents) throws InvalidInputException {
@@ -14,8 +14,9 @@ public final class ServerPublicParams extends ByteArray {
     Native.ServerPublicParams_CheckValidContents(contents);
   }
 
-  public void verifySignature(byte[] message, NotarySignature notarySignature) throws VerificationFailedException {
-    Native.ServerPublicParams_VerifySignature(contents, message, notarySignature.getInternalContentsForJNI());
+  public void verifySignature(byte[] message, NotarySignature notarySignature)
+      throws VerificationFailedException {
+    Native.ServerPublicParams_VerifySignature(
+        contents, message, notarySignature.getInternalContentsForJNI());
   }
-
 }

@@ -5,10 +5,9 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
-import java.nio.ByteBuffer;
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class ReceiptCredentialPresentation extends ByteArray {
   public ReceiptCredentialPresentation(byte[] contents) throws InvalidInputException {
@@ -33,5 +32,4 @@ public final class ReceiptCredentialPresentation extends ByteArray {
       throw new AssertionError(e);
     }
   }
-
 }

@@ -6,8 +6,8 @@
 use std::convert::TryInto;
 use std::result::Result;
 
-use aes::cipher::{NewCipher, StreamCipher};
-use aes::Aes256Ctr;
+use aes::cipher::{KeyIvInit, StreamCipher};
+use aes::Aes256;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
@@ -32,7 +32,7 @@ fn aes_256_ctr_encrypt(ptext: &[u8], key: &[u8]) -> Result<Vec<u8>, EncryptionEr
     let key: [u8; 32] = key.try_into().map_err(|_| EncryptionError::BadKeyOrIv)?;
 
     let zero_nonce = [0u8; 16];
-    let mut cipher = Aes256Ctr::new(key[..].into(), zero_nonce[..].into());
+    let mut cipher = ctr::Ctr32BE::<Aes256>::new(key[..].into(), zero_nonce[..].into());
 
     let mut ctext = ptext.to_vec();
     cipher.apply_keystream(&mut ctext);
@@ -83,11 +83,11 @@ pub(crate) fn aes256_ctr_hmacsha256_decrypt(
 #[cfg(test)]
 mod test {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn aes_ctr_test() {
-        let key = hex::decode("603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4")
-            .expect("valid hex");
+        let key = hex!("603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4");
         let ptext = [0u8; 35];
 
         let ctext = aes_256_ctr_encrypt(&ptext, &key).expect("valid key");

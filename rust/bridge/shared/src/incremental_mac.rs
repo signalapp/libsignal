@@ -7,8 +7,8 @@ use hmac::digest::{crypto_common, OutputSizeUser};
 use std::convert::TryInto;
 
 use crypto_common::KeyInit;
+use hmac::digest::typenum::Unsigned;
 use hmac::Hmac;
-use typenum::Unsigned;
 
 use libsignal_bridge_macros::*;
 use libsignal_protocol::incremental_mac::{calculate_chunk_size, Incremental, Validating};
@@ -84,34 +84,30 @@ pub fn ValidatingMac_Update(
     bytes: &[u8],
     offset: u32,
     length: u32,
-) -> bool {
+) -> i32 {
     let offset = offset as usize;
     let length = length as usize;
     mac.0
         .as_mut()
         .expect("MAC used after finalize")
         .update(&bytes[offset..][..length])
-        .is_ok()
+        .ok()
+        .and_then(|n| n.try_into().ok())
+        .unwrap_or(-1)
 }
 
 #[bridge_fn]
-pub fn ValidatingMac_Finalize(mac: &mut ValidatingMac) -> bool {
+pub fn ValidatingMac_Finalize(mac: &mut ValidatingMac) -> i32 {
     mac.0
         .take()
         .expect("MAC used after finalize")
         .finalize()
-        .is_ok()
+        .ok()
+        .and_then(|n| n.try_into().ok())
+        .unwrap_or(-1)
 }
 
 impl Drop for IncrementalMac {
-    fn drop(&mut self) {
-        if self.0.is_some() {
-            report_unexpected_drop()
-        }
-    }
-}
-
-impl Drop for ValidatingMac {
     fn drop(&mut self) {
         if self.0.is_some() {
             report_unexpected_drop()

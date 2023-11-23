@@ -8,7 +8,7 @@ use libsignal_bridge_macros::*;
 use signal_crypto::*;
 
 use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
-use aes_gcm_siv::aead::{AeadCore, AeadInPlace, NewAead};
+use aes_gcm_siv::{AeadCore, AeadInPlace, KeyInit};
 
 use crate::support::*;
 use crate::*;

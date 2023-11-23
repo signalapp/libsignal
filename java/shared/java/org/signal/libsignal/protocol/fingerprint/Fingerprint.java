@@ -1,20 +1,19 @@
-/**
- * Copyright (C) 2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.fingerprint;
 
 public class Fingerprint {
 
   private final DisplayableFingerprint displayableFingerprint;
-  private final ScannableFingerprint   scannableFingerprint;
+  private final ScannableFingerprint scannableFingerprint;
 
-  public Fingerprint(DisplayableFingerprint displayableFingerprint,
-                     ScannableFingerprint scannableFingerprint)
-  {
+  public Fingerprint(
+      DisplayableFingerprint displayableFingerprint, ScannableFingerprint scannableFingerprint) {
     this.displayableFingerprint = displayableFingerprint;
-    this.scannableFingerprint   = scannableFingerprint;
+    this.scannableFingerprint = scannableFingerprint;
   }
 
   /**

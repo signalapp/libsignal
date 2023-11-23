@@ -5,12 +5,11 @@
 
 package org.signal.libsignal.zkgroup;
 
-import java.security.SecureRandom;
-import java.security.SecureRandomSpi;
-import java.util.Arrays;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+
+import java.security.SecureRandom;
+import java.security.SecureRandomSpi;
 
 public abstract class SecureRandomTest {
 
@@ -27,7 +26,8 @@ public abstract class SecureRandomTest {
 
     protected void engineNextBytes(byte[] outBytes) {
       assertNotNull("Bytes have been used", bytes);
-      assertEquals("createSecureRandom was setup with wrong number of bytes", bytes.length, outBytes.length);
+      assertEquals(
+          "createSecureRandom was setup with wrong number of bytes", bytes.length, outBytes.length);
       System.arraycopy(bytes, 0, outBytes, 0, bytes.length);
       bytes = null;
     }

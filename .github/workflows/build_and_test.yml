@@ -39,8 +39,10 @@ jobs:
           - '.github/workflows/build_and_test.yml'
           - 'bin/**'
           - 'rust/*'
-          - 'rust/!(bridge)/**'
+          - 'rust/!(bridge|protocol)/**'
           - 'rust/bridge/shared/**'
+          - 'rust/protocol/*'
+          - 'rust/protocol/!(cross-version-testing)/**'
           - 'rust-toolchain'
           - 'Cargo.toml'
           - 'Cargo.lock'
@@ -49,7 +51,7 @@ jobs:
           - '.clippy.toml'
           - '.rustfmt.license-template'
           - '.rustfmt.toml'
-          - 'rust/**' # deliberately re-include the rust/bridge/ directories
+          - 'rust/**' # deliberately re-include rust/bridge/* and rust/protocol/cross-version-testing
           java:
           - *all
           - '.dockerignore'
@@ -119,6 +121,11 @@ jobs:
       run: cargo fmt --all -- --check
       if: matrix.version == 'nightly'
 
+    - name: Rustfmt check for cross-version-testing
+      run: cargo fmt --all -- --check
+      working-directory: rust/protocol/cross-version-testing
+      if: matrix.version == 'nightly'
+
     - name: Check bridge versioning
       run: ./bin/update_versions.py
       if: matrix.version == 'nightly'
@@ -148,6 +155,11 @@ jobs:
     - name: Clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       if: matrix.version == 'nightly'
+
+    - name: Rust docs
+      run: cargo doc --workspace --all-features
+      env:
+        RUSTFLAGS: -D warnings
 
     # We check the fuzz targets on stable because they don't have lockfiles,
     # and crates don't generally support arbitrary nightly versions.
@@ -306,5 +318,3 @@ jobs:
       - name: Run pod lint
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
-        env:
-          SKIP_CATALYST: 1

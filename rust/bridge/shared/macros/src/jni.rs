@@ -48,8 +48,8 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
                         name.ident.clone(),
                         quote!(#(#attrs)* #name #colon_token jni_arg_type!(#ty)),
                         quote! {
-                            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(&env, #name)?;
-                            let #name = <#ty as jni::ArgTypeInfo>::load_from(&env, &mut #name)?
+                            let mut #name = <#ty as jni::ArgTypeInfo>::borrow(env, &#name)?;
+                            let #name = <#ty as jni::ArgTypeInfo>::load_from(&mut #name)
                         },
                     )
                 } else {
@@ -68,16 +68,16 @@ pub(crate) fn bridge_fn(name: String, sig: &Signature, result_kind: ResultKind) 
 
     quote! {
         #[no_mangle]
-        pub unsafe extern "C" fn #name(
-            env: jni::JNIEnv,
+        pub unsafe extern "C" fn #name<'local>(
+            mut env: jni::JNIEnv<'local>,
             _class: jni::JClass,
             #(#input_args),*
         ) #output {
-            jni::run_ffi_safe(&env, || {
+            jni::run_ffi_safe(&mut env, |env| {
                 #(#input_processing);*;
                 let __result = #orig_name(#(#input_names),*);
                 #await_if_needed;
-                jni::ResultTypeInfo::convert_into(__result, &env)
+                jni::ResultTypeInfo::convert_into(__result, env)
             })
         }
     }

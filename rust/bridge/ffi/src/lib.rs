@@ -171,7 +171,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         let mut identity_store = identity_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
         let mut session_store = session_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
         let mut prekey_store = prekey_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
-        let mut signed_prekey_store = signed_prekey_store
+        let signed_prekey_store = signed_prekey_store
             .as_ref()
             .ok_or(SignalFfiError::NullPointer)?;
 
@@ -188,7 +188,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
             &mut identity_store,
             &mut session_store,
             &mut prekey_store,
-            &mut signed_prekey_store,
+            &signed_prekey_store,
             &mut kyber_pre_key_store,
         )
         .now_or_never()

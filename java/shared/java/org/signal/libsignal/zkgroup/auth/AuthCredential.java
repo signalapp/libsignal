@@ -5,9 +5,9 @@
 
 package org.signal.libsignal.zkgroup.auth;
 
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class AuthCredential extends ByteArray {
   public AuthCredential(byte[] contents) throws InvalidInputException {

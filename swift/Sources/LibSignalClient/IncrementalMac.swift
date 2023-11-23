@@ -74,23 +74,25 @@ public class ValidatingMacContext: NativeHandleOwner {
         return signal_validating_mac_destroy(handle)
     }
 
-    public func update<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let isValid = try bytes.withUnsafeBorrowedBuffer { bytesPtr in
-            return try invokeFnReturningBool {
+    public func update<Bytes: ContiguousBytes>(_ bytes: Bytes) throws -> UInt32 {
+        let validBytesCount = try bytes.withUnsafeBorrowedBuffer { bytesPtr in
+            return try invokeFnReturningInteger {
                 return signal_validating_mac_update($0, unsafeNativeHandle, bytesPtr, 0, UInt32(bytesPtr.length))
             }
         }
-        guard isValid else {
+        if validBytesCount < 0 {
             throw SignalError.verificationFailed("Bad incremental MAC")
         }
+        return UInt32(validBytesCount)
     }
 
-    public func finalize() throws {
-        let isValid = try invokeFnReturningBool {
+    public func finalize() throws -> UInt32 {
+        let validBytesCount = try invokeFnReturningInteger {
             return signal_validating_mac_finalize($0, unsafeNativeHandle)
         }
-        guard isValid else {
+        if validBytesCount < 0 {
             throw SignalError.verificationFailed("Bad incremental MAC (finalize)")
         }
+        return UInt32(validBytesCount)
     }
 }

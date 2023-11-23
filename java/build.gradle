@@ -1,13 +1,17 @@
 plugins {
+    id "base"
+    id "signing"
     id "de.undercouch.download" version "5.0.2"
+    id "com.diffplug.spotless" version "6.20.0"
+    id "io.github.gradle-nexus.publish-plugin" version "1.3.0"
 }
 
-def version_number = "0.31.0-gluon-2"
+allprojects {
+    version = "0.32.1-gluon-2"
+    group   = "org.signal"
+}
 
 subprojects {
-    ext.version_number     = version_number
-    ext.group_info         = "org.signal"
-
     if (JavaVersion.current().isJava8Compatible()) {
         allprojects {
             tasks.withType(Javadoc) {
@@ -21,6 +25,20 @@ subprojects {
         tasks.withType(JavaCompile) {
             options.encoding = 'UTF-8'
             options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
+        }
+    }
+
+    apply plugin: "com.diffplug.spotless"
+    spotless {
+        java {
+            target('**/*.java')
+            targetExclude('**/Native.java')
+            importOrder()
+            removeUnusedImports()
+
+            googleJavaFormat()
+            formatAnnotations()
+            licenseHeaderFile rootProject.file('license_header.txt')
         }
     }
 }
@@ -38,7 +56,7 @@ task cargoClean(type:Exec) {
   commandLine 'cargo', 'clean'
 }
 
-task clean(type: Delete) {
+task cleanJni(type: Delete) {
   description 'Clean JNI libs'
   delete fileTree('./android/src/main/jniLibs') {
     include '**/*.so'
@@ -49,25 +67,27 @@ task clean(type: Delete) {
     include '**/*.dll'
   }
 }
-clean.dependsOn(cargoClean)
 
-task downloadNonLinuxLibraries(type: Download) {
-  // Must be explicitly enabled.
-  enabled false
-
-  def extraResources = ['signal_jni.dll', 'libsignal_jni.dylib']
-
-  src(extraResources.collect {
-    'https://github.com/' + getGithubReleasesAccountName() + '/libsignal/releases/download/v' + version_number + '/' + it
-  })
-  dest 'shared/resources'
-}
+clean.dependsOn([cargoClean, cleanJni])
 
 // PUBLISHING
 
-def getGithubReleasesAccountName() {
-    return hasProperty("githubReleasesAccount") ? githubReleasesAccount
-            : "libsignal"
+ext.setUpSigningKey = { signingExt -> 
+    def signingKeyId = findProperty("signingKeyId")
+    def signingKey = findProperty("signingKey")
+    def signingPassword = findProperty("signingPassword")
+    if (signingKeyId && signingKey && signingPassword) {
+        signingExt.useInMemoryPgpKeys(signingKeyId.trim(), signingKey.trim(), signingPassword.trim())
+    }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username = project.findProperty('sonatypeUsername') ?: ""
+            password = project.findProperty('sonatypePassword') ?: ""
+        }
+    }
 }
 
 def isSkipSigning() {
@@ -76,17 +96,4 @@ def isSkipSigning() {
 
 def isReleaseBuild() {
     return version.contains("SNAPSHOT") == false
-}
-
-def getReleaseRepositoryUrl() {
-    return hasProperty('sonatypeRepo') ? sonatypeRepo
-            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-}
-
-def getRepositoryUsername() {
-    return hasProperty('sonatypeUsername') ? sonatypeUsername : ""
-}
-
-def getRepositoryPassword() {
-    return hasProperty('sonatypePassword') ? sonatypePassword : ""
 }

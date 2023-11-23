@@ -6,6 +6,7 @@
 #![no_main]
 
 use std::convert::TryFrom;
+use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libfuzzer_sys::fuzz_target;
@@ -44,7 +45,7 @@ impl Participant {
 
         them.store
             .save_signed_pre_key(
-                signed_pre_key_id.into(),
+                signed_pre_key_id,
                 &SignedPreKeyRecord::new(
                     signed_pre_key_id,
                     /*timestamp*/ 42,
@@ -74,8 +75,8 @@ impl Participant {
         let their_pre_key_bundle = PreKeyBundle::new(
             them.store.get_local_registration_id().await.unwrap(),
             1.into(), // device id
-            pre_key_info.into(),
-            signed_pre_key_id.into(),
+            pre_key_info,
+            signed_pre_key_id,
             their_signed_pre_key_pair.public_key,
             their_signed_pre_key_signature.into_vec(),
             *them
@@ -92,6 +93,7 @@ impl Participant {
             &mut self.store.session_store,
             &mut self.store.identity_store,
             &their_pre_key_bundle,
+            SystemTime::UNIX_EPOCH,
             rng,
         )
         .await
@@ -100,13 +102,13 @@ impl Participant {
 
     async fn send_message(&mut self, them: &mut Self, rng: &mut (impl Rng + CryptoRng)) {
         info!("{}: sending message", self.name);
-        if self
+        if !self
             .store
             .load_session(&them.address)
             .await
             .unwrap()
-            .map(|session| !session.has_current_session_state())
-            .unwrap_or(true)
+            .and_then(|session| session.has_usable_sender_chain(SystemTime::UNIX_EPOCH).ok())
+            .unwrap_or(false)
         {
             self.process_pre_key(them, rng.gen_bool(0.75), rng).await;
         }
@@ -120,6 +122,7 @@ impl Participant {
             &them.address,
             &mut self.store.session_store,
             &mut self.store.identity_store,
+            SystemTime::UNIX_EPOCH,
         )
         .await
         .unwrap();

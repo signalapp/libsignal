@@ -5,13 +5,13 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
 import org.signal.libsignal.zkgroup.groups.UuidCiphertext;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class CallLinkSecretParams extends ByteArray {
 
@@ -22,10 +22,10 @@ public final class CallLinkSecretParams extends ByteArray {
       return new CallLinkSecretParams(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
-    } 
+    }
   }
 
-  public CallLinkSecretParams(byte[] contents) throws InvalidInputException  {
+  public CallLinkSecretParams(byte[] contents) throws InvalidInputException {
     super(contents);
     Native.CallLinkSecretParams_CheckValidContents(contents);
   }
@@ -42,10 +42,11 @@ public final class CallLinkSecretParams extends ByteArray {
 
   public Aci decryptUserId(UuidCiphertext ciphertext) throws VerificationFailedException {
     try {
-      return Aci.parseFromFixedWidthBinary(Native.CallLinkSecretParams_DecryptUserId(getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI()));
+      return Aci.parseFromFixedWidthBinary(
+          Native.CallLinkSecretParams_DecryptUserId(
+              getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI()));
     } catch (ServiceId.InvalidServiceIdException e) {
       throw new VerificationFailedException();
     }
   }
-
 }

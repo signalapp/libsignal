@@ -313,16 +313,16 @@ export function ServiceId_ParseFromServiceIdString(input: string): Buffer;
 export function ServiceId_ServiceIdBinary(value: Buffer): Buffer;
 export function ServiceId_ServiceIdLog(value: Buffer): string;
 export function ServiceId_ServiceIdString(value: Buffer): string;
-export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): Promise<void>;
+export function SessionBuilder_ProcessPreKeyBundle(bundle: Wrapper<PreKeyBundle>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Timestamp): Promise<void>;
 export function SessionCipher_DecryptPreKeySignalMessage(message: Wrapper<PreKeySignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, prekeyStore: PreKeyStore, signedPrekeyStore: SignedPreKeyStore, kyberPrekeyStore: KyberPreKeyStore): Promise<Buffer>;
 export function SessionCipher_DecryptSignalMessage(message: Wrapper<SignalMessage>, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): Promise<Buffer>;
-export function SessionCipher_EncryptMessage(ptext: Buffer, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore): Promise<CiphertextMessage>;
+export function SessionCipher_EncryptMessage(ptext: Buffer, protocolAddress: Wrapper<ProtocolAddress>, sessionStore: SessionStore, identityKeyStore: IdentityKeyStore, now: Timestamp): Promise<CiphertextMessage>;
 export function SessionRecord_ArchiveCurrentState(sessionRecord: Wrapper<SessionRecord>): void;
 export function SessionRecord_CurrentRatchetKeyMatches(s: Wrapper<SessionRecord>, key: Wrapper<PublicKey>): boolean;
 export function SessionRecord_Deserialize(data: Buffer): SessionRecord;
 export function SessionRecord_GetLocalRegistrationId(obj: Wrapper<SessionRecord>): number;
 export function SessionRecord_GetRemoteRegistrationId(obj: Wrapper<SessionRecord>): number;
-export function SessionRecord_HasCurrentState(obj: Wrapper<SessionRecord>): boolean;
+export function SessionRecord_HasUsableSenderChain(s: Wrapper<SessionRecord>, now: Timestamp): boolean;
 export function SessionRecord_Serialize(obj: Wrapper<SessionRecord>): Buffer;
 export function SgxClientState_CompleteHandshake(cli: Wrapper<SgxClientState>, handshakeReceived: Buffer): void;
 export function SgxClientState_EstablishedRecv(cli: Wrapper<SgxClientState>, receivedCiphertext: Buffer): Buffer;
@@ -359,9 +359,9 @@ export function Username_Hash(username: string): Buffer;
 export function Username_Proof(username: string, randomness: Buffer): Buffer;
 export function Username_Verify(proof: Buffer, hash: Buffer): void;
 export function UuidCiphertext_CheckValidContents(buffer: Buffer): void;
-export function ValidatingMac_Finalize(mac: Wrapper<ValidatingMac>): boolean;
+export function ValidatingMac_Finalize(mac: Wrapper<ValidatingMac>): number;
 export function ValidatingMac_Initialize(key: Buffer, chunkSize: number, digests: Buffer): ValidatingMac;
-export function ValidatingMac_Update(mac: Wrapper<ValidatingMac>, bytes: Buffer, offset: number, length: number): boolean;
+export function ValidatingMac_Update(mac: Wrapper<ValidatingMac>, bytes: Buffer, offset: number, length: number): number;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthCredential { readonly __type: unique symbol; }

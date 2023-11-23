@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-node"
-version = "0.31.0"
+version = "0.32.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 edition = "2018"
@@ -13,10 +13,6 @@ edition = "2018"
 [lib]
 name = "signal_node"
 crate-type = ["cdylib"]
-
-[features]
-default = ["armv8"]
-armv8 = ["libsignal-protocol/armv8", "libsignal-bridge/armv8"]
 
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }

@@ -1,0 +1,24 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-protocol-cross-version-testing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.10.0"
+futures-util = "0.3.7"
+log = "0.4"
+rand = "0.8"
+rand_v7 = { package = "rand", version = "0.7" }
+
+libsignal-protocol-current = { path = "..", package = "libsignal-protocol" }
+libsignal-protocol-v12 = { git = "https://github.com/signalapp/libsignal", tag = "v0.12.3", package = "libsignal-protocol" }
+libsignal-protocol-v21 = { git = "https://github.com/signalapp/libsignal", tag = "v0.21.1", package = "libsignal-protocol" }
+
+# Prevent this crate from being included in the top-level workspace
+[workspace]
+members = ["."]

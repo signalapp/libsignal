@@ -174,7 +174,7 @@ typedef enum {
 } SignalErrorCode;
 
 /**
- * A wrapper around [`aes::Aes256Ctr`] that uses a smaller nonce and supports an initial counter.
+ * A wrapper around [`ctr::Ctr32BE`] that uses a smaller nonce and supports an initial counter.
  */
 typedef struct SignalAes256Ctr32 SignalAes256Ctr32;
 
@@ -829,9 +829,9 @@ SignalFfiError *signal_ciphertext_message_from_plaintext_content(SignalCiphertex
 
 SignalFfiError *signal_session_record_archive_current_state(SignalSessionRecord *session_record);
 
-SignalFfiError *signal_session_record_current_ratchet_key_matches(bool *out, const SignalSessionRecord *s, const SignalPublicKey *key);
+SignalFfiError *signal_session_record_has_usable_sender_chain(bool *out, const SignalSessionRecord *s, uint64_t now);
 
-SignalFfiError *signal_session_record_has_current_state(bool *out, const SignalSessionRecord *obj);
+SignalFfiError *signal_session_record_current_ratchet_key_matches(bool *out, const SignalSessionRecord *s, const SignalPublicKey *key);
 
 SignalFfiError *signal_session_record_deserialize(SignalSessionRecord **out, SignalBorrowedBuffer data);
 
@@ -841,9 +841,9 @@ SignalFfiError *signal_session_record_get_local_registration_id(uint32_t *out, c
 
 SignalFfiError *signal_session_record_get_remote_registration_id(uint32_t *out, const SignalSessionRecord *obj);
 
-SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
+SignalFfiError *signal_process_prekey_bundle(const SignalPreKeyBundle *bundle, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, uint64_t now);
 
-SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out, SignalBorrowedBuffer ptext, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
+SignalFfiError *signal_encrypt_message(SignalCiphertextMessage **out, SignalBorrowedBuffer ptext, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store, uint64_t now);
 
 SignalFfiError *signal_decrypt_message(SignalOwnedBuffer *out, const SignalMessage *message, const SignalProtocolAddress *protocol_address, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_key_store);
 
@@ -1133,9 +1133,9 @@ SignalFfiError *signal_validating_mac_destroy(SignalValidatingMac *p);
 
 SignalFfiError *signal_validating_mac_initialize(SignalValidatingMac **out, SignalBorrowedBuffer key, uint32_t chunk_size, SignalBorrowedBuffer digests);
 
-SignalFfiError *signal_validating_mac_update(bool *out, SignalValidatingMac *mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
+SignalFfiError *signal_validating_mac_update(int32_t *out, SignalValidatingMac *mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
 
-SignalFfiError *signal_validating_mac_finalize(bool *out, SignalValidatingMac *mac);
+SignalFfiError *signal_validating_mac_finalize(int32_t *out, SignalValidatingMac *mac);
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 

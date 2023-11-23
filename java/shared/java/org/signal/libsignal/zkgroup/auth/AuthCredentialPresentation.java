@@ -6,15 +6,19 @@
 package org.signal.libsignal.zkgroup.auth;
 
 import java.time.Instant;
-
+import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.groups.UuidCiphertext;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
-import org.signal.libsignal.internal.Native;
 
 public final class AuthCredentialPresentation extends ByteArray {
 
-  public enum Version {V1, V2, V3, UNKNOWN};
+  public enum Version {
+    V1,
+    V2,
+    V3,
+    UNKNOWN
+  };
 
   public AuthCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
@@ -31,9 +35,7 @@ public final class AuthCredentialPresentation extends ByteArray {
     }
   }
 
-  /**
-   * Returns the PNI ciphertext for this credential. May be {@code null}.
-   */
+  /** Returns the PNI ciphertext for this credential. May be {@code null}. */
   public UuidCiphertext getPniCiphertext() {
     byte[] newContents = Native.AuthCredentialPresentation_GetPniCiphertext(contents);
     if (newContents == null) {
@@ -53,11 +55,14 @@ public final class AuthCredentialPresentation extends ByteArray {
 
   public Version getVersion() {
     switch (this.contents[0]) {
-      case 0: return Version.V1;
-      case 1: return Version.V2;
-      case 2: return Version.V3;
-      default: return Version.UNKNOWN;
+      case 0:
+        return Version.V1;
+      case 1:
+        return Version.V2;
+      case 2:
+        return Version.V3;
+      default:
+        return Version.UNKNOWN;
     }
   }
-
 }

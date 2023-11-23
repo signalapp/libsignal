@@ -219,7 +219,7 @@ fn bridge_fn_impl(attr: TokenStream, item: TokenStream, result_kind: ResultKind)
     let node_fn = node_name.map(|name| node::bridge_fn(name, &function.sig, result_kind));
 
     quote!(
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, clippy::needless_pass_by_ref_mut)]
         #[cfg(any(#(#feature_list,)*))]
         #[inline(always)]
         #function

@@ -7,7 +7,7 @@
 name = "attest"
 version = "0.1.0"
 authors = ["Signal Messenger LLC"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-only"
 
 [dependencies]
@@ -16,8 +16,9 @@ boring-sys = { git = "https://github.com/signalapp/boring", branch = "libsignal"
 
 asn1 = "0.15.4"
 bitflags = "2.3.3"
-chacha20poly1305 = "0.9.1"
+chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
+ciborium = "0.2"
 displaydoc = "0.2"
 hex = { version = "0.4", features = ["serde"] }
 hex-literal = "0.4.1"
@@ -30,16 +31,15 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 sha2 = "0.10"
-# Here and elsewhere version 0.9.0 allows patching in snow's 'master' branch
-# See top-level Cargo.toml
-snow = { version = "0.9.0", default-features = false }
+snow = { version = "0.9.3", default-features = false }
 static_assertions = "1.1"
+subtle = "2.5"
 uuid = "1.1.2"
 variant_count = "1.1"
-x25519-dalek = "2.0.0-rc.3"
+x25519-dalek = "2.0.0"
 
 [dev-dependencies]
-snow = { version = "0.9.0", features = ["default-resolver"] }
+snow = { version = "0.9.3", features = ["default-resolver"] }
 
 [build-dependencies]
 prost-build = "0.9"

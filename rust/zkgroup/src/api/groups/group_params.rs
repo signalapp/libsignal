@@ -10,9 +10,9 @@ use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
-use aead::generic_array::GenericArray;
-use aead::{Aead, NewAead};
-use aes_gcm_siv::Aes256GcmSiv;
+use aes_gcm_siv::aead::generic_array::GenericArray;
+use aes_gcm_siv::aead::Aead;
+use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, Default)]
@@ -275,17 +275,17 @@ mod tests {
             0x00, 0x00, 0x00, 0x00,
         ];
 
-        let key_vec = vec![
+        let key = [
             0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00,
         ];
 
-        let nonce_vec = vec![
+        let nonce = [
             0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ];
 
-        let ciphertext_vec = vec![
+        let ciphertext = [
             0x4a, 0x6a, 0x9d, 0xb4, 0xc8, 0xc6, 0x54, 0x92, 0x01, 0xb9, 0xed, 0xb5, 0x30, 0x06,
             0xcb, 0xa8, 0x21, 0xec, 0x9c, 0xf8, 0x50, 0x94, 0x8a, 0x7c, 0x86, 0xc6, 0x8a, 0xc7,
             0x53, 0x9d, 0x02, 0x7f, 0xe8, 0x19, 0xe6, 0x3a, 0xbc, 0xd0, 0x20, 0xb0, 0x06, 0xa9,
@@ -293,12 +293,12 @@ mod tests {
         ];
 
         let calc_ciphertext =
-            group_secret_params.encrypt_blob_aesgcmsiv(&key_vec, &nonce_vec, &plaintext_vec);
+            group_secret_params.encrypt_blob_aesgcmsiv(&key, &nonce, &plaintext_vec);
 
-        assert!(calc_ciphertext[..ciphertext_vec.len()] == ciphertext_vec[..]);
+        assert!(calc_ciphertext[..ciphertext.len()] == ciphertext[..]);
 
         let calc_plaintext = group_secret_params
-            .decrypt_blob_aesgcmsiv(&key_vec, &nonce_vec, &calc_ciphertext)
+            .decrypt_blob_aesgcmsiv(&key, &nonce, &calc_ciphertext)
             .unwrap();
         assert!(calc_plaintext[..] == plaintext_vec[..]);
     }
@@ -315,17 +315,17 @@ mod tests {
             0x3a, 0x98, 0xe1, 0x08,
         ];
 
-        let key_vec = vec![
+        let key = [
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00,
         ];
 
-        let nonce_vec = vec![
+        let nonce = [
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ];
 
-        let ciphertext_vec = vec![
+        let ciphertext = [
             0xf3, 0xf8, 0x0f, 0x2c, 0xf0, 0xcb, 0x2d, 0xd9, 0xc5, 0x98, 0x4f, 0xcd, 0xa9, 0x08,
             0x45, 0x6c, 0xc5, 0x37, 0x70, 0x3b, 0x5b, 0xa7, 0x03, 0x24, 0xa6, 0x79, 0x3a, 0x7b,
             0xf2, 0x18, 0xd3, 0xea, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -333,12 +333,12 @@ mod tests {
         ];
 
         let calc_ciphertext =
-            group_secret_params.encrypt_blob_aesgcmsiv(&key_vec, &nonce_vec, &plaintext_vec);
+            group_secret_params.encrypt_blob_aesgcmsiv(&key, &nonce, &plaintext_vec);
 
-        assert!(calc_ciphertext[..ciphertext_vec.len()] == ciphertext_vec[..]);
+        assert!(calc_ciphertext[..ciphertext.len()] == ciphertext[..]);
 
         let calc_plaintext = group_secret_params
-            .decrypt_blob_aesgcmsiv(&key_vec, &nonce_vec, &calc_ciphertext)
+            .decrypt_blob_aesgcmsiv(&key, &nonce, &calc_ciphertext)
             .unwrap();
         assert!(calc_plaintext[..] == plaintext_vec[..]);
     }

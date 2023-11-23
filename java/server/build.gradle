@@ -7,8 +7,6 @@ plugins {
 
 sourceCompatibility = 1.8
 archivesBaseName = "libsignal-server"
-version          = version_number
-group            = group_info
 
 repositories {
     mavenCentral()
@@ -60,12 +58,6 @@ java {
 processResources {
     // TODO: Build a different variant of the JNI library for server.
     dependsOn ':makeJniLibrariesDesktop'
-    dependsOn ':downloadNonLinuxLibraries'
-    gradle.taskGraph.whenReady { graph ->
-        if (graph.hasTask(":server:publish")) {
-            tasks.getByPath(":downloadNonLinuxLibraries").enabled = true
-        }
-    }
 }
 
 // MARK: Publishing
@@ -102,17 +94,9 @@ publishing {
             }
         }
     }
-    repositories {
-        maven {
-            url = getReleaseRepositoryUrl()
-            credentials {
-                username = getRepositoryUsername()
-                password = getRepositoryPassword()
-            }
-        }
-    }
 }
 
+setUpSigningKey(signing)
 signing {
     required { isReleaseBuild() && gradle.taskGraph.hasTask(":server:publish") }
     sign publishing.publications.mavenJava

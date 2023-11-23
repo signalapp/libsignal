@@ -69,6 +69,7 @@ def main(args=None):
     print("Running '%s'" % (' '.join(cmdline)))
 
     cargo_env = os.environ.copy()
+    cargo_env['RUSTFLAGS'] = cargo_env.get('RUSTFLAGS') or ''
     cargo_env['CARGO_BUILD_TARGET_DIR'] = options.cargo_build_dir
     cargo_env['MACOSX_DEPLOYMENT_TARGET'] = '10.13'
     # On Linux, cdylibs don't include public symbols from their dependencies,
@@ -76,11 +77,13 @@ def main(args=None):
     # Using LTO works around this at the cost of a slightly slower build.
     # https://github.com/rust-lang/rfcs/issues/2771
     cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
+    # Enable ARMv8 cryptography acceleration when available
+    cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8 --cfg polyval_armv8'
 
     if node_os_name == 'win32':
         # By default, Rust on Windows depends on an MSVC component for the C runtime.
         # Link it statically to avoid propagating that dependency.
-        cargo_env['RUSTFLAGS'] = '-C target-feature=+crt-static'
+        cargo_env['RUSTFLAGS'] += ' -C target-feature=+crt-static'
 
         abs_build_dir = os.path.abspath(options.cargo_build_dir)
         if 'GITHUB_WORKSPACE' in cargo_env:

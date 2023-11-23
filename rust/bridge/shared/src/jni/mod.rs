@@ -3,10 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-extern crate jni_crate as jni;
-
-use jni::objects::{JThrowable, JValue};
-use jni::sys::jobject;
+use jni::objects::{JThrowable, JValue, JValueOwned};
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use attest::sgx_session::Error as SgxError;
@@ -21,8 +18,10 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt::Display;
 
-pub(crate) use jni::objects::{AutoArray, JClass, JObject, JString, ReleaseMode};
-pub(crate) use jni::sys::{jboolean, jbyteArray, jint, jlong, jlongArray, jstring};
+pub(crate) use jni::objects::{
+    AutoElements, JByteArray, JClass, JLongArray, JObject, JString, ReleaseMode,
+};
+pub(crate) use jni::sys::{jboolean, jint, jlong};
 pub(crate) use jni::JNIEnv;
 
 #[macro_use]
@@ -55,18 +54,19 @@ pub type ObjectHandle = jlong;
 
 pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
-pub type JavaMap<'a> = JObject<'a>;
-pub type JavaReturnUUID = jobject;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
-pub type JavaReturnCiphertextMessage = jobject;
-pub type JavaReturnMap = jobject;
+pub type JavaMap<'a> = JObject<'a>;
 
 /// Translates errors into Java exceptions.
 ///
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an
 /// appropriate Java exception class and thrown.
-fn throw_error(env: &JNIEnv, error: SignalJniError) {
-    fn try_throw<E: Display>(env: &JNIEnv, throwable: Result<JObject, E>, error: SignalJniError) {
+fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
+    fn try_throw<E: Display>(
+        env: &mut JNIEnv,
+        throwable: Result<JObject, E>,
+        error: SignalJniError,
+    ) {
         match throwable {
             Err(failure) => log::error!("failed to create exception for {}: {}", error, failure),
             Ok(throwable) => {
@@ -456,56 +456,25 @@ fn throw_error(env: &JNIEnv, error: SignalJniError) {
     }
 }
 
-/// Provides a dummy value to return when an exception is thrown.
-pub trait JniDummyValue {
-    fn dummy_value() -> Self;
-}
-
-impl JniDummyValue for ObjectHandle {
-    fn dummy_value() -> Self {
-        0
-    }
-}
-
-impl JniDummyValue for jint {
-    fn dummy_value() -> Self {
-        0
-    }
-}
-
-impl JniDummyValue for jobject {
-    fn dummy_value() -> Self {
-        std::ptr::null_mut()
-    }
-}
-
-impl JniDummyValue for jboolean {
-    fn dummy_value() -> Self {
-        0
-    }
-}
-
-impl JniDummyValue for () {
-    fn dummy_value() -> Self {}
-}
-
 #[inline(always)]
-pub fn run_ffi_safe<F: FnOnce() -> Result<R, SignalJniError> + std::panic::UnwindSafe, R>(
-    env: &JNIEnv,
-    f: F,
-) -> R
+pub fn run_ffi_safe<'local, F, R>(env: &mut JNIEnv<'local>, f: F) -> R
 where
-    R: JniDummyValue,
+    F: for<'a> FnOnce(&'a mut JNIEnv<'local>) -> Result<R, SignalJniError> + std::panic::UnwindSafe,
+    R: Default,
 {
-    match std::panic::catch_unwind(f) {
+    // This AssertUnwindSafe is not technically safe.
+    // If we get a panic downstream, it is entirely possible the Java environment won't be usable anymore.
+    // But if that's the case, we've got bigger problems!
+    // So if we want to catch panics, we have to allow this.
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(env))) {
         Ok(Ok(r)) => r,
         Ok(Err(e)) => {
             throw_error(env, e);
-            R::dummy_value()
+            R::default()
         }
         Err(r) => {
             throw_error(env, SignalJniError::UnexpectedPanic(r));
-            R::dummy_value()
+            R::default()
         }
     }
 }
@@ -525,50 +494,23 @@ pub unsafe fn native_handle_cast<T>(
     Ok(&mut *(handle as *mut T))
 }
 
-/// Calls a passed in function with a local frame of capacity that's passed in. Basically just
-/// the jni with_local_frame except with the result type changed to use SignalJniError instead.
-pub fn with_local_frame<'a, F>(env: &'a JNIEnv, capacity: i32, f: F) -> SignalJniResult<JObject<'a>>
-where
-    F: FnOnce() -> SignalJniResult<JObject<'a>>,
-{
-    env.push_local_frame(capacity)?;
-    let res = f();
-    match res {
-        Ok(obj) => Ok(env.pop_local_frame(obj)?),
-        Err(e) => {
-            env.pop_local_frame(JObject::null())?;
-            Err(e)
-        }
-    }
-}
-
-/// Calls a passed in function with a local frame of capacity that's passed in. Basically just
-/// the jni with_local_frame except with the result type changed to use SignalJniError instead.
-pub fn with_local_frame_no_jobject_result<F, T>(
-    env: &JNIEnv,
-    capacity: i32,
-    f: F,
-) -> SignalJniResult<T>
-where
-    F: FnOnce() -> SignalJniResult<T>,
-{
-    env.push_local_frame(capacity)?;
-    let res = f();
-    env.pop_local_frame(JObject::null())?;
-    res
-}
-
 /// Calls a method and translates any thrown exceptions to
 /// [`SignalProtocolError::ApplicationCallbackError`].
 ///
 /// Wraps [`JNIEnv::call_method`]; all arguments are the same.
 /// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
 /// returned instead.
-pub fn call_method_checked<'a, O: Into<JObject<'a>>, R: TryFrom<JValue<'a>>, const LEN: usize>(
-    env: &JNIEnv<'a>,
+pub fn call_method_checked<
+    'input,
+    'output,
+    O: AsRef<JObject<'input>>,
+    R: TryFrom<JValueOwned<'output>>,
+    const LEN: usize,
+>(
+    env: &mut JNIEnv<'output>,
     obj: O,
     fn_name: &'static str,
-    args: JniArgs<'a, R, LEN>,
+    args: JniArgs<R, LEN>,
 ) -> Result<R, SignalJniError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
@@ -577,9 +519,10 @@ pub fn call_method_checked<'a, O: Into<JObject<'a>>, R: TryFrom<JValue<'a>>, con
     let throwable = env.exception_occurred()?;
     if **throwable == *JObject::null() {
         let result = result?;
+        let type_name = result.type_name();
         result
             .try_into()
-            .map_err(|_| SignalJniError::UnexpectedJniResultType(fn_name, result.type_name()))
+            .map_err(|_| SignalJniError::UnexpectedJniResultType(fn_name, type_name))
     } else {
         env.exception_clear()?;
 
@@ -595,7 +538,7 @@ pub fn call_method_checked<'a, O: Into<JObject<'a>>, R: TryFrom<JValue<'a>>, con
 ///
 /// Assumes there's a corresponding constructor that takes a single `long` to represent the address.
 pub fn jobject_from_native_handle<'a>(
-    env: &'a JNIEnv,
+    env: &mut JNIEnv<'a>,
     class_name: &str,
     boxed_handle: ObjectHandle,
 ) -> Result<JObject<'a>, SignalJniError> {
@@ -610,20 +553,21 @@ pub fn jobject_from_native_handle<'a>(
 ///
 /// A convenience wrapper around `jobject_from_native_handle` for SignalProtocolAddress.
 fn protocol_address_to_jobject<'a>(
-    env: &'a JNIEnv,
+    env: &mut JNIEnv<'a>,
     address: &ProtocolAddress,
 ) -> Result<JObject<'a>, SignalJniError> {
+    let handle = address.clone().convert_into(env)?;
     jobject_from_native_handle(
         env,
         jni_class_name!(org.signal.libsignal.protocol.SignalProtocolAddress),
-        address.clone().convert_into(env)?,
+        handle,
     )
 }
 
 /// Verifies that a Java object is a non-`null` instance of the given class.
 pub fn check_jobject_type(
-    env: &JNIEnv,
-    obj: JObject,
+    env: &mut JNIEnv,
+    obj: &JObject,
     class_name: &'static str,
 ) -> Result<(), SignalJniError> {
     if obj.is_null() {
@@ -644,13 +588,18 @@ pub fn check_jobject_type(
 /// The method is assumed to return a type with a `long nativeHandle()` method, which in turn must
 /// produce a boxed Rust value.
 pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
-    env: &JNIEnv,
-    store_obj: JObject,
-    callback_args: JniArgs<JObject, LEN>,
+    env: &mut JNIEnv,
+    store_obj: &JObject,
+    callback_args: JniArgs<JObject<'_>, LEN>,
     callback_fn: &'static str,
 ) -> Result<Option<T>, SignalJniError> {
-    with_local_frame_no_jobject_result(env, 64, || -> SignalJniResult<Option<T>> {
-        let obj = call_method_checked(env, store_obj, callback_fn, callback_args)?;
+    env.with_local_frame(64, |env| -> SignalJniResult<Option<T>> {
+        let obj = call_method_checked(
+            env,
+            store_obj,
+            callback_fn,
+            callback_args.for_nested_frame(),
+        )?;
         if obj.is_null() {
             return Ok(None);
         }
@@ -671,21 +620,27 @@ pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
 ///
 /// The method is assumed to return a type with a `byte[] serialize()` method.
 pub fn get_object_with_serialization<const LEN: usize>(
-    env: &JNIEnv,
-    store_obj: JObject,
-    callback_args: JniArgs<JObject, LEN>,
+    env: &mut JNIEnv,
+    store_obj: &JObject,
+    callback_args: JniArgs<JObject<'_>, LEN>,
     callback_fn: &'static str,
 ) -> Result<Option<Vec<u8>>, SignalJniError> {
-    with_local_frame_no_jobject_result(env, 64, || -> SignalJniResult<Option<Vec<u8>>> {
-        let obj = call_method_checked(env, store_obj, callback_fn, callback_args)?;
+    env.with_local_frame(64, |env| -> SignalJniResult<Option<Vec<u8>>> {
+        let obj = call_method_checked(
+            env,
+            store_obj,
+            callback_fn,
+            callback_args.for_nested_frame(),
+        )?;
 
         if obj.is_null() {
             return Ok(None);
         }
 
-        let bytes = call_method_checked(env, obj, "serialize", jni_args!(() -> [byte]))?;
+        let bytes: JByteArray =
+            call_method_checked(env, obj, "serialize", jni_args!(() -> [byte]))?.into();
 
-        Ok(Some(env.convert_byte_array(*bytes)?))
+        Ok(Some(env.convert_byte_array(bytes)?))
     })
 }
 
@@ -741,4 +696,30 @@ macro_rules! jni_bridge_destroy {
             }
         }
     };
+}
+
+/// A wrapper around a cloned [`JNIEnv`] that forces scoped use.
+///
+/// This sidesteps the safety issues with [`JNIEnv::unsafe_clone`] as long as an environment from an
+/// outer frame is not used within an inner frame. (Really, this same condition makes `unsafe_clone`
+/// safe as well, but using `EnvHandle` is a good reminder since it *only* allows scoped access.)
+struct EnvHandle<'a> {
+    env: JNIEnv<'a>,
+}
+
+impl<'a> EnvHandle<'a> {
+    fn new(env: &JNIEnv<'a>) -> Self {
+        Self {
+            env: unsafe { env.unsafe_clone() },
+        }
+    }
+
+    /// See [`JNIEnv::with_local_frame`].
+    fn with_local_frame<F, T, E>(&mut self, capacity: i32, f: F) -> Result<T, E>
+    where
+        F: FnOnce(&mut JNIEnv<'_>) -> Result<T, E>,
+        E: From<jni::errors::Error>,
+    {
+        self.env.with_local_frame(capacity, f)
+    }
 }

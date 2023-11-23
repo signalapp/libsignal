@@ -1,8 +1,8 @@
-/**
- * Copyright (C) 2021 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2021 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol;
 
 public class InvalidRegistrationIdException extends Exception {

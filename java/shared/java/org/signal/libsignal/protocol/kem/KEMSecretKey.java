@@ -17,15 +17,16 @@ public class KEMSecretKey implements NativeHandleGuard.Owner {
   }
 
   public KEMSecretKey(long nativeHandle) {
-    if(nativeHandle == 0) {
+    if (nativeHandle == 0) {
       throw new NullPointerException();
     }
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.KyberSecretKey_Destroy(this.unsafeHandle);
+    Native.KyberSecretKey_Destroy(this.unsafeHandle);
   }
 
   public byte[] serialize() {

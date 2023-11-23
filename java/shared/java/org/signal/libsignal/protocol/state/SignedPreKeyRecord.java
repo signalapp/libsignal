@@ -1,13 +1,12 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.state;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
@@ -16,22 +15,18 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.SignedPreKeyRecord_Destroy(this.unsafeHandle);
   }
 
   public SignedPreKeyRecord(int id, long timestamp, ECKeyPair keyPair, byte[] signature) {
-    try (
-      NativeHandleGuard publicGuard = new NativeHandleGuard(keyPair.getPublicKey());
-      NativeHandleGuard privateGuard = new NativeHandleGuard(keyPair.getPrivateKey());
-    ) {
-      this.unsafeHandle = Native.SignedPreKeyRecord_New(
-        id,
-        timestamp,
-        publicGuard.nativeHandle(),
-        privateGuard.nativeHandle(),
-        signature);
+    try (NativeHandleGuard publicGuard = new NativeHandleGuard(keyPair.getPublicKey());
+        NativeHandleGuard privateGuard = new NativeHandleGuard(keyPair.getPrivateKey()); ) {
+      this.unsafeHandle =
+          Native.SignedPreKeyRecord_New(
+              id, timestamp, publicGuard.nativeHandle(), privateGuard.nativeHandle(), signature);
     }
   }
 
@@ -54,8 +49,10 @@ public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
 
   public ECKeyPair getKeyPair() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      ECPublicKey publicKey = new ECPublicKey(Native.SignedPreKeyRecord_GetPublicKey(guard.nativeHandle()));
-      ECPrivateKey privateKey = new ECPrivateKey(Native.SignedPreKeyRecord_GetPrivateKey(guard.nativeHandle()));
+      ECPublicKey publicKey =
+          new ECPublicKey(Native.SignedPreKeyRecord_GetPublicKey(guard.nativeHandle()));
+      ECPrivateKey privateKey =
+          new ECPrivateKey(Native.SignedPreKeyRecord_GetPrivateKey(guard.nativeHandle()));
       return new ECKeyPair(publicKey, privateKey);
     }
   }
@@ -75,5 +72,4 @@ public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
   public long unsafeNativeHandleWithoutGuard() {
     return this.unsafeHandle;
   }
-
 }

@@ -31,4 +31,3 @@ doc = false
 [patch.crates-io]
 # Use our fork of curve25519-dalek for zkgroup support.
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.0.0' }
-x25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.0.0' }

@@ -19,7 +19,8 @@ public class CryptographicHash implements NativeHandleGuard.Owner {
     return unsafeHandle;
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.CryptographicHash_Destroy(this.unsafeHandle);
   }
@@ -41,5 +42,4 @@ public class CryptographicHash implements NativeHandleGuard.Owner {
       return Native.CryptographicHash_Finalize(guard.nativeHandle());
     }
   }
-
 }

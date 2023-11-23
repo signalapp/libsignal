@@ -1,20 +1,19 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
-package org.signal.libsignal.protocol.state.impl;
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
-import org.signal.libsignal.protocol.InvalidMessageException;
-import org.signal.libsignal.protocol.NoSessionException;
-import org.signal.libsignal.protocol.SignalProtocolAddress;
-import org.signal.libsignal.protocol.state.SessionRecord;
-import org.signal.libsignal.protocol.state.SessionStore;
+package org.signal.libsignal.protocol.state.impl;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.NoSessionException;
+import org.signal.libsignal.protocol.SignalProtocolAddress;
+import org.signal.libsignal.protocol.state.SessionRecord;
+import org.signal.libsignal.protocol.state.SessionStore;
 
 public class InMemorySessionStore implements SessionStore {
 
@@ -36,7 +35,8 @@ public class InMemorySessionStore implements SessionStore {
   }
 
   @Override
-  public synchronized List<SessionRecord> loadExistingSessions(List<SignalProtocolAddress> addresses) throws NoSessionException {
+  public synchronized List<SessionRecord> loadExistingSessions(
+      List<SignalProtocolAddress> addresses) throws NoSessionException {
     List<SessionRecord> resultSessions = new LinkedList<>();
     for (SignalProtocolAddress remoteAddress : addresses) {
       byte[] serialized = sessions.get(remoteAddress);
@@ -57,9 +57,7 @@ public class InMemorySessionStore implements SessionStore {
     List<Integer> deviceIds = new LinkedList<>();
 
     for (SignalProtocolAddress key : sessions.keySet()) {
-      if (key.getName().equals(name) &&
-          key.getDeviceId() != 1)
-      {
+      if (key.getName().equals(name) && key.getDeviceId() != 1) {
         deviceIds.add(key.getDeviceId());
       }
     }

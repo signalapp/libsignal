@@ -5,8 +5,8 @@
 
 package org.signal.libsignal.zkgroup;
 
-import org.signal.libsignal.zkgroup.internal.ByteArray;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.zkgroup.internal.ByteArray;
 
 public final class GenericServerPublicParams extends ByteArray {
   public GenericServerPublicParams(byte[] contents) throws InvalidInputException {

@@ -43,16 +43,6 @@ jobs:
       env:
         CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
-    - name: Build for x86_64-apple-ios-macabi
-      run: swift/build_ffi.sh --release --build-std
-      env:
-        CARGO_BUILD_TARGET: x86_64-apple-ios-macabi
-
-    - name: Build for aarch64-apple-ios-macabi
-      run: swift/build_ffi.sh --release --build-std
-      env:
-        CARGO_BUILD_TARGET: aarch64-apple-ios-macabi
-
     - run: tar -c --auto-compress --no-mac-metadata -f ${{ steps.archive-name.outputs.name }} target/*/release/libsignal_ffi.a
 
     - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY ${{ steps.archive-name.outputs.name }}.sha256'

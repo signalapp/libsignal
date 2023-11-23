@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use crate::{
     kem, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore, PreKeyBundle,
     PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result, SessionRecord,
@@ -34,9 +36,9 @@ pub async fn process_prekey(
     remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
     identity_store: &mut dyn IdentityKeyStore,
-    pre_key_store: &mut dyn PreKeyStore,
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-    kyber_prekey_store: &mut dyn KyberPreKeyStore,
+    pre_key_store: &dyn PreKeyStore,
+    signed_prekey_store: &dyn SignedPreKeyStore,
+    kyber_prekey_store: &dyn KyberPreKeyStore,
 ) -> Result<PreKeysUsed> {
     let their_identity_key = message.identity_key();
 
@@ -71,10 +73,10 @@ async fn process_prekey_impl(
     message: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     session_record: &mut SessionRecord,
-    signed_prekey_store: &mut dyn SignedPreKeyStore,
-    kyber_prekey_store: &mut dyn KyberPreKeyStore,
-    pre_key_store: &mut dyn PreKeyStore,
-    identity_store: &mut dyn IdentityKeyStore,
+    signed_prekey_store: &dyn SignedPreKeyStore,
+    kyber_prekey_store: &dyn KyberPreKeyStore,
+    pre_key_store: &dyn PreKeyStore,
+    identity_store: &dyn IdentityKeyStore,
 ) -> Result<PreKeysUsed> {
     if session_record.has_session_state(
         message.message_version() as u32,
@@ -130,7 +132,6 @@ async fn process_prekey_impl(
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());
-    new_session.set_alice_base_key(&message.base_key().serialize());
 
     session_record.promote_state(new_session);
 
@@ -146,6 +147,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     session_store: &mut dyn SessionStore,
     identity_store: &mut dyn IdentityKeyStore,
     bundle: &PreKeyBundle,
+    now: SystemTime,
     mut csprng: &mut R,
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?;
@@ -216,6 +218,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         their_one_time_prekey_id,
         bundle.signed_pre_key_id()?,
         &our_base_key_pair.public_key,
+        now,
     );
 
     if let Some(kyber_pre_key_id) = bundle.kyber_pre_key_id()? {
@@ -224,7 +227,6 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
 
     session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     session.set_remote_registration_id(bundle.registration_id()?);
-    session.set_alice_base_key(&our_base_key_pair.public_key.serialize());
 
     identity_store
         .save_identity(remote_address, their_identity_key)

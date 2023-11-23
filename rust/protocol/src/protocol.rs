@@ -87,8 +87,7 @@ impl SignalMessage {
             previous_counter: Some(previous_counter),
             ciphertext: Some(Vec::<u8>::from(ciphertext)),
         };
-        let mut serialized = Vec::new();
-        serialized.reserve(1 + message.encoded_len() + Self::MAC_LENGTH);
+        let mut serialized = Vec::with_capacity(1 + message.encoded_len() + Self::MAC_LENGTH);
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
         message
             .encode(&mut serialized)
@@ -287,8 +286,7 @@ impl PreKeySignalMessage {
             identity_key: Some(identity_key.serialize().into_vec()),
             message: Some(Vec::from(message.as_ref())),
         };
-        let mut serialized = Vec::new();
-        serialized.reserve(1 + proto_message.encoded_len());
+        let mut serialized = Vec::with_capacity(1 + proto_message.encoded_len());
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
         proto_message
             .encode(&mut serialized)
@@ -464,8 +462,7 @@ impl SenderKeyMessage {
             ciphertext: Some(ciphertext.to_vec()),
         };
         let proto_message_len = proto_message.encoded_len();
-        let mut serialized = Vec::new();
-        serialized.reserve(1 + proto_message_len + Self::SIGNATURE_LEN);
+        let mut serialized = Vec::with_capacity(1 + proto_message_len + Self::SIGNATURE_LEN);
         serialized.push(((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION);
         proto_message
             .encode(&mut serialized)
@@ -603,8 +600,7 @@ impl SenderKeyDistributionMessage {
             chain_key: Some(chain_key.clone()),
             signing_key: Some(signing_key.serialize().to_vec()),
         };
-        let mut serialized = Vec::new();
-        serialized.reserve(1 + proto_message.encoded_len());
+        let mut serialized = Vec::with_capacity(1 + proto_message.encoded_len());
         serialized.push(((message_version & 0xF) << 4) | SENDERKEY_MESSAGE_CURRENT_VERSION);
         proto_message
             .encode(&mut serialized)

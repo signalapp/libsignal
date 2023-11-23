@@ -10,13 +10,14 @@ public func signalEncrypt<Bytes: ContiguousBytes>(message: Bytes,
                                                   for address: ProtocolAddress,
                                                   sessionStore: SessionStore,
                                                   identityStore: IdentityKeyStore,
+                                                  now: Date = Date(),
                                                   context: StoreContext) throws -> CiphertextMessage {
     return try address.withNativeHandle { addressHandle in
         try message.withUnsafeBorrowedBuffer { messageBuffer in
             try withSessionStore(sessionStore, context) { ffiSessionStore in
                 try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
                     try invokeFnReturningNativeHandle {
-                        signal_encrypt_message($0, messageBuffer, addressHandle, ffiSessionStore, ffiIdentityStore)
+                        signal_encrypt_message($0, messageBuffer, addressHandle, ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000))
                     }
                 }
             }
@@ -69,11 +70,12 @@ public func processPreKeyBundle(_ bundle: PreKeyBundle,
                                 for address: ProtocolAddress,
                                 sessionStore: SessionStore,
                                 identityStore: IdentityKeyStore,
+                                now: Date = Date(),
                                 context: StoreContext) throws {
     return try withNativeHandles(bundle, address) { bundleHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try checkError(signal_process_prekey_bundle(bundleHandle, addressHandle, ffiSessionStore, ffiIdentityStore))
+                try checkError(signal_process_prekey_bundle(bundleHandle, addressHandle, ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000)))
             }
         }
     }

@@ -307,78 +307,10 @@ store!(SignedPreKeyStore);
 store!(KyberPreKeyStore);
 store!(InputStream);
 
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, SignalProtocolError> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, attest::hsm_enclave::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, attest::sgx_session::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_pin::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, device_transfer::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-#[cfg(feature = "signal-media")]
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_media::sanitize::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, signal_crypto::Error> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupVerificationFailure> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, zkgroup::ZkGroupDeserializationFailure> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, usernames::UsernameError> {
-    type ResultType = T::ResultType;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
-    }
-}
-
-impl<T: ResultTypeInfo> ResultTypeInfo for Result<T, usernames::UsernameLinkError> {
+impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
+where
+    SignalFfiError: From<E>,
+{
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         T::convert_into(self?)

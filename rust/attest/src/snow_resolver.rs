@@ -5,8 +5,7 @@
 
 use std::convert::TryInto;
 
-use chacha20poly1305::aead::{AeadInPlace, NewAead};
-use chacha20poly1305::ChaCha20Poly1305;
+use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use snow::error::Error as SnowError;

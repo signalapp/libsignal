@@ -5,10 +5,9 @@
 
 package org.signal.libsignal.zkgroup;
 
-import org.junit.Test;
 import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.internal.Native;
-import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.zkgroup.internal.*;
 
 public final class NativeErrorsTest extends TestCase {
@@ -19,18 +18,20 @@ public final class NativeErrorsTest extends TestCase {
     byte[] uuidCiphertext = new byte[65]; // valid size
     boolean failed = false;
     try {
-        Native.GroupSecretParams_DecryptServiceId(params, uuidCiphertext);
-        failed = true;
-    } catch (AssertionError e) {}
+      Native.GroupSecretParams_DecryptServiceId(params, uuidCiphertext);
+      failed = true;
+    } catch (AssertionError e) {
+    }
     if (failed) {
-        throw new AssertionError("Deserialization failure should Assert if CheckValidContents should have caught this");
+      throw new AssertionError(
+          "Deserialization failure should Assert if CheckValidContents should have caught this");
     }
 
     byte[] temp = new byte[1]; // wrong length
     try {
-        Native.ServerSecretParams_GenerateDeterministic(temp);
-        throw new AssertionError("Failed to catch wrong byte array length");
-    } catch (IllegalArgumentException e) {}
+      Native.ServerSecretParams_GenerateDeterministic(temp);
+      throw new AssertionError("Failed to catch wrong byte array length");
+    } catch (IllegalArgumentException e) {
+    }
   }
-
 }

@@ -748,8 +748,13 @@ export class SessionRecord {
     return Native.SessionRecord_GetRemoteRegistrationId(this);
   }
 
-  hasCurrentState(): boolean {
-    return Native.SessionRecord_HasCurrentState(this);
+  /**
+   * Returns whether the current session can be used to send messages.
+   *
+   * If there is no current session, returns false.
+   */
+  hasCurrentState(now: Date = new Date()): boolean {
+    return Native.SessionRecord_HasUsableSenderChain(this, now.getTime());
   }
 
   currentRatchetKeyMatches(key: PublicKey): boolean {
@@ -1500,13 +1505,15 @@ export function processPreKeyBundle(
   bundle: PreKeyBundle,
   address: ProtocolAddress,
   sessionStore: SessionStore,
-  identityStore: IdentityKeyStore
+  identityStore: IdentityKeyStore,
+  now: Date = new Date()
 ): Promise<void> {
   return Native.SessionBuilder_ProcessPreKeyBundle(
     bundle,
     address,
     sessionStore,
-    identityStore
+    identityStore,
+    now.getTime()
   );
 }
 
@@ -1514,14 +1521,16 @@ export async function signalEncrypt(
   message: Buffer,
   address: ProtocolAddress,
   sessionStore: SessionStore,
-  identityStore: IdentityKeyStore
+  identityStore: IdentityKeyStore,
+  now: Date = new Date()
 ): Promise<CiphertextMessage> {
   return CiphertextMessage._fromNativeHandle(
     await Native.SessionCipher_EncryptMessage(
       message,
       address,
       sessionStore,
-      identityStore
+      identityStore,
+      now.getTime()
     )
   );
 }

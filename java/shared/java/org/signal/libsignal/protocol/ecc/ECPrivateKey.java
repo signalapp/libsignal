@@ -1,8 +1,7 @@
-/**
- * Copyright (C) 2013-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2013-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
 package org.signal.libsignal.protocol.ecc;
 
@@ -22,15 +21,16 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
   }
 
   public ECPrivateKey(long nativeHandle) {
-    if(nativeHandle == 0) {
+    if (nativeHandle == 0) {
       throw new NullPointerException();
     }
     this.unsafeHandle = nativeHandle;
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.ECPrivateKey_Destroy(this.unsafeHandle);
+    Native.ECPrivateKey_Destroy(this.unsafeHandle);
   }
 
   public byte[] serialize() {
@@ -46,10 +46,8 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
   }
 
   public byte[] calculateAgreement(ECPublicKey other) {
-    try (
-      NativeHandleGuard privateKey = new NativeHandleGuard(this);
-      NativeHandleGuard publicKey = new NativeHandleGuard(other);
-    ) {
+    try (NativeHandleGuard privateKey = new NativeHandleGuard(this);
+        NativeHandleGuard publicKey = new NativeHandleGuard(other); ) {
       return Native.ECPrivateKey_Agree(privateKey.nativeHandle(), publicKey.nativeHandle());
     }
   }

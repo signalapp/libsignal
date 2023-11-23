@@ -51,7 +51,7 @@ impl Finalize for NameStore {
     }
 }
 
-async fn double_name_from_store_impl(store: &mut NameStore) -> Result<String, String> {
+async fn double_name_from_store_impl(store: &NameStore) -> Result<String, String> {
     Ok(format!(
         "{0} {1}",
         store.get_name().await?,
@@ -62,10 +62,10 @@ async fn double_name_from_store_impl(store: &mut NameStore) -> Result<String, St
 // function doubleNameFromStore(store: { getName: () => Promise<string> }): Promise<string>
 pub fn double_name_from_store(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let js_store = cx.argument(0)?;
-    let mut store = NameStore::new(&mut cx, js_store);
+    let store = NameStore::new(&mut cx, js_store);
 
     promise(&mut cx, async move {
-        let future = AssertUnwindSafe(double_name_from_store_impl(&mut store));
+        let future = AssertUnwindSafe(double_name_from_store_impl(&store));
         let result = future.await;
         settle_promise(move |cx| {
             store.finalize(cx);
@@ -77,7 +77,7 @@ pub fn double_name_from_store(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-async fn double_name_from_store_using_join_impl(store: &mut NameStore) -> Result<String, String> {
+async fn double_name_from_store_using_join_impl(store: &NameStore) -> Result<String, String> {
     let names = try_join!(store.get_name(), store.get_name())?;
     Ok(format!("{0} {1}", names.0, names.1))
 }
@@ -85,10 +85,10 @@ async fn double_name_from_store_using_join_impl(store: &mut NameStore) -> Result
 // function doubleNameFromStoreUsingJoin(store: { getName: () => Promise<string> }): Promise<string>
 pub fn double_name_from_store_using_join(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let js_store = cx.argument(0)?;
-    let mut store = NameStore::new(&mut cx, js_store);
+    let store = NameStore::new(&mut cx, js_store);
 
     promise(&mut cx, async move {
-        let future = AssertUnwindSafe(double_name_from_store_using_join_impl(&mut store));
+        let future = AssertUnwindSafe(double_name_from_store_using_join_impl(&store));
         let result = future.await;
         settle_promise(move |cx| {
             store.finalize(cx);

@@ -7,8 +7,8 @@ package org.signal.libsignal.crypto.jce;
 
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import org.signal.libsignal.crypto.CryptographicMac;
 import javax.crypto.spec.SecretKeySpec;
+import org.signal.libsignal.crypto.CryptographicMac;
 
 public class Mac {
 

@@ -5,8 +5,6 @@ plugins {
 }
 
 archivesBaseName = "libsignal-android"
-version          = version_number
-group            = group_info
 
 repositories {
     google()
@@ -106,17 +104,9 @@ afterEvaluate {
                 }
             }
         }
-        repositories {
-            maven {
-                url = getReleaseRepositoryUrl()
-                credentials {
-                    username = getRepositoryUsername()
-                    password = getRepositoryPassword()
-                }
-            }
-        }
     }
 
+    setUpSigningKey(signing)
     signing {
         required { isReleaseBuild() && gradle.taskGraph.hasTask(":android:publish") }
         sign publishing.publications.mavenJava

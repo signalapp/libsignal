@@ -1,10 +1,11 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.message;
 
+import javax.crypto.spec.SecretKeySpec;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -15,17 +16,20 @@ import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.util.ByteUtil;
 
-import javax.crypto.spec.SecretKeySpec;
-
 public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.SignalMessage_Destroy(this.unsafeHandle);
+    Native.SignalMessage_Destroy(this.unsafeHandle);
   }
 
-  public SignalMessage(byte[] serialized) throws InvalidMessageException, InvalidVersionException, InvalidKeyException, LegacyMessageException {
+  public SignalMessage(byte[] serialized)
+      throws InvalidMessageException,
+          InvalidVersionException,
+          InvalidKeyException,
+          LegacyMessageException {
     unsafeHandle = Native.SignalMessage_Deserialize(serialized);
   }
 
@@ -33,7 +37,7 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
     this.unsafeHandle = unsafeHandle;
   }
 
-  public ECPublicKey getSenderRatchetKey()  {
+  public ECPublicKey getSenderRatchetKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new ECPublicKey(Native.SignalMessage_GetSenderRatchetKey(guard.nativeHandle()));
     }
@@ -57,14 +61,14 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
     }
   }
 
-  public void verifyMac(IdentityKey senderIdentityKey, IdentityKey receiverIdentityKey, SecretKeySpec macKey)
-      throws InvalidMessageException, InvalidKeyException
-  {
-    try (
-      NativeHandleGuard guard = new NativeHandleGuard(this);
-      NativeHandleGuard senderIdentityGuard = new NativeHandleGuard(senderIdentityKey.getPublicKey());
-      NativeHandleGuard receiverIdentityGuard = new NativeHandleGuard(receiverIdentityKey.getPublicKey());
-    ) {
+  public void verifyMac(
+      IdentityKey senderIdentityKey, IdentityKey receiverIdentityKey, SecretKeySpec macKey)
+      throws InvalidMessageException, InvalidKeyException {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this);
+        NativeHandleGuard senderIdentityGuard =
+            new NativeHandleGuard(senderIdentityKey.getPublicKey());
+        NativeHandleGuard receiverIdentityGuard =
+            new NativeHandleGuard(receiverIdentityKey.getPublicKey()); ) {
       if (!Native.SignalMessage_VerifyMac(
           guard.nativeHandle(),
           senderIdentityGuard.nativeHandle(),
@@ -92,8 +96,8 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
   }
 
   public static boolean isLegacy(byte[] message) {
-    return message != null && message.length >= 1 &&
-        ByteUtil.highBitsToInt(message[0]) != CiphertextMessage.CURRENT_VERSION;
+    return message != null
+        && message.length >= 1
+        && ByteUtil.highBitsToInt(message[0]) != CiphertextMessage.CURRENT_VERSION;
   }
-
 }

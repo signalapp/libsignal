@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-ffi"
-version = "0.31.0"
+version = "0.32.1"
 authors = ["Signal Messenger LLC"]
 edition = "2018"
 license = "AGPL-3.0-only"
@@ -15,9 +15,6 @@ name = "signal_ffi"
 crate-type = ["staticlib"]
 
 [features]
-default = ["armv8"]
-armv8 = ["libsignal-protocol/armv8", "signal-crypto/armv8"]
-
 # Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:
 #     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
 signal-media = ["libsignal-bridge/signal-media"]

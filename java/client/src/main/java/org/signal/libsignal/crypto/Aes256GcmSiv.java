@@ -7,8 +7,8 @@ package org.signal.libsignal.crypto;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.InvalidMessageException;
 
 class Aes256GcmSiv implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
@@ -17,7 +17,8 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
     this.unsafeHandle = Native.Aes256GcmSiv_New(key);
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.Aes256GcmSiv_Destroy(this.unsafeHandle);
   }

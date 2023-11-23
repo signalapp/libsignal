@@ -9,6 +9,40 @@ use std::time::SystemTime;
 use boring::asn1::Asn1Time;
 use libc::time_t;
 
+/// A replacement for [`std::collections::HashMap`] that performs linear lookups.
+///
+/// This can be used in place of `HashMap` for supporting lookup in `const`
+/// arrays. For small `N`, the linear search will be faster than a hash lookup.
+pub(crate) struct SmallMap<K, V, const N: usize>([(K, V); N]);
+
+impl<K, V, const N: usize> SmallMap<K, V, N> {
+    /// The maximum number of elements allowed in a `SmallMap`.
+    const MAX_SIZE: usize = 4;
+
+    /// Checks at compile-time (via `const`) that `N` is small enough.
+    const CHECK_MAX_SIZE: () = assert!(
+        N <= Self::MAX_SIZE,
+        "use a HashMap for more than MAX_SIZE items"
+    );
+
+    /// Creates a new `SmallMap` with the given contents.
+    pub(crate) const fn new(items: [(K, V); N]) -> Self {
+        // Evaluate CHECK_MAX_SIZE; this will fail compilation if `N` is too
+        // large.
+        //
+        // TODO(https://github.com/rust-lang/rust-clippy/issues/9048): Remove
+        // the unnecessary #[allow].
+        #[allow(clippy::let_unit_value)]
+        let _: () = Self::CHECK_MAX_SIZE;
+        Self(items)
+    }
+
+    /// Gets the value for the first key that matches `key`, or `None`.
+    pub(crate) fn get<Q: PartialEq<K> + ?Sized>(&self, key: &Q) -> Option<&V> {
+        self.0.iter().find_map(|(k, v)| (key == k).then_some(v))
+    }
+}
+
 /// Removes a trailing null byte, if one exists
 pub(crate) fn strip_trailing_null_byte(bytes: &mut &[u8]) {
     *bytes = bytes.strip_suffix(&[0]).unwrap_or(bytes);

@@ -98,6 +98,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
         local_identity,
         parameters.their_identity_key(),
         &sending_chain_root_key,
+        &parameters.our_base_key_pair().public_key,
     )
     .with_receiver_chain(parameters.their_ratchet_key(), &chain_key)
     .with_sender_chain(&sending_ratchet_key, &sending_chain_chain_key);
@@ -169,6 +170,7 @@ pub(crate) fn initialize_bob_session(
         local_identity,
         parameters.their_identity_key(),
         &root_key,
+        parameters.their_base_key(),
     )
     .with_sender_chain(parameters.our_ratchet_key_pair(), &chain_key);
 

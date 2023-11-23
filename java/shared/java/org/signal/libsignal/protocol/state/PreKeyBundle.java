@@ -1,8 +1,8 @@
-/**
- * Copyright (C) 2014-2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
+//
+// Copyright 2014-2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.protocol.state;
 
 import org.signal.libsignal.internal.Native;
@@ -12,8 +12,7 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.kem.KEMPublicKey;
 
 /**
- * A class that contains a remote PreKey and collection
- * of associated items.
+ * A class that contains a remote PreKey and collection of associated items.
  *
  * @author Moxie Marlinspike
  */
@@ -23,52 +22,65 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
   // -1 is treated as Option<u32>::None by the bridging layer
   public static final int NULL_PRE_KEY_ID = -1;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.PreKeyBundle_Destroy(this.unsafeHandle);
   }
 
-  public PreKeyBundle(int registrationId, int deviceId, int preKeyId, ECPublicKey preKeyPublic,
-                      int signedPreKeyId, ECPublicKey signedPreKeyPublic, byte[] signedPreKeySignature,
-                      IdentityKey identityKey) {
+  public PreKeyBundle(
+      int registrationId,
+      int deviceId,
+      int preKeyId,
+      ECPublicKey preKeyPublic,
+      int signedPreKeyId,
+      ECPublicKey signedPreKeyPublic,
+      byte[] signedPreKeySignature,
+      IdentityKey identityKey) {
     this(
-      registrationId,
-      deviceId,
-      preKeyId,
-      preKeyPublic,
-      signedPreKeyId,
-      signedPreKeyPublic,
-      signedPreKeySignature,
-      identityKey,
-      NULL_PRE_KEY_ID,
-      null,
-      null);
-  }
-
-  public PreKeyBundle(int registrationId, int deviceId, int preKeyId, ECPublicKey preKeyPublic,
-                      int signedPreKeyId, ECPublicKey signedPreKeyPublic, byte[] signedPreKeySignature,
-                      IdentityKey identityKey, int kyberPreKeyId, KEMPublicKey kyberPreKeyPublic,
-                      byte[] kyberPreKeySignature)
-  {
-    try (
-      NativeHandleGuard preKeyPublicGuard = new NativeHandleGuard(preKeyPublic);
-      NativeHandleGuard signedPreKeyPublicGuard = new NativeHandleGuard(signedPreKeyPublic);
-      NativeHandleGuard identityKeyGuard = new NativeHandleGuard(identityKey.getPublicKey());
-      NativeHandleGuard kyberPreKeyPublicGuard = new NativeHandleGuard(kyberPreKeyPublic);
-    ) {
-      byte[] kyberSignature = kyberPreKeySignature == null ? new byte[]{} : kyberPreKeySignature;
-      this.unsafeHandle = Native.PreKeyBundle_New(
         registrationId,
         deviceId,
         preKeyId,
-        preKeyPublicGuard.nativeHandle(),
+        preKeyPublic,
         signedPreKeyId,
-        signedPreKeyPublicGuard.nativeHandle(),
+        signedPreKeyPublic,
         signedPreKeySignature,
-        identityKeyGuard.nativeHandle(),
-        kyberPreKeyId,
-        kyberPreKeyPublicGuard.nativeHandle(),
-        kyberSignature);
+        identityKey,
+        NULL_PRE_KEY_ID,
+        null,
+        null);
+  }
+
+  public PreKeyBundle(
+      int registrationId,
+      int deviceId,
+      int preKeyId,
+      ECPublicKey preKeyPublic,
+      int signedPreKeyId,
+      ECPublicKey signedPreKeyPublic,
+      byte[] signedPreKeySignature,
+      IdentityKey identityKey,
+      int kyberPreKeyId,
+      KEMPublicKey kyberPreKeyPublic,
+      byte[] kyberPreKeySignature) {
+    try (NativeHandleGuard preKeyPublicGuard = new NativeHandleGuard(preKeyPublic);
+        NativeHandleGuard signedPreKeyPublicGuard = new NativeHandleGuard(signedPreKeyPublic);
+        NativeHandleGuard identityKeyGuard = new NativeHandleGuard(identityKey.getPublicKey());
+        NativeHandleGuard kyberPreKeyPublicGuard = new NativeHandleGuard(kyberPreKeyPublic); ) {
+      byte[] kyberSignature = kyberPreKeySignature == null ? new byte[] {} : kyberPreKeySignature;
+      this.unsafeHandle =
+          Native.PreKeyBundle_New(
+              registrationId,
+              deviceId,
+              preKeyId,
+              preKeyPublicGuard.nativeHandle(),
+              signedPreKeyId,
+              signedPreKeyPublicGuard.nativeHandle(),
+              signedPreKeySignature,
+              identityKeyGuard.nativeHandle(),
+              kyberPreKeyId,
+              kyberPreKeyPublicGuard.nativeHandle(),
+              kyberSignature);
     }
   }
 
@@ -135,7 +147,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public IdentityKey getIdentityKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new IdentityKey(new ECPublicKey(Native.PreKeyBundle_GetIdentityKey(guard.nativeHandle())));
+      return new IdentityKey(
+          new ECPublicKey(Native.PreKeyBundle_GetIdentityKey(guard.nativeHandle())));
     }
   }
 

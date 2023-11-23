@@ -6,8 +6,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
-use jni::objects::{JClass, JObject};
-use jni::sys::{jbyteArray, jlongArray};
+use jni::objects::{JByteArray, JClass, JLongArray, JObject};
 use jni::JNIEnv;
 use std::convert::TryFrom;
 
@@ -17,21 +16,23 @@ use libsignal_protocol::*;
 pub mod logging;
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPair_1Deserialize(
-    env: JNIEnv,
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPair_1Deserialize<
+    'local,
+>(
+    mut env: JNIEnv<'local>,
     _class: JClass,
-    data: jbyteArray,
-) -> jlongArray {
-    run_ffi_safe(&env, || {
+    data: JByteArray,
+) -> JLongArray<'local> {
+    run_ffi_safe(&mut env, |env| {
         let data = env.convert_byte_array(data)?;
         let key = IdentityKeyPair::try_from(data.as_ref())?;
 
-        let public_key_handle = key.identity_key().public_key().convert_into(&env)?;
-        let private_key_handle = key.private_key().convert_into(&env)?;
+        let public_key_handle = key.identity_key().public_key().convert_into(env)?;
+        let private_key_handle = key.private_key().convert_into(env)?;
         let tuple = [public_key_handle, private_key_handle];
 
         let result = env.new_long_array(2)?;
-        env.set_long_array_region(result, 0, &tuple)?;
+        env.set_long_array_region(&result, 0, &tuple)?;
         Ok(result)
     })
 }

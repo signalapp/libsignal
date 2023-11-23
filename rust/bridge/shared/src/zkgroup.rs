@@ -35,11 +35,11 @@ fn validate_serialization<'a, T: Deserialize<'a>>(
     }
 }
 
-/// Exposes a ZKGroup serializable type to the bridges via [`FixedLengthSerializable`].
+/// Exposes a ZKGroup serializable type to the bridges via [`FixedLengthBincodeSerializable`].
 ///
 /// `fixed_length_serializable!(FooBar)` generates
-/// - `impl FixedLengthSerializable for FooBar`, using `[u8; FOO_BAR_LEN]` as the associated array
-///   type.
+/// - `impl FixedLengthBincodeSerializable for FooBar`, using `[u8; FOO_BAR_LEN]` as the associated
+///   array type.
 /// - `#[bridge_fn] fn FooBar_CheckValidContents`, which checks that the type can be deserialized.
 macro_rules! fixed_length_serializable {
     ($typ:ident) => {

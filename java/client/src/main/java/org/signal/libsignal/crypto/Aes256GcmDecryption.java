@@ -14,11 +14,13 @@ public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
 
   private long unsafeHandle;
 
-  public Aes256GcmDecryption(byte[] key, byte[] nonce, byte[] associatedData) throws InvalidKeyException {
+  public Aes256GcmDecryption(byte[] key, byte[] nonce, byte[] associatedData)
+      throws InvalidKeyException {
     this.unsafeHandle = Native.Aes256GcmDecryption_New(key, nonce, associatedData);
   }
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
     Native.Aes256GcmDecryption_Destroy(this.unsafeHandle);
   }
@@ -47,5 +49,4 @@ public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
       return tagOk;
     }
   }
-
 }

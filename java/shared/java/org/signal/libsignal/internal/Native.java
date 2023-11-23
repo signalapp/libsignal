@@ -488,17 +488,16 @@ public final class Native {
   public static native String ServiceId_ServiceIdLog(byte[] value);
   public static native String ServiceId_ServiceIdString(byte[] value);
 
-  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, long now);
 
   public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore);
   public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
-  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore);
+  public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, long now);
 
   public static native void SessionRecord_ArchiveCurrentState(long sessionRecord);
   public static native boolean SessionRecord_CurrentRatchetKeyMatches(long s, long key);
   public static native long SessionRecord_Deserialize(byte[] data);
   public static native void SessionRecord_Destroy(long handle);
-  public static native long SessionRecord_FromSingleSessionState(byte[] sessionState);
   public static native byte[] SessionRecord_GetAliceBaseKey(long obj);
   public static native byte[] SessionRecord_GetLocalIdentityKeyPublic(long obj);
   public static native int SessionRecord_GetLocalRegistrationId(long obj);
@@ -507,7 +506,7 @@ public final class Native {
   public static native int SessionRecord_GetRemoteRegistrationId(long obj);
   public static native byte[] SessionRecord_GetSenderChainKeyValue(long obj);
   public static native int SessionRecord_GetSessionVersion(long s);
-  public static native boolean SessionRecord_HasSenderChain(long obj);
+  public static native boolean SessionRecord_HasUsableSenderChain(long s, long now);
   public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey);
   public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey);
   public static native long SessionRecord_NewFresh();
@@ -564,7 +563,7 @@ public final class Native {
   public static native void UuidCiphertext_CheckValidContents(byte[] buffer);
 
   public static native void ValidatingMac_Destroy(long handle);
-  public static native boolean ValidatingMac_Finalize(long mac);
+  public static native int ValidatingMac_Finalize(long mac);
   public static native long ValidatingMac_Initialize(byte[] key, int chunkSize, byte[] digests);
-  public static native boolean ValidatingMac_Update(long mac, byte[] bytes, int offset, int length);
+  public static native int ValidatingMac_Update(long mac, byte[] bytes, int offset, int length);
 }

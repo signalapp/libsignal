@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use generic_array::{ArrayLength, GenericArray};
+use aes::cipher::Unsigned;
+use hmac::digest::generic_array::{ArrayLength, GenericArray};
 use hmac::Mac;
 use sha2::digest::{FixedOutput, MacError, Output};
-use typenum::Unsigned;
 
 #[derive(Clone)]
 pub struct Incremental<M: Mac + Clone> {
@@ -22,24 +22,27 @@ pub struct Validating<M: Mac + Clone> {
     expected: Vec<Output<M>>,
 }
 
-const MINIMUM_INCREMENTAL_CHUNK_SIZE: usize = 8 * 1024;
-const MAXIMUM_INCREMENTAL_DIGEST_BYTES: usize = 1024;
+const MINIMUM_CHUNK_SIZE: usize = 64 * 1024;
+const MAXIMUM_CHUNK_SIZE: usize = 2 * 1024 * 1024;
+const TARGET_TOTAL_DIGEST_SIZE: usize = 8 * 1024;
 
-#[allow(clippy::manual_clamp)]
-pub fn calculate_chunk_size<D>(data_size: usize) -> usize
+pub const fn calculate_chunk_size<D>(data_size: usize) -> usize
 where
     D: FixedOutput,
     D::OutputSize: ArrayLength<u8>,
 {
-    if data_size == 0 {
-        return MINIMUM_INCREMENTAL_CHUNK_SIZE;
+    assert!(
+        0 == TARGET_TOTAL_DIGEST_SIZE % D::OutputSize::USIZE,
+        "Target digest size should be a multiple of digest size"
+    );
+    let target_chunk_count = TARGET_TOTAL_DIGEST_SIZE / D::OutputSize::USIZE;
+    if data_size < target_chunk_count * MINIMUM_CHUNK_SIZE {
+        return MINIMUM_CHUNK_SIZE;
     }
-    let max_chunks = MAXIMUM_INCREMENTAL_DIGEST_BYTES / D::OutputSize::USIZE;
-    let chunk_size = (data_size + max_chunks - 1) / max_chunks;
-    std::cmp::min(
-        data_size,
-        std::cmp::max(chunk_size, MINIMUM_INCREMENTAL_CHUNK_SIZE),
-    )
+    if data_size < target_chunk_count * MAXIMUM_CHUNK_SIZE {
+        return (data_size + target_chunk_count - 1) / target_chunk_count;
+    }
+    MAXIMUM_CHUNK_SIZE
 }
 
 impl<M: Mac + Clone> Incremental<M> {
@@ -94,17 +97,22 @@ impl<M: Mac + Clone> Incremental<M> {
             None
         }
     }
+
+    fn pending_bytes_size(&self) -> usize {
+        self.chunk_size - self.unused_length
+    }
 }
 
 impl<M: Mac + Clone> Validating<M> {
-    pub fn update(&mut self, bytes: &[u8]) -> Result<(), MacError> {
-        let mut result = Ok(());
+    pub fn update(&mut self, bytes: &[u8]) -> Result<usize, MacError> {
+        let mut result = Ok(0);
         let macs = self.incremental.update(bytes);
 
-        // for mac in self.incremental.update(bytes) {
+        let mut whole_chunks = 0;
         for mac in macs {
             match self.expected.last() {
                 Some(expected) if expected == &mac => {
+                    whole_chunks += 1;
                     self.expected.pop();
                 }
                 _ => {
@@ -112,13 +120,15 @@ impl<M: Mac + Clone> Validating<M> {
                 }
             }
         }
-        result
+        let validated_bytes = whole_chunks * self.incremental.chunk_size;
+        result.map(|_| validated_bytes)
     }
 
-    pub fn finalize(self) -> Result<(), MacError> {
+    pub fn finalize(self) -> Result<usize, MacError> {
+        let pending_bytes_size = self.incremental.pending_bytes_size();
         let mac = self.incremental.finalize();
         match &self.expected[..] {
-            [expected] if expected == &mac => Ok(()),
+            [expected] if expected == &mac => Ok(pending_bytes_size),
             _ => Err(MacError),
         }
     }
@@ -126,6 +136,7 @@ impl<M: Mac + Clone> Validating<M> {
 
 #[cfg(test)]
 mod test {
+    use hex_literal::hex;
     use hmac::Hmac;
     use proptest::prelude::*;
     use rand::distributions::Uniform;
@@ -137,8 +148,8 @@ mod test {
 
     use super::*;
 
-    const TEST_HMAC_KEY_HEX: &str =
-        "a83481457efecc69ad1342e21d9c0297f71debbf5c9304b4c1b2e433c1a78f98";
+    const TEST_HMAC_KEY: &[u8] =
+        &hex!("a83481457efecc69ad1342e21d9c0297f71debbf5c9304b4c1b2e433c1a78f98");
 
     const TEST_CHUNK_SIZE: usize = 32;
 
@@ -148,18 +159,20 @@ mod test {
         Incremental::new(hmac, chunk_size)
     }
 
-    fn test_key() -> Vec<u8> {
-        hex::decode(TEST_HMAC_KEY_HEX).expect("Should be able to decode the key from a hex string")
+    #[test]
+    #[should_panic]
+    fn chunk_size_zero() {
+        new_incremental(&[], 0);
     }
 
     #[test]
     fn simple_test() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         let input = "this is a simple test input string which is longer than the chunk";
 
         let bytes = input.as_bytes();
-        let expected = hmac_sha256(&key, bytes);
-        let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+        let expected = hmac_sha256(key, bytes);
+        let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
         let _ = incremental.update(bytes).collect::<Vec<_>>();
         let digest = incremental.finalize();
         let actual: [u8; 32] = digest.into();
@@ -168,11 +181,11 @@ mod test {
 
     #[test]
     fn final_result_should_be_equal_to_non_incremental_hmac() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         proptest!(|(input in ".{0,100}")| {
             let bytes = input.as_bytes();
-            let expected = hmac_sha256(&key, bytes);
-            let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+            let expected = hmac_sha256(key, bytes);
+            let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
             let _ = incremental.update(bytes).collect::<Vec<_>>();
             let actual: [u8; 32] = incremental.finalize().into();
             assert_eq!(actual, expected);
@@ -181,11 +194,11 @@ mod test {
 
     #[test]
     fn incremental_macs_are_valid() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
 
         proptest!(|(input in ".{50,100}")| {
             let bytes = input.as_bytes();
-            let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+            let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
 
             // Manually breaking the input in buffer-sized chunks and calculating the HMACs on the
             // ever-increasing input prefix.
@@ -193,7 +206,7 @@ mod test {
                 .chunks(incremental.chunk_size)
                 .scan(Vec::new(), |acc, chunk| {
                     acc.extend(chunk.iter());
-                    Some(hmac_sha256(&key, acc).to_vec())
+                    Some(hmac_sha256(key, acc).to_vec())
                 })
                 .collect();
 
@@ -215,11 +228,11 @@ mod test {
 
     #[test]
     fn validating_simple_test() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
         let input = "this is a simple test input string";
 
         let bytes = input.as_bytes();
-        let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+        let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
         let mut expected_macs: Vec<_> = incremental.update(bytes).collect();
         expected_macs.push(incremental.finalize());
 
@@ -228,7 +241,7 @@ mod test {
 
         {
             let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(expected_bytes.clone());
+                new_incremental(key, TEST_CHUNK_SIZE).validating(expected_bytes.clone());
             validating
                 .update(bytes)
                 .expect("update: validation should succeed");
@@ -243,7 +256,7 @@ mod test {
                 .first_mut()
                 .expect("there must be at least one mac")[0] ^= 0xff;
             let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(failing_first_update);
+                new_incremental(key, TEST_CHUNK_SIZE).validating(failing_first_update);
             validating.update(bytes).expect_err("MacError");
         }
 
@@ -252,16 +265,14 @@ mod test {
             failing_finalize
                 .last_mut()
                 .expect("there must be at least one mac")[0] ^= 0xff;
-            let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(failing_finalize);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(failing_finalize);
             validating.update(bytes).expect("update should succeed");
             validating.finalize().expect_err("MacError");
         }
 
         {
             let missing_last_mac = &expected_bytes[0..expected_bytes.len() - 1];
-            let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(missing_last_mac);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(missing_last_mac);
             validating.update(bytes).expect("update should succeed");
             validating.finalize().expect_err("MacError");
         }
@@ -269,7 +280,7 @@ mod test {
         {
             let missing_first_mac: Vec<_> = expected_bytes.clone().into_iter().skip(1).collect();
             let mut validating =
-                new_incremental(&key, TEST_CHUNK_SIZE).validating(missing_first_mac);
+                new_incremental(key, TEST_CHUNK_SIZE).validating(missing_first_mac);
             validating.update(bytes).expect_err("MacError");
         }
         // To make clippy happy and allow extending the test in the future
@@ -277,12 +288,49 @@ mod test {
     }
 
     #[test]
+    fn validating_returns_right_size() {
+        let key = TEST_HMAC_KEY;
+        let input = "this is a simple test input string";
+
+        let bytes = input.as_bytes();
+        let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
+        let mut expected_macs: Vec<_> = incremental.update(bytes).collect();
+        expected_macs.push(incremental.finalize());
+
+        let expected_bytes: Vec<[u8; 32]> =
+            expected_macs.into_iter().map(|mac| mac.into()).collect();
+
+        let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(expected_bytes);
+
+        // Splitting input into chunks of 16 will give us one full incremental chunk + 3 bytes
+        // authenticated by call to finalize.
+        let input_chunks = bytes.chunks(16).collect::<Vec<_>>();
+        assert_eq!(3, input_chunks.len());
+        let expected_remainder = bytes.len() - TEST_CHUNK_SIZE;
+
+        for (expected_size, input) in std::iter::zip([0, TEST_CHUNK_SIZE, 0], input_chunks) {
+            assert_eq!(
+                expected_size,
+                validating
+                    .update(input)
+                    .expect("update: validation should succeed")
+            );
+        }
+        assert_eq!(
+            expected_remainder,
+            validating
+                .finalize()
+                .expect("finalize: validation should succeed")
+        );
+    }
+
+    #[test]
     fn produce_and_validate() {
-        let key = test_key();
+        let key = TEST_HMAC_KEY;
 
         proptest!(|(input in ".{0,100}")| {
             let bytes = input.as_bytes();
-            let mut incremental = new_incremental(&key, TEST_CHUNK_SIZE);
+            let mut incremental = new_incremental(key, TEST_CHUNK_SIZE);
             let input_chunks = bytes.random_chunks(incremental.chunk_size*2);
 
             let mut produced: Vec<[u8; 32]> = input_chunks.clone()
@@ -291,7 +339,7 @@ mod test {
                 .collect();
             produced.push(incremental.finalize().into());
 
-            let mut validating = new_incremental(&key, TEST_CHUNK_SIZE).validating(produced);
+            let mut validating = new_incremental(key, TEST_CHUNK_SIZE).validating(produced);
             for chunk in input_chunks.clone() {
                 validating.update(chunk).expect("update: validation should succeed");
             }
@@ -299,15 +347,47 @@ mod test {
         });
     }
 
+    const KIBIBYTES: usize = 1024;
+    const MEBIBYTES: usize = 1024 * KIBIBYTES;
+    const GIBIBYTES: usize = 1024 * MEBIBYTES;
+
     #[test]
-    fn chunk_sizes() {
+    fn chunk_sizes_sha256() {
         for (data_size, expected) in [
-            (1024, 1024),
-            (10 * 1024, MINIMUM_INCREMENTAL_CHUNK_SIZE),
-            (100 * 1024, MINIMUM_INCREMENTAL_CHUNK_SIZE),
-            (1024 * 1024, 65_536),
-            (10 * 1024 * 1024, 10 * 65_536),
-            (100 * 1024 * 1024, 100 * 65_536),
+            (0, MINIMUM_CHUNK_SIZE),
+            (KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (100 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (MEBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * MEBIBYTES, MINIMUM_CHUNK_SIZE),
+            (20 * MEBIBYTES, 80 * KIBIBYTES),
+            (100 * MEBIBYTES, 400 * KIBIBYTES),
+            (200 * MEBIBYTES, 800 * KIBIBYTES),
+            (256 * MEBIBYTES, MEBIBYTES),
+            (512 * MEBIBYTES, 2 * MEBIBYTES),
+            (GIBIBYTES, 2 * MEBIBYTES),
+            (2 * GIBIBYTES, 2 * MEBIBYTES),
+        ] {
+            let actual = calculate_chunk_size::<Sha256>(data_size);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn chunk_sizes_sha512() {
+        for (data_size, expected) in [
+            (0, MINIMUM_CHUNK_SIZE),
+            (KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (100 * KIBIBYTES, MINIMUM_CHUNK_SIZE),
+            (MEBIBYTES, MINIMUM_CHUNK_SIZE),
+            (10 * MEBIBYTES, 80 * KIBIBYTES),
+            (20 * MEBIBYTES, 160 * KIBIBYTES),
+            (100 * MEBIBYTES, 800 * KIBIBYTES),
+            (200 * MEBIBYTES, 1600 * KIBIBYTES),
+            (256 * MEBIBYTES, 2 * MEBIBYTES),
+            (512 * MEBIBYTES, 2 * MEBIBYTES),
+            (GIBIBYTES, 2 * MEBIBYTES),
         ] {
             let actual = calculate_chunk_size::<sha2::Sha512>(data_size);
             assert_eq!(actual, expected);
@@ -316,28 +396,18 @@ mod test {
 
     #[test]
     fn total_digest_size_is_never_too_big() {
-        proptest!(|(data_size in 256_usize..1_000_000_000)| {
+        fn total_digest_size(data_size: usize) -> usize {
             let chunk_size = calculate_chunk_size::<Sha256>(data_size);
-            let num_increments = std::cmp::max(1, (data_size + chunk_size - 1) / chunk_size);
-            let total_digest_size = num_increments * <Sha256 as OutputSizeUser>::OutputSize::USIZE;
-            assert!(total_digest_size <= MAXIMUM_INCREMENTAL_DIGEST_BYTES)
-        })
-    }
-
-    #[test]
-    fn chunk_size_is_never_larger_than_data_size() {
-        proptest!(|(data_size in 256_usize..1_000_000_000)| {
-            let chunk_size = calculate_chunk_size::<Sha256>(data_size);
-            assert!(chunk_size <= data_size)
-        })
-    }
-
-    #[test]
-    fn chunk_size_for_empty_input() {
-        assert_eq!(
-            MINIMUM_INCREMENTAL_CHUNK_SIZE,
-            calculate_chunk_size::<Sha256>(0)
-        );
+            let num_chunks = std::cmp::max(1, (data_size + chunk_size - 1) / chunk_size);
+            num_chunks * <Sha256 as OutputSizeUser>::OutputSize::USIZE
+        }
+        let config = ProptestConfig::with_cases(10_000);
+        proptest!(config, |(data_size in 256..256*MEBIBYTES)| {
+            assert!(total_digest_size(data_size) <= 8*KIBIBYTES)
+        });
+        proptest!(|(data_size_mib in 256_usize..2048)| {
+            assert!(total_digest_size(data_size_mib*MEBIBYTES) <= 32*KIBIBYTES)
+        });
     }
 
     #[derive(Clone)]

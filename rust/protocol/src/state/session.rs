@@ -5,6 +5,7 @@
 
 use std::convert::TryInto;
 use std::result::Result;
+use std::time::{Duration, SystemTime};
 
 use prost::Message;
 use subtle::ConstantTimeEq;
@@ -39,6 +40,7 @@ pub(crate) struct UnacknowledgedPreKeyMessageItems<'a> {
     base_key: PublicKey,
     kyber_pre_key_id: Option<KyberPreKeyId>,
     kyber_ciphertext: Option<&'a [u8]>,
+    timestamp: SystemTime,
 }
 
 impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
@@ -47,6 +49,7 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
         signed_pre_key_id: SignedPreKeyId,
         base_key: PublicKey,
         pending_kyber_pre_key: Option<&'a session_structure::PendingKyberPreKey>,
+        timestamp: SystemTime,
     ) -> Self {
         let (kyber_pre_key_id, kyber_ciphertext) = pending_kyber_pre_key
             .map(|pending| (pending.pre_key_id.into(), pending.ciphertext.as_slice()))
@@ -57,6 +60,7 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
             base_key,
             kyber_pre_key_id,
             kyber_ciphertext,
+            timestamp,
         }
     }
 
@@ -79,6 +83,10 @@ impl<'a> UnacknowledgedPreKeyMessageItems<'a> {
     pub(crate) fn kyber_ciphertext(&self) -> Option<&'a [u8]> {
         self.kyber_ciphertext
     }
+
+    pub(crate) fn timestamp(&self) -> SystemTime {
+        self.timestamp
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -96,12 +104,13 @@ impl SessionState {
         our_identity: &IdentityKey,
         their_identity: &IdentityKey,
         root_key: &RootKey,
+        alice_base_key: &PublicKey,
     ) -> Self {
         Self {
             session: SessionStructure {
                 session_version: version as u32,
-                local_identity_public: our_identity.public_key().serialize().to_vec(),
-                remote_identity_public: their_identity.serialize().to_vec(),
+                local_identity_public: our_identity.public_key().serialize().into_vec(),
+                remote_identity_public: their_identity.serialize().into_vec(),
                 root_key: root_key.key().to_vec(),
                 previous_counter: 0,
                 sender_chain: None,
@@ -110,7 +119,7 @@ impl SessionState {
                 pending_kyber_pre_key: None,
                 remote_registration_id: 0,
                 local_registration_id: 0,
-                alice_base_key: vec![],
+                alice_base_key: alice_base_key.serialize().into_vec(),
             },
         }
     }
@@ -118,11 +127,6 @@ impl SessionState {
     pub(crate) fn alice_base_key(&self) -> &[u8] {
         // Check the length before returning?
         &self.session.alice_base_key
-    }
-
-    pub(crate) fn set_alice_base_key(&mut self, key: &[u8]) {
-        // Should we check the length?
-        self.session.alice_base_key = key.to_vec();
     }
 
     pub(crate) fn session_version(&self) -> Result<u32, InvalidSessionError> {
@@ -208,8 +212,18 @@ impl SessionState {
         }
     }
 
-    pub fn has_sender_chain(&self) -> Result<bool, InvalidSessionError> {
-        Ok(self.session.sender_chain.is_some())
+    pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, InvalidSessionError> {
+        if self.session.sender_chain.is_none() {
+            return Ok(false);
+        }
+        if let Some(pending_pre_key) = &self.session.pending_pre_key {
+            let creation_timestamp =
+                SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp);
+            if creation_timestamp + consts::MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     pub(crate) fn all_receiver_chain_logging_info(&self) -> Vec<(Vec<u8>, Option<u32>)> {
@@ -449,12 +463,17 @@ impl SessionState {
         pre_key_id: Option<PreKeyId>,
         signed_ec_pre_key_id: SignedPreKeyId,
         base_key: &PublicKey,
+        now: SystemTime,
     ) {
         let signed_ec_pre_key_id: u32 = signed_ec_pre_key_id.into();
         let pending = session_structure::PendingPreKey {
             pre_key_id: pre_key_id.map(PreKeyId::into),
             signed_pre_key_id: signed_ec_pre_key_id as i32,
             base_key: base_key.serialize().to_vec(),
+            timestamp: now
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         };
         self.session.pending_pre_key = Some(pending);
     }
@@ -472,7 +491,7 @@ impl SessionState {
         &mut self,
         signed_kyber_pre_key_id: KyberPreKeyId,
     ) {
-        let mut pending = self
+        let pending = self
             .session
             .pending_kyber_pre_key
             .as_mut()
@@ -490,6 +509,7 @@ impl SessionState {
                 PublicKey::deserialize(&pending_pre_key.base_key)
                     .map_err(|_| InvalidSessionError("invalid pending PreKey message base key"))?,
                 self.session.pending_kyber_pre_key.as_ref(),
+                SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp),
             )))
         } else {
             Ok(None)
@@ -573,17 +593,6 @@ impl SessionRecord {
         })
     }
 
-    pub fn from_single_session_state(bytes: &[u8]) -> Result<Self, SignalProtocolError> {
-        let session = SessionState::from_session_structure(
-            SessionStructure::decode(bytes)
-                .map_err(|_| InvalidSessionError("failed to decode session state protobuf"))?,
-        );
-        Ok(Self {
-            current_session: Some(session),
-            previous_sessions: Vec::new(),
-        })
-    }
-
     pub(crate) fn has_session_state(
         &self,
         version: u32,
@@ -609,10 +618,6 @@ impl SessionRecord {
         }
 
         Ok(false)
-    }
-
-    pub fn has_current_session_state(&self) -> bool {
-        self.current_session.is_some()
     }
 
     pub(crate) fn session_state(&self) -> Option<&SessionState> {
@@ -734,9 +739,9 @@ impl SessionRecord {
             .remote_identity_key_bytes()?)
     }
 
-    pub fn has_sender_chain(&self) -> Result<bool, SignalProtocolError> {
+    pub fn has_usable_sender_chain(&self, now: SystemTime) -> Result<bool, SignalProtocolError> {
         match &self.current_session {
-            Some(session) => Ok(session.has_sender_chain()?),
+            Some(session) => Ok(session.has_usable_sender_chain(now)?),
             None => Ok(false),
         }
     }

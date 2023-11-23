@@ -6,7 +6,9 @@ pluginManagement {
     }
 }
 
-include ':client', ':server'
+rootProject.name = 'libsignal'
+
+include ':client', ':server', ':shared'
 
 if (hasProperty('skipAndroid')) {
     // Do nothing

@@ -24,22 +24,37 @@ class IncrementalMacTests: TestCaseBase {
 
     func testIncrementalValidationSuccess() throws {
         let mac = try ValidatingMacContext(key: TEST_KEY, chunkSize: CHUNK_SIZE, expectingDigest: TEST_DIGEST)
-        for d in TEST_INPUT {
-            XCTAssertNoThrow { try mac.update(d) }
-        }
-        XCTAssertNoThrow { try mac.finalize() }
+            for d in TEST_INPUT {
+                _ = try mac.update(d)
+            }
+        _ = try mac.finalize()
     }
 
-    func testIncrementalValidationFailure() throws {
+    func testNoBytesCanBeConsumedWithoutValidation() throws {
+        var corruptInput = TEST_INPUT
+        corruptInput[0][1] ^= 0xff
+
+        let mac = try ValidatingMacContext(key: TEST_KEY, chunkSize: CHUNK_SIZE, expectingDigest: TEST_DIGEST)
+        XCTAssertEqual(0, try mac.update(corruptInput[0]))
+        do {
+            _ = try mac.update(corruptInput[1])
+            XCTFail("Should have failed")
+        } catch SignalError.verificationFailed {
+        } catch {
+            XCTFail("Unexpected error thrown")
+        }
+    }
+
+    func testIncrementalValidationFailureInFinalize() throws {
         var corruptInput = TEST_INPUT
         corruptInput[2][0] ^= 0xff
 
         let mac = try ValidatingMacContext(key: TEST_KEY, chunkSize: CHUNK_SIZE, expectingDigest: TEST_DIGEST)
-        for d in corruptInput {
-            try mac.update(d)
-        }
+        XCTAssertEqual(0, try mac.update(corruptInput[0]))
+        XCTAssertEqual(32, try mac.update(corruptInput[1]))
+        XCTAssertEqual(0, try mac.update(corruptInput[2]))
         do {
-            try mac.finalize()
+            _ = try mac.finalize()
             XCTFail("Should have failed")
         } catch SignalError.verificationFailed {
         } catch {

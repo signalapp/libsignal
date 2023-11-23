@@ -1,21 +1,23 @@
+//
+// Copyright 2023 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 package org.signal.libsignal.metadata.certificate;
 
+import java.util.Optional;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-
-import org.signal.libsignal.protocol.ecc.ECPublicKey;
-import org.signal.libsignal.protocol.InvalidKeyException;
-import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ServiceId;
-
-import java.util.Optional;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 public class SenderCertificate implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
-  @Override @SuppressWarnings("deprecation")
+  @Override
+  @SuppressWarnings("deprecation")
   protected void finalize() {
-     Native.SenderCertificate_Destroy(this.unsafeHandle);
+    Native.SenderCertificate_Destroy(this.unsafeHandle);
   }
 
   public long unsafeNativeHandleWithoutGuard() {
@@ -36,7 +38,8 @@ public class SenderCertificate implements NativeHandleGuard.Owner {
 
   public ServerCertificate getSigner() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ServerCertificate(Native.SenderCertificate_GetServerCertificate(guard.nativeHandle()));
+      return new ServerCertificate(
+          Native.SenderCertificate_GetServerCertificate(guard.nativeHandle()));
     }
   }
 
@@ -71,7 +74,7 @@ public class SenderCertificate implements NativeHandleGuard.Owner {
   /**
    * Returns an ACI if the sender is a valid UUID, {@code null} otherwise.
    *
-   * In a future release SenderCertificate will <em>only</em> support ACIs.
+   * <p>In a future release SenderCertificate will <em>only</em> support ACIs.
    */
   public ServiceId.Aci getSenderAci() {
     try {

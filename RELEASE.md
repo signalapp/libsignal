@@ -60,13 +60,9 @@ git push origin libsignal-v0.x.y
 
 ## 6. Submit to package repositories as needed
 
-### Android: Sonatype
+### Android and Server: Sonatype
 
-1. Wait for the "Publish JNI Artifacts to GitHub Release" action to complete. These artifacts, though not built reproducibly, will be included in the `libsignal-client` and `libsignal-server` jars to support running on macOS and Windows as well.
-2. Set the environment variables `SONATYPE_USERNAME`, `SONATYPE_PASSWORD`, `KEYRING_FILE`, `SIGNING_KEY`, and `SIGNING_KEY_PASSSWORD`.
-3. Run `make -C java publish_java` to build through Docker.
-
-Note that Sonatype is pretty slow; even after the build completes it might take a while for it to show up.
+In the signalapp/libsignal repository on GitHub, run the "Upload Java libraries to Sonatype" action on the tag you just made. Once complete, go into Sonatype and release the builds.
 
 ### Node: NPM
 

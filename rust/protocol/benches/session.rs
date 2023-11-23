@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
@@ -133,6 +135,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         &mut alice_store.session_store,
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
+        SystemTime::now(),
         &mut OsRng,
     )
     .now_or_never()

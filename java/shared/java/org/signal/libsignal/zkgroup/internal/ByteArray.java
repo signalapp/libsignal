@@ -5,10 +5,9 @@
 
 package org.signal.libsignal.zkgroup.internal;
 
-import org.signal.libsignal.zkgroup.InvalidInputException;
-
 import java.util.Arrays;
 import java.util.Locale;
+import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public abstract class ByteArray {
 
@@ -22,9 +21,15 @@ public abstract class ByteArray {
     this.contents = cloneArrayOfLength(contents, expectedLength);
   }
 
-  private static byte[] cloneArrayOfLength(byte[] bytes, int expectedLength) throws InvalidInputException {
+  private static byte[] cloneArrayOfLength(byte[] bytes, int expectedLength)
+      throws InvalidInputException {
     if (bytes.length != expectedLength) {
-      throw new InvalidInputException(String.format(Locale.US, "Length of array supplied was %d expected %d", bytes.length, expectedLength));
+      throw new InvalidInputException(
+          String.format(
+              Locale.US,
+              "Length of array supplied was %d expected %d",
+              bytes.length,
+              expectedLength));
     }
 
     return bytes.clone();

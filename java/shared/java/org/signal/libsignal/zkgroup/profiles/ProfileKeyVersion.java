@@ -5,9 +5,8 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
-import org.signal.libsignal.zkgroup.InvalidInputException;
-import org.signal.libsignal.zkgroup.internal.ByteArray;
 import java.io.UnsupportedEncodingException;
+import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public final class ProfileKeyVersion {
 
@@ -20,7 +19,8 @@ public final class ProfileKeyVersion {
     this.contents = contents.clone();
   }
 
-  public ProfileKeyVersion(String contents) throws InvalidInputException, UnsupportedEncodingException {
+  public ProfileKeyVersion(String contents)
+      throws InvalidInputException, UnsupportedEncodingException {
     this(contents.getBytes("UTF-8"));
   }
 
@@ -31,5 +31,4 @@ public final class ProfileKeyVersion {
       throw new AssertionError();
     }
   }
-
 }

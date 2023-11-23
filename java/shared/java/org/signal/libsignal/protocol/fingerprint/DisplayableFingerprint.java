@@ -1,11 +1,9 @@
-/**
- * Copyright (C) 2016 Open Whisper Systems
- *
- * Licensed according to the LICENSE file in this repository.
- */
-package org.signal.libsignal.protocol.fingerprint;
+//
+// Copyright 2016 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
 
-import org.signal.libsignal.internal.Native;
+package org.signal.libsignal.protocol.fingerprint;
 
 public class DisplayableFingerprint {
   private String displayString;
@@ -17,5 +15,4 @@ public class DisplayableFingerprint {
   public String getDisplayText() {
     return this.displayString;
   }
-
 }

@@ -40,7 +40,7 @@ impl From<JavaLogLevel> for jint {
     }
 }
 
-impl From<JavaLogLevel> for JValue<'_> {
+impl From<JavaLogLevel> for JValue<'_, '_> {
     fn from(level: JavaLogLevel) -> Self {
         Self::Int(level.into())
     }
@@ -73,7 +73,7 @@ impl JniLogger {
     }
 
     fn log_impl(&self, record: &log::Record) -> jni::errors::Result<()> {
-        let env = self.vm.attach_current_thread()?;
+        let mut env = self.vm.attach_current_thread()?;
         let level: JavaLogLevel = record.level().into();
         let message = format!(
             "{}:{}: {}",
@@ -81,10 +81,12 @@ impl JniLogger {
             record.line().unwrap_or(0),
             record.args(),
         );
+        let message = env.new_string(message)?;
+        let module = env.new_string("libsignal")?;
         let args = jni_args!((
             level.into() => int,
-            env.new_string("libsignal")? => java.lang.String,
-            env.new_string(message)? => java.lang.String,
+            module => java.lang.String,
+            message => java.lang.String,
         ) -> void);
         let result = env.call_static_method(&self.logger_class, "log", args.sig, &args.args);
 

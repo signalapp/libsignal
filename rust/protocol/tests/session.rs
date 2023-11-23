@@ -8,6 +8,7 @@ use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use std::convert::TryFrom;
+use std::time::{Duration, SystemTime};
 use support::*;
 
 type TestResult = Result<(), SignalProtocolError>;
@@ -65,6 +66,7 @@ fn test_basic_prekey() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -148,6 +150,7 @@ fn test_basic_prekey() -> TestResult {
                 &mut alter_alice_store.session_store,
                 &mut alter_alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -204,6 +207,7 @@ fn test_basic_prekey() -> TestResult {
                 &mut alter_alice_store.session_store,
                 &mut alter_alice_store.identity_store,
                 &bad_bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await
@@ -252,6 +256,7 @@ fn test_chain_jump_over_limit() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -317,6 +322,7 @@ fn test_chain_jump_over_limit_with_self() -> TestResult {
                 &mut a1_store.session_store,
                 &mut a1_store.identity_store,
                 &a2_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -374,7 +380,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
 
             let bad_bundle = good_bundle
                 .clone()
-                .modify(|mut content| content.ec_pre_key_signature = Some(bad_signature))
+                .modify(|content| content.ec_pre_key_signature = Some(bad_signature))
                 .expect("can recreate the bundle");
 
             assert!(process_prekey_bundle(
@@ -382,6 +388,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bad_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await
@@ -394,6 +401,7 @@ fn test_bad_signed_pre_key_signature() -> TestResult {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &good_bundle,
+            SystemTime::now(),
             &mut csprng,
         )
         .await?;
@@ -446,6 +454,7 @@ fn test_repeat_bundle_message() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -581,6 +590,7 @@ fn test_bad_message_bundle() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -678,6 +688,7 @@ fn test_optional_one_time_prekey() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -848,6 +859,7 @@ fn test_basic_simultaneous_initiate() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -857,6 +869,7 @@ fn test_basic_simultaneous_initiate() -> TestResult {
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &alice_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1020,6 +1033,7 @@ fn test_simultaneous_initiate_with_lossage() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1029,6 +1043,7 @@ fn test_simultaneous_initiate_with_lossage() -> TestResult {
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &alice_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1172,6 +1187,7 @@ fn test_simultaneous_initiate_lost_message() -> TestResult {
                 &mut alice_store.session_store,
                 &mut alice_store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1181,6 +1197,7 @@ fn test_simultaneous_initiate_lost_message() -> TestResult {
                 &mut bob_store.session_store,
                 &mut bob_store.identity_store,
                 &alice_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1330,6 +1347,7 @@ fn test_simultaneous_initiate_repeated_messages() -> TestResult {
                     &mut alice_store_builder.store.session_store,
                     &mut alice_store_builder.store.identity_store,
                     &bob_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1339,6 +1357,7 @@ fn test_simultaneous_initiate_repeated_messages() -> TestResult {
                     &mut bob_store_builder.store.session_store,
                     &mut bob_store_builder.store.identity_store,
                     &alice_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1584,6 +1603,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
                 &mut alice_store_builder.store.session_store,
                 &mut alice_store_builder.store.identity_store,
                 &bob_pre_key_bundle,
+                SystemTime::now(),
                 &mut csprng,
             )
             .await?;
@@ -1608,6 +1628,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
                     &mut alice_store_builder.store.session_store,
                     &mut alice_store_builder.store.identity_store,
                     &bob_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1617,6 +1638,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
                     &mut bob_store_builder.store.session_store,
                     &mut bob_store_builder.store.identity_store,
                     &alice_pre_key_bundle,
+                    SystemTime::now(),
                     &mut csprng,
                 )
                 .await?;
@@ -1892,6 +1914,7 @@ fn test_zero_is_a_valid_prekey_id() -> TestResult {
             &mut alice_store.session_store,
             &mut alice_store.identity_store,
             &bob_pre_key_bundle,
+            SystemTime::now(),
             &mut csprng,
         )
         .await?;
@@ -1928,6 +1951,94 @@ fn test_zero_is_a_valid_prekey_id() -> TestResult {
         assert_eq!(
             String::from_utf8(ptext).expect("valid utf8"),
             original_message
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
+    async {
+        const WELL_PAST_EXPIRATION: Duration = Duration::from_secs(60 * 60 * 24 * 90);
+
+        let mut csprng = OsRng;
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
+
+        let mut alice_store = TestStoreBuilder::new().store;
+        let bob_store_builder = TestStoreBuilder::new()
+            .with_pre_key(0.into())
+            .with_signed_pre_key(0.into())
+            .with_kyber_pre_key(0.into());
+
+        let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(1.into());
+
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            SystemTime::UNIX_EPOCH,
+            &mut csprng,
+        )
+        .await?;
+
+        let initial_session = alice_store
+            .session_store
+            .load_session(&bob_address)
+            .await
+            .expect("session can be loaded")
+            .expect("session exists");
+        assert!(initial_session
+            .has_usable_sender_chain(SystemTime::UNIX_EPOCH)
+            .expect("can check for a sender chain"));
+        assert!(!initial_session
+            .has_usable_sender_chain(SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION)
+            .expect("can check for a sender chain"));
+
+        let original_message = "L'homme est condamné à être libre";
+        let outgoing_message = message_encrypt(
+            original_message.as_bytes(),
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        )
+        .await?;
+
+        assert_eq!(
+            outgoing_message.message_type(),
+            CiphertextMessageType::PreKey
+        );
+
+        let updated_session = alice_store
+            .session_store
+            .load_session(&bob_address)
+            .await
+            .expect("session can be loaded")
+            .expect("session exists");
+        assert!(updated_session
+            .has_usable_sender_chain(SystemTime::UNIX_EPOCH)
+            .expect("can check for a sender chain"));
+        assert!(!updated_session
+            .has_usable_sender_chain(SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION)
+            .expect("can check for a sender chain"));
+
+        let error = message_encrypt(
+            original_message.as_bytes(),
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            SystemTime::UNIX_EPOCH + WELL_PAST_EXPIRATION,
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            matches!(&error, SignalProtocolError::SessionNotFound(addr) if addr == &bob_address),
+            "{:?}",
+            error
         );
 
         Ok(())

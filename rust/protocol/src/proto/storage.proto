@@ -33,6 +33,7 @@ message SessionStructure {
     optional uint32 pre_key_id        = 1;
              int32  signed_pre_key_id = 3;
              bytes  base_key          = 2;
+             uint64 timestamp         = 4;
   }
 
   message PendingKyberPreKey {
