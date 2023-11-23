@@ -143,6 +143,7 @@ jobs:
       working-directory: java
       env:
         ORG_GRADLE_PROJECT_sonatypeRepo: ${{ secrets.SONATYPE_REPO }}
+        ORG_GRADLE_PROJECT_sonatypeSnapshotRepo: ${{ secrets.SONATYPE_SNAPSHOT_REPO }}
         ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USER }}
         ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
         ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.SIGNING_KEYID }}

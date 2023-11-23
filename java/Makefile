@@ -31,6 +31,7 @@ publish_java: docker_image
 	$(DOCKER) run --rm --user $$(id -u):$$(id -g) \
 		-v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) \
 		-e ORG_GRADLE_PROJECT_sonatypeRepo \
+		-e ORG_GRADLE_PROJECT_sonatypeSnapshotRepo \
 		-e ORG_GRADLE_PROJECT_sonatypeUsername \
 		-e ORG_GRADLE_PROJECT_sonatypePassword \
 		-e ORG_GRADLE_PROJECT_signingKeyId \

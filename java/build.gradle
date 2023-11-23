@@ -84,7 +84,8 @@ ext.setUpSigningKey = { signingExt ->
 nexusPublishing {
     repositories {
         gluonNexus {
-            nexusUrl = uri(project.findProperty('sonatypeRepo') ?: "https://oss.sonatype.org/service/local/staging/deploy/maven2/")
+            nexusUrl = uri(project.findProperty('sonatypeRepo') ?: "https://oss.sonatype.org/service/local/")
+            snapshotRepositoryUrl  = uri(project.findProperty('sonatypeSnapshotRepo') ?: "https://oss.sonatype.org/content/repositories/snapshots/")
             username = project.findProperty('sonatypeUsername') ?: ""
             password = project.findProperty('sonatypePassword') ?: ""
         }
