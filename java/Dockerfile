@@ -81,7 +81,8 @@ RUN    apt-get install -y \
                git \
                gpg-agent \
                libclang-dev \
-               make
+               make \
+               protobuf-compiler
 USER libsignal
 
 # Convert ssh to https for git dependency access without a key.
