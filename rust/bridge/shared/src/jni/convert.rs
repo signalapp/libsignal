@@ -1139,15 +1139,6 @@ macro_rules! jni_result_type {
     (Pni) => {
         jni::JByteArray<'local>
     };
-    (ServiceId) => {
-        jni::jbyteArray
-    };
-    (Aci) => {
-        jni::jbyteArray
-    };
-    (Pni) => {
-        jni::jbyteArray
-    };
     (Option<$typ:tt>) => {
         jni_result_type!($typ)
     };
