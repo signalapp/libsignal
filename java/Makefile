@@ -37,7 +37,7 @@ publish_java: docker_image
 		-e ORG_GRADLE_PROJECT_signingPassword \
 		-e ORG_GRADLE_PROJECT_signingKey \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew publish -PskipSigning -PskipAndroid closeSonatypeStagingRepository"
+		sh -c "cd src/java; ./gradlew publish -PskipSigning -PskipAndroid"
 
 # We could run these through Docker, but they would have the same result anyway.
 
