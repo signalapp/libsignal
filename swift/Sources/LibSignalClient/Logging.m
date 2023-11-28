@@ -6,22 +6,27 @@
 #import "signal_ffi.h"
 #import <SignalCoreKit/OWSLogs.h>
 
-static bool isEnabled(const char *_Nonnull target, SignalLogLevel level)
+static DDLogFlag flagForLevel(SignalLogLevel level)
 {
     switch (level) {
         case SignalLogLevelError:
-            return ShouldLogError();
+            return DDLogFlagError;
         case SignalLogLevelWarn:
-            return ShouldLogWarning();
+            return DDLogFlagWarning;
         case SignalLogLevelInfo:
-            return ShouldLogInfo();
+            return DDLogFlagInfo;
         case SignalLogLevelDebug:
-            return ShouldLogDebug();
+            return DDLogFlagDebug;
         case SignalLogLevelTrace:
-            return ShouldLogVerbose();
+            return DDLogFlagVerbose;
         default:
-            return ShouldLogError();
+            return DDLogFlagError;
     }
+}
+
+static bool isEnabled(const char *_Nonnull target, SignalLogLevel level)
+{
+    return ShouldLogFlag(flagForLevel(level));
 }
 
 static void logMessage(const char *_Nonnull target,
@@ -33,35 +38,7 @@ static void logMessage(const char *_Nonnull target,
     if (!isEnabled(target, level)) {
         return;
     }
-
-    // We're not using OWSLog* directly because we don't want log() to be the source of the log.
-    NSString *formattedMessage;
-    if (file) {
-        formattedMessage = [NSString stringWithFormat:@"[%s:%u] %s", file, line, message];
-    } else {
-        formattedMessage = [NSString stringWithUTF8String:message];
-    }
-
-    switch (level) {
-        case SignalLogLevelError:
-            [OWSLogger error:formattedMessage];
-            break;
-        case SignalLogLevelWarn:
-            [OWSLogger warn:formattedMessage];
-            break;
-        case SignalLogLevelInfo:
-            [OWSLogger info:formattedMessage];
-            break;
-        case SignalLogLevelDebug:
-            [OWSLogger debug:formattedMessage];
-            break;
-        case SignalLogLevelTrace:
-            [OWSLogger verbose:formattedMessage];
-            break;
-        default:
-            [OWSLogger error:formattedMessage];
-            break;
-    }
+    OWSLogUnconditionally(flagForLevel(level), file ?: "", NO, line, "", @"%s", message);
 }
 
 static void flush()
