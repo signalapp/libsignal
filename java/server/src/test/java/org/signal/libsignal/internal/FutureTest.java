@@ -9,104 +9,9 @@ import static org.junit.Assert.*;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 import org.junit.Test;
 
 public class FutureTest {
-  @Test
-  public void testInitialState() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    assertFalse(future.isDone());
-    assertFalse(future.isCancelled());
-  }
-
-  @Test
-  public void testTimeout() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    assertThrows(TimeoutException.class, () -> future.get(1, TimeUnit.MILLISECONDS));
-  }
-
-  @Test
-  public void testSuccess() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    future.complete(42);
-    assertTrue(future.isDone());
-    assertFalse(future.isCancelled());
-    assertEquals(42, (int) future.get());
-    assertEquals(42, (int) future.get(1, TimeUnit.MILLISECONDS));
-  }
-
-  @Test
-  public void testFailure() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    Exception exception = new RuntimeException("oh no");
-    future.completeExceptionally(exception);
-    assertTrue(future.isDone());
-    assertFalse(future.isCancelled());
-    ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
-    assertEquals(exception, e.getCause());
-  }
-
-  @Test
-  public void testThenApplySuccess() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    CompletableFuture<Boolean> chained = future.thenApply((Integer i) -> (i == 0));
-    assertFalse(chained.isDone());
-    future.complete(21);
-    assertTrue(chained.isDone());
-    assertEquals(false, chained.get());
-  }
-
-  @Test
-  public void testThenApplyFailure() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    CompletableFuture<Boolean> chained = future.thenApply((Integer i) -> (i == 0));
-    Exception exception = new RuntimeException("error!");
-    assertFalse(chained.isDone());
-    future.completeExceptionally(exception);
-
-    assertTrue(chained.isDone());
-    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
-    assertEquals(exception, e.getCause());
-  }
-
-  private class CountingFunction<T, U> implements Function<T, U> {
-    public CountingFunction(Function<T, U> f) {
-      this.f = f;
-    }
-
-    public U apply(T value) {
-      this.applicationCount++;
-      return this.f.apply(value);
-    }
-
-    public long getApplicationCount() {
-      return this.applicationCount;
-    }
-
-    private long applicationCount = 0;
-    private Function<T, U> f;
-  }
-
-  @Test
-  public void testThenApplyOnceFirstCompletionOnly() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    CountingFunction<Integer, Boolean> function = new CountingFunction<>((Integer i) -> (i == 0));
-    CompletableFuture<Boolean> chained = future.thenApply(function);
-
-    assertFalse(chained.isDone());
-    future.complete(55);
-
-    assertTrue(chained.isDone());
-    future.complete(33);
-    future.complete(0);
-
-    assertEquals(false, chained.get());
-    assertEquals(function.getApplicationCount(), 1);
-  }
-
   @Test
   public void testSuccessFromRust() throws Exception {
     Future<Integer> future = Native.TESTING_FutureSuccess(1, 21);
@@ -118,44 +23,5 @@ public class FutureTest {
     Future<Integer> future = Native.TESTING_FutureFailure(1, 21);
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertTrue(e.getCause() instanceof IllegalArgumentException);
-  }
-
-  // These multi-threaded tests are inherently racy in whether they actually have one thread wait()
-  // and the other notify(). The observable behavior shouldn't be different, though.
-
-  @Test
-  public void testSuccessMultiThreaded() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-
-    new Thread(
-            () -> {
-              try {
-                Thread.sleep(200);
-              } catch (InterruptedException e) {
-              }
-              future.complete(42);
-            })
-        .start();
-
-    assertEquals(42, (int) future.get());
-  }
-
-  @Test
-  public void testFailureMultiThreaded() throws Exception {
-    CompletableFuture<Integer> future = new CompletableFuture<>();
-    Exception exception = new RuntimeException("oh no");
-
-    new Thread(
-            () -> {
-              try {
-                Thread.sleep(200);
-              } catch (InterruptedException e) {
-              }
-              future.completeExceptionally(exception);
-            })
-        .start();
-
-    ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
-    assertEquals(exception, e.getCause());
   }
 }

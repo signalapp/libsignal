@@ -103,12 +103,36 @@ public class CompletableFuture<T> implements Future<T> {
     return get();
   }
 
+  /**
+   * Returns a future that will complete with the applied function applied to this future's
+   * completion value.
+   *
+   * <p>If this future completes exceptionally, the exception will be propagated to the returned
+   * future. If this future completes normally but the applied function throws, the returned future
+   * will complete exceptionally with the thrown exception.
+   */
   public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> fn) {
     CompletableFuture<U> future = new CompletableFuture<>();
     ThenApplyCompleter completer = new ThenApplyCompleter(future, fn);
 
+    T result;
+    Throwable exception;
     synchronized (this) {
-      this.consumers.add(completer);
+      if (!this.completed) {
+        this.consumers.add(completer);
+        return future;
+      }
+      result = this.result;
+      exception = this.exception;
+    }
+
+    // If this future has already completed, perform the appropriate action now.
+    // This is done outside of the synchronized block to prevent deadlocks and
+    // holding the lock for a potentially long period.
+    if (exception != null) {
+      completer.completeExceptionally.accept(exception);
+    } else {
+      completer.complete.accept(result);
     }
 
     return future;
@@ -119,7 +143,14 @@ public class CompletableFuture<T> implements Future<T> {
         CompletableFuture<U> future, Function<? super T, ? extends U> fn) {
       this.complete =
           (T value) -> {
-            future.complete(fn.apply(value));
+            U output;
+            try {
+              output = fn.apply(value);
+            } catch (Exception e) {
+              future.completeExceptionally(e);
+              return;
+            }
+            future.complete(output);
           };
       this.completeExceptionally =
           (Throwable throwable) -> {
