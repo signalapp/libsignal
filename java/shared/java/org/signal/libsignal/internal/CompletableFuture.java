@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -20,7 +21,7 @@ public class CompletableFuture<T> implements Future<T> {
   private boolean completed;
   private T result;
   private Throwable exception;
-  private List<ThenApplyCompleter> consumers;
+  private List<ThenApplyCompleter<T>> consumers;
 
   public CompletableFuture() {
     this.consumers = new ArrayList<>();
@@ -50,7 +51,7 @@ public class CompletableFuture<T> implements Future<T> {
 
     notifyAll();
 
-    for (ThenApplyCompleter completer : this.consumers) {
+    for (ThenApplyCompleter<T> completer : this.consumers) {
       completer.complete.accept(result);
     }
 
@@ -69,7 +70,7 @@ public class CompletableFuture<T> implements Future<T> {
 
     notifyAll();
 
-    for (ThenApplyCompleter completer : this.consumers) {
+    for (ThenApplyCompleter<T> completer : this.consumers) {
       completer.completeExceptionally.accept(throwable);
     }
 
@@ -112,15 +113,65 @@ public class CompletableFuture<T> implements Future<T> {
    * will complete exceptionally with the thrown exception.
    */
   public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> fn) {
-    CompletableFuture<U> future = new CompletableFuture<>();
-    ThenApplyCompleter completer = new ThenApplyCompleter(future, fn);
+    return this.addChainedFuture(
+        (CompletableFuture<U> future, T value) -> {
+          U output;
+          try {
+            output = fn.apply(value);
+          } catch (Exception e) {
+            future.completeExceptionally(e);
+            return;
+          }
+          future.complete(output);
+        },
+        CompletableFuture::completeExceptionally);
+  }
 
+  /**
+   * Returns a future that will complete with the completion result of the future produced by
+   * applying a function to this future's completion value.
+   *
+   * <p>If this future completes exceptionally, the exception will be propagated to the returned
+   * future. If this future completes normally but the applied function throws, the returned future
+   * will complete exceptionally with the thrown exception. If the future produced by function
+   * application completes exceptionally, its error value will be propagated to the returned future.
+   */
+  public <U> CompletableFuture<U> thenCompose(
+      Function<? super T, ? extends CompletableFuture<U>> fn) {
+    return this.addChainedFuture(
+        (CompletableFuture<U> future, T value) -> {
+          CompletableFuture<? extends U> output;
+          try {
+            output = fn.apply(value);
+          } catch (Exception e) {
+            future.completeExceptionally(e);
+            return;
+          }
+          output.addCompleter(
+              new ThenApplyCompleter<>(future::complete, future::completeExceptionally));
+        },
+        CompletableFuture::completeExceptionally);
+  }
+
+  private <U> CompletableFuture<U> addChainedFuture(
+      BiConsumer<CompletableFuture<U>, T> complete,
+      BiConsumer<CompletableFuture<U>, Throwable> completeExceptionally) {
+    CompletableFuture<U> future = new CompletableFuture<>();
+    ThenApplyCompleter<T> completer =
+        new ThenApplyCompleter<T>(
+            (T value) -> complete.accept(future, value),
+            (Throwable exception) -> completeExceptionally.accept(future, exception));
+    this.addCompleter(completer);
+    return future;
+  }
+
+  private void addCompleter(ThenApplyCompleter<T> completer) {
     T result;
     Throwable exception;
     synchronized (this) {
       if (!this.completed) {
         this.consumers.add(completer);
-        return future;
+        return;
       }
       result = this.result;
       exception = this.exception;
@@ -134,31 +185,16 @@ public class CompletableFuture<T> implements Future<T> {
     } else {
       completer.complete.accept(result);
     }
-
-    return future;
   }
 
-  private class ThenApplyCompleter {
-    private <U> ThenApplyCompleter(
-        CompletableFuture<U> future, Function<? super T, ? extends U> fn) {
-      this.complete =
-          (T value) -> {
-            U output;
-            try {
-              output = fn.apply(value);
-            } catch (Exception e) {
-              future.completeExceptionally(e);
-              return;
-            }
-            future.complete(output);
-          };
-      this.completeExceptionally =
-          (Throwable throwable) -> {
-            future.completeExceptionally(throwable);
-          };
+  private static class ThenApplyCompleter<T> {
+    private ThenApplyCompleter(
+        Consumer<? super T> complete, Consumer<Throwable> completeExceptionally) {
+      this.complete = complete;
+      this.completeExceptionally = completeExceptionally;
     }
 
-    private Consumer<T> complete;
+    private Consumer<? super T> complete;
     private Consumer<Throwable> completeExceptionally;
   }
 }

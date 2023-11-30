@@ -179,6 +179,160 @@ public class CompletableFutureTest {
     assertEquals(function.getApplicationCount(), 1);
   }
 
+  @Test
+  public void testThenComposeSuccess() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>((Integer i) -> chainedResult);
+
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+    assertFalse(chained.isDone());
+    assertEquals(counting.getApplicationCount(), 0);
+
+    future.complete(21);
+    assertEquals(counting.getApplicationCount(), 1);
+    assertFalse(chained.isDone());
+
+    chainedResult.complete(true);
+    assertTrue(chained.isDone());
+    assertEquals(true, chained.get());
+  }
+
+  @Test
+  public void testThenComposeFailure() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>((Integer i) -> chainedResult);
+
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+    Exception exception = new RuntimeException("error!");
+
+    assertFalse(chained.isDone());
+    assertEquals(counting.getApplicationCount(), 0);
+    future.completeExceptionally(exception);
+
+    assertTrue(chained.isDone());
+    assertEquals(counting.getApplicationCount(), 0);
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testThenComposeAfterCompletion() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+
+    future.complete(21);
+
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>((Integer i) -> chainedResult);
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+
+    assertEquals(counting.getApplicationCount(), 1);
+    assertFalse(chained.isDone());
+
+    chainedResult.complete(false);
+
+    assertTrue(chained.isDone());
+    assertEquals(false, chained.get());
+  }
+
+  @Test
+  public void testThenComposeAfterExceptionalCompletion() {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    Exception exception = new RuntimeException("error!");
+    future.completeExceptionally(exception);
+
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>((Integer i) -> chainedResult);
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+
+    assertTrue(chained.isDone());
+    assertEquals(counting.getApplicationCount(), 0);
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testThenComposeAfterCompletionFunctionThrows() throws Exception {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    future.complete(21);
+
+    RuntimeException exception = new RuntimeException("error!");
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>(
+            (Integer i) -> {
+              throw exception;
+            });
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+
+    assertTrue(chained.isDone());
+    assertEquals(counting.getApplicationCount(), 1);
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testThenComposeAfterExceptionalCompletionFunctionThrows() {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    Exception exception = new RuntimeException("future error!");
+    future.completeExceptionally(exception);
+
+    CompletableFuture<Boolean> chained =
+        future.thenApply(
+            (Integer i) -> {
+              throw new RuntimeException("apply function error!");
+            });
+    assertTrue(chained.isDone());
+
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    // The function application error never gets thrown.
+    assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testThenComposeProducedFutureCompletesExceptionally() {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>((Integer i) -> chainedResult);
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+
+    future.complete(21);
+    assertEquals(counting.getApplicationCount(), 1);
+    assertFalse(chained.isDone());
+
+    Exception exception = new RuntimeException("future error!");
+    chainedResult.completeExceptionally(exception);
+
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    assertEquals(exception, e.getCause());
+  }
+
+  @Test
+  public void testThenComposeProducedFutureCompletesExceptionallyAfterSuccess() {
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+    future.complete(21);
+
+    CompletableFuture<Boolean> chainedResult = new CompletableFuture<>();
+    CountingFunction<Integer, CompletableFuture<Boolean>> counting =
+        new CountingFunction<>((Integer i) -> chainedResult);
+    CompletableFuture<Boolean> chained = future.thenCompose(counting);
+
+    assertEquals(counting.getApplicationCount(), 1);
+    assertFalse(chained.isDone());
+
+    Exception exception = new RuntimeException("future error!");
+    chainedResult.completeExceptionally(exception);
+
+    ExecutionException e = assertThrows(ExecutionException.class, () -> chained.get());
+    assertEquals(exception, e.getCause());
+  }
+
   // These multi-threaded tests are inherently racy in whether they actually have one thread wait()
   // and the other notify(). The observable behavior shouldn't be different, though.
 
