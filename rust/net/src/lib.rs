@@ -8,5 +8,4 @@ pub mod chat;
 pub mod env;
 pub mod infra;
 pub mod proto;
-
-mod utils;
+pub mod utils;

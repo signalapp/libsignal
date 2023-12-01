@@ -9,12 +9,16 @@ use std::num::ParseIntError;
 use std::time::Duration;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_net::cdsi::{self, AciAndAccessKey, LookupResponse};
+use libsignal_net::cdsi::{
+    self, AciAndAccessKey, Auth, CdsiConnection, ClientResponseCollector, LookupResponse, Token,
+};
 use libsignal_net::env::{CdsiEndpointConnection, Env};
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::infra::errors::NetError;
 use libsignal_net::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq};
+use libsignal_net::utils::timeout;
 use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::support::*;
@@ -207,23 +211,56 @@ fn LookupRequest_setReturnAcisWithoutUaks(
 
 bridge_handle!(LookupRequest, clone = false);
 
+pub struct CdsiLookup {
+    token: Token,
+    remaining: std::sync::Mutex<Option<ClientResponseCollector>>,
+}
+bridge_handle!(CdsiLookup, clone = false);
+
 #[bridge_io(TokioAsyncContext, ffi = false)]
-async fn CdsiLookup(
+async fn CdsiLookup_new(
     connection_manager: &ConnectionManager,
     username: String,
     password: String,
     request: &LookupRequest,
     timeout_millis: u32,
-) -> Result<LookupResponse, cdsi::Error> {
+) -> Result<CdsiLookup, cdsi::Error> {
     let request = std::mem::take(&mut *request.0.lock().expect("not poisoned"));
+    let auth = Auth { username, password };
 
-    cdsi::cdsi_lookup(
-        cdsi::Auth { username, password },
-        &connection_manager.cdsi,
-        request,
+    let connected = CdsiConnection::connect(&connection_manager.cdsi, auth).await?;
+    let (token, remaining_response) = timeout(
         Duration::from_millis(timeout_millis.into()),
+        cdsi::Error::Net(NetError::Timeout),
+        connected.send_request(request),
     )
-    .await
+    .await?;
+
+    Ok(CdsiLookup {
+        token,
+        remaining: std::sync::Mutex::new(Some(remaining_response)),
+    })
+}
+
+#[bridge_fn]
+fn CdsiLookup_token(lookup: &CdsiLookup) -> &[u8] {
+    &lookup.token.0
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false)]
+async fn CdsiLookup_complete(lookup: &CdsiLookup) -> Result<LookupResponse, cdsi::Error> {
+    let CdsiLookup {
+        token: _,
+        remaining,
+    } = lookup;
+
+    let remaining = remaining
+        .lock()
+        .expect("not poisoned")
+        .take()
+        .expect("not completed yet");
+
+    remaining.collect().await
 }
 
 #[cfg(test)]

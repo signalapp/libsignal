@@ -8,7 +8,25 @@ use std::time::Duration;
 
 use libsignal_net::cdsi::*;
 use libsignal_net::env::CdsiEndpointConnection;
+use libsignal_net::infra::errors::NetError;
 use tokio::io::AsyncBufReadExt as _;
+
+async fn cdsi_lookup(
+    auth: Auth,
+    cdsi: &impl CdsiConnectionParams,
+    request: LookupRequest,
+    timeout: Duration,
+) -> Result<LookupResponse, Error> {
+    let connected = CdsiConnection::connect(cdsi, auth).await?;
+    let (_token, remaining_response) = libsignal_net::utils::timeout(
+        timeout,
+        Error::Net(NetError::Timeout),
+        connected.send_request(request),
+    )
+    .await?;
+
+    remaining_response.collect().await
+}
 
 #[tokio::main]
 async fn main() {

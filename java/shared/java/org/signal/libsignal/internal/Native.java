@@ -158,7 +158,10 @@ public final class Native {
 
   public static native Map Cds2Metrics_extract(byte[] attestationMsg);
 
-  public static native CompletableFuture<Map> CdsiLookup(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
+  public static native void CdsiLookup_Destroy(long handle);
+  public static native CompletableFuture<Map> CdsiLookup_complete(long asyncRuntime, long lookup);
+  public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
+  public static native byte[] CdsiLookup_token(long lookup);
 
   public static native void ConnectionManager_Destroy(long handle);
   public static native long ConnectionManager_new(int environment);

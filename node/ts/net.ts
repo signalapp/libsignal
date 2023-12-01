@@ -71,13 +71,18 @@ export class Net {
       returnAcisWithoutUaks
     );
 
-    return await Native.CdsiLookup(
+    const lookup = await Native.CdsiLookup_new(
       { _nativeHandle: this._asyncContext },
       { _nativeHandle: this._connectionManager },
       username,
       password,
       request,
       timeout
+    );
+
+    return await Native.CdsiLookup_complete(
+      { _nativeHandle: this._asyncContext },
+      { _nativeHandle: lookup }
     );
   }
 }

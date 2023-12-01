@@ -7,11 +7,11 @@ package org.signal.libsignal.net;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.function.Function;
+import java.util.function.Consumer;
+import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
 
 public class Network {
   public enum Environment {
@@ -26,46 +26,71 @@ public class Network {
   }
 
   public Network(Environment env) {
-    this.asyncRuntimeHandle = Native.TokioAsyncContext_new();
-    this.connectionManagerHandle = Native.ConnectionManager_new(env.value);
+    this.tokioAsyncContext = new TokioAsyncContext();
+    this.connectionManager = new ConnectionManager(env);
   }
 
-  public Future<CdsiLookupResponse> cdsiLookup(
-      String username, String password, CdsiLookupRequest request, Duration timeout)
+  public CompletableFuture<CdsiLookupResponse> cdsiLookup(
+      String username,
+      String password,
+      CdsiLookupRequest request,
+      Duration timeout,
+      Consumer<byte[]> tokenConsumer)
       throws IOException, InterruptedException, ExecutionException {
-    int timeoutMillis;
-    try {
-      timeoutMillis = Math.toIntExact(timeout.toMillis());
-    } catch (ArithmeticException e) {
-      timeoutMillis = Integer.MAX_VALUE;
+    return CdsiLookup.start(this, username, password, request, timeout)
+        .thenCompose(
+            (CdsiLookup lookup) -> {
+              tokenConsumer.accept(lookup.getToken());
+              return lookup.complete();
+            });
+  }
+
+  TokioAsyncContext getAsyncContext() {
+    return this.tokioAsyncContext;
+  }
+
+  ConnectionManager getConnectionManager() {
+    return this.connectionManager;
+  }
+
+  class TokioAsyncContext implements NativeHandleGuard.Owner {
+    private long nativeHandle;
+
+    private TokioAsyncContext() {
+      this.nativeHandle = Native.TokioAsyncContext_new();
     }
 
-    CdsiLookupRequest.NativeRequest nativeRequest = request.makeNative();
+    @Override
+    public long unsafeNativeHandleWithoutGuard() {
+      return this.nativeHandle;
+    }
 
-    // The output from the bridging layer is untyped, but we're pretty sure it's
-    // a map from E164 strings to typed entries.
-    @SuppressWarnings("unchecked")
-    Function<Map, CdsiLookupResponse> convertResponse =
-        (Map untypedResult) ->
-            new CdsiLookupResponse((Map<String, CdsiLookupResponse.Entry>) (untypedResult));
-
-    return Native.CdsiLookup(
-            this.asyncRuntimeHandle,
-            this.connectionManagerHandle,
-            username,
-            password,
-            nativeRequest.getHandle(),
-            timeoutMillis)
-        .thenApply(convertResponse);
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void finalize() {
+      Native.TokioAsyncContext_Destroy(this.nativeHandle);
+    }
   }
 
-  @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.ConnectionManager_Destroy(this.connectionManagerHandle);
-    Native.TokioAsyncContext_Destroy(this.asyncRuntimeHandle);
+  class ConnectionManager implements NativeHandleGuard.Owner {
+    private long nativeHandle;
+
+    private ConnectionManager(Environment env) {
+      this.nativeHandle = Native.ConnectionManager_new(env.value);
+    }
+
+    @Override
+    public long unsafeNativeHandleWithoutGuard() {
+      return this.nativeHandle;
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void finalize() {
+      Native.ConnectionManager_Destroy(this.nativeHandle);
+    }
   }
 
-  private long asyncRuntimeHandle;
-  private long connectionManagerHandle;
+  private TokioAsyncContext tokioAsyncContext;
+  private ConnectionManager connectionManager;
 }

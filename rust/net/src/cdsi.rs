@@ -20,9 +20,8 @@ use crate::infra::ws::{
     connect_websocket, AttestedConnection, AttestedConnectionError, NextOrClose, WebSocket,
 };
 use crate::infra::TcpSslTransportConnector;
-
 use crate::proto::cds2::{ClientRequest, ClientResponse};
-use crate::utils::{basic_authorization, timeout};
+use crate::utils::basic_authorization;
 
 pub struct Auth {
     pub username: String,
@@ -141,6 +140,10 @@ impl LookupRequest {
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
+pub struct Token(pub Box<[u8]>);
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct LookupResponse {
     pub records: Vec<LookupResponseEntry>,
 }
@@ -154,7 +157,7 @@ pub struct LookupResponseEntry {
 }
 
 #[derive(Debug, PartialEq)]
-enum LookupResponseParseError {
+pub enum LookupResponseParseError {
     InvalidNumberOfBytes { actual_length: usize },
 }
 
@@ -166,8 +169,10 @@ impl From<LookupResponseParseError> for Error {
     }
 }
 
-impl LookupResponse {
-    fn try_from_response(response: ClientResponse) -> Result<Self, LookupResponseParseError> {
+impl TryFrom<ClientResponse> for LookupResponse {
+    type Error = LookupResponseParseError;
+
+    fn try_from(response: ClientResponse) -> Result<Self, Self::Error> {
         let ClientResponse {
             e164_pni_aci_triples,
             token: _,
@@ -262,12 +267,11 @@ impl RateLimitExceededResponse {
     const CLOSE_CODE: u16 = 4008;
 }
 
+pub struct ClientResponseCollector(CdsiConnection);
+
 impl CdsiConnection {
     /// Connect to remote host and verify remote attestation.
-    pub(crate) async fn connect(
-        env: &impl CdsiConnectionParams,
-        auth: Auth,
-    ) -> Result<Self, Error> {
+    pub async fn connect(env: &impl CdsiConnectionParams, auth: Auth) -> Result<Self, Error> {
         let Auth { username, password } = auth;
         let header_auth_decorator = crate::infra::HttpRequestDecorator::HeaderAuth(
             basic_authorization(&username, &password),
@@ -305,8 +309,11 @@ impl CdsiConnection {
         Ok(Self(attested))
     }
 
-    pub async fn send_request(&mut self, request: ClientRequest) -> Result<ClientResponse, Error> {
-        self.0.send(request).await?;
+    pub async fn send_request(
+        mut self,
+        request: LookupRequest,
+    ) -> Result<(Token, ClientResponseCollector), Error> {
+        self.0.send(request.into_client_request()).await?;
         let token_response: ClientResponse = match self.0.receive().await? {
             NextOrClose::Next(response) => response,
             NextOrClose::Close(close) => {
@@ -329,17 +336,29 @@ impl CdsiConnection {
             return Err(Error::Protocol);
         }
 
+        Ok((
+            Token(token_response.token.into_boxed_slice()),
+            ClientResponseCollector(self),
+        ))
+    }
+}
+
+impl ClientResponseCollector {
+    pub async fn collect(self) -> Result<LookupResponse, Error> {
+        let Self(mut connection) = self;
+
         let token_ack = ClientRequest {
             token_ack: true,
             ..Default::default()
         };
 
-        self.0.send(token_ack).await?;
-        let mut response: ClientResponse = self.0.receive().await?.next_or(Error::Protocol)?;
-        while let NextOrClose::Next(decoded) = self.0.receive_bytes().await? {
+        connection.0.send(token_ack).await?;
+        let mut response: ClientResponse =
+            connection.0.receive().await?.next_or(Error::Protocol)?;
+        while let NextOrClose::Next(decoded) = connection.0.receive_bytes().await? {
             response.merge(decoded.as_ref()).map_err(Error::from)?;
         }
-        Ok(response)
+        Ok(response.try_into()?)
     }
 }
 
@@ -355,24 +374,6 @@ pub trait CdsiConnectionParams {
 
     /// The signature of the remote enclave for verifying attestation.
     fn mr_enclave(&self) -> &[u8];
-}
-
-pub async fn cdsi_lookup(
-    auth: Auth,
-    cdsi: &impl CdsiConnectionParams,
-    request: LookupRequest,
-    action_timeout: Duration,
-) -> Result<LookupResponse, Error> {
-    let client_request = request.into_client_request();
-    let mut connected = CdsiConnection::connect(cdsi, auth).await?;
-    let response = timeout(
-        action_timeout,
-        NetError::Timeout.into(),
-        connected.send_request(client_request),
-    )
-    .await?;
-
-    LookupResponse::try_from_response(response).map_err(Into::into)
 }
 
 #[cfg(test)]
@@ -402,11 +403,12 @@ mod test {
                 .cloned()
                 .collect();
 
-        let parsed = LookupResponse::try_from_response(ClientResponse {
+        let parsed = ClientResponse {
             e164_pni_aci_triples,
             token: vec![],
             debug_permits_used: 0,
-        });
+        }
+        .try_into();
         assert_eq!(
             parsed,
             Ok(LookupResponse {

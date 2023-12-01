@@ -108,7 +108,9 @@ export function CallLinkSecretParams_DecryptUserId(paramsBytes: Buffer, userId: 
 export function CallLinkSecretParams_DeriveFromRootKey(rootKey: Buffer): Buffer;
 export function CallLinkSecretParams_GetPublicParams(paramsBytes: Buffer): Buffer;
 export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): SgxClientState;
-export function CdsiLookup(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>, timeoutMillis: number): Promise<LookupResponse>;
+export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): Promise<LookupResponse>;
+export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>, timeoutMillis: number): Promise<CdsiLookup>;
+export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -422,6 +424,7 @@ interface AuthCredential { readonly __type: unique symbol; }
 interface AuthCredentialResponse { readonly __type: unique symbol; }
 interface AuthCredentialWithPni { readonly __type: unique symbol; }
 interface AuthCredentialWithPniResponse { readonly __type: unique symbol; }
+interface CdsiLookup { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface ConnectionManager { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
