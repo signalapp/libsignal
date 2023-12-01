@@ -15,7 +15,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::infra::connection_manager::{ConnectionAttemptOutcome, ConnectionManager};
 use crate::infra::errors::LogSafeDisplay;
-use crate::infra::ConnectionParams;
+use crate::infra::{ConnectionParams, HttpRequestDecorator};
 
 /// For a service that needs to go through some initialization procedure
 /// before it's ready for use, this enum describes its possible states.
@@ -49,6 +49,63 @@ pub trait ServiceConnector: Clone {
     ) -> Result<Self::Channel, Self::Error>;
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>);
+}
+
+#[async_trait]
+impl<T> ServiceConnector for &'_ T
+where
+    T: ServiceConnector + Sync,
+{
+    type Service = T::Service;
+    type Channel = T::Channel;
+    type Error = T::Error;
+
+    async fn connect_channel(
+        &self,
+        connection_params: &ConnectionParams,
+    ) -> Result<Self::Channel, Self::Error> {
+        (*self).connect_channel(connection_params).await
+    }
+
+    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
+        (*self).start_service(channel)
+    }
+}
+
+#[derive(Clone)]
+pub struct ServiceConnectorWithDecorator<C> {
+    inner: C,
+    decorator: HttpRequestDecorator,
+}
+
+impl<C: ServiceConnector> ServiceConnectorWithDecorator<C> {
+    pub fn new(inner: C, decorator: HttpRequestDecorator) -> Self {
+        Self { inner, decorator }
+    }
+}
+
+#[async_trait]
+impl<'a, C> ServiceConnector for ServiceConnectorWithDecorator<C>
+where
+    C: ServiceConnector + Send + Sync + 'a,
+{
+    type Service = C::Service;
+    type Channel = C::Channel;
+    type Error = C::Error;
+
+    async fn connect_channel(
+        &self,
+        connection_params: &ConnectionParams,
+    ) -> Result<Self::Channel, Self::Error> {
+        let decorated = connection_params
+            .clone()
+            .with_decorator(self.decorator.clone());
+        self.inner.connect_channel(&decorated).await
+    }
+
+    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
+        self.inner.start_service(channel)
+    }
 }
 
 #[derive(Debug)]
@@ -88,16 +145,16 @@ impl<E> ServiceStatus<E> {
     }
 }
 
-pub struct ServiceInitializer<C: ServiceConnector, M> {
+pub struct ServiceInitializer<C, M> {
     service_connector: C,
     connection_manager: M,
 }
 
-impl<C, M> ServiceInitializer<C, M>
+impl<'a, C, M> ServiceInitializer<C, M>
 where
-    M: ConnectionManager + 'static,
-    C: ServiceConnector + Send + Sync + 'static,
-    C::Service: Clone + Send + Sync + 'static,
+    M: ConnectionManager + 'a,
+    C: ServiceConnector + Send + Sync + 'a,
+    C::Service: Send + Sync + 'a,
     C::Channel: Send + Sync,
     C::Error: Send + Sync + Debug + LogSafeDisplay,
 {
@@ -108,18 +165,14 @@ where
         }
     }
 
-    pub async fn connect(&self, deadline: Instant) -> ServiceState<C::Service, C::Error> {
+    pub async fn connect(&self) -> ServiceState<C::Service, C::Error> {
         log::debug!("attempting a connection");
-        let connection_attempt_future =
-            self.connection_manager
-                .connect_or_wait(|connection_params| {
-                    self.service_connector.connect_channel(connection_params)
-                });
-        let connection_attempt_result = match timeout_at(deadline, connection_attempt_future).await
-        {
-            Ok(result) => result,
-            Err(_) => return ServiceState::TimedOut,
-        };
+        let connection_attempt_result = self
+            .connection_manager
+            .connect_or_wait(|connection_params| {
+                self.service_connector.connect_channel(connection_params)
+            })
+            .await;
 
         match connection_attempt_result {
             ConnectionAttemptOutcome::Attempted(Ok(channel)) => {
@@ -223,7 +276,10 @@ where
                     log::info!("Connection attempt resulted in an error: {}", e);
                 }
             };
-            *guard = self.data.service_initializer.connect(deadline).await;
+            *guard = match timeout_at(deadline, self.data.service_initializer.connect()).await {
+                Ok(result) => result,
+                Err(_) => ServiceState::TimedOut,
+            }
         }
     }
 }

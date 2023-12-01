@@ -49,7 +49,7 @@ pub enum ConnectionAttemptOutcome<T, E> {
 /// whether or not an attempt is to be made in the first place, and, if yes,
 /// which [ConnectionParams] are to be used for the attempt.
 #[async_trait]
-pub trait ConnectionManager: Send + Sync {
+pub trait ConnectionManager: Clone + Send + Sync {
     async fn connect_or_wait<'a, T, E, Fun, Fut>(
         &'a self,
         connection_fn: Fun,
@@ -59,6 +59,25 @@ pub trait ConnectionManager: Send + Sync {
         E: Send + Debug + LogSafeDisplay,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send;
+}
+
+#[async_trait]
+impl<C> ConnectionManager for &'_ C
+where
+    C: ConnectionManager,
+{
+    async fn connect_or_wait<'a, T, E, Fun, Fut>(
+        &'a self,
+        connection_fn: Fun,
+    ) -> ConnectionAttemptOutcome<T, E>
+    where
+        T: Send,
+        E: Send + Debug + LogSafeDisplay,
+        Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+        Fut: Future<Output = Result<T, E>> + Send,
+    {
+        (*self).connect_or_wait(connection_fn).await
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -3,23 +3,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::default::Default;
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
-use attest::cds2;
-use libsignal_protocol::{Aci, Pni};
 use prost::Message as _;
 use thiserror::Error;
+use tokio::net::TcpStream;
+use tokio_boring::SslStream;
 use uuid::Uuid;
 
-use crate::infra::connection_manager::{ConnectionAttemptOutcome, ConnectionManager};
+use attest::cds2;
+use libsignal_protocol::{Aci, Pni};
+
+use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::NetError;
+use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
 use crate::infra::ws::{
-    connect_websocket, AttestedConnection, AttestedConnectionError, NextOrClose, WebSocket,
+    AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketClientConnector,
 };
-use crate::infra::TcpSslTransportConnector;
+use crate::infra::{AsyncDuplexStream, TransportConnector};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::utils::basic_authorization;
 
@@ -222,7 +227,7 @@ impl LookupResponseEntry {
     }
 }
 
-pub struct CdsiConnection(AttestedConnection);
+pub struct CdsiConnection<S>(AttestedConnection<S>);
 
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum Error {
@@ -267,41 +272,30 @@ impl RateLimitExceededResponse {
     const CLOSE_CODE: u16 = 4008;
 }
 
-pub struct ClientResponseCollector(CdsiConnection);
+pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
 
-impl CdsiConnection {
+impl<S: AsyncDuplexStream> CdsiConnection<S> {
     /// Connect to remote host and verify remote attestation.
-    pub async fn connect(env: &impl CdsiConnectionParams, auth: Auth) -> Result<Self, Error> {
+    pub async fn connect<P, T>(env: &P, auth: Auth) -> Result<Self, Error>
+    where
+        P: CdsiConnectionParams<TransportConnector = T>,
+        T: TransportConnector<Stream = S>,
+    {
         let Auth { username, password } = auth;
         let header_auth_decorator = crate::infra::HttpRequestDecorator::HeaderAuth(
             basic_authorization(&username, &password),
         );
-        let endpoint = env.endpoint();
         let connection_manager = env.connection_manager();
-
-        let websocket = {
-            match connection_manager
-                .connect_or_wait(|connection_params| async {
-                    let connection_params = connection_params
-                        .clone()
-                        .with_decorator(header_auth_decorator.clone());
-                    connect_websocket(
-                        &connection_params,
-                        endpoint.clone(),
-                        Default::default(),
-                        &TcpSslTransportConnector,
-                    )
-                    .await
-                })
-                .await
-            {
-                ConnectionAttemptOutcome::Attempted(connection) => connection.map_err(Into::into),
-                ConnectionAttemptOutcome::TimedOut | ConnectionAttemptOutcome::WaitUntil(_) => {
-                    Err(NetError::Timeout)
-                }
-            }
+        let connector = ServiceConnectorWithDecorator::new(env.connector(), header_auth_decorator);
+        let service_initializer = ServiceInitializer::new(&connector, connection_manager);
+        let connection_attempt_result = service_initializer.connect().await;
+        let websocket = match connection_attempt_result {
+            ServiceState::Active(websocket, _) => Ok(websocket),
+            ServiceState::Cooldown(_) => Err(Error::Net(NetError::NoServiceConnection)),
+            ServiceState::Error(e) => Err(Error::Net(e)),
+            ServiceState::TimedOut => Err(Error::Net(NetError::Timeout)),
         }?;
-        let attested = AttestedConnection::connect(WebSocket::new(websocket), |attestation_msg| {
+        let attested = AttestedConnection::connect(websocket, |attestation_msg| {
             cds2::new_handshake(env.mr_enclave(), attestation_msg, SystemTime::now())
         })
         .await?;
@@ -312,7 +306,7 @@ impl CdsiConnection {
     pub async fn send_request(
         mut self,
         request: LookupRequest,
-    ) -> Result<(Token, ClientResponseCollector), Error> {
+    ) -> Result<(Token, ClientResponseCollector<S>), Error> {
         self.0.send(request.into_client_request()).await?;
         let token_response: ClientResponse = match self.0.receive().await? {
             NextOrClose::Next(response) => response,
@@ -343,7 +337,7 @@ impl CdsiConnection {
     }
 }
 
-impl ClientResponseCollector {
+impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
     pub async fn collect(self) -> Result<LookupResponse, Error> {
         let Self(mut connection) = self;
 
@@ -366,11 +360,14 @@ pub trait CdsiConnectionParams {
     /// The type returned by `connection_manager`.
     type ConnectionManager: ConnectionManager;
 
+    /// The `TransportConnector` used by the `WebSocketClientConnector`
+    type TransportConnector: TransportConnector;
+
     /// A connection manager with routes to the remote CDSI service.
     fn connection_manager(&self) -> &Self::ConnectionManager;
 
-    /// The path and query to use when initiating a websocket connection.
-    fn endpoint(&self) -> http::uri::PathAndQuery;
+    /// A connector for websocket protocol
+    fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector>;
 
     /// The signature of the remote enclave for verifying attestation.
     fn mr_enclave(&self) -> &[u8];
@@ -379,8 +376,9 @@ pub trait CdsiConnectionParams {
 #[cfg(test)]
 mod test {
     use hex_literal::hex;
-    use libsignal_protocol::{Aci, Pni};
     use uuid::Uuid;
+
+    use libsignal_protocol::{Aci, Pni};
 
     use super::*;
 

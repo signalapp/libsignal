@@ -6,9 +6,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use futures_util::TryFutureExt;
 
-use crate::chat::errors::ChatNetworkError;
 use crate::chat::{ChatService, Request, ResponseProto};
 use crate::infra::errors::NetError;
 use crate::infra::http::{
@@ -35,20 +33,14 @@ impl<C> ChatOverHttp2ServiceConnector<C> {
 impl<C: TransportConnector> ServiceConnector for ChatOverHttp2ServiceConnector<C> {
     type Service = ChatOverHttp2;
     type Channel = Http2Channel<AggregatingHttp2Client, C::Stream>;
-    type Error = ChatNetworkError;
+    type Error = NetError;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
     ) -> Result<Self::Channel, Self::Error> {
-        let connect_future = http2_channel(&self.transport_connector, connection_params)
-            .map_err(ChatNetworkError::FailedToConnectHttp);
-        timeout(
-            Duration::from_secs(2),
-            ChatNetworkError::Timeout,
-            connect_future,
-        )
-        .await
+        let connect_future = http2_channel(&self.transport_connector, connection_params);
+        timeout(Duration::from_secs(2), NetError::Timeout, connect_future).await
     }
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
@@ -68,7 +60,7 @@ impl ChatService for ChatOverHttp2 {
         &self,
         msg: Request,
         timeout_duration: Duration,
-    ) -> Result<ResponseProto, ChatNetworkError> {
+    ) -> Result<ResponseProto, NetError> {
         let (path, builder, body) = msg.into_parts();
         let mut request_sender = self.request_sender.clone();
         let response_future = request_sender.send_request_aggregate_response(path, builder, body);
@@ -101,7 +93,7 @@ impl ChatService for ChatOverHttp2 {
                     headers,
                 })
             }
-            Err(err) => Err(ChatNetworkError::FailedToSendHttp(err)),
+            Err(err) => Err(err),
         }
     }
 }
@@ -113,7 +105,7 @@ pub struct ChatOverHttp2 {
 
 fn start_event_listener(
     connection: Http2Connection<impl AsyncDuplexStream>,
-    service_status: ServiceStatus<ChatNetworkError>,
+    service_status: ServiceStatus<NetError>,
 ) {
     tokio::spawn(async move {
         enum Event {
@@ -124,10 +116,54 @@ fn start_event_listener(
             _ = service_status.stopped() => Event::Cancellation,
             r = connection => Event::ChannelClosed(r),
         } {
-            Event::Cancellation => ChatNetworkError::ChannelClosedByLocalPeer,
-            Event::ChannelClosed(Ok(_)) => ChatNetworkError::ChannelClosedByRemotePeer,
-            Event::ChannelClosed(Err(e)) => ChatNetworkError::ChannelClosedWithError(e),
+            Event::Cancellation => NetError::ChannelClosedByLocalPeer,
+            Event::ChannelClosed(Ok(_)) => NetError::ChannelClosedByRemotePeer,
+            Event::ChannelClosed(Err(_)) => NetError::ChannelClosedWithError,
         };
         service_status.stop_service_with_error(outcome);
     });
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::chat::test::shared::{connection_manager, test_request};
+    use crate::infra::test::shared::{InMemoryWarpConnector, NoReconnectService, TIMEOUT_DURATION};
+    use http::Method;
+    use tokio::time::Instant;
+    use warp::Filter;
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn h2_service_correctly_handles_multiple_in_flight_requests() {
+        // creating a server that responds to requests with 200 after some request processing time
+        let start = Instant::now();
+        const REQUEST_PROCESSING_DURATION: Duration =
+            Duration::from_millis(TIMEOUT_DURATION.as_millis() as u64 / 2);
+
+        let h2_server = warp::get().then(|| async move {
+            tokio::time::sleep(REQUEST_PROCESSING_DURATION).await;
+            warp::reply()
+        });
+        let h2_connector =
+            ChatOverHttp2ServiceConnector::new(InMemoryWarpConnector::new(h2_server));
+        let h2_chat = NoReconnectService::start(h2_connector, connection_manager()).await;
+
+        let req1 = test_request(Method::GET, "/1");
+        let response1_future = h2_chat.send(req1, TIMEOUT_DURATION);
+
+        let req2 = test_request(Method::GET, "/2");
+        let response2_future = h2_chat.send(req2, TIMEOUT_DURATION);
+
+        // Making sure that at this point the clock has not advanced from the initial instant.
+        // This is a way to indirectly make sure that neither of the futures is yet completed.
+        assert_eq!(start, Instant::now());
+
+        let (response1, response2) = tokio::join!(response1_future, response2_future);
+        assert_eq!(200, response1.unwrap().status.unwrap());
+        assert_eq!(200, response2.unwrap().status.unwrap());
+
+        // And now making sure that both requests were in fact processed asynchronously,
+        // i.e. one was not blocked on the other.
+        assert_eq!(start + REQUEST_PROCESSING_DURATION, Instant::now());
+    }
 }

@@ -17,7 +17,9 @@ use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::NetError;
-use libsignal_net::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq};
+use libsignal_net::infra::{
+    ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq, TcpSslTransportConnector,
+};
 use libsignal_net::utils::timeout;
 use libsignal_protocol::{Aci, SignalProtocolError};
 
@@ -102,7 +104,7 @@ impl Environment {
 pub struct ConnectionParamsList(Vec<ConnectionParams>);
 
 pub struct ConnectionManager {
-    cdsi: libsignal_net::env::CdsiEndpointConnection<MultiRouteConnectionManager>,
+    cdsi: CdsiEndpointConnection<MultiRouteConnectionManager, TcpSslTransportConnector>,
 }
 
 impl ConnectionManager {
@@ -121,6 +123,7 @@ impl ConnectionManager {
                 cdsi_endpoint.mr_enclave,
                 connection_params,
                 Self::DEFAULT_CONNECT_TIMEOUT,
+                TcpSslTransportConnector,
             ),
         }
     }

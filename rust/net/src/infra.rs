@@ -149,7 +149,7 @@ pub trait TransportConnector: Clone + Send + Sync {
 }
 
 #[derive(Clone)]
-pub(crate) struct TcpSslTransportConnector;
+pub struct TcpSslTransportConnector;
 
 #[async_trait]
 impl TransportConnector for TcpSslTransportConnector {
@@ -224,7 +224,6 @@ pub(crate) mod test {
         use derive_where::derive_where;
         use displaydoc::Display;
         use tokio::io::DuplexStream;
-        use tokio::time::Instant;
         use warp::{Filter, Reply};
 
         use crate::infra::connection_manager::ConnectionManager;
@@ -313,7 +312,7 @@ pub(crate) mod test {
                 M: ConnectionManager + 'static,
             {
                 let status = ServiceInitializer::new(service_connector, connection_manager)
-                    .connect(Instant::now() + Duration::from_secs(1))
+                    .connect()
                     .await;
                 Self {
                     inner: Arc::new(status),

@@ -6,9 +6,8 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [dependencies]
-libsignal-protocol = { path = "../protocol" }
-attest = { path = "../attest" }
 async-trait = "0.1.41"
+attest = { path = "../attest" }
 base64 = "0.21"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
 bytes = "1.4.0"
@@ -21,10 +20,13 @@ http = "0.2.9"
 http-body-util = "0.1.0-rc.3"
 hyper = { version = "1.0.0-rc.4", features = ["http1", "http2", "client"] }
 lazy_static = "1.4.0"
+libsignal-protocol = { path = "../protocol" }
 log = "0.4.19"
 pin-project-lite = "0.2.4"
 prost = "0.12.1"
 rustls-native-certs = "0.6.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["rt", "time", "macros"] }
 tokio-boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
@@ -32,8 +34,6 @@ tokio-tungstenite = { version = "0.19.0" }
 tokio-util = "0.7.9"
 tungstenite = { version = "0.19.0" }
 uuid = "1.1.2"
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.12.1"
@@ -45,4 +45,5 @@ rand = "0.8.5"
 snow = "0.9.3"
 tokio = { version = "1", features = ["test-util", "rt-multi-thread"] }
 tokio-stream = "0.1.14"
+url = "2.4.1"
 warp = { version = "0.3.6", features = ["tls"] }

@@ -15,7 +15,12 @@ use crate::infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use crate::infra::dns::DnsResolver;
-use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq};
+use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig};
+use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, TransportConnector};
+
+pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
+pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
+pub(crate) const WS_MAX_CONNECTION_TIME: Duration = Duration::from_secs(2);
 
 #[derive(Copy, Clone)]
 pub struct CdsiEndpointMrEnclave<B>(B);
@@ -46,28 +51,44 @@ impl CdsiEndpoint<'_> {
     }
 }
 
-pub struct CdsiEndpointConnection<C> {
+pub struct CdsiEndpointConnection<C, T> {
     mr_enclave: CdsiEndpointMrEnclave<&'static [u8]>,
     connection_manager: C,
+    connector: WebSocketClientConnector<T>,
 }
 
-impl CdsiEndpointConnection<SingleRouteThrottlingConnectionManager> {
-    pub fn new(cdsi: CdsiEndpoint<'static>, connect_timeout: Duration) -> Self {
+impl<T: TransportConnector> CdsiEndpointConnection<SingleRouteThrottlingConnectionManager, T> {
+    pub fn new(
+        cdsi: CdsiEndpoint<'static>,
+        connect_timeout: Duration,
+        transport_connector: T,
+    ) -> Self {
         Self {
             connection_manager: SingleRouteThrottlingConnectionManager::new(
                 cdsi.direct_connection(),
                 connect_timeout,
+            ),
+            connector: WebSocketClientConnector::new(
+                transport_connector,
+                WebSocketConfig {
+                    ws_config: tungstenite::protocol::WebSocketConfig::default(),
+                    endpoint: cdsi.mr_enclave.path(),
+                    max_connection_time: connect_timeout,
+                    keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
+                    max_idle_time: WS_MAX_IDLE_TIME,
+                },
             ),
             mr_enclave: cdsi.mr_enclave,
         }
     }
 }
 
-impl CdsiEndpointConnection<MultiRouteConnectionManager> {
+impl<T: TransportConnector> CdsiEndpointConnection<MultiRouteConnectionManager, T> {
     pub fn new_multi(
         mr_enclave: CdsiEndpointMrEnclave<&'static [u8]>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         connect_timeout: Duration,
+        transport_connector: T,
     ) -> Self {
         Self {
             connection_manager: MultiRouteConnectionManager::new(
@@ -79,20 +100,33 @@ impl CdsiEndpointConnection<MultiRouteConnectionManager> {
                     .collect(),
                 connect_timeout,
             ),
+            connector: WebSocketClientConnector::new(
+                transport_connector,
+                WebSocketConfig {
+                    ws_config: tungstenite::protocol::WebSocketConfig::default(),
+                    endpoint: mr_enclave.path(),
+                    max_connection_time: connect_timeout,
+                    keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
+                    max_idle_time: WS_MAX_IDLE_TIME,
+                },
+            ),
             mr_enclave,
         }
     }
 }
 
-impl<C: ConnectionManager> CdsiConnectionParams for CdsiEndpointConnection<C> {
+impl<C: ConnectionManager, T: TransportConnector> CdsiConnectionParams
+    for CdsiEndpointConnection<C, T>
+{
     type ConnectionManager = C;
+    type TransportConnector = T;
 
     fn connection_manager(&self) -> &Self::ConnectionManager {
         &self.connection_manager
     }
 
-    fn endpoint(&self) -> PathAndQuery {
-        self.mr_enclave.path()
+    fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector> {
+        &self.connector
     }
 
     fn mr_enclave(&self) -> &[u8] {

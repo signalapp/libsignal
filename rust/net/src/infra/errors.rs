@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::{certs, dns};
 use std::fmt::Display;
+
+use crate::infra::{certs, dns};
 
 pub trait LogSafeDisplay: Display {}
 
@@ -25,14 +26,36 @@ pub enum NetError {
     ContentLengthHeaderInvalid,
     /// Content stream is not consistent with the `Content-Length` header
     ContentLengthHeaderDoesntMatchDataSize,
-    /// Failed to upgrade HTTP connection to WebSockets
-    WsFailedHandshake,
     /// Failed to upgrade to H2
     Http2FailedHandshake,
     /// Operation timed out
     Timeout,
     /// Failure
     Failure,
+    /// Failed to decode data received from the server
+    IncomingDataInvalid,
+    /// Request object must contain only ASCII text as header names and values.
+    RequestHasInvalidHeader,
+    /// Received a WebSocket frame of an unexpected type
+    UnexpectedFrameReceived,
+    /// Tried to use closed channel
+    ChannelClosed,
+    /// WebSocket error
+    WebSocketError,
+    /// Channel closed due to an error
+    ChannelClosedWithError,
+    /// Channel closed by remote peer
+    ChannelClosedByRemotePeer,
+    /// Channel closed by local peer
+    ChannelClosedByLocalPeer,
+    /// No incoming messages on the WebSocket channel
+    ChannelIdle,
+    /// Service is not connected
+    NoServiceConnection,
+    /// Request message from the server is missing the `id` field
+    ServerRequestMissingId,
+    /// Failed while sending a request from the server to the incoming  messages channel
+    FailedToPassMessageToIncomingChannel,
 }
 
 impl LogSafeDisplay for NetError {}
@@ -58,5 +81,11 @@ impl From<dns::Error> for NetError {
 impl From<boring::error::ErrorStack> for NetError {
     fn from(_value: boring::error::ErrorStack) -> Self {
         NetError::SslError
+    }
+}
+
+impl From<tungstenite::Error> for NetError {
+    fn from(_value: tungstenite::Error) -> Self {
+        NetError::WebSocketError
     }
 }
