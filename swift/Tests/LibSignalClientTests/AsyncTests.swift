@@ -28,6 +28,33 @@ final class AsyncTests: XCTestCase {
             // good
         }
     }
+
+    func testInvokeAsyncHandleTypes() async throws {
+        do {
+            let value = UInt8(44)
+            let handle: OpaquePointer = try await invokeAsyncFunction {
+                signal_testing_future_produces_pointer_type($0, $1, OpaquePointer(bitPattern: -1), value)
+            }
+            defer { signal_testing_handle_type_destroy(handle) }
+            XCTAssertEqual(
+                try invokeFnReturningInteger { result in
+                    signal_testing_testing_handle_type_get_value(result, handle)
+                }, value)
+        }
+
+        do {
+            let value = "into the future"
+            let otherHandle: OpaquePointer = try await invokeAsyncFunction {
+                signal_testing_future_produces_other_pointer_type($0, $1, OpaquePointer(bitPattern: -1), value)
+            }
+            defer { signal_other_testing_handle_type_destroy(otherHandle) }
+
+            XCTAssertEqual(
+                try invokeFnReturningString { result in
+                    signal_testing_other_testing_handle_type_get_value(result, otherHandle)
+                }, value)
+        }
+    }
 }
 
 #endif

@@ -28,6 +28,13 @@ extension Int32: Completable {
 extension UnsafeRawPointer: Completable {
     typealias PromiseCallback = SignalCPromiseRawPointer
 }
+extension OpaquePointer: Completable {
+    // C function pointer that takes two output arguments and one input argument.
+    typealias PromiseCallback = (@convention(c) (
+        _ error: SignalFfiErrorRef?,
+        _ value: UnsafePointer<OpaquePointer?>?,
+        _ context: UnsafeRawPointer?) -> Void)?
+}
 
 /// A type-erased version of ``Completer``.
 ///

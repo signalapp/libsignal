@@ -61,6 +61,38 @@ async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
     Err(SignalProtocolError::InvalidArgument("failure".to_string()))
 }
 
+#[derive(Clone)]
+pub struct TestingHandleType {
+    value: u8,
+}
+bridge_handle!(TestingHandleType);
+
+#[bridge_fn]
+fn TESTING_TestingHandleType_getValue(handle: &TestingHandleType) -> u8 {
+    handle.value
+}
+
+#[bridge_io(NonSuspendingBackgroundThreadRuntime)]
+async fn TESTING_FutureProducesPointerType(input: u8) -> TestingHandleType {
+    TestingHandleType { value: input }
+}
+
+#[derive(Clone)]
+pub struct OtherTestingHandleType {
+    value: String,
+}
+bridge_handle!(OtherTestingHandleType);
+
+#[bridge_fn]
+fn TESTING_OtherTestingHandleType_getValue(handle: &OtherTestingHandleType) -> String {
+    handle.value.clone()
+}
+
+#[bridge_io(NonSuspendingBackgroundThreadRuntime)]
+async fn TESTING_FutureProducesOtherPointerType(input: String) -> OtherTestingHandleType {
+    OtherTestingHandleType { value: input }
+}
+
 #[bridge_fn]
 fn TESTING_PanicOnBorrowSync(_input: Ignored<PanicOnBorrow>) {}
 

@@ -320,6 +320,8 @@ public final class Native {
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long obj);
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey);
 
+  public static native void OtherTestingHandleType_Destroy(long handle);
+
   public static native byte[] PinHash_AccessKey(long ph);
   public static native void PinHash_Destroy(long handle);
   public static native byte[] PinHash_EncryptionKey(long ph);
@@ -566,8 +568,11 @@ public final class Native {
   public static native CompletableFuture<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
   public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
+  public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
+  public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);
   public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
+  public static native String TESTING_OtherTestingHandleType_getValue(long handle);
   public static native void TESTING_PanicInBodyAsync(Object input);
   public static native CompletableFuture TESTING_PanicInBodyIo(long asyncRuntime, Object input);
   public static native void TESTING_PanicInBodySync(Object input);
@@ -580,6 +585,9 @@ public final class Native {
   public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
+  public static native int TESTING_TestingHandleType_getValue(long handle);
+
+  public static native void TestingHandleType_Destroy(long handle);
 
   public static native void TokioAsyncContext_Destroy(long handle);
   public static native long TokioAsyncContext_new();
