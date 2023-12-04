@@ -53,7 +53,7 @@ internal func invokeFnReturningDataNoCopy(fn: (UnsafeMutablePointer<SignalOwnedB
 internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(fn: (UnsafeMutablePointer<ResultAsTuple>) -> SignalFfiErrorRef?) throws -> [UInt8] {
     precondition(MemoryLayout<ResultAsTuple>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
     var output = Array(repeating: 0 as UInt8, count: MemoryLayout<ResultAsTuple>.size)
-    try output.withUnsafeMutableBytes { buffer -> Void in
+    try output.withUnsafeMutableBytes { buffer in
         let typedPointer = buffer.baseAddress!.assumingMemoryBound(to: ResultAsTuple.self)
         return try checkError(fn(typedPointer))
     }
