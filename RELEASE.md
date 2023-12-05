@@ -62,7 +62,9 @@ git push origin libsignal-v0.x.y
 
 ### Android and Server: Sonatype
 
-In the signalapp/libsignal repository on GitHub, run the "Upload Java libraries to Sonatype" action on the tag you just made. Once complete, go into Sonatype and release the builds.
+In the signalapp/libsignal repository on GitHub, run the "Upload Java libraries to Sonatype" action on the tag you just made. Then go to [Maven Central][] and wait for the build to show up (it can take up to an hour).
+
+[Maven Central]: https://central.sonatype.com/artifact/org.signal/libsignal-client/versions
 
 ### Node: NPM
 
