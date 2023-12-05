@@ -56,6 +56,8 @@ pub enum NetError {
     ServerRequestMissingId,
     /// Failed while sending a request from the server to the incoming  messages channel
     FailedToPassMessageToIncomingChannel,
+    /// An HTTP stream was interrupted while receiving data.
+    HttpInterruptedDuringReceive,
 }
 
 impl LogSafeDisplay for NetError {}
