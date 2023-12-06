@@ -36,9 +36,9 @@ rand = { version = "0.8", optional = true }
 
 [dependencies.curve25519-dalek]
 git = 'https://github.com/signalapp/curve25519-dalek'
-tag = 'signal-curve25519-4.0.0'
+tag = 'signal-curve25519-4.1.1'
 features = ["serde"]
-version = "4.0.0"
+version = "4.1.1"
 
 [dev-dependencies]
 # For benchmarking
