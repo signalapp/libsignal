@@ -94,7 +94,20 @@ public class SealedSessionCipher {
           UntrustedIdentityException {
     List<SessionRecord> recipientSessions =
         this.signalProtocolStore.loadExistingSessions(recipients);
+    return multiRecipientEncrypt(recipients, recipientSessions, content);
+  }
 
+  public byte[] multiRecipientEncrypt(
+      List<SignalProtocolAddress> recipients,
+      List<SessionRecord> recipientSessions,
+      UnidentifiedSenderMessageContent content)
+      throws InvalidKeyException,
+          InvalidRegistrationIdException,
+          NoSessionException,
+          UntrustedIdentityException {
+    if (recipients.size() != recipientSessions.size()) {
+      throw new IllegalArgumentException("Size of recipients and sessions do not match");
+    }
     // Unsafely access the native handles for the recipients and sessions,
     // because try-with-resources syntax doesn't support a List of resources.
     long[] recipientHandles = new long[recipients.size()];
