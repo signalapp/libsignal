@@ -33,7 +33,7 @@ struct RequestId {
 }
 
 impl RequestId {
-    fn new(id: u64) -> Self {
+    const fn new(id: u64) -> Self {
         Self { id }
     }
 }
@@ -273,17 +273,21 @@ fn decode_and_validate(data: &[u8]) -> Result<ChatMessage, NetError> {
     }
 }
 
-fn response_for_code(id: u64, code: StatusCode) -> ResponseProto {
-    ResponseProto {
-        id: Some(id),
-        status: Some(code.as_u16().into()),
-        message: Some(
-            code.canonical_reason()
-                .expect("has canonical reason")
-                .to_string(),
-        ),
-        headers: vec![],
-        body: None,
+fn response_for_code(id: u64, code: StatusCode) -> MessageProto {
+    MessageProto {
+        r#type: Some(Type::Response.into()),
+        response: Some(ResponseProto {
+            id: Some(id),
+            status: Some(code.as_u16().into()),
+            message: Some(
+                code.canonical_reason()
+                    .expect("has canonical reason")
+                    .to_string(),
+            ),
+            headers: vec![],
+            body: None,
+        }),
+        request: None,
     }
 }
 
@@ -557,15 +561,27 @@ mod test {
         let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
             let request = test_request(Method::GET, "/");
+
+            const REQUEST_ID: RequestId = RequestId::new(100);
+            let request_proto = request_to_websocket_proto(request, REQUEST_ID).expect("is valid");
+            let expected_response = response_for_request(
+                &ChatMessage::Request(request_proto.request.clone().expect("is request")),
+                StatusCode::OK,
+            )
+            .expect("is valid");
+
             let _ = tx
                 .send(warp::filters::ws::Message::binary(
-                    request_to_websocket_proto(request, RequestId::new(100))
-                        .expect("is valid")
-                        .encode_to_vec(),
+                    request_proto.encode_to_vec(),
                 ))
                 .await;
-            if let Some(Ok(_response_from_client)) = rx.next().await {
-                ServerExitStatus::Success
+            if let Some(Ok(response_from_client)) = rx.next().await {
+                let response_from_client = Message::decode(response_from_client.as_bytes());
+                if response_from_client == Ok(expected_response) {
+                    ServerExitStatus::Success
+                } else {
+                    ServerExitStatus::Failure
+                }
             } else {
                 ServerExitStatus::Failure
             }
