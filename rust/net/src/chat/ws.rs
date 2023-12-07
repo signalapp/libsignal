@@ -344,21 +344,7 @@ mod test {
         InMemoryWarpConnector, NoReconnectService, TestError, TIMEOUT_DURATION,
     };
     use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig};
-
-    #[derive(Debug)]
-    enum ServerExitStatus {
-        Success,
-        Failure,
-    }
-
-    impl<T, E> From<Result<T, E>> for ServerExitStatus {
-        fn from(value: Result<T, E>) -> Self {
-            match value {
-                Ok(_) => ServerExitStatus::Success,
-                Err(_) => ServerExitStatus::Failure,
-            }
-        }
-    }
+    use crate::proto::chat_websocket::WebSocketMessage;
 
     fn test_ws_config() -> WebSocketConfig {
         WebSocketConfig {
@@ -375,8 +361,9 @@ mod test {
         let (ws_server, _) = ws_warp_filter(move |websocket| async move {
             let (_, mut rx) = websocket.split();
             // just listening (but also automatically responding to PINGs)
-            while (rx.next().await).is_some() {}
-            ServerExitStatus::Failure
+            loop {
+                let _: warp::ws::Message = rx.next().await.expect("is some").expect("not an error");
+            }
         });
 
         let ws_config = test_ws_config();
@@ -398,7 +385,6 @@ mod test {
         // creating a server that is not responding to `PING` messages
         let (ws_server, _) = ws_warp_filter(move |_| async move {
             tokio::time::sleep(duration).await;
-            ServerExitStatus::Success
         });
 
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
@@ -422,7 +408,9 @@ mod test {
             let (mut tx, mut rx) = websocket.split();
             tokio::spawn(async move { while (rx.next().await).is_some() {} });
             tokio::time::sleep(time_before_close).await;
-            tx.send(warp::filters::ws::Message::close()).await.into()
+            tx.send(warp::filters::ws::Message::close())
+                .await
+                .expect("can send")
         });
 
         let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
@@ -450,7 +438,7 @@ mod test {
             tokio::time::sleep(time_before_close).await;
             tx.send(warp::filters::ws::Message::text("unexpected"))
                 .await
-                .into()
+                .expect("can send")
         });
 
         let ws_config = test_ws_config();
@@ -470,24 +458,21 @@ mod test {
         // creating a server that responds to requests with 200
         let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
-            while let Some(Ok(msg)) = rx.next().await {
-                if !msg.is_binary() {
-                    return ServerExitStatus::Failure;
-                }
+            loop {
+                let msg = rx
+                    .next()
+                    .await
+                    .expect("stream should not be closed")
+                    .expect("should be Ok");
+                assert!(msg.is_binary(), "not binary: {msg:?}");
                 let request = decode_and_validate(msg.as_bytes()).expect("chat message");
-                match response_for_request(&request, StatusCode::OK) {
-                    Ok(message_proto) => {
-                        let send_result = tx
-                            .send(warp::ws::Message::binary(message_proto.encode_to_vec()))
-                            .await;
-                        if send_result.is_err() {
-                            break;
-                        }
-                    }
-                    Err(_) => break,
-                }
+                let message_proto =
+                    response_for_request(&request, StatusCode::OK).expect("not an error");
+                let send_result = tx
+                    .send(warp::ws::Message::binary(message_proto.encode_to_vec()))
+                    .await;
+                assert_matches!(send_result, Ok(_));
             }
-            ServerExitStatus::Failure
         });
 
         let ws_config = test_ws_config();
@@ -505,25 +490,17 @@ mod test {
         // creating a server that responds to requests with 200
         let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
-            while let Some(Ok(msg)) = rx.next().await {
-                if !msg.is_binary() {
-                    return ServerExitStatus::Failure;
-                }
+            loop {
+                let msg = rx.next().await.expect("not closed").expect("not an error");
+                assert!(msg.is_binary(), "not binary: {msg:?}");
                 let request = decode_and_validate(msg.as_bytes()).expect("chat message");
-                match response_for_request(&request, StatusCode::OK) {
-                    Ok(message_proto) => {
-                        tokio::time::sleep(TIMEOUT_DURATION * 2).await;
-                        let send_result = tx
-                            .send(warp::ws::Message::binary(message_proto.encode_to_vec()))
-                            .await;
-                        if send_result.is_err() {
-                            break;
-                        }
-                    }
-                    Err(_) => break,
-                }
+                let message_proto =
+                    response_for_request(&request, StatusCode::OK).expect("is valid request");
+                tokio::time::sleep(TIMEOUT_DURATION * 2).await;
+                tx.send(warp::ws::Message::binary(message_proto.encode_to_vec()))
+                    .await
+                    .expect("can send response")
             }
-            ServerExitStatus::Failure
         });
 
         let ws_config = test_ws_config();
@@ -541,11 +518,8 @@ mod test {
         // creating a server that responds to requests with 200
         let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
-            if let Some(Ok(_)) = rx.next().await {
-                tx.send(warp::ws::Message::close()).await.into()
-            } else {
-                ServerExitStatus::Failure
-            }
+            let _: warp::ws::Message = rx.next().await.expect("not closed").expect("not an error");
+            tx.send(warp::ws::Message::close()).await.expect("can send")
         });
 
         let ws_config = test_ws_config();
@@ -573,21 +547,21 @@ mod test {
             )
             .expect("is valid");
 
-            let _ = tx
-                .send(warp::filters::ws::Message::binary(
-                    request_proto.encode_to_vec(),
-                ))
-                .await;
-            if let Some(Ok(response_from_client)) = rx.next().await {
-                let response_from_client = Message::decode(response_from_client.as_bytes());
-                if response_from_client == Ok(expected_response) {
-                    ServerExitStatus::Success
-                } else {
-                    ServerExitStatus::Failure
-                }
-            } else {
-                ServerExitStatus::Failure
-            }
+            tx.send(warp::filters::ws::Message::binary(
+                request_proto.encode_to_vec(),
+            ))
+            .await
+            .expect("can send");
+
+            let response_from_client = WebSocketMessage::decode(
+                rx.next()
+                    .await
+                    .expect("not closed")
+                    .expect("not an error")
+                    .as_bytes(),
+            )
+            .expect("can decode");
+            assert_eq!(response_from_client, expected_response);
         });
 
         let ws_config = test_ws_config();
@@ -614,10 +588,9 @@ mod test {
         let (ws_server, _) = ws_warp_filter(move |websocket| async move {
             let (tx, mut rx) = websocket.split();
             let shared_sender = Arc::new(Mutex::new(tx));
-            while let Some(Ok(msg)) = rx.next().await {
-                if !msg.is_binary() {
-                    return ServerExitStatus::Failure;
-                }
+            loop {
+                let msg = rx.next().await.expect("not closed").expect("not an error");
+                assert!(msg.is_binary(), "not binary: {msg:?}");
                 let request = decode_and_validate(msg.as_bytes()).expect("chat message");
                 let response_proto =
                     response_for_request(&request, StatusCode::OK).expect("response");
@@ -630,7 +603,6 @@ mod test {
                         .await;
                 });
             }
-            ServerExitStatus::Failure
         });
 
         let ws_config = test_ws_config();
@@ -660,13 +632,10 @@ mod test {
         // creating a server that responds to requests with 200
         let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
-            if let Some(Ok(_)) = rx.next().await {
-                tx.send(warp::ws::Message::binary(b"invalid data".to_vec()))
-                    .await
-                    .into()
-            } else {
-                ServerExitStatus::Failure
-            }
+            let _: warp::ws::Message = rx.next().await.expect("not closed").expect("not an error");
+            tx.send(warp::ws::Message::binary(b"invalid data".to_vec()))
+                .await
+                .expect("can reply")
         });
 
         let ws_config = test_ws_config();
@@ -679,14 +648,19 @@ mod test {
         validate_server_stopped_successfully(server_res_rx).await;
     }
 
-    async fn validate_server_stopped_successfully(mut server_res_rx: Receiver<ServerExitStatus>) {
+    #[derive(Debug)]
+    struct ServerExitError;
+
+    async fn validate_server_stopped_successfully(
+        mut server_res_rx: Receiver<Result<(), ServerExitError>>,
+    ) {
         assert_matches!(
             tokio::time::timeout(Duration::from_millis(100), server_res_rx.recv()).await,
-            Ok(Some(ServerExitStatus::Success))
+            Ok(Some(Ok(())))
         );
     }
 
-    async fn validate_server_running(mut server_res_rx: Receiver<ServerExitStatus>) {
+    async fn validate_server_running(mut server_res_rx: Receiver<Result<(), ServerExitError>>) {
         assert_matches!(
             tokio::time::timeout(Duration::from_millis(100), server_res_rx.recv()).await,
             Err(_)
@@ -744,18 +718,22 @@ mod test {
         on_ws_upgrade_callback: F,
     ) -> (
         impl Filter<Extract = impl Reply> + Clone + Send + Sync + 'static,
-        Receiver<ServerExitStatus>,
+        Receiver<Result<(), ServerExitError>>,
     )
     where
         F: Fn(warp::ws::WebSocket) -> T + Clone + Send + Sync + 'static,
-        T: Future<Output = ServerExitStatus> + Send + 'static,
+        T: Future<Output = ()> + Send + 'static,
     {
-        let (server_res_tx, server_res_rx) = mpsc::channel::<ServerExitStatus>(1);
+        let (server_res_tx, server_res_rx) = mpsc::channel::<Result<(), ServerExitError>>(1);
         let filter = warp::any().and(warp::ws()).map(move |ws: warp::ws::Ws| {
             let on_ws_upgrade_callback = on_ws_upgrade_callback.clone();
             let server_res_tx = server_res_tx.clone();
             ws.on_upgrade(move |s| async move {
-                let exit_status = on_ws_upgrade_callback(s).await;
+                // Invoke the callback. Turn panics into errors so that the callback can use
+                // assert! and friends.
+                let exit_status = tokio::task::spawn(on_ws_upgrade_callback(s))
+                    .await
+                    .map_err(|_panic| ServerExitError);
                 server_res_tx
                     .send(exit_status)
                     .await
