@@ -19,9 +19,7 @@ pub(crate) fn bridge_fn(
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
 
-    // This naming convention comes from JNI:
-    // https://docs.oracle.com/en/java/javase/20/docs/specs/jni/design.html#resolving-native-method-names
-    let name = format_ident!("Java_org_signal_libsignal_internal_Native_{}", name);
+    let wrapper_name = format_ident!("__bridge_fn_jni_{}", name);
     let orig_name = &sig.ident;
 
     let input_names_and_types = extract_arg_names_and_types(sig)?;
@@ -61,8 +59,9 @@ pub(crate) fn bridge_fn(
 
     Ok(quote! {
         #[cfg(feature = "jni")]
-        #[no_mangle]
-        pub unsafe extern "C" fn #name<'local>(
+        #[export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"), #name)]
+        #[allow(non_snake_case)]
+        pub unsafe extern "C" fn #wrapper_name<'local>(
             mut env: jni::JNIEnv<'local>,
             // We only generate static methods.
             _class: jni::JClass,

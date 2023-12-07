@@ -756,10 +756,13 @@ impl<'a> CiphertextMessageRef<'a> {
 macro_rules! jni_bridge_destroy {
     ( $typ:ty as $jni_name:ident ) => {
         paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<
-                Java_org_signal_libsignal_internal_Native_ $jni_name _1Destroy
-            >](
+            #[export_name = concat!(
+                env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"),
+                stringify!($jni_name),
+                "_1Destroy"
+            )]
+            #[allow(non_snake_case)]
+            pub unsafe extern "C" fn [<__bridge_handle_jni_ $jni_name _destroy>](
                 _env: jni::JNIEnv,
                 _class: jni::JClass,
                 handle: jni::ObjectHandle,

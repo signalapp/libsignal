@@ -74,10 +74,12 @@
 //!
 //! By default, `bridge_fn` tries to pick a good name for each exposed entry point:
 //!
-//! - FFI: Convert the function's name to `lower_snake_case` and prepend `signal_`.
-//! - JNI: Escape any underscores in the function's name per the [JNI spec][], then prepend
-//!  `Java_org_signal_libsignal_internal_Native_` to expose the function as a static method of the
-//!  class `org.signal.libsignal.internal.Native`.
+//! - FFI: Convert the function's name to `lower_snake_case` and prepend the value of environment
+//!   variable `LIBSIGNAL_BRIDGE_FN_PREFIX_FFI`, which the client crate should set in its build.rs.
+//! - JNI: Escape any underscores in the function's name per the [JNI spec][], then prepend the
+//!   value of environment variable `LIBSIGNAL_BRIDGE_FN_PREFIX_JNI`, which the client should set in
+//!   its build.rs. The value should be something like `Java_org_signal_libsignal_internal_Native_`
+//!   to expose the function as a static method of the class `org.signal.libsignal.internal.Native`.
 //! - Node: Use the original function's name.
 //!
 //! As such, the recommended naming scheme for `bridge_fn` functions is `ObjectOrGroup_Operation`.

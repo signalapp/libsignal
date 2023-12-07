@@ -131,8 +131,13 @@ macro_rules! ffi_bridge_destroy {
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](
+            #[export_name = concat!(
+                env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"),
+                stringify!($ffi_name),
+                "_destroy",
+            )]
+            #[allow(non_snake_case)]
+            pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _destroy>](
                 p: *mut $typ
             ) -> *mut ffi::SignalFfiError {
                 // The only thing the closure does is drop the value if there is

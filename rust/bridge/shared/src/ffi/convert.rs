@@ -530,8 +530,12 @@ macro_rules! ffi_bridge_handle {
     ( $typ:ty as $ffi_name:ident ) => {
         ffi_bridge_handle!($typ as $ffi_name, clone = false);
         paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name _clone>](
+            #[export_name = concat!(
+                env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"),
+                stringify!($ffi_name),
+                "_clone",
+            )]
+            pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _clone>](
                 new_obj: *mut *mut $typ,
                 obj: *const $typ,
             ) -> *mut ffi::SignalFfiError {
