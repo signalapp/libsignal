@@ -11,6 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -264,12 +265,12 @@ typedef struct SignalValidatingMac SignalValidatingMac;
 
 typedef struct {
   const unsigned char *base;
-  uintptr_t length;
+  size_t length;
 } SignalBorrowedBuffer;
 
 typedef struct {
   unsigned char *base;
-  uintptr_t length;
+  size_t length;
 } SignalOwnedBuffer;
 
 typedef int (*SignalLoadSession)(void *store_ctx, SignalSessionRecord **recordp, const SignalProtocolAddress *address);
@@ -338,7 +339,7 @@ typedef struct {
 
 typedef struct {
   unsigned char *base;
-  uintptr_t length;
+  size_t length;
 } SignalBorrowedMutableBuffer;
 
 typedef SignalKeyPair SignalKyberKeyPair;
@@ -374,12 +375,12 @@ typedef struct {
 
 typedef struct {
   const SignalProtocolAddress *const *base;
-  uintptr_t length;
+  size_t length;
 } SignalBorrowedSliceOfProtocolAddress;
 
 typedef struct {
   const SignalSessionRecord *const *base;
-  uintptr_t length;
+  size_t length;
 } SignalBorrowedSliceOfSessionRecord;
 
 typedef int (*SignalLoadSenderKey)(void *store_ctx, SignalSenderKeyRecord**, const SignalProtocolAddress*, const uint8_t (*distribution_id)[16]);
@@ -392,7 +393,7 @@ typedef struct {
   SignalStoreSenderKey store_sender_key;
 } SignalSenderKeyStore;
 
-typedef int (*SignalRead)(void *ctx, uint8_t *buf, uintptr_t buf_len, uintptr_t *amount_read);
+typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
 typedef int (*SignalSkip)(void *ctx, uint64_t amount);
 
@@ -450,7 +451,7 @@ void signal_print_ptr(const void *p);
 
 void signal_free_string(const char *buf);
 
-void signal_free_buffer(const unsigned char *buf, uintptr_t buf_len);
+void signal_free_buffer(const unsigned char *buf, size_t buf_len);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
 

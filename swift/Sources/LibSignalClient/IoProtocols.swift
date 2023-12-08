@@ -18,7 +18,7 @@ public protocol SignalInputStream: AnyObject {
     /// - Parameter buffer: The buffer to read the bytes into.
     /// - Returns: The actual number of bytes read.
     /// - Throws: If an I/O error occurred while reading from the input.
-    func read(into buffer: UnsafeMutableRawBufferPointer) throws -> UInt
+    func read(into buffer: UnsafeMutableRawBufferPointer) throws -> Int
 
     /// Skip an amount of bytes in the input stream.
     ///
@@ -37,9 +37,9 @@ public enum SignalInputStreamError: Error {
 }
 
 extension FileHandle: SignalInputStream {
-    public func read(into buffer: UnsafeMutableRawBufferPointer) throws -> UInt {
+    public func read(into buffer: UnsafeMutableRawBufferPointer) throws -> Int {
         let data = self.readData(ofLength: buffer.count)
-        return UInt(data.copyBytes(to: buffer))
+        return data.copyBytes(to: buffer)
     }
 
     public func skip(by amount: UInt64) throws {
@@ -55,11 +55,11 @@ public class SignalInputStreamAdapter<Inner>: SignalInputStream where Inner: Col
         self.inner = inner[...]
     }
 
-    public func read(into buffer: UnsafeMutableRawBufferPointer) throws -> UInt {
+    public func read(into buffer: UnsafeMutableRawBufferPointer) throws -> Int {
         let amount = min(buffer.count, inner.count)
         buffer.copyBytes(from: inner.prefix(amount))
         inner = inner.dropFirst(amount)
-        return UInt(amount)
+        return amount
     }
 
     public func skip(by amount: UInt64) throws {

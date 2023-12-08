@@ -9,11 +9,11 @@ import SignalFfi
 internal func withInputStream<Result>(_ stream: SignalInputStream, _ body: (UnsafePointer<SignalFfi.SignalInputStream>) throws -> Result) throws -> Result {
     func ffiShimRead(stream_ctx: UnsafeMutableRawPointer?,
                      pBuf: UnsafeMutablePointer<UInt8>?,
-                     bufLen: UInt,
-                     pAmountRead: UnsafeMutablePointer<UInt>?) -> Int32 {
+                     bufLen: Int,
+                     pAmountRead: UnsafeMutablePointer<Int>?) -> Int32 {
         let streamContext = stream_ctx!.assumingMemoryBound(to: ErrorHandlingContext<SignalInputStream>.self)
         return streamContext.pointee.catchCallbackErrors { stream in
-            let buf = UnsafeMutableRawBufferPointer(start: pBuf, count: Int(bufLen))
+            let buf = UnsafeMutableRawBufferPointer(start: pBuf, count: bufLen)
             let amountRead = try stream.read(into: buf)
             pAmountRead!.pointee = amountRead
             return 0

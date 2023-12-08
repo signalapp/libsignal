@@ -28,16 +28,16 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
-    let result = Array(UnsafeBufferPointer(start: output.base, count: Int(output.length)))
-    signal_free_buffer(output.base, Int(output.length))
+    let result = Array(UnsafeBufferPointer(start: output.base, count: output.length))
+    signal_free_buffer(output.base, output.length)
     return result
 }
 
 internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data {
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
-    let result = Data(UnsafeBufferPointer(start: output.base, count: Int(output.length)))
-    signal_free_buffer(output.base, Int(output.length))
+    let result = Data(UnsafeBufferPointer(start: output.base, count: output.length))
+    signal_free_buffer(output.base, output.length)
     return result
 }
 
@@ -45,7 +45,7 @@ internal func invokeFnReturningDataNoCopy(fn: (UnsafeMutablePointer<SignalOwnedB
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
     guard let base = output.base else { return Data() }
-    return Data(bytesNoCopy: base, count: Int(output.length), deallocator: .custom { base, length in
+    return Data(bytesNoCopy: base, count: output.length, deallocator: .custom { base, length in
         signal_free_buffer(base, length)
     })
 }
@@ -124,13 +124,13 @@ extension ContiguousBytes {
 
 extension SignalBorrowedBuffer {
     internal init(_ buffer: UnsafeRawBufferPointer) {
-        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: UInt(buffer.count))
+        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
     }
 }
 
 extension SignalBorrowedMutableBuffer {
     internal init(_ buffer: UnsafeMutableRawBufferPointer) {
-        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: UInt(buffer.count))
+        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
     }
 }
 
