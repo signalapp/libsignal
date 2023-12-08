@@ -297,6 +297,12 @@ class SessionTests: TestCaseBase {
 
         let skdm_r = try! SenderKeyDistributionMessage(bytes: skdm_bits)
 
+        XCTAssertEqual(distribution_id, skdm_r.distributionId)
+        XCTAssertEqual(0, skdm_r.iteration)
+        XCTAssertEqual(skdm.chainKey, skdm_r.chainKey)
+        XCTAssertEqual(skdm.signatureKey, skdm_r.signatureKey)
+        XCTAssertEqual(skdm.chainId, skdm_r.chainId)
+
         try! processSenderKeyDistributionMessage(skdm_r,
                                                  from: alice_address,
                                                  store: bob_store,
@@ -333,6 +339,13 @@ class SessionTests: TestCaseBase {
                                         context: NullContext())
 
         XCTAssertEqual(b_ptext, [1, 2, 3])
+
+        let another_skdm = try! SenderKeyDistributionMessage(from: alice_address,
+                                                             distributionId: distribution_id,
+                                                             store: alice_store,
+                                                             context: NullContext())
+        XCTAssertEqual(skdm.chainId, another_skdm.chainId)
+        XCTAssertEqual(1, another_skdm.iteration)
     }
 
     func testSealedSenderGroupCipherWithBadRegistrationId() throws {

@@ -51,7 +51,7 @@ public class SenderKeyDistributionMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningUuid {
-                    signal_sender_key_message_get_distribution_id($0, nativeHandle)
+                    signal_sender_key_distribution_message_get_distribution_id($0, nativeHandle)
                 }
             }
         }
