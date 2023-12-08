@@ -1734,6 +1734,7 @@ dependencies = [
  "criterion",
  "ctr 0.9.2",
  "curve25519-dalek",
+ "derive-where",
  "displaydoc",
  "env_logger",
  "futures-util",

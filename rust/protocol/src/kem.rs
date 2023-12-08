@@ -58,6 +58,7 @@ mod mlkem1024;
 
 use crate::{Result, SignalProtocolError};
 
+use derive_where::derive_where;
 use displaydoc::Display;
 
 use std::marker::PhantomData;
@@ -198,8 +199,7 @@ pub trait KeyKind {
     fn key_length(key_type: KeyType) -> usize;
 }
 
-#[derive(Clone, Debug)]
-pub struct Public;
+pub enum Public {}
 
 impl KeyKind for Public {
     fn key_length(key_type: KeyType) -> usize {
@@ -207,8 +207,7 @@ impl KeyKind for Public {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Secret;
+pub enum Secret {}
 
 impl KeyKind for Secret {
     fn key_length(key_type: KeyType) -> usize {
@@ -216,7 +215,7 @@ impl KeyKind for Secret {
     }
 }
 
-#[derive(Clone)]
+#[derive_where(Clone)]
 pub(crate) struct KeyMaterial<T: KeyKind> {
     data: Box<[u8]>,
     kind: PhantomData<T>,
@@ -239,7 +238,7 @@ impl<T: KeyKind> Deref for KeyMaterial<T> {
     }
 }
 
-#[derive(Clone)]
+#[derive_where(Clone)]
 pub struct Key<T: KeyKind> {
     key_type: KeyType,
     key_data: KeyMaterial<T>,
