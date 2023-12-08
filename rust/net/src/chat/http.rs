@@ -98,7 +98,7 @@ impl ChatService for ChatOverHttp2 {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ChatOverHttp2 {
     request_sender: AggregatingHttp2Client,
 }

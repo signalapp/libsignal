@@ -35,7 +35,7 @@ pub struct Http2Channel<T, S: AsyncDuplexStream + 'static> {
     pub connection: Http2Connection<S>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AggregatingHttp2Client {
     service: http2::SendRequest<Full<Bytes>>,
     connection_params: ConnectionParams,

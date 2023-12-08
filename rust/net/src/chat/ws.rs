@@ -27,7 +27,7 @@ use crate::infra::ws::{
 use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
 use crate::proto::chat_websocket::web_socket_message::Type;
 
-#[derive(Default, Eq, Hash, PartialEq, Clone, Copy)]
+#[derive(Debug, Default, Eq, Hash, PartialEq, Clone, Copy)]
 struct RequestId {
     id: u64,
 }
@@ -43,6 +43,7 @@ enum ChatMessage {
     Response(RequestId, ResponseProto),
 }
 
+#[derive(Debug)]
 pub struct ResponseSender<S> {
     request_id: u64,
     writer: WebSocketClientWriter<S>,
@@ -55,6 +56,7 @@ impl<S: AsyncDuplexStream> ResponseSender<S> {
     }
 }
 
+#[derive(Debug)]
 pub struct ServerRequest<S> {
     pub request_proto: RequestProto,
     pub response_sender: ResponseSender<S>,
@@ -73,7 +75,7 @@ impl<S: AsyncDuplexStream> ServerRequest<S> {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct PendingMessagesMap {
     pending: HashMap<RequestId, oneshot::Sender<ResponseProto>>,
     next_id: u64,
@@ -212,6 +214,7 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
 }
 
 #[derive_where(Clone)]
+#[derive(Debug)]
 pub struct ChatOverWebSocket<S> {
     ws_client_writer: WebSocketClientWriter<S>,
     service_status: ServiceStatus<NetError>,

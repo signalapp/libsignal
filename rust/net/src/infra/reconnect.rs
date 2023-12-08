@@ -170,6 +170,11 @@ where
         let connection_attempt_result = self
             .connection_manager
             .connect_or_wait(|connection_params| {
+                log::debug!(
+                    "trying to connect to {}:{}",
+                    connection_params.host,
+                    connection_params.port
+                );
                 self.service_connector.connect_channel(connection_params)
             })
             .await;
@@ -245,6 +250,7 @@ where
                     if !service_status.is_stopped() {
                         // if the state is `Active` and service has not been stopped,
                         // clone the service and return it
+                        log::debug!("reusing active service instance");
                         return Some(service.clone());
                     }
                     if let Some(error) = service_status.get_error() {
