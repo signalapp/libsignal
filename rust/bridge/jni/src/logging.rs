@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{GlobalRef, JClass, JObject, JValue};
+use jni::objects::{AutoLocal, GlobalRef, JClass, JObject, JValue};
 use jni::sys::jint;
 use jni::{JNIEnv, JavaVM};
 use libsignal_bridge::{describe_panic, jni_args};
@@ -81,8 +81,8 @@ impl JniLogger {
             record.line().unwrap_or(0),
             record.args(),
         );
-        let message = env.new_string(message)?;
-        let module = env.new_string("libsignal")?;
+        let message = AutoLocal::new(env.new_string(message)?, &env);
+        let module = AutoLocal::new(env.new_string("libsignal")?, &env);
         let args = jni_args!((
             level.into() => int,
             module => java.lang.String,
