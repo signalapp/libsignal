@@ -40,8 +40,8 @@ pub enum NetError {
     UnexpectedFrameReceived,
     /// Tried to use closed channel
     ChannelClosed,
-    /// WebSocket error
-    WebSocketError,
+    /// WebSocket error: {0}
+    WebSocketError(#[from] crate::infra::ws::Error),
     /// Channel closed due to an error
     ChannelClosedWithError,
     /// Channel closed by remote peer
@@ -86,8 +86,8 @@ impl From<boring::error::ErrorStack> for NetError {
     }
 }
 
-impl From<tungstenite::Error> for NetError {
-    fn from(_value: tungstenite::Error) -> Self {
-        NetError::WebSocketError
+impl From<tungstenite::error::Error> for NetError {
+    fn from(value: tungstenite::error::Error) -> Self {
+        Self::WebSocketError(value.into())
     }
 }

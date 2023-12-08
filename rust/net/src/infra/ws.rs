@@ -28,6 +28,9 @@ use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
 use crate::utils::timeout;
 
+pub mod error;
+pub use error::Error;
+
 const WS_ALPN: &[u8] = b"\x08http/1.1";
 
 #[derive(Debug, Clone)]
