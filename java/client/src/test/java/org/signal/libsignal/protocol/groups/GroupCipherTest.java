@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.groups;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -93,6 +94,17 @@ public class GroupCipherTest {
         aliceSessionBuilder.create(SENDER_ADDRESS, DISTRIBUTION_ID);
     SenderKeyDistributionMessage receivedAliceDistributionMessage =
         new SenderKeyDistributionMessage(sentAliceDistributionMessage.serialize());
+
+    assertEquals(DISTRIBUTION_ID, receivedAliceDistributionMessage.getDistributionId());
+    assertEquals(0, receivedAliceDistributionMessage.getIteration());
+    assertArrayEquals(
+        sentAliceDistributionMessage.getChainKey(), receivedAliceDistributionMessage.getChainKey());
+    assertEquals(
+        sentAliceDistributionMessage.getSignatureKey(),
+        receivedAliceDistributionMessage.getSignatureKey());
+    assertEquals(
+        sentAliceDistributionMessage.getChainId(), receivedAliceDistributionMessage.getChainId());
+
     bobSessionBuilder.process(SENDER_ADDRESS, receivedAliceDistributionMessage);
 
     CiphertextMessage ciphertextFromAlice =
@@ -180,6 +192,12 @@ public class GroupCipherTest {
     assertTrue(new String(plaintextFromAlice).equals("smert ze smert"));
     assertTrue(new String(plaintextFromAlice2).equals("smert ze smert2"));
     assertTrue(new String(plaintextFromAlice3).equals("smert ze smert3"));
+
+    SenderKeyDistributionMessage anotherAliceDistributionMessage =
+        aliceSessionBuilder.create(SENDER_ADDRESS, DISTRIBUTION_ID);
+    assertEquals(
+        sentAliceDistributionMessage.getChainId(), anotherAliceDistributionMessage.getChainId());
+    assertEquals(3, anotherAliceDistributionMessage.getIteration());
   }
 
   @Test
