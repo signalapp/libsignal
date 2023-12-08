@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::ffi::{c_int, c_void};
 use std::io;
 
 use async_trait::async_trait;
-use libc::{c_int, c_void};
 
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 

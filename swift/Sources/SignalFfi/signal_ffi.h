@@ -450,7 +450,7 @@ void signal_print_ptr(const void *p);
 
 void signal_free_string(const char *buf);
 
-void signal_free_buffer(const unsigned char *buf, size_t buf_len);
+void signal_free_buffer(const unsigned char *buf, uintptr_t buf_len);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
 

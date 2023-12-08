@@ -4,9 +4,11 @@
 //
 
 use super::*;
+
 use async_trait::async_trait;
-use libc::{c_int, c_uint, c_void};
 use uuid::Uuid;
+
+use std::ffi::{c_int, c_uint, c_void};
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey) -> c_int;

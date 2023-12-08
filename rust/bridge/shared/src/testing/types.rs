@@ -53,7 +53,7 @@ impl node::Finalize for NeedsCleanup {
 
 #[cfg(feature = "ffi")]
 impl ffi::SimpleArgTypeInfo for NeedsCleanup {
-    type ArgType = *const libc::c_void;
+    type ArgType = *const std::ffi::c_void;
 
     fn convert_from(_foreign: Self::ArgType) -> ffi::SignalFfiResult<Self> {
         // The plain FFI bridge does not have any context or environment it's executed in,
@@ -126,7 +126,7 @@ pub struct ErrorOnBorrow;
 
 #[cfg(feature = "ffi")]
 impl ffi::SimpleArgTypeInfo for ErrorOnBorrow {
-    type ArgType = *const libc::c_void;
+    type ArgType = *const std::ffi::c_void;
 
     fn convert_from(_foreign: Self::ArgType) -> ffi::SignalFfiResult<Self> {
         Err(SignalProtocolError::InvalidArgument("deliberate error".to_string()).into())
@@ -163,7 +163,7 @@ pub struct PanicOnBorrow;
 
 #[cfg(feature = "ffi")]
 impl ffi::SimpleArgTypeInfo for PanicOnBorrow {
-    type ArgType = *const libc::c_void;
+    type ArgType = *const std::ffi::c_void;
 
     fn convert_from(_foreign: Self::ArgType) -> ffi::SignalFfiResult<Self> {
         panic!("deliberate panic")
@@ -203,7 +203,7 @@ pub struct PanicOnLoad;
 
 #[cfg(feature = "ffi")]
 impl<'storage> ffi::ArgTypeInfo<'storage> for PanicOnLoad {
-    type ArgType = *const libc::c_void;
+    type ArgType = *const std::ffi::c_void;
 
     type StoredType = ();
 
@@ -276,7 +276,7 @@ pub struct ErrorOnReturn;
 
 #[cfg(feature = "ffi")]
 impl ffi::ResultTypeInfo for ErrorOnReturn {
-    type ResultType = *const libc::c_void;
+    type ResultType = *const std::ffi::c_void;
 
     fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
         Err(SignalProtocolError::InvalidArgument("deliberate error".to_string()).into())
@@ -306,7 +306,7 @@ pub struct PanicOnReturn;
 
 #[cfg(feature = "ffi")]
 impl ffi::ResultTypeInfo for PanicOnReturn {
-    type ResultType = *const libc::c_void;
+    type ResultType = *const std::ffi::c_void;
 
     fn convert_into(self) -> ffi::SignalFfiResult<Self::ResultType> {
         panic!("deliberate panic");

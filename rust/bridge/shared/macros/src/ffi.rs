@@ -46,7 +46,7 @@ pub(crate) fn bridge_fn(
             let output = result_type(&sig.output);
             quote!(
                 promise: ffi::CPromise<ffi_result_type!(#output)>,
-                promise_context: *const libc::c_void,
+                promise_context: *const std::ffi::c_void,
                 async_runtime: ffi_arg_type!(&#runtime), // note the trailing comma
             )
         }

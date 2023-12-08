@@ -7,11 +7,10 @@
 #![warn(clippy::unwrap_used)]
 
 use futures_util::FutureExt;
-use libc::{c_char, c_uchar, c_uint, size_t};
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
 
-use std::ffi::CString;
+use std::ffi::{c_char, c_uchar, c_uint, CString};
 use std::panic::AssertUnwindSafe;
 
 pub mod logging;
@@ -33,7 +32,7 @@ pub unsafe extern "C" fn signal_free_string(buf: *const c_char) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: size_t) {
+pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize) {
     if buf.is_null() {
         return;
     }

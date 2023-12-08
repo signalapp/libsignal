@@ -15,7 +15,7 @@ use std::future::Future;
 /// cbindgen will produce independent C types like `SignalCPromisei32` and
 /// `SignalCPromiseProtocolAddress`.
 pub type CPromise<T> =
-    extern "C" fn(error: *mut SignalFfiError, result: *const T, context: *const libc::c_void);
+    extern "C" fn(error: *mut SignalFfiError, result: *const T, context: *const std::ffi::c_void);
 
 /// Keeps track of the information necessary to report a promise result back to C.
 ///
@@ -24,7 +24,7 @@ pub type CPromise<T> =
 /// will result in a panic in debug mode and an error log in release mode.
 pub struct PromiseCompleter<T: ResultTypeInfo> {
     promise: CPromise<T::ResultType>,
-    promise_context: *const libc::c_void,
+    promise_context: *const std::ffi::c_void,
 }
 
 /// Pointers are not Send by default just in case,
@@ -99,7 +99,7 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 /// # where F::Output: ResultReporter {
 /// #   fn run_future(&self, future: F, receiver: <F::Output as ResultReporter>::Receiver) { unimplemented!() }
 /// # }
-/// # fn test(promise: CPromise<i32>, promise_context: *const libc::c_void, async_runtime: &ExampleAsyncRuntime) {
+/// # fn test(promise: CPromise<i32>, promise_context: *const std::ffi::c_void, async_runtime: &ExampleAsyncRuntime) {
 /// run_future_on_runtime(async_runtime, promise, promise_context, async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
@@ -110,7 +110,7 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 pub fn run_future_on_runtime<F, O>(
     runtime: &impl AsyncRuntime<F>,
     promise: CPromise<O::ResultType>,
-    promise_context: *const libc::c_void,
+    promise_context: *const std::ffi::c_void,
     future: F,
 ) where
     F: Future + std::panic::UnwindSafe + 'static,
