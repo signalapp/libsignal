@@ -643,6 +643,8 @@ describe('SignalClient', () => {
         distributionId,
         aSenderKeyStore
       );
+      assert.equal(distributionId, skdm.distributionId());
+      assert.equal(0, skdm.iteration());
 
       const bSenderKeyStore = new InMemorySenderKeyStore();
       await SignalClient.processSenderKeyDistributionMessage(
@@ -667,6 +669,15 @@ describe('SignalClient', () => {
       );
 
       assert.deepEqual(message, bPtext);
+
+      const anotherSkdm =
+        await SignalClient.SenderKeyDistributionMessage.create(
+          sender,
+          distributionId,
+          aSenderKeyStore
+        );
+      assert.equal(skdm.chainId(), anotherSkdm.chainId());
+      assert.equal(1, anotherSkdm.iteration());
     });
 
     it("does not panic if there's an error", async () => {
