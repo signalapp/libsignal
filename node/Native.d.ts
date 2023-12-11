@@ -159,6 +159,14 @@ export function GroupSecretParams_EncryptServiceId(params: Serialized<GroupSecre
 export function GroupSecretParams_GenerateDeterministic(randomness: Buffer): Serialized<GroupSecretParams>;
 export function GroupSecretParams_GetMasterKey(params: Serialized<GroupSecretParams>): Serialized<GroupMasterKey>;
 export function GroupSecretParams_GetPublicParams(params: Serialized<GroupSecretParams>): Serialized<GroupPublicParams>;
+export function GroupSendCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
+export function GroupSendCredentialPresentation_Verify(presentationBytes: Buffer, groupMembers: Buffer, now: Timestamp, serverParams: Serialized<ServerSecretParams>): void;
+export function GroupSendCredentialResponse_CheckValidContents(responseBytes: Buffer): void;
+export function GroupSendCredentialResponse_DefaultExpirationBasedOnCurrentTime(): Timestamp;
+export function GroupSendCredentialResponse_IssueDeterministic(concatenatedGroupMemberCiphertexts: Buffer, requester: Serialized<UuidCiphertext>, expiration: Timestamp, serverParams: Serialized<ServerSecretParams>, randomness: Buffer): Buffer;
+export function GroupSendCredentialResponse_Receive(responseBytes: Buffer, groupMembers: Buffer, localAci: Buffer, now: Timestamp, serverParams: Serialized<ServerPublicParams>, groupParams: Serialized<GroupSecretParams>): Buffer;
+export function GroupSendCredential_CheckValidContents(paramsBytes: Buffer): void;
+export function GroupSendCredential_PresentDeterministic(credentialBytes: Buffer, serverParams: Serialized<ServerPublicParams>, randomness: Buffer): Buffer;
 export function HKDF_DeriveSecrets(outputLength: number, ikm: Buffer, label: Buffer | null, salt: Buffer | null): Buffer;
 export function HsmEnclaveClient_CompleteHandshake(cli: Wrapper<HsmEnclaveClient>, handshakeReceived: Buffer): void;
 export function HsmEnclaveClient_EstablishedRecv(cli: Wrapper<HsmEnclaveClient>, receivedCiphertext: Buffer): Buffer;

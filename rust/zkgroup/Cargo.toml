@@ -19,6 +19,7 @@ zkcredential = { path = "../zkcredential" }
 
 aes-gcm-siv = "0.11.1"
 bincode = "1.2.1"
+derive-where = "1.2.5"
 displaydoc = "0.2"
 hex = "0.4.0"
 hex-literal = "0.4.1"

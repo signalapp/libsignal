@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use ::zkgroup;
 use libsignal_bridge_macros::*;
 use libsignal_protocol::{Aci, Pni, ServiceId};
@@ -23,6 +25,7 @@ use zkgroup::backups::{
     BackupAuthCredentialRequestContext, BackupAuthCredentialResponse,
 };
 
+use crate::protocol::ServiceIdSequence;
 use crate::support::*;
 use crate::*;
 
@@ -1119,4 +1122,109 @@ fn BackupAuthCredentialPresentation_GetReceiptLevel(presentation_bytes: &[u8]) -
     let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
         .expect("should have been parsed previously");
     presentation.receipt_level()
+}
+
+#[bridge_fn]
+fn GroupSendCredentialResponse_DefaultExpirationBasedOnCurrentTime() -> Timestamp {
+    GroupSendCredentialResponse::default_expiration(
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs(),
+    )
+    .into()
+}
+
+#[bridge_fn]
+fn GroupSendCredentialResponse_IssueDeterministic(
+    concatenated_group_member_ciphertexts: &[u8],
+    requester: Serialized<UuidCiphertext>,
+    expiration: Timestamp,
+    server_params: Serialized<ServerSecretParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    assert!(concatenated_group_member_ciphertexts.len() % UUID_CIPHERTEXT_LEN == 0);
+    let user_id_ciphertexts = concatenated_group_member_ciphertexts
+        .chunks_exact(UUID_CIPHERTEXT_LEN)
+        .map(|serialized| {
+            zkgroup::deserialize::<UuidCiphertext>(serialized)
+                .expect("should have been parsed previously")
+        });
+    let response = GroupSendCredentialResponse::issue_credential(
+        user_id_ciphertexts,
+        &requester,
+        expiration.as_seconds(),
+        &server_params,
+        *randomness,
+    )?;
+    Ok(zkgroup::serialize(&response))
+}
+
+#[bridge_fn_void]
+fn GroupSendCredentialResponse_CheckValidContents(
+    response_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendCredentialResponse>(response_bytes)
+}
+
+#[bridge_fn]
+fn GroupSendCredentialResponse_Receive(
+    response_bytes: &[u8],
+    group_members: ServiceIdSequence<'_>,
+    local_aci: Aci,
+    now: Timestamp,
+    server_params: Serialized<ServerPublicParams>,
+    group_params: Serialized<GroupSecretParams>,
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let response = zkgroup::deserialize::<GroupSendCredentialResponse>(response_bytes)
+        .expect("should have been parsed previously");
+
+    let credential = response.receive(
+        &server_params,
+        &group_params,
+        group_members,
+        local_aci.into(),
+        now.as_seconds(),
+    )?;
+    Ok(zkgroup::serialize(&credential))
+}
+
+#[bridge_fn_void]
+fn GroupSendCredential_CheckValidContents(
+    params_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendCredential>(params_bytes)
+}
+
+#[bridge_fn]
+fn GroupSendCredential_PresentDeterministic(
+    credential_bytes: &[u8],
+    server_params: Serialized<ServerPublicParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let credential = zkgroup::deserialize::<GroupSendCredential>(credential_bytes)
+        .expect("should have been parsed previously");
+
+    let presentation = credential.present(&server_params, *randomness);
+    Ok(zkgroup::serialize(&presentation))
+}
+
+#[bridge_fn_void]
+fn GroupSendCredentialPresentation_CheckValidContents(
+    presentation_bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendCredentialPresentation>(presentation_bytes)
+}
+
+#[bridge_fn_void]
+fn GroupSendCredentialPresentation_Verify(
+    presentation_bytes: &[u8],
+    group_members: ServiceIdSequence<'_>,
+    now: Timestamp,
+    server_params: Serialized<ServerSecretParams>,
+) -> Result<(), ZkGroupVerificationFailure> {
+    let presentation = zkgroup::deserialize::<GroupSendCredentialPresentation>(presentation_bytes)
+        .expect("should have been parsed previously");
+
+    presentation.verify(group_members, now.as_seconds(), &server_params)
 }

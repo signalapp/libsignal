@@ -285,6 +285,16 @@ impl<D: Domain> KeyPair<D> {
     /// Encrypts `attr` according to Chase-Perrin-Zaverucha section 4.1.
     #[inline]
     pub fn encrypt(&self, attr: &D::Attribute) -> Ciphertext<D> {
+        self.encrypt_arbitrary_attribute(attr)
+    }
+
+    /// Encrypts `attr` according to Chase-Perrin-Zaverucha section 4.1, even if the attribute is
+    /// not normally associated with this key.
+    ///
+    /// Allows controlling the domain of the resulting ciphertext, to not get confused with the
+    /// usual ciphertexts produced by [`Self::encrypt`].
+    #[inline]
+    pub fn encrypt_arbitrary_attribute<D2>(&self, attr: &dyn Attribute) -> Ciphertext<D2> {
         let [M1, M2] = attr.as_points();
         let E_A1 = self.a1 * M1;
         let E_A2 = (self.a2 * E_A1) + M2;

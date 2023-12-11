@@ -3811,6 +3811,7 @@ dependencies = [
  "bincode",
  "criterion",
  "curve25519-dalek",
+ "derive-where",
  "displaydoc",
  "hex",
  "hex-literal",

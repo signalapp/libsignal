@@ -12,7 +12,7 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerSecretParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_key_pair:
@@ -33,9 +33,11 @@ pub struct ServerSecretParams {
         crypto::credentials::KeyPair<crypto::credentials::ExpiringProfileKeyCredential>,
     auth_credentials_with_pni_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::AuthCredentialWithPni>,
+
+    pub(crate) generic_credential_key_pair: zkcredential::credentials::CredentialKeyPair,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerPublicParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_public_key: crypto::credentials::PublicKey,
@@ -51,6 +53,8 @@ pub struct ServerPublicParams {
 
     expiring_profile_key_credentials_public_key: crypto::credentials::PublicKey,
     auth_credentials_with_pni_public_key: crypto::credentials::PublicKey,
+
+    pub(crate) generic_credential_public_key: zkcredential::credentials::CredentialPublicKey,
 }
 
 impl ServerSecretParams {
@@ -68,6 +72,8 @@ impl ServerSecretParams {
         let expiring_profile_key_credentials_key_pair =
             crypto::credentials::KeyPair::generate(&mut sho);
         let auth_credentials_with_pni_key_pair = crypto::credentials::KeyPair::generate(&mut sho);
+        let generic_credential_key_pair =
+            zkcredential::credentials::CredentialKeyPair::generate(randomness);
 
         Self {
             reserved: Default::default(),
@@ -78,6 +84,7 @@ impl ServerSecretParams {
             pni_credentials_key_pair,
             expiring_profile_key_credentials_key_pair,
             auth_credentials_with_pni_key_pair,
+            generic_credential_key_pair,
         }
     }
 
@@ -97,6 +104,7 @@ impl ServerSecretParams {
             auth_credentials_with_pni_public_key: self
                 .auth_credentials_with_pni_key_pair
                 .get_public_key(),
+            generic_credential_public_key: self.generic_credential_key_pair.public_key().clone(),
         }
     }
 

@@ -23,6 +23,7 @@ import {
   CallLinkSecretParams,
   CallLinkAuthCredentialResponse,
   BackupAuthCredentialRequestContext,
+  GroupSendCredentialResponse,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
 import { Uuid } from '..';
@@ -791,6 +792,145 @@ describe('ZKGroup', () => {
           serverSecretParams,
           new Date(1000 * (startOfDay - 1 - SECONDS_PER_DAY))
         )
+      );
+    });
+  });
+
+  describe('GroupSendCredential', () => {
+    it('works in normal usage', () => {
+      const serverSecretParams =
+        ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      const aliceAci = Aci.parseFromServiceIdString(
+        '9d0652a3-dcc3-4d11-975f-74d61598733f'
+      );
+      const bobAci = Aci.parseFromServiceIdString(
+        '6838237d-02f6-4098-b110-698253d15961'
+      );
+      const eveAci = Aci.parseFromServiceIdString(
+        '3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7'
+      );
+      const malloryAci = Aci.parseFromServiceIdString(
+        '5d088142-6fd7-4dbd-af00-fdda1b3ce988'
+      );
+
+      const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+      const groupSecretParams =
+        GroupSecretParams.deriveFromMasterKey(masterKey);
+
+      const aliceCiphertext = new ClientZkGroupCipher(
+        groupSecretParams
+      ).encryptServiceId(aliceAci);
+      const groupCiphertexts = [aliceAci, bobAci, eveAci, malloryAci].map(
+        (next) =>
+          new ClientZkGroupCipher(groupSecretParams).encryptServiceId(next)
+      );
+
+      // Server
+      const response = GroupSendCredentialResponse.issueCredential(
+        groupCiphertexts,
+        aliceCiphertext,
+        serverSecretParams
+      );
+
+      // Client
+      const credential = response.receive(
+        [aliceAci, bobAci, eveAci, malloryAci],
+        aliceAci,
+        serverPublicParams,
+        groupSecretParams
+      );
+      assert.throws(() =>
+        response.receive(
+          [aliceAci, bobAci, eveAci, malloryAci],
+          bobAci,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receive(
+          [bobAci, eveAci, malloryAci],
+          aliceAci,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receive(
+          [aliceAci, eveAci, malloryAci],
+          aliceAci,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+
+      const presentation = credential.presentWithRandom(
+        serverPublicParams,
+        TEST_ARRAY_32_2
+      );
+
+      // Server
+      presentation.verify([bobAci, eveAci, malloryAci], serverSecretParams);
+      presentation.verify(
+        [bobAci, eveAci, malloryAci],
+        serverSecretParams,
+        new Date(Date.now() + 60 * 60 * 1000)
+      );
+
+      assert.throws(() =>
+        presentation.verify(
+          [aliceAci, bobAci, eveAci, malloryAci],
+          serverSecretParams
+        )
+      );
+      assert.throws(() =>
+        presentation.verify([eveAci, malloryAci], serverSecretParams)
+      );
+
+      // credential should definitely be expired after 2 days
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      assert.throws(() =>
+        presentation.verify(
+          [bobAci, eveAci, malloryAci],
+          serverSecretParams,
+          new Date(1000 * (startOfDay + 2 * SECONDS_PER_DAY + 1))
+        )
+      );
+    });
+
+    it('works with empty credentials', () => {
+      const serverSecretParams =
+        ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      const aliceAci = Aci.parseFromServiceIdString(
+        '9d0652a3-dcc3-4d11-975f-74d61598733f'
+      );
+
+      const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+      const groupSecretParams =
+        GroupSecretParams.deriveFromMasterKey(masterKey);
+
+      const aliceCiphertext = new ClientZkGroupCipher(
+        groupSecretParams
+      ).encryptServiceId(aliceAci);
+
+      // Server
+      const response = GroupSendCredentialResponse.issueCredential(
+        [aliceCiphertext],
+        aliceCiphertext,
+        serverSecretParams
+      );
+
+      // Client
+      const _credential = response.receive(
+        [aliceAci],
+        aliceAci,
+        serverPublicParams,
+        groupSecretParams
       );
     });
   });

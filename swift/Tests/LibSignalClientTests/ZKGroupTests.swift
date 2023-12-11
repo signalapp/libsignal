@@ -516,4 +516,63 @@ class ZKGroupTests: TestCaseBase {
     // future credential should be invalid
     XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay - 1 - SECONDS_PER_DAY)), serverParams: serverSecretParams))
   }
+
+  func testGroupSendCredential() {
+    let serverSecretParams = try! ServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = try! serverSecretParams.getPublicParams()
+
+    let aliceAci = try! Aci.parseFrom(serviceIdString: "9d0652a3-dcc3-4d11-975f-74d61598733f")
+    let bobAci = try! Aci.parseFrom(serviceIdString: "6838237d-02f6-4098-b110-698253d15961")
+    let eveAci = try! Aci.parseFrom(serviceIdString: "3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7")
+    let malloryAci = try! Aci.parseFrom(serviceIdString: "5d088142-6fd7-4dbd-af00-fdda1b3ce988")
+
+    let masterKey         = try! GroupMasterKey(contents: TEST_ARRAY_32_1)
+    let groupSecretParams = try! GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+    let aliceCiphertext  = try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt(aliceAci)
+    let groupCiphertexts = [aliceAci, bobAci, eveAci, malloryAci].map {
+      try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt($0)
+    }
+
+    // Server
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = GroupSendCredentialResponse.issueCredential(groupMembers: groupCiphertexts, requestingMember: aliceCiphertext, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+
+    // Client
+    let credential = try! response.receive(groupMembers: [aliceAci, bobAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams)
+    XCTAssertThrowsError(try response.receive(groupMembers: [aliceAci, bobAci, eveAci, malloryAci], localUser: bobAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: [bobAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: [aliceAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
+
+    let presentation = credential.present(serverParams: serverPublicParams, randomness: TEST_ARRAY_32_3)
+
+    // Server
+    try! presentation.verify(groupMembers: [bobAci, eveAci, malloryAci], serverParams: serverSecretParams)
+    try! presentation.verify(groupMembers: [bobAci, eveAci, malloryAci], now: Date().addingTimeInterval(60 * 60), serverParams: serverSecretParams)
+
+    XCTAssertThrowsError(try presentation.verify(groupMembers: [aliceAci, bobAci, eveAci, malloryAci], serverParams: serverSecretParams))
+    XCTAssertThrowsError(try presentation.verify(groupMembers: [eveAci, malloryAci], serverParams: serverSecretParams))
+
+    // credential should definitely be expired after 2 days
+    XCTAssertThrowsError(try presentation.verify(groupMembers: [bobAci, eveAci, malloryAci], now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY * 2 + 1)), serverParams: serverSecretParams))
+  }
+
+  func testEmptyGroupSendCredential() {
+    let serverSecretParams = try! ServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = try! serverSecretParams.getPublicParams()
+
+    let aliceAci = try! Aci.parseFrom(serviceIdString: "9d0652a3-dcc3-4d11-975f-74d61598733f")
+
+    let masterKey         = try! GroupMasterKey(contents: TEST_ARRAY_32_1)
+    let groupSecretParams = try! GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+    let aliceCiphertext  = try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt(aliceAci)
+
+    // Server
+    let response = GroupSendCredentialResponse.issueCredential(groupMembers: [aliceCiphertext], requestingMember: aliceCiphertext, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+
+    // Client
+    _ = try! response.receive(groupMembers: [aliceAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams)
+  }
 }

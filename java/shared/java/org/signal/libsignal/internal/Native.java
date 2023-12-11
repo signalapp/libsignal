@@ -253,6 +253,17 @@ public final class Native {
   public static native byte[] GroupSecretParams_GetMasterKey(byte[] params);
   public static native byte[] GroupSecretParams_GetPublicParams(byte[] params);
 
+  public static native void GroupSendCredentialPresentation_CheckValidContents(byte[] presentationBytes);
+  public static native void GroupSendCredentialPresentation_Verify(byte[] presentationBytes, byte[] groupMembers, long now, byte[] serverParams);
+
+  public static native void GroupSendCredentialResponse_CheckValidContents(byte[] responseBytes);
+  public static native long GroupSendCredentialResponse_DefaultExpirationBasedOnCurrentTime();
+  public static native byte[] GroupSendCredentialResponse_IssueDeterministic(byte[] concatenatedGroupMemberCiphertexts, byte[] requester, long expiration, byte[] serverParams, byte[] randomness);
+  public static native byte[] GroupSendCredentialResponse_Receive(byte[] responseBytes, byte[] groupMembers, byte[] localAci, long now, byte[] serverParams, byte[] groupParams);
+
+  public static native void GroupSendCredential_CheckValidContents(byte[] paramsBytes);
+  public static native byte[] GroupSendCredential_PresentDeterministic(byte[] credentialBytes, byte[] serverParams, byte[] randomness);
+
   public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store);
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store);
 
