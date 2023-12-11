@@ -20,6 +20,7 @@ struct Participant {
     store: InMemSignalProtocolStore,
     message_queue: Vec<(CiphertextMessage, Box<[u8]>)>,
     archive_count: u8,
+    pre_key_count: u32,
 }
 
 impl Participant {
@@ -41,7 +42,8 @@ impl Participant {
             .calculate_signature(&their_signed_pre_key_public, rng)
             .unwrap();
 
-        let signed_pre_key_id: SignedPreKeyId = rng.gen_range(0..0xFF_FFFF).into();
+        them.pre_key_count += 1;
+        let signed_pre_key_id: SignedPreKeyId = them.pre_key_count.into();
 
         them.store
             .save_signed_pre_key(
@@ -56,8 +58,10 @@ impl Participant {
             .await
             .unwrap();
 
+        them.pre_key_count += 1;
+        let pre_key_id: PreKeyId = them.pre_key_count.into();
+
         let pre_key_info = if use_one_time_pre_key {
-            let pre_key_id: PreKeyId = rng.gen_range(0..0xFF_FFFF).into();
             let one_time_pre_key = KeyPair::generate(rng);
 
             them.store
@@ -195,6 +199,7 @@ fuzz_target!(|data: (u64, &[u8])| {
             .unwrap(),
             message_queue: Vec::new(),
             archive_count: 0,
+            pre_key_count: 0,
         };
         let mut bob = Participant {
             name: "bob",
@@ -206,6 +211,7 @@ fuzz_target!(|data: (u64, &[u8])| {
             .unwrap(),
             message_queue: Vec::new(),
             archive_count: 0,
+            pre_key_count: 0,
         };
 
         for action in actions {
@@ -216,10 +222,20 @@ fuzz_target!(|data: (u64, &[u8])| {
             };
             match action >> 1 {
                 0 => {
-                    if me.archive_count < 40 {
+                    let mut estimated_prev_states = 0;
+                    // The set of previous session states grows in two ways:
+                    // 1) The current session state of "me" is archived explicitly.
+                    estimated_prev_states += me.archive_count;
+                    // 2) A pre-key message is received from "them" and displaces the
+                    //    current session state. They may send one pre-key message initially.
+                    //    Additional pre-key messages from "them" follow explicit archiving.
+                    estimated_prev_states += 1 + them.archive_count;
+                    if estimated_prev_states < 40 {
                         // Only archive if it can't result in old sessions getting expired.
                         // We're not testing that.
                         me.archive_session(&them.address).await
+                    } else {
+                        info!("{}: archiving LIMITED at {}/{}", me.name, me.archive_count, them.archive_count);
                     }
                 }
                 1..=32 => me.receive_messages(&them.address, &mut csprng).await,
