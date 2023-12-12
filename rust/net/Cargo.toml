@@ -20,7 +20,7 @@ http = "0.2.9"
 http-body-util = "0.1.0-rc.3"
 hyper = { version = "1.0.0-rc.4", features = ["http1", "http2", "client"] }
 lazy_static = "1.4.0"
-libsignal-protocol = { path = "../protocol" }
+libsignal-core = { path = "../core" }
 log = "0.4.19"
 pin-project-lite = "0.2.4"
 prost = "0.12.1"

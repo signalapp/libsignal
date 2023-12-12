@@ -56,7 +56,7 @@ fn test_integration_auth() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let redemption_time = 123456u32;
 
     // SERVER
@@ -184,8 +184,8 @@ fn test_integration_auth_with_pni() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
-    let pni = libsignal_protocol::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let pni = libsignal_core::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
     let redemption_time = 123456 * SECONDS_PER_DAY;
 
     // SERVER
@@ -312,8 +312,8 @@ fn test_integration_auth_with_pni_using_pni_as_aci() {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = libsignal_protocol::Aci::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16));
-    let pni = libsignal_protocol::Pni::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16_1));
+    let aci = libsignal_core::Aci::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16));
+    let pni = libsignal_core::Pni::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16_1));
     let redemption_time = 123456 * SECONDS_PER_DAY;
 
     // SERVER
@@ -378,7 +378,7 @@ fn test_integration_auth_with_pni_using_pni_as_aci() {
     assert!(
         presentation_any.get_pni_ciphertext().unwrap()
             == group_secret_params
-                .encrypt_service_id(libsignal_protocol::Aci::from(uuid::Uuid::from(pni)).into())
+                .encrypt_service_id(libsignal_core::Aci::from(uuid::Uuid::from(pni)).into())
     );
 
     server_secret_params
@@ -426,7 +426,7 @@ fn test_integration_expiring_profile() {
         zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
     let group_public_params = group_secret_params.get_public_params();
 
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
     let profile_key_commitment = profile_key.get_commitment(aci);

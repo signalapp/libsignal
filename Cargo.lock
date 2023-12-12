@@ -1630,6 +1630,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsignal-core"
+version = "0.1.0"
+dependencies = [
+ "hex-literal",
+ "num_enum",
+ "proptest",
+ "uuid",
+]
+
+[[package]]
 name = "libsignal-ffi"
 version = "0.36.1"
 dependencies = [
@@ -1686,7 +1696,7 @@ dependencies = [
  "http-body-util",
  "hyper 1.0.0-rc.4",
  "lazy_static",
- "libsignal-protocol",
+ "libsignal-core",
  "log",
  "pin-project-lite",
  "prost",
@@ -1744,6 +1754,7 @@ dependencies = [
  "hmac",
  "indexmap 1.9.3",
  "itertools 0.10.5",
+ "libsignal-core",
  "log",
  "num_enum",
  "pqcrypto-kyber 0.7.6",
@@ -3817,7 +3828,7 @@ dependencies = [
  "hex-literal",
  "hkdf",
  "lazy_static",
- "libsignal-protocol",
+ "libsignal-core",
  "partial-default",
  "poksho",
  "rand",

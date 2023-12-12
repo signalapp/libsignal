@@ -16,7 +16,7 @@ use tokio_boring::SslStream;
 use uuid::Uuid;
 
 use attest::cds2;
-use libsignal_protocol::{Aci, Pni};
+use libsignal_core::{Aci, Pni};
 
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::NetError;
@@ -377,8 +377,6 @@ pub trait CdsiConnectionParams {
 mod test {
     use hex_literal::hex;
     use uuid::Uuid;
-
-    use libsignal_protocol::{Aci, Pni};
 
     use super::*;
 

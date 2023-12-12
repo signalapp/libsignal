@@ -12,7 +12,7 @@ description = "A zero-knowledge group library"
 license = "AGPL-3.0-only"
 
 [dependencies]
-libsignal-protocol = { path = "../protocol" }
+libsignal-core = { path = "../core" }
 poksho = { path = "../poksho" }
 signal-crypto = { path = "../crypto" }
 zkcredential = { path = "../zkcredential" }

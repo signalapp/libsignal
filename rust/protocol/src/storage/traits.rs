@@ -8,14 +8,13 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::address::ProtocolAddress;
 use crate::error::Result;
 use crate::sender_keys::SenderKeyRecord;
 use crate::state::{
     KyberPreKeyId, KyberPreKeyRecord, PreKeyId, PreKeyRecord, SessionRecord, SignedPreKeyId,
     SignedPreKeyRecord,
 };
-use crate::{IdentityKey, IdentityKeyPair};
+use crate::{IdentityKey, IdentityKeyPair, ProtocolAddress};
 
 // TODO: consider moving this enum into utils.rs?
 /// Each Signal message can be considered to have exactly two participants, a sender and receiver.

@@ -95,7 +95,7 @@ pub struct CreateCallLinkCredentialRequest {
 impl CreateCallLinkCredentialRequest {
     pub fn issue(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         timestamp: Timestamp,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
@@ -124,7 +124,7 @@ impl CreateCallLinkCredentialRequestContext {
     pub fn receive(
         self,
         response: CreateCallLinkCredentialResponse,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         params: &GenericServerPublicParams,
     ) -> Result<CreateCallLinkCredential, ZkGroupVerificationFailure> {
         if response.timestamp % SECONDS_PER_DAY != 0 {
@@ -162,7 +162,7 @@ impl CreateCallLinkCredential {
     pub fn present(
         &self,
         room_id: &[u8],
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         server_params: &GenericServerPublicParams,
         call_link_params: &CallLinkSecretParams,
         randomness: RandomnessBytes,

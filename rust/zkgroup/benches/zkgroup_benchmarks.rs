@@ -17,7 +17,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let redemption_time = 123456u32;
 
     // SERVER
@@ -101,7 +101,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
         zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
     let group_public_params = group_secret_params.get_public_params();
 
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
     let profile_key_commitment = profile_key.get_commitment(aci);

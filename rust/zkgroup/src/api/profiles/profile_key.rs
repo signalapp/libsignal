@@ -37,7 +37,7 @@ impl ProfileKey {
 
     pub fn get_commitment(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> api::profiles::ProfileKeyCommitment {
         let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
         let profile_key = crypto::profile_key_struct::ProfileKeyStruct::new(self.bytes, uid_bytes);
@@ -51,7 +51,7 @@ impl ProfileKey {
 
     pub fn get_profile_key_version(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> api::profiles::ProfileKeyVersion {
         let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
         let mut combined_array = [0u8; PROFILE_KEY_LEN + UUID_LEN];

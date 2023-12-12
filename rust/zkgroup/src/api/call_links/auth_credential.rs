@@ -33,7 +33,7 @@ pub struct CallLinkAuthCredentialResponse {
 
 impl CallLinkAuthCredentialResponse {
     pub fn issue_credential(
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         redemption_time: Timestamp,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
@@ -50,7 +50,7 @@ impl CallLinkAuthCredentialResponse {
 
     pub fn receive(
         self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         redemption_time: Timestamp,
         params: &GenericServerPublicParams,
     ) -> Result<CallLinkAuthCredential, ZkGroupVerificationFailure> {
@@ -81,7 +81,7 @@ pub struct CallLinkAuthCredential {
 impl CallLinkAuthCredential {
     pub fn present(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         redemption_time: Timestamp,
         server_params: &GenericServerPublicParams,
         call_link_params: &CallLinkSecretParams,

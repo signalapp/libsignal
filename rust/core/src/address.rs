@@ -9,9 +9,6 @@
 
 use uuid::Uuid;
 
-#[cfg(doc)]
-use crate::SignalMessage;
-
 use std::fmt;
 
 /// Known types of [ServiceId].
@@ -617,7 +614,7 @@ impl ProtocolAddress {
     ///   all clients for that user.
     ///
     ///```
-    /// use libsignal_protocol::{DeviceId, ProtocolAddress};
+    /// use libsignal_core::{DeviceId, ProtocolAddress};
     ///
     /// // This is a unique id for some user, typically a UUID.
     /// let user_id: String = "04899A85-4C9E-44CC-8428-A02AB69335F1".to_string();
@@ -640,9 +637,9 @@ impl ProtocolAddress {
 
     /// An identifier representing a particular Signal client instance to send to.
     ///
-    /// For example, if a user has set up Signal on both their phone and laptop, any [SignalMessage]
-    /// sent to the user will still only go to a single device. So when a user sends a message to
-    /// another user at all, they're actually sending a message to *every* device.
+    /// For example, if a user has set up Signal on both their phone and laptop, a particular
+    /// message sent to the user will still only go to a single device. So when a user sends a
+    /// message to another user at all, they're actually sending a message to *every* device.
     #[inline]
     pub fn device_id(&self) -> DeviceId {
         self.device_id

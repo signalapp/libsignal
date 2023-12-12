@@ -17,7 +17,7 @@ fn test_create_call_link_request_response() {
     let randomness4: RandomnessBytes = [0x46u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
+    let client_user_id = libsignal_core::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
     // known to client and redemption server
@@ -109,7 +109,7 @@ fn test_create_call_link_enforces_timestamp_granularity() {
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
+    let client_user_id = libsignal_core::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP + 60 * 60; // not on a day boundary!
 
     // known to client and redemption server
@@ -151,7 +151,7 @@ fn test_auth_credential() {
     let randomness4: RandomnessBytes = [0x46u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
+    let client_user_id = libsignal_core::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
     // server generated materials; issuance request -> issuance response
@@ -225,7 +225,7 @@ fn test_auth_credential_enforces_timestamp_granularity() {
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
 
     // client receives in response to initial request
-    let client_user_id = libsignal_protocol::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
+    let client_user_id = libsignal_core::Aci::from_uuid_bytes([0x04u8; UUID_LEN]);
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP + 60 * 60; // not on a day boundary!
 
     // server generated materials; issuance request -> issuance response

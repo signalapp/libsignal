@@ -61,7 +61,7 @@ args = "horizontal"
 
 [parse]
 parse_deps = true
-include = ["libsignal-protocol", "signal-crypto", "signal-pin", "zkgroup", "signal-media", "mediasan-common", "mp4san", "webpsan"]
+include = ["libsignal-core", "libsignal-protocol", "signal-crypto", "signal-pin", "zkgroup", "signal-media", "mediasan-common", "mp4san", "webpsan"]
 extra_bindings = ["libsignal-bridge", "zkgroup"]
 
 [parse.expand]

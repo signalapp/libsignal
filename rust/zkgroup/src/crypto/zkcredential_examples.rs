@@ -36,7 +36,7 @@ fn test_mac_generic() {
     let label = b"20221221_AuthCredentialLike";
 
     let uid_bytes = TEST_ARRAY_16;
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(uid_bytes);
+    let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
     let uid = UidStruct::from_service_id(aci.into());
 
     let proof = IssuanceProofBuilder::new(label)
@@ -83,7 +83,7 @@ fn test_mac_generic_without_verifying_encryption_key() {
     let label = b"20221221_AuthCredentialLike";
 
     let uid_bytes = TEST_ARRAY_16;
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(uid_bytes);
+    let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
     let uid = UidStruct::from_service_id(aci.into());
 
     let proof = IssuanceProofBuilder::new(label)
@@ -129,7 +129,7 @@ fn test_profile_key_credential() {
 
     let label = b"20221221_ProfileKeyCredentialLike";
 
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(TEST_ARRAY_16);
     let uid = UidStruct::from_service_id(aci.into());
     let profile_key = ProfileKeyStruct::new(TEST_ARRAY_32, TEST_ARRAY_16);
     let encrypted_profile_key = blinding_keypair.encrypt(&profile_key, &mut sho).into();
@@ -230,7 +230,7 @@ fn test_profile_key_credential_only_verifying_one_encryption_key() {
 
     let label = b"20221221_ProfileKeyCredentialLike";
 
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(TEST_ARRAY_16);
     let uid = UidStruct::from_service_id(aci.into());
     let profile_key = ProfileKeyStruct::new(TEST_ARRAY_32, TEST_ARRAY_16);
     let encrypted_profile_key = blinding_keypair.encrypt(&profile_key, &mut sho).into();
@@ -462,7 +462,7 @@ impl zkcredential::attributes::Domain for InverseUidDecryptionKey {
 
 #[test]
 fn test_inverse_key() {
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(TEST_ARRAY_16);
     let uid = UidStruct::from_service_id(aci.into());
 
     let mut sho = Sho::new(b"test_inverse_key", b"");

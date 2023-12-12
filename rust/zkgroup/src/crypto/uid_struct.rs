@@ -8,7 +8,7 @@
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use curve25519_dalek::ristretto::RistrettoPoint;
-use libsignal_protocol::ServiceId;
+use libsignal_core::ServiceId;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;

@@ -128,8 +128,8 @@ impl GroupSendCredentialResponse {
         self,
         params: &ServerPublicParams,
         group_params: &GroupSecretParams,
-        user_ids: impl IntoIterator<Item = libsignal_protocol::ServiceId>,
-        requester: libsignal_protocol::ServiceId,
+        user_ids: impl IntoIterator<Item = libsignal_core::ServiceId>,
+        requester: libsignal_core::ServiceId,
         now: Timestamp,
     ) -> Result<GroupSendCredential, ZkGroupVerificationFailure> {
         if self.expiration % SECONDS_PER_DAY != 0 {
@@ -215,7 +215,7 @@ pub struct GroupSendCredentialPresentation {
 impl GroupSendCredentialPresentation {
     pub fn verify(
         &self,
-        user_ids: impl IntoIterator<Item = libsignal_protocol::ServiceId>,
+        user_ids: impl IntoIterator<Item = libsignal_core::ServiceId>,
         current_time_in_seconds: Timestamp,
         server_params: &ServerSecretParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
