@@ -7,6 +7,7 @@ use libsignal_protocol::*;
 use paste::paste;
 
 use std::ffi::{c_char, c_uchar, CStr};
+use std::num::ParseIntError;
 use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};
@@ -274,6 +275,17 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
         libsignal_protocol::ServiceId::convert_from(foreign)?
             .try_into()
             .map_err(|_| SignalProtocolError::InvalidArgument("not a PNI".to_string()).into())
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net::cdsi::E164 {
+    type ArgType = <String as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(e164: Self::ArgType) -> SignalFfiResult<Self> {
+        let e164 = String::convert_from(e164)?;
+        let parsed = e164.parse().map_err(|_: ParseIntError| {
+            SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
+        })?;
+        Ok(parsed)
     }
 }
 
@@ -616,6 +628,7 @@ macro_rules! ffi_arg_type {
     (ServiceId) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
+    (E164) => (*const std::ffi::c_char);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<*const $typ>);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));

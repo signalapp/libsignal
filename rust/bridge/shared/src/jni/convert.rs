@@ -11,6 +11,7 @@ use libsignal_protocol::*;
 
 use paste::paste;
 
+use std::num::ParseIntError;
 use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};
@@ -255,6 +256,17 @@ impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
         bytes[..8].copy_from_slice(&msb.to_be_bytes());
         bytes[8..].copy_from_slice(&lsb.to_be_bytes());
         Ok(uuid::Uuid::from_bytes(bytes))
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::cdsi::E164 {
+    type ArgType = <String as SimpleArgTypeInfo<'a>>::ArgType;
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+        let e164 = String::convert_from(env, foreign)?;
+        let e164 = e164.parse().map_err(|_: ParseIntError| {
+            SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
+        })?;
+        Ok(e164)
     }
 }
 
@@ -1017,6 +1029,9 @@ macro_rules! jni_arg_type {
     };
     (Uuid) => {
         jni::JavaUUID<'local>
+    };
+    (E164) => {
+        jni::JString<'local>
     };
     (jni::CiphertextMessageRef) => {
         jni::JavaCiphertextMessage<'local>

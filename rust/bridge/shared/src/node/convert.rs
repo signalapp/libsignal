@@ -9,6 +9,7 @@ use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 
 use std::hash::Hasher;
+use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
@@ -332,6 +333,15 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
         libsignal_protocol::ServiceId::convert_from(cx, foreign)?
             .try_into()
             .or_else(|_| cx.throw_type_error("not a PNI"))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net::cdsi::E164 {
+    type ArgType = <String as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(cx: &mut FunctionContext, e164: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let e164 = String::convert_from(cx, e164)?;
+        e164.parse()
+            .or_else(|_: ParseIntError| cx.throw_type_error("not an E164"))
     }
 }
 
