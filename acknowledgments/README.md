@@ -5,7 +5,7 @@ This directory contains pre-generated acknowledgments for the Rust dependencies 
 If you update libsignal's dependencies, you'll need to update this listing. Install [cargo-about][] if you haven't already:
 
 ```shell
-cargo +stable install --locked cargo-about
+cargo +stable install --locked cargo-about --version 0.6.0
 ```
 
 Then:

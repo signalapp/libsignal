@@ -95,7 +95,7 @@ checksum = "7d5e1fb4bbd5e89a687f94c3d3826db50e26bd6f4ade136a025dc2080c5bdc85"
 # Newer versions of convert_case have a LICENSE file, we'll use that one
 [convert_case.clarify]
 license = "MIT"
-override_git_commit = "f72ca63c9d579fbab22e361c76e39d31d1e86a2e"
+override-git-commit = "f72ca63c9d579fbab22e361c76e39d31d1e86a2e"
 
 [[convert_case.clarify.git]]
 path = "LICENSE"
@@ -126,7 +126,7 @@ checksum = "b790bcf9428074d098a455163df68ec35589ae22536051f3555a592c1e4dd772"
 # dyn-clonable is embedded in a larger repo
 [dyn-clonable.clarify]
 license = "MIT"
-override_git_commit = "b0faeec90f3c2fa9fd0cb34796308602cabf5f04"
+override-git-commit = "b0faeec90f3c2fa9fd0cb34796308602cabf5f04"
 
 [[dyn-clonable.clarify.git]]
 path = "LICENSE"
@@ -134,7 +134,7 @@ checksum = "d2c376e2d8ee747383aaf0d5b52997bd6aa04ab73720b6797edeb64fe90c05a3"
 
 [dyn-clonable-impl.clarify]
 license = "MIT"
-override_git_commit = "b0faeec90f3c2fa9fd0cb34796308602cabf5f04"
+override-git-commit = "b0faeec90f3c2fa9fd0cb34796308602cabf5f04"
 
 [[dyn-clonable-impl.clarify.git]]
 path = "LICENSE"
@@ -178,7 +178,7 @@ checksum = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
 # mp4san is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
 [mediasan-common.clarify]
 license = "MIT"
-override_git_commit = "0.5.1"
+override-git-commit = "0.5.1"
 
 [[mediasan-common.clarify.git]]
 path = "LICENSE"
@@ -186,7 +186,7 @@ checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 
 [mp4san.clarify]
 license = "MIT"
-override_git_commit = "0.5.1"
+override-git-commit = "0.5.1"
 
 [[mp4san.clarify.git]]
 path = "LICENSE"
@@ -194,7 +194,7 @@ checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 
 [mp4san-derive.clarify]
 license = "MIT"
-override_git_commit = "0.5.1"
+override-git-commit = "0.5.1"
 
 [[mp4san-derive.clarify.git]]
 path = "LICENSE"
@@ -213,7 +213,7 @@ checksum = "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
 # The prost-* crates are embedded in a larger repo.
 [prost-build.clarify]
 license = "Apache-2.0"
-override_git_commit = "v0.9.0"
+override-git-commit = "v0.9.0"
 
 [[prost-build.clarify.git]]
 path = "LICENSE"
@@ -221,7 +221,7 @@ checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
 
 [prost-derive.clarify]
 license = "Apache-2.0"
-override_git_commit = "v0.9.0"
+override-git-commit = "v0.9.0"
 
 [[prost-derive.clarify.git]]
 path = "LICENSE"
@@ -229,7 +229,7 @@ checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
 
 [prost-types.clarify]
 license = "Apache-2.0"
-override_git_commit = "v0.9.0"
+override-git-commit = "v0.9.0"
 
 [[prost-types.clarify.git]]
 path = "LICENSE"
@@ -248,7 +248,7 @@ checksum = "1a594f153f129c2de7b15f3262394bdca3dcc2da40058e3ea435c8473eb1f3a0"
 # webpsan is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
 [webpsan.clarify]
 license = "MIT"
-override_git_commit = "0.5.1"
+override-git-commit = "0.5.1"
 
 [[webpsan.clarify.git]]
 path = "LICENSE"

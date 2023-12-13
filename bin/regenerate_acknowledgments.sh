@@ -7,6 +7,16 @@
 
 set -euo pipefail
 
+echo "Checking cargo-about version"
+VERSION=$(cargo about --version)
+echo "Found $VERSION"
+
+EXPECTED_VERSION="cargo-about 0.6.0"
+if [ "$VERSION" != "$EXPECTED_VERSION" ]; then
+	echo "This tool works with $EXPECTED_VERSION but $VERSION is installed"
+	false
+fi
+
 SCRIPT_DIR=$(dirname "$0")
 cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
