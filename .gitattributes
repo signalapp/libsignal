@@ -1,0 +1,3 @@
+# Prevent auto-merging of generated acknowledgment files
+acknowledgments/acknowledgments.* -merge -text
+acknowledgments/acknowledgments.*.hbs merge text=auto
