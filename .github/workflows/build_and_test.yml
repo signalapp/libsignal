@@ -51,7 +51,7 @@ jobs:
           - '.clippy.toml'
           - '.rustfmt.license-template'
           - '.rustfmt.toml'
-          - 'acknowledgments'
+          - 'acknowledgments/**'
           - 'rust/**' # deliberately re-include rust/bridge/* and rust/protocol/cross-version-testing
           java:
           - *all
