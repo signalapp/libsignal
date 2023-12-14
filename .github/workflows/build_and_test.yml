@@ -110,14 +110,13 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Cache locally-built tools
-      id: cache-primes
       uses: actions/cache@v3
       with:
         path: local-tools
-        key: ${{ runner.os }}-local-tools-${{ matrix.version }}
+        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version') }}
 
     - name: Build cargo-about if needed
-      run: cargo +stable install --version 0.6.0 --locked cargo-about --root local-tools
+      run: cargo +stable install --version $(cat acknowledgments/cargo-about-version) --locked cargo-about --root local-tools
       if: matrix.version == 'nightly'
 
     # This should be done before anything else
