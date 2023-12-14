@@ -13,6 +13,7 @@ A change is "breaking" if it will require updates in any of the Signal client ap
 ```
 bin/update_versions.py 0.x.y
 cargo check --workspace --all-features # make sure Cargo.lock is updated
+bin/regenerate_acknowledgments.sh # include the new version number in the acknowledgments
 ```
 
 ## 2. Record the code size for the Java library
