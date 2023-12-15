@@ -20,8 +20,8 @@ use crate::oprf::errors::OPRFError;
 
 #[derive(Display, Debug)]
 pub enum PPSSError {
-    /// Invalid committment, cannot reconstruct secret.
-    InvalidCommittment,
+    /// Invalid commitment, cannot reconstruct secret.
+    InvalidCommitment,
     /// OPRF server output must encode canonical Ristretto points.
     BadPointEncoding,
 }
@@ -154,6 +154,7 @@ pub fn finalize_oprfs(
 
 // Password Protected Secret Sharing (PPSS) functions
 /// A `MaskedShareSet` contains the information needed to restore a secret using a password.
+#[derive(Clone)]
 pub struct MaskedShareSet {
     pub server_ids: Vec<u64>,
     pub masked_shares: Vec<KeyShare>,
@@ -196,7 +197,7 @@ fn derive_key_and_bits_from_secret(secret: &Secret256, context: &'static str) ->
 }
 
 // Initialize a PPSS session
-/// After evaluating OPRFs on a list of servers to get `oprf_outputs`, call `ppss_init` to create a
+/// After evaluating OPRFs on a list of servers to get `oprf_outputs`, call `backup_secret` to create a
 /// password-protected backup of the secret.
 pub fn backup_secret<R: Rng + CryptoRng>(
     context: &'static str,
@@ -217,7 +218,7 @@ pub fn backup_secret<R: Rng + CryptoRng>(
         })
         .collect();
     let r_and_k = derive_key_and_bits_from_secret(secret, context);
-    let (r, _k) = r_and_k.split_at(32);
+    let r = &r_and_k[..32];
     let commitment = compute_commitment(context, password, shares, &masked_shares, r);
 
     MaskedShareSet {
@@ -227,7 +228,7 @@ pub fn backup_secret<R: Rng + CryptoRng>(
     }
 }
 
-/// Recover a secret with a PPSS share set. `The `oprf_outputs` should be the result
+/// Recover a secret with a PPSS share set. The `oprf_outputs` should be the result
 /// of a call to `finalize_oprfs` and the order of the `server_ids` used in the call to
 /// `finalize_oprfs` should match the order of the `server_ids` in `masked_shareset`.
 ///
@@ -265,7 +266,7 @@ pub fn restore_secret(
     if commitment.ct_eq(&masked_shareset.commitment).into() {
         Ok((secret, k.try_into().unwrap()))
     } else {
-        Err(PPSSError::InvalidCommittment)
+        Err(PPSSError::InvalidCommitment)
     }
 }
 

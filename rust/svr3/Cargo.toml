@@ -11,17 +11,24 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 attest = { path = "../attest" }
+base64 = "0.21.5"
 curve25519-dalek = { version = "4.0", features = ["rand_core"] }
 displaydoc = "0.2"
 hkdf = "0.12"
-libsignal-net = { path = "../net" }
+prost = "0.12.1"
 rand = "0.8"
 rand_core = { version = "0.6", features = ["getrandom"] }
 sha2 = "0.10"
 subtle = "2.5"
+http = "0.2.9"
+tokio = { version = "1.33.0", features = [] }
 
 [dev-dependencies]
 hex = "0.4"
 hex-literal = "0.4.1"
 criterion = "0.5"
 bytemuck = "1.13.0"
+test-case = "3.2.1"
+
+[build-dependencies]
+prost-build = "0.12.1"
