@@ -1677,6 +1677,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsignal-message-backup"
+version = "0.1.0"
+dependencies = [
+ "hex-literal",
+ "hkdf",
+ "hmac",
+ "libsignal-protocol",
+ "prost",
+ "prost-build",
+ "sha2",
+]
+
+[[package]]
 name = "libsignal-net"
 version = "0.1.0"
 dependencies = [

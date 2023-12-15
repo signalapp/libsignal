@@ -53,8 +53,13 @@ impl<const KIND: u8> SpecificServiceId<KIND> {
     ///
     /// Prefer `from(Uuid)` / `Uuid::into` if you already have a strongly-typed UUID.
     #[inline]
-    pub fn from_uuid_bytes(bytes: [u8; 16]) -> Self {
-        uuid::Uuid::from_bytes(bytes).into()
+    pub const fn from_uuid_bytes(bytes: [u8; 16]) -> Self {
+        Self::from_uuid(uuid::Uuid::from_bytes(bytes))
+    }
+
+    #[inline]
+    const fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 }
 
@@ -113,7 +118,7 @@ where
 impl<const KIND: u8> From<Uuid> for SpecificServiceId<KIND> {
     #[inline]
     fn from(value: Uuid) -> Self {
-        Self(value)
+        Self::from_uuid(value)
     }
 }
 

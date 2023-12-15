@@ -1,0 +1,24 @@
+#
+# Copyright (C) 2023 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+[package]
+name = "libsignal-message-backup"
+version = "0.1.0"
+edition = "2021"
+authors = ["Signal Messenger LLC"]
+license = "AGPL-3.0-only"
+
+[dependencies]
+libsignal-protocol = { path = "../protocol"}
+
+hkdf = "0.12"
+hmac = "0.12"
+prost = "0.12"
+sha2 = "0.10"
+
+[dev-dependencies]
+hex-literal = "0.4.1"
+
+[build-dependencies]
+prost-build = "0.12"
