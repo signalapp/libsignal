@@ -3,15 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use hmac::Mac;
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
-use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt, CryptographicMac};
+use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt};
 
 use crate::constants::{
-    USERNAME_LINK_ENTROPY_SIZE, USERNAME_LINK_HMAC_ALGORITHM, USERNAME_LINK_HMAC_LEN,
-    USERNAME_LINK_IV_SIZE, USERNAME_LINK_KEY_SIZE, USERNAME_LINK_LABEL_AUTHENTICATION_KEY,
+    USERNAME_LINK_ENTROPY_SIZE, USERNAME_LINK_HMAC_LEN, USERNAME_LINK_IV_SIZE,
+    USERNAME_LINK_KEY_SIZE, USERNAME_LINK_LABEL_AUTHENTICATION_KEY,
     USERNAME_LINK_LABEL_ENCRYPTION_KEY,
 };
 use crate::{proto, UsernameLinkError};
@@ -90,12 +91,12 @@ fn hkdf(entropy: &[u8], label: &[u8]) -> [u8; USERNAME_LINK_KEY_SIZE] {
 }
 
 fn hmac(mac_key: &[u8], input: &[u8]) -> Vec<u8> {
-    CryptographicMac::new(USERNAME_LINK_HMAC_ALGORITHM, mac_key)
-        .expect("known algorithm")
-        .update_and_get(input)
-        .expect("digest updated successfully")
+    hmac::Hmac::<sha2::Sha256>::new_from_slice(mac_key)
+        .expect("HMAC accepts any key length")
+        .chain_update(input)
         .finalize()
-        .expect("digest finalized successfully")
+        .into_bytes()
+        .to_vec()
 }
 
 fn random_bytes<const SIZE: usize, R: Rng + CryptoRng>(rng: &mut R) -> [u8; SIZE] {

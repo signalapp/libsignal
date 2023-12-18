@@ -17,6 +17,7 @@ signal-crypto = { path = "../crypto" }
 
 curve25519-dalek = "4.0"
 hkdf = "0.12"
+hmac = "0.12"
 sha2 = "0.10"
 displaydoc = "0.2"
 lazy_static = "1.4.0"

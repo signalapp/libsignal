@@ -3431,6 +3431,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hkdf",
+ "hmac",
  "lazy_static",
  "poksho",
  "proptest",
