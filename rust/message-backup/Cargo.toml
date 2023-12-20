@@ -12,12 +12,18 @@ license = "AGPL-3.0-only"
 [dependencies]
 libsignal-protocol = { path = "../protocol"}
 
+arrayvec = "0.7.4"
+displaydoc = "0.2.4"
+futures = "0.3.29"
 hkdf = "0.12"
 hmac = "0.12"
 prost = "0.12"
 sha2 = "0.10"
+thiserror = "1.0.50"
 
 [dev-dependencies]
+assert_matches = "1.5.0"
+futures = { version = "0.3.29", features = ["executor"] }
 hex-literal = "0.4.1"
 
 [build-dependencies]

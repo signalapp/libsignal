@@ -6,4 +6,5 @@
 //! Signal remote message backup utilities.
 
 pub mod key;
+pub mod parse;
 pub(crate) mod proto;
