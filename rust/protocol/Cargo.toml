@@ -49,6 +49,7 @@ kyber768 = []
 mlkem1024 = []
 
 [dev-dependencies]
+clap = { version = "4.4.11", features = ["derive"] }
 criterion = "0.5"
 hex-literal = "0.4.1"
 proptest = "1.0"
