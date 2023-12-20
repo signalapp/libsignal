@@ -48,7 +48,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     let plaintext = group_secret_params
         .decrypt_service_id(uuid_ciphertext)
         .unwrap();
-    assert_eq!(plaintext, aci.into());
+    assert_eq!(plaintext, aci);
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;

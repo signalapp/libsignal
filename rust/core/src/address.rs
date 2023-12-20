@@ -307,6 +307,24 @@ impl<const KIND: u8> TryFrom<ServiceId> for SpecificServiceId<KIND> {
     }
 }
 
+impl<const KIND: u8> PartialEq<ServiceId> for SpecificServiceId<KIND>
+where
+    ServiceId: From<SpecificServiceId<KIND>>,
+{
+    fn eq(&self, other: &ServiceId) -> bool {
+        ServiceId::from(*self) == *other
+    }
+}
+
+impl<const KIND: u8> PartialEq<SpecificServiceId<KIND>> for ServiceId
+where
+    ServiceId: From<SpecificServiceId<KIND>>,
+{
+    fn eq(&self, other: &SpecificServiceId<KIND>) -> bool {
+        *self == ServiceId::from(*other)
+    }
+}
+
 #[cfg(test)]
 mod service_id_tests {
     use proptest::prelude::*;
@@ -322,6 +340,8 @@ mod service_id_tests {
         let aci = Aci::from(uuid);
         assert_eq!(uuid, Uuid::from(aci));
         let aci_service_id = ServiceId::from(aci);
+        assert_eq!(aci, aci_service_id);
+        assert_eq!(aci_service_id, aci);
         assert_eq!(Ok(aci), Aci::try_from(aci_service_id));
         assert_eq!(
             Err(WrongKindOfServiceIdError {
@@ -335,6 +355,8 @@ mod service_id_tests {
         let pni = Pni::from(uuid);
         assert_eq!(uuid, Uuid::from(pni));
         let pni_service_id = ServiceId::from(pni);
+        assert_eq!(pni, pni_service_id);
+        assert_eq!(pni_service_id, pni);
         assert_eq!(Ok(pni), Pni::try_from(pni_service_id));
         assert_eq!(
             Err(WrongKindOfServiceIdError {
@@ -344,6 +366,8 @@ mod service_id_tests {
             Aci::try_from(pni_service_id)
         );
         assert_eq!(ServiceIdKind::Pni, pni_service_id.kind());
+
+        assert_ne!(aci_service_id, pni_service_id);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -372,7 +396,7 @@ mod service_id_tests {
             let deserialized = deserialize(serialized.borrow()).expect("just serialized");
             assert_eq!(ServiceIdKind::Aci, deserialized.kind());
             assert_eq!(uuid, deserialized.raw_uuid());
-            assert_eq!(aci, deserialized.try_into().expect("type matches"));
+            assert_eq!(aci, Aci::try_from(deserialized).expect("type matches"));
             assert_eq!(Some(aci), deserialize_aci(serialized.borrow()));
             assert_eq!(None, deserialize_pni(serialized.borrow()));
         }
@@ -387,7 +411,7 @@ mod service_id_tests {
             let deserialized = deserialize(serialized.borrow()).expect("just serialized");
             assert_eq!(ServiceIdKind::Pni, deserialized.kind());
             assert_eq!(uuid, deserialized.raw_uuid());
-            assert_eq!(pni, deserialized.try_into().expect("type matches"));
+            assert_eq!(pni, Pni::try_from(deserialized).expect("type matches"));
             assert_eq!(Some(pni), deserialize_pni(serialized.borrow()));
             assert_eq!(None, deserialize_aci(serialized.borrow()));
         }

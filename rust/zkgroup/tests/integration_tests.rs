@@ -75,7 +75,7 @@ fn test_integration_auth() {
     let plaintext = group_secret_params
         .decrypt_service_id(uuid_ciphertext)
         .unwrap();
-    assert_eq!(plaintext, aci.into());
+    assert_eq!(plaintext, aci);
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
@@ -468,7 +468,7 @@ fn test_integration_expiring_profile() {
     let plaintext = group_secret_params
         .decrypt_service_id(uuid_ciphertext)
         .unwrap();
-    assert_eq!(plaintext, aci.into());
+    assert_eq!(plaintext, aci);
 
     let profile_key_ciphertext = group_secret_params.encrypt_profile_key(profile_key, aci);
     let decrypted_profile_key = group_secret_params
