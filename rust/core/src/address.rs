@@ -166,8 +166,9 @@ pub enum ServiceId {
 }
 
 impl ServiceId {
+    /// The kind of service ID `self` is.
     #[inline]
-    fn kind(&self) -> ServiceIdKind {
+    pub fn kind(&self) -> ServiceIdKind {
         match self {
             ServiceId::Aci(_) => ServiceIdKind::Aci,
             ServiceId::Pni(_) => ServiceIdKind::Pni,
@@ -329,6 +330,7 @@ mod service_id_tests {
             }),
             Pni::try_from(aci_service_id)
         );
+        assert_eq!(ServiceIdKind::Aci, aci_service_id.kind());
 
         let pni = Pni::from(uuid);
         assert_eq!(uuid, Uuid::from(pni));
@@ -341,6 +343,7 @@ mod service_id_tests {
             }),
             Aci::try_from(pni_service_id)
         );
+        assert_eq!(ServiceIdKind::Pni, pni_service_id.kind());
     }
 
     #[allow(clippy::too_many_arguments)]
