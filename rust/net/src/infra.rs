@@ -96,6 +96,11 @@ impl ConnectionParams {
         decorators.push(decorator);
         self
     }
+
+    pub fn with_certs(mut self, certs: RootCertificates) -> Self {
+        self.certs = certs;
+        self
+    }
 }
 
 impl HttpRequestDecoratorSeq {
@@ -167,7 +172,7 @@ impl TransportConnector for TcpSslTransportConnector {
         )
         .await?;
 
-        let ssl_config = client_ssl_connector_builder(connection_params.certs.clone(), alpn)?
+        let ssl_config = Self::builder(connection_params.certs.clone(), alpn)?
             .build()
             .configure()?;
 
@@ -176,6 +181,15 @@ impl TransportConnector for TcpSslTransportConnector {
             .map_err(|_| NetError::SslFailedHandshake)?;
 
         Ok(ssl_stream)
+    }
+}
+
+impl TcpSslTransportConnector {
+    fn builder(certs: RootCertificates, alpn: &[u8]) -> Result<SslConnectorBuilder, NetError> {
+        let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
+        ssl.set_verify_cert_store(certs.try_into()?)?;
+        ssl.set_alpn_protos(alpn)?;
+        Ok(ssl)
     }
 }
 
@@ -195,16 +209,6 @@ pub(crate) async fn connect_tcp(
         }
     }
     Err(NetError::TcpConnectionFailed)
-}
-
-pub(crate) fn client_ssl_connector_builder(
-    certs: RootCertificates,
-    alpn: &[u8],
-) -> Result<SslConnectorBuilder, NetError> {
-    let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
-    ssl.set_verify_cert_store(certs.try_into()?)?;
-    ssl.set_alpn_protos(alpn)?;
-    Ok(ssl)
 }
 
 #[cfg(test)]

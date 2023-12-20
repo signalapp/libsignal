@@ -63,9 +63,23 @@ impl<T: TransportConnector> CdsiEndpointConnection<SingleRouteThrottlingConnecti
         connect_timeout: Duration,
         transport_connector: T,
     ) -> Self {
+        Self::with_certs(
+            cdsi,
+            connect_timeout,
+            transport_connector,
+            RootCertificates::Signal,
+        )
+    }
+
+    pub fn with_certs(
+        cdsi: CdsiEndpoint<'static>,
+        connect_timeout: Duration,
+        transport_connector: T,
+        certs: RootCertificates,
+    ) -> Self {
         Self {
             connection_manager: SingleRouteThrottlingConnectionManager::new(
-                cdsi.direct_connection(),
+                cdsi.direct_connection().with_certs(certs),
                 connect_timeout,
             ),
             connector: WebSocketClientConnector::new(
