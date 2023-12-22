@@ -5454,7 +5454,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0, curve25519-dalek-derive 0.1.0, half 1.8.2, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.6, pqcrypto-kyber 0.8.0, pqcrypto-traits 0.3.5
+## cesu8 1.1.0, curve25519-dalek-derive 0.1.0, half 1.8.2, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.8, pqcrypto-kyber 0.8.0, pqcrypto-traits 0.3.5
 
 ```
 MIT License
