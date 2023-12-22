@@ -47,6 +47,7 @@ use crate::dcap::evidence::Evidence;
 pub use crate::dcap::sgx_report_body::MREnclave;
 use crate::dcap::sgx_report_body::SgxFlags;
 use crate::dcap::sgx_x509::SgxPckExtension;
+use crate::enclave::AttestationError;
 use crate::error::{Context, ContextError};
 
 pub(crate) mod cert_chain;
@@ -60,27 +61,6 @@ mod sgx_x509;
 
 #[cfg(test)]
 mod fakes;
-
-#[derive(Debug)]
-pub struct AttestationError {
-    message: String,
-}
-
-impl std::fmt::Display for AttestationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.message.fmt(f)
-    }
-}
-
-impl std::error::Error for AttestationError {}
-
-impl From<Error> for AttestationError {
-    fn from(e: Error) -> Self {
-        Self {
-            message: e.to_string(),
-        }
-    }
-}
 
 pub(crate) struct DcapErrorDomain;
 pub(crate) type Error = ContextError<DcapErrorDomain>;

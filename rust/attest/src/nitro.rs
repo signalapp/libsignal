@@ -2,6 +2,9 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::collections::HashMap;
+use std::time::SystemTime;
+
 use boring::bn::BigNum;
 use boring::ecdsa::EcdsaSig;
 use boring::stack;
@@ -9,9 +12,10 @@ use boring::x509::store::X509StoreBuilder;
 use boring::x509::{X509StoreContext, X509};
 use ciborium::value::{Integer, Value};
 use sha2::{Digest, Sha384};
-use std::collections::HashMap;
-use std::time::SystemTime;
 use subtle::ConstantTimeEq;
+
+use crate::enclave;
+use crate::enclave::{Claims, Handshake};
 
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
@@ -25,6 +29,20 @@ pub fn attest(
     let cose_sign1 = CoseSign1::from_bytes(evidence)?;
     let doc = cose_sign1.extract_attestation_doc(now)?;
     doc.extract_public_key(expected_pcrs)
+}
+
+impl Handshake {
+    #[allow(unused)]
+    pub(crate) fn for_nitro(
+        evidence: &[u8],
+        expected_pcrs: &HashMap<usize, Vec<u8>>,
+        now: SystemTime,
+    ) -> Result<Self, enclave::Error> {
+        let cose_sign1 = CoseSign1::from_bytes(evidence)?;
+        let doc = cose_sign1.extract_attestation_doc(now)?;
+        let public_key_material = doc.extract_public_key(expected_pcrs)?;
+        Self::with_claims(Claims::from_public_key(public_key_material.to_vec())?)
+    }
 }
 
 #[derive(Debug, displaydoc::Display, PartialEq, Eq)]
@@ -366,9 +384,11 @@ impl AttestationDoc {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use hex_literal::hex;
     use std::time::Duration;
+
+    use hex_literal::hex;
+
+    use super::*;
 
     #[test]
     fn test_extract_attestation_doc() {

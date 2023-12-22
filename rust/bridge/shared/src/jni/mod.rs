@@ -6,8 +6,8 @@
 use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
 use jni::JavaVM;
 
+use attest::enclave::Error as SgxError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
-use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -364,7 +364,7 @@ where
         | SignalJniError::Sgx(SgxError::NoiseError(_)) => {
             jni_class_name!(org.signal.libsignal.attest.SgxCommunicationFailureException)
         }
-        SignalJniError::Sgx(SgxError::DcapError(_)) => {
+        SignalJniError::Sgx(SgxError::AttestationError(_)) => {
             jni_class_name!(org.signal.libsignal.attest.DcapException)
         }
         SignalJniError::Sgx(SgxError::AttestationDataError { .. }) => {

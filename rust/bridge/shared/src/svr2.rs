@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use ::attest::sgx_session::Result;
+use ::attest::enclave::Result;
 use ::attest::svr2;
 use libsignal_bridge_macros::*;
 

@@ -20,13 +20,12 @@ use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
-use attest::client_connection::ClientConnection;
-use attest::sgx_session::Handshake;
-
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
 use crate::utils::timeout;
+use attest::client_connection::ClientConnection;
+use attest::enclave;
 
 pub mod error;
 pub use error::Error;
@@ -344,12 +343,12 @@ impl<S: AsyncDuplexStream> WebSocketClient<S> {
 pub enum AttestedConnectionError {
     Protocol,
     ClientConnection(attest::client_connection::Error),
-    Sgx(attest::sgx_session::Error),
+    Sgx(attest::enclave::Error),
     Net(NetError),
 }
 
-impl From<attest::sgx_session::Error> for AttestedConnectionError {
-    fn from(value: attest::sgx_session::Error) -> Self {
+impl From<enclave::Error> for AttestedConnectionError {
+    fn from(value: attest::enclave::Error) -> Self {
         Self::Sgx(value)
     }
 }
@@ -396,7 +395,7 @@ where
     /// Connect to remote host and verify remote attestation.
     pub(crate) async fn connect(
         mut websocket: WebSocketClient<S>,
-        new_handshake: impl FnOnce(&[u8]) -> Result<Handshake, attest::sgx_session::Error>,
+        new_handshake: impl FnOnce(&[u8]) -> enclave::Result<enclave::Handshake>,
     ) -> Result<Self, AttestedConnectionError> {
         let client_connection = authenticate(&mut websocket, new_handshake).await?;
 
@@ -456,7 +455,7 @@ impl TextOrBinary {
 
 async fn authenticate<S: AsyncDuplexStream>(
     websocket: &mut WebSocketClient<S>,
-    new_handshake: impl FnOnce(&[u8]) -> Result<Handshake, attest::sgx_session::Error>,
+    new_handshake: impl FnOnce(&[u8]) -> enclave::Result<enclave::Handshake>,
 ) -> Result<ClientConnection, AttestedConnectionError> {
     let attestation_msg = websocket
         .receive()
@@ -680,10 +679,8 @@ mod test {
             attest::sgx_session::testutil::private_key(),
         ));
 
-        fn fail_to_handshake(
-            _attestation: &[u8],
-        ) -> attest::sgx_session::Result<attest::sgx_session::Handshake> {
-            Err(attest::sgx_session::Error::AttestationDataError {
+        fn fail_to_handshake(_attestation: &[u8]) -> attest::enclave::Result<enclave::Handshake> {
+            Err(attest::enclave::Error::AttestationDataError {
                 reason: "invalid".to_string(),
             })
         }

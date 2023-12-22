@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use attest::enclave::Error as SgxError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
-use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
@@ -163,7 +163,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
-            | SignalFfiError::Sgx(SgxError::DcapError(_))
+            | SignalFfiError::Sgx(SgxError::AttestationError(_))
             | SignalFfiError::Sgx(SgxError::NoiseError(_))
             | SignalFfiError::Sgx(SgxError::NoiseHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))

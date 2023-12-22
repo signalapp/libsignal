@@ -5,18 +5,18 @@
 
 use std::panic::RefUnwindSafe;
 
-use ::attest::{client_connection, sgx_session};
+use ::attest::enclave::Result;
+use ::attest::{client_connection, enclave};
 use libsignal_bridge_macros::*;
 
 use crate::support::*;
 use crate::*;
-use ::attest::sgx_session::Result;
 
 // It's okay to have a large enum because this type will be boxed for bridging after it's been
 // created.
 #[allow(clippy::large_enum_variant)]
 pub enum SgxClientState {
-    ConnectionEstablishment(sgx_session::Handshake),
+    ConnectionEstablishment(enclave::Handshake),
     Connection(client_connection::ClientConnection),
     InvalidConnectionState,
 }
@@ -24,14 +24,14 @@ pub enum SgxClientState {
 impl RefUnwindSafe for SgxClientState {}
 
 impl SgxClientState {
-    pub fn new(handshake: sgx_session::Handshake) -> Result<Self> {
+    pub fn new(handshake: enclave::Handshake) -> Result<Self> {
         Ok(SgxClientState::ConnectionEstablishment(handshake))
     }
 
     pub fn initial_request(&self) -> Result<&[u8]> {
         match self {
             SgxClientState::ConnectionEstablishment(c) => Ok(c.initial_request()),
-            _ => Err(sgx_session::Error::InvalidBridgeStateError),
+            _ => Err(enclave::Error::InvalidBridgeStateError),
         }
     }
 
@@ -41,7 +41,7 @@ impl SgxClientState {
                 *self = SgxClientState::Connection(c.complete(initial_received)?);
                 Ok(())
             }
-            _ => Err(sgx_session::Error::InvalidBridgeStateError),
+            _ => Err(enclave::Error::InvalidBridgeStateError),
         }
     }
 
@@ -49,9 +49,9 @@ impl SgxClientState {
         match self {
             SgxClientState::Connection(c) => match c.send(plaintext_to_send) {
                 Ok(v) => Ok(v),
-                Err(e) => Err(sgx_session::Error::NoiseError(e)),
+                Err(e) => Err(enclave::Error::NoiseError(e)),
             },
-            _ => Err(sgx_session::Error::InvalidBridgeStateError),
+            _ => Err(enclave::Error::InvalidBridgeStateError),
         }
     }
 
@@ -59,9 +59,9 @@ impl SgxClientState {
         match self {
             SgxClientState::Connection(c) => match c.recv(received_ciphertext) {
                 Ok(v) => Ok(v),
-                Err(e) => Err(sgx_session::Error::NoiseError(e)),
+                Err(e) => Err(enclave::Error::NoiseError(e)),
             },
-            _ => Err(sgx_session::Error::InvalidBridgeStateError),
+            _ => Err(enclave::Error::InvalidBridgeStateError),
         }
     }
 }

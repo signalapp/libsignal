@@ -6,6 +6,7 @@
 pub mod cds2;
 pub mod client_connection;
 pub mod dcap;
+pub mod enclave;
 pub mod hsm_enclave;
 pub mod ias;
 pub mod nitro;

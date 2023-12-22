@@ -6,8 +6,8 @@
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
+use attest::enclave::Error as SgxError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
-use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;

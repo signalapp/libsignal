@@ -10,94 +10,21 @@
 //! [Handshake] to construct a noise encrypted session with the enclave. The attestation
 //! must contain a custom claim with the key name "pk" that represents the enclave's
 //! public key.
-use std::collections::HashMap;
-
 use std::time::Duration;
 
-use displaydoc::Display;
-
-use crate::dcap::MREnclave;
-use crate::{client_connection, dcap, snow_resolver};
-
-/// Error types for an SGX session.
-#[derive(Display, Debug)]
-pub enum Error {
-    /// failure to attest remote SGX enclave: {0:?}
-    DcapError(dcap::AttestationError),
-    /// failure to communicate on established Noise channel to SGX service: {0}
-    NoiseError(client_connection::Error),
-    /// failure to complete Noise handshake to SGX service: {0}
-    NoiseHandshakeError(snow::Error),
-    /// attestation data invalid: {reason}
-    AttestationDataError { reason: String },
-    /// invalid bridge state
-    InvalidBridgeStateError,
-}
+use crate::dcap::{self, MREnclave};
+use crate::enclave::{Claims, Error, Handshake, Result};
 
 const INVALID_EVIDENCE: &str = "Evidence does not fit expected format";
 const INVALID_ENDORSEMENT: &str = "Endorsement does not fit expected format";
 const INVALID_MRENCLAVE: &str = "MREnclave value does not fit expected format";
-const INVALID_CLAIMS: &str = "Claims do not fit expected format";
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-impl From<snow::Error> for Error {
-    fn from(e: snow::Error) -> Self {
-        Error::NoiseHandshakeError(e)
-    }
-}
-
-impl From<dcap::AttestationError> for Error {
-    fn from(err: dcap::AttestationError) -> Error {
-        Error::DcapError(err)
-    }
-}
-
-impl From<client_connection::Error> for Error {
-    fn from(err: client_connection::Error) -> Self {
-        Error::NoiseError(err)
-    }
-}
-
-impl From<prost::DecodeError> for Error {
-    fn from(err: prost::DecodeError) -> Self {
-        Error::AttestationDataError {
-            reason: err.to_string(),
-        }
-    }
-}
-
-/// A noise handshaker that can be used to build a [client_connection::ClientConnection]
-///
-/// Callers provide an attestation that must contain the remote enclave's public key. If the
-/// attestation is valid, this public key will be used to generate a noise NK handshake (with
-/// the caller acting as the initiator) via [Handshake::initial_request]. When
-/// a handshake response is received the handshake can be completed with
-/// [Handshake::complete] to build a [client_connection::ClientConnection] that
-/// can be used to exchange arbitrary encrypted payloads with the remote enclave.
-///
-/// ```pseudocode
-///   let websocket = ... open websocket ...
-///   let attestation_msg = websocket.recv();
-///   let (evidence, endoresments) = parse(attestation_msg);
-///   let mut handshake = Handshake::new(
-///     mrenclave, evidence, endorsements, acceptable_sw_advisories, current_time)?;
-///   websocket.send(handshaker.initial_request());
-///   let initial_response = websocket.recv(...);
-///   let conn = handshaker.complete(initial_response);
-/// ```
-pub struct Handshake {
-    handshake: snow::HandshakeState,
-    initial_request: Vec<u8>,
-    claims: HashMap<String, Vec<u8>>,
-}
 
 /// How much to offset when checking for time-based validity checks
 /// to adjust for clock skew on clients
 const SKEW_ADJUSTMENT: Duration = Duration::from_secs(24 * 60 * 60);
 
 impl Handshake {
-    pub(crate) fn new(
+    pub(crate) fn for_sgx(
         mrenclave: &[u8],
         evidence: &[u8],
         endorsements: &[u8],
@@ -131,48 +58,7 @@ impl Handshake {
             current_time + SKEW_ADJUSTMENT,
         )?;
 
-        let unwrapped_public_key = claims.get("pk").ok_or(Error::AttestationDataError {
-            reason: String::from(INVALID_CLAIMS),
-        })?;
-
-        let mut handshake = snow::Builder::with_resolver(
-            client_connection::NOISE_PATTERN.parse().expect("valid"),
-            Box::new(snow_resolver::Resolver),
-        )
-        .remote_public_key(unwrapped_public_key)
-        .build_initiator()?;
-        let mut initial_request = vec![0u8; client_connection::NOISE_HANDSHAKE_OVERHEAD];
-        // We send an empty message, but the roundtrip to the server and back is still required
-        // in order to complete the noise handshake. If we needed some initial payload we could
-        // add it here in future.
-        let size = handshake.write_message(&[], &mut initial_request)?;
-        initial_request.truncate(size);
-        Ok(Self {
-            handshake,
-            initial_request,
-            claims,
-        })
-    }
-
-    /// Initial message from client for noise handshake.
-    pub fn initial_request(&self) -> &[u8] {
-        &self.initial_request
-    }
-
-    /// custom claims extracted from the attestation
-    pub fn custom_claims(&self) -> &HashMap<String, Vec<u8>> {
-        &self.claims
-    }
-
-    /// Completes client connection initiation, returns a valid client connection.
-    pub fn complete(
-        mut self,
-        initial_received: &[u8],
-    ) -> Result<client_connection::ClientConnection> {
-        self.handshake.read_message(initial_received, &mut [])?;
-        let transport = self.handshake.into_transport_mode()?;
-        log::info!("Successfully completed attested connection");
-        Ok(client_connection::ClientConnection { transport })
+        Self::with_claims(Claims::from_custom_claims(claims)?)
     }
 }
 
@@ -209,7 +95,7 @@ pub mod testutil {
         // Read test data files, de-hex-stringing as necessary.
         let mrenclave_bytes = mrenclave_bytes();
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
-        Handshake::new(
+        Handshake::for_sgx(
             &mrenclave_bytes,
             EVIDENCE_BYTES,
             ENDORSEMENT_BYTES,
@@ -223,6 +109,8 @@ pub mod testutil {
 mod tests {
     use std::time::{Duration, SystemTime};
 
+    use crate::client_connection;
+
     use super::*;
 
     #[test]
@@ -230,7 +118,7 @@ mod tests {
         let mrenclave_bytes = testutil::mrenclave_bytes();
 
         let test = |time: SystemTime, expect_success: bool| {
-            let result = Handshake::new(
+            let result = Handshake::for_sgx(
                 &mrenclave_bytes,
                 testutil::EVIDENCE_BYTES,
                 testutil::ENDORSEMENT_BYTES,

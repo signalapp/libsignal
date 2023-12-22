@@ -7,12 +7,11 @@ use std::collections::HashMap;
 
 use hex_literal::hex;
 use prost::Message;
-use sgx_session::Result;
 
-use crate::dcap::MREnclave;
+use crate::dcap::{self, MREnclave};
+use crate::enclave::{Handshake, Result};
 use crate::proto::cds2;
 use crate::util::SmallMap;
-use crate::{dcap, sgx_session};
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value.
@@ -36,10 +35,10 @@ pub fn new_handshake(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
-) -> Result<sgx_session::Handshake> {
+) -> Result<Handshake> {
     // Deserialize attestation handshake start.
     let handshake_start = cds2::ClientHandshakeStart::decode(attestation_msg)?;
-    sgx_session::Handshake::new(
+    Handshake::for_sgx(
         mrenclave,
         &handshake_start.evidence,
         &handshake_start.endorsement,
@@ -61,8 +60,9 @@ pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::time::{Duration, SystemTime};
+
+    use super::*;
 
     #[test]
     fn attest_cds2() {

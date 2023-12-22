@@ -190,7 +190,7 @@ impl SignalNodeError for device_transfer::Error {}
 
 impl SignalNodeError for attest::hsm_enclave::Error {}
 
-impl SignalNodeError for attest::sgx_session::Error {}
+impl SignalNodeError for attest::enclave::Error {}
 
 impl SignalNodeError for signal_crypto::Error {}
 
