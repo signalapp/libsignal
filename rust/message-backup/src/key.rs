@@ -76,7 +76,7 @@ pub struct MessageBackupKey {
 /// derived as a single key but is logically split into three parts that are
 /// used as input to the block cipher during encryption and decryption.
 impl MessageBackupKey {
-    const HMAC_KEY_LEN: usize = 32;
+    pub const HMAC_KEY_LEN: usize = 32;
     const AES_KEY_LEN: usize = 32;
     const IV_LEN: usize = 16;
 
@@ -104,7 +104,7 @@ impl MessageBackupKey {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use hex_literal::hex;
 
     use super::*;
@@ -112,6 +112,16 @@ mod test {
     const FAKE_MASTER_KEY: [u8; 32] =
         hex!("6c25a28f50f61f7ab94958cffc64164d897dab61457cceb0bb6126ca54c38cc4");
     const FAKE_ACI: Aci = Aci::from_uuid_bytes(hex!("659aa5f4a28dfcc11ea1b997537a3d95"));
+
+    /// Valid, random key for testing.
+    ///
+    /// This is derived from [`FAKE_MASTER_KEY`] and [`FAKE_ACI`] (verified in
+    /// [`message_backup_key_known`] below).
+    pub(crate) const FAKE_MESSAGE_BACKUP_KEY: MessageBackupKey = MessageBackupKey {
+        hmac_key: hex!("7624d47e91d7f4de5eae5f00a1662984e3e81177473a3fab60320e4b9c6d6676"),
+        aes_key: hex!("44ea4f8a6e9a404c1f98a2c0b18172c9b2171f02137571a8272d671021bfff3f"),
+        iv: hex!("55a3d64f031ee3a35271a12e18077652"),
+    };
 
     #[test]
     fn backup_key_known() {
@@ -138,13 +148,8 @@ mod test {
         let id = key.derive_backup_id(&FAKE_ACI);
         let message_backup_key = MessageBackupKey::derive(&key, &id);
 
-        const EXPECTED: MessageBackupKey = MessageBackupKey {
-            hmac_key: hex!("7624d47e91d7f4de5eae5f00a1662984e3e81177473a3fab60320e4b9c6d6676"),
-            aes_key: hex!("44ea4f8a6e9a404c1f98a2c0b18172c9b2171f02137571a8272d671021bfff3f"),
-            iv: hex!("55a3d64f031ee3a35271a12e18077652"),
-        };
         assert_eq!(
-            message_backup_key, EXPECTED,
+            message_backup_key, FAKE_MESSAGE_BACKUP_KEY,
             "got {message_backup_key:02x?}"
         );
     }
