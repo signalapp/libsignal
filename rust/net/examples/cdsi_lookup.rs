@@ -8,8 +8,10 @@ use std::time::Duration;
 
 use tokio::io::AsyncBufReadExt as _;
 
-use libsignal_net::cdsi::*;
-use libsignal_net::env::CdsiEndpointConnection;
+use libsignal_net::cdsi::{
+    Auth, CdsiConnection, CdsiConnectionParams, Error, LookupRequest, LookupResponse,
+};
+use libsignal_net::enclave::EndpointConnection;
 use libsignal_net::infra::errors::NetError;
 use libsignal_net::infra::TcpSslTransportConnector;
 
@@ -52,7 +54,7 @@ async fn main() {
     let env = &libsignal_net::env::PROD;
     let cdsi_response = cdsi_lookup(
         Auth { username, password },
-        &CdsiEndpointConnection::new(env.cdsi, Duration::from_secs(10), TcpSslTransportConnector),
+        &EndpointConnection::new(env.cdsi, Duration::from_secs(10), TcpSslTransportConnector),
         request,
         Duration::from_secs(10),
     )

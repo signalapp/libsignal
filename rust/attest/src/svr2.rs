@@ -40,11 +40,11 @@ const DEFAULT_SW_ADVISORIES: &[&str] = &[];
 
 /// A RaftConfig that can be checked against the attested remote config
 #[derive(Debug)]
-struct RaftConfig {
-    min_voting_replicas: u32,
-    max_voting_replicas: u32,
-    super_majority: u32,
-    group_id: u64,
+pub struct RaftConfig {
+    pub min_voting_replicas: u32,
+    pub max_voting_replicas: u32,
+    pub super_majority: u32,
+    pub group_id: u64,
 }
 
 impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
@@ -108,6 +108,20 @@ pub fn new_handshake(
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
 ) -> Result<Handshake> {
+    new_handshake_with_override(mrenclave, attestation_msg, current_time, None)
+}
+
+pub fn new_handshake_with_override(
+    mrenclave: &[u8],
+    attestation_msg: &[u8],
+    current_time: std::time::SystemTime,
+    raft_config_override: Option<&'static RaftConfig>,
+) -> Result<Handshake> {
+    let expected_raft_config = raft_config_override
+        .or_else(|| EXPECTED_RAFT_CONFIG.get(mrenclave).copied())
+        .ok_or(Error::AttestationDataError {
+            reason: format!("unknown mrenclave {:?}", mrenclave),
+        })?;
     new_handshake_with_constants(
         mrenclave,
         attestation_msg,
@@ -115,11 +129,7 @@ pub fn new_handshake(
         ACCEPTABLE_SW_ADVISORIES
             .get(mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
-        *EXPECTED_RAFT_CONFIG
-            .get(mrenclave)
-            .ok_or(Error::AttestationDataError {
-                reason: format!("unknown mrenclave {:?}", mrenclave),
-            })?,
+        expected_raft_config,
     )
 }
 
@@ -150,7 +160,10 @@ fn new_handshake_with_constants(
     let actual_config = svr2::RaftGroupConfig::decode(&**config)?;
     if expected_raft_config != &actual_config {
         return Err(Error::AttestationDataError {
-            reason: format!("Unexpected raft config {:?}", expected_raft_config),
+            reason: format!(
+                "Unexpected raft config {:?} (expected {:?})",
+                actual_config, expected_raft_config
+            ),
         });
     }
 

@@ -86,6 +86,7 @@ struct ThrottlingConnectionManagerState {
     next_attempt: Instant,
     latest_attempt: Instant,
 }
+
 impl ThrottlingConnectionManagerState {
     /// Produces a new state after a success or failure.
     ///
@@ -98,7 +99,7 @@ impl ThrottlingConnectionManagerState {
     fn after_attempt(self, was_successful: bool, attempt_start_time: Instant) -> Self {
         let mut s = self;
         if was_successful {
-            // comparing using `>=` to guarantee that succesful attempt takes precedence
+            // comparing using `>=` to guarantee that successful attempt takes precedence
             if attempt_start_time >= s.latest_attempt {
                 s.latest_attempt = attempt_start_time;
                 s.consecutive_fails = 0;
@@ -131,7 +132,7 @@ pub struct SingleRouteThrottlingConnectionManager {
 }
 
 /// A connection manager that holds a list of [SingleRouteThrottlingConnectionManager] instances
-/// and itereates over them until it can find one that results in a successful connection attempt.
+/// and iterates over them until it can find one that results in a successful connection attempt.
 /// If none did, it will return [ConnectionAttemptOutcome::WaitUntil] with the minimum possible
 /// cooldown time (based on cooldown times returned by all throttling connection managers).
 #[derive(Clone)]

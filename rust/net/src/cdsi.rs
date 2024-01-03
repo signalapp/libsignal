@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
 use std::default::Default;
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
@@ -15,9 +16,10 @@ use tokio::net::TcpStream;
 use tokio_boring::SslStream;
 use uuid::Uuid;
 
-use attest::cds2;
 use libsignal_core::{Aci, Pni};
 
+use crate::auth::HttpBasicAuth;
+use crate::enclave::{Cdsi, EndpointConnection};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
@@ -26,11 +28,20 @@ use crate::infra::ws::{
 };
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
-use crate::utils::basic_authorization;
 
 pub struct Auth {
     pub username: String,
     pub password: String,
+}
+
+impl HttpBasicAuth for Auth {
+    fn username(&self) -> &str {
+        &self.username
+    }
+
+    fn password(&self) -> std::borrow::Cow<str> {
+        Cow::Borrowed(&self.password)
+    }
 }
 
 trait FixedLengthSerializable {
@@ -229,6 +240,12 @@ impl LookupResponseEntry {
 
 pub struct CdsiConnection<S>(AttestedConnection<S>);
 
+impl<S> AsMut<AttestedConnection<S>> for CdsiConnection<S> {
+    fn as_mut(&mut self) -> &mut AttestedConnection<S> {
+        &mut self.0
+    }
+}
+
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum Error {
     /// Network error
@@ -248,7 +265,7 @@ pub enum Error {
 impl From<AttestedConnectionError> for Error {
     fn from(value: AttestedConnectionError) -> Self {
         match value {
-            AttestedConnectionError::ClientConnection(_) => Error::Protocol,
+            AttestedConnectionError::ClientConnection(_) => Self::Protocol,
             AttestedConnectionError::Net(net) => Self::Net(net),
             AttestedConnectionError::Protocol => Self::Protocol,
             AttestedConnectionError::Sgx(_) => Self::AttestationError,
@@ -276,17 +293,14 @@ pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
 
 impl<S: AsyncDuplexStream> CdsiConnection<S> {
     /// Connect to remote host and verify remote attestation.
-    pub async fn connect<P, T>(env: &P, auth: Auth) -> Result<Self, Error>
+    pub async fn connect<P, T>(env: &P, auth: impl HttpBasicAuth) -> Result<Self, Error>
     where
         P: CdsiConnectionParams<TransportConnector = T>,
         T: TransportConnector<Stream = S>,
     {
-        let Auth { username, password } = auth;
-        let header_auth_decorator = crate::infra::HttpRequestDecorator::HeaderAuth(
-            basic_authorization(&username, &password),
-        );
+        let auth_decorator = auth.into();
         let connection_manager = env.connection_manager();
-        let connector = ServiceConnectorWithDecorator::new(env.connector(), header_auth_decorator);
+        let connector = ServiceConnectorWithDecorator::new(env.connector(), auth_decorator);
         let service_initializer = ServiceInitializer::new(&connector, connection_manager);
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
@@ -296,7 +310,7 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
             ServiceState::TimedOut => Err(Error::Net(NetError::Timeout)),
         }?;
         let attested = AttestedConnection::connect(websocket, |attestation_msg| {
-            cds2::new_handshake(env.mr_enclave(), attestation_msg, SystemTime::now())
+            attest::cds2::new_handshake(env.mr_enclave(), attestation_msg, SystemTime::now())
         })
         .await?;
 
@@ -371,6 +385,25 @@ pub trait CdsiConnectionParams {
 
     /// The signature of the remote enclave for verifying attestation.
     fn mr_enclave(&self) -> &[u8];
+}
+
+impl<C: ConnectionManager, T: TransportConnector> CdsiConnectionParams
+    for EndpointConnection<Cdsi, C, T>
+{
+    type ConnectionManager = C;
+    type TransportConnector = T;
+
+    fn connection_manager(&self) -> &Self::ConnectionManager {
+        &self.connection_manager
+    }
+
+    fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector> {
+        &self.connector
+    }
+
+    fn mr_enclave(&self) -> &[u8] {
+        self.mr_enclave.as_ref()
+    }
 }
 
 #[cfg(test)]

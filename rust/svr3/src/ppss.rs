@@ -11,6 +11,7 @@ use curve25519_dalek::Scalar;
 use displaydoc::Display;
 use hkdf::Hkdf;
 use rand::{CryptoRng, Rng};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::convert::TryInto;
 use subtle::ConstantTimeEq;
@@ -154,7 +155,7 @@ pub fn finalize_oprfs(
 
 // Password Protected Secret Sharing (PPSS) functions
 /// A `MaskedShareSet` contains the information needed to restore a secret using a password.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MaskedShareSet {
     pub server_ids: Vec<u64>,
     pub masked_shares: Vec<KeyShare>,

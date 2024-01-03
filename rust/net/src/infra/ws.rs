@@ -287,11 +287,13 @@ impl From<String> for TextOrBinary {
         Self::Text(value)
     }
 }
+
 impl From<Vec<u8>> for TextOrBinary {
     fn from(value: Vec<u8>) -> Self {
         Self::Binary(value)
     }
 }
+
 impl From<TextOrBinary> for Message {
     fn from(value: TextOrBinary) -> Self {
         match value {
@@ -365,11 +367,28 @@ impl From<attest::client_connection::Error> for AttestedConnectionError {
     }
 }
 
+pub type DefaultStream = tokio_boring::SslStream<tokio::net::TcpStream>;
+
 /// Encrypted connection to an attested host.
 #[derive(Debug)]
-pub struct AttestedConnection<S = tokio_boring::SslStream<tokio::net::TcpStream>> {
+pub struct AttestedConnection<S = DefaultStream> {
     websocket: WebSocketClient<S>,
     client_connection: ClientConnection,
+}
+
+impl AsMut<AttestedConnection> for AttestedConnection {
+    fn as_mut(&mut self) -> &mut AttestedConnection {
+        self
+    }
+}
+
+pub(crate) async fn run_attested_interaction<C: AsMut<AttestedConnection>, B: AsRef<[u8]>>(
+    connection: &mut C,
+    bytes: B,
+) -> Result<NextOrClose<Vec<u8>>, AttestedConnectionError> {
+    let connection = connection.as_mut();
+    connection.send_bytes(bytes).await?;
+    connection.receive_bytes().await
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -380,7 +399,7 @@ pub(crate) enum NextOrClose<T> {
 }
 
 impl<T> NextOrClose<T> {
-    pub(crate) fn next_or<E>(self, failure: E) -> Result<T, E> {
+    pub fn next_or<E>(self, failure: E) -> Result<T, E> {
         match self {
             Self::Close(_) => Err(failure),
             Self::Next(t) => Ok(t),
@@ -410,7 +429,14 @@ where
         request: impl prost::Message,
     ) -> Result<(), AttestedConnectionError> {
         let request = request.encode_to_vec();
-        let request = self.client_connection.send(&request)?;
+        self.send_bytes(request).await
+    }
+
+    pub(crate) async fn send_bytes<B: AsRef<[u8]>>(
+        &mut self,
+        bytes: B,
+    ) -> Result<(), AttestedConnectionError> {
+        let request = self.client_connection.send(bytes.as_ref())?;
         self.websocket
             .send(request.into())
             .await

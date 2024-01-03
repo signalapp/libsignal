@@ -17,6 +17,7 @@ use tokio_boring::SslStream;
 
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
+use crate::infra::dns::DnsResolver::System;
 use crate::infra::errors::NetError;
 
 pub mod certs;
@@ -100,6 +101,18 @@ impl ConnectionParams {
     pub fn with_certs(mut self, certs: RootCertificates) -> Self {
         self.certs = certs;
         self
+    }
+
+    pub fn direct_to_host(host: &str) -> Self {
+        let host: Arc<str> = Arc::from(host);
+        Self {
+            sni: host.clone(),
+            host,
+            port: 443,
+            http_request_decorator: Default::default(),
+            certs: RootCertificates::Signal,
+            dns_resolver: System,
+        }
     }
 }
 
