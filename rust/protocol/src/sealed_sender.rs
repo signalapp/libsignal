@@ -1503,7 +1503,10 @@ where
     let parallelism = std::thread::available_parallelism()
         .map(usize::from)
         .unwrap_or(1);
-    let chunk_size = std::cmp::max(6, identity_keys_and_ranges.len().div_ceil(parallelism));
+    let chunk_size = std::cmp::max(
+        6,
+        crate::utils::div_ceil(identity_keys_and_ranges.len(), parallelism),
+    );
 
     if parallelism == 1 || chunk_size >= identity_keys_and_ranges.len() {
         process_chunk(&mut serialized, &identity_keys_and_ranges)?;

@@ -4,6 +4,7 @@
 //
 
 use std::cmp::Ordering;
+use std::ops::{Add, Div, Rem};
 
 fn expand_top_bit(a: u8) -> u8 {
     //if (a >> 7) == 1 { 0xFF } else { 0 }
@@ -81,6 +82,24 @@ pub(crate) fn constant_time_cmp(x: &[u8], y: &[u8]) -> Ordering {
     }
 }
 
+// To be replaced by 1.73's div_ceil when we update our MSRV.
+#[inline]
+pub(crate) fn div_ceil<
+    T: Copy + Div<Output = T> + Rem<Output = T> + Add<Output = T> + Ord + From<u8>,
+>(
+    dividend: T,
+    divisor: T,
+) -> T {
+    // From the std implementation of div_ceil.
+    let q = dividend / divisor;
+    let r = dividend % divisor;
+    if (r > 0u8.into() && divisor > 0u8.into()) || (r < 0u8.into() && divisor < 0u8.into()) {
+        q + 1u8.into()
+    } else {
+        q
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,5 +156,31 @@ mod tests {
                 assert_eq!(result, expected);
             }
         }
+    }
+
+    #[test]
+    fn test_div_ceil() {
+        assert_eq!(div_ceil(0_usize, 4), 0);
+        assert_eq!(div_ceil(7_usize, 4), 2);
+        assert_eq!(div_ceil(8_usize, 4), 2);
+        assert_eq!(div_ceil(9_usize, 4), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_div_ceil_panic() {
+        _ = div_ceil(4_usize, 0);
+    }
+
+    // From https://doc.rust-lang.org/std/primitive.isize.html#method.div_ceil
+    #[test]
+    fn test_div_ceil_isize() {
+        let a: isize = 8;
+        let b = 3;
+
+        assert_eq!(div_ceil(a, b), 3);
+        assert_eq!(div_ceil(a, -b), -2);
+        assert_eq!(div_ceil(-a, b), -2);
+        assert_eq!(div_ceil(-a, -b), 3);
     }
 }
