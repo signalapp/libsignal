@@ -21,7 +21,8 @@ server-side. Use outside of Signal is unsupported. In particular, the products o
 are the Java, Swift, and TypeScript libraries that wrap the underlying Rust implementations. All
 APIs and implementations are subject to change without notice, as are the JNI, C, and Node add-on
 "bridge" layers. However, backwards-incompatible changes to the Java, Swift, TypeScript, and
-non-bridge Rust APIs will be reflected in the version number on a best-effort basis.
+non-bridge Rust APIs will be reflected in the version number on a best-effort basis, including
+increases to the minimum supported tools versions.
 
 [Double Ratchet algorithm]: https://signal.org/docs/
 [libsignal-protocol-java]: https://github.com/signalapp/libsignal-protocol-java
