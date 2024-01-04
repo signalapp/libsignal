@@ -9,6 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   NDK_VERSION: 25.2.9519653
   RUST_BACKTRACE: 1
+  LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION: 1.72
 
 jobs:
   changes:
@@ -98,16 +99,17 @@ jobs:
       matrix:
         version: [nightly, stable]
         include:
-          - version: stable
-            toolchain: "+stable"
+        - version: nightly
+          toolchain: "$(cat rust-toolchain)"
+        - version: stable
+          toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
     steps:
     - uses: actions/checkout@v3
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --component rustfmt,clippy
-      if: matrix.version == 'nightly'
+    - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --component rustfmt,clippy
 
     - name: Cache locally-built tools
       uses: actions/cache@v3
@@ -143,16 +145,16 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Build
-      run: cargo ${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
 
     - name: Run tests
-      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
 
     - name: Test run benches
-      run: cargo ${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
 
     - name: Build bins and examples
-      run: cargo ${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose
 
     - name: Clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -168,14 +170,14 @@ jobs:
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
 
     - name: Check that the protocol fuzz target still builds
-      run: cargo +stable check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets
       working-directory: rust/protocol/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'
 
     - name: Check that the attest fuzz target still builds
-      run: cargo +stable check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets
       working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
@@ -195,24 +197,21 @@ jobs:
       matrix:
         version: [nightly, stable]
         include:
-          - version: stable
-            toolchain: "+stable"
+        - version: nightly
+          toolchain: "$(cat rust-toolchain)"
+        - version: stable
+          toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
     steps:
     - uses: actions/checkout@v3
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target i686-unknown-linux-gnu
-      if: matrix.version == 'nightly'
-
-    - name: Install Rust (stable)
-      run: rustup +stable target add i686-unknown-linux-gnu
-      if: matrix.version == 'stable'
+    - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --target i686-unknown-linux-gnu
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
-      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
 
   java:
     name: Java

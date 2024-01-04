@@ -178,8 +178,8 @@ jobs:
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
 
-  rust-protocol-cross-version-testing:
-    name: libsignal-protocol Cross-version Tests
+  rust-stable-testing:
+    name: Rust tests (using latest stable)
     runs-on: ubuntu-latest
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
@@ -192,10 +192,23 @@ jobs:
     - run: rustup +stable target add i686-unknown-linux-gnu
 
     - name: Run tests
+      run: cargo +stable test --workspace --all-features --verbose -- --include-ignored
+
+    - name: Test run benches
+      run: cargo +stable test --workspace --benches --all-features --verbose
+
+    - name: Build bins and examples
+      run: cargo +stable build --workspace  --bins --examples --all-features --verbose
+
+    - name: Run tests (32-bit)
+      # Exclude signal-neon-futures because those tests run Node
+      run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+
+    - name: Run libsignal-protocol cross-version tests
       run: cargo +stable test
       working-directory: rust/protocol/cross-version-testing
 
-    - name: Run tests (32-bit)
+    - name: Run libsignal-protocol cross-version tests (32-bit)
       run: cargo +stable test --target i686-unknown-linux-gnu
       working-directory: rust/protocol/cross-version-testing
 
@@ -205,7 +218,7 @@ jobs:
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-protocol-cross-version-testing]
+    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:
