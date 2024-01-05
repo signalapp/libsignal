@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[derive(displaydoc::Display, Debug)]
+#[derive(displaydoc::Display, Debug, thiserror::Error)]
 pub enum UsernameError {
     /// Name cannot be empty
     CannotBeEmpty,

@@ -10,21 +10,24 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [dependencies]
-libsignal-protocol = { path = "../protocol"}
+libsignal-protocol = { path = "../protocol" }
+signal-crypto = { path = "../crypto" }
+usernames = { path = "../usernames" }
+zkgroup = { path = "../zkgroup" }
 
 aes = "0.8.3"
 arrayvec = "0.7.4"
 async-compression = { version = "0.4.5", features = ["futures-io", "gzip"] }
 cbc = "0.1.2"
+derive-where = "1.2.5"
 displaydoc = "0.2.4"
 futures = "0.3.29"
 hkdf = "0.12"
 hmac = "0.12"
 log = "0.4"
-prost = "0.12"
+protobuf = "3.3.0"
 sha2 = "0.10"
 thiserror = "1.0.50"
-derive-where = "1.2.5"
 subtle = "2.5.0"
 
 [dev-dependencies]
@@ -38,4 +41,4 @@ test-case = "3.3.1"
 test-log = "0.2.14"
 
 [build-dependencies]
-prost-build = "0.12"
+protobuf-codegen = "3.3.0"

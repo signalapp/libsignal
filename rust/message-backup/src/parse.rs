@@ -13,7 +13,7 @@ pub(crate) enum ParseError {
     /// io: {0}
     Io(#[from] std::io::Error),
     /// proto decode error: {0}
-    Decode(#[from] prost::DecodeError),
+    Decode(#[from] protobuf::Error),
 }
 
 const VARINT_MAX_LENGTH: usize = 10;
@@ -86,20 +86,22 @@ impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
             return Ok(None);
         }
 
-        // Create a view into the bytes of the buffer. The bytes consumed during
-        // varint decoding are removed from the head of this slice.
-        let mut view = &buffer[..read_bytes];
+        let mut proto_reader = protobuf::CodedInputStream::from_bytes(buffer);
 
-        let length =
-            prost::decode_length_delimiter(&mut view).map_err(|_: prost::DecodeError| {
+        let length = proto_reader
+            .read_raw_varint32()
+            .map_err(|_: protobuf::Error| {
                 std::io::Error::from(std::io::ErrorKind::UnexpectedEof)
             })?;
 
         // Remove the consumed bytes from the buffer.
-        let consumed_byte_count = read_bytes - view.len();
+        let consumed_byte_count: usize =
+            proto_reader.pos().try_into().expect("< VARINT_MAX_LENGTH");
+        drop(proto_reader);
+
         buffer.drain(..consumed_byte_count);
 
-        Ok(Some(length))
+        Ok(Some(length.try_into().expect("u32::MAX < usize::MAX")))
     }
 }
 
@@ -128,10 +130,12 @@ mod test {
 
         let mut short_buf = [0; VARINT_LEN + MESSAGE_SIZE - 1];
         {
-            let mut varint_window = &mut short_buf[..VARINT_LEN];
-            prost::encode_length_delimiter(MESSAGE_SIZE, &mut varint_window)
+            let mut writer = protobuf::CodedOutputStream::bytes(&mut short_buf);
+            writer
+                .write_raw_varint32(MESSAGE_SIZE.try_into().unwrap())
                 .expect("can hold varint");
-            assert_eq!(varint_window, &[]);
+            writer.flush().expect("can write");
+            assert_eq!(writer.total_bytes_written(), VARINT_LEN.try_into().unwrap());
         }
 
         let reader = VarintDelimitedReader::new(short_buf.as_slice());
@@ -162,9 +166,13 @@ mod test {
         MessageAndLen { varint, message }: &MessageAndLen<M, L>,
     ) {
         let mut buf = [0u8; L];
-        let mut buf_view = buf.as_mut();
-        prost::encode_length_delimiter(message.len(), &mut buf_view).expect("correct length");
-        let written_bytes = L - buf_view.len();
+        let mut writer = protobuf::CodedOutputStream::bytes(&mut buf);
+        writer
+            .write_raw_varint32(message.len().try_into().unwrap())
+            .expect("correct length");
+        writer.flush().expect("can write");
+        let written_bytes = writer.total_bytes_written().try_into().unwrap();
+        drop(writer);
 
         let buf = &buf[..written_bytes];
         assert_eq!(buf, varint);
