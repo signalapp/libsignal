@@ -34,7 +34,7 @@ const COMPRESSED_BASE_POINTS_RAW: [[u8; 32]; 3] = [
     ],
 ];
 
-// 37^48 will overflow the Scalar. See nickname_scalar implementation for details.
+// Going past 37^48 will overflow the Scalar. See nickname_scalar implementation for details.
 pub(crate) const MAX_NICKNAME_LENGTH: usize = 48;
 pub(crate) const DISCRIMINATOR_RANGES: [Range<usize>; 8] = [
     1..100,

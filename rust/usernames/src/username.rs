@@ -191,10 +191,19 @@ fn username_sha_scalar(nickname: &str, discriminator: u64) -> Result<Scalar, Use
 }
 
 fn nickname_scalar(nickname: &str) -> Result<Scalar, UsernameError> {
-    let bytes: Option<Vec<u8>> = nickname.chars().map(char_to_byte).collect();
-    bytes
-        .map(|b| to_base_37_scalar(&b))
-        .ok_or(UsernameError::BadNicknameCharacter)
+    assert!(
+        !nickname.is_empty(),
+        "should be checked before calling nickname_scalar",
+    );
+    let bytes: Vec<u8> = nickname
+        .chars()
+        .map(char_to_byte)
+        .collect::<Option<_>>()
+        .ok_or(UsernameError::BadNicknameCharacter)?;
+    if bytes.len() > MAX_NICKNAME_LENGTH {
+        return Err(UsernameError::NicknameTooLong);
+    }
+    Ok(to_base_37_scalar(&bytes))
 }
 
 fn discriminator_scalar(discriminator: u64) -> Result<Scalar, UsernameError> {
@@ -220,6 +229,11 @@ fn char_to_byte(c: char) -> Option<u8> {
 }
 
 fn to_base_37_scalar(bytes: &[u8]) -> Scalar {
+    assert!(
+        bytes.len() <= MAX_NICKNAME_LENGTH,
+        "may not fit in a Scalar"
+    );
+
     let thirty_seven = Scalar::from(37u8);
     let mut scalar = Scalar::ZERO;
     for b in bytes.iter().skip(1).rev() {
@@ -339,6 +353,8 @@ mod test {
             "plus.+1",
             "plus.+01",
             "plus.+123",
+            "discriminator_too_big.123456789012345678901234567890",
+            "nickname_too_big7890123456789012345678901234567890.01",
         ] {
             assert!(
                 Username::new(username).map(|n| n.hash()).is_err(),
