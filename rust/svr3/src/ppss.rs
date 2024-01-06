@@ -25,6 +25,8 @@ pub enum PPSSError {
     InvalidCommitment,
     /// OPRF server output must encode canonical Ristretto points.
     BadPointEncoding,
+    /// {0}
+    LengthMismatch(&'static str),
 }
 
 impl std::error::Error for PPSSError {}
@@ -207,7 +209,12 @@ pub fn backup_secret<R: Rng + CryptoRng>(
     oprf_outputs: Vec<[u8; 64]>,
     secret: &Secret256,
     rng: &mut R,
-) -> MaskedShareSet {
+) -> Result<MaskedShareSet, PPSSError> {
+    if server_ids.len() != oprf_outputs.len() {
+        return Err(PPSSError::LengthMismatch(
+            "Number of OPRF outputs does not match that of server ids",
+        ));
+    }
     let shares = create_xor_keyshares(secret, oprf_outputs.len(), rng);
     let masked_shares: Vec<[u8; 32]> = shares
         .iter()
@@ -222,11 +229,11 @@ pub fn backup_secret<R: Rng + CryptoRng>(
     let r = &r_and_k[..32];
     let commitment = compute_commitment(context, password, shares, &masked_shares, r);
 
-    MaskedShareSet {
+    Ok(MaskedShareSet {
         server_ids,
         masked_shares,
         commitment,
-    }
+    })
 }
 
 /// Recover a secret with a PPSS share set. The `oprf_outputs` should be the result
@@ -243,6 +250,11 @@ pub fn restore_secret(
     oprf_outputs: Vec<[u8; 64]>,
     masked_shareset: MaskedShareSet,
 ) -> Result<(Secret256, Key), PPSSError> {
+    if oprf_outputs.len() != masked_shareset.masked_shares.len() {
+        return Err(PPSSError::LengthMismatch(
+            "Number of OPRF outputs does not match that of masked shares",
+        ));
+    }
     let keyshares: Vec<[u8; 32]> = masked_shareset
         .masked_shares
         .iter()
@@ -343,7 +355,8 @@ mod tests {
             oprf_outputs,
             &secret,
             &mut rng,
-        );
+        )
+        .unwrap();
 
         // Now reconstruct
         let oprf_restore_sessions =
@@ -369,5 +382,28 @@ mod tests {
 
         let r_and_k = derive_key_and_bits_from_secret(&secret, CONTEXT);
         assert_eq!(&r_and_k[32..64], &restored_key);
+    }
+
+    #[test]
+    fn backup_length_mismatch() {
+        let mut rng = rand_core::OsRng;
+        let secret = [0; 32];
+        assert!(matches!(
+            backup_secret(CONTEXT, b"password", vec![42], vec![], &secret, &mut rng),
+            Err(PPSSError::LengthMismatch(_))
+        ));
+    }
+
+    #[test]
+    fn restore_length_mismatch() {
+        let share_set = MaskedShareSet {
+            server_ids: vec![42],
+            masked_shares: vec![[0u8; 32]],
+            commitment: [1u8; 32],
+        };
+        assert!(matches!(
+            restore_secret(CONTEXT, b"password", vec![], share_set),
+            Err(PPSSError::LengthMismatch(_))
+        ));
     }
 }

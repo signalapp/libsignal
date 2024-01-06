@@ -66,7 +66,8 @@ impl<'a> Backup<'a> {
             outputs,
             &self.secret,
             rng,
-        ))
+        )
+        .expect("matching lengths of server_ids and outputs"))
     }
 }
 
@@ -224,9 +225,11 @@ mod test {
     fn backup_finalize_checks_status(status: svr3::create_response::Status, should_succeed: bool) {
         let backup =
             Backup::new(&[1, 2, 3], "password", make_secret(), 1).expect("can create backup");
-        let response = make_create_response(status).encode_to_vec();
+        let responses: Vec<_> = std::iter::repeat(make_create_response(status).encode_to_vec())
+            .take(3)
+            .collect();
         let mut rng = OsRng;
-        let result = backup.finalize(&mut rng, &[response]);
+        let result = backup.finalize(&mut rng, &responses);
         assert_eq!(should_succeed, result.is_ok());
     }
 
@@ -288,8 +291,10 @@ mod test {
         should_succeed: bool,
     ) {
         let restore = Restore::new("password", make_masked_share_set()).expect("can create backup");
-        let response = make_evaluate_response(status).encode_to_vec();
-        let result = restore.finalize(&[response]);
+        let responses: Vec<_> = std::iter::repeat(make_evaluate_response(status).encode_to_vec())
+            .take(3)
+            .collect();
+        let result = restore.finalize(&responses);
         let is_ppss_error = matches!(result, Err(Error::Ppss(ppss::PPSSError::InvalidCommitment)));
         assert_eq!(should_succeed, result.is_ok() || is_ppss_error);
     }
