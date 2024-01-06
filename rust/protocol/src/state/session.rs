@@ -516,6 +516,25 @@ impl SessionState {
     }
 
     pub(crate) fn clear_unacknowledged_pre_key_message(&mut self) {
+        // Explicitly destructuring the SessionStructure in case there are new
+        // pending fields that need to be cleared.
+        let SessionStructure {
+            session_version: _session_version,
+            local_identity_public: _local_identity_public,
+            remote_identity_public: _remote_identity_public,
+            root_key: _root_key,
+            previous_counter: _previous_counter,
+            sender_chain: _sender_chain,
+            receiver_chains: _receiver_chains,
+            pending_pre_key: _pending_pre_key,
+            pending_kyber_pre_key: _pending_kyber_pre_key,
+            remote_registration_id: _remote_registration_id,
+            local_registration_id: _local_registration_id,
+            alice_base_key: _alice_base_key,
+        } = &self.session;
+        // ####### IMPORTANT #######
+        // Don't forget to clean up new pending fields.
+        // ####### IMPORTANT #######
         self.session.pending_pre_key = None;
         self.session.pending_kyber_pre_key = None;
     }
