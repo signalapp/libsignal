@@ -37,35 +37,38 @@ struct Cli {
     #[arg(long)]
     print: bool,
 
+    // TODO once https://github.com/clap-rs/clap/issues/5292 is resolved, make
+    // `derive_key` and `key_parts` Optional at the top level.
     #[command(flatten)]
-    derive_key: Option<DeriveKey>,
+    derive_key: DeriveKey,
 
     #[command(flatten)]
-    key_parts: Option<KeyParts>,
+    key_parts: KeyParts,
 }
 
 #[derive(Debug, Args, PartialEq)]
-#[group(conflicts_with("KeyParts"))]
+#[group(conflicts_with = "KeyParts")]
 struct DeriveKey {
     /// account master key, used with the ACI to derive the message backup key
-    #[arg(long, value_parser=args::parse_hex_bytes::<32>)]
-    master_key: [u8; BackupKey::MASTER_KEY_LEN],
+    #[arg(long, value_parser=args::parse_hex_bytes::<32>, requires="aci")]
+    master_key: Option<[u8; BackupKey::MASTER_KEY_LEN]>,
     /// ACI for the backup creator
-    #[arg(long, value_parser=args::parse_aci)]
-    aci: Aci,
+    #[arg(long, value_parser=args::parse_aci, requires="master_key")]
+    aci: Option<Aci>,
 }
 
 #[derive(Debug, Args, PartialEq)]
+#[group(conflicts_with = "DeriveKey")]
 struct KeyParts {
     /// HMAC key, used if the master key is not provided
-    #[arg(long, value_parser=args::parse_hex_bytes::<32>)]
-    hmac_key: [u8; MessageBackupKey::HMAC_KEY_LEN],
+    #[arg(long, value_parser=args::parse_hex_bytes::<32>, requires_all=["aes_key", "iv"])]
+    hmac_key: Option<[u8; MessageBackupKey::HMAC_KEY_LEN]>,
     /// AES encryption key, used if the master key is not provided
-    #[arg(long, value_parser=args::parse_hex_bytes::<32>)]
-    aes_key: [u8; MessageBackupKey::AES_KEY_LEN],
+    #[arg(long, value_parser=args::parse_hex_bytes::<32>, requires_all=["hmac_key", "iv"])]
+    aes_key: Option<[u8; MessageBackupKey::AES_KEY_LEN]>,
     /// AES IV bytes, used if the master key is not provided
-    #[arg(long, value_parser=args::parse_hex_bytes::<16>)]
-    iv: [u8; MessageBackupKey::IV_LEN],
+    #[arg(long, value_parser=args::parse_hex_bytes::<16>, requires_all=["hmac_key", "aes_key"])]
+    iv: Option<[u8; MessageBackupKey::IV_LEN]>,
 }
 
 fn main() {
@@ -87,22 +90,28 @@ async fn async_main() {
 
     let verbosity = verbose.into();
 
+    let derive_key = {
+        let DeriveKey { master_key, aci } = derive_key;
+        master_key.zip(aci)
+    };
+    let key_parts = {
+        let KeyParts {
+            hmac_key,
+            aes_key,
+            iv,
+        } = key_parts;
+        hmac_key.zip(aes_key).zip(iv)
+    };
+
     let key = {
         match (derive_key, key_parts) {
             (None, None) => None,
-            (
-                None,
-                Some(KeyParts {
-                    hmac_key,
-                    aes_key,
-                    iv,
-                }),
-            ) => Some(MessageBackupKey {
+            (None, Some(((hmac_key, aes_key), iv))) => Some(MessageBackupKey {
                 aes_key,
                 hmac_key,
                 iv,
             }),
-            (Some(DeriveKey { master_key, aci }), None) => Some({
+            (Some((master_key, aci)), None) => Some({
                 let backup_key = BackupKey::derive_from_master_key(&master_key);
                 let backup_id = backup_key.derive_backup_id(&aci);
                 MessageBackupKey::derive(&backup_key, &backup_id)
@@ -206,6 +215,24 @@ mod test {
     }
 
     #[test]
+    fn cli_parse_no_keys_plaintext_binproto() {
+        const INPUT: &[&str] = &[EXECUTABLE_NAME, "filename"];
+
+        let file_source = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
+            file:
+                FileOrStdin {
+                    source: clap_stdin::Source::Arg(file_source),
+                    ..
+                },
+            verbose: 0,
+            print: false,
+            derive_key: DeriveKey { master_key: None, aci: None},
+            key_parts: KeyParts { hmac_key: None, aes_key: None, iv: None },
+        }) =>  file_source);
+        assert_eq!(file_source, "filename");
+    }
+
+    #[test]
     fn cli_parse_derive_keys() {
         const INPUT: &[&str] = &[
             EXECUTABLE_NAME,
@@ -225,15 +252,15 @@ mod test {
             verbose: 0,
             print: false,
             derive_key,
-            key_parts: None,
+            key_parts: KeyParts { hmac_key: None, aes_key: None, iv: None },
         }) => (file_source, derive_key));
         assert_eq!(file_source, "filename");
         assert_eq!(
             derive_key,
-            Some(DeriveKey {
-                master_key: [0xaa; 32],
-                aci: Aci::from_uuid_bytes([0x55; 16])
-            })
+            DeriveKey {
+                master_key: Some([0xaa; 32]),
+                aci: Some(Aci::from_uuid_bytes([0x55; 16]))
+            }
         );
     }
 
@@ -258,17 +285,17 @@ mod test {
                 },
             verbose: 0,
             print: false,
-            derive_key: None,
+            derive_key: DeriveKey { master_key: None, aci: None},
             key_parts,
         }) => (file_source, key_parts));
         assert_eq!(file_source, "filename");
         assert_eq!(
             key_parts,
-            Some(KeyParts {
-                aes_key: [0xcc; 32],
-                hmac_key: [0xbb; 32],
-                iv: [0xdd; 16],
-            })
+            KeyParts {
+                aes_key: Some([0xcc; 32]),
+                hmac_key: Some([0xbb; 32]),
+                iv: Some([0xdd; 16]),
+            }
         );
     }
 
