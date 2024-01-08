@@ -394,7 +394,7 @@ impl<C: ConnectionManager, T: TransportConnector> CdsiConnectionParams
     type TransportConnector = T;
 
     fn connection_manager(&self) -> &Self::ConnectionManager {
-        &self.connection_manager
+        &self.manager
     }
 
     fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector> {
@@ -402,7 +402,7 @@ impl<C: ConnectionManager, T: TransportConnector> CdsiConnectionParams
     }
 
     fn mr_enclave(&self) -> &[u8] {
-        self.mr_enclave.as_ref()
+        self.params.mr_enclave.as_ref()
     }
 }
 

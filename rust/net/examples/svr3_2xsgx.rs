@@ -19,7 +19,7 @@ use rand::{CryptoRng, Rng};
 
 use attest::svr2::RaftConfig;
 use libsignal_net::enclave::{
-    EnclaveEndpoint, EndpointConnection, MrEnclave, PpssSetup, Svr3Flavor,
+    EnclaveEndpoint, EndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
 };
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::TcpSslTransportConnector;
@@ -87,7 +87,7 @@ async fn main() {
     };
 
     let two_sgx_env = {
-        let endpoint = EnclaveEndpoint {
+        let endpoint = EnclaveEndpoint::<Sgx> {
             host: "backend1.svr3.test.signal.org",
             mr_enclave: MrEnclave::new(&hex!(
                 "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"

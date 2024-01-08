@@ -4,9 +4,10 @@
 //
 
 use std::marker::PhantomData;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
+use attest::{cds2, enclave};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 
@@ -109,16 +110,16 @@ impl PpssSetup for Svr3Env<'_> {
 }
 
 #[derive_where(Clone, Copy; Bytes)]
-pub struct MrEnclave<Bytes, S> {
+pub struct MrEnclave<Bytes, E> {
     inner: Bytes,
-    service_kind: PhantomData<S>,
+    enclave_kind: PhantomData<E>,
 }
 
-impl<Bytes, S: EnclaveKind> MrEnclave<Bytes, S> {
+impl<Bytes, E: EnclaveKind> MrEnclave<Bytes, E> {
     pub const fn new(bytes: Bytes) -> Self {
         Self {
             inner: bytes,
-            service_kind: PhantomData,
+            enclave_kind: PhantomData,
         }
     }
 }
@@ -130,9 +131,9 @@ impl<Bytes: AsRef<[u8]>, S> AsRef<[u8]> for MrEnclave<Bytes, S> {
 }
 
 #[derive_where(Copy, Clone)]
-pub struct EnclaveEndpoint<'a, S: EnclaveKind> {
+pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub host: &'a str,
-    pub mr_enclave: MrEnclave<&'a [u8], S>,
+    pub mr_enclave: MrEnclave<&'a [u8], E>,
 }
 
 impl<S: EnclaveKind> EnclaveEndpoint<'_, S> {
@@ -141,18 +142,45 @@ impl<S: EnclaveKind> EnclaveEndpoint<'_, S> {
     }
 }
 
-pub struct EndpointConnection<S: EnclaveKind, C, T> {
-    pub(crate) mr_enclave: MrEnclave<&'static [u8], S>,
-    pub(crate) connection_manager: C,
-    pub(crate) connector: WebSocketClientConnector<T>,
+pub trait NewHandshake {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake>
+    where
+        Self: EnclaveKind + Sized;
+}
+
+pub struct EndpointParams<E: EnclaveKind> {
+    pub(crate) mr_enclave: MrEnclave<&'static [u8], E>,
     pub(crate) raft_config_override: Option<&'static RaftConfig>,
 }
 
-impl<S: EnclaveKind, T: TransportConnector>
-    EndpointConnection<S, SingleRouteThrottlingConnectionManager, T>
+impl<E: EnclaveKind> EndpointParams<E> {
+    pub const fn new(mr_enclave: MrEnclave<&'static [u8], E>) -> Self {
+        Self {
+            mr_enclave,
+            raft_config_override: None,
+        }
+    }
+
+    pub fn with_raft_override(mut self, raft_config: &'static RaftConfig) -> Self {
+        self.raft_config_override = Some(raft_config);
+        self
+    }
+}
+
+pub struct EndpointConnection<E: EnclaveKind, C, T> {
+    pub(crate) manager: C,
+    pub(crate) connector: WebSocketClientConnector<T>,
+    pub(crate) params: EndpointParams<E>,
+}
+
+impl<E: EnclaveKind, T: TransportConnector>
+    EndpointConnection<E, SingleRouteThrottlingConnectionManager, T>
 {
     pub fn new(
-        endpoint: EnclaveEndpoint<'static, S>,
+        endpoint: EnclaveEndpoint<'static, E>,
         connect_timeout: Duration,
         transport_connector: T,
     ) -> Self {
@@ -166,14 +194,14 @@ impl<S: EnclaveKind, T: TransportConnector>
     }
 
     pub fn with_custom_properties(
-        endpoint: EnclaveEndpoint<'static, S>,
+        endpoint: EnclaveEndpoint<'static, E>,
         connect_timeout: Duration,
         transport_connector: T,
         certs: RootCertificates,
         raft_config_override: Option<&'static RaftConfig>,
     ) -> Self {
         Self {
-            connection_manager: SingleRouteThrottlingConnectionManager::new(
+            manager: SingleRouteThrottlingConnectionManager::new(
                 endpoint.direct_connection().with_certs(certs),
                 connect_timeout,
             ),
@@ -181,21 +209,23 @@ impl<S: EnclaveKind, T: TransportConnector>
                 transport_connector,
                 make_ws_config(&endpoint.mr_enclave, connect_timeout),
             ),
-            mr_enclave: endpoint.mr_enclave,
-            raft_config_override,
+            params: EndpointParams {
+                mr_enclave: endpoint.mr_enclave,
+                raft_config_override,
+            },
         }
     }
 }
 
-impl<S: EnclaveKind, T: TransportConnector> EndpointConnection<S, MultiRouteConnectionManager, T> {
+impl<E: EnclaveKind, T: TransportConnector> EndpointConnection<E, MultiRouteConnectionManager, T> {
     pub fn new_multi(
-        mr_enclave: MrEnclave<&'static [u8], S>,
+        mr_enclave: MrEnclave<&'static [u8], E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         connect_timeout: Duration,
         transport_connector: T,
     ) -> Self {
         Self {
-            connection_manager: MultiRouteConnectionManager::new(
+            manager: MultiRouteConnectionManager::new(
                 connection_params
                     .into_iter()
                     .map(|params| {
@@ -208,9 +238,38 @@ impl<S: EnclaveKind, T: TransportConnector> EndpointConnection<S, MultiRouteConn
                 transport_connector,
                 make_ws_config(&mr_enclave, connect_timeout),
             ),
-            mr_enclave,
-            raft_config_override: None,
+            params: EndpointParams {
+                mr_enclave,
+                raft_config_override: None,
+            },
         }
+    }
+}
+
+impl NewHandshake for Sgx {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake> {
+        attest::svr2::new_handshake_with_override(
+            params.mr_enclave.as_ref(),
+            attestation_message,
+            SystemTime::now(),
+            params.raft_config_override,
+        )
+    }
+}
+
+impl NewHandshake for Cdsi {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake> {
+        cds2::new_handshake(
+            params.mr_enclave.as_ref(),
+            attestation_message,
+            SystemTime::now(),
+        )
     }
 }
 

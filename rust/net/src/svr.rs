@@ -12,7 +12,7 @@ use sha2::Sha256;
 use thiserror::Error;
 
 use crate::auth::HttpBasicAuth;
-use crate::enclave::{EndpointConnection, Sgx, Svr3Flavor};
+use crate::enclave::{EndpointConnection, NewHandshake, Svr3Flavor};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
@@ -50,7 +50,7 @@ impl HttpBasicAuth for Auth {
         &self.uid
     }
 
-    fn password(&self) -> std::borrow::Cow<str> {
+    fn password(&self) -> Cow<str> {
         Cow::Owned(self.otp(SystemTime::now()))
     }
 }
@@ -96,10 +96,14 @@ impl<Flavor: Svr3Flavor, S> SvrConnection<Flavor, S> {
     }
 }
 
-impl<S: AsyncDuplexStream> SvrConnection<Sgx, S> {
+impl<E: Svr3Flavor, S: AsyncDuplexStream> SvrConnection<E, S>
+where
+    E: Svr3Flavor + NewHandshake + Sized,
+    S: AsyncDuplexStream,
+{
     pub async fn connect<C, T>(
         auth: impl HttpBasicAuth,
-        connection: EndpointConnection<Sgx, C, T>,
+        connection: EndpointConnection<E, C, T>,
     ) -> Result<Self, Error>
     where
         C: ConnectionManager,
@@ -107,9 +111,8 @@ impl<S: AsyncDuplexStream> SvrConnection<Sgx, S> {
     {
         // TODO: This is almost a direct copy of CdsiConnection::connect. They can be unified.
         let auth_decorator = auth.into();
-        let connection_manager = connection.connection_manager;
         let connector = ServiceConnectorWithDecorator::new(connection.connector, auth_decorator);
-        let service_initializer = ServiceInitializer::new(&connector, connection_manager);
+        let service_initializer = ServiceInitializer::new(&connector, connection.manager);
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),
@@ -118,12 +121,7 @@ impl<S: AsyncDuplexStream> SvrConnection<Sgx, S> {
             ServiceState::TimedOut => Err(Error::Net(NetError::Timeout)),
         }?;
         let attested = AttestedConnection::connect(websocket, |attestation_msg| {
-            attest::svr2::new_handshake_with_override(
-                connection.mr_enclave.as_ref(),
-                attestation_msg,
-                SystemTime::now(),
-                connection.raft_config_override,
-            )
+            E::new_handshake(&connection.params, attestation_msg)
         })
         .await?;
 
