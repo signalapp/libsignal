@@ -25,12 +25,12 @@ mod unpad;
 const HMAC_LEN: usize = <<Hmac<Sha256> as OutputSizeUser>::OutputSize as Unsigned>::USIZE;
 
 #[derive(Debug)]
-pub(crate) struct FramesReader<R: AsyncRead + Unpin> {
+pub struct FramesReader<R: AsyncRead + Unpin> {
     reader: GzipDecoder<BufReader<Aes256CbcReader<Take<R>>>>,
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
-pub(crate) enum ValidationError {
+pub enum ValidationError {
     /// io error {0}
     Io(#[from] futures::io::Error),
     /// not enough bytes for an HMAC

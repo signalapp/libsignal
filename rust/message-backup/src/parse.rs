@@ -9,7 +9,7 @@ use arrayvec::ArrayVec;
 use futures::io::{AsyncRead, AsyncReadExt as _};
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
-pub(crate) enum ParseError {
+pub enum ParseError {
     /// io: {0}
     Io(#[from] std::io::Error),
     /// proto decode error: {0}
@@ -19,14 +19,11 @@ pub(crate) enum ParseError {
 const VARINT_MAX_LENGTH: usize = 10;
 
 pub(crate) struct VarintDelimitedReader<R> {
-    #[allow(unused)]
     reader: R,
-    #[allow(unused)]
     buffer: ArrayVec<u8, VARINT_MAX_LENGTH>,
 }
 
 impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
-    #[allow(unused)]
     pub(crate) fn new(reader: R) -> Self {
         Self {
             reader,

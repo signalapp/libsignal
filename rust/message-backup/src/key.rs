@@ -21,9 +21,10 @@ pub struct BackupKey([u8; BackupKey::LEN]);
 
 impl BackupKey {
     pub const LEN: usize = 32;
+    pub const MASTER_KEY_LEN: usize = 32;
 
     /// Derive a `BackupKey` from the provided master key.
-    pub fn derive_from_master_key(master_key: &[u8; 32]) -> Self {
+    pub fn derive_from_master_key(master_key: &[u8; Self::MASTER_KEY_LEN]) -> Self {
         const INFO: &[u8] = b"20231003_Signal_Backups_GenerateBackupKey";
 
         let mut key = [0; Self::LEN];
@@ -77,8 +78,8 @@ pub struct MessageBackupKey {
 /// used as input to the block cipher during encryption and decryption.
 impl MessageBackupKey {
     pub const HMAC_KEY_LEN: usize = 32;
-    const AES_KEY_LEN: usize = 32;
-    const IV_LEN: usize = 16;
+    pub const AES_KEY_LEN: usize = 32;
+    pub const IV_LEN: usize = 16;
 
     pub const LEN: usize = Self::HMAC_KEY_LEN + Self::AES_KEY_LEN + Self::IV_LEN;
 
