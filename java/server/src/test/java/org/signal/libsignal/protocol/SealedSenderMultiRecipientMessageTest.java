@@ -36,6 +36,15 @@ public class SealedSenderMultiRecipientMessageTest {
   static final String SHARED_BYTES =
       "99999999999999999999999999999999999999999999999999999999999999999999";
 
+  private assertMessageForRecipient(
+      final SealedSenderMultiRecipientMessage message,
+      final SealedSenderMultiRecipientMessage.Recipient recipient,
+      final String... expectedContentsHexParts) {
+    final byte[] expectedContents = Hex.fromStringsCondensedAssert(expectedContentsHexParts);
+    assertArrayEquals(expectedContents, message.messageForRecipient(recipient));
+    assertEquals(expectedContents.length, message.messageSizeForRecipient(recipient));
+  }
+
   @Test
   public void simpleAciOnly() throws Exception {
     byte[] input =
@@ -71,9 +80,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_ACI_ONLY, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_ACI_ONLY, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -85,9 +92,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_ACI_ONLY, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_ACI_ONLY, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -125,9 +130,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_ACI_ONLY, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_ACI_ONLY, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -139,9 +142,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_ACI_ONLY, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_ACI_ONLY, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -182,9 +183,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -198,9 +197,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -241,9 +238,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -257,9 +252,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -302,9 +295,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x03, (short) 0x33aa),
           new Pair<>((byte) 0x03, (short) 0x33ff),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -341,9 +332,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -357,9 +346,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -403,9 +390,7 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x03, (short) 0x33aa),
           new Pair<>((byte) 0x05, (short) 0x05aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -419,9 +404,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -466,9 +449,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(alice));
+    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -482,9 +463,7 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertArrayEquals(
-        Hex.fromStringsCondensedAssert(VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES),
-        message.messageForRecipient(bob));
+    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
 
     assertEquals(
         message.getExcludedRecipients(),

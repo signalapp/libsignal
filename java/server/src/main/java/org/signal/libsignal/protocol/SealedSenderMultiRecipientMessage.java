@@ -158,9 +158,7 @@ public class SealedSenderMultiRecipientMessage {
    */
   public byte[] messageForRecipient(Recipient recipient) {
     final int lengthOfSharedData = fullMessageData.length - offsetOfSharedData;
-    final ByteBuffer bbuf =
-        ByteBuffer.allocate(
-            1 + recipient.lengthOfRecipientSpecificKeyMaterial + lengthOfSharedData);
+    final ByteBuffer bbuf = ByteBuffer.allocate(messageSizeForRecipient(recipient));
     bbuf.put((byte) 0x22); // The "original" Sealed Sender V2 version
     bbuf.put(
         fullMessageData,
@@ -168,5 +166,14 @@ public class SealedSenderMultiRecipientMessage {
         recipient.lengthOfRecipientSpecificKeyMaterial);
     bbuf.put(fullMessageData, offsetOfSharedData, lengthOfSharedData);
     return bbuf.array();
+  }
+
+  /**
+   * Returns the length of the Sealed Sender V2 "ReceivedMessage" payload for delivery to a
+   * particular recipient, without copying any buffers.
+   */
+  public long messageSizeForRecipient(Recipient recipient) {
+    final int lengthOfSharedData = fullMessageData.length - offsetOfSharedData;
+    return 1 /* version signature */ + recipient.lengthOfRecipientSpecificKeyMaterial + lengthOfSharedData;
   }
 }
