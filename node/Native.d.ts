@@ -423,6 +423,7 @@ export function UsernameLink_Create(username: string, entropy: Buffer | null): B
 export function UsernameLink_DecryptUsername(entropy: Buffer, encryptedUsername: Buffer): string;
 export function Username_CandidatesFrom(nickname: string, minLen: number, maxLen: number): string;
 export function Username_Hash(username: string): Buffer;
+export function Username_HashFromParts(nickname: string, discriminator: string, minLen: number, maxLen: number): Buffer;
 export function Username_Proof(username: string, randomness: Buffer): Buffer;
 export function Username_Verify(proof: Buffer, hash: Buffer): void;
 export function UuidCiphertext_CheckValidContents(buffer: Buffer): void;

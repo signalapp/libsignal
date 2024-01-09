@@ -9,6 +9,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -116,6 +117,38 @@ public class UsernamesTest {
         // this is fine
       }
     }
+  }
+
+  @Test
+  public void testValidUsernamesFromParts() throws BaseUsernameException {
+    Username jimio01 = Username.fromParts("jimio", "01", 3, 32);
+    assertEquals("jimio.01", jimio01.getUsername());
+    byte[] proof = jimio01.generateProof();
+    Username.verifyProof(proof, jimio01.getHash());
+
+    // Try a discriminator that Java can't represent directly.
+    String uint64Max = "18446744073709551615";
+    assertEquals("jimio." + uint64Max, Username.fromParts("jimio", uint64Max, 3, 32).getUsername());
+  }
+
+  @Test
+  public void testCorrectExceptionForInvalidUsernamesFromParts() throws BaseUsernameException {
+    assertThrows(CannotBeEmptyException.class, () -> Username.fromParts("", "01", 3, 32));
+    assertThrows(
+        CannotStartWithDigitException.class, () -> Username.fromParts("1digit", "01", 3, 32));
+    assertThrows(
+        BadNicknameCharacterException.class, () -> Username.fromParts("s p a c e s", "01", 3, 32));
+    assertThrows(NicknameTooShortException.class, () -> Username.fromParts("abcde", "01", 10, 32));
+    assertThrows(NicknameTooLongException.class, () -> Username.fromParts("abcde", "01", 3, 4));
+    assertThrows(
+        DiscriminatorCannotBeEmptyException.class, () -> Username.fromParts("jimio", "", 3, 32));
+    assertThrows(
+        DiscriminatorCannotBeZeroException.class, () -> Username.fromParts("jimio", "00", 3, 32));
+    assertThrows(
+        BadDiscriminatorCharacterException.class, () -> Username.fromParts("jimio", "+12", 3, 32));
+    assertThrows(
+        DiscriminatorTooLargeException.class,
+        () -> Username.fromParts("jimio", "18446744073709551616", 3, 32));
   }
 
   @Test

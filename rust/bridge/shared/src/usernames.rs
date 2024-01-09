@@ -49,6 +49,17 @@ pub fn Username_CandidatesFrom(
     Username::candidates_from(&mut rng, &nickname, limits).map(|names| names.join(","))
 }
 
+#[bridge_fn]
+pub fn Username_HashFromParts(
+    nickname: String,
+    discriminator: String,
+    min_len: u32,
+    max_len: u32,
+) -> Result<[u8; 32], UsernameError> {
+    let limits = NicknameLimits::new(min_len as usize, max_len as usize);
+    Username::from_parts(&nickname, &discriminator, limits).map(|un| un.hash())
+}
+
 #[bridge_fn(ffi = false)]
 pub fn UsernameLink_Create(
     username: String,

@@ -618,6 +618,7 @@ public final class Native {
 
   public static native String Username_CandidatesFrom(String nickname, int minLen, int maxLen);
   public static native byte[] Username_Hash(String username);
+  public static native byte[] Username_HashFromParts(String nickname, String discriminator, int minLen, int maxLen);
   public static native byte[] Username_Proof(String username, byte[] randomness);
   public static native void Username_Verify(byte[] proof, byte[] hash);
 

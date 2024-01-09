@@ -55,6 +55,11 @@ public final class Username {
     this.hash = hash(username);
   }
 
+  private Username(String username, byte[] hash) {
+    this.username = username;
+    this.hash = hash;
+  }
+
   public String getUsername() {
     return this.username;
   }
@@ -71,6 +76,17 @@ public final class Username {
       result.add(new Username(name));
     }
     return result;
+  }
+
+  public static Username fromParts(
+      String nickname, String discriminator, int minNicknameLength, int maxNicknameLength)
+      throws BaseUsernameException {
+    byte[] hash =
+        Native.Username_HashFromParts(
+            nickname, discriminator, minNicknameLength, maxNicknameLength);
+    // If we generated the hash correctly, we can format the nickname and discriminator manually.
+    String username = nickname + "." + discriminator;
+    return new Username(username, hash);
   }
 
   public static Username fromLink(final UsernameLink usernameLink) throws BaseUsernameException {

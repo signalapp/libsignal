@@ -33,6 +33,18 @@ public struct Username {
         try self.init(username)
     }
 
+    public init(nickname: String, discriminator: String, withValidLengthWithin lengthRange: ClosedRange<UInt32>) throws {
+        self.hash = try nickname.withCString { nickname in
+            try discriminator.withCString { discriminator in
+                try invokeFnReturningFixedLengthArray {
+                    signal_username_hash_from_parts($0, nickname, discriminator, lengthRange.lowerBound, lengthRange.upperBound)
+                }
+            }
+        }
+        // If we generated the hash correctly, we can format the nickname and discriminator manually.
+        self.value = "\(nickname).\(discriminator)"
+    }
+
     public func generateProof(withRandomness randomness: Randomness? = nil) -> [UInt8] {
         failOnError {
             let randomness = try randomness ?? Randomness.generate()

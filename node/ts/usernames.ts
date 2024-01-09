@@ -23,6 +23,23 @@ export function generateCandidates(
   ).split(',');
 }
 
+export function fromParts(
+  nickname: string,
+  discriminator: string,
+  minNicknameLength: number,
+  maxNicknameLength: number
+): { username: string; hash: Buffer } {
+  const hash = Native.Username_HashFromParts(
+    nickname,
+    discriminator,
+    minNicknameLength,
+    maxNicknameLength
+  );
+  // If we generated the hash correctly, we can format the nickname and discriminator manually.
+  const username = `${nickname}.${discriminator}`;
+  return { username, hash };
+}
+
 export function hash(username: string): Buffer {
   return Native.Username_Hash(username);
 }

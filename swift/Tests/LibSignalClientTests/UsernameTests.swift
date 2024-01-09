@@ -79,6 +79,99 @@ class UsernameTests: TestCaseBase {
         }
     }
 
+    func testValidUsernamesFromParts() throws {
+        let jimio01 = try Username(nickname: "jimio", discriminator: "01", withValidLengthWithin: 3...32)
+        XCTAssertEqual("jimio.01", jimio01.value)
+        try Username.verify(proof: jimio01.generateProof(), forHash: jimio01.hash)
+
+        XCTAssertEqual("jimio.\(UInt64.max)",
+                       try Username(nickname: "jimio",
+                                    discriminator: "\(UInt64.max)",
+                                    withValidLengthWithin: 3...32).value)
+    }
+
+    func testCorrectErrorsForInvalidUsernamesFromParts() throws {
+        do {
+            _ = try Username(nickname: "", discriminator: "01", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.nicknameCannotBeEmpty {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "1digit", discriminator: "01", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.nicknameCannotStartWithDigit {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "s p a c e s", discriminator: "01", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.badNicknameCharacter {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "abcde", discriminator: "01", withValidLengthWithin: 10...32)
+            XCTFail("should have failed")
+        } catch SignalError.nicknameTooShort {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "abcde", discriminator: "01", withValidLengthWithin: 3...4)
+            XCTFail("should have failed")
+        } catch SignalError.nicknameTooLong {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "jimio", discriminator: "", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.usernameDiscriminatorCannotBeEmpty {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "jimio", discriminator: "00", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.usernameDiscriminatorCannotBeZero {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "jimio", discriminator: "012", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.usernameDiscriminatorCannotHaveLeadingZeros {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "jimio", discriminator: "+12", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.badDiscriminatorCharacter {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        do {
+            _ = try Username(nickname: "jimio", discriminator: "18446744073709551616", withValidLengthWithin: 3...32)
+            XCTFail("should have failed")
+        } catch SignalError.usernameDiscriminatorTooLarge {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
     func testUsernameLinkWorksEndToEnd() throws {
         let original = try Username("SiGNAl.42")
         let (randomness, linkBytes) = try original.createLink()

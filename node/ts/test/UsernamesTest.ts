@@ -4,12 +4,28 @@
 //
 
 import { assert, expect } from 'chai';
-import { ErrorCode, LibSignalErrorBase } from '../Errors';
+import { ErrorCode, LibSignalError, LibSignalErrorBase } from '../Errors';
 import * as usernames from '../usernames';
 import * as util from './util';
 import { decryptUsernameLink } from '../usernames';
 
 util.initLogger();
+
+function assertThrowsLibSignalError(
+  expression: () => void,
+  code: ErrorCode,
+  message?: string
+) {
+  try {
+    expression();
+    assert.fail(message);
+  } catch (e) {
+    assert.instanceOf(e, Error, message);
+    assert.instanceOf(e, LibSignalErrorBase, message);
+    const err = e as LibSignalError;
+    assert.equal(err.code, code, message);
+  }
+}
 
 describe('usernames', () => {
   describe('hash', () => {
@@ -51,6 +67,69 @@ describe('usernames', () => {
       const badHash = hash.slice(1);
       const proof = usernames.generateProof(nickname);
       assert.throws(() => usernames.verifyProof(proof, badHash));
+    });
+  });
+
+  describe('fromParts', () => {
+    it('can assemble valid usernames', () => {
+      assert.equal(
+        'jimio.01',
+        usernames.fromParts('jimio', '01', 3, 32).username
+      );
+      const uint64Max = 2n ** 64n - 1n;
+      assert.equal(
+        `jimio.${uint64Max}`,
+        usernames.fromParts('jimio', `${uint64Max}`, 3, 32).username
+      );
+    });
+
+    it('generates valid hashes', () => {
+      const { username, hash } = usernames.fromParts('jimio', '01', 3, 32);
+      const proof = usernames.generateProof(username);
+      usernames.verifyProof(proof, hash);
+    });
+
+    it('produces the correct error for invalid usernames', () => {
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('', '01', 3, 32),
+        ErrorCode.NicknameCannotBeEmpty
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('1digit', '01', 3, 32),
+        ErrorCode.CannotStartWithDigit
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('s p a c e s', '01', 3, 32),
+        ErrorCode.BadNicknameCharacter
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('abcde', '01', 10, 32),
+        ErrorCode.NicknameTooShort
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('abcde', '01', 3, 4),
+        ErrorCode.NicknameTooLong
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('jimio', '', 3, 32),
+        ErrorCode.DiscriminatorCannotBeEmpty
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('jimio', '00', 3, 32),
+        ErrorCode.DiscriminatorCannotBeZero
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('jimio', '012', 3, 32),
+        ErrorCode.DiscriminatorCannotHaveLeadingZeros
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('jimio', '+12', 3, 32),
+        ErrorCode.BadDiscriminatorCharacter
+      );
+      assertThrowsLibSignalError(
+        () => usernames.fromParts('jimio', `${2n ** 64n}`, 3, 32),
+        ErrorCode.DiscriminatorTooLarge
+      );
     });
   });
 
