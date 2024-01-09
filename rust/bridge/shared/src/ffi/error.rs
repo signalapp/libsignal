@@ -31,6 +31,7 @@ pub enum SignalFfiError {
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     UsernameError(UsernameError),
+    UsernameProofError(usernames::ProofVerificationFailure),
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     #[cfg(feature = "signal-media")]
@@ -62,6 +63,7 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalFfiError::UsernameError(e) => write!(f, "{}", e),
+            SignalFfiError::UsernameProofError(e) => write!(f, "{}", e),
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
             #[cfg(feature = "signal-media")]
@@ -132,6 +134,12 @@ impl From<ZkGroupDeserializationFailure> for SignalFfiError {
 impl From<UsernameError> for SignalFfiError {
     fn from(e: UsernameError) -> SignalFfiError {
         SignalFfiError::UsernameError(e)
+    }
+}
+
+impl From<usernames::ProofVerificationFailure> for SignalFfiError {
+    fn from(e: usernames::ProofVerificationFailure) -> SignalFfiError {
+        SignalFfiError::UsernameProofError(e)
     }
 }
 

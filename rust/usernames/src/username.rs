@@ -19,7 +19,7 @@ use poksho::{PokshoError, Statement};
 use crate::constants::{
     BASE_POINTS, CANDIDATES_PER_RANGE, DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH,
 };
-use crate::error::UsernameError;
+use crate::error::{ProofVerificationFailure, UsernameError};
 
 lazy_static! {
     static ref PROOF_STATEMENT: Statement = {
@@ -146,15 +146,15 @@ impl Username {
             .map_err(|e| panic!("Failed to create proof. Cause: PokshoError::{:?}", e))
     }
 
-    pub fn verify_proof(proof: &[u8], hash: [u8; 32]) -> Result<(), UsernameError> {
+    pub fn verify_proof(proof: &[u8], hash: [u8; 32]) -> Result<(), ProofVerificationFailure> {
         let hash_point = CompressedRistretto(hash)
             .decompress()
-            .ok_or(UsernameError::ProofVerificationFailure)?;
+            .ok_or(ProofVerificationFailure)?;
         let point_args = Self::make_point_args(hash_point);
         PROOF_STATEMENT
             .verify_proof(proof, &point_args, &hash)
             .map_err(|e| match e {
-                PokshoError::VerificationFailure => UsernameError::ProofVerificationFailure,
+                PokshoError::VerificationFailure => ProofVerificationFailure,
                 _ => panic!("Unexpected verification error PokshoError::{:?}", e),
             })
     }
@@ -272,29 +272,42 @@ fn to_base_37_scalar(bytes: &[u8]) -> Scalar {
     scalar
 }
 
-fn validate_discriminator<T: FromStr + PartialOrd + From<u8>>(
+fn validate_discriminator<T: FromStr<Err = std::num::ParseIntError> + PartialOrd + From<u8>>(
     discriminator: &str,
 ) -> Result<T, UsernameError> {
     if discriminator.is_empty() {
-        return Err(UsernameError::BadDiscriminator);
+        return Err(UsernameError::DiscriminatorCannotBeEmpty);
     }
     let first_ascii_char = discriminator.as_bytes()[0];
     if !first_ascii_char.is_ascii_digit() {
         // "+123" is allowed by Rust u*::from_str, but not by us.
-        return Err(UsernameError::BadDiscriminator);
+        return Err(UsernameError::BadDiscriminatorCharacter);
     }
 
-    let n = T::from_str(discriminator).unwrap_or_else(|_| T::from(0));
+    let n = T::from_str(discriminator).map_err(|e| match e.kind() {
+        std::num::IntErrorKind::Empty => unreachable!("checked above"),
+        std::num::IntErrorKind::InvalidDigit => UsernameError::BadDiscriminatorCharacter,
+        std::num::IntErrorKind::PosOverflow => UsernameError::DiscriminatorTooLarge,
+        std::num::IntErrorKind::NegOverflow => UsernameError::DiscriminatorTooLarge,
+        std::num::IntErrorKind::Zero => UsernameError::DiscriminatorCannotBeZero,
+        _ => {
+            // Don't log the error, it might contain information about the user.
+            log::warn!("unknown ParseIntError: {:?}", e.kind());
+            UsernameError::BadDiscriminatorCharacter
+        }
+    })?;
+
     if n == T::from(0) {
-        return Err(UsernameError::BadDiscriminator);
+        return Err(UsernameError::DiscriminatorCannotBeZero);
     }
-    if n < T::from(10) && discriminator.len() != 2 {
-        return Err(UsernameError::BadDiscriminator);
+
+    match discriminator.len() {
+        0 => unreachable!("checked above"),
+        1 => Err(UsernameError::DiscriminatorCannotBeSingleDigit),
+        2 => Ok(n),
+        _ if (b'1'..=b'9').contains(&first_ascii_char) => Ok(n),
+        _ => Err(UsernameError::DiscriminatorCannotHaveLeadingZeros),
     }
-    if n >= T::from(10) && !(b'1'..=b'9').contains(&first_ascii_char) {
-        return Err(UsernameError::BadDiscriminator);
-    }
-    Ok(n)
 }
 
 fn validate_nickname(nickname: &str, limits: &NicknameLimits) -> Result<(), UsernameError> {
@@ -312,8 +325,8 @@ fn validate_nickname(nickname: &str, limits: &NicknameLimits) -> Result<(), User
 
 fn validate_prefix(s: &str) -> Result<(), UsernameError> {
     match s.chars().next() {
-        None => Err(UsernameError::CannotBeEmpty),
-        Some(ch) if ch.is_ascii_digit() => Err(UsernameError::CannotStartWithDigit),
+        None => Err(UsernameError::NicknameCannotBeEmpty),
+        Some(ch) if ch.is_ascii_digit() => Err(UsernameError::NicknameCannotStartWithDigit),
         _ => Ok(()),
     }
 }
@@ -376,10 +389,10 @@ mod test {
     #[test]
     fn invalid_nicknames() {
         for (nickname, expected_error) in [
-            ("", UsernameError::CannotBeEmpty),
+            ("", UsernameError::NicknameCannotBeEmpty),
             ("ab🦀d", UsernameError::BadNicknameCharacter),
             ("s p a c e s", UsernameError::BadNicknameCharacter),
-            ("0start", UsernameError::CannotStartWithDigit),
+            ("0start", UsernameError::NicknameCannotStartWithDigit),
             (
                 "nickname_too_big7890123456789012345678901234567890",
                 UsernameError::NicknameTooLong,
@@ -388,7 +401,8 @@ mod test {
             assert_eq!(
                 Username::from_parts(nickname, "42", NicknameLimits::default())
                     .expect_err("unexpected success for nickname '{nickname}'"),
-                expected_error
+                expected_error,
+                "wrong error for nickname '{nickname}'"
             );
 
             Username::new(&Username::format_parts(nickname, 42))
@@ -411,26 +425,30 @@ mod test {
 
     #[test]
     fn invalid_discriminators() {
-        for discriminator in [
-            "",
-            "0",
-            "00",
-            "001",
-            "0123",
-            "1",
-            "+1",
-            "-1",
-            "+01",
-            "-01",
-            "+123",
-            "-123",
-            "123456789012345678901234567890",
-            "a1",
+        for (discriminator, expected_error) in [
+            ("", UsernameError::DiscriminatorCannotBeEmpty),
+            ("0", UsernameError::DiscriminatorCannotBeZero),
+            ("00", UsernameError::DiscriminatorCannotBeZero),
+            ("001", UsernameError::DiscriminatorCannotHaveLeadingZeros),
+            ("0123", UsernameError::DiscriminatorCannotHaveLeadingZeros),
+            ("1", UsernameError::DiscriminatorCannotBeSingleDigit),
+            ("+1", UsernameError::BadDiscriminatorCharacter),
+            ("-1", UsernameError::BadDiscriminatorCharacter),
+            ("+01", UsernameError::BadDiscriminatorCharacter),
+            ("-01", UsernameError::BadDiscriminatorCharacter),
+            ("+123", UsernameError::BadDiscriminatorCharacter),
+            ("-123", UsernameError::BadDiscriminatorCharacter),
+            (
+                "123456789012345678901234567890",
+                UsernameError::DiscriminatorTooLarge,
+            ),
+            ("a1", UsernameError::BadDiscriminatorCharacter),
         ] {
             assert_eq!(
                 Username::from_parts("ehren", discriminator, NicknameLimits::default())
                     .expect_err("unexpected success for discriminator '{discriminator}'"),
-                UsernameError::BadDiscriminator
+                expected_error,
+                "wrong error for discriminator '{discriminator}'"
             );
 
             Username::new(&format!("ehren.{discriminator}"))

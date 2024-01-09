@@ -59,13 +59,18 @@ pub enum SignalErrorCode {
     UsernameCannotBeEmpty = 120,
     UsernameCannotStartWithDigit = 121,
     UsernameMissingSeparator = 122,
-    UsernameBadDiscriminator = 123,
-    UsernameBadCharacter = 124,
+    UsernameBadDiscriminatorCharacter = 123,
+    UsernameBadNicknameCharacter = 124,
     UsernameTooShort = 125,
     UsernameTooLong = 126,
-
     UsernameLinkInvalidEntropyDataLength = 127,
     UsernameLinkInvalid = 128,
+
+    UsernameDiscriminatorCannotBeEmpty = 140,
+    UsernameDiscriminatorCannotBeZero = 141,
+    UsernameDiscriminatorCannotBeSingleDigit = 142,
+    UsernameDiscriminatorCannotHaveLeadingZeros = 143,
+    UsernameDiscriminatorTooLarge = 144,
 
     IoError = 130,
     #[allow(dead_code)]
@@ -210,11 +215,11 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidType
             }
 
-            SignalFfiError::UsernameError(UsernameError::CannotBeEmpty) => {
+            SignalFfiError::UsernameError(UsernameError::NicknameCannotBeEmpty) => {
                 SignalErrorCode::UsernameCannotBeEmpty
             }
 
-            SignalFfiError::UsernameError(UsernameError::CannotStartWithDigit) => {
+            SignalFfiError::UsernameError(UsernameError::NicknameCannotStartWithDigit) => {
                 SignalErrorCode::UsernameCannotStartWithDigit
             }
 
@@ -222,12 +227,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UsernameMissingSeparator
             }
 
-            SignalFfiError::UsernameError(UsernameError::BadDiscriminator) => {
-                SignalErrorCode::UsernameBadDiscriminator
-            }
-
             SignalFfiError::UsernameError(UsernameError::BadNicknameCharacter) => {
-                SignalErrorCode::UsernameBadCharacter
+                SignalErrorCode::UsernameBadNicknameCharacter
             }
 
             SignalFfiError::UsernameError(UsernameError::NicknameTooShort) => {
@@ -239,7 +240,31 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UsernameTooLong
             }
 
-            SignalFfiError::UsernameError(UsernameError::ProofVerificationFailure) => {
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotBeEmpty) => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeEmpty
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotBeZero) => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeZero
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotBeSingleDigit) => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeSingleDigit
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotHaveLeadingZeros) => {
+                SignalErrorCode::UsernameDiscriminatorCannotHaveLeadingZeros
+            }
+
+            SignalFfiError::UsernameError(UsernameError::BadDiscriminatorCharacter) => {
+                SignalErrorCode::UsernameBadDiscriminatorCharacter
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorTooLarge) => {
+                SignalErrorCode::UsernameDiscriminatorTooLarge
+            }
+
+            SignalFfiError::UsernameProofError(usernames::ProofVerificationFailure) => {
                 SignalErrorCode::VerificationFailure
             }
 

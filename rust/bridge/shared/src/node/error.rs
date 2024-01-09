@@ -206,19 +206,21 @@ impl SignalNodeError for usernames::UsernameError {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let name = match &self {
-            Self::BadNicknameCharacter => Some("BadNicknameCharacter"),
-            Self::NicknameTooShort => Some("NicknameTooShort"),
-            Self::NicknameTooLong => Some("NicknameTooLong"),
-            Self::CannotBeEmpty => Some("CannotBeEmpty"),
-            Self::CannotStartWithDigit => Some("CannotStartWithDigit"),
-            Self::MissingSeparator => Some("MissingSeparator"),
-            // These don't get a dedicated error code
-            // because clients won't need to distinguish them from other errors.
-            Self::BadDiscriminator => None,
-            Self::ProofVerificationFailure => None,
+            Self::BadNicknameCharacter => "BadNicknameCharacter",
+            Self::NicknameTooShort => "NicknameTooShort",
+            Self::NicknameTooLong => "NicknameTooLong",
+            Self::NicknameCannotBeEmpty => "NicknameCannotBeEmpty",
+            Self::NicknameCannotStartWithDigit => "CannotStartWithDigit",
+            Self::MissingSeparator => "MissingSeparator",
+            Self::DiscriminatorCannotBeEmpty => "DiscriminatorCannotBeEmpty",
+            Self::DiscriminatorCannotBeZero => "DiscriminatorCannotBeZero",
+            Self::DiscriminatorCannotBeSingleDigit => "DiscriminatorCannotBeSingleDigit",
+            Self::DiscriminatorCannotHaveLeadingZeros => "DiscriminatorCannotHaveLeadingZeros",
+            Self::BadDiscriminatorCharacter => "BadDiscriminatorCharacter",
+            Self::DiscriminatorTooLarge => "DiscriminatorTooLarge",
         };
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
+        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
             Some(error) => cx.throw(error),
             None => {
                 // Make sure we still throw something.
@@ -227,6 +229,8 @@ impl SignalNodeError for usernames::UsernameError {
         }
     }
 }
+
+impl SignalNodeError for usernames::ProofVerificationFailure {}
 
 impl SignalNodeError for usernames::UsernameLinkError {
     fn throw<'a>(

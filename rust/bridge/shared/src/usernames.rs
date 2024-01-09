@@ -26,9 +26,12 @@ pub fn Username_Proof(username: String, randomness: &[u8]) -> Result<Vec<u8>, Us
 }
 
 #[bridge_fn_void]
-pub fn Username_Verify(proof: &[u8], hash: &[u8]) -> Result<(), UsernameError> {
+pub fn Username_Verify(
+    proof: &[u8],
+    hash: &[u8],
+) -> Result<(), ::usernames::ProofVerificationFailure> {
     if hash.len() != 32 {
-        return Err(UsernameError::ProofVerificationFailure);
+        return Err(::usernames::ProofVerificationFailure);
     }
     let mut arr = [0u8; 32];
     arr.copy_from_slice(hash);

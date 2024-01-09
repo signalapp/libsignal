@@ -5,7 +5,7 @@
 
 package org.signal.libsignal.usernames;
 
-public final class BadDiscriminatorException extends BaseUsernameException {
+public class BadDiscriminatorException extends BaseUsernameException {
   public BadDiscriminatorException(String message) {
     super(message);
   }

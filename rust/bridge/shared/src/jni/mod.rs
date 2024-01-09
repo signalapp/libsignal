@@ -388,20 +388,16 @@ where
             jni_class_name!(org.signal.libsignal.zkgroup.VerificationFailedException)
         }
 
-        SignalJniError::UsernameError(UsernameError::CannotBeEmpty) => {
+        SignalJniError::UsernameError(UsernameError::NicknameCannotBeEmpty) => {
             jni_class_name!(org.signal.libsignal.usernames.CannotBeEmptyException)
         }
 
-        SignalJniError::UsernameError(UsernameError::CannotStartWithDigit) => {
+        SignalJniError::UsernameError(UsernameError::NicknameCannotStartWithDigit) => {
             jni_class_name!(org.signal.libsignal.usernames.CannotStartWithDigitException)
         }
 
         SignalJniError::UsernameError(UsernameError::MissingSeparator) => {
             jni_class_name!(org.signal.libsignal.usernames.MissingSeparatorException)
-        }
-
-        SignalJniError::UsernameError(UsernameError::BadDiscriminator) => {
-            jni_class_name!(org.signal.libsignal.usernames.BadDiscriminatorException)
         }
 
         SignalJniError::UsernameError(UsernameError::BadNicknameCharacter) => {
@@ -416,7 +412,61 @@ where
             jni_class_name!(org.signal.libsignal.usernames.NicknameTooLongException)
         }
 
-        SignalJniError::UsernameError(UsernameError::ProofVerificationFailure) => {
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeEmpty) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .DiscriminatorCannotBeEmptyException
+            )
+        }
+
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeZero) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .DiscriminatorCannotBeZeroException
+            )
+        }
+
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeSingleDigit) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .DiscriminatorCannotBeSingleDigitException
+            )
+        }
+
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotHaveLeadingZeros) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .DiscriminatorCannotHaveLeadingZerosException
+            )
+        }
+
+        SignalJniError::UsernameError(UsernameError::BadDiscriminatorCharacter) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .BadDiscriminatorCharacterException
+            )
+        }
+
+        SignalJniError::UsernameError(UsernameError::DiscriminatorTooLarge) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .usernames
+                    .DiscriminatorTooLargeException
+            )
+        }
+
+        SignalJniError::UsernameProofError(usernames::ProofVerificationFailure) => {
             jni_class_name!(
                 org.signal
                     .libsignal

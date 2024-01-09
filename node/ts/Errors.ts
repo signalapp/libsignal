@@ -17,12 +17,18 @@ export enum ErrorCode {
   InvalidSession,
   InvalidSenderKeySession,
 
-  CannotBeEmpty,
+  NicknameCannotBeEmpty,
   CannotStartWithDigit,
   MissingSeparator,
   BadNicknameCharacter,
   NicknameTooShort,
   NicknameTooLong,
+  DiscriminatorCannotBeEmpty,
+  DiscriminatorCannotBeZero,
+  DiscriminatorCannotBeSingleDigit,
+  DiscriminatorCannotHaveLeadingZeros,
+  BadDiscriminatorCharacter,
+  DiscriminatorTooLarge,
 
   IoError,
 
@@ -119,8 +125,8 @@ export type InvalidSenderKeySessionError = LibSignalErrorCommon & {
   distributionId: string;
 };
 
-export type CannotBeEmptyError = LibSignalErrorCommon & {
-  code: ErrorCode.CannotBeEmpty;
+export type NicknameCannotBeEmptyError = LibSignalErrorCommon & {
+  code: ErrorCode.NicknameCannotBeEmpty;
 };
 export type CannotStartWithDigitError = LibSignalErrorCommon & {
   code: ErrorCode.CannotStartWithDigit;
@@ -139,6 +145,25 @@ export type NicknameTooShortError = LibSignalErrorCommon & {
 
 export type NicknameTooLongError = LibSignalErrorCommon & {
   code: ErrorCode.NicknameTooLong;
+};
+
+export type DiscriminatorCannotBeEmptyError = LibSignalErrorCommon & {
+  code: ErrorCode.DiscriminatorCannotBeEmpty;
+};
+export type DiscriminatorCannotBeZeroError = LibSignalErrorCommon & {
+  code: ErrorCode.DiscriminatorCannotBeZero;
+};
+export type DiscriminatorCannotBeSingleDigitError = LibSignalErrorCommon & {
+  code: ErrorCode.DiscriminatorCannotBeSingleDigit;
+};
+export type DiscriminatorCannotHaveLeadingZerosError = LibSignalErrorCommon & {
+  code: ErrorCode.DiscriminatorCannotHaveLeadingZeros;
+};
+export type BadDiscriminatorCharacterError = LibSignalErrorCommon & {
+  code: ErrorCode.BadDiscriminatorCharacter;
+};
+export type DiscriminatorTooLargeError = LibSignalErrorCommon & {
+  code: ErrorCode.DiscriminatorTooLarge;
 };
 
 export type InputDataTooLong = LibSignalErrorCommon & {
@@ -179,12 +204,18 @@ export type LibSignalError =
   | VerificationFailedError
   | InvalidSessionError
   | InvalidSenderKeySessionError
-  | CannotBeEmptyError
+  | NicknameCannotBeEmptyError
   | CannotStartWithDigitError
   | MissingSeparatorError
   | BadNicknameCharacterError
   | NicknameTooShortError
   | NicknameTooLongError
+  | DiscriminatorCannotBeEmptyError
+  | DiscriminatorCannotBeZeroError
+  | DiscriminatorCannotBeSingleDigitError
+  | DiscriminatorCannotHaveLeadingZerosError
+  | BadDiscriminatorCharacterError
+  | DiscriminatorTooLargeError
   | InputDataTooLong
   | InvalidEntropyDataLength
   | InvalidUsernameLinkEncryptedData

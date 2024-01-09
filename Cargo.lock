@@ -3676,6 +3676,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "lazy_static",
+ "log",
  "poksho",
  "proptest",
  "prost",

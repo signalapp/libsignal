@@ -32,6 +32,7 @@ pub enum SignalJniError {
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     UsernameError(UsernameError),
+    UsernameProofError(usernames::ProofVerificationFailure),
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     #[cfg(feature = "signal-media")]
@@ -63,6 +64,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalJniError::UsernameError(e) => write!(f, "{}", e),
+            SignalJniError::UsernameProofError(e) => write!(f, "{}", e),
             SignalJniError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalJniError::Io(e) => write!(f, "{}", e),
             #[cfg(feature = "signal-media")]
@@ -144,6 +146,12 @@ impl From<ZkGroupDeserializationFailure> for SignalJniError {
 impl From<UsernameError> for SignalJniError {
     fn from(e: UsernameError) -> Self {
         SignalJniError::UsernameError(e)
+    }
+}
+
+impl From<usernames::ProofVerificationFailure> for SignalJniError {
+    fn from(e: usernames::ProofVerificationFailure) -> Self {
+        SignalJniError::UsernameProofError(e)
     }
 }
 
