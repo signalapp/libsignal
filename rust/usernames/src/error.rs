@@ -4,6 +4,7 @@
 //
 
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub enum UsernameError {
     /// Name cannot be empty
     CannotBeEmpty,

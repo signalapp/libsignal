@@ -95,15 +95,38 @@ impl NicknameLimits {
 
 impl Username {
     pub fn new(s: &str) -> Result<Self, UsernameError> {
-        let (original_nickname, suffix) =
+        let (nickname, discriminator) =
             s.rsplit_once('.').ok_or(UsernameError::MissingSeparator)?;
-        let nickname = original_nickname.to_ascii_lowercase();
-        validate_prefix(&nickname)?;
-        let discriminator = validate_discriminator(suffix)?;
+        Self::from_parts_without_soft_limit(nickname, discriminator)
+    }
 
-        let scalars = make_scalars(&nickname, discriminator)?;
+    pub fn from_parts(
+        nickname: &str,
+        discriminator: &str,
+        limits: NicknameLimits,
+    ) -> Result<Self, UsernameError> {
+        // This should perform the same set of checks as validate_nickname.
+        let result = Self::from_parts_without_soft_limit(nickname, discriminator)?;
+
+        // We've already checked the hard limit. Now check the soft limit.
+        assert!(
+            nickname.is_ascii(),
+            "using the UTF-8 length is only correct when all valid nicknames are ASCII"
+        );
+        limits.validate(nickname.len())?;
+
+        Ok(result)
+    }
+
+    fn from_parts_without_soft_limit(
+        nickname: &str,
+        discriminator: &str,
+    ) -> Result<Self, UsernameError> {
+        validate_prefix(nickname)?;
+        let discriminator = validate_discriminator(discriminator)?;
+        let scalars = make_scalars(&nickname.to_ascii_lowercase(), discriminator)?;
         Ok(Self {
-            nickname: original_nickname.to_string(),
+            nickname: nickname.to_string(),
             discriminator,
             scalars,
         })
@@ -145,9 +168,13 @@ impl Username {
         let candidates = random_discriminators(rng, &CANDIDATES_PER_RANGE, &DISCRIMINATOR_RANGES)
             .unwrap()
             .iter()
-            .map(|d| format!("{}.{:0>2}", nickname, d))
+            .map(|d| Self::format_parts(nickname, d))
             .collect();
         Ok(candidates)
+    }
+
+    fn format_parts(nickname: &str, discriminator: impl std::fmt::Display) -> String {
+        format!("{nickname}.{discriminator:0>2}")
     }
 
     fn hash_from_scalars(scalars: &[Scalar]) -> RistrettoPoint {
@@ -271,6 +298,7 @@ fn validate_discriminator<T: FromStr + PartialOrd + From<u8>>(
 }
 
 fn validate_nickname(nickname: &str, limits: &NicknameLimits) -> Result<(), UsernameError> {
+    // This should perform the same set of checks as Username::from_parts.
     validate_prefix(nickname)?;
     let maybe_bytes: Option<Vec<_>> = nickname
         .to_ascii_lowercase()
@@ -338,29 +366,75 @@ mod test {
     }
 
     #[test]
-    fn invalid_usernames() {
-        for username in [
-            "no_discriminator",
-            "no_discriminator.",
-            "🦀.42",
-            "s p a c e s.01",
-            "zero.00",
-            "zeropad.001",
-            "zeropad.0123",
-            "short.1",
-            "short_zero.0",
-            "0start.01",
-            "plus.+1",
-            "plus.+01",
-            "plus.+123",
-            "discriminator_too_big.123456789012345678901234567890",
-            "nickname_too_big7890123456789012345678901234567890.01",
+    fn no_discriminator() {
+        assert_eq!(
+            Username::new("no_discriminator").expect_err("not a valid username"),
+            UsernameError::MissingSeparator
+        );
+    }
+
+    #[test]
+    fn invalid_nicknames() {
+        for (nickname, expected_error) in [
+            ("", UsernameError::CannotBeEmpty),
+            ("ab🦀d", UsernameError::BadNicknameCharacter),
+            ("s p a c e s", UsernameError::BadNicknameCharacter),
+            ("0start", UsernameError::CannotStartWithDigit),
+            (
+                "nickname_too_big7890123456789012345678901234567890",
+                UsernameError::NicknameTooLong,
+            ),
         ] {
-            assert!(
-                Username::new(username).map(|n| n.hash()).is_err(),
-                "Unexpected success for username '{}'",
-                username
-            )
+            assert_eq!(
+                Username::from_parts(nickname, "42", NicknameLimits::default())
+                    .expect_err("unexpected success for nickname '{nickname}'"),
+                expected_error
+            );
+
+            Username::new(&Username::format_parts(nickname, 42))
+                .expect_err("unexpected success for nickname '{nickname}'");
+        }
+    }
+
+    #[test]
+    fn nicknames_exceeding_soft_limits() {
+        Username::from_parts("abcd", "42", NicknameLimits::default()).expect("valid");
+        assert_eq!(
+            Username::from_parts("abcd", "42", NicknameLimits::new(2, 3)).expect_err("too long"),
+            UsernameError::NicknameTooLong
+        );
+        assert_eq!(
+            Username::from_parts("abcd", "42", NicknameLimits::new(5, 10)).expect_err("too short"),
+            UsernameError::NicknameTooShort
+        );
+    }
+
+    #[test]
+    fn invalid_discriminators() {
+        for discriminator in [
+            "",
+            "0",
+            "00",
+            "001",
+            "0123",
+            "1",
+            "+1",
+            "-1",
+            "+01",
+            "-01",
+            "+123",
+            "-123",
+            "123456789012345678901234567890",
+            "a1",
+        ] {
+            assert_eq!(
+                Username::from_parts("ehren", discriminator, NicknameLimits::default())
+                    .expect_err("unexpected success for discriminator '{discriminator}'"),
+                UsernameError::BadDiscriminator
+            );
+
+            Username::new(&format!("ehren.{discriminator}"))
+                .expect_err("unexpected success for discriminator '{discriminator}'");
         }
     }
 
@@ -403,7 +477,7 @@ mod test {
     #[test]
     fn valid_usernames_proof_and_verify() {
         proptest!(|(nickname in NICKNAME_PATTERN, discriminator in 1..DISCRIMINATOR_MAX)| {
-            let username = Username::new(&format!("{nickname}.{discriminator:0>2}")).unwrap();
+            let username = Username::new(&Username::format_parts(&nickname, discriminator)).unwrap();
             let hash = username.hash();
             let randomness: Vec<u8> = (1..33).collect();
             let proof = username.proof(&randomness).unwrap();
