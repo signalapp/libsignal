@@ -11,8 +11,7 @@ pub use errors::{Error, OPRFError, PPSSError};
 
 use crate::ppss::OPRFSession;
 use prost::Message;
-use rand::Rng;
-use rand_core::CryptoRng;
+use rand_core::CryptoRngCore;
 
 use crate::proto::svr3;
 use crate::proto::svr3::{create_response, evaluate_response};
@@ -28,14 +27,15 @@ pub struct Backup<'a> {
 }
 
 impl<'a> Backup<'a> {
-    pub fn new(
+    pub fn new<R: CryptoRngCore>(
         server_ids: &[u64],
         password: &'a str,
         secret: [u8; 32],
         max_tries: u32,
+        rng: &mut R,
     ) -> Result<Self, Error> {
         assert_ne!(0, max_tries);
-        let oprfs = ppss::begin_oprfs(CONTEXT, server_ids, password)?;
+        let oprfs = ppss::begin_oprfs(CONTEXT, server_ids, password, rng)?;
         let requests = oprfs
             .iter()
             .map(|oprf| crate::make_create_request(max_tries, &oprf.blinded_elt_bytes))
@@ -52,7 +52,7 @@ impl<'a> Backup<'a> {
 
     pub fn finalize<R>(self, rng: &mut R, responses: &[Vec<u8>]) -> Result<MaskedShareSet, Error>
     where
-        R: Rng + CryptoRng,
+        R: CryptoRngCore,
     {
         let evaluated_elements = responses
             .iter()
@@ -79,8 +79,12 @@ pub struct Restore<'a> {
 }
 
 impl<'a> Restore<'a> {
-    pub fn new(password: &'a str, share_set: MaskedShareSet) -> Result<Self, Error> {
-        let oprfs = ppss::begin_oprfs(CONTEXT, &share_set.server_ids, password)?;
+    pub fn new<R: CryptoRngCore>(
+        password: &'a str,
+        share_set: MaskedShareSet,
+        rng: &mut R,
+    ) -> Result<Self, Error> {
+        let oprfs = ppss::begin_oprfs(CONTEXT, &share_set.server_ids, password, rng)?;
         let requests = oprfs
             .iter()
             .map(|oprf| crate::make_evaluate_request(&oprf.blinded_elt_bytes))
@@ -171,8 +175,7 @@ mod test {
     use crate::oprf::ciphersuite::hash_to_group;
     use crate::proto::svr3;
     use prost::Message;
-    use rand::rngs::OsRng;
-    use rand::RngCore;
+    use rand_core::{OsRng, RngCore};
     use test_case::test_case;
 
     fn make_secret() -> [u8; 32] {
@@ -185,13 +188,15 @@ mod test {
     #[test]
     #[should_panic]
     fn zero_max_tries() {
-        let _ = Backup::new(&[], "", [0; 32], 0);
+        let _ = Backup::new(&[], "", [0; 32], 0, &mut OsRng);
     }
 
     #[test]
     fn backup_request_basic_checks() {
+        let mut rng = OsRng;
         let secret = make_secret();
-        let backup = Backup::new(&[1, 2, 3], "password", secret, 1).expect("can create backup");
+        let backup =
+            Backup::new(&[1, 2, 3], "password", secret, 1, &mut rng).expect("can create backup");
         assert_eq!(3, backup.requests.len());
         for request_bytes in backup.requests.into_iter() {
             let decode_result = svr3::Request::decode(&*request_bytes);
@@ -223,8 +228,8 @@ mod test {
     #[test_case(svr3::create_response::Status::InvalidRequest, false ; "status_invalid_request")]
     #[test_case(svr3::create_response::Status::Error, false ; "status_error")]
     fn backup_finalize_checks_status(status: svr3::create_response::Status, should_succeed: bool) {
-        let backup =
-            Backup::new(&[1, 2, 3], "password", make_secret(), 1).expect("can create backup");
+        let backup = Backup::new(&[1, 2, 3], "password", make_secret(), 1, &mut OsRng)
+            .expect("can create backup");
         let responses: Vec<_> = std::iter::repeat(make_create_response(status).encode_to_vec())
             .take(3)
             .collect();
@@ -236,8 +241,8 @@ mod test {
     #[test_case(vec![1, 2, 3]; "bad_protobuf")]
     #[test_case(make_evaluate_response(svr3::evaluate_response::Status::Ok).encode_to_vec(); "wrong_response_type")]
     fn backup_invalid_response(response: Vec<u8>) {
-        let backup =
-            Backup::new(&[1, 2, 3], "password", make_secret(), 1).expect("can create backup");
+        let backup = Backup::new(&[1, 2, 3], "password", make_secret(), 1, &mut OsRng)
+            .expect("can create backup");
         let mut rng = OsRng;
         let result = backup.finalize(&mut rng, &[response]);
         assert!(matches!(result, Err(Error::Protocol(_))));
@@ -253,8 +258,8 @@ mod test {
 
     #[test]
     fn restore_request_basic_checks() {
-        let restore =
-            Restore::new("password", make_masked_share_set()).expect("can create restore");
+        let restore = Restore::new("password", make_masked_share_set(), &mut OsRng)
+            .expect("can create restore");
         assert_eq!(3, restore.requests.len());
         for request_bytes in restore.requests.into_iter() {
             let decode_result = svr3::Request::decode(&*request_bytes);
@@ -290,7 +295,8 @@ mod test {
         status: svr3::evaluate_response::Status,
         should_succeed: bool,
     ) {
-        let restore = Restore::new("password", make_masked_share_set()).expect("can create backup");
+        let restore = Restore::new("password", make_masked_share_set(), &mut OsRng)
+            .expect("can create backup");
         let responses: Vec<_> = std::iter::repeat(make_evaluate_response(status).encode_to_vec())
             .take(3)
             .collect();
@@ -302,8 +308,8 @@ mod test {
     #[test_case(vec![1, 2, 3]; "bad_protobuf")]
     #[test_case(make_create_response(svr3::create_response::Status::Ok).encode_to_vec(); "wrong_response_type")]
     fn restore_invalid_response(response: Vec<u8>) {
-        let restore =
-            Restore::new("password", make_masked_share_set()).expect("can create restore");
+        let restore = Restore::new("password", make_masked_share_set(), &mut OsRng)
+            .expect("can create restore");
         let result = restore.finalize(&[response]);
         assert!(matches!(result, Err(Error::Protocol(_))));
     }

@@ -14,8 +14,7 @@ use std::time::Duration;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
-use rand::rngs::OsRng;
-use rand::{CryptoRng, Rng};
+use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use attest::svr2::RaftConfig;
 use libsignal_net::enclave::{
@@ -77,7 +76,7 @@ async fn main() {
 
     let mut make_uid = || {
         let mut bytes = [0u8; 16];
-        rng.fill(&mut bytes[..]);
+        rng.fill_bytes(&mut bytes[..]);
         hex::encode(bytes)
     };
 
@@ -140,17 +139,22 @@ async fn main() {
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        TwoForTwoEnv::restore(&mut connect().await, &args.password, opaque_share_set)
-            .await
-            .expect("can mutli restore")
+        TwoForTwoEnv::restore(
+            &mut connect().await,
+            &args.password,
+            opaque_share_set,
+            &mut rng,
+        )
+        .await
+        .expect("can mutli restore")
     };
     println!("Restored secret: {}", hex::encode(restored));
 
     assert_eq!(secret, restored);
 }
 
-fn make_secret(rng: &mut (impl Rng + CryptoRng)) -> [u8; 32] {
+fn make_secret(rng: &mut impl CryptoRngCore) -> [u8; 32] {
     let mut bytes = [0u8; 32];
-    rng.fill(&mut bytes[..]);
+    rng.fill_bytes(&mut bytes[..]);
     bytes
 }

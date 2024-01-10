@@ -5,7 +5,7 @@
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
-use rand_core::OsRng;
+use rand_core::CryptoRngCore;
 use sha2::{Digest, Sha512};
 
 use super::ciphersuite::hash_to_group;
@@ -17,8 +17,11 @@ pub fn apply_blind(oprf_input: &[u8], blind: &Scalar) -> RistrettoPoint {
     blind * input_element
 }
 
-pub fn blind(oprf_input: &[u8]) -> Result<(Scalar, RistrettoPoint), OPRFError> {
-    let blind = Scalar::random(&mut OsRng);
+pub fn blind<R: CryptoRngCore>(
+    oprf_input: &[u8],
+    rng: &mut R,
+) -> Result<(Scalar, RistrettoPoint), OPRFError> {
+    let blind = Scalar::random(rng);
 
     let blinded_element = apply_blind(oprf_input, &blind);
     if blinded_element == RistrettoPoint::identity() {

@@ -9,7 +9,7 @@ use crate::infra::ws::{run_attested_interaction, AttestedConnectionError};
 use async_trait::async_trait;
 use futures_util::future::try_join_all;
 use libsignal_svr3::{Backup, MaskedShareSet, Restore};
-use rand::{CryptoRng, Rng};
+use rand_core::CryptoRngCore;
 
 #[derive(Clone)]
 pub struct OpaqueMaskedShareSet {
@@ -74,13 +74,14 @@ pub trait PpssOps: PpssSetup {
         password: &str,
         secret: [u8; 32],
         max_tries: u32,
-        rng: &mut (impl Rng + CryptoRng),
+        rng: &mut impl CryptoRngCore,
     ) -> Result<OpaqueMaskedShareSet, Error>;
 
     async fn restore(
         connections: &mut Self::Connections,
         password: &str,
         share_set: OpaqueMaskedShareSet,
+        rng: &mut impl CryptoRngCore,
     ) -> Result<[u8; 32], Error>;
 }
 
@@ -91,10 +92,10 @@ impl<Env: PpssSetup> PpssOps for Env {
         password: &str,
         secret: [u8; 32],
         max_tries: u32,
-        rng: &mut (impl Rng + CryptoRng),
+        rng: &mut impl CryptoRngCore,
     ) -> Result<OpaqueMaskedShareSet, Error> {
         let server_ids = Self::server_ids().as_mut().to_owned();
-        let backup = Backup::new(&server_ids, password, secret, max_tries)?;
+        let backup = Backup::new(&server_ids, password, secret, max_tries, rng)?;
         let mut connections = connections.get_connections();
         let futures = connections
             .as_mut()
@@ -114,8 +115,9 @@ impl<Env: PpssSetup> PpssOps for Env {
         connections: &mut Self::Connections,
         password: &str,
         share_set: OpaqueMaskedShareSet,
+        rng: &mut impl CryptoRngCore,
     ) -> Result<[u8; 32], Error> {
-        let restore = Restore::new(password, share_set.into_inner())?;
+        let restore = Restore::new(password, share_set.into_inner(), rng)?;
         let mut connections = connections.get_connections();
         let futures = connections
             .as_mut()

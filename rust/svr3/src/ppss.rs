@@ -10,7 +10,7 @@ use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::Scalar;
 use displaydoc::Display;
 use hkdf::Hkdf;
-use rand::{CryptoRng, Rng};
+use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::convert::TryInto;
@@ -47,7 +47,7 @@ fn arr_xor_assign<const N: usize>(src: &[u8; N], acc: &mut [u8; N]) {
     }
 }
 
-fn create_xor_keyshares<R: Rng + CryptoRng>(
+fn create_xor_keyshares<R: CryptoRngCore>(
     secret: &Secret256,
     n: usize,
     rng: &mut R,
@@ -92,13 +92,14 @@ fn prepare_oprf_input(context: &'static str, server_id: u64, input: &str) -> Vec
     oprf_input_bytes
 }
 
-fn oprf_session_from_inputs(
+fn oprf_session_from_inputs<R: CryptoRngCore>(
     context: &'static str,
     server_id: u64,
     input: &str,
+    rng: &mut R,
 ) -> Result<OPRFSession, OPRFError> {
     let oprf_input = prepare_oprf_input(context, server_id, input);
-    let (blind, blinded_elt) = oprf::client::blind(&oprf_input)?;
+    let (blind, blinded_elt) = oprf::client::blind(&oprf_input, rng)?;
     Ok(OPRFSession {
         server_id,
         blind,
@@ -112,14 +113,15 @@ fn oprf_session_from_inputs(
 /// # Errors
 /// Returns `OPRFError::BlindError` if a computed blinded element turns out to be the identity.
 /// This is would happen if the OPRF input were constructed so that it hashed to the identity.
-pub fn begin_oprfs(
+pub fn begin_oprfs<R: CryptoRngCore>(
     context: &'static str,
     server_ids: &[u64],
     input: &str,
+    rng: &mut R,
 ) -> Result<Vec<OPRFSession>, OPRFError> {
     server_ids
         .iter()
-        .map(|sid| oprf_session_from_inputs(context, *sid, input))
+        .map(|sid| oprf_session_from_inputs(context, *sid, input, rng))
         .collect()
 }
 
@@ -202,7 +204,7 @@ fn derive_key_and_bits_from_secret(secret: &Secret256, context: &'static str) ->
 // Initialize a PPSS session
 /// After evaluating OPRFs on a list of servers to get `oprf_outputs`, call `backup_secret` to create a
 /// password-protected backup of the secret.
-pub fn backup_secret<R: Rng + CryptoRng>(
+pub fn backup_secret<R: CryptoRngCore>(
     context: &'static str,
     password: &[u8],
     server_ids: Vec<u64>,
@@ -338,7 +340,7 @@ mod tests {
         let server_ids = vec![4u64, 1, 6];
         let oprf_servers = OPRFServerSet::new(&server_ids);
         // get the blinds - they are in order of server_id
-        let oprf_init_sessions = begin_oprfs(CONTEXT, &server_ids, password).unwrap();
+        let oprf_init_sessions = begin_oprfs(CONTEXT, &server_ids, password, &mut rng).unwrap();
 
         // eval the oprfs
         let eval_elt_bytes: Vec<[u8; 32]> = oprf_init_sessions
@@ -360,7 +362,7 @@ mod tests {
 
         // Now reconstruct
         let oprf_restore_sessions =
-            begin_oprfs(CONTEXT, &masked_shareset.server_ids, password).unwrap();
+            begin_oprfs(CONTEXT, &masked_shareset.server_ids, password, &mut rng).unwrap();
 
         // eval the oprfs
         let restore_eval_elt_bytes: Vec<[u8; 32]> = oprf_restore_sessions
