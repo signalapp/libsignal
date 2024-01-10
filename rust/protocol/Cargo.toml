@@ -38,15 +38,18 @@ uuid = "1.1.2"
 displaydoc = "0.2"
 thiserror = "1.0.30"
 pqcrypto-kyber = { version = "0.7.6", default-features = false, features = ["std"] }
-pqcrypto-ml-kem = { version = "0.8.0", default-features = false, features = ["std"], package = "pqcrypto-kyber" }
 pqcrypto-traits = "0.3.4"
+
+# WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
+# We keep this here for if/when that gets cleared up.
+pqcrypto-ml-kem = { version = "0.8.0", default-features = false, features = ["std"], package = "pqcrypto-kyber", optional = true }
 
 [features]
 kyber768 = []
 # ML-KEM matches the NIST standard version of Kyber. It may still change
 # incompatibly until the final version of the standard is published and
 # libsignal will update to match.
-mlkem1024 = []
+mlkem1024 = ["pqcrypto-ml-kem"]
 
 [dev-dependencies]
 clap = { version = "4.4.11", features = ["derive"] }

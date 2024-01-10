@@ -53,7 +53,7 @@
 mod kyber1024;
 #[cfg(any(feature = "kyber768", test))]
 mod kyber768;
-#[cfg(any(feature = "mlkem1024", test))]
+#[cfg(feature = "mlkem1024")]
 mod mlkem1024;
 
 use crate::{Result, SignalProtocolError};
@@ -151,7 +151,7 @@ pub enum KeyType {
     /// Kyber1024 key
     Kyber1024,
     /// ML-KEM 1024 key
-    #[cfg(any(feature = "mlkem1024", test))]
+    #[cfg(feature = "mlkem1024")]
     MLKEM1024,
 }
 
@@ -161,7 +161,7 @@ impl KeyType {
             #[cfg(any(feature = "kyber768", test))]
             KeyType::Kyber768 => 0x07,
             KeyType::Kyber1024 => 0x08,
-            #[cfg(any(feature = "mlkem1024", test))]
+            #[cfg(feature = "mlkem1024")]
             KeyType::MLKEM1024 => 0x0A,
         }
     }
@@ -174,7 +174,7 @@ impl KeyType {
             #[cfg(any(feature = "kyber768", test))]
             KeyType::Kyber768 => &kyber768::Parameters,
             KeyType::Kyber1024 => &kyber1024::Parameters,
-            #[cfg(any(feature = "mlkem1024", test))]
+            #[cfg(feature = "mlkem1024")]
             KeyType::MLKEM1024 => &mlkem1024::Parameters,
         }
     }
@@ -188,7 +188,7 @@ impl TryFrom<u8> for KeyType {
             #[cfg(any(feature = "kyber768", test))]
             0x07 => Ok(KeyType::Kyber768),
             0x08 => Ok(KeyType::Kyber1024),
-            #[cfg(any(feature = "mlkem1024", test))]
+            #[cfg(feature = "mlkem1024")]
             0x0A => Ok(KeyType::MLKEM1024),
             t => Err(SignalProtocolError::BadKEMKeyType(t)),
         }
@@ -499,6 +499,7 @@ mod tests {
         assert_eq!(ss_for_sender, ss_for_recipient);
     }
 
+    #[cfg(feature = "mlkem1024")]
     #[test]
     fn test_mlkem1024_kem() {
         // test data for kyber1024
@@ -557,6 +558,7 @@ mod tests {
         assert_eq!(ss_for_recipient, ss_for_sender);
     }
 
+    #[cfg(feature = "mlkem1024")]
     #[test]
     fn test_mlkem1024_keypair() {
         let kp = KeyPair::generate(KeyType::MLKEM1024);
