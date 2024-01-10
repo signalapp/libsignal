@@ -48,6 +48,7 @@ jobs:
     - run: tar -c --auto-compress --no-mac-metadata -f ${{ steps.archive-name.outputs.name }} target/*/release/libsignal_ffi.a
 
     - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY ${{ steps.archive-name.outputs.name }}.sha256'
+      shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
     - uses: google-github-actions/auth@v1
       with:

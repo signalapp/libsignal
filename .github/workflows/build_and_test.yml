@@ -237,6 +237,7 @@ jobs:
 
     - run: ./gradlew build assembleDebugAndroidTest android:lintDebug | tee ./gradle-output.txt
       working-directory: java
+      shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
     # Check for -Xcheck:jni warnings manually; Gradle doesn't capture them for some reason.
     - run: "! grep WARNING ./gradle-output.txt"
