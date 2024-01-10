@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+pub(crate) mod unknown;
+
 include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
 
 macro_rules! impl_into_oneof {

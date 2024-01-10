@@ -45,4 +45,5 @@ test-case = "3.3.1"
 test-log = "0.2.14"
 
 [build-dependencies]
+protobuf = "3.3.0"
 protobuf-codegen = "3.3.0"

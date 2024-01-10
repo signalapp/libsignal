@@ -4,7 +4,9 @@
 //
 
 fn main() {
-    let protos = ["src/proto/backup.proto"];
+    const PROTOS: &[&str] = &["src/proto/backup.proto", "src/proto/test.proto"];
+    const PROTOS_DIR: &str = "protos";
+
     protobuf_codegen::Codegen::new()
         .protoc()
         .protoc_extra_arg(
@@ -14,10 +16,19 @@ fn main() {
             "--experimental_allow_proto3_optional",
         )
         .include("src")
-        .inputs(protos)
-        .cargo_out_dir("protos")
+        .inputs(PROTOS)
+        .cargo_out_dir(PROTOS_DIR)
         .run_from_script();
-    for proto in &protos {
+
+    // Mark the test.proto module as test-only.
+    let out_mod_rs = format!("{}/{PROTOS_DIR}/mod.rs", std::env::var("OUT_DIR").unwrap());
+    let mut contents = std::fs::read_to_string(&out_mod_rs).unwrap();
+    let insert_pos = contents.find("pub mod test;").unwrap_or(0);
+
+    contents.insert_str(insert_pos, "\n#[cfg(test)] // only for testing\n");
+    std::fs::write(out_mod_rs, contents).unwrap();
+
+    for proto in PROTOS {
         println!("cargo:rerun-if-changed={}", proto);
     }
 }
