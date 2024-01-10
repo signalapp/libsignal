@@ -36,7 +36,7 @@ public class SealedSenderMultiRecipientMessageTest {
   static final String SHARED_BYTES =
       "99999999999999999999999999999999999999999999999999999999999999999999";
 
-  private assertMessageForRecipient(
+  private void assertMessageForRecipient(
       final SealedSenderMultiRecipientMessage message,
       final SealedSenderMultiRecipientMessage.Recipient recipient,
       final String... expectedContentsHexParts) {
@@ -183,7 +183,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
-    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -197,7 +198,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
-    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -238,7 +240,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
-    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -252,7 +255,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -295,7 +299,8 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x03, (short) 0x33aa),
           new Pair<>((byte) 0x03, (short) 0x33ff),
         });
-    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -332,7 +337,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa),
         });
-    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -346,7 +352,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb), new Pair<>((byte) 0x03, (short) 0x33bb),
         });
-    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -390,7 +397,8 @@ public class SealedSenderMultiRecipientMessageTest {
           new Pair<>((byte) 0x03, (short) 0x33aa),
           new Pair<>((byte) 0x05, (short) 0x05aa),
         });
-    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -404,7 +412,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
   }
 
   @Test
@@ -449,7 +458,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11aa), new Pair<>((byte) 0x03, (short) 0x33aa),
         });
-    assertMessageForRecipient(message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, alice, VERSION_RECIPIENT_MESSAGE, ALICE_KEY_MATERIAL, SHARED_BYTES);
 
     SealedSenderMultiRecipientMessage.Recipient bob =
         message
@@ -463,7 +473,8 @@ public class SealedSenderMultiRecipientMessageTest {
         new Pair[] {
           new Pair<>((byte) 0x01, (short) 0x11bb),
         });
-    assertMessageForRecipient(message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
+    assertMessageForRecipient(
+        message, bob, VERSION_RECIPIENT_MESSAGE, BOB_KEY_MATERIAL, SHARED_BYTES);
 
     assertEquals(
         message.getExcludedRecipients(),

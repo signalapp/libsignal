@@ -172,8 +172,10 @@ public class SealedSenderMultiRecipientMessage {
    * Returns the length of the Sealed Sender V2 "ReceivedMessage" payload for delivery to a
    * particular recipient, without copying any buffers.
    */
-  public long messageSizeForRecipient(Recipient recipient) {
+  public int messageSizeForRecipient(Recipient recipient) {
     final int lengthOfSharedData = fullMessageData.length - offsetOfSharedData;
-    return 1 /* version signature */ + recipient.lengthOfRecipientSpecificKeyMaterial + lengthOfSharedData;
+    return 1 /* version signature */
+        + recipient.lengthOfRecipientSpecificKeyMaterial
+        + lengthOfSharedData;
   }
 }
