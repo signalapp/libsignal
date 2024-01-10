@@ -226,7 +226,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install NDK
-      run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+      run: sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
