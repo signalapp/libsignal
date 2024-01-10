@@ -1849,6 +1849,7 @@ dependencies = [
  "test-log",
  "thiserror",
  "usernames",
+ "uuid",
  "zkgroup",
 ]
 

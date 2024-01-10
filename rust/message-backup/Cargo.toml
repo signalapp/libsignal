@@ -32,6 +32,7 @@ protobuf = "3.3.0"
 sha2 = "0.10"
 subtle = "2.5.0"
 thiserror = "1.0.50"
+uuid = "1.1.2"
 
 [dev-dependencies]
 signal-crypto = { path = "../crypto" }

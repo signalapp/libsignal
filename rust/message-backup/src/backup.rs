@@ -12,18 +12,20 @@ use crate::backup::frame::{
     CallId, ChatId, GetForeignId as _, RecipientId, RingerRecipientId, WithId,
 };
 use crate::backup::method::{KeyExists, Map as _, Method, Store, ValidateOnly};
+use crate::backup::recipient::{RecipientData, RecipientError};
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
 
 mod account_data;
 mod frame;
 pub(crate) mod method;
+mod recipient;
 
 pub struct PartialBackup<M: Method> {
     version: u64,
     backup_time: M::Value<SystemTime>,
     account_data: Option<M::Value<AccountData<M>>>,
-    recipients: M::Map<RecipientId, proto::Recipient>,
+    recipients: M::Map<RecipientId, RecipientData<M>>,
     chats: M::Map<ChatId, proto::Chat>,
     calls: M::Map<CallId, proto::Call>,
 }
@@ -33,7 +35,7 @@ pub struct Backup {
     pub version: u64,
     pub backup_time: SystemTime,
     pub account_data: Option<AccountData<Store>>,
-    pub recipients: HashMap<RecipientId, proto::Recipient>,
+    pub recipients: HashMap<RecipientId, RecipientData>,
     pub chats: HashMap<ChatId, proto::Chat>,
     pub calls: HashMap<CallId, proto::Call>,
 }
@@ -68,8 +70,8 @@ pub enum ValidationError {
     MultipleAccountData,
     /// AccountData error: {0}
     AccountData(#[from] AccountDataError),
-    /// multiple records found for {0:?}
-    DuplicateRecipient(RecipientId),
+    /// {0}
+    RecipientError(#[from] RecipientFrameError),
     /// {0}
     ChatError(#[from] ChatFrameError),
     /// {0}
@@ -105,6 +107,10 @@ pub enum CallError {
     /// no record for {0:?}
     NoRingerRecipient(RingerRecipientId),
 }
+
+/// recipient {0:?} error: {1}
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+pub struct RecipientFrameError(RecipientId, RecipientError);
 
 impl PartialBackup<ValidateOnly> {
     pub fn new_validator(value: proto::BackupInfo) -> Self {
@@ -143,7 +149,7 @@ impl<M: Method> PartialBackup<M> {
     fn add_frame_item(&mut self, item: FrameItem) -> Result<(), ValidationError> {
         match item {
             FrameItem::Account(account_data) => self.add_account_data(account_data),
-            FrameItem::Recipient(recipient) => self.add_recipient(recipient),
+            FrameItem::Recipient(recipient) => self.add_recipient(recipient).map_err(Into::into),
             FrameItem::Chat(chat) => self.add_chat(chat).map_err(Into::into),
             FrameItem::ChatItem(chat_item) => self.add_chat_item(chat_item).map_err(Into::into),
             FrameItem::Call(call) => self.add_call(call).map_err(Into::into),
@@ -163,11 +169,13 @@ impl<M: Method> PartialBackup<M> {
         Ok(())
     }
 
-    fn add_recipient(&mut self, recipient: proto::Recipient) -> Result<(), ValidationError> {
+    fn add_recipient(&mut self, recipient: proto::Recipient) -> Result<(), RecipientFrameError> {
         let id = recipient.id();
+        let err_with_id = |e| RecipientFrameError(id, e);
+        let recipient = recipient.try_into().map_err(err_with_id)?;
         self.recipients
             .insert(id, recipient)
-            .map_err(|KeyExists| ValidationError::DuplicateRecipient(id))
+            .map_err(|KeyExists| err_with_id(RecipientError::DuplicateRecipient))
     }
 
     fn add_chat(&mut self, chat: proto::Chat) -> Result<(), ChatFrameError> {
@@ -240,16 +248,6 @@ mod test {
     use test_case::{test_case, test_matrix};
 
     use super::*;
-
-    impl proto::Recipient {
-        const TEST_ID: u64 = 11111;
-        fn test_data() -> Self {
-            Self {
-                id: Self::TEST_ID,
-                ..Default::default()
-            }
-        }
-    }
 
     impl proto::Chat {
         const TEST_ID: u64 = 22222;

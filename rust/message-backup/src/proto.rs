@@ -33,3 +33,18 @@ impl_into_oneof!(
     self::backup::frame::Item,
     StickerPack
 );
+impl_into_oneof!(
+    self::backup::Group,
+    self::backup::recipient::Destination,
+    Group
+);
+impl_into_oneof!(
+    self::backup::Contact,
+    self::backup::recipient::Destination,
+    Contact
+);
+impl_into_oneof!(
+    self::backup::DistributionList,
+    self::backup::recipient::Destination,
+    DistributionList
+);
