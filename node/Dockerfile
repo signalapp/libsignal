@@ -4,7 +4,7 @@
 #
 
 # Debian bullseye is the basis for Ubuntu 20.04.
-FROM debian:bullseye-slim
+FROM --platform=linux/amd64 debian:bullseye-slim
 
 # Install only what's needed to set up Rust and Node.
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
