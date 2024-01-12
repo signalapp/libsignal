@@ -5,11 +5,34 @@
 
 //! Protobuf unknown field searching.
 
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Deref};
 
 use protobuf::MessageFull;
 
 mod visit_dyn;
+
+/// Formatter for a sequence of [`PathPart`]s.
+///
+/// Provides a custom [`std::fmt::Display`] impl.
+pub struct FormatPath<P>(pub P);
+
+impl<P> std::fmt::Display for FormatPath<P>
+where
+    for<'a> &'a P: IntoIterator,
+    for<'a> <&'a P as IntoIterator>::Item: Deref<Target = PathPart>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut it = self.0.into_iter().peekable();
+        while let Some(part) = it.next() {
+            write!(f, "{}", *part)?;
+            if it.peek().is_some() {
+                write!(f, ".")?
+            }
+        }
+
+        Ok(())
+    }
+}
 
 /// Protobuf message path component.
 #[derive(Clone, Debug, Eq, PartialEq, displaydoc::Display)]
@@ -22,9 +45,11 @@ pub enum PathPart {
     MapValue { field_name: String, key: String },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, displaydoc::Display)]
 pub enum UnknownValue {
+    /// enum value {number}
     EnumValue { number: i32 },
+    /// field with tag {tag}
     Field { tag: u32 },
 }
 
@@ -107,7 +132,7 @@ impl PathPart {
 }
 
 /// Visitor for unknown fields on a [`protobuf::Message`].
-pub(super) trait VisitUnknownFields {
+pub(crate) trait VisitUnknownFields {
     /// Calls the visitor for each unknown field in the message.
     fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, visitor: F);
 }
@@ -127,7 +152,7 @@ impl<M: MessageFull> VisitUnknownFields for M {
 }
 
 /// Extension trait for [`VisitUnknownFields`] with convenience methods.
-pub(super) trait VisitUnknownFieldsExt {
+pub(crate) trait VisitUnknownFieldsExt {
     fn has_unknown_fields(&self) -> bool;
     fn collect_unknown_fields(&self) -> Vec<(Vec<PathPart>, UnknownValue)>;
     fn find_unknown_field(&self) -> Option<(Vec<PathPart>, UnknownValue)>;
@@ -214,8 +239,7 @@ mod test {
     #[test_case(proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessage>())]
     #[test_case(proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessageWithExtraFields>())]
     fn no_extra_fields(proto: impl MessageFull) {
-        let m = never_visits;
-        proto.visit_unknown_fields(m);
+        proto.visit_unknown_fields(never_visits);
     }
 
     macro_rules! modifier {

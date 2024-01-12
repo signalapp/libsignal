@@ -12,7 +12,8 @@ use futures::AsyncRead;
 
 use libsignal_message_backup::frame::FramesReader;
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
-use libsignal_message_backup::{BackupReader, Error};
+use libsignal_message_backup::unknown::FormatPath;
+use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
 use libsignal_protocol::Aci;
 
 mod args;
@@ -138,7 +139,8 @@ async fn async_main() {
         .unwrap_or_else(|e| panic!("backup error: {e:#}"));
 }
 
-/// [`AsyncRead`] & [`AsyncSeek`] impl backed by a file or in-memory buffer.
+/// [`AsyncRead`] & [`futures::AsyncSeek`] impl backed by a file or in-memory
+/// buffer.
 type AsyncReader = futures::future::Either<
     // Using `AllowStdIo` with a `File` isn't generally a good idea since
     // the `Read` implementation will block. Since we're using a
@@ -183,7 +185,14 @@ impl<R: AsyncRead + Unpin> MaybeEncryptedBackupReader<R> {
             if let Some(visitor) = verbosity.into_visitor() {
                 backup_reader.visitor = visitor;
             }
-            let backup = backup_reader.read_all().await?;
+            let ReadResult {
+                found_unknown_fields,
+                result,
+            } = backup_reader.read_all().await;
+
+            print_unknown_fields(found_unknown_fields);
+            let backup = result?;
+
             if print {
                 println!("{backup:#?}");
             }
@@ -194,6 +203,26 @@ impl<R: AsyncRead + Unpin> MaybeEncryptedBackupReader<R> {
             Self::EncryptedCompressed(reader) => validate(*reader, print, verbosity).await,
             Self::PlaintextBinproto(reader) => validate(reader, print, verbosity).await,
         }
+    }
+}
+
+fn print_unknown_fields(found_unknown_fields: Vec<FoundUnknownField>) {
+    if found_unknown_fields.is_empty() {
+        return;
+    }
+
+    eprintln!("not all proto values were recognized; found the following unknown values:");
+    for FoundUnknownField {
+        frame_index,
+        path,
+        value,
+    } in found_unknown_fields
+    {
+        eprintln!(
+            "in frame {frame_index}, {} has unknown {}",
+            FormatPath(path),
+            value
+        );
     }
 }
 

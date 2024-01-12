@@ -11,7 +11,7 @@ use std::ops::ControlFlow;
 use protobuf::reflect::{ReflectFieldRef, ReflectValueRef};
 use protobuf::MessageDyn;
 
-use crate::proto::unknown::{MapKey, Part, Path, UnknownFieldVisitor, UnknownValue};
+use crate::unknown::{MapKey, Part, Path, UnknownFieldVisitor, UnknownValue};
 
 pub(super) fn visit_unknown_fields(
     message: &dyn MessageDyn,
