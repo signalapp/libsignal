@@ -148,11 +148,11 @@ impl From<tungstenite::Error> for Error {
             tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed => {
                 Self::Closed
             }
-            tungstenite::Error::Io(_) => Self::Io,
+            tungstenite::Error::Io(_) | tungstenite::Error::AttackAttempt => Self::Io,
             tungstenite::Error::Tls(_) => Self::UnexpectedTlsError,
             tungstenite::Error::Capacity(e) => Self::Space(SpaceError::from(e)),
             tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
-            tungstenite::Error::SendQueueFull(_) => Self::Space(SpaceError::SendQueueFull),
+            tungstenite::Error::WriteBufferFull(_) => Self::Space(SpaceError::SendQueueFull),
             tungstenite::Error::Utf8 => Self::BadUtf8,
             tungstenite::Error::Url(_) => Self::Url,
             tungstenite::Error::Http(response) => Self::Http(response.status()),

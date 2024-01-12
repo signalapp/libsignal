@@ -20,7 +20,7 @@ hex = "0.4"
 hex-literal = "0.4.1"
 hkdf = "0.12.3"
 hmac = "0.12"
-http = "0.2.9"
+http = "1.0.0"
 http-body-util = "0.1.0-rc.3"
 hyper = { version = "1.0.0-rc.4", features = ["http1", "http2", "client"] }
 lazy_static = "1.4.0"
@@ -36,9 +36,9 @@ sha2 = "0.10.8"
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["rt", "time", "macros"] }
 tokio-boring = { git = "https://github.com/signalapp/boring", branch = "libsignal" }
-tokio-tungstenite = { version = "0.19.0" }
+tokio-tungstenite = { version = "0.21.0" }
 tokio-util = "0.7.9"
-tungstenite = { version = "0.19.0" }
+tungstenite = { version = "0.21.0" }
 uuid = "1.1.2"
 
 [build-dependencies]

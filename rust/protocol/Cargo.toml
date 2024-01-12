@@ -22,7 +22,7 @@ curve25519-dalek = { version = "4.0.0", features = ["digest"] }
 derive-where = "1.2.5"
 hkdf = "0.12"
 hmac = "0.12"
-indexmap = "1.9.3"
+indexmap = "2.1.0"
 itertools = "0.10.5"
 prost = "0.12"
 rand = "0.8"
