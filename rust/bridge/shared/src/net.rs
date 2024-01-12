@@ -100,10 +100,6 @@ impl Environment {
     }
 }
 
-/// A sequence of [`ConnectionParams`] to try in order.
-#[derive(Clone, Debug)]
-pub struct ConnectionParamsList(Vec<ConnectionParams>);
-
 pub struct ConnectionManager {
     cdsi: EndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
 }
@@ -178,7 +174,7 @@ fn LookupRequest_addAciAndAccessKey(
     let access_key = access_key
         .try_into()
         .map_err(|_: std::array::TryFromSliceError| {
-            SignalProtocolError::InvalidArgument(format!("access_key has wrong number of bytes"))
+            SignalProtocolError::InvalidArgument("access_key has wrong number of bytes".to_string())
         })?;
     request
         .0

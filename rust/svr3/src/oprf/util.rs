@@ -57,8 +57,7 @@ pub fn expand_message_xmd_sha512(
         .chain_update(dst)
         .chain_update(i2osp_u8(dst.len().try_into().unwrap()))
         .finalize()
-        .try_into()
-        .expect("Wrong SHA512 hash length");
+        .into();
 
     let b1_hasher = Sha512::new();
     let b1: [u8; SHA512_OUTPUT_BYTES] = b1_hasher
@@ -67,8 +66,7 @@ pub fn expand_message_xmd_sha512(
         .chain_update(dst)
         .chain_update(i2osp_u8(dst.len().try_into().unwrap()))
         .finalize()
-        .try_into()
-        .expect("Wrong SHA512 hash length");
+        .into();
 
     let bytes_to_copy = cmp::min(SHA512_OUTPUT_BYTES, usize::from(len_in_bytes));
     result[0..bytes_to_copy].copy_from_slice(&b1[0..bytes_to_copy]);
@@ -81,8 +79,7 @@ pub fn expand_message_xmd_sha512(
             .chain_update(dst)
             .chain_update(i2osp_u8(dst.len().try_into().unwrap()))
             .finalize()
-            .try_into()
-            .expect("Wrong SHA512 hash length");
+            .into();
 
         let offset = usize::from(i - 1) * SHA512_OUTPUT_BYTES;
         let bytes_to_copy = cmp::min(SHA512_OUTPUT_BYTES, usize::from(len_in_bytes) - offset);

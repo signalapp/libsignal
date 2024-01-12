@@ -27,7 +27,7 @@ pub enum Error {
     Protocol(#[from] ProtocolError),
 
     /// Invalid URL
-    UrlError,
+    Url,
 
     /// UTF-8 encoding error
     BadUtf8,
@@ -39,6 +39,7 @@ pub enum Error {
     HttpFormat(#[from] HttpFormatError),
 
     /// TLS error; this should not happen since tungstinite's TLS is not used
+    #[allow(clippy::enum_variant_names)]
     UnexpectedTlsError,
 }
 
@@ -153,7 +154,7 @@ impl From<tungstenite::Error> for Error {
             tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
             tungstenite::Error::SendQueueFull(_) => Self::Space(SpaceError::SendQueueFull),
             tungstenite::Error::Utf8 => Self::BadUtf8,
-            tungstenite::Error::Url(_) => Self::UrlError,
+            tungstenite::Error::Url(_) => Self::Url,
             tungstenite::Error::Http(response) => Self::Http(response.status()),
             tungstenite::Error::HttpFormat(e) => Self::HttpFormat(HttpFormatError::from(e)),
         }

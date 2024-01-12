@@ -2765,7 +2765,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## uuid 1.5.0
+## uuid 1.6.1
 
 ```
 Copyright (c) 2014 The Rust Project Developers

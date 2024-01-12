@@ -2935,7 +2935,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>uuid 1.5.0</string>
+			<string>uuid 1.6.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
