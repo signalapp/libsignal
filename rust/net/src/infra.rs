@@ -61,7 +61,7 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 /// - `certs`, [RootCertificates] representing trusted certificates,
 /// - `dns_resolver`, a [DnsResolver] to use when resolving DNS.
 /// This is also applicable to WebSocket connections (in this case, `http_request_decorator` will
-/// only be apllied to the initial connection upgrade request).
+/// only be applied to the initial connection upgrade request).
 #[derive(Clone, Debug)]
 pub struct ConnectionParams {
     pub sni: Arc<str>,

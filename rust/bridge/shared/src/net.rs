@@ -323,13 +323,13 @@ mod test {
         let async_context = TokioAsyncContext(runtime);
 
         let (send_to_task, task_output, when_reporting) = {
-            let (sender, reciever) = oneshot::channel();
+            let (sender, receiver) = oneshot::channel();
             let (on_start_reporting, when_reporting) = oneshot::channel();
             let output = Arc::new(Mutex::new(None));
             let task_output = output.clone();
             async_context.run_future(
                 async move {
-                    let result = reciever.await.expect("sender not dropped");
+                    let result = receiver.await.expect("sender not dropped");
 
                     NotifyingReporter {
                         on_start_reporting,
