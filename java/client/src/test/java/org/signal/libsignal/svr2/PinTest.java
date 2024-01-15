@@ -88,7 +88,7 @@ public class PinTest {
     final long groupId = Long.parseUnsignedLong("15525669046665930652");
     final PinHash actual = PinHash.svr2(pin, username, mrenclave);
 
-    // svr2 hash should use salt derrived froup groupId
+    // svr2 hash should use salt derived group groupId
     final byte[] expectedSalt =
         HKDF.deriveSecrets(
             username.getBytes(StandardCharsets.UTF_8), bebytes(groupId), new byte[] {}, 32);

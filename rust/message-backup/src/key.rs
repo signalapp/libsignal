@@ -34,7 +34,7 @@ impl BackupKey {
             master_key,
         )
         .expand(INFO, &mut key)
-        .expect("valid lenth");
+        .expect("valid length");
 
         Self(key)
     }

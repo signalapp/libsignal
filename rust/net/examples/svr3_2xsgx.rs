@@ -146,7 +146,7 @@ async fn main() {
             &mut rng,
         )
         .await
-        .expect("can mutli restore")
+        .expect("can multi restore")
     };
     println!("Restored secret: {}", hex::encode(restored));
 

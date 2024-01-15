@@ -242,7 +242,7 @@ pub fn backup_secret<R: CryptoRngCore>(
 /// `finalize_oprfs` should match the order of the `server_ids` in `masked_shareset`.
 ///
 /// # Errors
-/// Returns `PPSSError::InvalidCommittment` when the reconstructed secret does not pass
+/// Returns `PPSSError::InvalidCommitment` when the reconstructed secret does not pass
 /// integrity validation.
 ///
 pub fn restore_secret(
@@ -378,7 +378,7 @@ mod tests {
             restore_oprf_outputs,
             masked_shareset,
         )
-        .expect("valid committment");
+        .expect("valid commitment");
         assert_eq!(secret, restored_secret);
 
         let r_and_k = derive_key_and_bits_from_secret(&secret, CONTEXT);

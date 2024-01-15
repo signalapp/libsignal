@@ -145,7 +145,7 @@ impl<M: MessageFull> VisitUnknownFields for M {
     fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, mut visitor: F) {
         // Currently implemented using dynamic traversal of protobuf
         // descriptors.
-        // TODO: evaulate speed and code size versus statically-dispatched
+        // TODO: evaluate speed and code size versus statically-dispatched
         // traversal.
         let _: ControlFlow<()> = visit_dyn::visit_unknown_fields(self, Path::Root, &mut visitor);
     }
