@@ -12,7 +12,7 @@ pub struct RecipientId(pub(super) u64);
 pub struct ChatId(u64);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct CallId(u64);
+pub struct CallId(pub(super) u64);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RingerRecipientId(RecipientId);
@@ -83,6 +83,8 @@ impl_with_foreign_id!(Call, ChatId, conversationRecipientId);
 impl WithForeignId<Option<RingerRecipientId>> for Call {
     fn foreign_id(&self) -> Option<RingerRecipientId> {
         // TODO make the proto field optional.
-        Some(RingerRecipientId(RecipientId(self.ringerRecipientId)))
+        self.ringerRecipientId
+            .map(RecipientId)
+            .map(RingerRecipientId)
     }
 }

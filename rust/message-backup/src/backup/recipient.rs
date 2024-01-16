@@ -30,11 +30,13 @@ pub enum RecipientError {
 }
 
 #[derive_where(Debug)]
+#[derive_where(PartialEq; M::Value<Destination>: PartialEq)]
 pub struct RecipientData<M: Method = Store> {
     pub destination: M::Value<Destination>,
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Destination {
     Contact(ContactData),
     Group(GroupData),
@@ -44,6 +46,7 @@ pub enum Destination {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct ContactData {
     pub aci: Option<Aci>,
     pub pni: Option<Pni>,
@@ -52,11 +55,13 @@ pub struct ContactData {
 
 #[non_exhaustive]
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct GroupData {
     pub master_key: GroupMasterKeyBytes,
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct DistributionListData {
     pub distribution_id: Uuid,
 }
@@ -187,8 +192,6 @@ mod test {
 
     use super::*;
 
-    const FAKE_MASTER_KEY: GroupMasterKeyBytes = [0x33; 32];
-
     impl proto::Recipient {
         pub(crate) const TEST_ID: u64 = 11111;
         pub(crate) fn test_data() -> Self {
@@ -216,9 +219,11 @@ mod test {
     }
 
     impl proto::Group {
+        const TEST_MASTER_KEY: GroupMasterKeyBytes = [0x33; 32];
+
         fn test_data() -> Self {
             Self {
-                masterKey: FAKE_MASTER_KEY.into(),
+                masterKey: Self::TEST_MASTER_KEY.into(),
                 ..Self::default()
             }
         }
@@ -234,8 +239,6 @@ mod test {
         }
     }
 
-    fn as_is<T>(_input: &mut T) {}
-
     #[test]
     fn requires_destination() {
         let recipient = proto::Recipient {
@@ -247,6 +250,18 @@ mod test {
             RecipientData::<Store>::try_from(recipient),
             Err(RecipientError::MissingDestination)
         );
+    }
+
+    #[test]
+    fn valid_destination_self() {
+        let recipient = proto::Recipient::test_data();
+
+        assert_eq!(
+            RecipientData::<Store>::try_from(recipient),
+            Ok(RecipientData {
+                destination: Destination::Self_
+            })
+        )
     }
 
     fn no_aci(input: &mut proto::Contact) {
@@ -278,7 +293,25 @@ mod test {
         ));
     }
 
-    #[test_case(as_is, Ok(()))]
+    #[test]
+    fn valid_destination_contact() {
+        let recipient = proto::Recipient {
+            destination: Some(proto::Contact::test_data().into()),
+            ..proto::Recipient::test_data()
+        };
+
+        assert_eq!(
+            RecipientData::<Store>::try_from(recipient),
+            Ok(RecipientData {
+                destination: Destination::Contact(ContactData {
+                    aci: Some(Aci::from_uuid_bytes(proto::Contact::TEST_ACI)),
+                    pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
+                    profile_key: Some(proto::Contact::TEST_PROFILE_KEY),
+                })
+            })
+        )
+    }
+
     #[test_case(no_aci, Ok(()))]
     #[test_case(no_pni, Ok(()))]
     #[test_case(no_aci_or_pni, Ok(()))]
@@ -304,11 +337,27 @@ mod test {
         );
     }
 
+    #[test]
+    fn valid_destination_group() {
+        let recipient = proto::Recipient {
+            destination: Some(proto::Group::test_data().into()),
+            ..proto::Recipient::test_data()
+        };
+
+        assert_eq!(
+            RecipientData::<Store>::try_from(recipient),
+            Ok(RecipientData {
+                destination: Destination::Group(GroupData {
+                    master_key: proto::Group::TEST_MASTER_KEY
+                })
+            })
+        );
+    }
+
     fn invalid_master_key(input: &mut proto::Group) {
         input.masterKey = vec![];
     }
 
-    #[test_case(as_is, Ok(()))]
     #[test_case(invalid_master_key, Err(RecipientError::InvalidMasterKey))]
     fn destination_group(modifier: fn(&mut proto::Group), expected: Result<(), RecipientError>) {
         let mut group = proto::Group::test_data();
@@ -329,7 +378,6 @@ mod test {
         input.distributionId = vec![0x55; proto::DistributionList::TEST_UUID.len() * 2];
     }
 
-    #[test_case(as_is, Ok(()))]
     #[test_case(invalid_distribution_id, Err(RecipientError::InvalidDistributionId))]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionList),

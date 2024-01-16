@@ -5,8 +5,10 @@
 
 include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
 
-macro_rules! impl_into_oneof {
-    ($msg:path, $oneof:path, $constructor:ident) => {
+/// Implement [`From`] to allow construction of a `oneof` enum from a contained
+/// message type.
+macro_rules! impl_from_oneof {
+    ($oneof:path, $msg:path, $constructor:ident) => {
         impl From<$msg> for $oneof {
             fn from(value: $msg) -> Self {
                 Self::$constructor(value)
@@ -15,36 +17,43 @@ macro_rules! impl_into_oneof {
     };
 }
 
-impl_into_oneof!(
-    self::backup::AccountData,
-    self::backup::frame::Item,
-    Account
+use self::backup::*;
+
+impl_from_oneof!(frame::Item, AccountData, Account);
+impl_from_oneof!(frame::Item, Recipient, Recipient);
+impl_from_oneof!(frame::Item, Chat, Chat);
+impl_from_oneof!(frame::Item, ChatItem, ChatItem);
+impl_from_oneof!(frame::Item, Call, Call);
+impl_from_oneof!(frame::Item, StickerPack, StickerPack);
+
+impl_from_oneof!(recipient::Destination, Group, Group);
+impl_from_oneof!(recipient::Destination, Contact, Contact);
+impl_from_oneof!(recipient::Destination, DistributionList, DistributionList);
+
+impl_from_oneof!(chat_update_message::Update, SimpleChatUpdate, SimpleUpdate);
+impl_from_oneof!(
+    chat_update_message::Update,
+    GroupDescriptionChatUpdate,
+    GroupDescription
 );
-impl_into_oneof!(
-    self::backup::Recipient,
-    self::backup::frame::Item,
-    Recipient
+impl_from_oneof!(
+    chat_update_message::Update,
+    ExpirationTimerChatUpdate,
+    ExpirationTimerChange
 );
-impl_into_oneof!(self::backup::Chat, self::backup::frame::Item, Chat);
-impl_into_oneof!(self::backup::ChatItem, self::backup::frame::Item, ChatItem);
-impl_into_oneof!(self::backup::Call, self::backup::frame::Item, Call);
-impl_into_oneof!(
-    self::backup::StickerPack,
-    self::backup::frame::Item,
-    StickerPack
+impl_from_oneof!(
+    chat_update_message::Update,
+    ProfileChangeChatUpdate,
+    ProfileChange
 );
-impl_into_oneof!(
-    self::backup::Group,
-    self::backup::recipient::Destination,
-    Group
+impl_from_oneof!(
+    chat_update_message::Update,
+    ThreadMergeChatUpdate,
+    ThreadMerge
 );
-impl_into_oneof!(
-    self::backup::Contact,
-    self::backup::recipient::Destination,
-    Contact
+impl_from_oneof!(
+    chat_update_message::Update,
+    SessionSwitchoverChatUpdate,
+    SessionSwitchover
 );
-impl_into_oneof!(
-    self::backup::DistributionList,
-    self::backup::recipient::Destination,
-    DistributionList
-);
+impl_from_oneof!(chat_update_message::Update, CallChatUpdate, CallingMessage);

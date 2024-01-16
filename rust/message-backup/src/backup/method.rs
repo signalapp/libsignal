@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{hash_map, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -5,12 +6,15 @@ use std::hash::Hash;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct KeyExists;
 
-pub trait Map<K, V>: Default {
+pub trait Contains<K> {
+    fn contains(&self, key: &K) -> bool;
+}
+
+pub trait Map<K, V>: Contains<K> + Default {
     /// Insert a key and value into the map if the key isn't already present.
     ///
     /// On failure, the map is unmodified.
     fn insert(&mut self, key: K, value: V) -> Result<(), KeyExists>;
-    fn contains(&self, key: &K) -> bool;
 }
 
 impl<K: Eq + Hash, V> Map<K, V> for HashMap<K, V> {
@@ -23,7 +27,15 @@ impl<K: Eq + Hash, V> Map<K, V> for HashMap<K, V> {
             }
         }
     }
-    fn contains(&self, key: &K) -> bool {
+}
+
+impl<K, Q, V> Contains<Q> for HashMap<K, V>
+where
+    Q: Eq + Hash,
+    K: Eq + Hash,
+    K: Borrow<Q>,
+{
+    fn contains(&self, key: &Q) -> bool {
         HashMap::contains_key(self, key)
     }
 }
@@ -37,8 +49,15 @@ impl<K: Eq + Hash, V> Map<K, V> for HashSet<K> {
             Err(KeyExists)
         }
     }
+}
 
-    fn contains(&self, key: &K) -> bool {
+impl<Q, K> Contains<Q> for HashSet<K>
+where
+    Q: Eq + Hash,
+    K: Eq + Hash,
+    K: Borrow<Q>,
+{
+    fn contains(&self, key: &Q) -> bool {
         HashSet::contains(self, key)
     }
 }
@@ -46,15 +65,26 @@ impl<K: Eq + Hash, V> Map<K, V> for HashSet<K> {
 pub trait Method {
     type Value<T: Debug>: Debug;
     type Map<K: Eq + Hash + Debug, V: Debug>: Map<K, V> + Debug;
+    type List<T: Debug>: Extend<T> + Default + Debug;
 
     fn value<T: Debug>(value: T) -> Self::Value<T>;
 }
 
 pub enum ValidateOnly {}
 
+#[derive(Default, Debug)]
+pub struct ValidateOnlyList;
+
+impl<T> Extend<T> for ValidateOnlyList {
+    fn extend<It: IntoIterator<Item = T>>(&mut self, iter: It) {
+        iter.into_iter().for_each(|_| ())
+    }
+}
+
 impl Method for ValidateOnly {
     type Value<T: Debug> = ();
     type Map<K: Eq + Hash + Debug, V: Debug> = HashSet<K>;
+    type List<T: Debug> = ValidateOnlyList;
 
     fn value<T: Debug>(_value: T) -> Self::Value<T> {}
 }
@@ -64,6 +94,7 @@ pub enum Store {}
 impl Method for Store {
     type Value<T: Debug> = T;
     type Map<K: Eq + Hash + Debug, V: Debug> = HashMap<K, V>;
+    type List<T: Debug> = Vec<T>;
 
     fn value<T: Debug>(value: T) -> Self::Value<T> {
         value

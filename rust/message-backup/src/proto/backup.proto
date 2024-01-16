@@ -191,7 +191,7 @@ message Call {
   Type type = 3;
   bool outgoing = 4;
   uint64 timestamp = 5;
-  uint64 ringerRecipientId = 6;
+  optional uint64 ringerRecipientId = 6;
   Event event = 7;
 }
 
@@ -206,6 +206,9 @@ message ChatItem {
     repeated SendStatus sendStatus = 1;
   }
 
+  message DirectionlessMessageDetails {
+  }
+
   uint64 chatId = 1;   // conversation id
   uint64 authorId = 2; // recipient id
   uint64 dateSent = 3;
@@ -216,8 +219,9 @@ message ChatItem {
   bool sms = 8;
 
   oneof directionalDetails {
-    IncomingMessageDetails incoming = 10;
-    OutgoingMessageDetails outgoing = 12;
+    IncomingMessageDetails incoming = 9;
+    OutgoingMessageDetails outgoing = 10;
+    DirectionlessMessageDetails directionless = 11;
   }
 
   oneof item {
@@ -508,7 +512,7 @@ message IndividualCallChatUpdate {
 }
 
 message GroupCallChatUpdate {
-  bytes startedCallAci = 1;
+  optional bytes startedCallAci = 1;
   uint64 startedCallTimestamp = 2;
   repeated bytes inCallAcis = 3;
 }
