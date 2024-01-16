@@ -353,7 +353,9 @@ mod test {
             Self {
                 chatId: proto::Chat::TEST_ID,
                 authorId: proto::Recipient::TEST_ID,
-                item: Some(proto::chat_item::Item::StandardMessage(Default::default())),
+                item: Some(proto::chat_item::Item::StandardMessage(
+                    proto::StandardMessage::test_data(),
+                )),
                 ..Default::default()
             }
         }

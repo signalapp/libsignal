@@ -37,8 +37,8 @@ pub enum ChatItemError {
     MissingItem,
     /// quote has unknown author {0:?}
     QuoteAuthorNotFound(RecipientId),
-    /// reaction has unknown author {0:?}
-    ReactionAuthorNotFound(RecipientId),
+    /// reaction: {0}
+    Reaction(#[from] ReactionError),
     /// ChatUpdateMessage has no update value
     UpdateIsEmpty,
     /// CallChatUpdate has no call value
@@ -76,8 +76,10 @@ pub enum ChatItemMessage {
 
 /// Validated version of [`proto::StandardMessage`].
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct StandardMessage {
     pub quote: Option<Quote>,
+    pub reactions: Vec<Reaction>,
     _limit_construction_to_module: (),
 }
 
@@ -147,6 +149,13 @@ pub enum CallChatUpdate {
 pub struct Reaction {
     pub author: RecipientId,
     _limit_construction_to_module: (),
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum ReactionError {
+    /// unknown author {0:?}
+    AuthorNotFound(RecipientId),
 }
 
 /// Validated version of [`proto::Quote`]
@@ -245,14 +254,19 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for Standa
     fn try_from_with(item: proto::StandardMessage, context: &R) -> Result<Self, Self::Error> {
         let proto::StandardMessage {
             quote,
+            reactions,
             // TODO validate these fields
             text: _,
             attachments: _,
             linkPreview: _,
             longText: _,
-            reactions: _,
             special_fields: _,
         } = item;
+
+        let reactions = reactions
+            .into_iter()
+            .map(|r| r.try_into_with(context))
+            .collect::<Result<_, _>>()?;
 
         let quote = quote
             .into_option()
@@ -261,6 +275,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for Standa
 
         Ok(Self {
             quote,
+            reactions,
             _limit_construction_to_module: (),
         })
     }
@@ -478,7 +493,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
 }
 
 impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
-    type Error = ChatItemError;
+    type Error = ReactionError;
 
     fn try_from_with(item: proto::Reaction, context: &R) -> Result<Self, Self::Error> {
         let proto::Reaction {
@@ -493,7 +508,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
 
         let author = RecipientId(authorId);
         if !context.contains(&author) {
-            return Err(ChatItemError::ReactionAuthorNotFound(author));
+            return Err(ReactionError::AuthorNotFound(author));
         }
         Ok(Self {
             author,
@@ -505,10 +520,20 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
-    use protobuf::SpecialFields;
+    use protobuf::{MessageField, SpecialFields};
     use test_case::test_case;
 
     use super::*;
+
+    impl proto::StandardMessage {
+        pub(crate) fn test_data() -> Self {
+            Self {
+                reactions: vec![proto::Reaction::test_data()],
+                quote: Some(proto::Quote::test_data()).into(),
+                ..Default::default()
+            }
+        }
+    }
 
     impl proto::ContactMessage {
         fn test_data() -> Self {
@@ -577,6 +602,26 @@ mod test {
         }
     }
 
+    impl ProtoHasField<MessageField<proto::Quote>> for proto::StandardMessage {
+        fn get_field_mut(&mut self) -> &mut MessageField<proto::Quote> {
+            &mut self.quote
+        }
+    }
+    impl ProtoHasField<MessageField<proto::Quote>> for proto::VoiceMessage {
+        fn get_field_mut(&mut self) -> &mut MessageField<proto::Quote> {
+            &mut self.quote
+        }
+    }
+
+    impl Reaction {
+        pub(crate) fn from_proto_test_data() -> Self {
+            Self {
+                author: RecipientId(proto::Recipient::TEST_ID),
+                _limit_construction_to_module: (),
+            }
+        }
+    }
+
     struct TestContext;
 
     impl Contains<RecipientId> for TestContext {
@@ -592,14 +637,26 @@ mod test {
     }
 
     #[test]
+    fn valid_standard_message() {
+        assert_eq!(
+            proto::StandardMessage::test_data().try_into_with(&TestContext),
+            Ok(StandardMessage {
+                reactions: vec![Reaction::from_proto_test_data(),],
+                quote: Some(Quote {
+                    author: RecipientId(proto::Recipient::TEST_ID),
+                    _limit_construction_to_module: ()
+                }),
+                _limit_construction_to_module: ()
+            })
+        );
+    }
+
+    #[test]
     fn valid_contact_message() {
         assert_eq!(
             proto::ContactMessage::test_data().try_into_with(&TestContext),
             Ok(ContactMessage {
-                reactions: vec![Reaction {
-                    author: RecipientId(proto::Recipient::TEST_ID),
-                    _limit_construction_to_module: ()
-                }],
+                reactions: vec![Reaction::from_proto_test_data()],
                 _limit_construction_to_module: ()
             })
         )
@@ -613,10 +670,14 @@ mod test {
         message.get_field_mut().push(proto::Reaction::default());
     }
 
+    fn no_quote(input: &mut impl ProtoHasField<MessageField<proto::Quote>>) {
+        *input.get_field_mut() = None.into();
+    }
+
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(ChatItemError::ReactionAuthorNotFound(RecipientId(0)))
+        Err(ChatItemError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
     )]
     fn contact_message(
         modifier: fn(&mut proto::ContactMessage),
@@ -640,10 +701,7 @@ mod test {
                     author: RecipientId(proto::Recipient::TEST_ID),
                     _limit_construction_to_module: ()
                 }),
-                reactions: vec![Reaction {
-                    author: RecipientId(proto::Recipient::TEST_ID),
-                    _limit_construction_to_module: ()
-                }],
+                reactions: vec![Reaction::from_proto_test_data()],
                 _limit_construction_to_module: ()
             })
         )
@@ -652,8 +710,9 @@ mod test {
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(ChatItemError::ReactionAuthorNotFound(RecipientId(0)))
+        Err(ChatItemError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
     )]
+    #[test_case(no_quote, Ok(()))]
     fn voice_message(modifier: fn(&mut proto::VoiceMessage), expected: Result<(), ChatItemError>) {
         let mut message = proto::VoiceMessage::test_data();
         modifier(&mut message);
@@ -667,7 +726,7 @@ mod test {
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(ChatItemError::ReactionAuthorNotFound(RecipientId(0)))
+        Err(ChatItemError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
     )]
     fn sticker_message(
         modifier: fn(&mut proto::StickerMessage),
@@ -777,5 +836,31 @@ mod test {
                 .map(|_: CallChatUpdate| ()),
             expected
         );
+    }
+
+    #[test]
+    fn valid_reaction() {
+        assert_eq!(
+            proto::Reaction::test_data().try_into_with(&TestContext),
+            Ok(Reaction::from_proto_test_data())
+        )
+    }
+
+    fn invalid_author_id(input: &mut proto::Reaction) {
+        input.authorId = proto::Recipient::TEST_ID + 2;
+    }
+
+    fn no_received_timestamp(input: &mut proto::Reaction) {
+        input.receivedTimestamp = None;
+    }
+
+    #[test_case(invalid_author_id, Err(ReactionError::AuthorNotFound(RecipientId(proto::Recipient::TEST_ID + 2))))]
+    #[test_case(no_received_timestamp, Ok(()))]
+    fn reaction(modifier: fn(&mut proto::Reaction), expected: Result<(), ReactionError>) {
+        let mut reaction = proto::Reaction::test_data();
+        modifier(&mut reaction);
+
+        let result = reaction.try_into_with(&TestContext).map(|_: Reaction| ());
+        assert_eq!(result, expected);
     }
 }
