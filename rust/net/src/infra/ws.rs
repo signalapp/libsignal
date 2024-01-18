@@ -613,7 +613,8 @@ mod test {
         assert_eq!(handle.await.expect("joined"), Ok(()));
     }
 
-    const FAKE_ATTESTATION: &[u8] = &[1; 32];
+    const FAKE_ATTESTATION: &[u8] =
+        include_bytes!("../../../attest/tests/data/svr2handshakestart.data");
 
     /// Runs a fake SGX server that sets up a session and then echos back
     /// incoming messages.
@@ -629,7 +630,7 @@ mod test {
                 .build_responder()
                 .unwrap();
 
-        // The server first sends over it's attestation message.
+        // The server first sends over its attestation message.
         websocket
             .send(Vec::from(FAKE_ATTESTATION).into())
             .await

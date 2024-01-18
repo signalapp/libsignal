@@ -63,7 +63,8 @@ pub enum NetError {
 impl LogSafeDisplay for NetError {}
 
 impl From<std::io::Error> for NetError {
-    fn from(_value: std::io::Error) -> Self {
+    fn from(value: std::io::Error) -> Self {
+        log::error!("{}", value);
         NetError::Failure
     }
 }

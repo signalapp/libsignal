@@ -11,38 +11,74 @@ use boring::stack;
 use boring::x509::store::X509StoreBuilder;
 use boring::x509::{X509StoreContext, X509};
 use ciborium::value::{Integer, Value};
+use prost::{DecodeError, Message};
 use sha2::{Digest, Sha384};
 use subtle::ConstantTimeEq;
 
-use crate::enclave;
-use crate::enclave::{Claims, Handshake};
+use crate::dcap::MREnclave;
+use crate::enclave::{self, Claims, Handshake};
+use crate::proto;
+use crate::svr2::{expected_raft_config, RaftConfig};
+use crate::util::SmallMap;
 
-pub const PUBLIC_KEY_LENGTH: usize = 32;
+use hex_literal::hex;
 
-pub type PublicKeyBytes = [u8; PUBLIC_KEY_LENGTH];
+// A type for Platform Configuration Register values
+// They are Sha-384 hashes, 48 byte long.
+// https://docs.aws.amazon.com/enclaves/latest/user/set-up-attestation.html#where
+type Pcr = [u8; 48];
 
-pub fn attest(
-    evidence: &[u8],
-    expected_pcrs: &HashMap<usize, Vec<u8>>,
-    now: SystemTime,
-) -> Result<PublicKeyBytes, NitroError> {
-    let cose_sign1 = CoseSign1::from_bytes(evidence)?;
-    let doc = cose_sign1.extract_attestation_doc(now)?;
-    doc.extract_public_key(expected_pcrs)
-}
+// We only ever validate PCRs 0, 1, and 2.
+type PcrMap = SmallMap<usize, Pcr, 3>;
+
+const EXPECTED_PCRS: SmallMap<MREnclave, PcrMap, 1>  = SmallMap::new([
+    (
+        hex!("17e1cb662572d28e0eb5a492ed8df949bc2cfcf3f2098b710e7b637759d6dcb3"),
+        SmallMap::new([
+            (0, hex!("67fdc91606ca9d5e73c35412f7d22397deb3f56ff2365803c66f0924f1dbeb29517fa4a62014b0bf49bd59541e4bcdd7")),
+            (1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546")),
+            (2, hex!("18e034916997b8e97edfc79e743f70ddcef21a45841a7a8727e2b6d094b1941bd6f988d806df1471025bcccfe35c4572")),
+        ]),
+    ),
+]);
 
 impl Handshake {
-    #[allow(unused)]
     pub(crate) fn for_nitro(
+        enclave: &[u8],
         evidence: &[u8],
-        expected_pcrs: &HashMap<usize, Vec<u8>>,
+        expected_raft_config: &RaftConfig,
         now: SystemTime,
     ) -> Result<Self, enclave::Error> {
+        let expected_pcrs =
+            EXPECTED_PCRS
+                .get(enclave)
+                .ok_or_else(|| enclave::Error::AttestationDataError {
+                    reason: format!("unknown enclave {:?}", enclave),
+                })?;
         let cose_sign1 = CoseSign1::from_bytes(evidence)?;
         let doc = cose_sign1.extract_attestation_doc(now)?;
-        let public_key_material = doc.extract_public_key(expected_pcrs)?;
-        Self::with_claims(Claims::from_public_key(public_key_material.to_vec())?)
+        let attestation_data = doc.extract_attestation_data(expected_pcrs)?;
+        let attestation_data = attestation_data.ok_or(NitroError::UserDataMissing)?;
+        Self::with_claims(Claims::from_attestation_data(attestation_data)?)?
+            .validate(expected_raft_config)
     }
+}
+
+pub fn new_handshake(
+    mr_enclave: &[u8],
+    attestation_msg: &[u8],
+    now: SystemTime,
+    raft_config_override: Option<&'static RaftConfig>,
+) -> Result<Handshake, enclave::Error> {
+    let expected_raft_config = expected_raft_config(mr_enclave, raft_config_override)?;
+    let handshake_start = proto::svr2::ClientHandshakeStart::decode(attestation_msg)?;
+    let handshake = Handshake::for_nitro(
+        mr_enclave,
+        &handshake_start.evidence,
+        expected_raft_config,
+        now,
+    )?;
+    Ok(handshake)
 }
 
 #[derive(Debug, displaydoc::Display, PartialEq, Eq)]
@@ -61,6 +97,10 @@ pub enum NitroError {
     InvalidPcrs,
     /// Invalid Public Key
     InvalidPublicKey,
+    /// User data field is absent from the attestation document
+    UserDataMissing,
+    /// Invalid User Data
+    InvalidUserData,
 }
 
 impl std::error::Error for NitroError {}
@@ -77,6 +117,11 @@ impl From<boring::error::ErrorStack> for NitroError {
     }
 }
 
+impl From<DecodeError> for NitroError {
+    fn from(_err: DecodeError) -> Self {
+        NitroError::InvalidUserData
+    }
+}
 struct CoseSign1 {
     protected_header: Vec<u8>,
     // nitro has no unprotected header
@@ -359,10 +404,7 @@ impl AttestationDoc {
         Ok(certificate)
     }
 
-    fn extract_public_key(
-        &self,
-        expected_pcrs: &HashMap<usize, Vec<u8>>,
-    ) -> Result<PublicKeyBytes, NitroError> {
+    fn validate_pcrs(&self, expected_pcrs: &PcrMap) -> Result<(), NitroError> {
         let mut is_match = true;
         for (index, pcr) in self.pcrs.iter() {
             is_match &= expected_pcrs
@@ -371,14 +413,24 @@ impl AttestationDoc {
                 // if the index is missing from the expected_pcrs we do not check it
                 .unwrap_or(true);
         }
-        if !is_match {
-            return Err(NitroError::InvalidPcrs);
+        if is_match {
+            Ok(())
+        } else {
+            Err(NitroError::InvalidPcrs)
         }
-        self.public_key
-            .clone()
-            .ok_or(NitroError::InvalidPublicKey)?
-            .try_into()
-            .map_err(|_| NitroError::InvalidPublicKey)
+    }
+    fn extract_attestation_data(
+        &self,
+        expected_pcrs: &PcrMap,
+    ) -> Result<Option<proto::svr2::AttestationData>, NitroError> {
+        self.validate_pcrs(expected_pcrs)?;
+        self.user_data
+            .as_ref()
+            .map(|user_data| {
+                proto::svr2::AttestationData::decode(user_data.as_slice())
+                    .map_err(|_| NitroError::InvalidUserData)
+            })
+            .transpose()
     }
 }
 
@@ -403,12 +455,12 @@ mod test {
 
     #[test]
     fn test_attestation() {
-        let timestamp = SystemTime::UNIX_EPOCH + Duration::from_secs(1684948138);
+        let timestamp = SystemTime::UNIX_EPOCH + Duration::from_secs(1705432216);
         let _pk = CoseSign1::from_bytes(VALID_DOCUMENT_BYTES_2)
             .expect("can parse")
             .extract_attestation_doc(timestamp)
             .expect("valid signature")
-            .extract_public_key(&get_test_pcrs())
+            .extract_attestation_data(&get_test_pcrs())
             .expect("valid pcrs");
     }
 
@@ -604,13 +656,12 @@ mod test {
         include_bytes!("../tests/data/cose_sign1_canonical.dat");
     const VALID_DOCUMENT_BYTES_2: &[u8] = include_bytes!("../tests/data/test_cose_sign1_02.dat");
 
-    fn get_test_pcrs() -> HashMap<usize, Vec<u8>> {
-        let mut map = HashMap::<usize, _>::new();
-        map.insert(0, hex!("28de6557cce896cf8c580d8674fbc13c45c1a7636545ef022a01007336b8752b9a1cd9ce69df2ecacc7696a1203b45c2").to_vec());
-        map.insert(1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546").to_vec());
-        map.insert(2, hex!("3bc780f5f2adc596f55c5d8b85760f1e9e585c7016957673616c0611280c4b99c8877caff00d70567a96979abe59dc0a").to_vec());
-        map.insert(3, hex!("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec());
-        map.insert(4, hex!("17354aa3f163d6882a4ff746e5821c5be66f1658472feac83268cf4b7461015ea47993c07025ebb5e134cbc13b16ac97").to_vec());
-        map
+    fn get_test_pcrs() -> PcrMap {
+        PcrMap::new(
+        [
+            (0, hex!("67fdc91606ca9d5e73c35412f7d22397deb3f56ff2365803c66f0924f1dbeb29517fa4a62014b0bf49bd59541e4bcdd7")),
+            (1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546")),
+            (2, hex!("18e034916997b8e97edfc79e743f70ddcef21a45841a7a8727e2b6d094b1941bd6f988d806df1471025bcccfe35c4572")),
+        ])
     }
 }

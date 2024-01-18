@@ -1,9 +1,8 @@
 //
-// Copyright 2023 Signal Messenger, LLC.
+// Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-//! An example program that demonstrates how to implement 2-out-of-2 PPSS setup
-//! using just a single enclave type (SGX in this case).
+//! An example program demonstrating the backup and restore capabilities of a built-in Svr3Env.
 //!
 //! One would need to provide a valid auth secret value used to authenticate to the enclave,
 //! as well as the password that will be used to protect the data being stored. Since the
@@ -13,114 +12,94 @@ use std::time::Duration;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
-use hex_literal::hex;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use attest::svr2::RaftConfig;
-use libsignal_net::enclave::{
-    EnclaveEndpoint, EndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
-};
+use libsignal_net::enclave::{EndpointConnection, Nitro, Sgx};
+use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::{Auth, SvrConnection};
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
-const TEST_SERVER_CERT_DER: &[u8] = include_bytes!("../res/sgx_test_server_cert.cer");
-const TEST_SERVER_RAFT_CONFIG: RaftConfig = RaftConfig {
+const SGX_TEST_SERVER_CERT_DER: &[u8] = include_bytes!("../res/sgx_test_server_cert.cer");
+const SGX_TEST_RAFT_CONFIG: RaftConfig = RaftConfig {
     min_voting_replicas: 1,
     max_voting_replicas: 3,
     super_majority: 0,
     group_id: 5873791967879921865,
 };
 
-pub struct TwoForTwoEnv<'a, A, B>(EnclaveEndpoint<'a, A>, EnclaveEndpoint<'a, B>)
-where
-    A: Svr3Flavor,
-    B: Svr3Flavor;
+const NITRO_TEST_RAFT_CONFIG: RaftConfig = RaftConfig {
+    group_id: 14613281978079894749,
+    min_voting_replicas: 1,
+    max_voting_replicas: 5,
+    super_majority: 0,
+};
 
-impl<'a, A, B> PpssSetup for TwoForTwoEnv<'a, A, B>
-where
-    A: Svr3Flavor,
-    B: Svr3Flavor,
-{
-    type Connections = (SvrConnection<A>, SvrConnection<B>);
-    type ServerIds = [u64; 2];
-
-    fn server_ids() -> Self::ServerIds {
-        [0, 1]
-    }
-}
+const NITRO_TEST_SERVER_CERT_DER: &[u8] = include_bytes!("../res/nitro_test_server_cert.cer");
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// base64 encoding of the auth secret
+    /// base64 encoding of the auth secret for SGX
     #[arg(long)]
-    auth_secret: String,
+    sgx_secret: String,
+    #[arg(long)]
+    /// base64 encoding of the auth secret for Nitro
+    nitro_secret: String,
     /// Password to be used to protect the data
     #[arg(long)]
     password: String,
 }
 #[tokio::main]
 async fn main() {
+    init_logger();
     let args = Args::parse();
 
-    let auth_secret: [u8; 32] = {
-        BASE64_STANDARD
-            .decode(&args.auth_secret)
-            .expect("valid b64")
-            .try_into()
-            .expect("secret is 32 bytes")
-    };
+    let sgx_secret: [u8; 32] = parse_auth_secret(&args.sgx_secret);
+    let nitro_secret: [u8; 32] = parse_auth_secret(&args.nitro_secret);
 
     let mut rng = OsRng;
 
-    let mut make_uid = || {
+    let env = libsignal_net::env::STAGING.svr3;
+
+    let uid = {
         let mut bytes = [0u8; 16];
         rng.fill_bytes(&mut bytes[..]);
         hex::encode(bytes)
     };
 
-    let make_auth = |uid: &str| Auth {
-        uid: uid.to_string(),
-        secret: auth_secret,
-    };
-
-    let two_sgx_env = {
-        let endpoint = EnclaveEndpoint::<Sgx> {
-            host: "backend1.svr3.test.signal.org",
-            mr_enclave: MrEnclave::new(&hex!(
-                "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
-            )),
-        };
-        TwoForTwoEnv(endpoint, endpoint)
-    };
-
-    let (uid_a, uid_b) = (make_uid(), make_uid());
-
     let connect = || async {
         let connection_a = EndpointConnection::with_custom_properties(
-            two_sgx_env.0,
+            env.sgx(),
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            RootCertificates::FromDer(TEST_SERVER_CERT_DER.to_vec()),
-            Some(&TEST_SERVER_RAFT_CONFIG),
+            RootCertificates::FromDer(SGX_TEST_SERVER_CERT_DER.to_vec()),
+            Some(&SGX_TEST_RAFT_CONFIG),
         );
-
-        let a = SvrConnection::connect(make_auth(&uid_a), connection_a)
+        let sgx_auth = Auth {
+            uid: uid.to_string(),
+            secret: sgx_secret,
+        };
+        let a = SvrConnection::<Sgx>::connect(sgx_auth, connection_a)
             .await
-            .expect("can attestedly connect");
+            .expect("can attestedly connect to SGX");
 
         let connection_b = EndpointConnection::with_custom_properties(
-            two_sgx_env.1,
+            env.nitro(),
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            RootCertificates::FromDer(TEST_SERVER_CERT_DER.to_vec()),
-            Some(&TEST_SERVER_RAFT_CONFIG),
+            RootCertificates::FromDer(NITRO_TEST_SERVER_CERT_DER.to_vec()),
+            Some(&NITRO_TEST_RAFT_CONFIG),
         );
-
-        let b = SvrConnection::connect(make_auth(&uid_b), connection_b)
+        let nitro_auth = Auth {
+            uid: uid.to_string(),
+            secret: nitro_secret,
+        };
+        let b = SvrConnection::<Nitro>::connect(nitro_auth, connection_b)
             .await
-            .expect("can attestedly connect");
+            .expect("can attestedly connect to Nitro");
+
         (a, b)
     };
 
@@ -129,7 +108,7 @@ async fn main() {
 
     let share_set_bytes = {
         let opaque_share_set =
-            TwoForTwoEnv::backup(&mut connect().await, &args.password, secret, 10, &mut rng)
+            Svr3Env::backup(&mut connect().await, &args.password, secret, 10, &mut rng)
                 .await
                 .expect("can multi backup");
         opaque_share_set.serialize().expect("can serialize")
@@ -139,7 +118,7 @@ async fn main() {
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        TwoForTwoEnv::restore(
+        Svr3Env::restore(
             &mut connect().await,
             &args.password,
             opaque_share_set,
@@ -158,3 +137,16 @@ fn make_secret(rng: &mut impl CryptoRngCore) -> [u8; 32] {
     rng.fill_bytes(&mut bytes[..]);
     bytes
 }
+
+fn parse_auth_secret(b64: &str) -> [u8; 32] {
+    BASE64_STANDARD
+        .decode(b64)
+        .expect("valid b64")
+        .try_into()
+        .expect("secret is 32 bytes")
+}
+
+fn init_logger() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+//

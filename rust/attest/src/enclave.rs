@@ -8,7 +8,9 @@ use std::collections::HashMap;
 use displaydoc::Display;
 
 use crate::client_connection::ClientConnection;
-use crate::{client_connection, dcap, nitro, snow_resolver};
+use crate::svr2::RaftConfig;
+use crate::{client_connection, dcap, nitro, proto, snow_resolver};
+use prost::Message;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -108,20 +110,15 @@ impl From<nitro::NitroError> for Error {
 ///   let conn = handshaker.complete(initial_response);
 /// ```
 pub struct Handshake {
-    pub(crate) handshake: snow::HandshakeState,
-    pub(crate) initial_request: Vec<u8>,
-    pub(crate) claims: Claims,
+    handshake: snow::HandshakeState,
+    initial_request: Vec<u8>,
+    claims: Claims,
 }
 
 impl Handshake {
     /// Initial message from client for noise handshake.
     pub fn initial_request(&self) -> &[u8] {
         &self.initial_request
-    }
-
-    /// custom claims extracted from the attestation
-    pub fn custom_claims(&self) -> &HashMap<String, Vec<u8>> {
-        &self.claims.custom
     }
 
     /// Completes client connection initiation, returns a valid client connection.
@@ -132,7 +129,7 @@ impl Handshake {
         Ok(ClientConnection { transport })
     }
 
-    pub(crate) fn with_claims(claims: Claims) -> Result<Self> {
+    pub(crate) fn with_claims(claims: Claims) -> Result<UnvalidatedHandshake> {
         let mut handshake = snow::Builder::with_resolver(
             client_connection::NOISE_PATTERN.parse().expect("valid"),
             Box::new(snow_resolver::Resolver),
@@ -145,17 +142,48 @@ impl Handshake {
         // add it here in future.
         let size = handshake.write_message(&[], &mut initial_request)?;
         initial_request.truncate(size);
-        Ok(Self {
+        Ok(UnvalidatedHandshake(Self {
             handshake,
             initial_request,
             claims,
-        })
+        }))
+    }
+}
+
+pub(crate) struct UnvalidatedHandshake(Handshake);
+
+impl UnvalidatedHandshake {
+    pub(crate) fn validate(self, expected_raft_config: &RaftConfig) -> Result<Handshake> {
+        let actual_config =
+            &self
+                .0
+                .claims
+                .raft_group_config
+                .as_ref()
+                .ok_or(Error::AttestationDataError {
+                    reason: "Claims must contain a raft group config".to_string(),
+                })?;
+        if expected_raft_config != *actual_config {
+            return Err(Error::AttestationDataError {
+                reason: format!(
+                    "Unexpected raft config {:?} (expected {:?})",
+                    actual_config, expected_raft_config
+                ),
+            });
+        }
+        Ok(self.0)
+    }
+
+    pub(crate) fn skip_raft_validation(self) -> Handshake {
+        self.0
     }
 }
 
 pub struct Claims {
-    public_key: Vec<u8>,
-    custom: HashMap<String, Vec<u8>>,
+    pub(crate) public_key: Vec<u8>,
+    pub(crate) raft_group_config: Option<proto::svr2::RaftGroupConfig>,
+    #[allow(dead_code)]
+    pub(crate) custom: HashMap<String, Vec<u8>>,
 }
 
 impl Claims {
@@ -165,15 +193,29 @@ impl Claims {
             .ok_or_else(|| Error::AttestationDataError {
                 reason: "pk field is missing from the claims".to_string(),
             })?;
+
+        let raft_group_config = claims
+            .remove("config")
+            .map(|bytes| proto::svr2::RaftGroupConfig::decode(bytes.as_slice()))
+            .transpose()?;
+
         Ok(Self {
             public_key,
+            raft_group_config,
             custom: claims,
         })
     }
 
-    pub fn from_public_key(public_key: Vec<u8>) -> Result<Self> {
+    pub fn from_attestation_data(data: proto::svr2::AttestationData) -> Result<Self> {
+        let raft_group_config = data
+            .group_config
+            .ok_or_else(|| Error::AttestationDataError {
+                reason: "RaftGroupConfig is missing from the AttestationData".to_string(),
+            })?;
+        let raft_group_config = Some(raft_group_config);
         Ok(Self {
-            public_key,
+            public_key: data.public_key,
+            raft_group_config,
             custom: HashMap::default(),
         })
     }

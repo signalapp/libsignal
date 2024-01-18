@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use hex_literal::hex;
 
-use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Sgx};
+use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx};
 
 pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
@@ -20,15 +20,17 @@ pub struct Env<'a, Svr3> {
     pub chat_host: &'a str,
 }
 
-pub struct Svr3Env<'a>(EnclaveEndpoint<'a, Sgx>);
+pub struct Svr3Env<'a>(EnclaveEndpoint<'a, Sgx>, EnclaveEndpoint<'a, Nitro>);
 
 impl<'a> Svr3Env<'a> {
-    pub const fn new(sgx: EnclaveEndpoint<'a, Sgx>) -> Self {
-        Self(sgx)
-    }
     #[inline]
     pub fn sgx(&self) -> EnclaveEndpoint<'a, Sgx> {
         self.0
+    }
+
+    #[inline]
+    pub fn nitro(&self) -> EnclaveEndpoint<'a, Nitro> {
+        self.1
     }
 }
 
@@ -46,12 +48,20 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
             "a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"
         )),
     },
-    svr3: Svr3Env::new(EnclaveEndpoint {
-        host: "backend1.svr3.test.signal.org",
-        mr_enclave: MrEnclave::new(&hex!(
-            "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
-        )),
-    }),
+    svr3: Svr3Env(
+        EnclaveEndpoint {
+            host: "backend1.svr3.test.signal.org",
+            mr_enclave: MrEnclave::new(&hex!(
+                "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
+            )),
+        },
+        EnclaveEndpoint {
+            host: "backend2.svr3.test.signal.org",
+            mr_enclave: MrEnclave::new(&hex!(
+                "17e1cb662572d28e0eb5a492ed8df949bc2cfcf3f2098b710e7b637759d6dcb3"
+            )),
+        },
+    ),
 };
 
 pub const PROD: Env<'static, Svr3Env> = Env {
@@ -66,10 +76,18 @@ pub const PROD: Env<'static, Svr3Env> = Env {
         host: "svr2.signal.org",
         mr_enclave: MrEnclave::new(&[0; 32]),
     },
-    svr3: Svr3Env::new(EnclaveEndpoint {
-        host: "svr3.signal.org",
-        mr_enclave: MrEnclave::new(&[0; 32]),
-    }),
+    svr3: Svr3Env(
+        EnclaveEndpoint {
+            host: "svr3.signal.org",
+            mr_enclave: MrEnclave::new(&[0; 32]),
+        },
+        EnclaveEndpoint {
+            host: "does not exist",
+            mr_enclave: MrEnclave::new(&hex!(
+                "17e1cb662572d28e0eb5a492ed8df949bc2cfcf3f2098b710e7b637759d6dcb3"
+            )),
+        },
+    ),
 };
 
 pub mod constants {

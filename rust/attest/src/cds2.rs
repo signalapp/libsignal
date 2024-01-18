@@ -38,7 +38,7 @@ pub fn new_handshake(
 ) -> Result<Handshake> {
     // Deserialize attestation handshake start.
     let handshake_start = cds2::ClientHandshakeStart::decode(attestation_msg)?;
-    Handshake::for_sgx(
+    Ok(Handshake::for_sgx(
         mrenclave,
         &handshake_start.evidence,
         &handshake_start.endorsement,
@@ -46,7 +46,8 @@ pub fn new_handshake(
             .get(mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         current_time,
-    )
+    )?
+    .skip_raft_validation())
 }
 
 /// Extracts attestation metrics from a `ClientHandshakeStart` message

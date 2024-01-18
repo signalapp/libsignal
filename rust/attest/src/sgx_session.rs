@@ -13,7 +13,7 @@
 use std::time::Duration;
 
 use crate::dcap::{self, MREnclave};
-use crate::enclave::{Claims, Error, Handshake, Result};
+use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
 
 const INVALID_EVIDENCE: &str = "Evidence does not fit expected format";
 const INVALID_ENDORSEMENT: &str = "Endorsement does not fit expected format";
@@ -30,7 +30,7 @@ impl Handshake {
         endorsements: &[u8],
         acceptable_sw_advisories: &[&str],
         current_time: std::time::SystemTime,
-    ) -> Result<Self> {
+    ) -> Result<UnvalidatedHandshake> {
         if evidence.is_empty() {
             return Err(Error::AttestationDataError {
                 reason: String::from(INVALID_EVIDENCE),
@@ -95,13 +95,14 @@ pub mod testutil {
         // Read test data files, de-hex-stringing as necessary.
         let mrenclave_bytes = mrenclave_bytes();
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_millis(1655857680000);
-        Handshake::for_sgx(
+        Ok(Handshake::for_sgx(
             &mrenclave_bytes,
             EVIDENCE_BYTES,
             ENDORSEMENT_BYTES,
             &[],
             current_time,
-        )
+        )?
+        .skip_raft_validation())
     }
 }
 

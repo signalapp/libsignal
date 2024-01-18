@@ -96,6 +96,16 @@ static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 4> = Small
     ),
 ]);
 
+pub(crate) fn expected_raft_config(
+    mr_enclave: &[u8],
+    config_override: Option<&'static RaftConfig>,
+) -> Result<&'static RaftConfig> {
+    config_override
+        .or_else(|| EXPECTED_RAFT_CONFIG.get(mr_enclave).copied())
+        .ok_or(Error::AttestationDataError {
+            reason: format!("unknown mrenclave {:?}", mr_enclave),
+        })
+}
 /// Lookup the group id constant associated with the `mrenclave`
 pub fn lookup_groupid(mrenclave: &[u8]) -> Option<u64> {
     EXPECTED_RAFT_CONFIG
@@ -117,11 +127,7 @@ pub fn new_handshake_with_override(
     current_time: std::time::SystemTime,
     raft_config_override: Option<&'static RaftConfig>,
 ) -> Result<Handshake> {
-    let expected_raft_config = raft_config_override
-        .or_else(|| EXPECTED_RAFT_CONFIG.get(mrenclave).copied())
-        .ok_or(Error::AttestationDataError {
-            reason: format!("unknown mrenclave {:?}", mrenclave),
-        })?;
+    let expected_raft_config = expected_raft_config(mrenclave, raft_config_override)?;
     new_handshake_with_constants(
         mrenclave,
         attestation_msg,
@@ -148,24 +154,8 @@ fn new_handshake_with_constants(
         &handshake_start.endorsement,
         acceptable_sw_advisories,
         current_time,
-    )?;
-
-    let config = handshake
-        .custom_claims()
-        .get("config")
-        .ok_or(Error::AttestationDataError {
-            reason: "Claims must contain a raft group config".to_string(),
-        })?;
-
-    let actual_config = svr2::RaftGroupConfig::decode(&**config)?;
-    if expected_raft_config != &actual_config {
-        return Err(Error::AttestationDataError {
-            reason: format!(
-                "Unexpected raft config {:?} (expected {:?})",
-                actual_config, expected_raft_config
-            ),
-        });
-    }
+    )?
+    .validate(expected_raft_config)?;
 
     Ok(handshake)
 }

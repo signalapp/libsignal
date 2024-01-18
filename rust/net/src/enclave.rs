@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
-use attest::{cds2, enclave};
+use attest::{cds2, enclave, nitro};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 
@@ -23,12 +23,13 @@ use crate::svr::SvrConnection;
 pub trait EnclaveKind {
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
-pub trait Svr3Flavor: EnclaveKind {
-    const SERVER_ID: u64;
-}
+pub trait Svr3Flavor: EnclaveKind {}
+
 pub enum Cdsi {}
 
 pub enum Sgx {}
+
+pub enum Nitro {}
 
 impl EnclaveKind for Cdsi {
     fn url_path(enclave: &[u8]) -> PathAndQuery {
@@ -41,9 +42,16 @@ impl EnclaveKind for Sgx {
         PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
     }
 }
-impl Svr3Flavor for Sgx {
-    const SERVER_ID: u64 = 0;
+
+impl EnclaveKind for Nitro {
+    fn url_path(enclave: &[u8]) -> PathAndQuery {
+        PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
+    }
 }
+
+impl Svr3Flavor for Sgx {}
+
+impl Svr3Flavor for Nitro {}
 
 pub trait HasConnections {
     type Connections<'a>: ArrayIsh<&'a mut AttestedConnection>
@@ -101,11 +109,11 @@ pub trait PpssSetup {
 }
 
 impl PpssSetup for Svr3Env<'_> {
-    type Connections = SvrConnection<Sgx>;
-    type ServerIds = [u64; 1];
+    type Connections = (SvrConnection<Sgx>, SvrConnection<Nitro>);
+    type ServerIds = [u64; 2];
 
     fn server_ids() -> Self::ServerIds {
-        [Sgx::SERVER_ID]
+        [1, 2]
     }
 }
 
@@ -269,6 +277,20 @@ impl NewHandshake for Cdsi {
             params.mr_enclave.as_ref(),
             attestation_message,
             SystemTime::now(),
+        )
+    }
+}
+
+impl NewHandshake for Nitro {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake> {
+        nitro::new_handshake(
+            params.mr_enclave.as_ref(),
+            attestation_message,
+            SystemTime::now(),
+            params.raft_config_override,
         )
     }
 }
