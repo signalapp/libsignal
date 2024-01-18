@@ -24,11 +24,21 @@ public class WebpSanitizer {
    * it skips fewer bytes than requested only when the end of stream is reached.
    *
    * @param input A WebP format input stream.
-   * @param length The exact length of the input stream.
    * @throws IOException If an IO error on the input occurs.
    * @throws ParseException If the input could not be parsed.
    */
-  public static void sanitize(InputStream input, long length) throws IOException, ParseException {
-    Native.WebpSanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input), length);
+  public static void sanitize(InputStream input) throws IOException, ParseException {
+    Native.WebpSanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input));
+  }
+
+  /**
+   * Sanitize a WebP input.
+   *
+   * @deprecated Prefer the version without a length; it is now ignored.
+   */
+  @Deprecated
+  public static void sanitize(InputStream input, long ignoredLength)
+      throws IOException, ParseException {
+    sanitize(input);
   }
 }

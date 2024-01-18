@@ -57,16 +57,20 @@ public func sanitizeMp4(input: SignalInputStream, len: UInt64) throws -> Sanitiz
 ///
 /// - Parameters:
 ///  - input: A WebP format input stream.
-///  - length: The exact length of the input stream.
 ///
 /// - Throws:
 ///  - `SignalError.ioError`: If an IO error on the input occurs.
 ///  - `SignalError.invalidMediaInput` If the input could not be parsed because it was invalid.
 ///  - `SignalError.unsupportedMediaInput` If the input could not be parsed because it's unsupported in some way.
-public func sanitizeWebp(input: SignalInputStream, len: UInt64) throws {
+public func sanitizeWebp(input: SignalInputStream) throws {
     try withInputStream(input) { ffiInput in
-        try checkError(signal_webp_sanitizer_sanitize(ffiInput, len))
+        try checkError(signal_webp_sanitizer_sanitize(ffiInput))
     }
+}
+
+@available(*, deprecated, message: "Prefer the version without a length; it is now ignored")
+public func sanitizeWebp(input: SignalInputStream, length ignored: UInt64) throws {
+    try sanitizeWebp(input: input)
 }
 
 public class SanitizedMetadata: ClonableHandleOwner {

@@ -13,7 +13,6 @@
  */
 
 import * as Native from '../Native';
-import { bufferFromBigUInt64BE } from './zkgroup/internal/BigIntUtil';
 
 /**
  * Sanitize a WebP input.
@@ -25,8 +24,5 @@ import { bufferFromBigUInt64BE } from './zkgroup/internal/BigIntUtil';
  * @throws UnsupportedMediaInputError If the input could not be parsed because it's unsupported in some way.
  */
 export function sanitize(input: Buffer): void {
-  Native.WebpSanitizer_Sanitize(
-    input,
-    bufferFromBigUInt64BE(BigInt(input.length))
-  );
+  Native.WebpSanitizer_Sanitize(input);
 }

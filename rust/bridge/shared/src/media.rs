@@ -29,7 +29,7 @@ use futures_util::FutureExt;
 struct SyncSanitizerInput<'a> {
     stream: &'a dyn SyncInputStream,
     pos: u64,
-    len: u64,
+    len: Option<u64>,
 }
 
 struct SanitizerInput<'a> {
@@ -68,11 +68,11 @@ async fn Mp4Sanitizer_Sanitize(
 }
 
 #[bridge_fn]
-fn WebpSanitizer_Sanitize(input: &mut dyn SyncInputStream, len: u64) -> Result<(), webp::Error> {
+fn WebpSanitizer_Sanitize(input: &mut dyn SyncInputStream) -> Result<(), webp::Error> {
     let input = SyncSanitizerInput {
         stream: input,
         pos: 0,
-        len,
+        len: None,
     };
     webp::sanitize(input)?;
     Ok(())
@@ -120,7 +120,7 @@ impl Skip for SyncSanitizerInput<'_> {
     }
 
     fn stream_len(&mut self) -> io::Result<u64> {
-        Ok(self.len)
+        Ok(self.len.expect("stream length provided for this input"))
     }
 }
 

@@ -1259,7 +1259,7 @@ SignalFfiError *signal_mp4_sanitizer_sanitize(SignalSanitizedMetadata **out, con
 #endif
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
-SignalFfiError *signal_webp_sanitizer_sanitize(bool *out, const SignalSyncInputStream *input, uint64_t len);
+SignalFfiError *signal_webp_sanitizer_sanitize(bool *out, const SignalSyncInputStream *input);
 #endif
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)

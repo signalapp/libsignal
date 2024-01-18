@@ -49,21 +49,21 @@ class Mp4SanitizerTests: TestCaseBase {
 class WebpSanitizerTests: TestCaseBase {
     func testEmptyWebp() {
         let input: [UInt8] = []
-        XCTAssertThrowsError(try sanitizeWebp(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) { error in
+        XCTAssertThrowsError(try sanitizeWebp(input: SignalInputStreamAdapter(input))) { error in
             if case SignalError.invalidMediaInput = error {} else { XCTFail("\(error)") }
         }
     }
 
     func testTruncatedWebp() {
         let input: [UInt8] = [0, 0, 0, 0]
-        XCTAssertThrowsError(try sanitizeWebp(input: SignalInputStreamAdapter(input), len: UInt64(input.count))) { error in
+        XCTAssertThrowsError(try sanitizeWebp(input: SignalInputStreamAdapter(input))) { error in
             if case SignalError.invalidMediaInput = error {} else { XCTFail("\(error)") }
         }
     }
 
     func testMinimalWebp() throws {
         let input = webp()
-        try sanitizeWebp(input: SignalInputStreamAdapter(input), len: UInt64(input.count))
+        try sanitizeWebp(input: SignalInputStreamAdapter(input))
     }
 
     func testWebpIoError() throws {

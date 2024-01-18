@@ -33,7 +33,7 @@ public class WebpSanitizerTest {
     assertThrows(
         "empty webp accepted",
         ParseException.class,
-        () -> WebpSanitizer.sanitize(new ByteArrayInputStream(data), data.length));
+        () -> WebpSanitizer.sanitize(new ByteArrayInputStream(data)));
   }
 
   @Test
@@ -42,13 +42,13 @@ public class WebpSanitizerTest {
     assertThrows(
         "truncated webp accepted",
         ParseException.class,
-        () -> WebpSanitizer.sanitize(new ByteArrayInputStream(data), data.length));
+        () -> WebpSanitizer.sanitize(new ByteArrayInputStream(data)));
   }
 
   @Test
   public void testMinimalWebp() throws Exception {
     byte[] data = webp();
-    WebpSanitizer.sanitize(new ByteArrayInputStream(data), data.length);
+    WebpSanitizer.sanitize(new ByteArrayInputStream(data));
   }
 
   @Test
@@ -57,7 +57,7 @@ public class WebpSanitizerTest {
       assertThrows(
           "InputStream exception not propagated",
           IOException.class,
-          () -> WebpSanitizer.sanitize(ioErrorStream, 1));
+          () -> WebpSanitizer.sanitize(ioErrorStream));
     }
   }
 
