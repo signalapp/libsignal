@@ -30,18 +30,13 @@ impl FfiInputStreamStruct {
     fn do_read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut amount_read = 0;
         let result = (self.read)(self.ctx, buf.as_mut_ptr(), buf.len(), &mut amount_read);
-        match CallbackError::check(result) {
-            Some(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
-            None => Ok(amount_read),
-        }
+        CallbackError::check(result).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        Ok(amount_read)
     }
 
     fn do_skip(&self, amount: u64) -> io::Result<()> {
         let result = (self.skip)(self.ctx, amount);
-        match CallbackError::check(result) {
-            Some(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
-            None => Ok(()),
-        }
+        CallbackError::check(result).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 }
 

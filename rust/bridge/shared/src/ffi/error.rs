@@ -201,10 +201,12 @@ pub struct CallbackError {
 }
 
 impl CallbackError {
-    /// Returns `None` if `value` is zero; otherwise, wraps the value in `Self`.
-    pub fn check(value: i32) -> Option<Self> {
-        let value = std::num::NonZeroI32::try_from(value).ok()?;
-        Some(Self { value })
+    /// Returns `Ok(())` if `value` is zero; otherwise, wraps the value in `Self` as an error.
+    pub fn check(value: i32) -> Result<(), Self> {
+        match std::num::NonZeroI32::try_from(value).ok() {
+            None => Ok(()),
+            Some(value) => Err(Self { value }),
+        }
     }
 }
 
