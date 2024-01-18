@@ -22,22 +22,12 @@ use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::{Auth, SvrConnection};
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
-const SGX_TEST_SERVER_CERT_DER: &[u8] = include_bytes!("../res/sgx_test_server_cert.cer");
-const SGX_TEST_RAFT_CONFIG: RaftConfig = RaftConfig {
-    min_voting_replicas: 1,
-    max_voting_replicas: 3,
-    super_majority: 0,
-    group_id: 5873791967879921865,
-};
-
 const NITRO_TEST_RAFT_CONFIG: RaftConfig = RaftConfig {
-    group_id: 14613281978079894749,
-    min_voting_replicas: 1,
+    group_id: 2058019258222238426,
+    min_voting_replicas: 3,
     max_voting_replicas: 5,
     super_majority: 0,
 };
-
-const NITRO_TEST_SERVER_CERT_DER: &[u8] = include_bytes!("../res/nitro_test_server_cert.cer");
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -70,13 +60,8 @@ async fn main() {
     };
 
     let connect = || async {
-        let connection_a = EndpointConnection::with_custom_properties(
-            env.sgx(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-            RootCertificates::FromDer(SGX_TEST_SERVER_CERT_DER.to_vec()),
-            Some(&SGX_TEST_RAFT_CONFIG),
-        );
+        let connection_a =
+            EndpointConnection::new(env.sgx(), Duration::from_secs(10), TcpSslTransportConnector);
         let sgx_auth = Auth {
             uid: uid.to_string(),
             secret: sgx_secret,
@@ -89,7 +74,7 @@ async fn main() {
             env.nitro(),
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            RootCertificates::FromDer(NITRO_TEST_SERVER_CERT_DER.to_vec()),
+            RootCertificates::Signal,
             Some(&NITRO_TEST_RAFT_CONFIG),
         );
         let nitro_auth = Auth {

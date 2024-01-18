@@ -14,7 +14,7 @@ use crate::util::SmallMap;
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 4> =
+const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 5> =
     &SmallMap::new([
         (
             hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
@@ -30,6 +30,10 @@ const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 4>
         ),
         (
             hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97"),
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
+        (
+            hex!("5db9423ed5a0b0bef374eac3a8251839e1f63ed40a2537415b63656b26912d92"),
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
         ),
     ]);
@@ -57,7 +61,7 @@ impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
 }
 
 /// Expected raft configuration for a given enclave.
-static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 4> = SmallMap::new([
+static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 5> = SmallMap::new([
     (
         hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
         &RaftConfig {
@@ -92,6 +96,16 @@ static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 4> = Small
             max_voting_replicas: 7,
             super_majority: 2,
             group_id: 1230918306983775578,
+        },
+    ),
+    (
+        // svr3 staging
+        hex!("5db9423ed5a0b0bef374eac3a8251839e1f63ed40a2537415b63656b26912d92"),
+        &RaftConfig {
+            min_voting_replicas: 3,
+            max_voting_replicas: 5,
+            super_majority: 0,
+            group_id: 13862729870901000330,
         },
     ),
 ]);

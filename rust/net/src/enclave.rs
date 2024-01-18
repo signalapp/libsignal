@@ -45,7 +45,11 @@ impl EnclaveKind for Sgx {
 
 impl EnclaveKind for Nitro {
     fn url_path(enclave: &[u8]) -> PathAndQuery {
-        PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
+        PathAndQuery::try_from(format!(
+            "/v1/{}",
+            std::str::from_utf8(enclave).expect("valid utf8")
+        ))
+        .unwrap()
     }
 }
 

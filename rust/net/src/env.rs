@@ -50,16 +50,14 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
-            host: "backend1.svr3.test.signal.org",
+            host: "backend1.svr3.staging.signal.org",
             mr_enclave: MrEnclave::new(&hex!(
-                "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
+                "5db9423ed5a0b0bef374eac3a8251839e1f63ed40a2537415b63656b26912d92"
             )),
         },
         EnclaveEndpoint {
-            host: "backend2.svr3.test.signal.org",
-            mr_enclave: MrEnclave::new(&hex!(
-                "17e1cb662572d28e0eb5a492ed8df949bc2cfcf3f2098b710e7b637759d6dcb3"
-            )),
+            host: "backend2.svr3.staging.signal.org",
+            mr_enclave: MrEnclave::new(b"cc8f7cb1.52b91975.61d0bcb0"),
         },
     ),
 };
