@@ -426,7 +426,7 @@ impl<'a> AssumedImmutableBuffer<'a> {
     /// potentially optimizing out that checksum, though.)
     ///
     /// [napi]: https://nodejs.org/api/n-api.html#n_api_napi_get_buffer_info
-    fn new<'b>(cx: &impl Context<'b>, handle: Handle<'a, JsBuffer>) -> Self {
+    pub fn new<'b>(cx: &impl Context<'b>, handle: Handle<'a, JsBuffer>) -> Self {
         let buf = handle.as_slice(cx);
         let extended_lifetime_buffer = if buf.is_empty() {
             &[]

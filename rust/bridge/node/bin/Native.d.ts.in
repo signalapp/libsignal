@@ -18,6 +18,21 @@ interface LookupResponseEntry {
   readonly pni: string | undefined;
 }
 
+interface SealedSenderMultiRecipientMessageRecipient {
+  deviceIds: number[];
+  registrationIds: number[];
+  rangeOffset: number;
+  rangeLen: number;
+}
+
+interface SealedSenderMultiRecipientMessage {
+  recipientMap: {
+    [serviceId: string]: SealedSenderMultiRecipientMessageRecipient;
+  };
+  excludedRecipients: string[];
+  offsetOfSharedData: number;
+}
+
 export abstract class IdentityKeyStore {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;
