@@ -10,6 +10,7 @@ import static org.junit.Assert.assertThrows;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import org.junit.Assert;
@@ -66,6 +67,20 @@ public class Mp4SanitizerTest {
 
     SanitizedMetadata sanitized =
         Mp4Sanitizer.sanitize(new ByteArrayInputStream(mp4Data), mp4Data.length);
+
+    assertSanitizedMetadataEquals(
+        sanitized, ftyp().length, mp4Data.length - metadata.length, metadata);
+  }
+
+  @Test
+  public void testBrokenSkipWorkaround() throws Exception {
+    // Same setup as testMinimalMp4.
+    byte[] metadata = ByteUtil.combine(ftyp(), moov());
+    byte[] mp4Data = ByteUtil.combine(ftyp(), mdat(), moov());
+
+    SanitizedMetadata sanitized =
+        Mp4Sanitizer.sanitize(
+            new BrokenSkipInputStream(new ByteArrayInputStream(mp4Data)), mp4Data.length);
 
     assertSanitizedMetadataEquals(
         sanitized, ftyp().length, mp4Data.length - metadata.length, metadata);
@@ -131,8 +146,9 @@ public class Mp4SanitizerTest {
     ByteArrayOutputStream mdatOutputStream = new ByteArrayOutputStream();
     DataOutputStream mdatDataOutputStream = new DataOutputStream(mdatOutputStream);
 
-    mdatDataOutputStream.writeInt(8); // box size
+    mdatDataOutputStream.writeInt(16); // box size
     mdatDataOutputStream.write("mdat".getBytes()); // box type
+    mdatDataOutputStream.write("12345678".getBytes()); // some fake contents
 
     return mdatOutputStream.toByteArray();
   }
@@ -148,6 +164,17 @@ public class Mp4SanitizerTest {
     @Override
     public int read() throws IOException {
       throw new IOException("test io error");
+    }
+  }
+
+  private static class BrokenSkipInputStream extends FilterInputStream {
+    BrokenSkipInputStream(InputStream in) {
+      super(in);
+    }
+
+    @Override
+    public long skip(long amount) throws IOException {
+      return 0;
     }
   }
 }

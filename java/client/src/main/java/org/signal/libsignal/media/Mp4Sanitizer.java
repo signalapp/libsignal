@@ -46,8 +46,8 @@ public class Mp4Sanitizer {
   /**
    * Sanitize an MP4 input.
    *
-   * <p>It's recommended that the given {@link InputStream} be capable of {@code skip}ping. If it
-   * is, then it <i>must</i> only skip fewer bytes than requested when the end of stream is reached.
+   * <p>It's recommended that the given {@link InputStream} be capable of {@code skip}ping, and that
+   * it skips fewer bytes than requested only when the end of stream is reached.
    *
    * @param input An MP4 format input stream.
    * @param length The exact length of the input stream.
@@ -57,7 +57,8 @@ public class Mp4Sanitizer {
    */
   public static SanitizedMetadata sanitize(InputStream input, long length)
       throws IOException, ParseException {
-    long sanitizedMetadataHandle = Native.Mp4Sanitizer_Sanitize(input, length);
+    long sanitizedMetadataHandle =
+        Native.Mp4Sanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input), length);
     try {
       byte[] sanitizedMetadata = Native.SanitizedMetadata_GetMetadata(sanitizedMetadataHandle);
       if (sanitizedMetadata.length == 0) {
