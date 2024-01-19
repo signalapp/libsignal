@@ -42,6 +42,8 @@ features = ["serde"]
 version = "4.1.1"
 
 [dev-dependencies]
+uuid = { version = "1", features = ["v5"] }
+
 # For benchmarking
 criterion = "0.5"
 
