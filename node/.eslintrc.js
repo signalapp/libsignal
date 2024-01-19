@@ -13,7 +13,7 @@ module.exports = {
     'import/core-modules': ['electron'],
   },
 
-  plugins: ['header', 'import', 'mocha', 'more', '@typescript-eslint'],
+  plugins: ['header', 'import', 'jsdoc', 'mocha', 'more', '@typescript-eslint'],
 
   extends: [
     'eslint:recommended',
@@ -96,5 +96,22 @@ module.exports = {
 
     // Errors are valid in templates, but this rule doesn't know that.
     '@typescript-eslint/restrict-template-expressions': 'off',
+
+    // JSDoc checking, but no complaints for missing docs yet
+    'jsdoc/check-access': 1,
+    'jsdoc/check-alignment': 1,
+    'jsdoc/check-line-alignment': 1,
+    'jsdoc/check-property-names': 1,
+    'jsdoc/check-syntax': 1,
+    'jsdoc/check-tag-names': 1,
+    'jsdoc/check-types': 1,
+    'jsdoc/check-values': 1,
+    'jsdoc/empty-tags': 1,
+    'jsdoc/implements-on-classes': 1,
+    'jsdoc/multiline-blocks': 1,
+    'jsdoc/no-bad-blocks': 1,
+    'jsdoc/no-blank-blocks': 1,
+    'jsdoc/no-undefined-types': 1,
+    'jsdoc/valid-types': 1,
   },
 };

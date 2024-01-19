@@ -50,7 +50,7 @@ export class SanitizedMetadata {
 
   /**
    * Get the sanitized metadata, if any.
-   * @return The sanitized metadata, or {@code null} if it didn't need to be sanitized.
+   * @returns The sanitized metadata, or {@code null} if it didn't need to be sanitized.
    */
   getMetadata(): Buffer | null {
     const metadata = Native.SanitizedMetadata_GetMetadata(this);
@@ -62,7 +62,7 @@ export class SanitizedMetadata {
 
   /**
    * Get the offset of the media data in the processed input.
-   * @return The offset of the media data in the processed input.
+   * @returns The offset of the media data in the processed input.
    */
   getDataOffset(): bigint {
     const buffer = Native.SanitizedMetadata_GetDataOffset(this);
@@ -71,7 +71,7 @@ export class SanitizedMetadata {
 
   /**
    * Get the length of the media data in the processed input.
-   * @return The length of the media data in the processed input.
+   * @returns The length of the media data in the processed input.
    */
   getDataLen(): bigint {
     const buffer = Native.SanitizedMetadata_GetDataLen(this);
@@ -84,7 +84,7 @@ export class SanitizedMetadata {
  *
  * @param input An MP4 format input stream.
  * @param length The exact length of the input stream.
- * @return The sanitized metadata.
+ * @returns The sanitized metadata.
  * @throws IoError If an IO error on the input occurs.
  * @throws InvalidMediaInputError If the input could not be parsed because it was invalid.
  * @throws UnsupportedMediaInputError If the input could not be parsed because it's unsupported in some way.

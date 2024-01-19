@@ -51,7 +51,7 @@ export default class SealedSenderMultiRecipientMessage {
   /**
    * Returns the service IDs of recipients excluded from receiving the message.
    *
-   * This is enforced to be disjoint from the recipients in {@link recipientsByServiceIdString}; it
+   * This is enforced to be disjoint from the recipients in {@link #recipientsByServiceIdString}; it
    * may be used for authorization purposes or just to check that certain recipients were
    * deliberately excluded rather than accidentally.
    */
@@ -63,7 +63,7 @@ export default class SealedSenderMultiRecipientMessage {
    * Returns the Sealed Sender V2 "ReceivedMessage" payload for delivery to a particular recipient.
    *
    * `recipient` must be one of the recipients in the map returned by
-   * {@link recipientsByServiceIdString}. The same payload should be sent to all of the recipient's
+   * {@link #recipientsByServiceIdString}. The same payload should be sent to all of the recipient's
    * devices.
    */
   messageForRecipient(recipient: Recipient): Buffer {
