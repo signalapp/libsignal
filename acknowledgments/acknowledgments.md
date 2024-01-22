@@ -5734,7 +5734,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## adler 1.0.2, anyhow 1.0.79, async-trait 0.1.77, dyn-clone 1.0.16, fastrand 2.0.1, home 0.5.9, itoa 1.0.10, linkme 0.3.22, linkme-impl 0.3.22, linux-raw-sys 0.4.12, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.14, pin-project-lite 0.2.13, prettyplease 0.2.16, proc-macro-crate 1.3.1, proc-macro2 1.0.76, quote 1.0.35, rustc-hash 1.1.0, rustix 0.38.28, semver 1.0.21, serde 1.0.195, serde_derive 1.0.195, serde_json 1.0.111, syn 1.0.109, syn 2.0.48, syn-mid 0.5.4, thiserror 1.0.56, thiserror-impl 1.0.56, unicode-ident 1.0.12, utf-8 0.7.6
+## adler 1.0.2, anyhow 1.0.79, async-trait 0.1.77, dyn-clone 1.0.16, fastrand 2.0.1, home 0.5.9, itoa 1.0.10, linkme 0.3.22, linkme-impl 0.3.22, linux-raw-sys 0.4.12, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.14, pin-project-lite 0.2.13, prettyplease 0.2.16, proc-macro-crate 1.3.1, proc-macro2 1.0.76, quote 1.0.35, rustc-hash 1.1.0, rustix 0.38.28, semver 1.0.21, serde 1.0.195, serde_derive 1.0.195, serde_json 1.0.111, syn 1.0.109, syn 2.0.48, syn-mid 0.5.4, syn-mid 0.6.0, thiserror 1.0.56, thiserror-impl 1.0.56, unicode-ident 1.0.12, utf-8 0.7.6
 
 ```
 Permission is hereby granted, free of charge, to any

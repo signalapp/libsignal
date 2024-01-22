@@ -152,11 +152,11 @@ mod util;
 fn value_for_meta_key<'a>(
     meta_values: &'a Punctuated<MetaNameValue, Token![,]>,
     key: &str,
-) -> Option<&'a Lit> {
+) -> Option<&'a Expr> {
     meta_values
         .iter()
         .find(|meta| meta.path.get_ident().map_or(false, |ident| ident == key))
-        .map(|meta| &meta.lit)
+        .map(|meta| &meta.value)
 }
 
 fn name_for_meta_key(
@@ -165,8 +165,14 @@ fn name_for_meta_key(
     default: impl FnOnce() -> String,
 ) -> Result<Option<String>> {
     match value_for_meta_key(meta_values, key) {
-        Some(Lit::Str(name_str)) => Ok(Some(name_str.value())),
-        Some(Lit::Bool(LitBool { value: false, .. })) => Ok(None),
+        Some(Expr::Lit(ExprLit {
+            lit: Lit::Str(name_str),
+            ..
+        })) => Ok(Some(name_str.value())),
+        Some(Expr::Lit(ExprLit {
+            lit: Lit::Bool(LitBool { value: false, .. }),
+            ..
+        })) => Ok(None),
         Some(value) => Err(Error::new(value.span(), "name must be a string literal")),
         None => Ok(Some(default())),
     }

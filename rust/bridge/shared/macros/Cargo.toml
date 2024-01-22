@@ -17,8 +17,8 @@ proc-macro = true
 heck = "0.3.1"
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = "1.0"
-syn-mid = "0.5"
+syn = "2.0"
+syn-mid = "0.6"
 
 [dev-dependencies]
-syn = { version = "1.0", features = ["extra-traits"] }
+syn = { version = "2.0", features = ["extra-traits"] }
