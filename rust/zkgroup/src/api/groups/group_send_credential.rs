@@ -80,6 +80,19 @@ impl<T> zkcredential::attributes::Attribute for UserIdSet<T> {
     }
 }
 
+impl<T> From<zkcredential::attributes::Ciphertext<UserIdSet<T::Attribute>>>
+    for UserIdSet<zkcredential::attributes::Ciphertext<T>>
+where
+    T: zkcredential::attributes::Domain,
+{
+    fn from(value: zkcredential::attributes::Ciphertext<UserIdSet<T::Attribute>>) -> Self {
+        Self {
+            points: value.as_points(),
+            kind: PhantomData,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendCredentialResponse {
     reserved: ReservedBytes,
@@ -161,6 +174,46 @@ impl GroupSendCredentialResponse {
         Ok(GroupSendCredential {
             reserved: [0],
             credential: raw_credential,
+            user_id_set_ciphertext: user_id_set_ciphertext.into(),
+            expiration: self.expiration,
+            encryption_key_pair,
+        })
+    }
+
+    pub fn receive_with_ciphertexts(
+        self,
+        params: &ServerPublicParams,
+        group_params: &GroupSecretParams,
+        user_id_ciphertexts: impl IntoIterator<Item = UuidCiphertext>,
+        requester: &UuidCiphertext,
+        now: Timestamp,
+    ) -> Result<GroupSendCredential, ZkGroupVerificationFailure> {
+        if self.expiration % SECONDS_PER_DAY != 0 {
+            return Err(ZkGroupVerificationFailure);
+        }
+        if self.expiration.saturating_sub(now) > 7 * SECONDS_PER_DAY {
+            // Reject credentials with expirations more than 7 days from now,
+            // because the server might be trying to fingerprint us.
+            return Err(ZkGroupVerificationFailure);
+        }
+
+        let user_id_set_ciphertext = UserIdSet::from_user_ids_omitting_requester(
+            user_id_ciphertexts.into_iter().map(|c| c.ciphertext),
+            &requester.ciphertext,
+        )?;
+
+        let raw_credential = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
+            .add_attribute(&user_id_set_ciphertext)
+            .add_public_attribute(&self.expiration)
+            .verify(&params.generic_credential_public_key, self.proof)
+            .map_err(|_| ZkGroupVerificationFailure)?;
+
+        let encryption_key_pair =
+            zkcredential::attributes::KeyPair::inverse_of(&group_params.uid_enc_key_pair);
+
+        Ok(GroupSendCredential {
+            reserved: [0],
+            credential: raw_credential,
             user_id_set_ciphertext,
             expiration: self.expiration,
             encryption_key_pair,
@@ -172,9 +225,7 @@ impl GroupSendCredentialResponse {
 pub struct GroupSendCredential {
     reserved: ReservedBytes,
     credential: zkcredential::credentials::Credential,
-    // UserIdSet is *not* an encryption domain, but we just need a marker type to distinguish this
-    // from a normal Ciphertext<UidEncryptionDomain>.
-    user_id_set_ciphertext: zkcredential::attributes::Ciphertext<UserIdSet<UidStruct>>,
+    user_id_set_ciphertext: UserIdSet<crate::crypto::uid_encryption::Ciphertext>,
     expiration: Timestamp,
     // Additionally includes this because we'd need to recompute it with every message otherwise.
     encryption_key_pair: zkcredential::attributes::KeyPair<InverseUidEncryptionDomain>,

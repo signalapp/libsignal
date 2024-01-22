@@ -111,6 +111,31 @@ public final class GroupSendCredentialTest extends SecureRandomTest {
                 serverPublicParams,
                 groupSecretParams));
 
+    // Try receive with ciphertexts instead.
+    response.receive(groupCiphertexts, aliceCiphertext, serverPublicParams, groupSecretParams);
+
+    assertThrows(
+        VerificationFailedException.class,
+        () ->
+            response.receive(
+                groupCiphertexts, groupCiphertexts.get(1), serverPublicParams, groupSecretParams));
+    assertThrows(
+        VerificationFailedException.class,
+        () ->
+            response.receive(
+                groupCiphertexts.stream().skip(1).collect(Collectors.toList()),
+                aliceCiphertext,
+                serverPublicParams,
+                groupSecretParams));
+    assertThrows(
+        VerificationFailedException.class,
+        () ->
+            response.receive(
+                groupCiphertexts.stream().limit(3).collect(Collectors.toList()),
+                aliceCiphertext,
+                serverPublicParams,
+                groupSecretParams));
+
     GroupSendCredentialPresentation presentation =
         credential.present(serverPublicParams, createSecureRandom(TEST_ARRAY_32_2));
 

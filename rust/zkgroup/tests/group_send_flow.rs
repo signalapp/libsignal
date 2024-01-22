@@ -40,7 +40,7 @@ fn test_credential() {
     // server generated materials; issuance request -> issuance response
     let server_secret_params = zkgroup::ServerSecretParams::generate(randomness2);
     let credential_response = GroupSendCredentialResponse::issue_credential(
-        ciphertexts,
+        ciphertexts.iter().copied(),
         &client_user_id_ciphertext,
         DAY_ALIGNED_TIMESTAMP,
         &server_secret_params,
@@ -56,6 +56,37 @@ fn test_credential() {
             &group_secret_params,
             group_members,
             client_user_id.into(),
+            DAY_ALIGNED_TIMESTAMP,
+        )
+        .expect("issued credential should be valid");
+
+    let presentation = credential.present(&server_public_params, randomness4);
+
+    // server verification of the credential presentation
+    presentation
+        .verify(
+            group_members_without_requester,
+            DAY_ALIGNED_TIMESTAMP,
+            &server_secret_params,
+        )
+        .expect("credential should be valid for the timestamp given");
+
+    // Try again with the alternate receive implementation
+    let credential_response = GroupSendCredentialResponse::issue_credential(
+        ciphertexts.iter().copied(),
+        &client_user_id_ciphertext,
+        DAY_ALIGNED_TIMESTAMP,
+        &server_secret_params,
+        randomness3,
+    )
+    .expect("valid request");
+
+    let credential = credential_response
+        .receive_with_ciphertexts(
+            &server_public_params,
+            &group_secret_params,
+            ciphertexts.iter().copied(),
+            &client_user_id_ciphertext,
             DAY_ALIGNED_TIMESTAMP,
         )
         .expect("issued credential should be valid");

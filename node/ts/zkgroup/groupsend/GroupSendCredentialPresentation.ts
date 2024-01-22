@@ -9,6 +9,21 @@ import * as Native from '../../../Native';
 import ServerSecretParams from '../ServerSecretParams';
 import { ServiceId } from '../../Address';
 
+// For docs:
+import type GroupSendCredential from './GroupSendCredential';
+import type GroupSendCredentialResponse from './GroupSendCredentialResponse';
+import type { VerificationFailedError } from '../../Errors';
+
+/**
+ * A credential presentation indicating membership in a group, based on the set of *other* users in
+ * the group with you.
+ *
+ * Follows the usual zkgroup pattern of "issue response -> receive response -> present credential ->
+ * verify presentation".
+ *
+ * @see {@link GroupSendCredentialResponse}
+ * @see {@link GroupSendCredential}
+ */
 export default class GroupSendCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
@@ -16,6 +31,11 @@ export default class GroupSendCredentialPresentation extends ByteArray {
     super(contents, Native.GroupSendCredentialPresentation_CheckValidContents);
   }
 
+  /**
+   * Verifies that the credential is valid for a group containing the holder and `groupMembers`.
+   *
+   * @throws {VerificationFailedError} if the credential is not valid for any reason
+   */
   verify(
     groupMembers: ServiceId[],
     serverParams: ServerSecretParams,

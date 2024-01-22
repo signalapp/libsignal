@@ -260,6 +260,7 @@ public final class Native {
   public static native long GroupSendCredentialResponse_DefaultExpirationBasedOnCurrentTime();
   public static native byte[] GroupSendCredentialResponse_IssueDeterministic(byte[] concatenatedGroupMemberCiphertexts, byte[] requester, long expiration, byte[] serverParams, byte[] randomness);
   public static native byte[] GroupSendCredentialResponse_Receive(byte[] responseBytes, byte[] groupMembers, byte[] localAci, long now, byte[] serverParams, byte[] groupParams);
+  public static native byte[] GroupSendCredentialResponse_ReceiveWithCiphertexts(byte[] responseBytes, byte[] concatenatedGroupMemberCiphertexts, byte[] requester, long now, byte[] serverParams, byte[] groupParams);
 
   public static native void GroupSendCredential_CheckValidContents(byte[] paramsBytes);
   public static native byte[] GroupSendCredential_PresentDeterministic(byte[] credentialBytes, byte[] serverParams, byte[] randomness);

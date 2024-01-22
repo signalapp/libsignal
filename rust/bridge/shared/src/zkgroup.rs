@@ -1189,6 +1189,36 @@ fn GroupSendCredentialResponse_Receive(
     Ok(zkgroup::serialize(&credential))
 }
 
+#[bridge_fn]
+fn GroupSendCredentialResponse_ReceiveWithCiphertexts(
+    response_bytes: &[u8],
+    concatenated_group_member_ciphertexts: &[u8],
+    requester: Serialized<UuidCiphertext>,
+    now: Timestamp,
+    server_params: Serialized<ServerPublicParams>,
+    group_params: Serialized<GroupSecretParams>,
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let response = zkgroup::deserialize::<GroupSendCredentialResponse>(response_bytes)
+        .expect("should have been parsed previously");
+
+    assert!(concatenated_group_member_ciphertexts.len() % UUID_CIPHERTEXT_LEN == 0);
+    let user_id_ciphertexts = concatenated_group_member_ciphertexts
+        .chunks_exact(UUID_CIPHERTEXT_LEN)
+        .map(|serialized| {
+            zkgroup::deserialize::<UuidCiphertext>(serialized)
+                .expect("should have been parsed previously")
+        });
+
+    let credential = response.receive_with_ciphertexts(
+        &server_params,
+        &group_params,
+        user_id_ciphertexts,
+        &requester,
+        now.as_seconds(),
+    )?;
+    Ok(zkgroup::serialize(&credential))
+}
+
 #[bridge_fn_void]
 fn GroupSendCredential_CheckValidContents(
     params_bytes: &[u8],

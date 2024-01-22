@@ -866,6 +866,38 @@ describe('ZKGroup', () => {
         )
       );
 
+      // Try the other receive too
+      void response.receiveWithCiphertexts(
+        groupCiphertexts,
+        aliceCiphertext,
+        serverPublicParams,
+        groupSecretParams
+      );
+      assert.throws(() =>
+        response.receiveWithCiphertexts(
+          groupCiphertexts,
+          groupCiphertexts[1],
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receiveWithCiphertexts(
+          groupCiphertexts.slice(1),
+          aliceCiphertext,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receiveWithCiphertexts(
+          groupCiphertexts.slice(0, -1),
+          aliceCiphertext,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+
       const presentation = credential.presentWithRandom(
         serverPublicParams,
         TEST_ARRAY_32_2

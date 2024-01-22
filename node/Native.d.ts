@@ -196,6 +196,7 @@ export function GroupSendCredentialResponse_CheckValidContents(responseBytes: Bu
 export function GroupSendCredentialResponse_DefaultExpirationBasedOnCurrentTime(): Timestamp;
 export function GroupSendCredentialResponse_IssueDeterministic(concatenatedGroupMemberCiphertexts: Buffer, requester: Serialized<UuidCiphertext>, expiration: Timestamp, serverParams: Serialized<ServerSecretParams>, randomness: Buffer): Buffer;
 export function GroupSendCredentialResponse_Receive(responseBytes: Buffer, groupMembers: Buffer, localAci: Buffer, now: Timestamp, serverParams: Serialized<ServerPublicParams>, groupParams: Serialized<GroupSecretParams>): Buffer;
+export function GroupSendCredentialResponse_ReceiveWithCiphertexts(responseBytes: Buffer, concatenatedGroupMemberCiphertexts: Buffer, requester: Serialized<UuidCiphertext>, now: Timestamp, serverParams: Serialized<ServerPublicParams>, groupParams: Serialized<GroupSecretParams>): Buffer;
 export function GroupSendCredential_CheckValidContents(paramsBytes: Buffer): void;
 export function GroupSendCredential_PresentDeterministic(credentialBytes: Buffer, serverParams: Serialized<ServerPublicParams>, randomness: Buffer): Buffer;
 export function HKDF_DeriveSecrets(outputLength: number, ikm: Buffer, label: Buffer | null, salt: Buffer | null): Buffer;

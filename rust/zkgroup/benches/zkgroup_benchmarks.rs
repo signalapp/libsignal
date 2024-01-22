@@ -327,6 +327,25 @@ pub fn benchmark_group_send(c: &mut Criterion) {
             },
         );
 
+        benchmark_group.bench_function(
+            BenchmarkId::new("deserialize_and_receive_with_ciphertexts", group_size),
+            |b| {
+                b.iter(|| {
+                    let credential_response: zkgroup::groups::GroupSendCredentialResponse =
+                        zkgroup::deserialize(&serialized_credential_response).expect("valid");
+                    credential_response
+                        .receive_with_ciphertexts(
+                            &server_public_params,
+                            &group_secret_params,
+                            group_ciphertexts.clone().copied(),
+                            &all_member_ciphertexts[0],
+                            DAY_ALIGNED_TIMESTAMP,
+                        )
+                        .expect("issued credential should be valid")
+                })
+            },
+        );
+
         let presentation = credential.present(&server_public_params, zkgroup::TEST_ARRAY_32_3);
 
         benchmark_group.bench_function(BenchmarkId::new("present", group_size), |b| {

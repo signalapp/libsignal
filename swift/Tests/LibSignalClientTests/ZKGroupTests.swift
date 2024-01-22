@@ -545,6 +545,12 @@ class ZKGroupTests: TestCaseBase {
     XCTAssertThrowsError(try response.receive(groupMembers: [bobAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
     XCTAssertThrowsError(try response.receive(groupMembers: [aliceAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
 
+    // Try again with the alternate receive.
+    _ = try! response.receive(groupMembers: groupCiphertexts, localUser: aliceCiphertext, serverParams: serverPublicParams, groupParams: groupSecretParams)
+    XCTAssertThrowsError(try response.receive(groupMembers: groupCiphertexts, localUser: groupCiphertexts[1], serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: Array(groupCiphertexts.dropFirst()), localUser: aliceCiphertext, serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: Array(groupCiphertexts.dropLast()), localUser: aliceCiphertext, serverParams: serverPublicParams, groupParams: groupSecretParams))
+
     let presentation = credential.present(serverParams: serverPublicParams, randomness: TEST_ARRAY_32_3)
 
     // Server
