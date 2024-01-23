@@ -6,7 +6,7 @@
 //! Signal remote message backup utilities.
 //!
 use futures::{AsyncRead, AsyncSeek};
-use protobuf::{Message as _, MessageDyn};
+use protobuf::Message as _;
 
 use crate::key::MessageBackupKey;
 use crate::parse::VarintDelimitedReader;
@@ -21,7 +21,7 @@ pub mod unknown;
 
 pub struct BackupReader<R> {
     reader: VarintDelimitedReader<R>,
-    pub visitor: fn(&dyn MessageDyn),
+    pub visitor: fn(&dyn std::fmt::Debug),
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -107,7 +107,7 @@ impl<R: AsyncRead + AsyncSeek + Unpin> BackupReader<frame::FramesReader<R>> {
 
 async fn read_all_frames<M: backup::method::Method>(
     mut reader: VarintDelimitedReader<impl AsyncRead + Unpin>,
-    mut visitor: impl FnMut(&dyn MessageDyn),
+    mut visitor: impl FnMut(&dyn std::fmt::Debug),
     unknown_fields: &mut impl Extend<FoundUnknownField>,
 ) -> Result<backup::PartialBackup<M>, Error> {
     let mut add_found_unknown = |found_unknown: Vec<_>, index| {

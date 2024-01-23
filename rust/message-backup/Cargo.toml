@@ -10,6 +10,7 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [dependencies]
+libsignal-message-backup-macros = { path = "macros" }
 libsignal-protocol = { path = "../protocol" }
 signal-crypto = { path = "../crypto" }
 usernames = { path = "../usernames" }

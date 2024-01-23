@@ -4,7 +4,6 @@
 //
 
 use libsignal_protocol::Aci;
-use protobuf::MessageDyn;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ParseHexError<const N: usize> {
@@ -42,16 +41,16 @@ pub(crate) enum ParseVerbosity {
     PrintPretty,
 }
 
-fn print_oneline(message: &dyn MessageDyn) {
+fn print_oneline(message: &dyn std::fmt::Debug) {
     eprintln!("{message:?}")
 }
 
-fn print_pretty(message: &dyn MessageDyn) {
+fn print_pretty(message: &dyn std::fmt::Debug) {
     eprintln!("{message:#?}")
 }
 
 impl ParseVerbosity {
-    pub(crate) fn into_visitor(self) -> Option<fn(&dyn MessageDyn)> {
+    pub(crate) fn into_visitor(self) -> Option<fn(&dyn std::fmt::Debug)> {
         match self {
             ParseVerbosity::None => None,
             ParseVerbosity::PrintOneLine => Some(print_oneline),

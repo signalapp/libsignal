@@ -28,6 +28,15 @@ pub(super) fn visit_unknown_fields(
     }
 
     for field in message.descriptor_dyn().fields() {
+        let containing_oneof = field.containing_oneof();
+        let path = match containing_oneof.as_ref() {
+            None => path,
+            Some(oneof) => Path::Branch {
+                parent: &path,
+                field_name: oneof.name(),
+                part: Part::Field,
+            },
+        };
         visit_child_unknown_fields(field.get_reflect(message), path, field.name(), visitor)?
     }
 

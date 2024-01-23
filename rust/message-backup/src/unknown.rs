@@ -7,9 +7,10 @@
 
 use std::ops::{ControlFlow, Deref};
 
-use protobuf::MessageFull;
-
+#[cfg(test)]
 mod visit_dyn;
+
+pub(crate) mod visit_static;
 
 /// Formatter for a sequence of [`PathPart`]s.
 ///
@@ -57,7 +58,7 @@ pub enum UnknownValue {
 ///
 /// Implemented as a singly linked list to avoid allocation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum Path<'a> {
+pub(crate) enum Path<'a> {
     Root,
     Branch {
         parent: &'a Path<'a>,
@@ -68,7 +69,7 @@ enum Path<'a> {
 
 /// The part of a logical field that is being referenced.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum Part<'a> {
+pub(crate) enum Part<'a> {
     Field,
     MapValue { key: MapKey<'a> },
     Repeated { index: usize },
@@ -76,7 +77,7 @@ enum Part<'a> {
 
 /// Key in a protobuf map field.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, displaydoc::Display)]
-enum MapKey<'a> {
+pub(crate) enum MapKey<'a> {
     /// {0}
     U32(u32),
     /// {0}
@@ -90,6 +91,22 @@ enum MapKey<'a> {
     /// {0:?}
     String(&'a str),
 }
+
+macro_rules! impl_map_key_from {
+    ($ty:ty, $constructor:ident $(, $maybe_borrow:tt)?) => {
+        impl<'a> From<&'a $ty> for MapKey<'a> {
+            fn from(value: &'a $ty) -> Self {
+                Self::$constructor($($maybe_borrow)? *value)
+            }
+        }
+    };
+}
+impl_map_key_from!(u32, U32);
+impl_map_key_from!(u64, U64);
+impl_map_key_from!(i32, I32);
+impl_map_key_from!(i64, I64);
+impl_map_key_from!(bool, Bool);
+impl_map_key_from!(String, String, &);
 
 impl Path<'_> {
     fn owned_parts(&self) -> Vec<PathPart> {
@@ -141,13 +158,10 @@ pub(crate) trait VisitUnknownFields {
 pub trait UnknownFieldVisitor: FnMut(Vec<PathPart>, UnknownValue) -> ControlFlow<()> {}
 impl<F: FnMut(Vec<PathPart>, UnknownValue) -> ControlFlow<()>> UnknownFieldVisitor for F {}
 
-impl<M: MessageFull> VisitUnknownFields for M {
+impl<M: visit_static::VisitUnknownFields> VisitUnknownFields for M {
     fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, mut visitor: F) {
-        // Currently implemented using dynamic traversal of protobuf
-        // descriptors.
-        // TODO: evaluate speed and code size versus statically-dispatched
-        // traversal.
-        let _: ControlFlow<()> = visit_dyn::visit_unknown_fields(self, Path::Root, &mut visitor);
+        let _: ControlFlow<()> =
+            visit_static::VisitUnknownFields::visit_unknown_fields(self, Path::Root, &mut visitor);
     }
 }
 
@@ -187,8 +201,8 @@ impl<V: VisitUnknownFields> VisitUnknownFieldsExt for V {
 mod test {
     use std::collections::HashMap;
 
-    use protobuf::{Message, MessageFull};
-    use test_case::test_case;
+    use protobuf::Message;
+    use test_case::{test_case, test_matrix};
 
     use super::*;
 
@@ -234,12 +248,45 @@ mod test {
         unreachable!("unexpectedly visited")
     }
 
-    #[test_case(proto::TestMessage::default())]
-    #[test_case(proto::TestMessage::fake_data())]
-    #[test_case(proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessage>())]
-    #[test_case(proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessageWithExtraFields>())]
-    fn no_extra_fields(proto: impl MessageFull) {
-        proto.visit_unknown_fields(never_visits);
+    struct ViaProtoDescriptors<M>(M);
+    struct ViaStaticDispatch<M>(M);
+
+    impl VisitUnknownFields for ViaProtoDescriptors<proto::TestMessage> {
+        fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, mut visitor: F) {
+            let _: ControlFlow<()> =
+                visit_dyn::visit_unknown_fields(&self.0, Path::Root, &mut visitor);
+        }
+    }
+
+    impl VisitUnknownFields for ViaProtoDescriptors<proto::TestMessageWithExtraFields> {
+        fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, mut visitor: F) {
+            let _: ControlFlow<()> =
+                visit_dyn::visit_unknown_fields(&self.0, Path::Root, &mut visitor);
+        }
+    }
+
+    impl<M: visit_static::VisitUnknownFields> VisitUnknownFields for ViaStaticDispatch<M> {
+        fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, mut visitor: F) {
+            let _: ControlFlow<()> = visit_static::VisitUnknownFields::visit_unknown_fields(
+                &self.0,
+                Path::Root,
+                &mut visitor,
+            );
+        }
+    }
+
+    #[test_matrix(
+        (
+            proto::TestMessage::default(),
+            proto::TestMessage::fake_data(),
+            proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessage>(),
+            proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessageWithExtraFields>(),
+        ),
+        (ViaProtoDescriptors, ViaStaticDispatch)
+    )]
+    fn no_extra_fields<M, V: VisitUnknownFields>(proto: M, to_visitor: impl FnOnce(M) -> V) {
+        let visitor = to_visitor(proto);
+        visitor.visit_unknown_fields(never_visits);
     }
 
     macro_rules! modifier {
@@ -288,36 +335,44 @@ mod test {
         )])
     );
 
-    #[test_case(oneof_extra_int, UnknownValue::Field {tag: 612})]
-    #[test_case(oneof_extra_string, UnknownValue::Field {tag: 611})]
-    #[test_case(oneof_extra_message, UnknownValue::Field {tag: 610})]
-    #[test_case(extra_string, UnknownValue::Field {tag: 701})]
-    #[test_case(extra_bytes, UnknownValue::Field {tag: 731})]
-    #[test_case(extra_int64, UnknownValue::Field {tag: 711})]
-    #[test_case(extra_repeated_message, UnknownValue::Field {tag: 721})]
-    #[test_case(extra_repeated_uint64, UnknownValue::Field {tag: 741})]
-    #[test_case(extra_enum, UnknownValue::Field {tag: 751})]
-    #[test_case(extra_nested, UnknownValue::Field {tag: 761})]
-    #[test_case(extra_map, UnknownValue::Field {tag: 771})]
-    fn has_unknown_fields_top_level(
-        modifier: fn(&mut proto::TestMessageWithExtraFields),
-        expected_value: UnknownValue,
+    #[test_matrix(
+        (
+            (oneof_extra_int, UnknownValue::Field {tag: 612}),
+            (oneof_extra_string, UnknownValue::Field {tag: 611}),
+            (oneof_extra_message, UnknownValue::Field {tag: 610}),
+            (extra_string, UnknownValue::Field {tag: 701}),
+            (extra_bytes, UnknownValue::Field {tag: 731}),
+            (extra_int64, UnknownValue::Field {tag: 711}),
+            (extra_repeated_message, UnknownValue::Field {tag: 721}),
+            (extra_repeated_uint64, UnknownValue::Field {tag: 741}),
+            (extra_enum, UnknownValue::Field {tag: 751}),
+            (extra_nested, UnknownValue::Field {tag: 761}),
+            (extra_map, UnknownValue::Field {tag: 771}),
+        ),
+        (ViaProtoDescriptors, ViaStaticDispatch)
+    )]
+    fn has_unknown_fields_top_level<V: VisitUnknownFields>(
+        (modifier, expected_value): (fn(&mut proto::TestMessageWithExtraFields), UnknownValue),
+        to_visitor: impl FnOnce(proto::TestMessage) -> V,
     ) {
         let mut message =
             proto::TestMessage::fake_data().wire_cast_as::<proto::TestMessageWithExtraFields>();
         modifier(&mut message);
 
-        let (path, value) = message
-            .wire_cast_as::<proto::TestMessage>()
-            .find_unknown_field()
-            .expect("has unknown");
+        let message = message.wire_cast_as::<proto::TestMessage>();
+        let visitor = to_visitor(message);
+
+        let (path, value) = visitor.find_unknown_field().expect("has unknown");
         assert_eq!(value, expected_value);
 
         assert_eq!(path, &[]);
     }
 
-    #[test]
-    fn unknown_fields_in_nested_message() {
+    #[test_case(ViaProtoDescriptors)]
+    #[test_case(ViaStaticDispatch)]
+    fn unknown_fields_in_nested_message<V: VisitUnknownFields>(
+        to_visitor: impl FnOnce(proto::TestMessage) -> V,
+    ) {
         let message = proto::TestMessageWithExtraFields {
             nested_message: Some(proto::TestMessageWithExtraFields {
                 repeated_message: vec![
@@ -352,12 +407,12 @@ mod test {
                 UnknownValue::Field { tag: 711 },
             ),
             (
-                "map[\"map_key\"].oneof_message.enum",
+                "map[\"map_key\"].oneof.oneof_message.enum",
                 UnknownValue::EnumValue { number: 3 },
             ),
         ];
 
-        let found: Vec<_> = message
+        let found: Vec<_> = to_visitor(message)
             .collect_unknown_fields()
             .into_iter()
             .map(|(key, value)| {
