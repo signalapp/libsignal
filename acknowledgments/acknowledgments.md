@@ -2472,7 +2472,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## lazy_static 1.4.0, rayon 1.8.0, rayon-core 1.12.0
+## lazy_static 1.4.0, rayon 1.8.1, rayon-core 1.12.1
 
 ```
 Copyright (c) 2010 The Rust Project Developers
@@ -2773,7 +2773,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## bitflags 1.3.2, bitflags 2.4.1, glob 0.3.1, log 0.4.20, num-integer 0.1.45, num-traits 0.2.17, regex 1.10.2, regex-automata 0.4.3, regex-syntax 0.8.2, semver 0.9.0
+## bitflags 1.3.2, bitflags 2.4.2, glob 0.3.1, log 0.4.20, num-integer 0.1.45, num-traits 0.2.17, regex 1.10.3, regex-automata 0.4.4, regex-syntax 0.8.2, semver 0.9.0
 
 ```
 Copyright (c) 2014 The Rust Project Developers
@@ -2804,7 +2804,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## uuid 1.6.1
+## uuid 1.7.0
 
 ```
 Copyright (c) 2014 The Rust Project Developers
@@ -3087,7 +3087,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## gimli 0.28.1, heck 0.3.3, heck 0.4.1, peeking_take_while 0.1.2, unicode-bidi 0.3.14, unicode-normalization 0.1.22, unicode-segmentation 1.10.1
+## gimli 0.28.1, heck 0.3.3, heck 0.4.1, peeking_take_while 0.1.2, unicode-bidi 0.3.15, unicode-normalization 0.1.22, unicode-segmentation 1.10.1
 
 ```
 Copyright (c) 2015 The Rust Project Developers
@@ -4045,7 +4045,7 @@ SOFTWARE.
 
 ```
 
-## h2 0.4.1
+## h2 0.4.2
 
 ```
 Copyright (c) 2017 h2 authors
@@ -4294,7 +4294,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## smallvec 1.11.2
+## smallvec 1.13.1
 
 ```
 Copyright (c) 2018 The Servo Project Developers
@@ -5025,10 +5025,10 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## argon2 0.5.2
+## argon2 0.5.3
 
 ```
-Copyright (c) 2021-2023 The RustCrypto Project Developers
+Copyright (c) 2021-2024 The RustCrypto Project Developers
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -5169,7 +5169,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## anstream 0.6.7, anstyle-query 1.0.2, clap 4.4.16, colorchoice 1.0.0, toml_datetime 0.6.5, toml_edit 0.19.15
+## anstream 0.6.11, anstyle-query 1.0.2, clap 4.4.18, colorchoice 1.0.0, toml_datetime 0.6.5, toml_edit 0.19.15
 
 ```
 Copyright (c) Individual contributors
@@ -5734,7 +5734,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## adler 1.0.2, anyhow 1.0.79, async-trait 0.1.77, dyn-clone 1.0.16, fastrand 2.0.1, home 0.5.9, itoa 1.0.10, linkme 0.3.22, linkme-impl 0.3.22, linux-raw-sys 0.4.12, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.14, pin-project-lite 0.2.13, prettyplease 0.2.16, proc-macro-crate 1.3.1, proc-macro2 1.0.76, quote 1.0.35, rustc-hash 1.1.0, rustix 0.38.28, semver 1.0.21, serde 1.0.195, serde_derive 1.0.195, serde_json 1.0.111, syn 1.0.109, syn 2.0.48, syn-mid 0.5.4, syn-mid 0.6.0, thiserror 1.0.56, thiserror-impl 1.0.56, unicode-ident 1.0.12, utf-8 0.7.6
+## adler 1.0.2, anyhow 1.0.79, async-trait 0.1.77, dyn-clone 1.0.16, fastrand 2.0.1, home 0.5.9, itoa 1.0.10, linkme 0.3.22, linkme-impl 0.3.22, linux-raw-sys 0.4.13, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.14, pin-project-lite 0.2.13, prettyplease 0.2.16, proc-macro-crate 1.3.1, proc-macro2 1.0.78, quote 1.0.35, rustc-hash 1.1.0, rustix 0.38.30, semver 1.0.21, serde 1.0.195, serde_derive 1.0.195, serde_json 1.0.111, syn 1.0.109, syn 2.0.48, syn-mid 0.5.4, syn-mid 0.6.0, thiserror 1.0.56, thiserror-impl 1.0.56, unicode-ident 1.0.12, utf-8 0.7.6
 
 ```
 Permission is hereby granted, free of charge, to any
@@ -5880,7 +5880,7 @@ SOFTWARE.
 
 ```
 
-## chrono 0.4.31
+## chrono 0.4.32
 
 ```
 The MIT License (MIT)
@@ -6017,7 +6017,7 @@ THE SOFTWARE.
 
 ```
 
-## shlex 1.2.0
+## shlex 1.3.0
 
 ```
 The MIT License (MIT)
@@ -6098,7 +6098,7 @@ SOFTWARE.
 
 ```
 
-## clap_builder 4.4.16, clap_derive 4.4.7, clap_lex 0.6.0
+## clap_builder 4.4.18, clap_derive 4.4.7, clap_lex 0.6.0
 
 ```
 The MIT License (MIT)
@@ -6233,7 +6233,7 @@ THE SOFTWARE.
 
 ```
 
-## async-compression 0.4.5
+## async-compression 0.4.6
 
 ```
 The MIT License (MIT)
