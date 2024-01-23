@@ -27,6 +27,7 @@ hex = "0.4"
 hex-literal = "0.4.1"
 criterion = "0.5"
 bytemuck = "1.13.0"
+nonzero_ext = "0.3.0"
 test-case = "3.2.1"
 
 [build-dependencies]

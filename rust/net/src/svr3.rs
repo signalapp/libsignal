@@ -12,6 +12,7 @@ use futures_util::future::try_join_all;
 use libsignal_svr3::{Backup, MaskedShareSet, Restore};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU32;
 
 const MASKED_SHARE_SET_FORMAT: u8 = 0;
 
@@ -136,7 +137,7 @@ pub trait PpssOps: PpssSetup {
         connections: &mut Self::Connections,
         password: &str,
         secret: [u8; 32],
-        max_tries: u32,
+        max_tries: NonZeroU32,
         rng: &mut impl CryptoRngCore,
     ) -> Result<OpaqueMaskedShareSet, Error>;
 
@@ -154,7 +155,7 @@ impl<Env: PpssSetup> PpssOps for Env {
         connections: &mut Self::Connections,
         password: &str,
         secret: [u8; 32],
-        max_tries: u32,
+        max_tries: NonZeroU32,
         rng: &mut impl CryptoRngCore,
     ) -> Result<OpaqueMaskedShareSet, Error> {
         let server_ids = Self::server_ids().as_mut().to_owned();

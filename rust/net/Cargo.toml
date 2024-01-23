@@ -48,6 +48,7 @@ prost-build = "0.12.1"
 assert_matches = "1.5.0"
 clap = { version = "4.4.11", features = ["derive"] }
 env_logger = "0.10.0"
+nonzero_ext = "0.3.0"
 snow = "0.9.3"
 tokio = { version = "1", features = ["test-util", "rt-multi-thread"] }
 tokio-stream = "0.1.14"

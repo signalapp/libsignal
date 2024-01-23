@@ -14,6 +14,7 @@ use std::time::Duration;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
+use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use attest::svr2::RaftConfig;
@@ -128,10 +129,15 @@ async fn main() {
     println!("Secret to be stored: {}", hex::encode(secret));
 
     let share_set_bytes = {
-        let opaque_share_set =
-            TwoForTwoEnv::backup(&mut connect().await, &args.password, secret, 10, &mut rng)
-                .await
-                .expect("can multi backup");
+        let opaque_share_set = TwoForTwoEnv::backup(
+            &mut connect().await,
+            &args.password,
+            secret,
+            nonzero!(10u32),
+            &mut rng,
+        )
+        .await
+        .expect("can multi backup");
         opaque_share_set.serialize().expect("can serialize")
     };
     println!("Share set: {}", hex::encode(&share_set_bytes));
