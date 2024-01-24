@@ -12,6 +12,7 @@ use crate::key::MessageBackupKey;
 use crate::parse::VarintDelimitedReader;
 use crate::unknown::{PathPart, UnknownValue, VisitUnknownFieldsExt as _};
 
+pub mod args;
 pub mod backup;
 pub mod frame;
 pub mod key;

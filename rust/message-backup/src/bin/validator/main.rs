@@ -5,16 +5,18 @@
 
 use std::io::Read as _;
 
-use args::ParseVerbosity;
 use clap::{Args, Parser};
 use futures::io::{AllowStdIo, Cursor};
 use futures::AsyncRead;
 
+use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::frame::FramesReader;
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_message_backup::unknown::FormatPath;
 use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
 use libsignal_protocol::Aci;
+
+use crate::args::ParseVerbosity;
 
 mod args;
 
@@ -51,10 +53,10 @@ struct Cli {
 #[group(conflicts_with = "KeyParts")]
 struct DeriveKey {
     /// account master key, used with the ACI to derive the message backup key
-    #[arg(long, value_parser=args::parse_hex_bytes::<32>, requires="aci")]
+    #[arg(long, value_parser=parse_hex_bytes::<32>, requires="aci")]
     master_key: Option<[u8; BackupKey::MASTER_KEY_LEN]>,
     /// ACI for the backup creator
-    #[arg(long, value_parser=args::parse_aci, requires="master_key")]
+    #[arg(long, value_parser=parse_aci, requires="master_key")]
     aci: Option<Aci>,
 }
 
@@ -62,13 +64,13 @@ struct DeriveKey {
 #[group(conflicts_with = "DeriveKey")]
 struct KeyParts {
     /// HMAC key, used if the master key is not provided
-    #[arg(long, value_parser=args::parse_hex_bytes::<32>, requires_all=["aes_key", "iv"])]
+    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["aes_key", "iv"])]
     hmac_key: Option<[u8; MessageBackupKey::HMAC_KEY_LEN]>,
     /// AES encryption key, used if the master key is not provided
-    #[arg(long, value_parser=args::parse_hex_bytes::<32>, requires_all=["hmac_key", "iv"])]
+    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["hmac_key", "iv"])]
     aes_key: Option<[u8; MessageBackupKey::AES_KEY_LEN]>,
     /// AES IV bytes, used if the master key is not provided
-    #[arg(long, value_parser=args::parse_hex_bytes::<16>, requires_all=["hmac_key", "aes_key"])]
+    #[arg(long, value_parser=parse_hex_bytes::<16>, requires_all=["hmac_key", "aes_key"])]
     iv: Option<[u8; MessageBackupKey::IV_LEN]>,
 }
 
