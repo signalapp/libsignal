@@ -5566,7 +5566,7 @@ SOFTWARE.
 
 ```
 
-## snow 0.9.4
+## snow 0.9.5
 
 ```
 MIT License

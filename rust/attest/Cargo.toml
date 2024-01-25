@@ -29,7 +29,7 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 sha2 = "0.10"
-snow = { version = "0.9.3", default-features = false }
+snow = { version = "0.9.5", default-features = false }
 static_assertions = "1.1"
 subtle = "2.5"
 uuid = "1.1.2"
@@ -37,7 +37,7 @@ variant_count = "1.1"
 x25519-dalek = "2.0.0"
 
 [dev-dependencies]
-snow = { version = "0.9.3", features = ["default-resolver"] }
+snow = { version = "0.9.5", features = ["default-resolver"] }
 
 [build-dependencies]
 prost-build = "0.12"
