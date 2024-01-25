@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
-use crate::chat::{ChatService, Request, ResponseProto};
+use crate::chat::{ChatService, Request, Response};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::{LogSafeDisplay, NetError};
 use crate::infra::reconnect::{ServiceConnector, ServiceWithReconnect};
@@ -22,7 +22,7 @@ where
     C::Channel: Send + Sync,
     C::Error: Send + Sync + Debug + LogSafeDisplay,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<ResponseProto, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
         let service = self.service_clone().await;
         match service {
             Some(s) => s.send(msg, timeout).await,

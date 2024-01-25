@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
-use crate::chat::{ChatService, Request, ResponseProto};
+use crate::chat::{ChatService, Request, Response};
 use crate::infra::errors::NetError;
 use crate::infra::http::{
     http2_channel, AggregatingHttp2Client, AggregatingHttpClient, Http2Channel, Http2Connection,
@@ -56,41 +56,21 @@ impl<C: TransportConnector> ServiceConnector for ChatOverHttp2ServiceConnector<C
 
 #[async_trait]
 impl ChatService for ChatOverHttp2 {
-    async fn send(
-        &self,
-        msg: Request,
-        timeout_duration: Duration,
-    ) -> Result<ResponseProto, NetError> {
+    async fn send(&self, msg: Request, timeout_duration: Duration) -> Result<Response, NetError> {
         let (path, builder, body) = msg.into_parts();
         let mut request_sender = self.request_sender.clone();
         let response_future = request_sender.send_request_aggregate_response(path, builder, body);
         match timeout(timeout_duration, NetError::Timeout, response_future).await {
             Ok((parts, aggregated_body)) => {
-                let status: Option<u32> = Some(parts.status.as_u16().into());
-                let message: Option<String> = Some(parts.status.to_string());
+                let status = parts.status;
                 let body = match aggregated_body.len() {
                     0 => None,
-                    _ => Some(aggregated_body.to_vec()),
+                    _ => Some(aggregated_body.to_vec().into_boxed_slice()),
                 };
-
-                let headers: Vec<String> = parts
-                    .headers
-                    .iter()
-                    .map(|header| {
-                        format!(
-                            "{}: {}",
-                            header.0.as_str(),
-                            header.1.to_str().expect("has header value")
-                        )
-                    })
-                    .collect();
-
-                Ok(ResponseProto {
-                    id: None,
+                Ok(Response {
                     status,
-                    message,
+                    headers: parts.headers,
                     body,
-                    headers,
                 })
             }
             Err(err) => Err(err),
@@ -159,8 +139,8 @@ mod test {
         assert_eq!(start, Instant::now());
 
         let (response1, response2) = tokio::join!(response1_future, response2_future);
-        assert_eq!(200, response1.unwrap().status.unwrap());
-        assert_eq!(200, response2.unwrap().status.unwrap());
+        assert_eq!(200, response1.unwrap().status.as_u16());
+        assert_eq!(200, response2.unwrap().status.as_u16());
 
         // And now making sure that both requests were in fact processed asynchronously,
         // i.e. one was not blocked on the other.

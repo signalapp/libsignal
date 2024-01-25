@@ -16,7 +16,7 @@ use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio_tungstenite::WebSocketStream;
 
 use crate::chat::{
-    ChatMessageType, ChatService, MessageProto, Request, RequestProto, ResponseProto,
+    ChatMessageType, ChatService, MessageProto, Request, RequestProto, Response, ResponseProto,
 };
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
@@ -226,7 +226,7 @@ impl<S> ChatService for ChatOverWebSocket<S>
 where
     S: AsyncDuplexStream,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<ResponseProto, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
         // checking if channel has been closed
         if self.service_status.is_stopped() {
             return Err(NetError::ChannelClosed);
@@ -248,7 +248,9 @@ where
             result = response_rx => Ok(result.expect("sender is not dropped before receiver")),
             _ = tokio::time::sleep(timeout) => Err(NetError::Timeout),
             _ = self.service_status.stopped() => Err(NetError::ChannelClosed)
-        };
+        }
+        .and_then(|response_proto| response_proto.try_into());
+
         if res.is_err() {
             // in case of an error we need to clean up the listener from the `pending_messages` map
             let map = &mut self.pending_messages.lock().await;
