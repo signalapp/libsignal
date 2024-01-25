@@ -397,7 +397,7 @@ pub(crate) mod test {
                 443,
                 Default::default(),
                 RootCertificates::Signal,
-                DnsResolver::System,
+                DnsResolver::default().into(),
             );
             SingleRouteThrottlingConnectionManager::new(connection_params, TIMEOUT_DURATION)
         }

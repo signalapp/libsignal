@@ -5,6 +5,7 @@
 
 use std::convert::TryInto as _;
 use std::future::Future;
+use std::sync::Arc;
 use std::time::Duration;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
@@ -69,6 +70,7 @@ impl Environment {
     }
 
     fn cdsi_fallback_connection_params(self) -> Vec<ConnectionParams> {
+        let dns_resolver = Arc::new(DnsResolver::default());
         match self {
             Environment::Prod => vec![
                 ConnectionParams {
@@ -77,7 +79,7 @@ impl Environment {
                     port: 443,
                     http_request_decorator: HttpRequestDecorator::PathPrefix("/service").into(),
                     certs: RootCertificates::Native,
-                    dns_resolver: DnsResolver::System,
+                    dns_resolver: dns_resolver.clone(),
                 },
                 ConnectionParams {
                     sni: "pintrest.com".into(),
@@ -85,7 +87,7 @@ impl Environment {
                     port: 443,
                     http_request_decorator: HttpRequestDecoratorSeq::default(),
                     certs: RootCertificates::Native,
-                    dns_resolver: DnsResolver::System,
+                    dns_resolver: dns_resolver.clone(),
                 },
             ],
             Environment::Staging => vec![ConnectionParams {
@@ -94,7 +96,7 @@ impl Environment {
                 port: 443,
                 http_request_decorator: HttpRequestDecorator::PathPrefix("/service-staging").into(),
                 certs: RootCertificates::Native,
-                dns_resolver: DnsResolver::System,
+                dns_resolver,
             }],
         }
     }

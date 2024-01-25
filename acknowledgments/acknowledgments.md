@@ -2918,7 +2918,7 @@ THE SOFTWARE.
 
 ```
 
-## either 1.9.0, itertools 0.10.5, itertools 0.11.0, petgraph 0.6.4
+## either 1.9.0, itertools 0.11.0, itertools 0.12.0, petgraph 0.6.4
 
 ```
 Copyright (c) 2015
@@ -5620,7 +5620,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0, curve25519-dalek-derive 0.1.0, half 1.8.2, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.0, pqcrypto-traits 0.3.5, protobuf-parse 3.3.0, protobuf-support 3.3.0
+## cesu8 1.1.0, const-str 0.5.6, curve25519-dalek-derive 0.1.0, half 1.8.2, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.0, pqcrypto-traits 0.3.5, protobuf-parse 3.3.0, protobuf-support 3.3.0
 
 ```
 MIT License

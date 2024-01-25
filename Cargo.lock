@@ -667,6 +667,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-str"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aca749d3d3f5b87a0d6100509879f9cf486ab510803a4a4e1001da1ff61c2bd6"
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1636,6 +1642,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1885,6 +1900,7 @@ dependencies = [
  "boring",
  "bytes",
  "clap",
+ "const-str",
  "derive-where",
  "displaydoc",
  "env_logger",
@@ -1896,6 +1912,7 @@ dependencies = [
  "http 1.0.0",
  "http-body-util",
  "hyper 1.1.0",
+ "itertools 0.12.0",
  "lazy_static",
  "libsignal-core",
  "libsignal-svr3",
@@ -1958,7 +1975,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "indexmap 2.1.0",
- "itertools 0.10.5",
+ "itertools 0.12.0",
  "libsignal-core",
  "log",
  "num_enum",

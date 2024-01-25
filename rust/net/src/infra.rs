@@ -6,19 +6,21 @@
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::Arc;
+use std::time::Duration;
 
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
 use boring::ssl::{SslConnector, SslConnectorBuilder, SslMethod};
+use futures_util::TryFutureExt;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring::SslStream;
 
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
-use crate::infra::dns::DnsResolver::System;
 use crate::infra::errors::NetError;
+use crate::utils::first_ok;
 
 pub mod certs;
 pub mod connection_manager;
@@ -29,6 +31,8 @@ pub(crate) mod reconnect;
 pub(crate) mod tokio_executor;
 pub(crate) mod tokio_io;
 pub(crate) mod ws;
+
+const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug)]
@@ -69,7 +73,7 @@ pub struct ConnectionParams {
     pub port: u16,
     pub http_request_decorator: HttpRequestDecoratorSeq,
     pub certs: RootCertificates,
-    pub dns_resolver: DnsResolver,
+    pub dns_resolver: Arc<DnsResolver>,
 }
 
 impl ConnectionParams {
@@ -80,7 +84,7 @@ impl ConnectionParams {
         port: u16,
         http_request_decorator: HttpRequestDecoratorSeq,
         certs: RootCertificates,
-        dns_resolver: DnsResolver,
+        dns_resolver: Arc<DnsResolver>,
     ) -> Self {
         Self {
             sni: Arc::from(sni),
@@ -111,7 +115,7 @@ impl ConnectionParams {
             port: 443,
             http_request_decorator: Default::default(),
             certs: RootCertificates::Signal,
-            dns_resolver: System,
+            dns_resolver: DnsResolver::default().into(),
         }
     }
 }
@@ -215,13 +219,36 @@ pub(crate) async fn connect_tcp(
         .lookup_ip(host)
         .await
         .map_err(|_| NetError::DnsError)?;
-    for ip in dns_lookup.iter() {
-        match TcpStream::connect((*ip, port)).await {
-            Ok(tcp_stream) => return Ok(tcp_stream),
-            Err(_) => continue,
-        }
+
+    if dns_lookup.is_empty() {
+        return Err(NetError::DnsError);
     }
-    Err(NetError::TcpConnectionFailed)
+
+    // The idea is to go through the list of candidate IP addresses
+    // and to attempt a connection to each of them, giving each one a `CONNECTION_ATTEMPT_DELAY` headstart
+    // before moving on to the next candidate.
+    // The process stops once we have a successful connection.
+
+    // First, for each resolved IP address, constructing a future
+    // that incorporates the delay based on its position in the list.
+    // This way we can start all futures at once and simply wait for the first one to complete successfully.
+    let staggered_futures = dns_lookup.into_iter().enumerate().map(|(idx, ip)| {
+        let delay = CONNECTION_ATTEMPT_DELAY * idx.try_into().unwrap();
+        async move {
+            if !delay.is_zero() {
+                tokio::time::sleep(delay).await;
+            }
+            TcpStream::connect((ip, port))
+                .inspect_err(|e| {
+                    log::debug!("failed to connect to IP [{}] with an error: {:?}", ip, e)
+                })
+                .await
+        }
+    });
+
+    first_ok(staggered_futures)
+        .await
+        .ok_or(NetError::TcpConnectionFailed)
 }
 
 #[cfg(test)]

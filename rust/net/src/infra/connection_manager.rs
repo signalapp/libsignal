@@ -500,7 +500,7 @@ mod test {
             443,
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
-            DnsResolver::System,
+            DnsResolver::default().into(),
         )
     }
 }
