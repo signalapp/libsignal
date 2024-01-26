@@ -5,7 +5,6 @@
 
 use std::convert::TryInto as _;
 use std::future::Future;
-use std::sync::Arc;
 use std::time::Duration;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
@@ -15,13 +14,9 @@ use libsignal_net::cdsi::{
 };
 use libsignal_net::enclave::{Cdsi, EndpointConnection};
 use libsignal_net::env::{Env, Svr3Env};
-use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
-use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::NetError;
-use libsignal_net::infra::{
-    ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq, TcpSslTransportConnector,
-};
+use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::utils::timeout;
 use libsignal_protocol::{Aci, SignalProtocolError};
 
@@ -68,38 +63,6 @@ impl Environment {
             Self::Prod => libsignal_net::env::PROD,
         }
     }
-
-    fn cdsi_fallback_connection_params(self) -> Vec<ConnectionParams> {
-        let dns_resolver = Arc::new(DnsResolver::default());
-        match self {
-            Environment::Prod => vec![
-                ConnectionParams {
-                    sni: "inbox.google.com".into(),
-                    host: "reflector-nrgwuv7kwq-uc.a.run.app".into(),
-                    port: 443,
-                    http_request_decorator: HttpRequestDecorator::PathPrefix("/service").into(),
-                    certs: RootCertificates::Native,
-                    dns_resolver: dns_resolver.clone(),
-                },
-                ConnectionParams {
-                    sni: "pintrest.com".into(),
-                    host: "chat-signal.global.ssl.fastly.net".into(),
-                    port: 443,
-                    http_request_decorator: HttpRequestDecoratorSeq::default(),
-                    certs: RootCertificates::Native,
-                    dns_resolver: dns_resolver.clone(),
-                },
-            ],
-            Environment::Staging => vec![ConnectionParams {
-                sni: "inbox.google.com".into(),
-                host: "reflector-nrgwuv7kwq-uc.a.run.app".into(),
-                port: 443,
-                http_request_decorator: HttpRequestDecorator::PathPrefix("/service-staging").into(),
-                certs: RootCertificates::Native,
-                dns_resolver,
-            }],
-        }
-    }
 }
 
 pub struct ConnectionManager {
@@ -111,12 +74,9 @@ impl ConnectionManager {
 
     fn new(environment: Environment) -> Self {
         let cdsi_endpoint = environment.env().cdsi;
-        let direct_connection = cdsi_endpoint.direct_connection();
-        let connection_params: Vec<_> = [direct_connection]
-            .into_iter()
-            .chain(environment.cdsi_fallback_connection_params())
-            .collect();
-
+        let connection_params = cdsi_endpoint
+            .domain_config
+            .connection_params_with_fallback();
         Self {
             cdsi: EndpointConnection::new_multi(
                 cdsi_endpoint.mr_enclave,

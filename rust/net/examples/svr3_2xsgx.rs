@@ -21,17 +21,26 @@ use attest::svr2::RaftConfig;
 use libsignal_net::enclave::{
     EnclaveEndpoint, EndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
 };
+use libsignal_net::env::DomainConfig;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::{Auth, SvrConnection};
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
-const TEST_SERVER_CERT_DER: &[u8] = include_bytes!("../res/sgx_test_server_cert.cer");
+const TEST_SERVER_CERT: RootCertificates =
+    RootCertificates::FromDer(include_bytes!("../res/sgx_test_server_cert.cer"));
 const TEST_SERVER_RAFT_CONFIG: RaftConfig = RaftConfig {
     min_voting_replicas: 1,
     max_voting_replicas: 3,
     super_majority: 0,
     group_id: 5873791967879921865,
+};
+const TEST_SERVER_DOMAIN_CONFIG: DomainConfig = DomainConfig {
+    hostname: "backend1.svr3.test.signal.org",
+    ip_v4: &[],
+    ip_v6: &[],
+    cert: &TEST_SERVER_CERT,
+    proxy_path: "/svr3-test",
 };
 
 pub struct TwoForTwoEnv<'a, A, B>(EnclaveEndpoint<'a, A>, EnclaveEndpoint<'a, B>)
@@ -88,7 +97,7 @@ async fn main() {
 
     let two_sgx_env = {
         let endpoint = EnclaveEndpoint::<Sgx> {
-            host: "backend1.svr3.test.signal.org",
+            domain_config: TEST_SERVER_DOMAIN_CONFIG,
             mr_enclave: MrEnclave::new(&hex!(
                 "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
             )),
@@ -103,7 +112,6 @@ async fn main() {
             two_sgx_env.0,
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            RootCertificates::FromDer(TEST_SERVER_CERT_DER.to_vec()),
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
@@ -115,7 +123,6 @@ async fn main() {
             two_sgx_env.1,
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            RootCertificates::FromDer(TEST_SERVER_CERT_DER.to_vec()),
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 

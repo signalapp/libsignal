@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use const_str::ip_addr;
 use itertools::{Either, Itertools};
 use std::collections::HashMap;
 use std::iter::Map;
@@ -55,17 +54,9 @@ impl LookupResult {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DnsResolver {
     static_map: HashMap<&'static str, LookupResult>,
-}
-
-impl Default for DnsResolver {
-    fn default() -> Self {
-        Self {
-            static_map: static_dns_map(),
-        }
-    }
 }
 
 impl DnsResolver {
@@ -110,36 +101,6 @@ impl DnsResolver {
             _ => Err(Error::LookupFailed),
         }
     }
-}
-
-pub(crate) fn static_dns_map() -> HashMap<&'static str, LookupResult> {
-    HashMap::from([
-        (
-            "chat.staging.signal.org",
-            LookupResult::new(
-                vec![ip_addr!(v4, "76.223.72.142"), ip_addr!(v4, "3.248.206.115")],
-                vec![],
-            ),
-        ),
-        (
-            "cdsi.staging.signal.org",
-            LookupResult::new(vec![ip_addr!(v4, "104.43.162.137")], vec![]),
-        ),
-        (
-            "chat.signal.org",
-            LookupResult::new(
-                vec![
-                    ip_addr!(v4, "76.223.92.165"),
-                    ip_addr!(v4, "13.248.212.111"),
-                ],
-                vec![],
-            ),
-        ),
-        (
-            "cdsi.signal.org",
-            LookupResult::new(vec![ip_addr!(v4, "40.122.45.194")], vec![]),
-        ),
-    ])
 }
 
 #[cfg(test)]

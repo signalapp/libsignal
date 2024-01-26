@@ -1921,6 +1921,7 @@ dependencies = [
  "pin-project-lite",
  "prost",
  "prost-build",
+ "rand",
  "rand_core",
  "rustls-native-certs",
  "serde",

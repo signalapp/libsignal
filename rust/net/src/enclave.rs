@@ -11,8 +11,7 @@ use attest::{cds2, enclave, nitro};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 
-use crate::env::{Svr3Env, WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
-use crate::infra::certs::RootCertificates;
+use crate::env::{DomainConfig, Svr3Env, WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
 use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
@@ -144,14 +143,8 @@ impl<Bytes: AsRef<[u8]>, S> AsRef<[u8]> for MrEnclave<Bytes, S> {
 
 #[derive_where(Copy, Clone)]
 pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
-    pub host: &'a str,
+    pub domain_config: DomainConfig,
     pub mr_enclave: MrEnclave<&'a [u8], E>,
-}
-
-impl<S: EnclaveKind> EnclaveEndpoint<'_, S> {
-    pub fn direct_connection(&self) -> ConnectionParams {
-        ConnectionParams::direct_to_host(self.host)
-    }
 }
 
 pub trait NewHandshake {
@@ -196,25 +189,18 @@ impl<E: EnclaveKind, T: TransportConnector>
         connect_timeout: Duration,
         transport_connector: T,
     ) -> Self {
-        Self::with_custom_properties(
-            endpoint,
-            connect_timeout,
-            transport_connector,
-            RootCertificates::Signal,
-            None,
-        )
+        Self::with_custom_properties(endpoint, connect_timeout, transport_connector, None)
     }
 
     pub fn with_custom_properties(
         endpoint: EnclaveEndpoint<'static, E>,
         connect_timeout: Duration,
         transport_connector: T,
-        certs: RootCertificates,
         raft_config_override: Option<&'static RaftConfig>,
     ) -> Self {
         Self {
             manager: SingleRouteThrottlingConnectionManager::new(
-                endpoint.direct_connection().with_certs(certs),
+                endpoint.domain_config.connection_params(),
                 connect_timeout,
             ),
             connector: WebSocketClientConnector::new(

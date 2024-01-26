@@ -77,7 +77,6 @@ pub struct ConnectionParams {
 }
 
 impl ConnectionParams {
-    #[cfg(test)]
     pub fn new(
         sni: &str,
         host: &str,
@@ -105,18 +104,6 @@ impl ConnectionParams {
     pub fn with_certs(mut self, certs: RootCertificates) -> Self {
         self.certs = certs;
         self
-    }
-
-    pub fn direct_to_host(host: &str) -> Self {
-        let host: Arc<str> = Arc::from(host);
-        Self {
-            sni: host.clone(),
-            host,
-            port: 443,
-            http_request_decorator: Default::default(),
-            certs: RootCertificates::Signal,
-            dns_resolver: DnsResolver::default().into(),
-        }
     }
 }
 
@@ -189,7 +176,7 @@ impl TransportConnector for TcpSslTransportConnector {
         )
         .await?;
 
-        let ssl_config = Self::builder(connection_params.certs.clone(), alpn)?
+        let ssl_config = Self::builder(connection_params.certs, alpn)?
             .build()
             .configure()?;
 

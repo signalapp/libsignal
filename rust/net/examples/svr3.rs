@@ -18,7 +18,6 @@ use rand_core::{CryptoRngCore, OsRng, RngCore};
 use attest::svr2::RaftConfig;
 use libsignal_net::enclave::{EndpointConnection, Nitro, Sgx};
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::{Auth, SvrConnection};
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
@@ -75,7 +74,6 @@ async fn main() {
             env.nitro(),
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            RootCertificates::Signal,
             Some(&NITRO_TEST_RAFT_CONFIG),
         );
         let nitro_auth = Auth {
@@ -140,4 +138,3 @@ fn parse_auth_secret(b64: &str) -> [u8; 32] {
 fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
-//

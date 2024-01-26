@@ -29,13 +29,12 @@ impl From<ErrorStack> for Error {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum RootCertificates {
     #[default]
     Native,
     Signal,
-    FromDer(Vec<u8>),
-    Composite(Vec<RootCertificates>),
+    FromDer(&'static [u8]),
 }
 
 impl RootCertificates {
@@ -50,11 +49,6 @@ impl RootCertificates {
             RootCertificates::Native => NATIVE_CERTS.iter().map(|cert| from_der(&cert.0)).collect(),
             RootCertificates::FromDer(der) => from_der(der).map(singleton),
             RootCertificates::Signal => from_der(SIGNAL_ROOT_CERT_DER).map(singleton),
-            RootCertificates::Composite(vec) => vec
-                .iter()
-                .map(|cert| cert.load())
-                .collect::<Result<Vec<Vec<X509>>, Error>>()
-                .map(|vv| vv.into_iter().flatten().collect()),
         }
     }
 }
