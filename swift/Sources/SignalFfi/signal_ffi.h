@@ -211,6 +211,8 @@ typedef struct SignalKeySecret SignalKeySecret;
 
 typedef struct SignalKyberPreKeyRecord SignalKyberPreKeyRecord;
 
+typedef struct SignalMessageBackupKey SignalMessageBackupKey;
+
 typedef struct SignalNonSuspendingBackgroundThreadRuntime SignalNonSuspendingBackgroundThreadRuntime;
 
 typedef struct SignalOtherTestingHandleType SignalOtherTestingHandleType;
@@ -1237,6 +1239,10 @@ SignalFfiError *signal_validating_mac_initialize(SignalValidatingMac **out, Sign
 SignalFfiError *signal_validating_mac_update(int32_t *out, SignalValidatingMac *mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
 
 SignalFfiError *signal_validating_mac_finalize(int32_t *out, SignalValidatingMac *mac);
+
+SignalFfiError *signal_message_backup_key_destroy(SignalMessageBackupKey *p);
+
+SignalFfiError *signal_message_backup_key_new(SignalMessageBackupKey **out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 

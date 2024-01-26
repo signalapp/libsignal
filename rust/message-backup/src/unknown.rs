@@ -5,7 +5,7 @@
 
 //! Protobuf unknown field searching.
 
-use std::ops::{ControlFlow, Deref};
+use std::ops::ControlFlow;
 
 #[cfg(test)]
 mod visit_dyn;
@@ -17,15 +17,11 @@ pub(crate) mod visit_static;
 /// Provides a custom [`std::fmt::Display`] impl.
 pub struct FormatPath<P>(pub P);
 
-impl<P> std::fmt::Display for FormatPath<P>
-where
-    for<'a> &'a P: IntoIterator,
-    for<'a> <&'a P as IntoIterator>::Item: Deref<Target = PathPart>,
-{
+impl std::fmt::Display for FormatPath<&[PathPart]> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut it = self.0.into_iter().peekable();
+        let mut it = self.0.iter().peekable();
         while let Some(part) = it.next() {
-            write!(f, "{}", *part)?;
+            write!(f, "{}", part)?;
             if it.peek().is_some() {
                 write!(f, ".")?
             }

@@ -95,6 +95,7 @@ def translate_to_java(typ):
         "JClass": "Class",
         "JByteArray": "byte[]",
         "JLongArray": "long[]",
+        "JObjectArray": "Object[]",
         "ObjectHandle": "long",
         "jint": "int",
         "jlong": "long",

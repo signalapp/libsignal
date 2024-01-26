@@ -8,9 +8,10 @@ use std::borrow::BorrowMut;
 use aes::cipher::Unsigned;
 use async_compression::futures::bufread::GzipDecoder;
 use futures::io::{BufReader, Take};
-use futures::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt as _};
+use futures::{AsyncRead, AsyncReadExt};
 use hmac::digest::OutputSizeUser;
 use hmac::{Hmac, Mac as _};
+use mediasan_common::{AsyncSkip, AsyncSkipExt as _};
 use sha2::Sha256;
 use subtle::ConstantTimeEq as _;
 
@@ -20,7 +21,10 @@ use crate::key::MessageBackupKey;
 mod aes_read;
 mod block_stream;
 mod cbc;
+mod reader_factory;
 mod unpad;
+
+pub use reader_factory::{CursorFactory, FileReaderFactory, LimitedReaderFactory, ReaderFactory};
 
 const HMAC_LEN: usize = <<Hmac<Sha256> as OutputSizeUser>::OutputSize as Unsigned>::USIZE;
 
@@ -39,36 +43,35 @@ pub enum ValidationError {
     InvalidHmac,
 }
 
-impl<R: AsyncRead + AsyncSeek + Unpin> FramesReader<R> {
-    #[allow(unused)]
+impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
     pub(crate) async fn new(
         key: &MessageBackupKey,
-        mut reader: R,
+        mut reader_factory: impl ReaderFactory<Reader = R>,
     ) -> Result<FramesReader<R>, ValidationError> {
-        let total_len = reader.seek(futures::io::SeekFrom::End(0)).await?;
-        let content_len = total_len
-            .checked_sub(HMAC_LEN as u64)
-            .ok_or(ValidationError::TooShort)?;
+        let content_len;
+        {
+            let mut reader = reader_factory.make_reader()?;
+            content_len = reader
+                .stream_len()
+                .await?
+                .checked_sub(HMAC_LEN as u64)
+                .ok_or(ValidationError::TooShort)?;
+            log::debug!("found {content_len} bytes with a {HMAC_LEN}-byte HMAC");
 
-        reader.seek(futures::io::SeekFrom::Start(0)).await?;
-        log::debug!("found {content_len} bytes with a {HMAC_LEN}-byte HMAC");
-
-        let truncated_reader = reader.borrow_mut().take(content_len);
-        let actual_hmac = hmac_sha256(&key.hmac_key, truncated_reader).await?;
-
-        let expected_hmac = {
-            let mut buf = [0; HMAC_LEN];
-            reader.read_exact(&mut buf).await?;
-            buf
+            let truncated_reader = reader.borrow_mut().take(content_len);
+            let actual_hmac = hmac_sha256(&key.hmac_key, truncated_reader).await?;
+            let expected_hmac = {
+                let mut buf = [0; HMAC_LEN];
+                reader.read_exact(&mut buf).await?;
+                buf
+            };
+            if expected_hmac.ct_ne(&actual_hmac).into() {
+                log::debug!("expected {expected_hmac:02x?}, got {actual_hmac:02x?}");
+                return Err(ValidationError::InvalidHmac);
+            }
         };
 
-        if expected_hmac.ct_ne(&actual_hmac).into() {
-            log::debug!("expected {expected_hmac:02x?}, got {actual_hmac:02x?}");
-            return Err(ValidationError::InvalidHmac);
-        }
-
-        reader.seek(futures::io::SeekFrom::Start(0)).await?;
-        let content = reader.take(content_len);
+        let content = reader_factory.make_reader()?.take(content_len);
         let decrypted = Aes256CbcReader::new(&key.aes_key, &key.iv, content);
         let decompressed = GzipDecoder::new(BufReader::new(decrypted));
 
@@ -121,7 +124,7 @@ mod test {
         assert_matches!(
             block_on(FramesReader::new(
                 &FAKE_MESSAGE_BACKUP_KEY,
-                Cursor::new(&[])
+                CursorFactory::new(&[])
             )),
             Err(ValidationError::TooShort)
         );
@@ -137,7 +140,7 @@ mod test {
         assert_matches!(
             block_on(FramesReader::new(
                 &FAKE_MESSAGE_BACKUP_KEY,
-                Cursor::new(frame_bytes)
+                CursorFactory::new(&frame_bytes)
             )),
             Err(ValidationError::InvalidHmac)
         );
@@ -153,7 +156,7 @@ mod test {
 
         let mut reader = block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,
-            Cursor::new(frame_bytes),
+            CursorFactory::new(&frame_bytes),
         ))
         .expect("valid HMAC");
 
@@ -195,7 +198,7 @@ mod test {
 
         let mut reader = block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,
-            Cursor::new(encoded_frame),
+            CursorFactory::new(&encoded_frame),
         ))
         .expect("valid HMAC");
         let mut buf = Vec::new();

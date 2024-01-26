@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{AutoLocal, JMap};
+use jni::objects::{AutoLocal, JMap, JObjectArray};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_net::cdsi::LookupResponseEntry;
@@ -15,6 +15,7 @@ use std::num::ParseIntError;
 use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};
+use crate::message_backup::MessageBackupValidationOutcome;
 use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -685,11 +686,11 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
 
 impl<'a, T: ResultTypeInfo<'a>, E> ResultTypeInfo<'a> for Result<T, E>
 where
-    SignalJniError: From<E>,
+    E: Into<SignalJniError>,
 {
     type ResultType = T::ResultType;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self?, env)
+        T::convert_into(self.map_err(Into::into)?, env)
     }
 }
 
@@ -931,6 +932,58 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     }
 }
 
+fn make_string_array<'a, It: IntoIterator>(
+    env: &mut JNIEnv<'a>,
+    it: It,
+) -> SignalJniResult<JObjectArray<'a>>
+where
+    It::Item: AsRef<str>,
+    It::IntoIter: ExactSizeIterator,
+{
+    let it = it.into_iter();
+    let len = it.len();
+    let array = env.new_object_array(
+        len.try_into()
+            .map_err(|_| SignalJniError::IntegerOverflow(format!("{len}_usize to i32")))?,
+        jni_class_name!(java.lang.String),
+        JavaObject::null(),
+    )?;
+
+    for (index, s) in it.enumerate() {
+        let value = AutoLocal::new(env.new_string(s)?, env);
+        env.set_object_array_element(
+            &array,
+            index.try_into().expect("max size validated above"),
+            value,
+        )?
+    }
+
+    Ok(array)
+}
+
+impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+        let Self {
+            error_message,
+            found_unknown_fields,
+        } = self;
+
+        let unknown_fields =
+            make_string_array(env, found_unknown_fields.into_iter().map(|f| f.to_string()))?;
+        let error_message = error_message.convert_into(env)?;
+
+        let new_object = new_object(
+            env,
+            jni_class_name!(org.signal.libsignal.protocol.util.Pair),
+            jni_args!((error_message => java.lang.Object, unknown_fields => java.lang.Object) -> void),
+        )?;
+
+        Ok(new_object)
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
 macro_rules! jni_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -1067,11 +1120,12 @@ macro_rules! jni_arg_type {
 ///
 /// The `'local` lifetime represents the lifetime of the JNI context.
 macro_rules! jni_result_type {
-    // These rules only match a single token for a Result's success type.
-    // We can't use `:ty` because we need the resulting tokens to be matched recursively rather than
-    // treated as a single unit, and we can't match multiple tokens because Rust's macros match
-    // eagerly. Therefore, if you need to return a more complicated Result type, you'll have to add
-    // another rule for its form.
+    // These rules only match a single token for a Result's success type, or
+    // Option's inner type.  We can't use `:ty` because we need the resulting
+    // tokens to be matched recursively rather than treated as a single unit,
+    // and we can't match multiple tokens because Rust's macros match eagerly.
+    // Therefore, if you need to return a more complicated Result or Option
+    // type, you'll have to add another rule for its form.
     (Result<$typ:tt $(, $_:ty)?>) => {
         jni_result_type!($typ)
     };
@@ -1085,6 +1139,15 @@ macro_rules! jni_result_type {
         jni_result_type!($typ<$($args),+>)
     };
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
+        jni_result_type!($typ<$($args),+>)
+    };
+    (Option<$typ:tt>) => {
+        jni_result_type!($typ)
+    };
+    (Option<&$typ:tt>) => {
+        jni_result_type!(&$typ)
+    };
+    (Option<$typ:tt<$($args:tt),+> >) => {
         jni_result_type!($typ<$($args),+>)
     };
     (()) => {
@@ -1124,6 +1187,9 @@ macro_rules! jni_result_type {
     (&[u8]) => {
         jni::JByteArray<'local>
     };
+    (&[String]) => {
+        jni::JObjectArray<'local>
+    };
     (Vec<u8>) => {
         jni::JByteArray<'local>
     };
@@ -1142,14 +1208,11 @@ macro_rules! jni_result_type {
     (Pni) => {
         jni::JByteArray<'local>
     };
+    (MessageBackupValidationOutcome) => {
+        jni::JObject<'local>
+    };
     (LookupResponse) => {
         jni::JavaMap<'local>
-    };
-    (Option<$typ:tt>) => {
-        jni_result_type!($typ)
-    };
-    (Option<$typ:tt<$($args:tt),+> >) => {
-        jni_result_type!($typ<$($args),+>)
     };
     (CiphertextMessage) => {
         jni::JavaCiphertextMessage<'local>

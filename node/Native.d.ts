@@ -236,6 +236,7 @@ export function LookupRequest_addPreviousE164(request: Wrapper<LookupRequest>, e
 export function LookupRequest_new(): LookupRequest;
 export function LookupRequest_setReturnAcisWithoutUaks(request: Wrapper<LookupRequest>, returnAcisWithoutUaks: boolean): void;
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Buffer): void;
+export function MessageBackupKey_New(masterKey: Buffer, aci: Buffer): MessageBackupKey;
 export function Mp4Sanitizer_Sanitize(input: InputStream, len: Buffer): Promise<SanitizedMetadata>;
 export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;
@@ -487,6 +488,7 @@ interface KyberPreKeyRecord { readonly __type: unique symbol; }
 interface KyberPublicKey { readonly __type: unique symbol; }
 interface KyberSecretKey { readonly __type: unique symbol; }
 interface LookupRequest { readonly __type: unique symbol; }
+interface MessageBackupKey { readonly __type: unique symbol; }
 interface NonSuspendingBackgroundThreadRuntime { readonly __type: unique symbol; }
 interface OtherTestingHandleType { readonly __type: unique symbol; }
 interface PlaintextContent { readonly __type: unique symbol; }

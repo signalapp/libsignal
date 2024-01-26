@@ -23,4 +23,17 @@ public class ResourceReader {
       inputStream.close();
     }
   }
+
+  public static int getLength(final InputStream inputStream) throws IOException {
+    int length = 0;
+    try (InputStream is = inputStream) {
+      final byte[] chunk = new byte[4096];
+      int read;
+
+      while ((read = inputStream.read(chunk, 0, chunk.length)) != -1) {
+        length += read;
+      }
+    }
+    return length;
+  }
 }

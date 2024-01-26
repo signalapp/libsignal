@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use assert_cmd::Command;
 use dir_test::{dir_test, Fixture};
-use futures::io::AllowStdIo;
 use futures::AsyncRead;
+use libsignal_message_backup::frame::{FileReaderFactory, ReaderFactory};
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_message_backup::{BackupReader, ReadResult};
 use libsignal_protocol::Aci;
@@ -22,7 +22,10 @@ use libsignal_protocol::Aci;
 fn is_valid_binproto(input: Fixture<PathBuf>) {
     let path = input.into_content();
     // Check via the library interface.
-    let reader = BackupReader::new_unencrypted(read_file_async(&path));
+    let input = FileReaderFactory { path: &path }
+        .make_reader()
+        .expect("failed to open");
+    let reader = BackupReader::new_unencrypted(input);
     validate(reader);
 
     // The CLI tool should agree.
@@ -43,11 +46,9 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
 
     let path = input.into_content();
     // Check via the library interface.
-    let reader = futures::executor::block_on(BackupReader::new_encrypted_compressed(
-        &key,
-        read_file_async(&path),
-    ))
-    .expect("invalid HMAC");
+    let factory = FileReaderFactory { path: &path };
+    let reader = futures::executor::block_on(BackupReader::new_encrypted_compressed(&key, factory))
+        .expect("invalid HMAC");
     validate(reader);
 
     // The CLI tool should agree.
@@ -78,9 +79,4 @@ fn validate(mut reader: BackupReader<impl AsyncRead + Unpin>) {
 
 fn validator_command() -> Command {
     Command::cargo_bin("validator").expect("bin not found")
-}
-
-fn read_file_async(path: &Path) -> AllowStdIo<std::fs::File> {
-    let file = std::fs::File::open(path).expect("can read");
-    AllowStdIo::new(file)
 }

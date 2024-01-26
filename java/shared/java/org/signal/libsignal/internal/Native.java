@@ -325,6 +325,11 @@ public final class Native {
   public static native void LookupRequest_setReturnAcisWithoutUaks(long request, boolean returnAcisWithoutUaks);
   public static native void LookupRequest_setToken(long request, byte[] token);
 
+  public static native void MessageBackupKey_Destroy(long handle);
+  public static native long MessageBackupKey_New(byte[] masterKey, byte[] aci);
+
+  public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len);
+
   public static native long Mp4Sanitizer_Sanitize(InputStream input, long len);
 
   public static native void NumericFingerprintGenerator_Destroy(long handle);
