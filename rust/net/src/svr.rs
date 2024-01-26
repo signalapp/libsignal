@@ -81,9 +81,9 @@ pub struct SvrConnection<Flavor: Svr3Flavor, S = DefaultStream> {
     witness: PhantomData<Flavor>,
 }
 
-impl<F: Svr3Flavor, S> AsMut<AttestedConnection<S>> for SvrConnection<F, S> {
-    fn as_mut(&mut self) -> &mut AttestedConnection<S> {
-        &mut self.inner
+impl<Flavor: Svr3Flavor> From<SvrConnection<Flavor>> for AttestedConnection {
+    fn from(conn: SvrConnection<Flavor>) -> Self {
+        conn.inner
     }
 }
 
@@ -103,7 +103,7 @@ where
 {
     pub async fn connect<C, T>(
         auth: impl HttpBasicAuth,
-        connection: EndpointConnection<E, C, T>,
+        connection: &EndpointConnection<E, C, T>,
     ) -> Result<Self, Error>
     where
         C: ConnectionManager,
@@ -111,8 +111,8 @@ where
     {
         // TODO: This is almost a direct copy of CdsiConnection::connect. They can be unified.
         let auth_decorator = auth.into();
-        let connector = ServiceConnectorWithDecorator::new(connection.connector, auth_decorator);
-        let service_initializer = ServiceInitializer::new(&connector, connection.manager);
+        let connector = ServiceConnectorWithDecorator::new(&connection.connector, auth_decorator);
+        let service_initializer = ServiceInitializer::new(&connector, &connection.manager);
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),

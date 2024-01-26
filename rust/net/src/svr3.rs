@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::enclave::{HasConnections, PpssSetup};
+use crate::enclave::{IntoConnections, PpssSetup};
 use crate::infra::errors::NetError;
 use crate::infra::ws::{run_attested_interaction, AttestedConnectionError};
 use async_trait::async_trait;
@@ -131,36 +131,36 @@ impl From<NetError> for Error {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait PpssOps: PpssSetup {
     async fn backup(
-        connections: &mut Self::Connections,
+        connections: Self::Connections,
         password: &str,
         secret: [u8; 32],
         max_tries: NonZeroU32,
-        rng: &mut impl CryptoRngCore,
+        rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<OpaqueMaskedShareSet, Error>;
 
     async fn restore(
-        connections: &mut Self::Connections,
+        connections: Self::Connections,
         password: &str,
         share_set: OpaqueMaskedShareSet,
-        rng: &mut impl CryptoRngCore,
+        rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<[u8; 32], Error>;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<Env: PpssSetup> PpssOps for Env {
     async fn backup(
-        connections: &mut Self::Connections,
+        connections: Self::Connections,
         password: &str,
         secret: [u8; 32],
         max_tries: NonZeroU32,
-        rng: &mut impl CryptoRngCore,
+        rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<OpaqueMaskedShareSet, Error> {
-        let server_ids = Self::server_ids().as_mut().to_owned();
-        let backup = Backup::new(&server_ids, password, secret, max_tries, rng)?;
-        let mut connections = connections.get_connections();
+        let server_ids = Self::server_ids();
+        let backup = Backup::new(server_ids.as_ref(), password, secret, max_tries, rng)?;
+        let mut connections = connections.into_connections();
         let futures = connections
             .as_mut()
             .iter_mut()
@@ -176,13 +176,13 @@ impl<Env: PpssSetup> PpssOps for Env {
     }
 
     async fn restore(
-        connections: &mut Self::Connections,
+        connections: Self::Connections,
         password: &str,
         share_set: OpaqueMaskedShareSet,
-        rng: &mut impl CryptoRngCore,
+        rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<[u8; 32], Error> {
         let restore = Restore::new(password, share_set.into_inner(), rng)?;
-        let mut connections = connections.get_connections();
+        let mut connections = connections.into_connections();
         let futures = connections
             .as_mut()
             .iter_mut()

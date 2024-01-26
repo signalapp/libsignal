@@ -50,8 +50,8 @@ where
 
 impl<'a, A, B> PpssSetup for TwoForTwoEnv<'a, A, B>
 where
-    A: Svr3Flavor,
-    B: Svr3Flavor,
+    A: Svr3Flavor + Send,
+    B: Svr3Flavor + Send,
 {
     type Connections = (SvrConnection<A>, SvrConnection<B>);
     type ServerIds = [u64; 2];
@@ -115,7 +115,7 @@ async fn main() {
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
-        let a = SvrConnection::connect(make_auth(&uid_a), connection_a)
+        let a = SvrConnection::connect(make_auth(&uid_a), &connection_a)
             .await
             .expect("can attestedly connect");
 
@@ -126,7 +126,7 @@ async fn main() {
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
-        let b = SvrConnection::connect(make_auth(&uid_b), connection_b)
+        let b = SvrConnection::connect(make_auth(&uid_b), &connection_b)
             .await
             .expect("can attestedly connect");
         (a, b)
@@ -137,7 +137,7 @@ async fn main() {
 
     let share_set_bytes = {
         let opaque_share_set = TwoForTwoEnv::backup(
-            &mut connect().await,
+            connect().await,
             &args.password,
             secret,
             nonzero!(10u32),
@@ -152,14 +152,9 @@ async fn main() {
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        TwoForTwoEnv::restore(
-            &mut connect().await,
-            &args.password,
-            opaque_share_set,
-            &mut rng,
-        )
-        .await
-        .expect("can multi restore")
+        TwoForTwoEnv::restore(connect().await, &args.password, opaque_share_set, &mut rng)
+            .await
+            .expect("can multi restore")
     };
     println!("Restored secret: {}", hex::encode(restored));
 

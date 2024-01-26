@@ -23,7 +23,7 @@ use libsignal_net::svr::{Auth, SvrConnection};
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
 const NITRO_TEST_RAFT_CONFIG: RaftConfig = RaftConfig {
-    group_id: 2058019258222238426,
+    group_id: 13320095621059880086,
     min_voting_replicas: 3,
     max_voting_replicas: 5,
     super_majority: 0,
@@ -66,7 +66,7 @@ async fn main() {
             uid: uid.to_string(),
             secret: sgx_secret,
         };
-        let a = SvrConnection::<Sgx>::connect(sgx_auth, connection_a)
+        let a = SvrConnection::<Sgx>::connect(sgx_auth, &connection_a)
             .await
             .expect("can attestedly connect to SGX");
 
@@ -80,7 +80,7 @@ async fn main() {
             uid: uid.to_string(),
             secret: nitro_secret,
         };
-        let b = SvrConnection::<Nitro>::connect(nitro_auth, connection_b)
+        let b = SvrConnection::<Nitro>::connect(nitro_auth, &connection_b)
             .await
             .expect("can attestedly connect to Nitro");
 
@@ -92,7 +92,7 @@ async fn main() {
 
     let share_set_bytes = {
         let opaque_share_set = Svr3Env::backup(
-            &mut connect().await,
+            connect().await,
             &args.password,
             secret,
             nonzero!(10u32),
@@ -107,14 +107,9 @@ async fn main() {
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        Svr3Env::restore(
-            &mut connect().await,
-            &args.password,
-            opaque_share_set,
-            &mut rng,
-        )
-        .await
-        .expect("can mutli restore")
+        Svr3Env::restore(connect().await, &args.password, opaque_share_set, &mut rng)
+            .await
+            .expect("can mutli restore")
     };
     println!("Restored secret: {}", hex::encode(restored));
 
