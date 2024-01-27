@@ -229,7 +229,9 @@ impl<'a> JniPreKeyStore<'a> {
                 get_object_with_native_handle(env, self.store, callback_args, "loadPreKey")?;
             match pk {
                 Some(pk) => Ok(pk),
-                None => Err(SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)),
+                None => Err(SignalJniError::Protocol(
+                    SignalProtocolError::InvalidPreKeyId,
+                )),
             }
         })
     }
@@ -320,7 +322,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
                 get_object_with_native_handle(env, self.store, callback_args, "loadSignedPreKey")?;
             match spk {
                 Some(spk) => Ok(spk),
-                None => Err(SignalJniError::Signal(
+                None => Err(SignalJniError::Protocol(
                     SignalProtocolError::InvalidSignedPreKeyId,
                 )),
             }
@@ -399,7 +401,7 @@ impl<'a> JniKyberPreKeyStore<'a> {
                 get_object_with_native_handle(env, self.store, callback_args, "loadKyberPreKey")?;
             match kpk {
                 Some(kpk) => Ok(kpk),
-                None => Err(SignalJniError::Signal(
+                None => Err(SignalJniError::Protocol(
                     SignalProtocolError::InvalidKyberPreKeyId,
                 )),
             }

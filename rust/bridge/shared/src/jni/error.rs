@@ -23,7 +23,7 @@ use super::*;
 /// The top-level error type for when something goes wrong.
 #[derive(Debug)]
 pub enum SignalJniError {
-    Signal(SignalProtocolError),
+    Protocol(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
@@ -55,7 +55,7 @@ pub enum SignalJniError {
 impl fmt::Display for SignalJniError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SignalJniError::Signal(s) => write!(f, "{}", s),
+            SignalJniError::Protocol(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
             SignalJniError::Sgx(e) => write!(f, "{}", e),
@@ -97,7 +97,7 @@ impl fmt::Display for SignalJniError {
 
 impl From<SignalProtocolError> for SignalJniError {
     fn from(e: SignalProtocolError) -> SignalJniError {
-        SignalJniError::Signal(e)
+        SignalJniError::Protocol(e)
     }
 }
 
@@ -204,8 +204,8 @@ impl From<jni::errors::Error> for SignalJniError {
 impl From<SignalJniError> for SignalProtocolError {
     fn from(err: SignalJniError) -> SignalProtocolError {
         match err {
-            SignalJniError::Signal(e) => e,
             SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
+            SignalJniError::Protocol(e) => e,
             SignalJniError::BadJniParameter(m) => {
                 SignalProtocolError::InvalidArgument(m.to_string())
             }

@@ -82,7 +82,7 @@ where
 {
     // Handle special cases first.
     let error = match error {
-        SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
+        SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(
             callback,
             exception,
         )) => {
@@ -102,12 +102,12 @@ where
             }
 
             // Fall through to generic handling below.
-            SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(
+            SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(
                 callback, exception,
             ))
         }
 
-        SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(ref addr)) => {
+        SignalJniError::Protocol(SignalProtocolError::UntrustedIdentity(ref addr)) => {
             let throwable = env
                 .new_string(addr.name())
                 .and_then(|addr_name| {
@@ -124,7 +124,7 @@ where
             return;
         }
 
-        SignalJniError::Signal(SignalProtocolError::SessionNotFound(ref addr)) => {
+        SignalJniError::Protocol(SignalProtocolError::SessionNotFound(ref addr)) => {
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
@@ -143,7 +143,7 @@ where
             return;
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(ref addr, _value)) => {
+        SignalJniError::Protocol(SignalProtocolError::InvalidRegistrationId(ref addr, _value)) => {
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
@@ -164,7 +164,7 @@ where
             return;
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession {
+        SignalJniError::Protocol(SignalProtocolError::InvalidSenderKeySession {
             distribution_id,
         }) => {
             let throwable = distribution_id
@@ -194,7 +194,7 @@ where
             return;
         }
 
-        SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
+        SignalJniError::Protocol(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
             let throwable = new_object(
                 env,
                 jni_class_name!(
@@ -212,7 +212,7 @@ where
             return;
         }
 
-        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend) => {
+        SignalJniError::Protocol(SignalProtocolError::SealedSenderSelfSend) => {
             let throwable = new_object(
                 env,
                 jni_class_name!(org.signal.libsignal.metadata.SelfSendException),
@@ -247,12 +247,12 @@ where
     let exception_type = match error {
         SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
 
-        SignalJniError::Signal(SignalProtocolError::InvalidState(_, _))
+        SignalJniError::Protocol(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidArgument(_))
+        SignalJniError::Protocol(SignalProtocolError::InvalidArgument(_))
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
@@ -262,63 +262,63 @@ where
 
         SignalJniError::IntegerOverflow(_)
         | SignalJniError::Jni(_)
-        | SignalJniError::Signal(SignalProtocolError::ApplicationCallbackError(_, _))
-        | SignalJniError::Signal(SignalProtocolError::FfiBindingError(_))
+        | SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(_, _))
+        | SignalJniError::Protocol(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed) => {
             jni_class_name!(java.lang.RuntimeException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::DuplicatedMessage(_, _)) => {
+        SignalJniError::Protocol(SignalProtocolError::DuplicatedMessage(_, _)) => {
             jni_class_name!(org.signal.libsignal.protocol.DuplicateMessageException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSignedPreKeyId)
-        | SignalJniError::Signal(SignalProtocolError::InvalidKyberPreKeyId) => {
+        SignalJniError::Protocol(SignalProtocolError::InvalidPreKeyId)
+        | SignalJniError::Protocol(SignalProtocolError::InvalidSignedPreKeyId)
+        | SignalJniError::Protocol(SignalProtocolError::InvalidKyberPreKeyId) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyIdException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::NoKeyTypeIdentifier)
-        | SignalJniError::Signal(SignalProtocolError::SignatureValidationFailed)
-        | SignalJniError::Signal(SignalProtocolError::BadKeyType(_))
-        | SignalJniError::Signal(SignalProtocolError::BadKeyLength(_, _))
-        | SignalJniError::Signal(SignalProtocolError::InvalidMacKeyLength(_))
-        | SignalJniError::Signal(SignalProtocolError::BadKEMKeyType(_))
-        | SignalJniError::Signal(SignalProtocolError::WrongKEMKeyType(_, _))
-        | SignalJniError::Signal(SignalProtocolError::BadKEMKeyLength(_, _))
+        SignalJniError::Protocol(SignalProtocolError::NoKeyTypeIdentifier)
+        | SignalJniError::Protocol(SignalProtocolError::SignatureValidationFailed)
+        | SignalJniError::Protocol(SignalProtocolError::BadKeyType(_))
+        | SignalJniError::Protocol(SignalProtocolError::BadKeyLength(_, _))
+        | SignalJniError::Protocol(SignalProtocolError::InvalidMacKeyLength(_))
+        | SignalJniError::Protocol(SignalProtocolError::BadKEMKeyType(_))
+        | SignalJniError::Protocol(SignalProtocolError::WrongKEMKeyType(_, _))
+        | SignalJniError::Protocol(SignalProtocolError::BadKEMKeyLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidKeyException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::NoSenderKeyState { .. }) => {
+        SignalJniError::Protocol(SignalProtocolError::NoSenderKeyState { .. }) => {
             jni_class_name!(org.signal.libsignal.protocol.NoSessionException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidSessionStructure(_)) => {
+        SignalJniError::Protocol(SignalProtocolError::InvalidSessionStructure(_)) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidSessionException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::InvalidMessage(..))
-        | SignalJniError::Signal(SignalProtocolError::CiphertextMessageTooShort(_))
-        | SignalJniError::Signal(SignalProtocolError::InvalidProtobufEncoding)
-        | SignalJniError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
-        | SignalJniError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
+        SignalJniError::Protocol(SignalProtocolError::InvalidMessage(..))
+        | SignalJniError::Protocol(SignalProtocolError::CiphertextMessageTooShort(_))
+        | SignalJniError::Protocol(SignalProtocolError::InvalidProtobufEncoding)
+        | SignalJniError::Protocol(SignalProtocolError::InvalidSealedSenderMessage(_))
+        | SignalJniError::Protocol(SignalProtocolError::BadKEMCiphertextLength(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidMessageException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::UnrecognizedCiphertextVersion(_))
-        | SignalJniError::Signal(SignalProtocolError::UnrecognizedMessageVersion(_))
-        | SignalJniError::Signal(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
+        SignalJniError::Protocol(SignalProtocolError::UnrecognizedCiphertextVersion(_))
+        | SignalJniError::Protocol(SignalProtocolError::UnrecognizedMessageVersion(_))
+        | SignalJniError::Protocol(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
             jni_class_name!(org.signal.libsignal.protocol.InvalidVersionException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::LegacyCiphertextVersion(_)) => {
+        SignalJniError::Protocol(SignalProtocolError::LegacyCiphertextVersion(_)) => {
             jni_class_name!(org.signal.libsignal.protocol.LegacyMessageException)
         }
 
-        SignalJniError::Signal(SignalProtocolError::FingerprintParsingError) => {
+        SignalJniError::Protocol(SignalProtocolError::FingerprintParsingError) => {
             jni_class_name!(
                 org.signal
                     .libsignal
@@ -328,12 +328,12 @@ where
             )
         }
 
-        SignalJniError::Signal(SignalProtocolError::SealedSenderSelfSend)
-        | SignalJniError::Signal(SignalProtocolError::UntrustedIdentity(_))
-        | SignalJniError::Signal(SignalProtocolError::FingerprintVersionMismatch(_, _))
-        | SignalJniError::Signal(SignalProtocolError::SessionNotFound(..))
-        | SignalJniError::Signal(SignalProtocolError::InvalidRegistrationId(..))
-        | SignalJniError::Signal(SignalProtocolError::InvalidSenderKeySession { .. })
+        SignalJniError::Protocol(SignalProtocolError::SealedSenderSelfSend)
+        | SignalJniError::Protocol(SignalProtocolError::UntrustedIdentity(_))
+        | SignalJniError::Protocol(SignalProtocolError::FingerprintVersionMismatch(_, _))
+        | SignalJniError::Protocol(SignalProtocolError::SessionNotFound(..))
+        | SignalJniError::Protocol(SignalProtocolError::InvalidRegistrationId(..))
+        | SignalJniError::Protocol(SignalProtocolError::InvalidSenderKeySession { .. })
         | SignalJniError::UnexpectedPanic(_)
         | SignalJniError::BadJniParameter(_)
         | SignalJniError::UnexpectedJniResultType(_, _) => {
