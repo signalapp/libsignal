@@ -25,7 +25,7 @@ impl<'a> JniIdentityKeyStore<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         store: &'a JObject<'a>,
-    ) -> Result<Self, SignalJniError> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             store,
@@ -68,7 +68,7 @@ impl<'a> JniIdentityKeyStore<'a> {
                 "getLocalRegistrationId",
                 jni_args!(() -> int),
             )?;
-            u32::convert_from(env, &i)
+            Ok(u32::convert_from(env, &i)?)
         })
     }
 
@@ -206,7 +206,7 @@ impl<'a> JniPreKeyStore<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         store: &'a JObject<'a>,
-    ) -> Result<Self, SignalJniError> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             store,
@@ -299,7 +299,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         store: &'a JObject<'a>,
-    ) -> Result<Self, SignalJniError> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             store,
@@ -378,7 +378,7 @@ impl<'a> JniKyberPreKeyStore<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         store: &'a JObject<'a>,
-    ) -> Result<Self, SignalJniError> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             store,
@@ -477,7 +477,7 @@ impl<'a> JniSessionStore<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         store: &'a JObject<'a>,
-    ) -> Result<Self, SignalJniError> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             store,
@@ -556,7 +556,7 @@ impl<'a> JniSenderKeyStore<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         store: &'a JObject<'a>,
-    ) -> Result<Self, SignalJniError> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             store,

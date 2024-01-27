@@ -30,9 +30,9 @@ use super::*;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo<'_> for Foo {
 /// #     type ArgType = isize;
-/// #     fn convert_from(env: &mut JNIEnv, foreign: &isize) -> SignalJniResult<Self> { Ok(Foo) }
+/// #     fn convert_from(env: &mut JNIEnv, foreign: &isize) -> Result<Self, BridgeLayerError> { Ok(Foo) }
 /// # }
-/// # fn test(env: &mut JNIEnv, jni_arg: isize) -> SignalJniResult<()> {
+/// # fn test(env: &mut JNIEnv, jni_arg: isize) -> Result<(), BridgeLayerError> {
 /// let mut jni_arg_borrowed = Foo::borrow(env, &jni_arg)?;
 /// let rust_arg = Foo::load_from(&mut jni_arg_borrowed);
 /// #     Ok(())
@@ -59,7 +59,7 @@ pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType>;
+    ) -> Result<Self::StoredType, BridgeLayerError>;
     /// Loads the Rust value from the data that's been `stored` by [`borrow()`](Self::borrow()).
     fn load_from(stored: &'storage mut Self::StoredType) -> Self;
 }
@@ -75,13 +75,13 @@ pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
 /// # struct Foo;
 /// impl<'a> SimpleArgTypeInfo<'a> for Foo {
 ///     type ArgType = JObject<'a>;
-///     fn convert_from(env: &mut JNIEnv, foreign: &JObject<'a>) -> SignalJniResult<Self> {
+///     fn convert_from(env: &mut JNIEnv, foreign: &JObject<'a>) -> Result<Self, BridgeLayerError> {
 ///         // ...
 ///         # Ok(Foo)
 ///     }
 /// }
 ///
-/// # fn test<'a>(env: &mut JNIEnv<'a>, jni_arg: JObject<'a>) -> SignalJniResult<()> {
+/// # fn test<'a>(env: &mut JNIEnv<'a>, jni_arg: JObject<'a>) -> Result<(), BridgeLayerError> {
 /// let rust_arg = Foo::convert_from(env, &jni_arg)?;
 /// #     Ok(())
 /// # }
@@ -92,7 +92,10 @@ pub trait SimpleArgTypeInfo<'a>: Sized {
     /// The JNI form of the argument (e.g. `jint`).
     type ArgType: 'a;
     /// Converts the data in `foreign` to the Rust type.
-    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self>;
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError>;
 }
 
 impl<'storage, 'param: 'storage, 'context: 'param, T> ArgTypeInfo<'storage, 'param, 'context> for T
@@ -104,7 +107,7 @@ where
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         Ok(Some(Self::convert_from(env, foreign)?))
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
@@ -146,9 +149,12 @@ pub trait ResultTypeInfo<'a>: Sized {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u32`.
 impl SimpleArgTypeInfo<'_> for u32 {
     type ArgType = jint;
-    fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
+    fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
-            return Err(BridgeLayerError::IntegerOverflow(format!("{} to u32", foreign)).into());
+            return Err(BridgeLayerError::IntegerOverflow(format!(
+                "{} to u32",
+                foreign
+            )));
         }
         Ok(*foreign as u32)
     }
@@ -159,7 +165,7 @@ impl SimpleArgTypeInfo<'_> for u32 {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `Option<u32>`.
 impl SimpleArgTypeInfo<'_> for Option<u32> {
     type ArgType = jint;
-    fn convert_from(env: &mut JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
             Ok(None)
         } else {
@@ -171,7 +177,7 @@ impl SimpleArgTypeInfo<'_> for Option<u32> {
 /// Reinterprets the bits of the Java `long` as a `u64`.
 impl SimpleArgTypeInfo<'_> for u64 {
     type ArgType = jlong;
-    fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
+    fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         Ok(*foreign as u64)
     }
 }
@@ -182,13 +188,12 @@ impl SimpleArgTypeInfo<'_> for u64 {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
 impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
     type ArgType = jlong;
-    fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
+    fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
             return Err(BridgeLayerError::IntegerOverflow(format!(
                 "{} to Timestamp (u64)",
                 foreign
-            ))
-            .into());
+            )));
         }
         Ok(Self::from_millis(*foreign as u64))
     }
@@ -200,13 +205,12 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
 /// Note that this is different from the implementation of [`ResultTypeInfo`] for `u64`.
 impl SimpleArgTypeInfo<'_> for crate::zkgroup::Timestamp {
     type ArgType = jlong;
-    fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
+    fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
             return Err(BridgeLayerError::IntegerOverflow(format!(
                 "{} to Timestamp (u64)",
                 foreign
-            ))
-            .into());
+            )));
         }
         Ok(Self::from_seconds(*foreign as u64))
     }
@@ -215,24 +219,22 @@ impl SimpleArgTypeInfo<'_> for crate::zkgroup::Timestamp {
 /// Supports all valid byte values `0..=255`.
 impl SimpleArgTypeInfo<'_> for u8 {
     type ArgType = jint;
-    fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
-        match u8::try_from(*foreign) {
-            Err(_) => Err(BridgeLayerError::IntegerOverflow(format!("{} to u8", foreign)).into()),
-            Ok(v) => Ok(v),
-        }
+    fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
+        u8::try_from(*foreign)
+            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{} to u8", foreign)))
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &JString<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &JString<'a>) -> Result<Self, BridgeLayerError> {
         Ok(env.get_string(foreign)?.into())
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
     type ArgType = JString<'a>;
-    fn convert_from(env: &mut JNIEnv<'a>, foreign: &JString<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv<'a>, foreign: &JString<'a>) -> Result<Self, BridgeLayerError> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -243,7 +245,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
 
 impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JObject<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &JObject<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &JObject<'a>) -> Result<Self, BridgeLayerError> {
         check_jobject_type(env, foreign, jni_class_name!(java.util.UUID))?;
         let args = jni_args!(() -> long);
         let msb: jlong = call_method_checked(env, foreign, "getMostSignificantBits", args)?;
@@ -258,10 +260,13 @@ impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
 
 impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::cdsi::E164 {
     type ArgType = <String as SimpleArgTypeInfo<'a>>::ArgType;
-    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
         let e164 = String::convert_from(env, foreign)?;
         let e164 = e164.parse().map_err(|_: ParseIntError| {
-            SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
+            BridgeLayerError::BadArgument(format!("{e164} is not an e164"))
         })?;
         Ok(e164)
     }
@@ -275,7 +280,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         Ok(unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack)? })
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [u8] {
@@ -292,7 +297,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         if foreign.is_null() {
             Ok(None)
         } else {
@@ -312,7 +317,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         Ok(unsafe { env.get_array_elements(foreign, ReleaseMode::CopyBack)? })
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> &'storage mut [u8] {
@@ -330,7 +335,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         <&'storage [u8]>::borrow(env, foreign)
     }
 
@@ -351,7 +356,7 @@ macro_rules! bridge_trait {
                 fn borrow(
                     env: &mut JNIEnv<'context>,
                     store: &'param Self::ArgType,
-                ) -> SignalJniResult<Self::StoredType> {
+                ) -> Result<Self::StoredType, BridgeLayerError> {
                     Self::StoredType::new(env, store)
                 }
                 fn load_from(
@@ -376,13 +381,13 @@ bridge_trait!(SyncInputStream);
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     type ArgType = JavaCiphertextMessage<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         fn native_handle_from_message<'a, T: 'static>(
             env: &mut JNIEnv,
             foreign: &JavaCiphertextMessage<'a>,
             class_name: &'static str,
             make_result: fn(&'a T) -> CiphertextMessageRef<'a>,
-        ) -> SignalJniResult<Option<CiphertextMessageRef<'a>>> {
+        ) -> Result<Option<CiphertextMessageRef<'a>>, BridgeLayerError> {
             if env.is_instance_of(foreign, class_name)? {
                 let handle: jlong = env
                     .get_field(foreign, "unsafeHandle", jni_signature!(long))?
@@ -394,7 +399,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         }
 
         if foreign.is_null() {
-            return Err(BridgeLayerError::NullHandle.into());
+            return Err(BridgeLayerError::NullHandle);
         }
 
         None.or_else(|| {
@@ -433,9 +438,9 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             )
             .transpose()
         })
-        .unwrap_or(Err(
-            BridgeLayerError::BadJniParameter("CiphertextMessage").into()
-        ))
+        .unwrap_or(Err(BridgeLayerError::BadArgument(
+            "unknown CiphertextMessage subclass".to_string(),
+        )))
     }
 }
 
@@ -599,14 +604,13 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         let elements = unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack)? };
         if elements.len() != LEN {
             return Err(BridgeLayerError::IncorrectArrayLength {
                 expected: LEN,
                 actual: elements.len(),
-            }
-            .into());
+            });
         }
         Ok(elements)
     }
@@ -716,14 +720,14 @@ pub trait BridgeHandle: 'static {}
 
 impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for &T {
     type ArgType = ObjectHandle;
-    fn convert_from(_env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(_env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         Ok(unsafe { native_handle_cast(*foreign) }?)
     }
 }
 
 impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for Option<&T> {
     type ArgType = ObjectHandle;
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         if *foreign == 0 {
             Ok(None)
         } else {
@@ -734,7 +738,7 @@ impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for Option<&T> {
 
 impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for &mut T {
     type ArgType = ObjectHandle;
-    fn convert_from(_env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(_env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         unsafe { native_handle_cast(*foreign) }
     }
 }
@@ -747,14 +751,14 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
     fn borrow(
         env: &mut JNIEnv<'context>,
         foreign: &'param Self::ArgType,
-    ) -> SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, BridgeLayerError> {
         let array = unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack)? };
         array
             .iter()
             .map(|&raw_handle| unsafe {
                 (raw_handle as *const T)
                     .as_ref()
-                    .ok_or_else(|| BridgeLayerError::NullHandle.into())
+                    .ok_or(BridgeLayerError::NullHandle)
             })
             .collect()
     }
@@ -809,7 +813,10 @@ where
 {
     type ArgType = JByteArray<'a>;
 
-    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
         // Ideally we would deserialize directly to &T::Array. However, trying to require that
         // T::Array: ArgTypeInfo is pretty much impossible with the lifetimes SimpleArgTypeInfo
         // provides; we'd have to drop back to ArgTypeInfo for Serialized<T>.
@@ -833,42 +840,45 @@ where
 
 impl<'a> SimpleArgTypeInfo<'a> for ServiceId {
     type ArgType = JByteArray<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         env.convert_byte_array(foreign)
             .ok()
             .and_then(|vec| vec.try_into().ok())
             .as_ref()
             .and_then(Self::parse_from_service_id_fixed_width_binary)
             .ok_or_else(|| {
-                SignalProtocolError::InvalidArgument(
-                    "invalid Service-Id-FixedWidthBinary".to_string(),
-                )
-                .into()
+                BridgeLayerError::BadArgument("invalid Service-Id-FixedWidthBinary".to_string())
             })
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for Aci {
     type ArgType = JByteArray<'a>;
-    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
-            .map_err(|_| SignalProtocolError::InvalidArgument("not an ACI".to_string()).into())
+            .map_err(|_| BridgeLayerError::BadArgument("not an ACI".to_string()))
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for Pni {
     type ArgType = JByteArray<'a>;
-    fn convert_from(env: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
-            .map_err(|_| SignalProtocolError::InvalidArgument("not a PNI".to_string()).into())
+            .map_err(|_| BridgeLayerError::BadArgument("not a PNI".to_string()))
     }
 }
 
 impl<'a> SimpleArgTypeInfo<'a> for bool {
     type ArgType = jboolean;
-    fn convert_from(_: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> SignalJniResult<Self> {
+    fn convert_from(_: &mut JNIEnv<'a>, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         Ok(*foreign != 0)
     }
 }
@@ -1004,7 +1014,7 @@ macro_rules! trivial {
     ($typ:ty) => {
         impl SimpleArgTypeInfo<'_> for $typ {
             type ArgType = Self;
-            fn convert_from(_env: &mut JNIEnv, foreign: &Self) -> SignalJniResult<Self> {
+            fn convert_from(_env: &mut JNIEnv, foreign: &Self) -> Result<Self, BridgeLayerError> {
                 Ok(*foreign)
             }
         }

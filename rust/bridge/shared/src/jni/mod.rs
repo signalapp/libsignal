@@ -269,6 +269,7 @@ where
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
+        | SignalJniError::Bridge(BridgeLayerError::BadArgument(_))
         | SignalJniError::Bridge(BridgeLayerError::IncorrectArrayLength { .. }) => {
             jni_class_name!(java.lang.IllegalArgumentException)
         }
@@ -573,14 +574,14 @@ where
 
 pub unsafe fn native_handle_cast<T>(
     handle: ObjectHandle,
-) -> Result<&'static mut T, SignalJniError> {
+) -> Result<&'static mut T, BridgeLayerError> {
     /*
     Should we try testing the encoded pointer for sanity here, beyond
     being null? For example verifying that lowest bits are zero,
     highest bits are zero, greater than 64K, etc?
     */
     if handle == 0 {
-        return Err(BridgeLayerError::NullHandle.into());
+        return Err(BridgeLayerError::NullHandle);
     }
 
     Ok(&mut *(handle as *mut T))

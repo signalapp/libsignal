@@ -29,7 +29,7 @@ impl<'a> JniInputStream<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         stream: &'a JObject<'a>,
-    ) -> SignalJniResult<Self> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(env, stream, jni_class_name!(java.io.InputStream))?;
         Ok(Self {
             env: EnvHandle::new(env).into(),

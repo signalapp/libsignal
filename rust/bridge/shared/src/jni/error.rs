@@ -43,9 +43,14 @@ pub enum SignalJniError {
     Bridge(BridgeLayerError),
 }
 
+/// Subset of errors that can happen in the bridge layer.
+///
+/// These errors will always be converted to RuntimeExceptions or Errors, i.e. unchecked throwables,
+/// except for the [`Self::CallbackException`] case, which is rethrown.
 #[derive(Debug)]
 pub enum BridgeLayerError {
     Jni(jni::errors::Error),
+    BadArgument(String),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
@@ -85,6 +90,7 @@ impl fmt::Display for BridgeLayerError {
         match self {
             Self::Jni(s) => write!(f, "JNI error {}", s),
             Self::NullHandle => write!(f, "null handle"),
+            Self::BadArgument(m) => write!(f, "{}", m),
             Self::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
             Self::UnexpectedJniResultType(m, t) => {
                 write!(f, "calling {} returned unexpected type {}", m, t)

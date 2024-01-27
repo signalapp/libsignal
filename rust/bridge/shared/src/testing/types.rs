@@ -72,7 +72,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
     fn borrow(
         env: &mut jni::JNIEnv<'context>,
         _foreign: &'param Self::ArgType,
-    ) -> jni::SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         Ok(Self::AttachedToJVM(env.get_java_vm()?))
     }
 
@@ -140,8 +140,10 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for ErrorOnBorrow {
     fn convert_from(
         _env: &mut jni::JNIEnv<'a>,
         _foreign: &Self::ArgType,
-    ) -> jni::SignalJniResult<Self> {
-        Err(SignalProtocolError::InvalidArgument("deliberate error".to_string()).into())
+    ) -> Result<Self, jni::BridgeLayerError> {
+        Err(jni::BridgeLayerError::BadArgument(
+            "deliberate error".to_string(),
+        ))
     }
 }
 
@@ -177,7 +179,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for PanicOnBorrow {
     fn convert_from(
         _env: &mut jni::JNIEnv<'a>,
         _foreign: &Self::ArgType,
-    ) -> jni::SignalJniResult<Self> {
+    ) -> Result<Self, jni::BridgeLayerError> {
         panic!("deliberate panic");
     }
 }
@@ -226,7 +228,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
     fn borrow(
         env: &mut ::jni::JNIEnv<'context>,
         _foreign: &'param Self::ArgType,
-    ) -> jni::SignalJniResult<Self::StoredType> {
+    ) -> Result<Self::StoredType, jni::BridgeLayerError> {
         <NeedsCleanup as jni::ArgTypeInfo>::borrow(env, _foreign)
     }
 
