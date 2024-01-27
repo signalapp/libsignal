@@ -83,16 +83,16 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
                 let env = env_for_catch_unwind.0;
                 result.convert_into(env).and_then(|result| {
                     let result_as_jobject = box_primitive_if_needed(env, result.into())?;
-                    call_method_checked(
+                    _ = call_method_checked(
                         env,
                         future_for_catch_unwind,
                         "complete",
                         jni_args!((result_as_jobject => java.lang.Object) -> boolean),
-                    )
-                    .map(|_| ())
+                    )?;
+                    Ok(())
                 })
             })
-            .unwrap_or_else(|panic| Err(SignalJniError::UnexpectedPanic(panic)))
+            .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
         });
 
         // From this point on we can't catch panics, because SignalJniError isn't UnwindSafe. This
@@ -102,13 +102,13 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
             convert_to_exception(&mut env, error, |env, throwable, error| {
                 throwable
                     .and_then(|throwable| {
-                        call_method_checked(
+                        _ = call_method_checked(
                             env,
                             &future,
                             "completeExceptionally",
                             jni_args!((throwable => java.lang.Throwable) -> boolean),
-                        )
-                        .map(|_| ())
+                        )?;
+                        Ok(())
                     })
                     .unwrap_or_else(|completion_error| {
                         log::error!(
@@ -176,5 +176,5 @@ pub fn catch_unwind<'a, O>(
 ) -> impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'a {
     future
         .catch_unwind()
-        .unwrap_or_else(|panic| Err(SignalJniError::UnexpectedPanic(panic)))
+        .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
 }

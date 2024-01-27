@@ -148,10 +148,7 @@ impl SimpleArgTypeInfo<'_> for u32 {
     type ArgType = jint;
     fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
         if *foreign < 0 {
-            return Err(SignalJniError::IntegerOverflow(format!(
-                "{} to u32",
-                foreign
-            )));
+            return Err(BridgeLayerError::IntegerOverflow(format!("{} to u32", foreign)).into());
         }
         Ok(*foreign as u32)
     }
@@ -187,10 +184,11 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
     type ArgType = jlong;
     fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
         if *foreign < 0 {
-            return Err(SignalJniError::IntegerOverflow(format!(
+            return Err(BridgeLayerError::IntegerOverflow(format!(
                 "{} to Timestamp (u64)",
                 foreign
-            )));
+            ))
+            .into());
         }
         Ok(Self::from_millis(*foreign as u64))
     }
@@ -204,10 +202,11 @@ impl SimpleArgTypeInfo<'_> for crate::zkgroup::Timestamp {
     type ArgType = jlong;
     fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> SignalJniResult<Self> {
         if *foreign < 0 {
-            return Err(SignalJniError::IntegerOverflow(format!(
+            return Err(BridgeLayerError::IntegerOverflow(format!(
                 "{} to Timestamp (u64)",
                 foreign
-            )));
+            ))
+            .into());
         }
         Ok(Self::from_seconds(*foreign as u64))
     }
@@ -218,10 +217,7 @@ impl SimpleArgTypeInfo<'_> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> SignalJniResult<Self> {
         match u8::try_from(*foreign) {
-            Err(_) => Err(SignalJniError::IntegerOverflow(format!(
-                "{} to u8",
-                foreign
-            ))),
+            Err(_) => Err(BridgeLayerError::IntegerOverflow(format!("{} to u8", foreign)).into()),
             Ok(v) => Ok(v),
         }
     }
@@ -398,7 +394,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         }
 
         if foreign.is_null() {
-            return Err(SignalJniError::NullHandle);
+            return Err(BridgeLayerError::NullHandle.into());
         }
 
         None.or_else(|| {
@@ -437,7 +433,9 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             )
             .transpose()
         })
-        .unwrap_or(Err(SignalJniError::BadJniParameter("CiphertextMessage")))
+        .unwrap_or(Err(
+            BridgeLayerError::BadJniParameter("CiphertextMessage").into()
+        ))
     }
 }
 
@@ -604,10 +602,11 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     ) -> SignalJniResult<Self::StoredType> {
         let elements = unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack)? };
         if elements.len() != LEN {
-            return Err(SignalJniError::IncorrectArrayLength {
+            return Err(BridgeLayerError::IncorrectArrayLength {
                 expected: LEN,
                 actual: elements.len(),
-            });
+            }
+            .into());
         }
         Ok(elements)
     }
@@ -755,7 +754,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
             .map(|&raw_handle| unsafe {
                 (raw_handle as *const T)
                     .as_ref()
-                    .ok_or(SignalJniError::NullHandle)
+                    .ok_or_else(|| BridgeLayerError::NullHandle.into())
             })
             .collect()
     }
@@ -944,7 +943,7 @@ where
     let len = it.len();
     let array = env.new_object_array(
         len.try_into()
-            .map_err(|_| SignalJniError::IntegerOverflow(format!("{len}_usize to i32")))?,
+            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{len}_usize to i32")))?,
         jni_class_name!(java.lang.String),
         JavaObject::null(),
     )?;

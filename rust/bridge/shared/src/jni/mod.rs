@@ -82,6 +82,16 @@ where
 {
     // Handle special cases first.
     let error = match error {
+        SignalJniError::Bridge(BridgeLayerError::CallbackException(callback, exception)) => {
+            let throwable = env.new_local_ref(exception.as_obj()).map(JThrowable::from);
+            consume(
+                env,
+                throwable.map_err(Into::into),
+                &format!("error in method call '{callback}'"),
+            );
+            return;
+        }
+
         SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(
             callback,
             exception,
@@ -92,11 +102,12 @@ where
             if <dyn Error>::is::<ThrownException>(&*exception) {
                 let exception =
                     <dyn Error>::downcast::<ThrownException>(exception).expect("just checked");
-                let throwable = env.new_local_ref(exception.as_obj()).map(JThrowable::from);
-                consume(
+                convert_to_exception(
                     env,
-                    throwable.map_err(Into::into),
-                    &format!("error in method call '{callback}'"),
+                    SignalJniError::Bridge(BridgeLayerError::CallbackException(
+                        callback, *exception,
+                    )),
+                    consume,
                 );
                 return;
             }
@@ -224,9 +235,9 @@ where
             return;
         }
 
-        SignalJniError::UnexpectedPanic(_)
-        | SignalJniError::BadJniParameter(_)
-        | SignalJniError::UnexpectedJniResultType(_, _) => {
+        SignalJniError::Bridge(BridgeLayerError::UnexpectedPanic(_))
+        | SignalJniError::Bridge(BridgeLayerError::BadJniParameter(_))
+        | SignalJniError::Bridge(BridgeLayerError::UnexpectedJniResultType(_, _)) => {
             // java.lang.AssertionError has a slightly different signature.
             let throwable = env.new_string(error.to_string()).and_then(|message| {
                 Ok(new_object(
@@ -245,7 +256,9 @@ where
     };
 
     let exception_type = match error {
-        SignalJniError::NullHandle => jni_class_name!(java.lang.NullPointerException),
+        SignalJniError::Bridge(BridgeLayerError::NullHandle) => {
+            jni_class_name!(java.lang.NullPointerException)
+        }
 
         SignalJniError::Protocol(SignalProtocolError::InvalidState(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
@@ -256,12 +269,12 @@ where
         | SignalJniError::SignalCrypto(SignalCryptoError::UnknownAlgorithm(_, _))
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
-        | SignalJniError::IncorrectArrayLength { .. } => {
+        | SignalJniError::Bridge(BridgeLayerError::IncorrectArrayLength { .. }) => {
             jni_class_name!(java.lang.IllegalArgumentException)
         }
 
-        SignalJniError::IntegerOverflow(_)
-        | SignalJniError::Jni(_)
+        SignalJniError::Bridge(BridgeLayerError::IntegerOverflow(_))
+        | SignalJniError::Bridge(BridgeLayerError::Jni(_))
         | SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(_, _))
         | SignalJniError::Protocol(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
@@ -334,9 +347,10 @@ where
         | SignalJniError::Protocol(SignalProtocolError::SessionNotFound(..))
         | SignalJniError::Protocol(SignalProtocolError::InvalidRegistrationId(..))
         | SignalJniError::Protocol(SignalProtocolError::InvalidSenderKeySession { .. })
-        | SignalJniError::UnexpectedPanic(_)
-        | SignalJniError::BadJniParameter(_)
-        | SignalJniError::UnexpectedJniResultType(_, _) => {
+        | SignalJniError::Bridge(BridgeLayerError::BadJniParameter(_))
+        | SignalJniError::Bridge(BridgeLayerError::UnexpectedJniResultType(_, _))
+        | SignalJniError::Bridge(BridgeLayerError::CallbackException(_, _))
+        | SignalJniError::Bridge(BridgeLayerError::UnexpectedPanic(_)) => {
             unreachable!("already handled in prior match")
         }
 
@@ -551,7 +565,7 @@ where
             R::default()
         }
         Err(r) => {
-            throw_error(env, SignalJniError::UnexpectedPanic(r));
+            throw_error(env, BridgeLayerError::UnexpectedPanic(r).into());
             R::default()
         }
     }
@@ -566,17 +580,17 @@ pub unsafe fn native_handle_cast<T>(
     highest bits are zero, greater than 64K, etc?
     */
     if handle == 0 {
-        return Err(SignalJniError::NullHandle);
+        return Err(BridgeLayerError::NullHandle.into());
     }
 
     Ok(&mut *(handle as *mut T))
 }
 
 /// Calls a method and translates any thrown exceptions to
-/// [`SignalProtocolError::ApplicationCallbackError`].
+/// [`BridgeLayerError::CallbackException`].
 ///
 /// Wraps [`JNIEnv::call_method`].
-/// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
+/// The result must have the correct type, or [`BridgeLayerError::UnexpectedJniResultType`] will be
 /// returned instead.
 pub fn call_method_checked<
     'input,
@@ -589,7 +603,7 @@ pub fn call_method_checked<
     obj: O,
     fn_name: &'static str,
     args: JniArgs<R, LEN>,
-) -> Result<R, SignalJniError> {
+) -> Result<R, BridgeLayerError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
     let result = env.call_method(obj, fn_name, args.sig, &args.args);
@@ -597,10 +611,10 @@ pub fn call_method_checked<
 }
 
 /// Calls a method and translates any thrown exceptions to
-/// [`SignalProtocolError::ApplicationCallbackError`].
+/// [`BridgeLayerError::CallbackException`].
 ///
 /// Wraps [`JNIEnv::call_static_method`].
-/// The result must have the correct type, or [`SignalJniError::UnexpectedJniResultType`] will be
+/// The result must have the correct type, or [`BridgeLayerError::UnexpectedJniResultType`] will be
 /// returned instead.
 pub fn call_static_method_checked<
     'input,
@@ -613,7 +627,7 @@ pub fn call_static_method_checked<
     cls: C,
     fn_name: &'static str,
     args: JniArgs<R, LEN>,
-) -> Result<R, SignalJniError> {
+) -> Result<R, BridgeLayerError> {
     // Note that we are *not* unwrapping the result yet!
     // We need to check for exceptions *first*.
     let result = env.call_static_method(cls, fn_name, args.sig, &args.args);
@@ -624,22 +638,21 @@ fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>
     env: &mut JNIEnv<'output>,
     fn_name: &'static str,
     result: jni::errors::Result<JValueOwned<'output>>,
-) -> Result<R, SignalJniError> {
+) -> Result<R, BridgeLayerError> {
     let throwable = env.exception_occurred()?;
     if **throwable == *JObject::null() {
         let result = result?;
         let type_name = result.type_name();
         result
             .try_into()
-            .map_err(|_| SignalJniError::UnexpectedJniResultType(fn_name, type_name))
+            .map_err(|_| BridgeLayerError::UnexpectedJniResultType(fn_name, type_name))
     } else {
         env.exception_clear()?;
 
-        Err(SignalProtocolError::ApplicationCallbackError(
+        Err(BridgeLayerError::CallbackException(
             fn_name,
-            Box::new(ThrownException::new(env, throwable)?),
-        )
-        .into())
+            ThrownException::new(env, throwable)?,
+        ))
     }
 }
 
@@ -693,15 +706,15 @@ pub fn check_jobject_type(
     env: &mut JNIEnv,
     obj: &JObject,
     class_name: &'static str,
-) -> Result<(), SignalJniError> {
+) -> Result<(), BridgeLayerError> {
     if obj.is_null() {
-        return Err(SignalJniError::NullHandle);
+        return Err(BridgeLayerError::NullHandle);
     }
 
     let class = env.find_class(class_name)?;
 
     if !env.is_instance_of(obj, class)? {
-        return Err(SignalJniError::BadJniParameter(class_name));
+        return Err(BridgeLayerError::BadJniParameter(class_name));
     }
 
     Ok(())

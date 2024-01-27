@@ -40,15 +40,18 @@ pub enum SignalJniError {
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Cdsi(libsignal_net::cdsi::Error),
+    Bridge(BridgeLayerError),
+}
+
+#[derive(Debug)]
+pub enum BridgeLayerError {
     Jni(jni::errors::Error),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
     NullHandle,
     IntegerOverflow(String),
-    IncorrectArrayLength {
-        expected: usize,
-        actual: usize,
-    },
+    IncorrectArrayLength { expected: usize, actual: usize },
+    CallbackException(&'static str, ThrownException),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
@@ -72,23 +75,34 @@ impl fmt::Display for SignalJniError {
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
-            SignalJniError::Jni(s) => write!(f, "JNI error {}", s),
-            SignalJniError::NullHandle => write!(f, "null handle"),
-            SignalJniError::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
-            SignalJniError::UnexpectedJniResultType(m, t) => {
+            SignalJniError::Bridge(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl fmt::Display for BridgeLayerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Jni(s) => write!(f, "JNI error {}", s),
+            Self::NullHandle => write!(f, "null handle"),
+            Self::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
+            Self::UnexpectedJniResultType(m, t) => {
                 write!(f, "calling {} returned unexpected type {}", m, t)
             }
-            SignalJniError::IntegerOverflow(m) => {
+            Self::IntegerOverflow(m) => {
                 write!(f, "integer overflow during conversion of {}", m)
             }
-            SignalJniError::IncorrectArrayLength { expected, actual } => {
+            Self::IncorrectArrayLength { expected, actual } => {
                 write!(
                     f,
                     "expected array with length {} (was {})",
                     expected, actual
                 )
             }
-            SignalJniError::UnexpectedPanic(e) => {
+            Self::CallbackException(callback_name, exception) => {
+                write!(f, "exception in method call '{callback_name}': {exception}")
+            }
+            Self::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))
             }
         }
@@ -195,19 +209,33 @@ impl From<libsignal_net::cdsi::Error> for SignalJniError {
     }
 }
 
+impl From<BridgeLayerError> for SignalJniError {
+    fn from(e: BridgeLayerError) -> SignalJniError {
+        SignalJniError::Bridge(e)
+    }
+}
+
+impl From<jni::errors::Error> for BridgeLayerError {
+    fn from(e: jni::errors::Error) -> BridgeLayerError {
+        BridgeLayerError::Jni(e)
+    }
+}
+
 impl From<jni::errors::Error> for SignalJniError {
     fn from(e: jni::errors::Error) -> SignalJniError {
-        SignalJniError::Jni(e)
+        BridgeLayerError::from(e).into()
     }
 }
 
 impl From<SignalJniError> for SignalProtocolError {
     fn from(err: SignalJniError) -> SignalProtocolError {
         match err {
-            SignalJniError::Jni(e) => SignalProtocolError::FfiBindingError(e.to_string()),
             SignalJniError::Protocol(e) => e,
-            SignalJniError::BadJniParameter(m) => {
+            SignalJniError::Bridge(BridgeLayerError::BadJniParameter(m)) => {
                 SignalProtocolError::InvalidArgument(m.to_string())
+            }
+            SignalJniError::Bridge(BridgeLayerError::CallbackException(callback, exception)) => {
+                SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
             }
             _ => SignalProtocolError::FfiBindingError(format!("{}", err)),
         }
@@ -245,7 +273,7 @@ impl ThrownException {
     }
 
     /// Persists the given throwable.
-    pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, SignalJniError> {
+    pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, BridgeLayerError> {
         assert!(**throwable != *JObject::null());
         Ok(Self {
             jvm: env.get_java_vm()?,
@@ -253,7 +281,7 @@ impl ThrownException {
         })
     }
 
-    pub fn class_name(&self, env: &mut JNIEnv) -> Result<String, SignalJniError> {
+    pub fn class_name(&self, env: &mut JNIEnv) -> Result<String, BridgeLayerError> {
         let class_type = env.get_object_class(self.exception_ref.as_obj())?;
         let class_name: JObject = call_method_checked(
             env,
@@ -265,7 +293,7 @@ impl ThrownException {
         Ok(env.get_string(&JString::from(class_name))?.into())
     }
 
-    pub fn message(&self, env: &mut JNIEnv) -> Result<String, SignalJniError> {
+    pub fn message(&self, env: &mut JNIEnv) -> Result<String, BridgeLayerError> {
         let message: JObject = call_method_checked(
             env,
             self.exception_ref.as_obj(),
