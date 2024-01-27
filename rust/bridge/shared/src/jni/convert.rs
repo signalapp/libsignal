@@ -126,9 +126,9 @@ where
 /// # struct Foo;
 /// # impl<'a> ResultTypeInfo<'a> for Foo {
 /// #     type ResultType = JString<'a>;
-/// #     fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<JString<'a>> { todo!() }
+/// #     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<JString<'a>, BridgeLayerError> { todo!() }
 /// # }
-/// # fn test<'a>(env: &mut JNIEnv<'a>) -> SignalJniResult<()> {
+/// # fn test<'a>(env: &mut JNIEnv<'a>) -> Result<(), BridgeLayerError> {
 /// #     let rust_result = Foo;
 /// let jni_result = rust_result.convert_into(env)?;
 /// #     Ok(())
@@ -140,7 +140,7 @@ pub trait ResultTypeInfo<'a>: Sized {
     /// The JNI form of the result (e.g. `jint`).
     type ResultType: Into<JValueOwned<'a>>;
     /// Converts the data in `self` to the JNI type, similar to `try_into()`.
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError>;
 }
 
 /// Supports values `0..=Integer.MAX_VALUE`.
@@ -448,7 +448,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
 impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
     type ResultType = JObject<'a>;
 
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let jobj = new_object(
             env,
             jni_class_name!(java.util.HashMap),
@@ -468,7 +468,7 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
 
 impl ResultTypeInfo<'_> for bool {
     type ResultType = jboolean;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(if self { JNI_TRUE } else { JNI_FALSE })
     }
 }
@@ -476,7 +476,7 @@ impl ResultTypeInfo<'_> for bool {
 /// Supports all valid byte values `0..=255`.
 impl ResultTypeInfo<'_> for u8 {
     type ResultType = jint;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(self as jint)
     }
 }
@@ -486,7 +486,7 @@ impl ResultTypeInfo<'_> for u8 {
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `u32`.
 impl ResultTypeInfo<'_> for u32 {
     type ResultType = jint;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
         Ok(self as jint)
     }
@@ -497,7 +497,7 @@ impl ResultTypeInfo<'_> for u32 {
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Option<u32>`.
 impl ResultTypeInfo<'_> for Option<u32> {
     type ResultType = jint;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
         Ok(self.unwrap_or(u32::MAX) as jint)
     }
@@ -506,7 +506,7 @@ impl ResultTypeInfo<'_> for Option<u32> {
 /// Reinterprets the bits of the `u64` as a Java `long`.
 impl ResultTypeInfo<'_> for u64 {
     type ResultType = jlong;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
         Ok(self as jlong)
     }
@@ -517,7 +517,7 @@ impl ResultTypeInfo<'_> for u64 {
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
 impl ResultTypeInfo<'_> for crate::protocol::Timestamp {
     type ResultType = jlong;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
         Ok(self.as_millis() as jlong)
     }
@@ -528,7 +528,7 @@ impl ResultTypeInfo<'_> for crate::protocol::Timestamp {
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
 impl ResultTypeInfo<'_> for crate::zkgroup::Timestamp {
     type ResultType = jlong;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
         Ok(self.as_seconds() as jlong)
     }
@@ -536,28 +536,28 @@ impl ResultTypeInfo<'_> for crate::zkgroup::Timestamp {
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JString<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.deref().convert_into(env)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Option<String> {
     type ResultType = JString<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.as_deref().convert_into(env)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JString<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(env.new_string(self)?)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Option<&str> {
     type ResultType = JString<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
             Some(s) => s.convert_into(env),
             None => Ok(JString::default()),
@@ -567,14 +567,14 @@ impl<'a> ResultTypeInfo<'a> for Option<&str> {
 
 impl<'a> ResultTypeInfo<'a> for &[u8] {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(env.byte_array_from_slice(self)?)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Option<&[u8]> {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
             Some(s) => s.convert_into(env),
             None => Ok(JByteArray::default()),
@@ -584,14 +584,14 @@ impl<'a> ResultTypeInfo<'a> for Option<&[u8]> {
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.deref().convert_into(env)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Option<Vec<u8>> {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.as_deref().convert_into(env)
     }
 }
@@ -625,14 +625,14 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
 
 impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         self.as_ref().convert_into(env)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     type ResultType = JObject<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let uuid_bytes: [u8; 16] = *self.as_bytes();
         let (msb, lsb) = uuid_bytes.split_at(8);
         Ok(new_object(
@@ -649,7 +649,7 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
 /// A translation to a Java interface where the implementing class wraps the Rust handle.
 impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
     type ResultType = JavaCiphertextMessage<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
             CiphertextMessage::SignalMessage(m) => {
                 let message = m.convert_into(env)?;
@@ -687,27 +687,9 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
     }
 }
 
-impl<'a, T: ResultTypeInfo<'a>, E> ResultTypeInfo<'a> for Result<T, E>
-where
-    E: Into<SignalJniError>,
-{
-    type ResultType = T::ResultType;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        T::convert_into(self.map_err(Into::into)?, env)
-    }
-}
-
-/// Used when returning an optional buffer, since the conversion to a Java array might also fail.
-impl<'a> ResultTypeInfo<'a> for Option<SignalJniResult<JByteArray<'a>>> {
-    type ResultType = JByteArray<'a>;
-    fn convert_into(self, _env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
-        Ok(self.transpose()?.unwrap_or_default())
-    }
-}
-
 impl<'a> ResultTypeInfo<'a> for Option<JObject<'a>> {
     type ResultType = JObject<'a>;
-    fn convert_into(self, _env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(self.unwrap_or_default())
     }
 }
@@ -769,14 +751,14 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
 
 impl<T: BridgeHandle> ResultTypeInfo<'_> for T {
     type ResultType = ObjectHandle;
-    fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(Box::into_raw(Box::new(self)) as ObjectHandle)
     }
 }
 
 impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
     type ResultType = ObjectHandle;
-    fn convert_into(self, env: &mut JNIEnv) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
             Some(obj) => obj.convert_into(env),
             None => Ok(0),
@@ -786,21 +768,21 @@ impl<T: BridgeHandle> ResultTypeInfo<'_> for Option<T> {
 
 impl<'a> ResultTypeInfo<'a> for ServiceId {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         Ok(env.byte_array_from_slice(&self.service_id_fixed_width_binary())?)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Aci {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         ServiceId::from(self).convert_into(env)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for Pni {
     type ResultType = JByteArray<'a>;
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         ServiceId::from(self).convert_into(env)
     }
 }
@@ -889,7 +871,7 @@ where
 {
     type ResultType = JByteArray<'a>;
 
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let result = zkgroup::serialize(self.deref());
         result.convert_into(env)
     }
@@ -898,7 +880,7 @@ where
 impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     type ResultType = JObject<'a>;
 
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let output_hashmap = new_object(
             env,
             jni_class_name!(java.util.HashMap),
@@ -944,7 +926,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
 fn make_string_array<'a, It: IntoIterator>(
     env: &mut JNIEnv<'a>,
     it: It,
-) -> SignalJniResult<JObjectArray<'a>>
+) -> Result<JObjectArray<'a>, BridgeLayerError>
 where
     It::Item: AsRef<str>,
     It::IntoIter: ExactSizeIterator,
@@ -973,7 +955,7 @@ where
 impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
     type ResultType = JObject<'a>;
 
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let Self {
             error_message,
             found_unknown_fields,
@@ -1020,7 +1002,7 @@ macro_rules! trivial {
         }
         impl ResultTypeInfo<'_> for $typ {
             type ResultType = Self;
-            fn convert_into(self, _env: &mut JNIEnv) -> SignalJniResult<Self> {
+            fn convert_into(self, _env: &mut JNIEnv) -> Result<Self, BridgeLayerError> {
                 Ok(self)
             }
         }

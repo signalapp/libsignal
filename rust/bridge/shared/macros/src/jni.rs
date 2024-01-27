@@ -103,7 +103,11 @@ fn bridge_fn_body(
             #(#input_processing)*
             let __result = #orig_name(#(#input_names),*);
             #await_if_needed
-            jni::ResultTypeInfo::convert_into(__result, env)
+            // If the original function can't fail, wrap the result in Ok for uniformity,
+            // and then throw any errors ahead of calling convert_into.
+            // See TransformHelper::ok_if_needed.
+            let __result = TransformHelper(__result).ok_if_needed()?.0;
+            jni::ResultTypeInfo::convert_into(__result, env).map_err(Into::into)
         })
     }
 }

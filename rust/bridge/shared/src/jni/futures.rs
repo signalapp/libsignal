@@ -81,16 +81,19 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
                 // Force the lambda to capture the whole struct instead of an individual field.
                 let _ = &env_for_catch_unwind;
                 let env = env_for_catch_unwind.0;
-                result.convert_into(env).and_then(|result| {
-                    let result_as_jobject = box_primitive_if_needed(env, result.into())?;
-                    _ = call_method_checked(
-                        env,
-                        future_for_catch_unwind,
-                        "complete",
-                        jni_args!((result_as_jobject => java.lang.Object) -> boolean),
-                    )?;
-                    Ok(())
-                })
+                result
+                    .convert_into(env)
+                    .and_then(|result| {
+                        let result_as_jobject = box_primitive_if_needed(env, result.into())?;
+                        _ = call_method_checked(
+                            env,
+                            future_for_catch_unwind,
+                            "complete",
+                            jni_args!((result_as_jobject => java.lang.Object) -> boolean),
+                        )?;
+                        Ok(())
+                    })
+                    .map_err(Into::into)
             })
             .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
         });

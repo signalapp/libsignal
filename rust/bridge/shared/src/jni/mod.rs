@@ -78,7 +78,7 @@ impl<'a, T> From<JavaCompletableFuture<'a, T>> for JObject<'a> {
 
 fn convert_to_exception<'a, F>(env: &mut JNIEnv<'a>, error: SignalJniError, consume: F)
 where
-    F: FnOnce(&mut JNIEnv<'a>, SignalJniResult<JThrowable<'a>>, &dyn Display),
+    F: FnOnce(&mut JNIEnv<'a>, Result<JThrowable<'a>, BridgeLayerError>, &dyn Display),
 {
     // Handle special cases first.
     let error = match error {
@@ -119,19 +119,16 @@ where
         }
 
         SignalJniError::Protocol(SignalProtocolError::UntrustedIdentity(ref addr)) => {
-            let throwable = env
-                .new_string(addr.name())
-                .and_then(|addr_name| {
-                    Ok(new_object(
-                        env,
-                        jni_class_name!(org.signal.libsignal.protocol.UntrustedIdentityException),
-                        jni_args!((addr_name => java.lang.String) -> void),
-                    )?
-                    .into())
-                })
-                .map_err(Into::into);
+            let throwable = env.new_string(addr.name()).and_then(|addr_name| {
+                Ok(new_object(
+                    env,
+                    jni_class_name!(org.signal.libsignal.protocol.UntrustedIdentityException),
+                    jni_args!((addr_name => java.lang.String) -> void),
+                )?
+                .into())
+            });
 
-            consume(env, throwable, &error);
+            consume(env, throwable.map_err(Into::into), &error);
             return;
         }
 
@@ -679,7 +676,7 @@ pub fn jobject_from_native_handle<'a>(
     env: &mut JNIEnv<'a>,
     class_name: &str,
     boxed_handle: ObjectHandle,
-) -> Result<JObject<'a>, SignalJniError> {
+) -> Result<JObject<'a>, BridgeLayerError> {
     Ok(new_object(
         env,
         class_name,
@@ -693,7 +690,7 @@ pub fn jobject_from_native_handle<'a>(
 fn protocol_address_to_jobject<'a>(
     env: &mut JNIEnv<'a>,
     address: &ProtocolAddress,
-) -> Result<JObject<'a>, SignalJniError> {
+) -> Result<JObject<'a>, BridgeLayerError> {
     let handle = address.clone().convert_into(env)?;
     jobject_from_native_handle(
         env,

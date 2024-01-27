@@ -9,7 +9,6 @@ use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-#[cfg(feature = "node")]
 use crate::support::*;
 use crate::*;
 

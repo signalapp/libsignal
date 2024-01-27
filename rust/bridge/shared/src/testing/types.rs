@@ -289,8 +289,13 @@ impl ffi::ResultTypeInfo for ErrorOnReturn {
 impl<'a> jni::ResultTypeInfo<'a> for ErrorOnReturn {
     type ResultType = jni::JObject<'a>;
 
-    fn convert_into(self, _env: &mut jni::JNIEnv<'a>) -> jni::SignalJniResult<Self::ResultType> {
-        Err(SignalProtocolError::InvalidArgument("deliberate error".to_string()).into())
+    fn convert_into(
+        self,
+        _env: &mut jni::JNIEnv<'a>,
+    ) -> Result<Self::ResultType, jni::BridgeLayerError> {
+        Err(jni::BridgeLayerError::BadArgument(
+            "deliberate error".to_string(),
+        ))
     }
 }
 
@@ -319,7 +324,10 @@ impl ffi::ResultTypeInfo for PanicOnReturn {
 impl<'a> jni::ResultTypeInfo<'a> for PanicOnReturn {
     type ResultType = jni::JObject<'a>;
 
-    fn convert_into(self, _env: &mut jni::JNIEnv<'a>) -> jni::SignalJniResult<Self::ResultType> {
+    fn convert_into(
+        self,
+        _env: &mut jni::JNIEnv<'a>,
+    ) -> Result<Self::ResultType, jni::BridgeLayerError> {
         panic!("deliberate panic");
     }
 }
