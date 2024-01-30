@@ -33,11 +33,6 @@ impl_from_oneof!(recipient::Destination, DistributionList, DistributionList);
 impl_from_oneof!(chat_update_message::Update, SimpleChatUpdate, SimpleUpdate);
 impl_from_oneof!(
     chat_update_message::Update,
-    GroupDescriptionChatUpdate,
-    GroupDescription
-);
-impl_from_oneof!(
-    chat_update_message::Update,
     ExpirationTimerChatUpdate,
     ExpirationTimerChange
 );

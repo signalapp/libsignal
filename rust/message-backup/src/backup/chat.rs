@@ -16,6 +16,8 @@ use crate::backup::method::{Contains, Method, Store};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
+mod group;
+
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum ChatError {
     /// multiple records with the same ID
@@ -47,6 +49,12 @@ pub enum ChatItemError {
     NoCallForId(CallId),
     /// invalid ACI uuid
     InvalidAci,
+    /// GroupChange has no changes.
+    GroupChangeIsEmpty,
+    /// GroupUpdate change {0} has no update value.
+    GroupChangeUpdateIsEmpty(usize),
+    /// group update: {0}
+    GroupUpdate(#[from] group::GroupUpdateError),
 }
 
 /// Validated version of [`proto::Chat`].
@@ -113,8 +121,8 @@ pub enum UpdateMessage {
     Simple {
         type_: proto::simple_chat_update::Type,
     },
-    GroupDescription {
-        new_description: String,
+    GroupChange {
+        updates: Vec<group::GroupChatUpdate>,
     },
     ExpirationTimerChange,
     ProfileChange {
@@ -376,12 +384,34 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateM
             }) => Self::Simple {
                 type_: type_.enum_value_or_default(),
             },
-            Update::GroupDescription(proto::GroupDescriptionChatUpdate {
-                newDescription,
+            Update::GroupChange(proto::GroupChangeChatUpdate {
+                updates,
                 special_fields: _,
-            }) => Self::GroupDescription {
-                new_description: newDescription,
-            },
+            }) => {
+                if updates.is_empty() {
+                    return Err(ChatItemError::GroupChangeIsEmpty);
+                }
+                Self::GroupChange {
+                    updates: updates
+                        .into_iter()
+                        .enumerate()
+                        .map(
+                            |(
+                                i,
+                                proto::group_change_chat_update::Update {
+                                    update,
+                                    special_fields: _,
+                                },
+                            )| {
+                                let update =
+                                    update.ok_or(ChatItemError::GroupChangeUpdateIsEmpty(i))?;
+                                group::GroupChatUpdate::try_from(update)
+                                    .map_err(ChatItemError::from)
+                            },
+                        )
+                        .collect::<Result<_, _>>()?,
+                }
+            }
             Update::ExpirationTimerChange(proto::ExpirationTimerChatUpdate {
                 // TODO validate this field
                 expiresInMs: _,
@@ -750,7 +780,6 @@ mod test {
     }
 
     #[test_case(proto::SimpleChatUpdate::default(), Ok(()))]
-    #[test_case(proto::GroupDescriptionChatUpdate::default(), Ok(()))]
     #[test_case(proto::ExpirationTimerChatUpdate::default(), Ok(()))]
     #[test_case(proto::ProfileChangeChatUpdate::default(), Ok(()))]
     #[test_case(proto::ThreadMergeChatUpdate::default(), Ok(()))]
