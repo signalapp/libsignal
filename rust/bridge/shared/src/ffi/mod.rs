@@ -81,6 +81,45 @@ impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
     }
 }
 
+impl<T> From<OwnedBufferOf<T>> for Box<[T]> {
+    fn from(value: OwnedBufferOf<T>) -> Self {
+        let OwnedBufferOf { base, length } = value;
+        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(base, length)) }
+    }
+}
+
+#[repr(C)]
+pub struct StringArray {
+    bytes: OwnedBufferOf<std::ffi::c_uchar>,
+    lengths: OwnedBufferOf<usize>,
+}
+
+impl StringArray {
+    pub fn into_boxed_parts(self) -> (Box<[u8]>, Box<[usize]>) {
+        let Self { bytes, lengths } = self;
+
+        let bytes = Box::from(bytes);
+        let lengths = Box::from(lengths);
+        (bytes, lengths)
+    }
+}
+
+impl<S: AsRef<str>> FromIterator<S> for StringArray {
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        let it = iter.into_iter();
+        let (mut bytes, mut lengths) = (Vec::new(), Vec::with_capacity(it.size_hint().0));
+        for s in it {
+            let s = s.as_ref();
+            bytes.extend_from_slice(s.as_bytes());
+            lengths.push(s.len());
+        }
+        Self {
+            bytes: bytes.into_boxed_slice().into(),
+            lengths: lengths.into_boxed_slice().into(),
+        }
+    }
+}
+
 #[inline(always)]
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,

@@ -43,6 +43,11 @@ pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize)
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_free_string_array(array: StringArray) {
+    drop(array.into_boxed_parts())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_get_message(
     err: *const SignalFfiError,
     out: *mut *const c_char,

@@ -172,6 +172,14 @@ final class BridgingTests: XCTestCase {
             // good
         }
     }
+
+    func testReturnStringArray() throws {
+        let EXPECTED = ["ABC", "123"]
+        let array = try invokeFnReturningStringArray {
+            signal_testing_return_string_array($0)
+        }
+        XCTAssertEqual(array, EXPECTED)
+    }
 }
 
 #endif

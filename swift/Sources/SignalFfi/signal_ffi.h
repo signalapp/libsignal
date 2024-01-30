@@ -213,6 +213,8 @@ typedef struct SignalKyberPreKeyRecord SignalKyberPreKeyRecord;
 
 typedef struct SignalMessageBackupKey SignalMessageBackupKey;
 
+typedef struct SignalMessageBackupValidationOutcome SignalMessageBackupValidationOutcome;
+
 typedef struct SignalNonSuspendingBackgroundThreadRuntime SignalNonSuspendingBackgroundThreadRuntime;
 
 typedef struct SignalOtherTestingHandleType SignalOtherTestingHandleType;
@@ -271,14 +273,24 @@ typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMe
 typedef struct SignalValidatingMac SignalValidatingMac;
 
 typedef struct {
-  const unsigned char *base;
-  size_t length;
-} SignalBorrowedBuffer;
-
-typedef struct {
   unsigned char *base;
   size_t length;
 } SignalOwnedBuffer;
+
+typedef struct {
+  size_t *base;
+  size_t length;
+} SignalOwnedBufferOfusize;
+
+typedef struct {
+  SignalOwnedBuffer bytes;
+  SignalOwnedBufferOfusize lengths;
+} SignalStringArray;
+
+typedef struct {
+  const unsigned char *base;
+  size_t length;
+} SignalBorrowedBuffer;
 
 typedef int (*SignalLoadSession)(void *store_ctx, SignalSessionRecord **recordp, const SignalProtocolAddress *address);
 
@@ -459,6 +471,8 @@ void signal_print_ptr(const void *p);
 void signal_free_string(const char *buf);
 
 void signal_free_buffer(const unsigned char *buf, size_t buf_len);
+
+void signal_free_string_array(SignalStringArray array);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
 
@@ -1244,6 +1258,14 @@ SignalFfiError *signal_message_backup_key_destroy(SignalMessageBackupKey *p);
 
 SignalFfiError *signal_message_backup_key_new(SignalMessageBackupKey **out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
 
+SignalFfiError *signal_message_backup_validation_outcome_destroy(SignalMessageBackupValidationOutcome *p);
+
+SignalFfiError *signal_message_backup_validation_outcome_get_error_message(const char **out, const SignalMessageBackupValidationOutcome *outcome);
+
+SignalFfiError *signal_message_backup_validation_outcome_get_unknown_fields(SignalStringArray *out, const SignalMessageBackupValidationOutcome *outcome);
+
+SignalFfiError *signal_message_backup_validator_validate(SignalMessageBackupValidationOutcome **out, const SignalMessageBackupKey *key, const SignalInputStream *first_stream, const SignalInputStream *second_stream, uint64_t len);
+
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 
 SignalFfiError *signal_username_proof(SignalOwnedBuffer *out, const char *username, SignalBorrowedBuffer randomness);
@@ -1347,5 +1369,7 @@ SignalFfiError *signal_testing_error_on_return_sync(const void **out, const void
 SignalFfiError *signal_testing_error_on_return_async(const void **out, const void *_needs_cleanup);
 
 SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
+
+SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 
 #endif /* SIGNAL_FFI_H_ */

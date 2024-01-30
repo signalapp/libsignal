@@ -176,3 +176,8 @@ async fn TESTING_ErrorOnReturnAsync(
 async fn TESTING_ErrorOnReturnIo(_needs_cleanup: Ignored<NeedsCleanup>) -> Ignored<ErrorOnReturn> {
     ErrorOnReturn
 }
+
+#[bridge_fn(jni = false, node = false)]
+fn TESTING_ReturnStringArray() -> Box<[String]> {
+    vec!["ABC".to_string(), "123".to_string()].into_boxed_slice()
+}

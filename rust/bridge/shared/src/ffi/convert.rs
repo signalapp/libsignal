@@ -336,11 +336,11 @@ bridge_trait!(SyncInputStream);
 
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where
-    SignalFfiError: From<E>,
+    E: Into<SignalFfiError>,
 {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self?)
+        T::convert_into(self.map_err(Into::into)?)
     }
 }
 
@@ -377,6 +377,14 @@ impl ResultTypeInfo for Option<&str> {
             Some(s) => s.convert_into(),
             None => Ok(std::ptr::null()),
         }
+    }
+}
+
+/// Allocates and returns an array of Rust-owned C strings.
+impl ResultTypeInfo for Box<[String]> {
+    type ResultType = StringArray;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(StringArray::from_iter(&*self))
     }
 }
 
@@ -679,6 +687,7 @@ macro_rules! ffi_result_type {
     ([u8; $len:expr]) => ([u8; $len]);
     (&[u8]) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
+    (Box<[String]>) => (ffi::StringArray);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

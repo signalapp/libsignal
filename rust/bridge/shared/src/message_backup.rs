@@ -4,20 +4,20 @@
 //
 
 use libsignal_bridge_macros::*;
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 use libsignal_message_backup::frame::{
     LimitedReaderFactory, ValidationError as FrameValidationError,
 };
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey as MessageBackupKeyInner};
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 use libsignal_message_backup::parse::ParseError;
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 use libsignal_message_backup::Error;
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 use libsignal_message_backup::{BackupReader, FoundUnknownField, ReadResult};
 use libsignal_protocol::Aci;
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 use crate::io::{AsyncInput, InputStream};
 use crate::support::*;
 use crate::*;
@@ -33,13 +33,14 @@ fn MessageBackupKey_New(master_key: &[u8; 32], aci: Aci) -> MessageBackupKey {
     MessageBackupKey(MessageBackupKeyInner::derive(&backup_key, &backup_id))
 }
 
-#[cfg(feature = "jni")]
-pub(crate) enum MessageBackupValidationError {
+#[derive(Debug)]
+#[cfg(any(feature = "jni", feature = "ffi"))]
+enum MessageBackupValidationError {
     Io(std::io::Error),
     String(String),
 }
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 impl From<Error> for MessageBackupValidationError {
     fn from(value: Error) -> Self {
         match value {
@@ -52,25 +53,45 @@ impl From<Error> for MessageBackupValidationError {
     }
 }
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 impl From<FrameValidationError> for MessageBackupValidationError {
     fn from(value: FrameValidationError) -> Self {
         match value {
             FrameValidationError::Io(e) => Self::Io(e),
-            e @ FrameValidationError::TooShort | e @ FrameValidationError::InvalidHmac => {
+            e @ (FrameValidationError::TooShort | FrameValidationError::InvalidHmac) => {
                 Self::String(e.to_string())
             }
         }
     }
 }
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "ffi"))]
 pub struct MessageBackupValidationOutcome {
     pub(crate) error_message: Option<String>,
     pub(crate) found_unknown_fields: Vec<FoundUnknownField>,
 }
+#[cfg(feature = "ffi")]
+ffi_bridge_handle!(MessageBackupValidationOutcome, clone = false);
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(jni = false, node = false)]
+fn MessageBackupValidationOutcome_getErrorMessage(
+    outcome: &MessageBackupValidationOutcome,
+) -> Option<&str> {
+    outcome.error_message.as_deref()
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn MessageBackupValidationOutcome_getUnknownFields(
+    outcome: &MessageBackupValidationOutcome,
+) -> Box<[String]> {
+    outcome
+        .found_unknown_fields
+        .iter()
+        .map(ToString::to_string)
+        .collect()
+}
+
+#[bridge_fn(node = false)]
 fn MessageBackupValidator_Validate(
     key: &MessageBackupKey,
     first_stream: &mut dyn InputStream,

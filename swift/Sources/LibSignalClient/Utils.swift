@@ -25,6 +25,23 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
+internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
+    var array = SignalFfi.SignalStringArray()
+    try checkError(fn(&array))
+
+    var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)
+    let lengths = UnsafeBufferPointer(start: array.lengths.base, count: array.lengths.length)
+
+    let result = lengths.map { length in
+        let view = bytes.prefix(length)
+        bytes = UnsafeBufferPointer(rebasing: bytes.suffix(length))
+        return String(decoding: view, as: Unicode.UTF8.self)
+    }
+
+    signal_free_string_array(array)
+    return result
+}
+
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))

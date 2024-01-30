@@ -73,18 +73,6 @@ class WebpSanitizerTests: TestCaseBase {
     }
 }
 
-private struct TestIoError: Error {}
-
-private class ErrorInputStream: SignalInputStream {
-    func read(into buffer: UnsafeMutableRawBufferPointer) throws -> UInt {
-        throw TestIoError()
-    }
-
-    func skip(by amount: UInt64) throws {
-        throw TestIoError()
-    }
-}
-
 private func ftyp() -> [UInt8] {
     var ftyp: [UInt8] = []
     ftyp.append(contentsOf: [0, 0, 0, 20]) // box size
