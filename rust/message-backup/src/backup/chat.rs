@@ -13,6 +13,7 @@ use libsignal_protocol::Aci;
 
 use crate::backup::frame::{CallId, RecipientId};
 use crate::backup::method::{Contains, Method, Store};
+use crate::backup::sticker::{MessageSticker, MessageStickerError};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -55,6 +56,10 @@ pub enum ChatItemError {
     GroupChangeUpdateIsEmpty(usize),
     /// group update: {0}
     GroupUpdate(#[from] group::GroupUpdateError),
+    /// StickerMessage has no sticker
+    StickerMessageMissingSticker,
+    /// sticker message: {0}
+    StickerMessage(#[from] MessageStickerError),
 }
 
 /// Validated version of [`proto::Chat`].
@@ -112,6 +117,7 @@ pub struct VoiceMessage {
 #[derive(Debug)]
 pub struct StickerMessage {
     pub reactions: Vec<Reaction>,
+    pub sticker: MessageSticker,
     _limit_construction_to_module: (),
 }
 
@@ -347,8 +353,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StickerMessage, R> for Sticker
     fn try_from_with(item: proto::StickerMessage, context: &R) -> Result<Self, Self::Error> {
         let proto::StickerMessage {
             reactions,
-            // TODO validate these fields
-            sticker: _,
+            sticker,
             special_fields: _,
         } = item;
 
@@ -356,8 +361,15 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StickerMessage, R> for Sticker
             .into_iter()
             .map(|r| r.try_into_with(context))
             .collect::<Result<_, _>>()?;
+
+        let sticker = sticker
+            .into_option()
+            .ok_or(ChatItemError::StickerMessageMissingSticker)?
+            .try_into()?;
+
         Ok(Self {
             reactions,
+            sticker,
             _limit_construction_to_module: (),
         })
     }
@@ -606,6 +618,7 @@ mod test {
         fn test_data() -> Self {
             Self {
                 reactions: vec![proto::Reaction::test_data()],
+                sticker: Some(proto::Sticker::test_data()).into(),
                 ..Default::default()
             }
         }

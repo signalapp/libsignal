@@ -9,11 +9,10 @@ use std::time::{Duration, SystemTime};
 
 use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::chat::{ChatData, ChatError, ChatItemError};
-use crate::backup::frame::{
-    CallId, ChatId, GetForeignId as _, RecipientId, RingerRecipientId, WithId,
-};
+use crate::backup::frame::{CallId, ChatId, GetForeignId as _, RecipientId, RingerRecipientId};
 use crate::backup::method::{Contains, KeyExists, Map as _, Method, Store, ValidateOnly};
 use crate::backup::recipient::{RecipientData, RecipientError};
+use crate::backup::sticker::{PackId as StickerPackId, StickerId, StickerPack, StickerPackError};
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
 
@@ -22,6 +21,7 @@ mod chat;
 mod frame;
 pub(crate) mod method;
 mod recipient;
+mod sticker;
 
 pub struct PartialBackup<M: Method> {
     version: u64,
@@ -30,6 +30,7 @@ pub struct PartialBackup<M: Method> {
     recipients: M::Map<RecipientId, RecipientData<M>>,
     chats: HashMap<ChatId, ChatData<M>>,
     calls: M::Map<CallId, proto::Call>,
+    sticker_packs: HashMap<StickerPackId, StickerPack>,
 }
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ pub struct Backup {
     pub recipients: HashMap<RecipientId, RecipientData>,
     pub chats: HashMap<ChatId, ChatData>,
     pub calls: HashMap<CallId, proto::Call>,
+    pub sticker_packs: HashMap<StickerPackId, StickerPack>,
 }
 
 impl From<PartialBackup<Store>> for Backup {
@@ -51,6 +53,7 @@ impl From<PartialBackup<Store>> for Backup {
             recipients,
             chats,
             calls,
+            sticker_packs,
         } = value;
 
         Self {
@@ -60,6 +63,7 @@ impl From<PartialBackup<Store>> for Backup {
             recipients,
             chats,
             calls,
+            sticker_packs,
         }
     }
 }
@@ -78,6 +82,8 @@ pub enum ValidationError {
     ChatError(#[from] ChatFrameError),
     /// {0}
     CallError(#[from] CallFrameError),
+    /// {0}
+    StickerError(#[from] StickerError),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -132,6 +138,21 @@ impl<A, B: TryFromWith<A, C>, C> TryIntoWith<B, C> for A {
     }
 }
 
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+pub enum StickerError {
+    /// pack ID is invalid
+    InvalidId,
+    /// multiple sticker packs for ID {0:?}
+    DuplicateId(StickerPackId),
+    /// for pack {0:?}: {1}
+    PackError(StickerPackId, StickerPackError),
+}
+
+trait WithId {
+    type Id;
+    fn id(&self) -> Self::Id;
+}
+
 /// recipient {0:?} error: {1}
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub struct RecipientFrameError(RecipientId, RecipientError);
@@ -163,6 +184,7 @@ impl<M: Method> PartialBackup<M> {
             recipients: Default::default(),
             chats: Default::default(),
             calls: Default::default(),
+            sticker_packs: HashMap::new(),
         }
     }
 
@@ -177,7 +199,9 @@ impl<M: Method> PartialBackup<M> {
             FrameItem::Chat(chat) => self.add_chat(chat).map_err(Into::into),
             FrameItem::ChatItem(chat_item) => self.add_chat_item(chat_item).map_err(Into::into),
             FrameItem::Call(call) => self.add_call(call).map_err(Into::into),
-            FrameItem::StickerPack(sticker_pack) => self.add_sticker_pack(sticker_pack),
+            FrameItem::StickerPack(sticker_pack) => {
+                self.add_sticker_pack(sticker_pack).map_err(Into::into)
+            }
         }
     }
 
@@ -239,9 +263,10 @@ impl<M: Method> PartialBackup<M> {
         }
 
         chat_data.items.extend([chat_item
-            .try_into_with(&ChatContext {
+            .try_into_with(&ConvertContext {
                 recipients: &self.recipients,
                 calls: &self.calls,
+                stickers: &self.sticker_packs,
             })
             .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?]);
 
@@ -276,33 +301,59 @@ impl<M: Method> PartialBackup<M> {
         Ok(())
     }
 
-    fn add_sticker_pack(
-        &mut self,
-        _sticker_pack: proto::StickerPack,
-    ) -> Result<(), ValidationError> {
-        // TODO validate sticker pack proto.
-        Ok(())
+    fn add_sticker_pack(&mut self, sticker_pack: proto::StickerPack) -> Result<(), StickerError> {
+        let id = sticker_pack
+            .id
+            .as_slice()
+            .try_into()
+            .map_err(|_| StickerError::InvalidId)?;
+        let pack =
+            StickerPack::try_from(sticker_pack).map_err(|e| StickerError::PackError(id, e))?;
+
+        match self.sticker_packs.entry(id) {
+            hash_map::Entry::Occupied(_) => Err(StickerError::DuplicateId(id)),
+            hash_map::Entry::Vacant(v) => {
+                v.insert(pack);
+                Ok(())
+            }
+        }
     }
 }
 
-/// Implementer of [`Contains`] for [`RecipientId`] and [`CallId`].
+/// Context for converting proto types via [`TryFromWith`].
 ///
 /// This is used as the concrete "context" type for the [`TryFromWith`]
 /// implementations below.
-pub(super) struct ChatContext<'a, Recipients, Calls> {
-    pub(super) recipients: &'a Recipients,
-    pub(super) calls: &'a Calls,
+pub(super) struct ConvertContext<'a, Recipients, Calls, Stickers> {
+    recipients: &'a Recipients,
+    calls: &'a Calls,
+    stickers: &'a Stickers,
 }
 
-impl<R: Contains<RecipientId>, C> Contains<RecipientId> for ChatContext<'_, R, C> {
+impl<R: Contains<RecipientId>, C, S> Contains<RecipientId> for ConvertContext<'_, R, C, S> {
     fn contains(&self, key: &RecipientId) -> bool {
         self.recipients.contains(key)
     }
 }
 
-impl<R, C: Contains<CallId>> Contains<CallId> for ChatContext<'_, R, C> {
+impl<R, C: Contains<CallId>, S> Contains<CallId> for ConvertContext<'_, R, C, S> {
     fn contains(&self, key: &CallId) -> bool {
         self.calls.contains(key)
+    }
+}
+
+impl<R, C, S: Contains<(StickerPackId, StickerId)>> Contains<(StickerPackId, StickerId)>
+    for ConvertContext<'_, R, C, S>
+{
+    fn contains(&self, key: &(StickerPackId, StickerId)) -> bool {
+        self.stickers.contains(key)
+    }
+}
+
+impl<M: Method> Contains<(StickerPackId, StickerId)> for HashMap<StickerPackId, StickerPack<M>> {
+    fn contains(&self, (pack_id, sticker_id): &(StickerPackId, StickerId)) -> bool {
+        self.get(pack_id)
+            .is_some_and(|pack| pack.stickers.contains(sticker_id))
     }
 }
 

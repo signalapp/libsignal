@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use crate::backup::WithId;
 use crate::proto::backup::{Call, Chat, ChatItem, Recipient};
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -27,11 +28,6 @@ impl PartialEq<RecipientId> for RingerRecipientId {
     fn eq(&self, other: &RecipientId) -> bool {
         &self.0 == other
     }
-}
-
-pub(super) trait WithId {
-    type Id;
-    fn id(&self) -> Self::Id;
 }
 
 macro_rules! impl_with_id {
