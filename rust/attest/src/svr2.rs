@@ -3,44 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use hex_literal::hex;
-
+use crate::constants::{ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG};
 use prost::Message;
 
-use crate::dcap::MREnclave;
 use crate::enclave::{Error, Handshake, Result};
 use crate::proto::svr2;
-use crate::util::SmallMap;
-
-/// Map from MREnclave to intel SW advisories that are known to be mitigated in the
-/// build with that MREnclave value
-const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 5> =
-    &SmallMap::new([
-        (
-            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-        (
-            hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-        (
-            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-        (
-            hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-        (
-            hex!("5db9423ed5a0b0bef374eac3a8251839e1f63ed40a2537415b63656b26912d92"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-    ]);
-
-/// SW advisories known to be mitigated by default. If an MREnclave is provided that
-/// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
-const DEFAULT_SW_ADVISORIES: &[&str] = &[];
 
 /// A RaftConfig that can be checked against the attested remote config
 #[derive(Debug)]
@@ -60,62 +27,12 @@ impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
     }
 }
 
-/// Expected raft configuration for a given enclave.
-static EXPECTED_RAFT_CONFIG: SmallMap<MREnclave, &'static RaftConfig, 5> = SmallMap::new([
-    (
-        hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
-        &RaftConfig {
-            min_voting_replicas: 3,
-            max_voting_replicas: 5,
-            super_majority: 0,
-            group_id: 15525669046665930652,
-        },
-    ),
-    (
-        hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
-        &RaftConfig {
-            min_voting_replicas: 4,
-            max_voting_replicas: 7,
-            super_majority: 2,
-            group_id: 3950115602363750357,
-        },
-    ),
-    (
-        hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"),
-        &RaftConfig {
-            min_voting_replicas: 3,
-            max_voting_replicas: 5,
-            super_majority: 0,
-            group_id: 16934825672495360159,
-        },
-    ),
-    (
-        hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97"),
-        &RaftConfig {
-            min_voting_replicas: 4,
-            max_voting_replicas: 7,
-            super_majority: 2,
-            group_id: 1230918306983775578,
-        },
-    ),
-    (
-        // svr3 staging
-        hex!("5db9423ed5a0b0bef374eac3a8251839e1f63ed40a2537415b63656b26912d92"),
-        &RaftConfig {
-            min_voting_replicas: 3,
-            max_voting_replicas: 5,
-            super_majority: 0,
-            group_id: 13862729870901000330,
-        },
-    ),
-]);
-
 pub(crate) fn expected_raft_config(
     mr_enclave: &[u8],
     config_override: Option<&'static RaftConfig>,
 ) -> Result<&'static RaftConfig> {
     config_override
-        .or_else(|| EXPECTED_RAFT_CONFIG.get(mr_enclave).copied())
+        .or_else(|| EXPECTED_RAFT_CONFIG.get(&mr_enclave).copied())
         .ok_or(Error::AttestationDataError {
             reason: format!("unknown mrenclave {:?}", mr_enclave),
         })
@@ -123,7 +40,7 @@ pub(crate) fn expected_raft_config(
 /// Lookup the group id constant associated with the `mrenclave`
 pub fn lookup_groupid(mrenclave: &[u8]) -> Option<u64> {
     EXPECTED_RAFT_CONFIG
-        .get(mrenclave)
+        .get(&mrenclave)
         .map(|config| config.group_id)
 }
 
@@ -147,7 +64,7 @@ pub fn new_handshake_with_override(
         attestation_msg,
         current_time,
         ACCEPTABLE_SW_ADVISORIES
-            .get(mrenclave)
+            .get(&mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         expected_raft_config,
     )

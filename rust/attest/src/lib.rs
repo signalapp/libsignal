@@ -5,6 +5,7 @@
 
 pub mod cds2;
 pub mod client_connection;
+pub mod constants;
 pub mod dcap;
 pub mod enclave;
 pub mod hsm_enclave;

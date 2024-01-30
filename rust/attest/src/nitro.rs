@@ -20,26 +20,15 @@ use crate::proto;
 use crate::svr2::{expected_raft_config, RaftConfig};
 use crate::util::SmallMap;
 
-use hex_literal::hex;
+use crate::constants::NITRO_EXPECTED_PCRS;
 
 // A type for Platform Configuration Register values
 // They are Sha-384 hashes, 48 byte long.
 // https://docs.aws.amazon.com/enclaves/latest/user/set-up-attestation.html#where
-type Pcr = [u8; 48];
+pub(crate) type Pcr = [u8; 48];
 
 // We only ever validate PCRs 0, 1, and 2.
-type PcrMap = SmallMap<usize, Pcr, 3>;
-
-const EXPECTED_PCRS: SmallMap<&'static [u8], PcrMap, 1>  = SmallMap::new([
-    (
-        b"cc8f7cb1.52b91975.61d0bcb0",
-        SmallMap::new([
-             (0, hex!("cc8f7cb1206285b1d07d1c390fee96d98c6373b2006aee6764f45c8acde7abc7a87b9af665ff0b2b14f4b20717f3f356")),
-             (1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546")),
-             (2, hex!("61d0bcb015dc32cded08c17ec0e9de008682d3a16082f59a6b60de00a0fba4aebbb26447c67378c924afe74bc9654738")),
-        ]),
-    ),
-]);
+pub(crate) type PcrMap = SmallMap<usize, Pcr, 3>;
 
 impl Handshake {
     pub(crate) fn for_nitro(
@@ -48,12 +37,11 @@ impl Handshake {
         expected_raft_config: &RaftConfig,
         now: SystemTime,
     ) -> Result<Self, enclave::Error> {
-        let expected_pcrs =
-            EXPECTED_PCRS
-                .get(&enclave)
-                .ok_or_else(|| enclave::Error::AttestationDataError {
-                    reason: format!("unknown enclave {:?}", enclave),
-                })?;
+        let expected_pcrs = NITRO_EXPECTED_PCRS.get(&enclave).ok_or_else(|| {
+            enclave::Error::AttestationDataError {
+                reason: format!("unknown enclave {:?}", enclave),
+            }
+        })?;
         let cose_sign1 = CoseSign1::from_bytes(evidence)?;
         let doc = cose_sign1.extract_attestation_doc(now)?;
         let attestation_data = doc.extract_attestation_data(expected_pcrs)?;

@@ -15,19 +15,11 @@ use clap::Parser;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
-use attest::svr2::RaftConfig;
 use libsignal_net::enclave::{EndpointConnection, Nitro, Sgx};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::{Auth, SvrConnection};
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
-
-const NITRO_TEST_RAFT_CONFIG: RaftConfig = RaftConfig {
-    group_id: 13320095621059880086,
-    min_voting_replicas: 3,
-    max_voting_replicas: 5,
-    super_majority: 0,
-};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -70,11 +62,10 @@ async fn main() {
             .await
             .expect("can attestedly connect to SGX");
 
-        let connection_b = EndpointConnection::with_custom_properties(
+        let connection_b = EndpointConnection::new(
             env.nitro(),
             Duration::from_secs(10),
             TcpSslTransportConnector,
-            Some(&NITRO_TEST_RAFT_CONFIG),
         );
         let nitro_auth = Auth {
             uid: uid.to_string(),

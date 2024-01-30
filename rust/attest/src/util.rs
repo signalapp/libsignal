@@ -16,7 +16,7 @@ pub(crate) struct SmallMap<K, V, const N: usize>([(K, V); N]);
 
 impl<K, V, const N: usize> SmallMap<K, V, N> {
     /// The maximum number of elements allowed in a `SmallMap`.
-    const MAX_SIZE: usize = 5;
+    const MAX_SIZE: usize = 10;
 
     /// Checks at compile-time (via `const`) that `N` is small enough.
     const CHECK_MAX_SIZE: () = assert!(
