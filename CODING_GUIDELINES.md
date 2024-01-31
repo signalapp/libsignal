@@ -21,6 +21,12 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - **Every change should have tests** or be covered by existing tests. There are sometimes exceptions to this, but a lot of times the act of justifying the exception can suggest how to write the tests instead.
 
+- **Logs should not contain user data**, including the default stringification for errors (Rust's Display, Java and TypeScript's `toString()`, Swift's `description`). "Debug" and "verbose" log levels are an exception to this, since they are turned off at compile time in our client library release builds. Note that this isn't "any information that can uniquely distinguish one user from another" (an ephemeral public key can do that, and there are legitimate reasons to log those; use your best judgment), but it is "any information that includes user input" (such as unencrypted usernames), "any information that can be linked back to a Signal account" (such as identity keys), and of course "any passwords or private keys".
+
+    One place where this is particularly subtle is when working with types that come from dependencies, especially errors. If the dependency has access to any such potentially-sensitive information, it's best to assume it could make it into arbitrary output, including error messages. The libsignal-net crate is particularly sensitive to this and constrains its errors with a custom LogSafeDisplay trait, but this isn't perfect.
+
+    Low-level objects like ServiceId and ProtocolAddress do not follow this rule; instead, they stringify in fixed formats that are easy to filter from higher-level logs en masse.
+
 
 # Rust
 
