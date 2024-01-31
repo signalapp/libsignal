@@ -23,21 +23,13 @@ impl Aes256GcmEncryption {
         Ok(Self { gcm: Some(gcm) })
     }
 
-    pub fn encrypt(&mut self, buf: &mut [u8]) -> Result<()> {
-        match &mut self.gcm {
-            Some(gcm) => gcm.encrypt(buf),
-            None => Err(Error::InvalidState),
-        }
+    pub fn encrypt(&mut self, buf: &mut [u8]) {
+        self.gcm.as_mut().expect("not yet finalized").encrypt(buf);
     }
 
-    pub fn compute_tag(&mut self) -> Result<Vec<u8>> {
-        if self.gcm.is_none() {
-            return Err(Error::InvalidState);
-        }
-
-        let gcm = self.gcm.take().expect("Validated to be Some");
-
-        Ok(gcm.compute_tag()?.to_vec())
+    pub fn compute_tag(&mut self) -> Vec<u8> {
+        let gcm = self.gcm.take().expect("not yet finalized");
+        gcm.compute_tag().to_vec()
     }
 }
 
@@ -51,19 +43,12 @@ impl Aes256GcmDecryption {
         Ok(Self { gcm: Some(gcm) })
     }
 
-    pub fn decrypt(&mut self, buf: &mut [u8]) -> Result<()> {
-        match &mut self.gcm {
-            Some(gcm) => gcm.decrypt(buf),
-            None => Err(Error::InvalidState),
-        }
+    pub fn decrypt(&mut self, buf: &mut [u8]) {
+        self.gcm.as_mut().expect("not yet finalized").decrypt(buf);
     }
 
     pub fn verify_tag(&mut self, tag: &[u8]) -> Result<bool> {
-        if self.gcm.is_none() {
-            return Err(Error::InvalidState);
-        }
-
-        let gcm = self.gcm.take().expect("Validated to be Some");
+        let gcm = self.gcm.take().expect("not yet finalized");
         match gcm.verify_tag(tag) {
             Ok(()) => Ok(true),
             Err(Error::InvalidTag) => Ok(false),
@@ -88,16 +73,10 @@ fn Aes256Ctr32_New(key: &[u8], nonce: &[u8], initial_ctr: u32) -> Result<Aes256C
 }
 
 #[bridge_fn_void(node = false)]
-fn Aes256Ctr32_Process(
-    ctr: &mut Aes256Ctr32,
-    data: &mut [u8],
-    offset: u32,
-    length: u32,
-) -> Result<()> {
+fn Aes256Ctr32_Process(ctr: &mut Aes256Ctr32, data: &mut [u8], offset: u32, length: u32) {
     let offset = offset as usize;
     let length = length as usize;
-    ctr.process(&mut data[offset..offset + length])?;
-    Ok(())
+    ctr.process(&mut data[offset..offset + length]);
 }
 
 #[bridge_fn(node = false)]
@@ -115,15 +94,14 @@ fn Aes256GcmEncryption_Update(
     data: &mut [u8],
     offset: u32,
     length: u32,
-) -> Result<()> {
+) {
     let offset = offset as usize;
     let length = length as usize;
-    gcm.encrypt(&mut data[offset..offset + length])?;
-    Ok(())
+    gcm.encrypt(&mut data[offset..offset + length]);
 }
 
 #[bridge_fn(node = false)]
-fn Aes256GcmEncryption_ComputeTag(gcm: &mut Aes256GcmEncryption) -> Result<Vec<u8>> {
+fn Aes256GcmEncryption_ComputeTag(gcm: &mut Aes256GcmEncryption) -> Vec<u8> {
     gcm.compute_tag()
 }
 
@@ -142,11 +120,10 @@ fn Aes256GcmDecryption_Update(
     data: &mut [u8],
     offset: u32,
     length: u32,
-) -> Result<()> {
+) {
     let offset = offset as usize;
     let length = length as usize;
-    gcm.decrypt(&mut data[offset..offset + length])?;
-    Ok(())
+    gcm.decrypt(&mut data[offset..offset + length]);
 }
 
 #[bridge_fn(node = false)]

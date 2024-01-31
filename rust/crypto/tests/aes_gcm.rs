@@ -74,8 +74,8 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
     let mut gcm_enc = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &aad)?;
 
     let mut buf = pt.clone();
-    gcm_enc.encrypt(&mut buf)?;
-    let generated_tag = gcm_enc.compute_tag()?;
+    gcm_enc.encrypt(&mut buf);
+    let generated_tag = gcm_enc.compute_tag();
 
     let mut gcm_dec = signal_crypto::Aes256GcmDecryption::new(&key, &nonce, &aad)?;
 
@@ -83,7 +83,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
         assert_eq!(hex::encode(generated_tag), hex::encode(&tag));
         assert_eq!(hex::encode(&buf), hex::encode(&ct));
 
-        gcm_dec.decrypt(&mut buf)?;
+        gcm_dec.decrypt(&mut buf);
         assert!(gcm_dec.verify_tag(&tag).is_ok());
         assert_eq!(hex::encode(&buf), hex::encode(&pt));
 
@@ -105,12 +105,12 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
                     remaining
                 };
                 assert!(this_time > 0);
-                gcm_enc.encrypt(&mut enc_buf[processed..processed + this_time])?;
-                gcm_dec.decrypt(&mut dec_buf[processed..processed + this_time])?;
+                gcm_enc.encrypt(&mut enc_buf[processed..processed + this_time]);
+                gcm_dec.decrypt(&mut dec_buf[processed..processed + this_time]);
                 processed += this_time;
             }
 
-            assert_eq!(hex::encode(gcm_enc.compute_tag()?), hex::encode(&tag));
+            assert_eq!(hex::encode(gcm_enc.compute_tag()), hex::encode(&tag));
             assert!(gcm_dec.verify_tag(&tag).is_ok());
 
             assert_eq!(hex::encode(enc_buf), hex::encode(&ct));
@@ -119,7 +119,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
     } else {
         assert_ne!(hex::encode(generated_tag), hex::encode(&tag));
 
-        gcm_dec.decrypt(&mut buf)?;
+        gcm_dec.decrypt(&mut buf);
 
         assert!(matches!(
             gcm_dec.verify_tag(&tag),
@@ -159,8 +159,8 @@ fn aes_gcm_smoke_test() -> Result<(), signal_crypto::Error> {
     let mut aes_gcm = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &ad)?;
 
     let mut buf = input.to_vec();
-    aes_gcm.encrypt(&mut buf)?;
-    let tag = aes_gcm.compute_tag()?;
+    aes_gcm.encrypt(&mut buf);
+    let tag = aes_gcm.compute_tag();
 
     buf.extend_from_slice(&tag);
     assert_eq!(hex::encode(buf), hex::encode(output));

@@ -22,15 +22,15 @@ pub fn aes_gcm(c: &mut Criterion) {
             b.iter(|| {
                 let mut gcm_enc = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &aad)
                     .expect("valid key size");
-                gcm_enc.encrypt(&mut buf).expect("OK");
-                gcm_enc.compute_tag().expect("OK");
+                gcm_enc.encrypt(&mut buf);
+                gcm_enc.compute_tag();
             })
         });
         group.bench_function(BenchmarkId::new("decrypt", *size), |b| {
             b.iter(|| {
                 let mut gcm_dec = signal_crypto::Aes256GcmDecryption::new(&key, &nonce, &aad)
                     .expect("valid key size");
-                gcm_dec.decrypt(&mut buf).expect("OK");
+                gcm_dec.decrypt(&mut buf);
                 gcm_dec.verify_tag(&tag).unwrap_err();
             })
         });

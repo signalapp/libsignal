@@ -39,8 +39,7 @@ impl Aes256Ctr32 {
         )
     }
 
-    pub fn process(&mut self, buf: &mut [u8]) -> Result<()> {
+    pub fn process(&mut self, buf: &mut [u8]) {
         self.0.apply_keystream(buf);
-        Ok(())
     }
 }

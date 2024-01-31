@@ -75,7 +75,7 @@ impl ProfileKey {
         let nonce = &[0u8; AESGCM_NONCE_LEN];
         let mut cipher = Aes256GcmEncryption::new(&self.bytes, nonce, &[]).unwrap();
         let mut buf = [0u8; ACCESS_KEY_LEN];
-        cipher.encrypt(&mut buf[..]).unwrap();
+        cipher.encrypt(&mut buf[..]);
         buf
     }
 }

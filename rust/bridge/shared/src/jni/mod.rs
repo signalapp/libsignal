@@ -275,8 +275,7 @@ where
             jni_class_name!(java.lang.NullPointerException)
         }
 
-        SignalJniError::Protocol(SignalProtocolError::InvalidState(_, _))
-        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidState) => {
+        SignalJniError::Protocol(SignalProtocolError::InvalidState(_, _)) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
 
