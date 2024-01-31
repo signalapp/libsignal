@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::borrow::Cow;
 use std::default::Default;
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
@@ -28,21 +27,6 @@ use crate::infra::ws::{
 };
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
-
-pub struct Auth {
-    pub username: String,
-    pub password: String,
-}
-
-impl HttpBasicAuth for Auth {
-    fn username(&self) -> &str {
-        &self.username
-    }
-
-    fn password(&self) -> std::borrow::Cow<str> {
-        Cow::Borrowed(&self.password)
-    }
-}
 
 trait FixedLengthSerializable {
     const SERIALIZED_LEN: usize;

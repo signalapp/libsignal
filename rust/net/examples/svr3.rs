@@ -15,10 +15,11 @@ use clap::Parser;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
+use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EndpointConnection, Nitro, Sgx};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::TcpSslTransportConnector;
-use libsignal_net::svr::{Auth, SvrConnection};
+use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
 #[derive(Parser, Debug)]
@@ -48,16 +49,13 @@ async fn main() {
     let uid = {
         let mut bytes = [0u8; 16];
         rng.fill_bytes(&mut bytes[..]);
-        hex::encode(bytes)
+        bytes
     };
 
     let connect = || async {
         let connection_a =
             EndpointConnection::new(env.sgx(), Duration::from_secs(10), TcpSslTransportConnector);
-        let sgx_auth = Auth {
-            uid: uid.to_string(),
-            secret: sgx_secret,
-        };
+        let sgx_auth = Auth::from_uid_and_secret(uid, sgx_secret);
         let a = SvrConnection::<Sgx>::connect(sgx_auth, &connection_a)
             .await
             .expect("can attestedly connect to SGX");
@@ -67,10 +65,7 @@ async fn main() {
             Duration::from_secs(10),
             TcpSslTransportConnector,
         );
-        let nitro_auth = Auth {
-            uid: uid.to_string(),
-            secret: nitro_secret,
-        };
+        let nitro_auth = Auth::from_uid_and_secret(uid, nitro_secret);
         let b = SvrConnection::<Nitro>::connect(nitro_auth, &connection_b)
             .await
             .expect("can attestedly connect to Nitro");

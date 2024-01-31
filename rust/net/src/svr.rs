@@ -3,12 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::borrow::Cow;
 use std::marker::PhantomData;
-use std::time::SystemTime;
 
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
 use thiserror::Error;
 
 use crate::auth::HttpBasicAuth;
@@ -18,42 +14,6 @@ use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
 use crate::infra::ws::{AttestedConnection, AttestedConnectionError, DefaultStream};
 use crate::infra::{AsyncDuplexStream, TransportConnector};
-
-#[derive(Clone)]
-pub struct Auth {
-    pub uid: String,
-    pub secret: [u8; 32],
-}
-
-impl Auth {
-    const OTP_LEN: usize = 20;
-    fn otp(&self, now: SystemTime) -> String {
-        let ts = now
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        let mac_input = format!("{}:{}", &self.uid, ts);
-        let mut mac =
-            Hmac::<Sha256>::new_from_slice(&self.secret).expect("HMAC can take key of any size");
-        mac.update(mac_input.as_bytes());
-
-        let digest = mac.finalize().into_bytes();
-        let mut khex = hex::encode(digest);
-        khex.truncate(Self::OTP_LEN);
-        format!("{}:{}", ts, khex)
-    }
-}
-
-impl HttpBasicAuth for Auth {
-    fn username(&self) -> &str {
-        &self.uid
-    }
-
-    fn password(&self) -> Cow<str> {
-        Cow::Owned(self.otp(SystemTime::now()))
-    }
-}
 
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum Error {

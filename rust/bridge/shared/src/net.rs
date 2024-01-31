@@ -8,9 +8,9 @@ use std::future::Future;
 use std::time::Duration;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
-    self, AciAndAccessKey, Auth, CdsiConnection, ClientResponseCollector, LookupResponse, Token,
-    E164,
+    self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
 use libsignal_net::enclave::{Cdsi, EndpointConnection};
 use libsignal_net::env::{Env, Svr3Env};

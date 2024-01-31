@@ -18,13 +18,14 @@ use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use attest::svr2::RaftConfig;
+use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     EnclaveEndpoint, EndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
 };
 use libsignal_net::env::DomainConfig;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::TcpSslTransportConnector;
-use libsignal_net::svr::{Auth, SvrConnection};
+use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
 const TEST_SERVER_CERT: RootCertificates =
@@ -87,13 +88,10 @@ async fn main() {
     let mut make_uid = || {
         let mut bytes = [0u8; 16];
         rng.fill_bytes(&mut bytes[..]);
-        hex::encode(bytes)
+        bytes
     };
 
-    let make_auth = |uid: &str| Auth {
-        uid: uid.to_string(),
-        secret: auth_secret,
-    };
+    let make_auth = |uid: [u8; 16]| Auth::from_uid_and_secret(uid, auth_secret);
 
     let two_sgx_env = {
         let endpoint = EnclaveEndpoint::<Sgx> {
@@ -115,7 +113,7 @@ async fn main() {
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
-        let a = SvrConnection::connect(make_auth(&uid_a), &connection_a)
+        let a = SvrConnection::connect(make_auth(uid_a), &connection_a)
             .await
             .expect("can attestedly connect");
 
@@ -126,7 +124,7 @@ async fn main() {
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
-        let b = SvrConnection::connect(make_auth(&uid_b), &connection_b)
+        let b = SvrConnection::connect(make_auth(uid_b), &connection_b)
             .await
             .expect("can attestedly connect");
         (a, b)

@@ -8,8 +8,9 @@ use std::time::Duration;
 
 use tokio::io::AsyncBufReadExt as _;
 
+use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
-    Auth, CdsiConnection, CdsiConnectionParams, Error, LookupRequest, LookupResponse,
+    CdsiConnection, CdsiConnectionParams, Error, LookupRequest, LookupResponse,
 };
 use libsignal_net::enclave::EndpointConnection;
 use libsignal_net::infra::errors::NetError;
