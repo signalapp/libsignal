@@ -12,9 +12,10 @@ use crate::support::*;
 use crate::*;
 
 #[bridge_fn(node = false)]
-fn DeviceTransfer_GeneratePrivateKey() -> Result<Vec<u8>, device_transfer::Error> {
+fn DeviceTransfer_GeneratePrivateKey() -> Vec<u8> {
     const DEVICE_TRANSFER_KEY_BITS: usize = 4096;
     device_transfer::create_rsa_private_key(DEVICE_TRANSFER_KEY_BITS, KeyFormat::Pkcs8)
+        .expect("no internal failures")
 }
 
 // TODO: needed for iOS at the moment, but since it is more generic, could bridge it to JNI as well
