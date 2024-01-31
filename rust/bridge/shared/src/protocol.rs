@@ -215,8 +215,16 @@ bridge_get!(
     ffi = "publickey_get_public_key_bytes",
     jni = "ECPublicKey_1GetPublicKeyBytes"
 );
-bridge_get!(ProtocolAddress::device_id as DeviceId -> u32, ffi = "address_get_device_id");
-bridge_get!(ProtocolAddress::name as Name -> &str, ffi = "address_get_name");
+
+#[bridge_fn(ffi = "address_get_device_id")]
+fn ProtocolAddress_DeviceId(obj: &ProtocolAddress) -> u32 {
+    obj.device_id().into()
+}
+
+#[bridge_fn(ffi = "address_get_name")]
+fn ProtocolAddress_Name(obj: &ProtocolAddress) -> &str {
+    obj.name()
+}
 
 #[bridge_fn(ffi = "publickey_equals", node = "PublicKey_Equals")]
 fn ECPublicKey_Equals(lhs: &PublicKey, rhs: &PublicKey) -> bool {
