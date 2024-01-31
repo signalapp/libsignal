@@ -119,12 +119,8 @@ fn LookupRequest_addPreviousE164(request: &LookupRequest, e164: E164) {
 }
 
 #[bridge_fn]
-fn LookupRequest_setToken(
-    request: &LookupRequest,
-    token: &[u8],
-) -> Result<(), SignalProtocolError> {
+fn LookupRequest_setToken(request: &LookupRequest, token: &[u8]) {
     request.0.lock().expect("not poisoned").token = token.into();
-    Ok(())
 }
 
 #[bridge_fn]
@@ -148,16 +144,12 @@ fn LookupRequest_addAciAndAccessKey(
 }
 
 #[bridge_fn]
-fn LookupRequest_setReturnAcisWithoutUaks(
-    request: &LookupRequest,
-    return_acis_without_uaks: bool,
-) -> Result<(), SignalProtocolError> {
+fn LookupRequest_setReturnAcisWithoutUaks(request: &LookupRequest, return_acis_without_uaks: bool) {
     request
         .0
         .lock()
         .expect("not poisoned")
         .return_acis_without_uaks = return_acis_without_uaks;
-    Ok(())
 }
 
 bridge_handle!(LookupRequest, clone = false);
