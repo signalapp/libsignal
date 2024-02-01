@@ -220,10 +220,18 @@ jobs:
 
     needs: changes
 
+    permissions:
+      # Needed for check_code_size.py to examine previous runs.
+      actions: read
+      contents: read
+
     if: ${{ needs.changes.outputs.java == 'true' }}
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        # Download all commits so we can search for the merge base with origin/main.
+        fetch-depth: 0
 
     - name: Install NDK
       run: sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
@@ -244,6 +252,8 @@ jobs:
       working-directory: java
 
     - run: java/check_code_size.py
+      env:
+        GH_TOKEN: ${{ github.token }}
 
   node:
     name: Node
