@@ -18,6 +18,7 @@ use crate::proto::backup::frame::Item as FrameItem;
 
 mod account_data;
 mod chat;
+mod file;
 mod frame;
 pub(crate) mod method;
 mod recipient;
@@ -303,7 +304,7 @@ impl<M: Method> PartialBackup<M> {
 
     fn add_sticker_pack(&mut self, sticker_pack: proto::StickerPack) -> Result<(), StickerError> {
         let id = sticker_pack
-            .id
+            .packId
             .as_slice()
             .try_into()
             .map_err(|_| StickerError::InvalidId)?;

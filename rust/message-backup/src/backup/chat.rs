@@ -11,6 +11,7 @@
 use derive_where::derive_where;
 use libsignal_protocol::Aci;
 
+use crate::backup::file::{VoiceMessageAttachment, VoiceMessageAttachmentError};
 use crate::backup::frame::{CallId, RecipientId};
 use crate::backup::method::{Contains, Method, Store};
 use crate::backup::sticker::{MessageSticker, MessageStickerError};
@@ -38,8 +39,8 @@ pub enum ChatItemError {
     AuthorNotFound(RecipientId),
     /// no value for item
     MissingItem,
-    /// quote has unknown author {0:?}
-    QuoteAuthorNotFound(RecipientId),
+    /// quote: {0}
+    Quote(#[from] QuoteError),
     /// reaction: {0}
     Reaction(#[from] ReactionError),
     /// ChatUpdateMessage has no update value
@@ -60,6 +61,8 @@ pub enum ChatItemError {
     StickerMessageMissingSticker,
     /// sticker message: {0}
     StickerMessage(#[from] MessageStickerError),
+    /// voice message: {0}
+    VoiceMessage(#[from] VoiceMessageError),
 }
 
 /// Validated version of [`proto::Chat`].
@@ -104,13 +107,29 @@ pub struct ContactMessage {
     _limit_construction_to_module: (),
 }
 
-/// Validated version of [`proto::VoiceMessage`].
+/// Validated version of a voice message [`proto::StandardMessage`].
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct VoiceMessage {
     pub quote: Option<Quote>,
     pub reactions: Vec<Reaction>,
+    pub attachment: VoiceMessageAttachment,
     _limit_construction_to_module: (),
+}
+
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum VoiceMessageError {
+    /// attachment: {0}
+    Attachment(#[from] VoiceMessageAttachmentError),
+    /// has unexpected field {0}
+    UnexpectedField(&'static str),
+    /// has {0} attachments
+    WrongAttachmentsCount(usize),
+    /// invalid quote: {0}
+    Quote(#[from] QuoteError),
+    /// invalid reaction: {0}
+    Reaction(#[from] ReactionError),
 }
 
 /// Validated version of [`proto::StickerMessage`].
@@ -178,6 +197,13 @@ pub enum ReactionError {
 pub struct Quote {
     pub author: RecipientId,
     _limit_construction_to_module: (),
+}
+
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum QuoteError {
+    /// has unknown author {0:?}
+    AuthorNotFound(RecipientId),
 }
 
 impl<M: Method> TryFrom<proto::Chat> for ChatData<M> {
@@ -249,10 +275,20 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::chat_item::
         use proto::chat_item::Item;
 
         Ok(match value {
-            Item::StandardMessage(message) => Self::Standard(message.try_into_with(recipients)?),
-            Item::ContactMessage(message) => Self::Contact(message.try_into_with(recipients)?),
+            Item::StandardMessage(message) => {
+                let is_voice_message = matches!(message.attachments.as_slice(),
+                [single_attachment] if
+                    single_attachment.flag.enum_value_or_default()
+                        == proto::message_attachment::Flag::VOICE_MESSAGE
+                );
 
-            Item::VoiceMessage(message) => Self::Voice(message.try_into_with(recipients)?),
+                if is_voice_message {
+                    Self::Voice(message.try_into_with(recipients)?)
+                } else {
+                    Self::Standard(message.try_into_with(recipients)?)
+                }
+            }
+            Item::ContactMessage(message) => Self::Contact(message.try_into_with(recipients)?),
             Item::StickerMessage(message) => Self::Sticker(message.try_into_with(recipients)?),
             Item::RemoteDeletedMessage(proto::RemoteDeletedMessage { special_fields: _ }) => {
                 Self::RemoteDeleted
@@ -318,17 +354,32 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::ContactMessage, R> for Contact
     }
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::VoiceMessage, R> for VoiceMessage {
-    type Error = ChatItemError;
+impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for VoiceMessage {
+    type Error = VoiceMessageError;
 
-    fn try_from_with(item: proto::VoiceMessage, context: &R) -> Result<Self, Self::Error> {
-        let proto::VoiceMessage {
+    fn try_from_with(item: proto::StandardMessage, context: &R) -> Result<Self, Self::Error> {
+        let proto::StandardMessage {
             quote,
             reactions,
-            // TODO validate these fields
-            audio: _,
+            text,
+            attachments,
+            linkPreview,
+            longText,
             special_fields: _,
         } = item;
+
+        match () {
+            _ if text.is_some() => Err("text"),
+            _ if longText.is_some() => Err("longText"),
+            _ if !linkPreview.is_empty() => Err("linkPreview"),
+            _ => Ok(()),
+        }
+        .map_err(VoiceMessageError::UnexpectedField)?;
+
+        let [attachment] = <[_; 1]>::try_from(attachments)
+            .map_err(|attachments| VoiceMessageError::WrongAttachmentsCount(attachments.len()))?;
+
+        let attachment = attachment.try_into()?;
 
         let quote = quote
             .into_option()
@@ -342,6 +393,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::VoiceMessage, R> for VoiceMess
         Ok(Self {
             reactions,
             quote,
+            attachment,
             _limit_construction_to_module: (),
         })
     }
@@ -509,7 +561,7 @@ impl<R: Contains<CallId>> TryFromWith<proto::call_chat_update::Call, R> for Call
 }
 
 impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
-    type Error = ChatItemError;
+    type Error = QuoteError;
 
     fn try_from_with(item: proto::Quote, context: &R) -> Result<Self, Self::Error> {
         let proto::Quote {
@@ -525,7 +577,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
 
         let author = RecipientId(authorId);
         if !context.contains(&author) {
-            return Err(ChatItemError::QuoteAuthorNotFound(author));
+            return Err(QuoteError::AuthorNotFound(author));
         }
         Ok(Self {
             author,
@@ -575,6 +627,20 @@ mod test {
                 ..Default::default()
             }
         }
+
+        pub(crate) fn test_voice_message_data() -> Self {
+            Self {
+                attachments: vec![proto::MessageAttachment {
+                    pointer: Some(proto::FilePointer::default()).into(),
+                    flag: proto::message_attachment::Flag::VOICE_MESSAGE.into(),
+                    ..Default::default()
+                }],
+                longText: None.into(),
+                linkPreview: vec![],
+                text: None.into(),
+                ..Self::test_data()
+            }
+        }
     }
 
     impl proto::ContactMessage {
@@ -590,16 +656,6 @@ mod test {
         fn test_data() -> Self {
             Self {
                 authorId: proto::Recipient::TEST_ID,
-                ..Default::default()
-            }
-        }
-    }
-
-    impl proto::VoiceMessage {
-        fn test_data() -> Self {
-            Self {
-                quote: Some(proto::Quote::test_data()).into(),
-                reactions: vec![proto::Reaction::test_data()],
                 ..Default::default()
             }
         }
@@ -627,7 +683,8 @@ mod test {
     trait ProtoHasField<T> {
         fn get_field_mut(&mut self) -> &mut T;
     }
-    impl ProtoHasField<Vec<proto::Reaction>> for proto::VoiceMessage {
+
+    impl ProtoHasField<Vec<proto::Reaction>> for proto::StandardMessage {
         fn get_field_mut(&mut self) -> &mut Vec<proto::Reaction> {
             &mut self.reactions
         }
@@ -650,9 +707,10 @@ mod test {
             &mut self.quote
         }
     }
-    impl ProtoHasField<MessageField<proto::Quote>> for proto::VoiceMessage {
-        fn get_field_mut(&mut self) -> &mut MessageField<proto::Quote> {
-            &mut self.quote
+
+    impl ProtoHasField<Vec<proto::MessageAttachment>> for proto::StandardMessage {
+        fn get_field_mut(&mut self) -> &mut Vec<proto::MessageAttachment> {
+            &mut self.attachments
         }
     }
 
@@ -717,6 +775,16 @@ mod test {
         *input.get_field_mut() = None.into();
     }
 
+    fn no_attachments(input: &mut impl ProtoHasField<Vec<proto::MessageAttachment>>) {
+        input.get_field_mut().clear();
+    }
+
+    fn extra_attachment(input: &mut impl ProtoHasField<Vec<proto::MessageAttachment>>) {
+        input
+            .get_field_mut()
+            .push(proto::MessageAttachment::default());
+    }
+
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
@@ -738,13 +806,14 @@ mod test {
     #[test]
     fn valid_voice_message() {
         assert_eq!(
-            proto::VoiceMessage::test_data().try_into_with(&TestContext),
+            proto::StandardMessage::test_voice_message_data().try_into_with(&TestContext),
             Ok(VoiceMessage {
                 quote: Some(Quote {
                     author: RecipientId(proto::Recipient::TEST_ID),
                     _limit_construction_to_module: ()
                 }),
                 reactions: vec![Reaction::from_proto_test_data()],
+                attachment: VoiceMessageAttachment::default(),
                 _limit_construction_to_module: ()
             })
         )
@@ -753,11 +822,16 @@ mod test {
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(ChatItemError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
+        Err(VoiceMessageError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
     )]
     #[test_case(no_quote, Ok(()))]
-    fn voice_message(modifier: fn(&mut proto::VoiceMessage), expected: Result<(), ChatItemError>) {
-        let mut message = proto::VoiceMessage::test_data();
+    #[test_case(no_attachments, Err(VoiceMessageError::WrongAttachmentsCount(0)))]
+    #[test_case(extra_attachment, Err(VoiceMessageError::WrongAttachmentsCount(2)))]
+    fn voice_message(
+        modifier: fn(&mut proto::StandardMessage),
+        expected: Result<(), VoiceMessageError>,
+    ) {
+        let mut message = proto::StandardMessage::test_voice_message_data();
         modifier(&mut message);
 
         let result = message

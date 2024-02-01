@@ -87,8 +87,8 @@ impl TryFrom<proto::StickerPack> for StickerPack {
     type Error = StickerPackError;
     fn try_from(value: proto::StickerPack) -> Result<Self, Self::Error> {
         let proto::StickerPack {
-            id: _,
-            key,
+            packId: _,
+            packKey,
             stickers,
             // TODO validate these fields
             title: _,
@@ -96,7 +96,9 @@ impl TryFrom<proto::StickerPack> for StickerPack {
             special_fields: _,
         } = value;
 
-        let key = key.try_into().map_err(|_| StickerPackError::InvalidKey)?;
+        let key = packKey
+            .try_into()
+            .map_err(|_| StickerPackError::InvalidKey)?;
 
         let stickers = stickers
             .into_iter()
@@ -117,7 +119,6 @@ impl TryFrom<proto::StickerPackSticker> for PackSticker {
         let proto::StickerPackSticker {
             id: _,
             // TODO validate these fields
-            data: _,
             emoji: _,
             special_fields: _,
         } = value;
@@ -137,6 +138,7 @@ impl TryFrom<proto::Sticker> for MessageSticker {
             packKey,
             stickerId: _,
             // TODO validate these fields
+            data: _,
             emoji: _,
             special_fields: _,
         } = item;
@@ -174,8 +176,8 @@ mod test {
 
         fn test_data() -> Self {
             Self {
-                id: Self::TEST_ID_BYTES.into(),
-                key: Self::TEST_KEY.into(),
+                packId: Self::TEST_ID_BYTES.into(),
+                packKey: Self::TEST_KEY.into(),
                 stickers: vec![proto::StickerPackSticker::test_data()],
                 ..Default::default()
             }
@@ -226,7 +228,7 @@ mod test {
     }
     impl StickerPackFields for proto::StickerPack {
         fn pack_key_mut(&mut self) -> &mut Vec<u8> {
-            &mut self.key
+            &mut self.packKey
         }
     }
     impl StickerPackFields for proto::Sticker {
