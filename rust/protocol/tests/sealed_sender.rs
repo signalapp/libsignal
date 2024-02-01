@@ -662,7 +662,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
-fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProtocolError> {
+fn test_sealed_sender_multi_recipient_legacy_derivation() -> Result<(), SignalProtocolError> {
     async {
         let mut rng = OsRng;
 
@@ -732,17 +732,18 @@ fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProto
         )?;
 
         let recipients = [&bob_uuid_address];
-        let alice_ctext = sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation(
-            &recipients,
-            &alice_store
-                .session_store
-                .load_existing_sessions(&recipients)?,
-            [],
-            &alice_usmc,
-            &alice_store.identity_store,
-            &mut rng,
-        )
-        .await?;
+        let alice_ctext =
+            sealed_sender_multi_recipient_encrypt_using_legacy_ephemeral_key_derivation(
+                &recipients,
+                &alice_store
+                    .session_store
+                    .load_existing_sessions(&recipients)?,
+                [],
+                &alice_usmc,
+                &alice_store.identity_store,
+                &mut rng,
+            )
+            .await?;
 
         let (recipient_addr, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
         assert_eq!(recipient_addr.service_id_string(), bob_uuid);

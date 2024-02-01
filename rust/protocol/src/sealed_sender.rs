@@ -924,7 +924,7 @@ mod sealed_sender_v2 {
     pub const AUTH_TAG_LEN: usize = 16;
 
     // Change this to false after all clients have receive support.
-    pub const USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT: bool = true;
+    pub const USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT: bool = false;
 
     /// An asymmetric and a symmetric cipher key.
     pub(super) struct DerivedKeys {
@@ -1280,7 +1280,7 @@ where
 }
 
 /// For testing only.
-pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation<
+pub async fn sealed_sender_multi_recipient_encrypt_using_legacy_ephemeral_key_derivation<
     R: Rng + CryptoRng,
     X: IntoIterator<Item = ServiceId>,
 >(
@@ -1294,10 +1294,6 @@ pub async fn sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_deriv
 where
     X::IntoIter: ExactSizeIterator,
 {
-    // When this is flipped, we should use this function to test the legacy encryption instead.
-    static_assertions::const_assert!(
-        sealed_sender_v2::USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT,
-    );
     sealed_sender_multi_recipient_encrypt_impl(
         destinations,
         destination_sessions,
