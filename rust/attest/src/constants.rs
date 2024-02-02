@@ -14,7 +14,7 @@ pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
 pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
     &hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
 pub const ENCLAVE_ID_SVR3_SGX_STAGING: &[u8] =
-    &hex!("5db9423ed5a0b0bef374eac3a8251839e1f63ed40a2537415b63656b26912d92");
+    &hex!("b7811fb574a4d7e59408e30a2e0ddd9ae3f241594156e7ad647785c1c52e4f3c");
 pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"3b3dda58.52b91975.02dfde15";
 
 pub const ENCLAVE_ID_CDSI_PROD: &[u8] = ENCLAVE_ID_CDSI_STAGING;
@@ -111,7 +111,7 @@ pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftCon
                 min_voting_replicas: 3,
                 max_voting_replicas: 5,
                 super_majority: 0,
-                group_id: 13862729870901000330,
+                group_id: 1292240360480775808,
             },
         ),
         (
