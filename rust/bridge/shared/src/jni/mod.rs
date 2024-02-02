@@ -91,6 +91,24 @@ where
             );
             return;
         }
+        SignalJniError::Io(error) if error.kind() == std::io::ErrorKind::Other => {
+            let thrown_exception = error
+                .get_ref()
+                .and_then(|e| e.downcast_ref::<ThrownException>())
+                .map(ThrownException::as_obj);
+
+            if let Some(exception) = thrown_exception {
+                consume(
+                    env,
+                    env.new_local_ref::<&JObject>(exception.as_ref())
+                        .map(Into::into)
+                        .map_err(Into::into),
+                    &"error in callback".to_string(),
+                );
+                return;
+            }
+            SignalJniError::Io(error)
+        }
 
         SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(
             callback,

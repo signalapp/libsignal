@@ -150,8 +150,26 @@ impl From<UsernameLinkError> for SignalFfiError {
 }
 
 impl From<IoError> for SignalFfiError {
-    fn from(e: IoError) -> SignalFfiError {
-        Self::Io(e)
+    fn from(mut e: IoError) -> SignalFfiError {
+        let original_error = (e.kind() == IoErrorKind::Other)
+            .then(|| {
+                e.get_mut()
+                    .and_then(|e| e.downcast_mut::<SignalProtocolError>())
+            })
+            .flatten()
+            .map(|e| {
+                // We can't get the inner error out without putting something in
+                // its place, so leave some random (cheap-to-construct) error.
+                // TODO: use IoError::downcast() once it is stabilized
+                // (https://github.com/rust-lang/rust/issues/99262).
+                std::mem::replace(e, SignalProtocolError::InvalidPreKeyId)
+            });
+
+        if let Some(callback_err) = original_error {
+            Self::Signal(callback_err)
+        } else {
+            Self::Io(e)
+        }
     }
 }
 

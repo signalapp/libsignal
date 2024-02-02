@@ -45,7 +45,7 @@ class MessageBackupTests: TestCaseBase {
     XCTAssertThrowsError(
       try validateMessageBackup(key: MessageBackupKey.testKey(), length: UInt64(bytes.count), makeStream: makeStream)
     ) { error in
-      if case SignalError.ioError = error {} else { XCTFail("\(error)") }
+      if error is TestIoError {} else { XCTFail("\(error)") }
     }
   }
 

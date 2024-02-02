@@ -252,6 +252,10 @@ impl From<SignalJniError> for IoError {
     fn from(err: SignalJniError) -> Self {
         match err {
             SignalJniError::Io(e) => e,
+            SignalJniError::Bridge(BridgeLayerError::CallbackException(
+                _method_name,
+                exception,
+            )) => IoError::new(IoErrorKind::Other, exception),
             e => IoError::new(IoErrorKind::Other, e.to_string()),
         }
     }

@@ -84,16 +84,20 @@ public class MessageBackupValidationTest {
         };
 
     MessageBackupKey key = makeMessageBackupKey();
-    assertThrows(
-        IOException.class,
-        () -> {
-          MessageBackup.validate(key, throwingStreamFactory, length);
-        });
+    IOException thrown =
+        assertThrows(
+            IOException.class,
+            () -> {
+              MessageBackup.validate(key, throwingStreamFactory, length);
+            });
+    assertEquals(thrown.getMessage(), ThrowingInputStream.MESSAGE);
   }
 }
 
 /** Input stream that throws an exception after producing some number of bytes. */
 class ThrowingInputStream extends InputStream {
+  public static String MESSAGE = "exhausted read count";
+
   public ThrowingInputStream(InputStream inner, long bytesToReadBeforeThrowing) {
     this.inner = inner;
     this.bytesToReadBeforeThrowing = bytesToReadBeforeThrowing;
@@ -122,7 +126,7 @@ class ThrowingInputStream extends InputStream {
 
   private void checkBytesToReadBeforeThrowing() throws IOException {
     if (this.bytesToReadBeforeThrowing <= 0) {
-      throw new IOException("exhausted read count");
+      throw new IOException(ThrowingInputStream.MESSAGE);
     }
   }
 

@@ -7,6 +7,7 @@ use std::ffi::{c_int, c_void};
 use std::io;
 
 use async_trait::async_trait;
+use libsignal_protocol::SignalProtocolError;
 
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
@@ -30,13 +31,19 @@ impl FfiInputStreamStruct {
     fn do_read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut amount_read = 0;
         let result = (self.read)(self.ctx, buf.as_mut_ptr(), buf.len(), &mut amount_read);
-        CallbackError::check(result).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        CallbackError::check(result).map_err(|e| {
+            let err = SignalProtocolError::for_application_callback("read")(e);
+            io::Error::new(io::ErrorKind::Other, err)
+        })?;
         Ok(amount_read)
     }
 
     fn do_skip(&self, amount: u64) -> io::Result<()> {
         let result = (self.skip)(self.ctx, amount);
-        CallbackError::check(result).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        CallbackError::check(result).map_err(|e| {
+            let err = SignalProtocolError::for_application_callback("skip")(e);
+            io::Error::new(io::ErrorKind::Other, err)
+        })
     }
 }
 
