@@ -811,6 +811,33 @@ impl<'a> ResultTypeInfo<'a> for () {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for crate::message_backup::MessageBackupValidationOutcome {
+    type ResultType = JsObject;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            error_message,
+            found_unknown_fields,
+        } = self;
+        let error_message = error_message.convert_into(cx)?;
+
+        let unknown_field_messages = JsArray::new(
+            cx,
+            found_unknown_fields.len().try_into().expect("< u32::MAX"),
+        );
+        for (unknown, i) in found_unknown_fields.into_iter().zip(0..) {
+            let message = JsString::new(cx, unknown.to_string());
+            unknown_field_messages.set(cx, i, message)?;
+        }
+
+        let obj = JsObject::new(cx);
+        obj.set(cx, "errorMessage", error_message)?;
+        obj.set(cx, "unknownFieldMessages", unknown_field_messages)?;
+
+        Ok(obj)
+    }
+}
+
 impl<'a, T: Value> ResultTypeInfo<'a> for Handle<'a, T> {
     type ResultType = T;
     fn convert_into(self, _cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {

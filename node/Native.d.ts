@@ -96,6 +96,11 @@ interface Wrapper<T> {
   readonly _nativeHandle: T;
 }
 
+interface MessageBackupValidationOutcome {
+  errorMessage: string | null;
+  unknownFieldMessages: Array<string>;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Serialized<T> = Buffer;
 
@@ -237,6 +242,7 @@ export function LookupRequest_new(): LookupRequest;
 export function LookupRequest_setReturnAcisWithoutUaks(request: Wrapper<LookupRequest>, returnAcisWithoutUaks: boolean): void;
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Buffer): void;
 export function MessageBackupKey_New(masterKey: Buffer, aci: Buffer): MessageBackupKey;
+export function MessageBackupValidator_Validate(key: Wrapper<MessageBackupKey>, firstStream: InputStream, secondStream: InputStream, len: Buffer): Promise<MessageBackupValidationOutcome>;
 export function Mp4Sanitizer_Sanitize(input: InputStream, len: Buffer): Promise<SanitizedMetadata>;
 export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;

@@ -26,7 +26,7 @@ pub struct PromiseSettler<T, E> {
 impl<T, E> PromiseSettler<T, E>
 where
     T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + Send + 'static,
-    E: SignalNodeError + std::panic::UnwindSafe + Send + 'static,
+    E: SignalNodeError + Send + 'static,
 {
     /// Stores the information necessary to complete a JavaScript Promise.
     ///
@@ -68,7 +68,7 @@ impl<T, E, U: Finalize + Send + 'static> FutureResultReporter<T, E, U> {
 impl<T, E, U> ResultReporter for FutureResultReporter<T, E, U>
 where
     T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + Send + 'static,
-    E: SignalNodeError + std::panic::UnwindSafe + Send + 'static,
+    E: SignalNodeError + Send + 'static,
     U: Finalize + Send + 'static,
 {
     type Receiver = PromiseSettler<T, E>;
@@ -108,10 +108,12 @@ where
                     // But if the panic is in *our* code, the context will be fine.
                     // And if Neon panics, there's not much we can do about it.
                     let mut cx = std::panic::AssertUnwindSafe(&mut cx);
-                    std::panic::catch_unwind(move || match result {
-                        Ok(success) => Ok(success.convert_into(*cx)?.upcast()),
-                        Err(failure) => failure.throw(*cx, error_module, node_function_name),
-                    })
+                    match result {
+                        Ok(success) => std::panic::catch_unwind(move || {
+                            Ok(success.convert_into(*cx)?.upcast())
+                        }),
+                        Err(failure) => Ok(failure.throw(*cx, error_module, node_function_name)),
+                    }
                 });
 
             settled_result.unwrap_or_else(|panic| {
@@ -171,7 +173,7 @@ where
     F: Future + std::panic::UnwindSafe + 'static,
     F::Output: ResultReporter<Receiver = PromiseSettler<O, E>>,
     O: for<'a> ResultTypeInfo<'a> + Send + std::panic::UnwindSafe + 'static,
-    E: SignalNodeError + Send + std::panic::UnwindSafe + 'static,
+    E: SignalNodeError + Send + 'static,
 {
     let (deferred, promise) = cx.promise();
     let completer = PromiseSettler::new(cx, deferred, node_function_name);

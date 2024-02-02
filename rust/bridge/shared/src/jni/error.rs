@@ -192,7 +192,7 @@ impl From<signal_media::sanitize::mp4::Error> for SignalJniError {
     fn from(e: signal_media::sanitize::mp4::Error) -> Self {
         use signal_media::sanitize::mp4::Error;
         match e {
-            Error::Io(e) => Self::Io(e.into()),
+            Error::Io(e) => Self::Io(e),
             Error::Parse(e) => Self::Mp4SanitizeParse(e),
         }
     }
@@ -203,7 +203,7 @@ impl From<signal_media::sanitize::webp::Error> for SignalJniError {
     fn from(e: signal_media::sanitize::webp::Error) -> Self {
         use signal_media::sanitize::webp::Error;
         match e {
-            Error::Io(e) => Self::Io(e.into()),
+            Error::Io(e) => Self::Io(e),
             Error::Parse(e) => Self::WebpSanitizeParse(e),
         }
     }

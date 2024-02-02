@@ -4,12 +4,12 @@
 //
 
 import { assert } from 'chai';
-import { InputStream } from '../io';
 import * as Mp4Sanitizer from '../Mp4Sanitizer';
 import * as WebpSanitizer from '../WebpSanitizer';
 import { SanitizedMetadata } from '../Mp4Sanitizer';
 import * as util from './util';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
+import { ErrorInputStream, Uint8ArrayInputStream } from './ioutil';
 
 util.initLogger();
 
@@ -198,37 +198,4 @@ function assertSanitizedMetadataEqual(
   assert.deepEqual(sanitized.getMetadata(), metadata);
   assert.equal(sanitized.getDataOffset(), BigInt(dataOffset));
   assert.equal(sanitized.getDataLen(), BigInt(dataLen));
-}
-
-class ErrorInputStream extends InputStream {
-  read(_amount: number): Promise<Buffer> {
-    throw new Error('test io error');
-  }
-  skip(_amount: number): Promise<void> {
-    throw new Error('test io error');
-  }
-}
-
-class Uint8ArrayInputStream extends InputStream {
-  data: Uint8Array;
-
-  constructor(data: Uint8Array) {
-    super();
-    this.data = data;
-  }
-
-  read(amount: number): Promise<Buffer> {
-    const read_amount = Math.min(amount, this.data.length);
-    const read_data = this.data.slice(0, read_amount);
-    this.data = this.data.slice(read_amount);
-    return Promise.resolve(Buffer.from(read_data));
-  }
-
-  skip(amount: number): Promise<void> {
-    if (amount > this.data.length) {
-      throw Error('skipped past end of data');
-    }
-    this.data = this.data.slice(amount);
-    return Promise.resolve();
-  }
 }

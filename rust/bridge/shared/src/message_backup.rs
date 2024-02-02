@@ -3,21 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_bridge_macros::*;
 #[cfg(any(feature = "jni", feature = "ffi"))]
+use futures_util::FutureExt as _;
+use libsignal_bridge_macros::*;
 use libsignal_message_backup::frame::{
     LimitedReaderFactory, ValidationError as FrameValidationError,
 };
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey as MessageBackupKeyInner};
-#[cfg(any(feature = "jni", feature = "ffi"))]
 use libsignal_message_backup::parse::ParseError;
-#[cfg(any(feature = "jni", feature = "ffi"))]
-use libsignal_message_backup::Error;
-#[cfg(any(feature = "jni", feature = "ffi"))]
-use libsignal_message_backup::{BackupReader, FoundUnknownField, ReadResult};
+use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
 use libsignal_protocol::Aci;
 
-#[cfg(any(feature = "jni", feature = "ffi"))]
 use crate::io::{AsyncInput, InputStream};
 use crate::support::*;
 use crate::*;
@@ -34,13 +30,11 @@ fn MessageBackupKey_New(master_key: &[u8; 32], aci: Aci) -> MessageBackupKey {
 }
 
 #[derive(Debug)]
-#[cfg(any(feature = "jni", feature = "ffi"))]
 enum MessageBackupValidationError {
     Io(std::io::Error),
     String(String),
 }
 
-#[cfg(any(feature = "jni", feature = "ffi"))]
 impl From<Error> for MessageBackupValidationError {
     fn from(value: Error) -> Self {
         match value {
@@ -53,7 +47,6 @@ impl From<Error> for MessageBackupValidationError {
     }
 }
 
-#[cfg(any(feature = "jni", feature = "ffi"))]
 impl From<FrameValidationError> for MessageBackupValidationError {
     fn from(value: FrameValidationError) -> Self {
         match value {
@@ -65,7 +58,6 @@ impl From<FrameValidationError> for MessageBackupValidationError {
     }
 }
 
-#[cfg(any(feature = "jni", feature = "ffi"))]
 pub struct MessageBackupValidationOutcome {
     pub(crate) error_message: Option<String>,
     pub(crate) found_unknown_fields: Vec<FoundUnknownField>,
@@ -91,8 +83,8 @@ fn MessageBackupValidationOutcome_getUnknownFields(
         .collect()
 }
 
-#[bridge_fn(node = false)]
-fn MessageBackupValidator_Validate(
+#[bridge_fn]
+async fn MessageBackupValidator_Validate(
     key: &MessageBackupKey,
     first_stream: &mut dyn InputStream,
     second_stream: &mut dyn InputStream,
@@ -106,26 +98,18 @@ fn MessageBackupValidator_Validate(
     ];
     let factory = LimitedReaderFactory::new(streams);
 
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("failed to create runtime");
+    let (error, found_unknown_fields) =
+        match BackupReader::new_encrypted_compressed(key, factory).await {
+            Err(e) => (Some(e.into()), Vec::new()),
+            Ok(reader) => {
+                let ReadResult {
+                    result,
+                    found_unknown_fields,
+                } = reader.validate_all().await;
 
-    let (error, found_unknown_fields) = runtime.block_on(async move {
-        let reader = match BackupReader::new_encrypted_compressed(key, factory).await {
-            Ok(reader) => reader,
-            Err(e) => {
-                return (Some(e.into()), Vec::new());
+                (result.err().map(Into::into), found_unknown_fields)
             }
         };
-
-        let ReadResult {
-            result,
-            found_unknown_fields,
-        } = reader.validate_all().await;
-
-        (result.err().map(Into::into), found_unknown_fields)
-    });
 
     let error_message = error
         .map(|m| match m {
