@@ -11,7 +11,6 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 
-use crate::chat::http::ChatOverHttp2ServiceConnector;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use crate::env::constants::WEB_SOCKET_PATH;
 use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_CONNECTION_TIME, WS_MAX_IDLE_TIME};
@@ -21,9 +20,7 @@ use crate::infra::connection_manager::{
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
 use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig};
-use crate::infra::{
-    ConnectionParams, HttpRequestDecorator, TcpSslTransportConnector, TransportConnector,
-};
+use crate::infra::{ConnectionParams, HttpRequestDecorator, TransportConnector};
 use crate::proto;
 use crate::utils::basic_authorization;
 
@@ -36,7 +33,6 @@ pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
 pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
-const HTTP_ONLY_ENDPOINTS: [&str; 2] = ["/v1/accounts", "/v2/keys"];
 const ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
 const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -166,61 +162,6 @@ where
     }
 }
 
-#[derive(Clone)]
-struct ChatServiceImpl<WsService, HttpService> {
-    ws_service: WsService,
-    http_service: HttpService,
-}
-
-impl<WsService, HttpService> ChatServiceImpl<WsService, HttpService>
-where
-    WsService: ChatService,
-    HttpService: ChatService,
-{
-    #[allow(dead_code)]
-    pub fn new(ws_service: WsService, http_service: HttpService) -> Self {
-        Self {
-            ws_service,
-            http_service,
-        }
-    }
-
-    async fn send_ws(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        let ws_result = self.ws_service.send(msg.clone(), timeout).await;
-        match ws_result {
-            Ok(r) => Ok(r),
-            Err(NetError::NoServiceConnection) => self.send_http(msg, timeout).await,
-            Err(e) => Err(e),
-        }
-    }
-
-    async fn send_http(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        self.http_service.send(msg, timeout).await
-    }
-}
-
-#[async_trait]
-impl<WsService, HttpService> ChatService for ChatServiceImpl<WsService, HttpService>
-where
-    WsService: ChatService + Send + Sync,
-    HttpService: ChatService + Send + Sync,
-{
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        if is_http_only_request(&msg) {
-            self.send_http(msg, timeout).await
-        } else {
-            self.send_ws(msg, timeout).await
-        }
-    }
-}
-
-fn is_http_only_request(req: &Request) -> bool {
-    let path = req.path.path();
-    HTTP_ONLY_ENDPOINTS
-        .iter()
-        .any(|prefix| path.starts_with(prefix))
-}
-
 pub struct AnonymousChatService<T> {
     inner: T,
 }
@@ -273,24 +214,13 @@ impl ChatService for Arc<dyn ChatService + Send + Sync> {
 }
 
 fn build_authorized_chat_service(
-    connection_manager_http: &MultiRouteConnectionManager,
     connection_manager_ws: &MultiRouteConnectionManager,
-    service_connector_http: &ChatOverHttp2ServiceConnector<impl TransportConnector + 'static>,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
     username: String,
     password: String,
 ) -> AuthorizedChatService<impl ChatService> {
     let header_auth_decorator =
         HttpRequestDecorator::HeaderAuth(basic_authorization(&username, &password));
-    // http authorized
-    let chat_over_h2_auth = ServiceWithReconnect::new(
-        ServiceConnectorWithDecorator::new(
-            service_connector_http.clone(),
-            header_auth_decorator.clone(),
-        ),
-        connection_manager_http.clone(),
-        TOTAL_CONNECTION_TIMEOUT,
-    );
 
     // ws authorized
     let chat_over_ws_auth = ServiceWithReconnect::new(
@@ -303,32 +233,23 @@ fn build_authorized_chat_service(
     );
 
     AuthorizedChatService {
-        inner: ChatServiceImpl::new(chat_over_ws_auth, chat_over_h2_auth),
+        inner: chat_over_ws_auth,
     }
 }
 
 fn build_anonymous_chat_service(
-    connection_manager_http: &MultiRouteConnectionManager,
     connection_manager_ws: &MultiRouteConnectionManager,
-    service_connector_http: &ChatOverHttp2ServiceConnector<impl TransportConnector + 'static>,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
 ) -> AnonymousChatService<impl ChatService> {
-    // http anonymous
-    let chat_over_h2_auth = ServiceWithReconnect::new(
-        service_connector_http.clone(),
-        connection_manager_http.clone(),
-        TOTAL_CONNECTION_TIMEOUT,
-    );
-
     // ws anonymous
-    let chat_over_ws_auth = ServiceWithReconnect::new(
+    let chat_over_ws_anonymous = ServiceWithReconnect::new(
         service_connector_ws.clone(),
         connection_manager_ws.clone(),
         TOTAL_CONNECTION_TIMEOUT,
     );
 
     AnonymousChatService {
-        inner: ChatServiceImpl::new(chat_over_ws_auth, chat_over_h2_auth),
+        inner: chat_over_ws_anonymous,
     }
 }
 
@@ -351,26 +272,16 @@ pub fn chat_service<T: TransportConnector + 'static>(
         WebSocketClientConnector::new(transport_connector, cfg),
         incoming_tx,
     );
-    let service_connector_http = ChatOverHttp2ServiceConnector::new(TcpSslTransportConnector);
-
-    let connection_manager_http = multi_route_manager(&connection_params_list);
     let connection_manager_ws = multi_route_manager(&connection_params_list);
 
     Chat::new(
         build_authorized_chat_service(
-            &connection_manager_http,
             &connection_manager_ws,
-            &service_connector_http,
             &service_connector_ws,
             username,
             password,
         ),
-        build_anonymous_chat_service(
-            &connection_manager_http,
-            &connection_manager_ws,
-            &service_connector_http,
-            &service_connector_ws,
-        ),
+        build_anonymous_chat_service(&connection_manager_ws, &service_connector_ws),
     )
 }
 
