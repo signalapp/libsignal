@@ -10,13 +10,13 @@ use crate::proto::backup::{Call, Chat, ChatItem, Recipient};
 pub struct RecipientId(pub(super) u64);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ChatId(u64);
+pub struct ChatId(pub(super) u64);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CallId(pub(super) u64);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct RingerRecipientId(RecipientId);
+pub struct RingerRecipientId(pub(super) RecipientId);
 
 impl From<RingerRecipientId> for RecipientId {
     fn from(value: RingerRecipientId) -> Self {
