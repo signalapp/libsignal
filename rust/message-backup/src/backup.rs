@@ -247,7 +247,6 @@ impl<M: Method> PartialBackup<M> {
 
     fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ChatFrameError> {
         let chat_id = chat_item.foreign_id();
-        let author_id = chat_item.foreign_id();
 
         let chat_data = match self.chats.entry(chat_id) {
             hash_map::Entry::Occupied(o) => o.into_mut(),
@@ -255,13 +254,6 @@ impl<M: Method> PartialBackup<M> {
                 return Err(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()))
             }
         };
-
-        if !self.recipients.contains(&author_id) {
-            return Err(ChatFrameError(
-                chat_id,
-                ChatItemError::AuthorNotFound(author_id).into(),
-            ));
-        }
 
         chat_data.items.extend([chat_item
             .try_into_with(&ConvertContext {
@@ -366,7 +358,7 @@ mod test {
     use super::*;
 
     impl proto::Chat {
-        const TEST_ID: u64 = 22222;
+        pub(super) const TEST_ID: u64 = 22222;
         fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID,
@@ -401,22 +393,10 @@ mod test {
     }
 
     impl proto::ChatItem {
-        fn test_data() -> Self {
-            Self {
-                chatId: proto::Chat::TEST_ID,
-                authorId: proto::Recipient::TEST_ID,
-                item: Some(proto::chat_item::Item::StandardMessage(
-                    proto::StandardMessage::test_data(),
-                )),
-                ..Default::default()
-            }
-        }
-
         fn test_data_wrong_author() -> Self {
             Self {
-                chatId: proto::Chat::TEST_ID,
                 authorId: proto::Recipient::TEST_ID + 1,
-                ..Default::default()
+                ..Self::test_data()
             }
         }
     }

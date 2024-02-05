@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[derive(displaydoc::Display, Debug, thiserror::Error)]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[derive(displaydoc::Display, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum UsernameError {
     /// Username must contain a '.'
     MissingSeparator,

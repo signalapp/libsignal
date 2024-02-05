@@ -29,6 +29,7 @@ use crate::proto::backup::{
 /// Validated version of [`proto::group_change_chat_update::update::Update`].
 #[allow(clippy::enum_variant_names)] // names taken from proto message.
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum GroupChatUpdate {
     GenericGroupUpdate,
     GroupCreationUpdate,
@@ -84,6 +85,8 @@ pub enum GroupUpdateFieldError {
     InvalidServiceId,
     /// invitee has {0}
     Invitee(InviteeError),
+    /// accessLevel is {0}
+    AccessLevelInvalid(&'static str),
 }
 
 #[derive(Debug, displaydoc::Display)]
@@ -104,6 +107,7 @@ enum ValidateFieldValue {
     ExpirationMs(u32),
     ServiceId(Vec<u8>),
     Invitees(Vec<group_invitation_revoked_update::Invitee>),
+    AccessLevel(EnumOrUnknown<proto::GroupV2AccessLevel>),
 }
 
 impl ValidateFieldValue {
@@ -160,6 +164,17 @@ impl ValidateFieldValue {
                     },
                 )
                 .map_err(GroupUpdateFieldError::Invitee)?,
+            Self::AccessLevel(access_level) => match access_level.enum_value_or_default() {
+                proto::GroupV2AccessLevel::UNKNOWN => {
+                    return Err(GroupUpdateFieldError::AccessLevelInvalid("UNKNOWN"))
+                }
+                proto::GroupV2AccessLevel::UNSATISFIABLE => {
+                    return Err(GroupUpdateFieldError::AccessLevelInvalid("UNSATISFIABLE"))
+                }
+                proto::GroupV2AccessLevel::ADMINISTRATOR
+                | proto::GroupV2AccessLevel::ANY
+                | proto::GroupV2AccessLevel::MEMBER => (),
+            },
         };
         Ok(())
     }
@@ -268,12 +283,12 @@ impl_try_from_with_group_change!(
 impl_try_from_with_group_change!(
     GroupMembershipAccessLevelChangeUpdate,
     OptionalAci(updaterAci),
-    ignore::<EnumOrUnknown<_>>(accessLevel) // TODO validate this field
+    AccessLevel(accessLevel)
 );
 impl_try_from_with_group_change!(
     GroupAttributesAccessLevelChangeUpdate,
     OptionalAci(updaterAci),
-    ignore::<EnumOrUnknown<_>>(accessLevel) // TODO validate this field
+    AccessLevel(accessLevel)
 );
 impl_try_from_with_group_change!(
     GroupAnnouncementOnlyChangeUpdate,
@@ -430,6 +445,14 @@ mod test {
     #[test_case(
         ValidateFieldValue::Invitees(invitee_pni_service_id_binary()),
         Err(Invitee(InviteeError::InviteePni))
+    )]
+    #[test_case(
+        ValidateFieldValue::AccessLevel(EnumOrUnknown::default()),
+        Err(AccessLevelInvalid("UNKNOWN"))
+    )]
+    #[test_case(
+        ValidateFieldValue::AccessLevel(proto::GroupV2AccessLevel::UNSATISFIABLE.into()),
+        Err(AccessLevelInvalid("UNSATISFIABLE"))
     )]
     fn validate_field_value(
         field: ValidateFieldValue,

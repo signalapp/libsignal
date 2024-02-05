@@ -19,6 +19,22 @@ macro_rules! impl_from_oneof {
 
 use self::backup::*;
 
+impl_from_oneof!(
+    chat_item::DirectionalDetails,
+    chat_item::IncomingMessageDetails,
+    Incoming
+);
+impl_from_oneof!(
+    chat_item::DirectionalDetails,
+    chat_item::OutgoingMessageDetails,
+    Outgoing
+);
+impl_from_oneof!(
+    chat_item::DirectionalDetails,
+    chat_item::DirectionlessMessageDetails,
+    Directionless
+);
+
 impl_from_oneof!(frame::Item, AccountData, Account);
 impl_from_oneof!(frame::Item, Recipient, Recipient);
 impl_from_oneof!(frame::Item, Chat, Chat);

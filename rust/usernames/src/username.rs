@@ -36,6 +36,7 @@ lazy_static! {
     };
 }
 
+#[derive(PartialEq)]
 pub struct Username {
     nickname: String,
     discriminator: u64,

@@ -27,6 +27,10 @@ pub enum RecipientError {
     InvalidDistributionId,
     /// master key has wrong number of bytes
     InvalidMasterKey,
+    /// contact registered value is UNKNOWN
+    ContactRegistrationUnknown,
+    /// distribution list has privacy mode UNKNOWN
+    DistributionListPrivacyUnknown,
 }
 
 #[derive_where(Debug)]
@@ -51,6 +55,7 @@ pub struct ContactData {
     pub aci: Option<Aci>,
     pub pni: Option<Pni>,
     pub profile_key: Option<ProfileKeyBytes>,
+    pub registered: bool,
 }
 
 #[non_exhaustive]
@@ -64,6 +69,15 @@ pub struct GroupData {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct DistributionListData {
     pub distribution_id: Uuid,
+    pub privacy_mode: PrivacyMode,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum PrivacyMode {
+    OnlyWith,
+    AllExcept,
+    All,
 }
 
 impl<M: Method> TryFrom<proto::Recipient> for RecipientData<M> {
@@ -102,13 +116,13 @@ impl TryFrom<proto::Contact> for ContactData {
             aci,
             pni,
             profileKey,
+            registered,
 
             // TODO validate these fields
             username: _,
             e164: _,
             blocked: _,
             hidden: _,
-            registered: _,
             unregisteredTimestamp: _,
             profileSharing: _,
             profileGivenName: _,
@@ -133,10 +147,19 @@ impl TryFrom<proto::Contact> for ContactData {
             .transpose()
             .map_err(|_| RecipientError::InvalidProfileKey)?;
 
+        let registered = match registered.enum_value_or_default() {
+            proto::contact::Registered::UNKNOWN => {
+                return Err(RecipientError::ContactRegistrationUnknown)
+            }
+            proto::contact::Registered::REGISTERED => true,
+            proto::contact::Registered::NOT_REGISTERED => false,
+        };
+
         Ok(Self {
             aci,
             pni,
             profile_key,
+            registered,
         })
     }
 }
@@ -166,11 +189,11 @@ impl TryFrom<proto::DistributionList> for DistributionListData {
     fn try_from(value: proto::DistributionList) -> Result<Self, Self::Error> {
         let proto::DistributionList {
             distributionId,
+            privacyMode,
             // TODO validate these fields.
             name: _,
             allowReplies: _,
             deletionTimestamp: _,
-            privacyMode: _,
             memberRecipientIds: _,
             special_fields: _,
         } = value;
@@ -181,13 +204,33 @@ impl TryFrom<proto::DistributionList> for DistributionListData {
                 .map_err(|_| RecipientError::InvalidDistributionId)?,
         );
 
-        Ok(Self { distribution_id })
+        let privacy_mode = PrivacyMode::try_from(privacyMode.enum_value_or_default())?;
+
+        Ok(Self {
+            distribution_id,
+            privacy_mode,
+        })
+    }
+}
+
+impl TryFrom<proto::distribution_list::PrivacyMode> for PrivacyMode {
+    type Error = RecipientError;
+
+    fn try_from(value: proto::distribution_list::PrivacyMode) -> Result<Self, Self::Error> {
+        use proto::distribution_list::PrivacyMode as DistributionPrivacyMode;
+        match value {
+            DistributionPrivacyMode::UNKNOWN => Err(RecipientError::DistributionListPrivacyUnknown),
+            DistributionPrivacyMode::ONLY_WITH => Ok(Self::OnlyWith),
+            DistributionPrivacyMode::ALL_EXCEPT => Ok(Self::AllExcept),
+            DistributionPrivacyMode::ALL => Ok(Self::All),
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
+    use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
     use super::*;
@@ -213,6 +256,7 @@ mod test {
                 aci: Some(Self::TEST_ACI.into()),
                 pni: Some(Self::TEST_PNI.into()),
                 profileKey: Some(Self::TEST_PROFILE_KEY.into()),
+                registered: proto::contact::Registered::NOT_REGISTERED.into(),
                 ..Default::default()
             }
         }
@@ -234,6 +278,7 @@ mod test {
         fn test_data() -> Self {
             Self {
                 distributionId: Self::TEST_UUID.into(),
+                privacyMode: proto::distribution_list::PrivacyMode::ALL_EXCEPT.into(),
                 ..Self::default()
             }
         }
@@ -292,6 +337,9 @@ mod test {
             proto::Contact::TEST_PROFILE_KEY.into_iter().chain([0xaa]),
         ));
     }
+    fn registration_unknown(input: &mut proto::Contact) {
+        input.registered = EnumOrUnknown::default();
+    }
 
     #[test]
     fn valid_destination_contact() {
@@ -307,6 +355,7 @@ mod test {
                     aci: Some(Aci::from_uuid_bytes(proto::Contact::TEST_ACI)),
                     pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
                     profile_key: Some(proto::Contact::TEST_PROFILE_KEY),
+                    registered: false,
                 })
             })
         )
@@ -319,6 +368,7 @@ mod test {
     #[test_case(invalid_pni, Err(RecipientError::InvalidServiceId(ServiceIdKind::Pni)))]
     #[test_case(no_profile_key, Ok(()))]
     #[test_case(invalid_profile_key, Err(RecipientError::InvalidProfileKey))]
+    #[test_case(registration_unknown, Err(RecipientError::ContactRegistrationUnknown))]
     fn destination_contact(
         modifier: fn(&mut proto::Contact),
         expected: Result<(), RecipientError>,
@@ -374,11 +424,36 @@ mod test {
         );
     }
 
+    #[test]
+    fn valid_distribution_list() {
+        let recipient = proto::Recipient {
+            destination: Some(proto::DistributionList::test_data().into()),
+            ..proto::Recipient::test_data()
+        };
+
+        assert_eq!(
+            RecipientData::<Store>::try_from(recipient),
+            Ok(RecipientData {
+                destination: Destination::DistributionList(DistributionListData {
+                    distribution_id: Uuid::from_bytes(proto::DistributionList::TEST_UUID),
+                    privacy_mode: PrivacyMode::AllExcept,
+                })
+            })
+        );
+    }
+
     fn invalid_distribution_id(input: &mut proto::DistributionList) {
         input.distributionId = vec![0x55; proto::DistributionList::TEST_UUID.len() * 2];
     }
+    fn privacy_mode_unknown(input: &mut proto::DistributionList) {
+        input.privacyMode = EnumOrUnknown::default();
+    }
 
     #[test_case(invalid_distribution_id, Err(RecipientError::InvalidDistributionId))]
+    #[test_case(
+        privacy_mode_unknown,
+        Err(RecipientError::DistributionListPrivacyUnknown)
+    )]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionList),
         expected: Result<(), RecipientError>,
