@@ -1922,6 +1922,8 @@ dependencies = [
  "log",
  "nonzero_ext",
  "pin-project-lite",
+ "proptest",
+ "proptest-state-machine",
  "prost",
  "prost-build",
  "rand",
@@ -2639,6 +2641,15 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "proptest-state-machine"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b52a714915de2d16a5289616d2265a934780f50a9dd30359322b687403fa2ac2"
+dependencies = [
+ "proptest",
 ]
 
 [[package]]
