@@ -179,5 +179,8 @@ async fn TESTING_ErrorOnReturnIo(_needs_cleanup: Ignored<NeedsCleanup>) -> Ignor
 
 #[bridge_fn(jni = false, node = false)]
 fn TESTING_ReturnStringArray() -> Box<[String]> {
-    vec!["ABC".to_string(), "123".to_string()].into_boxed_slice()
+    ["easy", "as", "ABC", "123"]
+        .map(String::from)
+        .into_iter()
+        .collect()
 }

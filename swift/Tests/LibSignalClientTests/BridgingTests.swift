@@ -174,7 +174,7 @@ final class BridgingTests: XCTestCase {
     }
 
     func testReturnStringArray() throws {
-        let EXPECTED = ["ABC", "123"]
+        let EXPECTED = ["easy", "as", "ABC", "123"]
         let array = try invokeFnReturningStringArray {
             signal_testing_return_string_array($0)
         }

@@ -34,7 +34,7 @@ internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStrin
 
     let result = lengths.map { length in
         let view = bytes.prefix(length)
-        bytes = UnsafeBufferPointer(rebasing: bytes.suffix(length))
+        bytes = UnsafeBufferPointer(rebasing: bytes.suffix(from: length))
         return String(decoding: view, as: Unicode.UTF8.self)
     }
 
