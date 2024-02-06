@@ -602,6 +602,7 @@ public final class Native {
   public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
+  public static native Object[] TESTING_ReturnStringArray();
   public static native int TESTING_TestingHandleType_getValue(long handle);
 
   public static native void TestingHandleType_Destroy(long handle);
@@ -622,7 +623,7 @@ public final class Native {
   public static native byte[] UsernameLink_Create(String username, byte[] entropy);
   public static native String UsernameLink_DecryptUsername(byte[] entropy, byte[] encryptedUsername);
 
-  public static native String Username_CandidatesFrom(String nickname, int minLen, int maxLen);
+  public static native Object[] Username_CandidatesFrom(String nickname, int minLen, int maxLen);
   public static native byte[] Username_Hash(String username);
   public static native byte[] Username_HashFromParts(String nickname, String discriminator, int minLen, int maxLen);
   public static native byte[] Username_Proof(String username, byte[] randomness);

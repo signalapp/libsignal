@@ -70,10 +70,10 @@ public final class Username {
 
   public static List<Username> candidatesFrom(
       String nickname, int minNicknameLength, int maxNicknameLength) throws BaseUsernameException {
-    String names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
-    ArrayList<Username> result = new ArrayList<>();
-    for (String name : names.split(",")) {
-      result.add(new Username(name));
+    Object[] names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
+    ArrayList<Username> result = new ArrayList<>(names.length);
+    for (Object name : names) {
+      result.add(new Username((String) name));
     }
     return result;
   }
@@ -121,8 +121,8 @@ public final class Username {
   @Deprecated
   public static List<String> generateCandidates(
       String nickname, int minNicknameLength, int maxNicknameLength) throws BaseUsernameException {
-    String names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
-    return Arrays.asList(names.split(","));
+    Object[] names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
+    return Arrays.asList((String[]) names);
   }
 
   @Deprecated

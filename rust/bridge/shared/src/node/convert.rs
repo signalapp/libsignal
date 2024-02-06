@@ -764,6 +764,30 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for Box<[String]> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_string_array(cx, &*self)
+    }
+}
+
+fn make_string_array<'a, It: IntoIterator>(
+    cx: &mut impl Context<'a>,
+    it: It,
+) -> JsResult<'a, JsArray>
+where
+    It::IntoIter: ExactSizeIterator,
+    It::Item: AsRef<str>,
+{
+    let it = it.into_iter();
+    let array = JsArray::new(cx, it.len().try_into().expect("< u32::MAX"));
+    for (unknown, i) in it.zip(0..) {
+        let message = JsString::new(cx, unknown.as_ref());
+        array.set(cx, i, message)?;
+    }
+    Ok(array)
+}
+
 /// Loads from a JsBuffer, assuming it won't be mutated while in use.
 /// See [`AssumedImmutableBuffer`].
 impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
@@ -820,15 +844,8 @@ impl<'a> ResultTypeInfo<'a> for crate::message_backup::MessageBackupValidationOu
             found_unknown_fields,
         } = self;
         let error_message = error_message.convert_into(cx)?;
-
-        let unknown_field_messages = JsArray::new(
-            cx,
-            found_unknown_fields.len().try_into().expect("< u32::MAX"),
-        );
-        for (unknown, i) in found_unknown_fields.into_iter().zip(0..) {
-            let message = JsString::new(cx, unknown.to_string());
-            unknown_field_messages.set(cx, i, message)?;
-        }
+        let unknown_field_messages =
+            make_string_array(cx, found_unknown_fields.into_iter().map(|s| s.to_string()))?;
 
         let obj = JsObject::new(cx);
         obj.set(cx, "errorMessage", error_message)?;

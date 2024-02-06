@@ -64,4 +64,10 @@ public class BridgingTest {
             ExecutionException.class, () -> Native.TESTING_PanicOnReturnIo(-1, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
   }
+
+  @Test
+  public void testReturnStringArray() {
+    assertArrayEquals(
+        Native.TESTING_ReturnStringArray(), new String[] {"easy", "as", "ABC", "123"});
+  }
 }

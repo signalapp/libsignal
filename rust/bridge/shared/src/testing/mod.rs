@@ -177,7 +177,7 @@ async fn TESTING_ErrorOnReturnIo(_needs_cleanup: Ignored<NeedsCleanup>) -> Ignor
     ErrorOnReturn
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn]
 fn TESTING_ReturnStringArray() -> Box<[String]> {
     ["easy", "as", "ABC", "123"]
         .map(String::from)

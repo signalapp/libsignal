@@ -20,7 +20,7 @@ export function generateCandidates(
     nickname,
     minNicknameLength,
     maxNicknameLength
-  ).split(',');
+  );
 }
 
 export function fromParts(

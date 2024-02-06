@@ -88,11 +88,11 @@ public struct Username {
             withValidLengthWithin lengthRange: ClosedRange<UInt32> = 3...32
     ) throws -> [Username] {
         let allCandidates = try nickname.withCString { nicknamePtr in
-            try invokeFnReturningString {
+            try invokeFnReturningStringArray {
                 signal_username_candidates_from($0, nicknamePtr, lengthRange.lowerBound, lengthRange.upperBound)
             }
         }
-        return try allCandidates.split(separator: ",").map { try Username($0) }
+        return try allCandidates.map { try Username($0) }
     }
 }
 

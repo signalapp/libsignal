@@ -952,6 +952,13 @@ where
     Ok(array)
 }
 
+impl<'a> ResultTypeInfo<'a> for Box<[String]> {
+    type ResultType = JObjectArray<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        make_string_array(env, &*self)
+    }
+}
+
 impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
     type ResultType = JObject<'a>;
 
@@ -1177,6 +1184,9 @@ macro_rules! jni_result_type {
     };
     (&[u8]) => {
         jni::JByteArray<'local>
+    };
+    (Box<[String]>) => {
+        jni::JObjectArray<'local>
     };
     (&[String]) => {
         jni::JObjectArray<'local>

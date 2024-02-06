@@ -449,6 +449,7 @@ export function TESTING_PanicOnLoadSync(_needsCleanup: null, _input: null): void
 export function TESTING_PanicOnReturnAsync(_needsCleanup: null): Promise<null>;
 export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): Promise<null>;
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
+export function TESTING_ReturnStringArray(): string[];
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
 export function TokioAsyncContext_new(): TokioAsyncContext;
 export function UnidentifiedSenderMessageContent_Deserialize(data: Buffer): UnidentifiedSenderMessageContent;
@@ -461,7 +462,7 @@ export function UnidentifiedSenderMessageContent_New(message: Wrapper<Ciphertext
 export function UnidentifiedSenderMessageContent_Serialize(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
 export function UsernameLink_Create(username: string, entropy: Buffer | null): Buffer;
 export function UsernameLink_DecryptUsername(entropy: Buffer, encryptedUsername: Buffer): string;
-export function Username_CandidatesFrom(nickname: string, minLen: number, maxLen: number): string;
+export function Username_CandidatesFrom(nickname: string, minLen: number, maxLen: number): string[];
 export function Username_Hash(username: string): Buffer;
 export function Username_HashFromParts(nickname: string, discriminator: string, minLen: number, maxLen: number): Buffer;
 export function Username_Proof(username: string, randomness: Buffer): Buffer;

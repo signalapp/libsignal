@@ -18,7 +18,7 @@ use std::fmt::Display;
 use std::marker::PhantomData;
 
 pub(crate) use jni::objects::{
-    AutoElements, JByteArray, JClass, JLongArray, JObject, JString, ReleaseMode,
+    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
 };
 pub(crate) use jni::sys::{jboolean, jint, jlong};
 pub(crate) use jni::JNIEnv;

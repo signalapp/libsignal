@@ -85,4 +85,13 @@ describe('bridge_fn', () => {
       Error
     );
   });
+
+  it('can return string arrays', () => {
+    assert.deepStrictEqual(Native.TESTING_ReturnStringArray(), [
+      'easy',
+      'as',
+      'ABC',
+      '123',
+    ]);
+  });
 });

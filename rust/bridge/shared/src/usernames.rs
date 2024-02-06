@@ -43,10 +43,10 @@ pub fn Username_CandidatesFrom(
     nickname: String,
     min_len: u32,
     max_len: u32,
-) -> Result<String, UsernameError> {
+) -> Result<Box<[String]>, UsernameError> {
     let mut rng = rand::rngs::OsRng;
     let limits = NicknameLimits::new(min_len as usize, max_len as usize);
-    Username::candidates_from(&mut rng, &nickname, limits).map(|names| names.join(","))
+    Username::candidates_from(&mut rng, &nickname, limits).map(Vec::into_boxed_slice)
 }
 
 #[bridge_fn]
