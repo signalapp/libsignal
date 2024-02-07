@@ -895,13 +895,18 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
             Ok((e164, value))
         }
 
+        let Self {
+            records,
+            debug_permits_used,
+        } = self;
+
         let map_constructor: Handle<'_, JsFunction> =
             cx.global().get(cx, "Map").expect("Map constructor exists");
-        let num_elements = self.records.len().try_into().expect("< u32::MAX");
+        let num_elements = records.len().try_into().expect("< u32::MAX");
 
         // Construct a JS Map by calling its constructor with an array of [K, V] arrays.
         let entries = JsArray::new(cx, num_elements);
-        for (record, i) in self.records.into_iter().zip(0..) {
+        for (record, i) in records.into_iter().zip(0..) {
             let (key, value) = to_key_value(cx, record)?;
             let entry = JsArray::new(cx, 2);
             entry.set(cx, 0, key)?;
@@ -910,7 +915,13 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         }
 
         let iterable = entries.as_value(cx);
-        map_constructor.construct(cx, [iterable])
+        let map = map_constructor.construct(cx, [iterable])?;
+        let debug_permits_used = JsNumber::new(cx, debug_permits_used);
+
+        let output = JsObject::new(cx);
+        output.set(cx, "entries", map)?;
+        output.set(cx, "debugPermitsUsed", debug_permits_used)?;
+        Ok(output)
     }
 }
 

@@ -7,9 +7,7 @@ package org.signal.libsignal.net;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -47,17 +45,10 @@ class CdsiLookup implements NativeHandleGuard.Owner {
   }
 
   public CompletableFuture<CdsiLookupResponse> complete() {
-    // The output from the bridging layer is untyped, but we're pretty sure it's
-    // a map from E164 strings to typed entries.
-    @SuppressWarnings("unchecked")
-    Function<Map, CdsiLookupResponse> convertResponse =
-        (Map untypedResult) ->
-            new CdsiLookupResponse((Map<String, CdsiLookupResponse.Entry>) (untypedResult));
-
     try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
         NativeHandleGuard self = new NativeHandleGuard(this)) {
       return Native.CdsiLookup_complete(asyncRuntime.nativeHandle(), self.nativeHandle())
-          .thenApply(convertResponse);
+          .thenApply(response -> (CdsiLookupResponse) response);
     }
   }
 

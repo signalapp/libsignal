@@ -18,6 +18,7 @@ fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     const E164_PNI: E164 = E164::new(nonzero!(18005551012u64));
     const ACI_UUID: &str = "9d0652a3-dcc3-4d11-975f-74d61598733f";
     const PNI_UUID: &str = "796abedb-ca4e-4f18-8803-1fde5b921f9f";
+    const DEBUG_PERMITS_USED: i32 = 123;
 
     let aci = Aci::from(Uuid::parse_str(ACI_UUID).expect("is valid"));
     let pni = Pni::from(Uuid::parse_str(PNI_UUID).expect("is valid"));
@@ -35,5 +36,6 @@ fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
                 aci: None,
             },
         ],
+        debug_permits_used: DEBUG_PERMITS_USED,
     }
 }

@@ -30,10 +30,15 @@ export type CDSResponseEntryType<Aci, Pni> = {
   pni: Pni | undefined;
 };
 
-export type CDSResponseType<Aci, Pni> = Map<
+export type CDSResponseEntries<Aci, Pni> = Map<
   string,
   CDSResponseEntryType<Aci, Pni>
 >;
+
+export interface CDSResponseType<Aci, Pni> {
+  entries: CDSResponseEntries<Aci, Pni>;
+  debugPermitsUsed: number;
+}
 
 export class Net {
   private readonly _asyncContext: Native.TokioAsyncContext;

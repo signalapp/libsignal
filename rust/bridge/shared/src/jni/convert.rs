@@ -881,17 +881,22 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     type ResultType = JObject<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let output_hashmap = new_object(
+        let Self {
+            records,
+            debug_permits_used,
+        } = self;
+
+        let entries_hashmap = new_object(
             env,
             jni_class_name!(java.util.HashMap),
             jni_args!(() -> void),
         )?;
-        let output_jmap = JMap::from_env(env, &output_hashmap)?;
+        let entries_jmap = JMap::from_env(env, &entries_hashmap)?;
 
         let entry_class =
             env.find_class(jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry))?;
 
-        for entry in self.records {
+        for entry in records {
             let LookupResponseEntry { aci, e164, pni } = entry;
             let aci = AutoLocal::new(
                 aci.map(|aci| aci.convert_into(env))
@@ -916,10 +921,14 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
                 env,
             );
 
-            output_jmap.put(env, &e164, &entry)?;
+            entries_jmap.put(env, &e164, &entry)?;
         }
 
-        Ok(output_hashmap)
+        Ok(new_object(
+            env,
+            jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse),
+            jni_args!((entries_hashmap => java.util.Map, debug_permits_used => int) -> void),
+        )?)
     }
 }
 

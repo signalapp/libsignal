@@ -146,6 +146,7 @@ pub struct Token(pub Box<[u8]>);
 #[cfg_attr(test, derive(PartialEq))]
 pub struct LookupResponse {
     pub records: Vec<LookupResponseEntry>,
+    pub debug_permits_used: i32,
 }
 
 #[derive(Clone, Debug)]
@@ -176,7 +177,7 @@ impl TryFrom<ClientResponse> for LookupResponse {
         let ClientResponse {
             e164_pni_aci_triples,
             token: _,
-            debug_permits_used: _,
+            debug_permits_used,
         } = response;
 
         if e164_pni_aci_triples.len() % LookupResponseEntry::SERIALIZED_LEN != 0 {
@@ -194,7 +195,10 @@ impl TryFrom<ClientResponse> for LookupResponse {
             })
             .collect();
 
-        Ok(Self { records })
+        Ok(Self {
+            records,
+            debug_permits_used,
+        })
     }
 }
 
@@ -419,7 +423,7 @@ mod test {
         let parsed = ClientResponse {
             e164_pni_aci_triples,
             token: vec![],
-            debug_permits_used: 0,
+            debug_permits_used: 42,
         }
         .try_into();
         assert_eq!(
@@ -432,7 +436,8 @@ mod test {
                         pni: Some(Pni::from(Uuid::from_bytes(PNI_BYTES))),
                     };
                     NUM_REPEATS
-                ]
+                ],
+                debug_permits_used: 42
             })
         );
     }

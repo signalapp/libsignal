@@ -42,8 +42,9 @@ public class CdsiLookupResponse {
     public final ServiceId.Pni pni;
   }
 
-  CdsiLookupResponse(Map<String, Entry> entries) {
+  CdsiLookupResponse(Map<String, Entry> entries, int debugPermitsUsed) {
     this.entries = entries;
+    this.debugPermitsUsed = debugPermitsUsed;
   }
 
   public Map<String, Entry> entries() {
@@ -51,19 +52,22 @@ public class CdsiLookupResponse {
   }
 
   public String toString() {
-    return "{entries: " + entries + "}";
+    return "{entries: " + entries + ", debugPermitsUsed: " + debugPermitsUsed + "}";
   }
 
   public boolean equals(Object obj) {
     if (obj instanceof CdsiLookupResponse) {
-      return Objects.equals(this.entries, ((CdsiLookupResponse) obj).entries);
+      CdsiLookupResponse other = (CdsiLookupResponse) obj;
+      return Objects.equals(this.entries, other.entries)
+          && Objects.equals(this.debugPermitsUsed, other.debugPermitsUsed);
     }
     return false;
   }
 
   public int hashCode() {
-    return this.entries.hashCode();
+    return Objects.hash(this.entries, this.debugPermitsUsed);
   }
 
   private final Map<String, Entry> entries;
+  public final int debugPermitsUsed;
 }

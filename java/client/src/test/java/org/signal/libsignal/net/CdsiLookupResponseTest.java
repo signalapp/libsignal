@@ -20,6 +20,8 @@ public class CdsiLookupResponseTest {
   public final String aciUuid = "9d0652a3-dcc3-4d11-975f-74d61598733f";
   public final String pniUuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f";
 
+  public final int debugPermitsUsed = 123;
+
   @Test
   public void cdsiLookupResponseConvert() throws ServiceId.InvalidServiceIdException {
     ServiceId.Aci aci = new ServiceId.Aci(UUID.fromString(aciUuid));
@@ -29,11 +31,10 @@ public class CdsiLookupResponseTest {
         new CdsiLookupResponse(
             Map.of(
                 this.e164Both, new CdsiLookupResponse.Entry(aci, pni),
-                this.e164Pni, new CdsiLookupResponse.Entry(null, pni)));
+                this.e164Pni, new CdsiLookupResponse.Entry(null, pni)),
+            this.debugPermitsUsed);
 
-    CdsiLookupResponse actual =
-        new CdsiLookupResponse(
-            (Map<String, CdsiLookupResponse.Entry>) Native.TESTING_CdsiLookupResponseConvert());
+    CdsiLookupResponse actual = (CdsiLookupResponse) Native.TESTING_CdsiLookupResponseConvert();
 
     assertEquals(expected, actual);
   }

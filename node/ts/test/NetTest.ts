@@ -18,15 +18,22 @@ describe('cdsi lookup', () => {
   const aciUuid = '9d0652a3-dcc3-4d11-975f-74d61598733f';
   const pniUuid = '796abedb-ca4e-4f18-8803-1fde5b921f9f';
 
+  const debugPermitsUsed = 123;
+
   const aci: string = Aci.fromUuid(aciUuid).getServiceIdString();
   const pni: string = Pni.fromUuid(pniUuid).getServiceIdString();
 
   describe('response conversion', () => {
     it('converts to native', () => {
-      const expected = new Map([
+      const expectedEntries = new Map([
         [e164Both, { aci: aci, pni: pni }],
         [e164Pni, { aci: undefined, pni: pni }],
       ]);
+
+      const expected = {
+        entries: expectedEntries,
+        debugPermitsUsed: debugPermitsUsed,
+      };
 
       expect(Native.TESTING_CdsiLookupResponseConvert()).deep.equals(expected);
     });
