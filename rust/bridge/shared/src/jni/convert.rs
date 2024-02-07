@@ -1164,19 +1164,19 @@ macro_rules! jni_result_type {
     // Therefore, if you need to return a more complicated Result or Option
     // type, you'll have to add another rule for its form.
     (Result<$typ:tt $(, $_:ty)?>) => {
-        jni_result_type!($typ)
+        jni::Throwing<jni_result_type!($typ)>
     };
     (Result<&$typ:tt $(, $_:ty)?>) => {
-        jni_result_type!(&$typ)
+        jni::Throwing<jni_result_type!(&$typ)>
     };
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => {
-        jni_result_type!(&$typ)
+        jni::Throwing<jni_result_type!(&$typ)>
     };
     (Result<Option<$typ:tt<$($args:tt),+> > $(, $_:ty)?>) => {
-        jni_result_type!($typ<$($args),+>)
+        jni::Throwing<jni_result_type!($typ<$($args),+>)>
     };
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
-        jni_result_type!($typ<$($args),+>)
+        jni::Throwing<jni_result_type!($typ<$($args),+>)>
     };
     (Option<$typ:tt>) => {
         jni_result_type!($typ)

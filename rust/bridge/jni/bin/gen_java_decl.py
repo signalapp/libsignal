@@ -43,7 +43,8 @@ ignore_this_warning = re.compile(
     r"WARN: Missing `\[defines\]` entry for `ios_device_as_detected_in_build_rs` in cbindgen config\.|"
     r"WARN: Skip libsignal-bridge::.+ - \(not `(?:pub|no_mangle)`\)\.|"
     r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
-    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaCompletableFuture\" }.+"
+    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaCompletableFuture\" }.+|"
+    r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Throwing\" }.+"
     ")")
 
 unknown_warning = False
@@ -103,16 +104,23 @@ def translate_to_java(typ):
     }
 
     if typ in type_map:
-        return type_map[typ]
+        return (type_map[typ], False)
+
+    if typ == 'Throwing':
+        return ('void', True)
+
+    if (stripped := typ.removeprefix('Throwing<')) != typ:
+        assert stripped.endswith('>')
+        return (translate_to_java(stripped.removesuffix('>'))[0], True)
 
     if (stripped := typ.removeprefix('JavaCompletableFuture<')) != typ:
         assert stripped.endswith('>')
-        inner = translate_to_java(stripped.removesuffix('>'))
-        return f'CompletableFuture<{box_primitive_if_needed(inner)}>'
+        inner = translate_to_java(stripped.removesuffix('>'))[0]
+        return (f'CompletableFuture<{box_primitive_if_needed(inner)}>', False)
 
     # Assume anything else prefixed with "Java" refers to an object
     if typ.startswith('Java'):
-        return typ[4:]
+        return (typ[4:], False)
 
     raise Exception("Don't know what to do with a", typ)
 
@@ -136,13 +144,13 @@ for line in stdout.split('\n'):
         cur_type = this_type
 
     java_fn_name = method_name.replace('_1', '_')
-    java_ret_type = translate_to_java(ret_type)
+    (java_ret_type, is_throwing) = translate_to_java(ret_type)
     java_args = []
 
     if args is not None:
         for arg in args.split(', ')[1:]:
             (arg_type, arg_name) = arg.split(' ')
-            java_arg_type = translate_to_java(arg_type)
+            (java_arg_type, _is_throwing) = translate_to_java(arg_type)
             java_args.append('%s %s' % (java_arg_type, arg_name))
 
     decls.append("  public static native %s %s(%s);" % (java_ret_type, java_fn_name, ", ".join(java_args)))

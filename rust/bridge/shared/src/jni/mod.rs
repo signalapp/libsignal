@@ -54,6 +54,10 @@ pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;
 pub type JavaMap<'a> = JObject<'a>;
 
+/// Return type marker for `bridge_fn`s that return Result, which gen_java_decl.py will pick out
+/// when generating Native.java.
+pub type Throwing<T> = T;
+
 /// A Java wrapper for a `CompletableFuture` type.
 #[derive(Default)]
 #[repr(transparent)] // Ensures that the representation is the same as JObject.
