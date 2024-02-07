@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.net;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -70,12 +72,15 @@ public class CdsiLookupRequest {
         Native.LookupRequest_addE164(this.nativeHandle, e164);
       }
 
-      for (Map.Entry<ServiceId, ProfileKey> entry : serviceIds.entrySet()) {
-        Native.LookupRequest_addAciAndAccessKey(
-            this.nativeHandle,
-            entry.getKey().toServiceIdFixedWidthBinary(),
-            entry.getValue().deriveAccessKey());
-      }
+      filterExceptions(
+          () -> {
+            for (Map.Entry<ServiceId, ProfileKey> entry : serviceIds.entrySet()) {
+              Native.LookupRequest_addAciAndAccessKey(
+                  this.nativeHandle,
+                  entry.getKey().toServiceIdFixedWidthBinary(),
+                  entry.getValue().deriveAccessKey());
+            }
+          });
 
       Native.LookupRequest_setReturnAcisWithoutUaks(this.nativeHandle, requireAcis);
 

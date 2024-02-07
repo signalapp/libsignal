@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.state;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -69,18 +71,20 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
         NativeHandleGuard kyberPreKeyPublicGuard = new NativeHandleGuard(kyberPreKeyPublic); ) {
       byte[] kyberSignature = kyberPreKeySignature == null ? new byte[] {} : kyberPreKeySignature;
       this.unsafeHandle =
-          Native.PreKeyBundle_New(
-              registrationId,
-              deviceId,
-              preKeyId,
-              preKeyPublicGuard.nativeHandle(),
-              signedPreKeyId,
-              signedPreKeyPublicGuard.nativeHandle(),
-              signedPreKeySignature,
-              identityKeyGuard.nativeHandle(),
-              kyberPreKeyId,
-              kyberPreKeyPublicGuard.nativeHandle(),
-              kyberSignature);
+          filterExceptions(
+              () ->
+                  Native.PreKeyBundle_New(
+                      registrationId,
+                      deviceId,
+                      preKeyId,
+                      preKeyPublicGuard.nativeHandle(),
+                      signedPreKeyId,
+                      signedPreKeyPublicGuard.nativeHandle(),
+                      signedPreKeySignature,
+                      identityKeyGuard.nativeHandle(),
+                      kyberPreKeyId,
+                      kyberPreKeyPublicGuard.nativeHandle(),
+                      kyberSignature));
     }
   }
 
@@ -89,7 +93,7 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public int getDeviceId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PreKeyBundle_GetDeviceId(guard.nativeHandle());
+      return filterExceptions(() -> Native.PreKeyBundle_GetDeviceId(guard.nativeHandle()));
     }
   }
 
@@ -98,7 +102,7 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public int getPreKeyId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PreKeyBundle_GetPreKeyId(guard.nativeHandle());
+      return filterExceptions(() -> Native.PreKeyBundle_GetPreKeyId(guard.nativeHandle()));
     }
   }
 
@@ -107,7 +111,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public ECPublicKey getPreKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      long handle = Native.PreKeyBundle_GetPreKeyPublic(guard.nativeHandle());
+      long handle =
+          filterExceptions(() -> Native.PreKeyBundle_GetPreKeyPublic(guard.nativeHandle()));
       if (handle != 0) {
         return new ECPublicKey(handle);
       }
@@ -120,7 +125,7 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public int getSignedPreKeyId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PreKeyBundle_GetSignedPreKeyId(guard.nativeHandle());
+      return filterExceptions(() -> Native.PreKeyBundle_GetSignedPreKeyId(guard.nativeHandle()));
     }
   }
 
@@ -129,7 +134,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public ECPublicKey getSignedPreKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(Native.PreKeyBundle_GetSignedPreKeyPublic(guard.nativeHandle()));
+      return new ECPublicKey(
+          filterExceptions(() -> Native.PreKeyBundle_GetSignedPreKeyPublic(guard.nativeHandle())));
     }
   }
 
@@ -138,7 +144,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public byte[] getSignedPreKeySignature() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PreKeyBundle_GetSignedPreKeySignature(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.PreKeyBundle_GetSignedPreKeySignature(guard.nativeHandle()));
     }
   }
 
@@ -148,7 +155,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
   public IdentityKey getIdentityKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new IdentityKey(
-          new ECPublicKey(Native.PreKeyBundle_GetIdentityKey(guard.nativeHandle())));
+          new ECPublicKey(
+              filterExceptions(() -> Native.PreKeyBundle_GetIdentityKey(guard.nativeHandle()))));
     }
   }
 
@@ -157,7 +165,7 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public int getRegistrationId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PreKeyBundle_GetRegistrationId(guard.nativeHandle());
+      return filterExceptions(() -> Native.PreKeyBundle_GetRegistrationId(guard.nativeHandle()));
     }
   }
 
@@ -166,7 +174,7 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public int getKyberPreKeyId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PreKeyBundle_GetKyberPreKeyId(guard.nativeHandle());
+      return filterExceptions(() -> Native.PreKeyBundle_GetKyberPreKeyId(guard.nativeHandle()));
     }
   }
 
@@ -175,7 +183,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public KEMPublicKey getKyberPreKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      long handle = Native.PreKeyBundle_GetKyberPreKeyPublic(guard.nativeHandle());
+      long handle =
+          filterExceptions(() -> Native.PreKeyBundle_GetKyberPreKeyPublic(guard.nativeHandle()));
       if (handle != 0) {
         return new KEMPublicKey(handle);
       }
@@ -188,7 +197,8 @@ public class PreKeyBundle implements NativeHandleGuard.Owner {
    */
   public byte[] getKyberPreKeySignature() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      byte[] signature = Native.PreKeyBundle_GetKyberPreKeySignature(guard.nativeHandle());
+      byte[] signature =
+          filterExceptions(() -> Native.PreKeyBundle_GetKyberPreKeySignature(guard.nativeHandle()));
       if (signature.length == 0) {
         return null;
       }

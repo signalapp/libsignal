@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.state;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -40,7 +42,9 @@ public class SessionRecord implements NativeHandleGuard.Owner {
 
   // FIXME: This shouldn't be considered a "message".
   public SessionRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle = Native.SessionRecord_Deserialize(serialized);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidMessageException.class, () -> Native.SessionRecord_Deserialize(serialized));
   }
 
   /**
@@ -49,31 +53,36 @@ public class SessionRecord implements NativeHandleGuard.Owner {
    */
   public void archiveCurrentState() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.SessionRecord_ArchiveCurrentState(guard.nativeHandle());
+      filterExceptions(() -> Native.SessionRecord_ArchiveCurrentState(guard.nativeHandle()));
     }
   }
 
   public int getSessionVersion() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_GetSessionVersion(guard.nativeHandle());
+      return filterExceptions(() -> Native.SessionRecord_GetSessionVersion(guard.nativeHandle()));
     }
   }
 
   public int getRemoteRegistrationId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_GetRemoteRegistrationId(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.SessionRecord_GetRemoteRegistrationId(guard.nativeHandle()));
     }
   }
 
   public int getLocalRegistrationId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_GetLocalRegistrationId(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.SessionRecord_GetLocalRegistrationId(guard.nativeHandle()));
     }
   }
 
   public IdentityKey getRemoteIdentityKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      byte[] keyBytes = Native.SessionRecord_GetRemoteIdentityKeyPublic(guard.nativeHandle());
+      byte[] keyBytes =
+          filterExceptions(
+              InvalidKeyException.class,
+              () -> Native.SessionRecord_GetRemoteIdentityKeyPublic(guard.nativeHandle()));
 
       if (keyBytes == null) {
         return null;
@@ -87,7 +96,10 @@ public class SessionRecord implements NativeHandleGuard.Owner {
 
   public IdentityKey getLocalIdentityKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      byte[] keyBytes = Native.SessionRecord_GetLocalIdentityKeyPublic(guard.nativeHandle());
+      byte[] keyBytes =
+          filterExceptions(
+              InvalidKeyException.class,
+              () -> Native.SessionRecord_GetLocalIdentityKeyPublic(guard.nativeHandle()));
       return new IdentityKey(keyBytes);
     } catch (InvalidKeyException e) {
       throw new AssertionError(e);
@@ -112,15 +124,19 @@ public class SessionRecord implements NativeHandleGuard.Owner {
    */
   public boolean hasSenderChain(Instant now) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_HasUsableSenderChain(guard.nativeHandle(), now.toEpochMilli());
+      return filterExceptions(
+          () ->
+              Native.SessionRecord_HasUsableSenderChain(guard.nativeHandle(), now.toEpochMilli()));
     }
   }
 
   public boolean currentRatchetKeyMatches(ECPublicKey key) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this);
         NativeHandleGuard keyGuard = new NativeHandleGuard(key); ) {
-      return Native.SessionRecord_CurrentRatchetKeyMatches(
-          guard.nativeHandle(), keyGuard.nativeHandle());
+      return filterExceptions(
+          () ->
+              Native.SessionRecord_CurrentRatchetKeyMatches(
+                  guard.nativeHandle(), keyGuard.nativeHandle()));
     }
   }
 
@@ -129,7 +145,7 @@ public class SessionRecord implements NativeHandleGuard.Owner {
    */
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_Serialize(guard.nativeHandle());
+      return filterExceptions(() -> Native.SessionRecord_Serialize(guard.nativeHandle()));
     }
   }
 
@@ -138,20 +154,23 @@ public class SessionRecord implements NativeHandleGuard.Owner {
   public byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this);
         NativeHandleGuard ephemeralGuard = new NativeHandleGuard(senderEphemeral); ) {
-      return Native.SessionRecord_GetReceiverChainKeyValue(
-          guard.nativeHandle(), ephemeralGuard.nativeHandle());
+      return filterExceptions(
+          () ->
+              Native.SessionRecord_GetReceiverChainKeyValue(
+                  guard.nativeHandle(), ephemeralGuard.nativeHandle()));
     }
   }
 
   public byte[] getSenderChainKeyValue() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_GetSenderChainKeyValue(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.SessionRecord_GetSenderChainKeyValue(guard.nativeHandle()));
     }
   }
 
   public byte[] getAliceBaseKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SessionRecord_GetAliceBaseKey(guard.nativeHandle());
+      return filterExceptions(() -> Native.SessionRecord_GetAliceBaseKey(guard.nativeHandle()));
     }
   }
 
@@ -172,14 +191,16 @@ public class SessionRecord implements NativeHandleGuard.Owner {
         NativeHandleGuard theirSignedPreKeyGuard = new NativeHandleGuard(theirSignedPreKey);
         NativeHandleGuard theirRatchetKeyGuard = new NativeHandleGuard(theirRatchetKey); ) {
       return new SessionRecord(
-          Native.SessionRecord_InitializeAliceSession(
-              identityPrivateGuard.nativeHandle(),
-              identityPublicGuard.nativeHandle(),
-              basePrivateGuard.nativeHandle(),
-              basePublicGuard.nativeHandle(),
-              theirIdentityGuard.nativeHandle(),
-              theirSignedPreKeyGuard.nativeHandle(),
-              theirRatchetKeyGuard.nativeHandle()));
+          filterExceptions(
+              () ->
+                  Native.SessionRecord_InitializeAliceSession(
+                      identityPrivateGuard.nativeHandle(),
+                      identityPublicGuard.nativeHandle(),
+                      basePrivateGuard.nativeHandle(),
+                      basePublicGuard.nativeHandle(),
+                      theirIdentityGuard.nativeHandle(),
+                      theirSignedPreKeyGuard.nativeHandle(),
+                      theirRatchetKeyGuard.nativeHandle())));
     }
   }
 
@@ -205,15 +226,17 @@ public class SessionRecord implements NativeHandleGuard.Owner {
             new NativeHandleGuard(theirIdentityKey.getPublicKey());
         NativeHandleGuard theirBaseKeyGuard = new NativeHandleGuard(theirBaseKey); ) {
       return new SessionRecord(
-          Native.SessionRecord_InitializeBobSession(
-              identityPrivateGuard.nativeHandle(),
-              identityPublicGuard.nativeHandle(),
-              signedPreKeyPrivateGuard.nativeHandle(),
-              signedPreKeyPublicGuard.nativeHandle(),
-              ephemeralPrivateGuard.nativeHandle(),
-              ephemeralPublicGuard.nativeHandle(),
-              theirIdentityGuard.nativeHandle(),
-              theirBaseKeyGuard.nativeHandle()));
+          filterExceptions(
+              () ->
+                  Native.SessionRecord_InitializeBobSession(
+                      identityPrivateGuard.nativeHandle(),
+                      identityPublicGuard.nativeHandle(),
+                      signedPreKeyPrivateGuard.nativeHandle(),
+                      signedPreKeyPublicGuard.nativeHandle(),
+                      ephemeralPrivateGuard.nativeHandle(),
+                      ephemeralPublicGuard.nativeHandle(),
+                      theirIdentityGuard.nativeHandle(),
+                      theirBaseKeyGuard.nativeHandle())));
     }
   }
 

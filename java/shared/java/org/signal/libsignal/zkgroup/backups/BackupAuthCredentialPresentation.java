@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.backups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.GenericServerSecretParams;
@@ -16,7 +18,9 @@ public final class BackupAuthCredentialPresentation extends ByteArray {
 
   public BackupAuthCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.BackupAuthCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.BackupAuthCredentialPresentation_CheckValidContents(contents));
   }
 
   public void verify(GenericServerSecretParams serverParams) throws VerificationFailedException {
@@ -25,10 +29,13 @@ public final class BackupAuthCredentialPresentation extends ByteArray {
 
   public void verify(Instant currentTime, GenericServerSecretParams serverParams)
       throws VerificationFailedException {
-    Native.BackupAuthCredentialPresentation_Verify(
-        getInternalContentsForJNI(),
-        currentTime.getEpochSecond(),
-        serverParams.getInternalContentsForJNI());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.BackupAuthCredentialPresentation_Verify(
+                getInternalContentsForJNI(),
+                currentTime.getEpochSecond(),
+                serverParams.getInternalContentsForJNI()));
   }
 
   public byte[] getBackupId() {

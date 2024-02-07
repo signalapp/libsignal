@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.metadata;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -61,12 +63,16 @@ public class SealedSessionCipher {
       throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard addressGuard = new NativeHandleGuard(destinationAddress)) {
       CiphertextMessage message =
-          Native.SessionCipher_EncryptMessage(
-              paddedPlaintext,
-              addressGuard.nativeHandle(),
-              this.signalProtocolStore,
-              this.signalProtocolStore,
-              Instant.now().toEpochMilli());
+          filterExceptions(
+              InvalidKeyException.class,
+              UntrustedIdentityException.class,
+              () ->
+                  Native.SessionCipher_EncryptMessage(
+                      paddedPlaintext,
+                      addressGuard.nativeHandle(),
+                      this.signalProtocolStore,
+                      this.signalProtocolStore,
+                      Instant.now().toEpochMilli()));
       UnidentifiedSenderMessageContent content =
           new UnidentifiedSenderMessageContent(
               message,
@@ -82,8 +88,14 @@ public class SealedSessionCipher {
       throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard addressGuard = new NativeHandleGuard(destinationAddress);
         NativeHandleGuard contentGuard = new NativeHandleGuard(content)) {
-      return Native.SealedSessionCipher_Encrypt(
-          addressGuard.nativeHandle(), contentGuard.nativeHandle(), this.signalProtocolStore);
+      return filterExceptions(
+          InvalidKeyException.class,
+          UntrustedIdentityException.class,
+          () ->
+              Native.SealedSessionCipher_Encrypt(
+                  addressGuard.nativeHandle(),
+                  contentGuard.nativeHandle(),
+                  this.signalProtocolStore));
     }
   }
 
@@ -150,12 +162,18 @@ public class SealedSessionCipher {
 
     try (NativeHandleGuard contentGuard = new NativeHandleGuard(content)) {
       byte[] result =
-          Native.SealedSessionCipher_MultiRecipientEncrypt(
-              recipientHandles,
-              recipientSessionHandles,
-              ServiceId.toConcatenatedFixedWidthBinary(excludedRecipients),
-              contentGuard.nativeHandle(),
-              this.signalProtocolStore);
+          filterExceptions(
+              InvalidKeyException.class,
+              InvalidRegistrationIdException.class,
+              NoSessionException.class,
+              UntrustedIdentityException.class,
+              () ->
+                  Native.SealedSessionCipher_MultiRecipientEncrypt(
+                      recipientHandles,
+                      recipientSessionHandles,
+                      ServiceId.toConcatenatedFixedWidthBinary(excludedRecipients),
+                      contentGuard.nativeHandle(),
+                      this.signalProtocolStore));
       // Manually keep the lists of recipients and sessions from being garbage collected
       // while we're using their native handles.
       Native.keepAlive(recipients);
@@ -166,18 +184,8 @@ public class SealedSessionCipher {
 
   // For testing only.
   static byte[] multiRecipientMessageForSingleRecipient(byte[] message) {
-    try {
-      return Native.SealedSessionCipher_MultiRecipientMessageForSingleRecipient(message);
-    } catch (Exception e) {
-      // Indirect with 'instanceof' because we haven't annotated our JNI methods as throwing.
-      // The compiler could theoretically optimize this away, so don't use this pattern anywhere but
-      // in a testing method.
-      if (e instanceof InvalidVersionException) {
-        throw new AssertionError(e);
-      } else {
-        throw e;
-      }
-    }
+    return filterExceptions(
+        () -> Native.SealedSessionCipher_MultiRecipientMessageForSingleRecipient(message));
   }
 
   public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)
@@ -271,7 +279,10 @@ public class SealedSessionCipher {
       case CiphertextMessage.SENDERKEY_TYPE:
         return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
       case CiphertextMessage.PLAINTEXT_CONTENT_TYPE:
-        return Native.PlaintextContent_DeserializeAndGetContent(message.getContent());
+        return filterExceptions(
+            InvalidMessageException.class,
+            InvalidVersionException.class,
+            () -> Native.PlaintextContent_DeserializeAndGetContent(message.getContent()));
       default:
         throw new InvalidMessageException("Unknown type: " + message.getType());
     }

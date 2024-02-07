@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.ecc;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -17,18 +19,22 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
   private final long unsafeHandle;
 
   public ECPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
-    this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, offset);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, offset));
   }
 
   public ECPublicKey(byte[] serialized) throws InvalidKeyException {
-    this.unsafeHandle = Native.ECPublicKey_Deserialize(serialized, 0);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, 0));
   }
 
   public static ECPublicKey fromPublicKeyBytes(byte[] key) {
     byte[] with_type = new byte[33];
     with_type[0] = 0x05;
     System.arraycopy(key, 0, with_type, 1, 32);
-    return new ECPublicKey(Native.ECPublicKey_Deserialize(with_type, 0));
+    return new ECPublicKey(filterExceptions(() -> Native.ECPublicKey_Deserialize(with_type, 0)));
   }
 
   public ECPublicKey(long nativeHandle) {
@@ -46,19 +52,20 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
 
   public boolean verifySignature(byte[] message, byte[] signature) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ECPublicKey_Verify(guard.nativeHandle(), message, signature);
+      return filterExceptions(
+          () -> Native.ECPublicKey_Verify(guard.nativeHandle(), message, signature));
     }
   }
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ECPublicKey_Serialize(guard.nativeHandle());
+      return filterExceptions(() -> Native.ECPublicKey_Serialize(guard.nativeHandle()));
     }
   }
 
   public byte[] getPublicKeyBytes() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ECPublicKey_GetPublicKeyBytes(guard.nativeHandle());
+      return filterExceptions(() -> Native.ECPublicKey_GetPublicKeyBytes(guard.nativeHandle()));
     }
   }
 

@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.groupsend;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -33,7 +34,9 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 public final class GroupSendCredentialResponse extends ByteArray {
   public GroupSendCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.GroupSendCredentialResponse_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.GroupSendCredentialResponse_CheckValidContents(contents));
   }
 
   private static Instant defaultExpiration() {
@@ -71,12 +74,14 @@ public final class GroupSendCredentialResponse extends ByteArray {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.GroupSendCredentialResponse_IssueDeterministic(
-            UuidCiphertext.serializeAndConcatenate(groupMembers),
-            requestingUser.getInternalContentsForJNI(),
-            expiration.getEpochSecond(),
-            params.getInternalContentsForJNI(),
-            random);
+        filterExceptions(
+            () ->
+                Native.GroupSendCredentialResponse_IssueDeterministic(
+                    UuidCiphertext.serializeAndConcatenate(groupMembers),
+                    requestingUser.getInternalContentsForJNI(),
+                    expiration.getEpochSecond(),
+                    params.getInternalContentsForJNI(),
+                    random));
 
     try {
       return new GroupSendCredentialResponse(newContents);
@@ -123,13 +128,16 @@ public final class GroupSendCredentialResponse extends ByteArray {
       GroupSecretParams groupParams)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.GroupSendCredentialResponse_Receive(
-            getInternalContentsForJNI(),
-            ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
-            localUser.toServiceIdFixedWidthBinary(),
-            now.getEpochSecond(),
-            serverParams.getInternalContentsForJNI(),
-            groupParams.getInternalContentsForJNI());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.GroupSendCredentialResponse_Receive(
+                    getInternalContentsForJNI(),
+                    ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
+                    localUser.toServiceIdFixedWidthBinary(),
+                    now.getEpochSecond(),
+                    serverParams.getInternalContentsForJNI(),
+                    groupParams.getInternalContentsForJNI()));
 
     try {
       return new GroupSendCredential(newContents);
@@ -176,13 +184,16 @@ public final class GroupSendCredentialResponse extends ByteArray {
       GroupSecretParams groupParams)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.GroupSendCredentialResponse_ReceiveWithCiphertexts(
-            getInternalContentsForJNI(),
-            UuidCiphertext.serializeAndConcatenate(groupMembers),
-            localUser.getInternalContentsForJNI(),
-            now.getEpochSecond(),
-            serverParams.getInternalContentsForJNI(),
-            groupParams.getInternalContentsForJNI());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.GroupSendCredentialResponse_ReceiveWithCiphertexts(
+                    getInternalContentsForJNI(),
+                    UuidCiphertext.serializeAndConcatenate(groupMembers),
+                    localUser.getInternalContentsForJNI(),
+                    now.getEpochSecond(),
+                    serverParams.getInternalContentsForJNI(),
+                    groupParams.getInternalContentsForJNI()));
 
     try {
       return new GroupSendCredential(newContents);

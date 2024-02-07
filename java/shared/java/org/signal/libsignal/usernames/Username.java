@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.usernames;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,7 +72,10 @@ public final class Username {
 
   public static List<Username> candidatesFrom(
       String nickname, int minNicknameLength, int maxNicknameLength) throws BaseUsernameException {
-    Object[] names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
+    Object[] names =
+        filterExceptions(
+            BaseUsernameException.class,
+            () -> Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength));
     ArrayList<Username> result = new ArrayList<>(names.length);
     for (Object name : names) {
       result.add(new Username((String) name));
@@ -82,8 +87,11 @@ public final class Username {
       String nickname, String discriminator, int minNicknameLength, int maxNicknameLength)
       throws BaseUsernameException {
     byte[] hash =
-        Native.Username_HashFromParts(
-            nickname, discriminator, minNicknameLength, maxNicknameLength);
+        filterExceptions(
+            BaseUsernameException.class,
+            () ->
+                Native.Username_HashFromParts(
+                    nickname, discriminator, minNicknameLength, maxNicknameLength));
     // If we generated the hash correctly, we can format the nickname and discriminator manually.
     String username = nickname + "." + discriminator;
     return new Username(username, hash);
@@ -91,8 +99,11 @@ public final class Username {
 
   public static Username fromLink(final UsernameLink usernameLink) throws BaseUsernameException {
     final String username =
-        Native.UsernameLink_DecryptUsername(
-            usernameLink.getEntropy(), usernameLink.getEncryptedUsername());
+        filterExceptions(
+            BaseUsernameException.class,
+            () ->
+                Native.UsernameLink_DecryptUsername(
+                    usernameLink.getEntropy(), usernameLink.getEncryptedUsername()));
     return new Username(username);
   }
 
@@ -104,7 +115,8 @@ public final class Username {
   }
 
   public byte[] generateProofWithRandomness(byte[] randomness) throws BaseUsernameException {
-    return Native.Username_Proof(this.username, randomness);
+    return filterExceptions(
+        BaseUsernameException.class, () -> Native.Username_Proof(this.username, randomness));
   }
 
   public UsernameLink generateLink() throws BaseUsernameException {
@@ -112,7 +124,10 @@ public final class Username {
   }
 
   public UsernameLink generateLink(byte[] previousEntropy) throws BaseUsernameException {
-    final byte[] bytes = Native.UsernameLink_Create(username, previousEntropy);
+    final byte[] bytes =
+        filterExceptions(
+            BaseUsernameException.class,
+            () -> Native.UsernameLink_Create(username, previousEntropy));
     final byte[] entropy = Arrays.copyOfRange(bytes, 0, 32);
     final byte[] enctyptedUsername = Arrays.copyOfRange(bytes, 32, bytes.length);
     return new UsernameLink(entropy, enctyptedUsername);
@@ -121,23 +136,27 @@ public final class Username {
   @Deprecated
   public static List<String> generateCandidates(
       String nickname, int minNicknameLength, int maxNicknameLength) throws BaseUsernameException {
-    Object[] names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
+    Object[] names =
+        filterExceptions(
+            BaseUsernameException.class,
+            () -> Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength));
     return Arrays.asList((String[]) names);
   }
 
   @Deprecated
   public static byte[] hash(String username) throws BaseUsernameException {
-    return Native.Username_Hash(username);
+    return filterExceptions(BaseUsernameException.class, () -> Native.Username_Hash(username));
   }
 
   @Deprecated
   public static byte[] generateProof(String username, byte[] randomness)
       throws BaseUsernameException {
-    return Native.Username_Proof(username, randomness);
+    return filterExceptions(
+        BaseUsernameException.class, () -> Native.Username_Proof(username, randomness));
   }
 
   public static void verifyProof(byte[] proof, byte[] hash) throws BaseUsernameException {
-    Native.Username_Verify(proof, hash);
+    filterExceptions(BaseUsernameException.class, () -> Native.Username_Verify(proof, hash));
   }
 
   @Override

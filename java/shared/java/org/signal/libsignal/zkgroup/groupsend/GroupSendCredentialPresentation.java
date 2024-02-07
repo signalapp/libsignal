@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.groupsend;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import java.util.List;
 import org.signal.libsignal.internal.Native;
@@ -28,7 +30,9 @@ public final class GroupSendCredentialPresentation extends ByteArray {
 
   public GroupSendCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.GroupSendCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.GroupSendCredentialPresentation_CheckValidContents(contents));
   }
 
   /**
@@ -54,10 +58,13 @@ public final class GroupSendCredentialPresentation extends ByteArray {
   public void verify(
       List<ServiceId> groupMembers, Instant currentTime, ServerSecretParams serverParams)
       throws VerificationFailedException {
-    Native.GroupSendCredentialPresentation_Verify(
-        getInternalContentsForJNI(),
-        ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
-        currentTime.getEpochSecond(),
-        serverParams.getInternalContentsForJNI());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.GroupSendCredentialPresentation_Verify(
+                getInternalContentsForJNI(),
+                ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
+                currentTime.getEpochSecond(),
+                serverParams.getInternalContentsForJNI()));
   }
 }

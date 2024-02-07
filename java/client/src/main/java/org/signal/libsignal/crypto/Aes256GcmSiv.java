@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -14,7 +16,8 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
   public Aes256GcmSiv(byte[] key) throws InvalidKeyException {
-    this.unsafeHandle = Native.Aes256GcmSiv_New(key);
+    this.unsafeHandle =
+        filterExceptions(InvalidKeyException.class, () -> Native.Aes256GcmSiv_New(key));
   }
 
   @Override
@@ -29,14 +32,20 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
 
   byte[] encrypt(byte[] plaintext, byte[] nonce, byte[] associated_data) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.Aes256GcmSiv_Encrypt(guard.nativeHandle(), plaintext, nonce, associated_data);
+      return filterExceptions(
+          () ->
+              Native.Aes256GcmSiv_Encrypt(guard.nativeHandle(), plaintext, nonce, associated_data));
     }
   }
 
   byte[] decrypt(byte[] ciphertext, byte[] nonce, byte[] associated_data)
       throws InvalidMessageException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.Aes256GcmSiv_Decrypt(guard.nativeHandle(), ciphertext, nonce, associated_data);
+      return filterExceptions(
+          InvalidMessageException.class,
+          () ->
+              Native.Aes256GcmSiv_Decrypt(
+                  guard.nativeHandle(), ciphertext, nonce, associated_data));
     }
   }
 }

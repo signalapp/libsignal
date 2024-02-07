@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.groupsend;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -27,7 +28,8 @@ public final class GroupSendCredential extends ByteArray {
 
   public GroupSendCredential(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.GroupSendCredential_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class, () -> Native.GroupSendCredential_CheckValidContents(contents));
   }
 
   /** Generates a new presentation, so that multiple uses of this credential are harder to link. */
@@ -48,8 +50,10 @@ public final class GroupSendCredential extends ByteArray {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.GroupSendCredential_PresentDeterministic(
-            getInternalContentsForJNI(), serverParams.getInternalContentsForJNI(), random);
+        filterExceptions(
+            () ->
+                Native.GroupSendCredential_PresentDeterministic(
+                    getInternalContentsForJNI(), serverParams.getInternalContentsForJNI(), random));
 
     try {
       return new GroupSendCredentialPresentation(newContents);

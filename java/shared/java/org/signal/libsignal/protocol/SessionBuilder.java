@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -110,12 +112,16 @@ public class SessionBuilder {
       throws InvalidKeyException, UntrustedIdentityException {
     try (NativeHandleGuard preKeyGuard = new NativeHandleGuard(preKey);
         NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress)) {
-      Native.SessionBuilder_ProcessPreKeyBundle(
-          preKeyGuard.nativeHandle(),
-          remoteAddressGuard.nativeHandle(),
-          sessionStore,
-          identityKeyStore,
-          now.toEpochMilli());
+      filterExceptions(
+          InvalidKeyException.class,
+          UntrustedIdentityException.class,
+          () ->
+              Native.SessionBuilder_ProcessPreKeyBundle(
+                  preKeyGuard.nativeHandle(),
+                  remoteAddressGuard.nativeHandle(),
+                  sessionStore,
+                  identityKeyStore,
+                  now.toEpochMilli()));
     }
   }
 }

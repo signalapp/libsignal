@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -66,11 +67,14 @@ public class ClientZkProfileOperations {
     }
 
     byte[] newContents =
-        Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
-            serverPublicParams.getInternalContentsForJNI(),
-            profileKeyCredentialRequestContext.getInternalContentsForJNI(),
-            profileKeyCredentialResponse.getInternalContentsForJNI(),
-            now.getEpochSecond());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
+                    serverPublicParams.getInternalContentsForJNI(),
+                    profileKeyCredentialRequestContext.getInternalContentsForJNI(),
+                    profileKeyCredentialResponse.getInternalContentsForJNI(),
+                    now.getEpochSecond()));
 
     try {
       return new ExpiringProfileKeyCredential(newContents);

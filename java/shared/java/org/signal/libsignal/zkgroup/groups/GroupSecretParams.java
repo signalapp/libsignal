@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.groups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -44,7 +45,8 @@ public final class GroupSecretParams extends ByteArray {
 
   public GroupSecretParams(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.GroupSecretParams_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class, () -> Native.GroupSecretParams_CheckValidContents(contents));
   }
 
   public GroupMasterKey getMasterKey() {

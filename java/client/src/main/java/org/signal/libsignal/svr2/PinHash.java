@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.svr2;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
@@ -37,7 +39,7 @@ public class PinHash implements NativeHandleGuard.Owner {
    * @return A {@link PinHash}
    */
   public static PinHash svr1(final byte[] normalizedPin, final byte[] salt) {
-    return new PinHash(Native.PinHash_FromSalt(normalizedPin, salt));
+    return new PinHash(filterExceptions(() -> Native.PinHash_FromSalt(normalizedPin, salt)));
   }
 
   /**
@@ -52,7 +54,9 @@ public class PinHash implements NativeHandleGuard.Owner {
    */
   public static PinHash svr2(
       final byte[] normalizedPin, final String username, final byte[] mrenclave) {
-    return new PinHash(Native.PinHash_FromUsernameMrenclave(normalizedPin, username, mrenclave));
+    return new PinHash(
+        filterExceptions(
+            () -> Native.PinHash_FromUsernameMrenclave(normalizedPin, username, mrenclave)));
   }
 
   /**

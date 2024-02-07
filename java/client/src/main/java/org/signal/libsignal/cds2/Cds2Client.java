@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.cds2;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.attest.AttestationDataException;
 import org.signal.libsignal.internal.Native;
@@ -21,6 +23,11 @@ import org.signal.libsignal.sgxsession.SgxClient;
 public class Cds2Client extends SgxClient {
   public Cds2Client(byte[] mrenclave, byte[] attestationMsg, Instant currentInstant)
       throws AttestationDataException {
-    super(Native.Cds2ClientState_New(mrenclave, attestationMsg, currentInstant.toEpochMilli()));
+    super(
+        filterExceptions(
+            AttestationDataException.class,
+            () ->
+                Native.Cds2ClientState_New(
+                    mrenclave, attestationMsg, currentInstant.toEpochMilli())));
   }
 }

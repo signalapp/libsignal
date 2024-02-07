@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.groups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -12,6 +14,8 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 public final class ProfileKeyCiphertext extends ByteArray {
   public ProfileKeyCiphertext(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.ProfileKeyCiphertext_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.ProfileKeyCiphertext_CheckValidContents(contents));
   }
 }

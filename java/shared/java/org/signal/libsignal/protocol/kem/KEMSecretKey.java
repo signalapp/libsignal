@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.kem;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -13,7 +15,9 @@ public class KEMSecretKey implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
   public KEMSecretKey(byte[] privateKey) throws InvalidKeyException {
-    this.unsafeHandle = Native.KyberSecretKey_Deserialize(privateKey);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class, () -> Native.KyberSecretKey_Deserialize(privateKey));
   }
 
   public KEMSecretKey(long nativeHandle) {
@@ -31,7 +35,7 @@ public class KEMSecretKey implements NativeHandleGuard.Owner {
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.KyberSecretKey_Serialize(guard.nativeHandle());
+      return filterExceptions(() -> Native.KyberSecretKey_Serialize(guard.nativeHandle()));
     }
   }
 

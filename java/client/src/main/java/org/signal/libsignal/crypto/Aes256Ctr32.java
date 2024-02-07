@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -13,7 +15,9 @@ public class Aes256Ctr32 implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
   public Aes256Ctr32(byte[] key, byte[] nonce, int initialCtr) throws InvalidKeyException {
-    this.unsafeHandle = Native.Aes256Ctr32_New(key, nonce, initialCtr);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class, () -> Native.Aes256Ctr32_New(key, nonce, initialCtr));
   }
 
   @Override

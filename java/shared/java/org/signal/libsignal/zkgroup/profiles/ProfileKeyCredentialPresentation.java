@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.groups.ProfileKeyCiphertext;
@@ -22,7 +24,9 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
 
   public ProfileKeyCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.ProfileKeyCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.ProfileKeyCredentialPresentation_CheckValidContents(contents));
   }
 
   public UuidCiphertext getUuidCiphertext() {

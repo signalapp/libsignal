@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.metadata.protocol;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.Optional;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -51,46 +53,54 @@ public class UnidentifiedSenderMessageContent implements NativeHandleGuard.Owner
       Optional<byte[]> groupId) {
     try (NativeHandleGuard certificateGuard = new NativeHandleGuard(senderCertificate)) {
       this.unsafeHandle =
-          Native.UnidentifiedSenderMessageContent_New(
-              message, certificateGuard.nativeHandle(), contentHint, groupId.orElse(null));
+          filterExceptions(
+              () ->
+                  Native.UnidentifiedSenderMessageContent_New(
+                      message, certificateGuard.nativeHandle(), contentHint, groupId.orElse(null)));
     }
   }
 
   public int getType() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.UnidentifiedSenderMessageContent_GetMsgType(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.UnidentifiedSenderMessageContent_GetMsgType(guard.nativeHandle()));
     }
   }
 
   public SenderCertificate getSenderCertificate() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new SenderCertificate(
-          Native.UnidentifiedSenderMessageContent_GetSenderCert(guard.nativeHandle()));
+          filterExceptions(
+              () -> Native.UnidentifiedSenderMessageContent_GetSenderCert(guard.nativeHandle())));
     }
   }
 
   public byte[] getContent() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.UnidentifiedSenderMessageContent_GetContents(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.UnidentifiedSenderMessageContent_GetContents(guard.nativeHandle()));
     }
   }
 
   public byte[] getSerialized() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.UnidentifiedSenderMessageContent_GetSerialized(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.UnidentifiedSenderMessageContent_GetSerialized(guard.nativeHandle()));
     }
   }
 
   public int getContentHint() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.UnidentifiedSenderMessageContent_GetContentHint(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.UnidentifiedSenderMessageContent_GetContentHint(guard.nativeHandle()));
     }
   }
 
   public Optional<byte[]> getGroupId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return Optional.ofNullable(
-          Native.UnidentifiedSenderMessageContent_GetGroupId(guard.nativeHandle()));
+          filterExceptions(
+              () -> Native.UnidentifiedSenderMessageContent_GetGroupId(guard.nativeHandle())));
     }
   }
 }

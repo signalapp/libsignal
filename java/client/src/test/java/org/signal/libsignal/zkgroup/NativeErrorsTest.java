@@ -21,6 +21,12 @@ public final class NativeErrorsTest extends TestCase {
       Native.GroupSecretParams_DecryptServiceId(params, uuidCiphertext);
       failed = true;
     } catch (AssertionError e) {
+      // expected
+    } catch (Exception e) {
+      // Normally callers would use filterExceptions to handle this,
+      // which turns surprise exceptions into AssertionErrors,
+      // but in this case we're *expecting* an AssertionError.
+      throw new AssertionError("Unexpected exception", e);
     }
     if (failed) {
       throw new AssertionError(

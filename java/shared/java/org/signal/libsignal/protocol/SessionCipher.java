@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -94,12 +96,16 @@ public class SessionCipher {
   public CiphertextMessage encrypt(byte[] paddedMessage, Instant now)
       throws NoSessionException, UntrustedIdentityException {
     try (NativeHandleGuard remoteAddress = new NativeHandleGuard(this.remoteAddress)) {
-      return Native.SessionCipher_EncryptMessage(
-          paddedMessage,
-          remoteAddress.nativeHandle(),
-          sessionStore,
-          identityKeyStore,
-          now.toEpochMilli());
+      return filterExceptions(
+          NoSessionException.class,
+          UntrustedIdentityException.class,
+          () ->
+              Native.SessionCipher_EncryptMessage(
+                  paddedMessage,
+                  remoteAddress.nativeHandle(),
+                  sessionStore,
+                  identityKeyStore,
+                  now.toEpochMilli()));
     }
   }
 
@@ -124,14 +130,21 @@ public class SessionCipher {
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
         NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
-      return Native.SessionCipher_DecryptPreKeySignalMessage(
-          ciphertextGuard.nativeHandle(),
-          remoteAddressGuard.nativeHandle(),
-          sessionStore,
-          identityKeyStore,
-          preKeyStore,
-          signedPreKeyStore,
-          kyberPreKeyStore);
+      return filterExceptions(
+          DuplicateMessageException.class,
+          InvalidMessageException.class,
+          InvalidKeyIdException.class,
+          InvalidKeyException.class,
+          UntrustedIdentityException.class,
+          () ->
+              Native.SessionCipher_DecryptPreKeySignalMessage(
+                  ciphertextGuard.nativeHandle(),
+                  remoteAddressGuard.nativeHandle(),
+                  sessionStore,
+                  identityKeyStore,
+                  preKeyStore,
+                  signedPreKeyStore,
+                  kyberPreKeyStore));
     }
   }
 
@@ -153,11 +166,18 @@ public class SessionCipher {
           UntrustedIdentityException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
         NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress); ) {
-      return Native.SessionCipher_DecryptSignalMessage(
-          ciphertextGuard.nativeHandle(),
-          remoteAddressGuard.nativeHandle(),
-          sessionStore,
-          identityKeyStore);
+      return filterExceptions(
+          InvalidMessageException.class,
+          InvalidVersionException.class,
+          DuplicateMessageException.class,
+          NoSessionException.class,
+          UntrustedIdentityException.class,
+          () ->
+              Native.SessionCipher_DecryptSignalMessage(
+                  ciphertextGuard.nativeHandle(),
+                  remoteAddressGuard.nativeHandle(),
+                  sessionStore,
+                  identityKeyStore));
     }
   }
 

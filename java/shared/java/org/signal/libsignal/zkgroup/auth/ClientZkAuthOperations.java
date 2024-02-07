@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.auth;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -28,11 +29,14 @@ public class ClientZkAuthOperations {
       Aci aci, int redemptionTime, AuthCredentialResponse authCredentialResponse)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.ServerPublicParams_ReceiveAuthCredential(
-            serverPublicParams.getInternalContentsForJNI(),
-            aci.toServiceIdFixedWidthBinary(),
-            redemptionTime,
-            authCredentialResponse.getInternalContentsForJNI());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.ServerPublicParams_ReceiveAuthCredential(
+                    serverPublicParams.getInternalContentsForJNI(),
+                    aci.toServiceIdFixedWidthBinary(),
+                    redemptionTime,
+                    authCredentialResponse.getInternalContentsForJNI()));
 
     try {
       return new AuthCredential(newContents);
@@ -51,12 +55,15 @@ public class ClientZkAuthOperations {
       Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
-            serverPublicParams.getInternalContentsForJNI(),
-            aci.toServiceIdFixedWidthBinary(),
-            pni.toServiceIdFixedWidthBinary(),
-            redemptionTime,
-            authCredentialResponse.getInternalContentsForJNI());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
+                    serverPublicParams.getInternalContentsForJNI(),
+                    aci.toServiceIdFixedWidthBinary(),
+                    pni.toServiceIdFixedWidthBinary(),
+                    redemptionTime,
+                    authCredentialResponse.getInternalContentsForJNI()));
 
     try {
       return new AuthCredentialWithPni(newContents);
@@ -78,12 +85,15 @@ public class ClientZkAuthOperations {
       Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
-            serverPublicParams.getInternalContentsForJNI(),
-            aci.toServiceIdFixedWidthBinary(),
-            pni.toServiceIdFixedWidthBinary(),
-            redemptionTime,
-            authCredentialResponse.getInternalContentsForJNI());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
+                    serverPublicParams.getInternalContentsForJNI(),
+                    aci.toServiceIdFixedWidthBinary(),
+                    pni.toServiceIdFixedWidthBinary(),
+                    redemptionTime,
+                    authCredentialResponse.getInternalContentsForJNI()));
 
     try {
       return new AuthCredentialWithPni(newContents);

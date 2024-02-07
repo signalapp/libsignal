@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.backups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -17,7 +18,9 @@ public final class BackupAuthCredential extends ByteArray {
 
   public BackupAuthCredential(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.BackupAuthCredential_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.BackupAuthCredential_CheckValidContents(contents));
   }
 
   public BackupAuthCredentialPresentation present(GenericServerPublicParams serverParams) {
@@ -30,8 +33,10 @@ public final class BackupAuthCredential extends ByteArray {
     secureRandom.nextBytes(random);
 
     final byte[] newContents =
-        Native.BackupAuthCredential_PresentDeterministic(
-            getInternalContentsForJNI(), serverParams.getInternalContentsForJNI(), random);
+        filterExceptions(
+            () ->
+                Native.BackupAuthCredential_PresentDeterministic(
+                    getInternalContentsForJNI(), serverParams.getInternalContentsForJNI(), random));
 
     try {
       return new BackupAuthCredentialPresentation(newContents);

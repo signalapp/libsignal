@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -57,8 +58,11 @@ public class ServerZkReceiptOperations {
   public void verifyReceiptCredentialPresentation(
       ReceiptCredentialPresentation receiptCredentialPresentation)
       throws VerificationFailedException {
-    Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
-        serverSecretParams.getInternalContentsForJNI(),
-        receiptCredentialPresentation.getInternalContentsForJNI());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
+                serverSecretParams.getInternalContentsForJNI(),
+                receiptCredentialPresentation.getInternalContentsForJNI()));
   }
 }

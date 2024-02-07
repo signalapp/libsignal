@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -14,7 +16,10 @@ public class Aes256GcmEncryption implements NativeHandleGuard.Owner {
 
   public Aes256GcmEncryption(byte[] key, byte[] nonce, byte[] associatedData)
       throws InvalidKeyException {
-    this.unsafeHandle = Native.Aes256GcmEncryption_New(key, nonce, associatedData);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class,
+            () -> Native.Aes256GcmEncryption_New(key, nonce, associatedData));
   }
 
   @Override

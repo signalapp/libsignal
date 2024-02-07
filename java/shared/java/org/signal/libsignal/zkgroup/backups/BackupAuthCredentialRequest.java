@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.backups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -18,7 +19,9 @@ public final class BackupAuthCredentialRequest extends ByteArray {
 
   public BackupAuthCredentialRequest(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.BackupAuthCredentialRequest_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.BackupAuthCredentialRequest_CheckValidContents(contents));
   }
 
   /**

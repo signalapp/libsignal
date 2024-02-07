@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.groups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -37,9 +38,12 @@ public class ClientZkGroupCipher {
   public ServiceId decrypt(UuidCiphertext uuidCiphertext) throws VerificationFailedException {
     try {
       return ServiceId.parseFromFixedWidthBinary(
-          Native.GroupSecretParams_DecryptServiceId(
-              groupSecretParams.getInternalContentsForJNI(),
-              uuidCiphertext.getInternalContentsForJNI()));
+          filterExceptions(
+              VerificationFailedException.class,
+              () ->
+                  Native.GroupSecretParams_DecryptServiceId(
+                      groupSecretParams.getInternalContentsForJNI(),
+                      uuidCiphertext.getInternalContentsForJNI())));
     } catch (ServiceId.InvalidServiceIdException e) {
       throw new VerificationFailedException();
     }
@@ -63,10 +67,13 @@ public class ClientZkGroupCipher {
       ProfileKeyCiphertext profileKeyCiphertext, ServiceId.Aci userId)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.GroupSecretParams_DecryptProfileKey(
-            groupSecretParams.getInternalContentsForJNI(),
-            profileKeyCiphertext.getInternalContentsForJNI(),
-            userId.toServiceIdFixedWidthBinary());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.GroupSecretParams_DecryptProfileKey(
+                    groupSecretParams.getInternalContentsForJNI(),
+                    profileKeyCiphertext.getInternalContentsForJNI(),
+                    userId.toServiceIdFixedWidthBinary()));
 
     try {
       return new ProfileKey(newContents);
@@ -88,7 +95,10 @@ public class ClientZkGroupCipher {
   }
 
   public byte[] decryptBlob(byte[] blobCiphertext) throws VerificationFailedException {
-    return Native.GroupSecretParams_DecryptBlobWithPadding(
-        groupSecretParams.getInternalContentsForJNI(), blobCiphertext);
+    return filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.GroupSecretParams_DecryptBlobWithPadding(
+                groupSecretParams.getInternalContentsForJNI(), blobCiphertext));
   }
 }

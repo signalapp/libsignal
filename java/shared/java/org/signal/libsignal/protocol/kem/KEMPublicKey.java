@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.kem;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -15,11 +17,17 @@ public class KEMPublicKey implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
   public KEMPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
-    this.unsafeHandle = Native.KyberPublicKey_DeserializeWithOffset(serialized, offset);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class,
+            () -> Native.KyberPublicKey_DeserializeWithOffset(serialized, offset));
   }
 
   public KEMPublicKey(byte[] serialized) throws InvalidKeyException {
-    this.unsafeHandle = Native.KyberPublicKey_DeserializeWithOffset(serialized, 0);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class,
+            () -> Native.KyberPublicKey_DeserializeWithOffset(serialized, 0));
   }
 
   public KEMPublicKey(long nativeHandle) {
@@ -37,7 +45,7 @@ public class KEMPublicKey implements NativeHandleGuard.Owner {
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.KyberPublicKey_Serialize(guard.nativeHandle());
+      return filterExceptions(() -> Native.KyberPublicKey_Serialize(guard.nativeHandle()));
     }
   }
 

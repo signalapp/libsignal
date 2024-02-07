@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.messagebackup;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Supplier;
@@ -40,8 +42,11 @@ public class MessageBackup {
     try (NativeHandleGuard keyGuard = new NativeHandleGuard(key)) {
 
       Object output =
-          Native.MessageBackupValidator_Validate(
-              keyGuard.nativeHandle(), first, second, streamLength);
+          filterExceptions(
+              IOException.class,
+              () ->
+                  Native.MessageBackupValidator_Validate(
+                      keyGuard.nativeHandle(), first, second, streamLength));
 
       // Rust conversion code is generating an instance of this class.
       @SuppressWarnings("unchecked")

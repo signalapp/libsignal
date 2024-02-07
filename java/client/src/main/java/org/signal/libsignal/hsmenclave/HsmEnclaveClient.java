@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.hsmenclave;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -43,7 +45,8 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
         throw new AssertionError("writing to ByteArrayOutputStream failed", e);
       }
     }
-    this.unsafeHandle = Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray());
+    this.unsafeHandle =
+        filterExceptions(() -> Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray()));
   }
 
   @Override
@@ -59,7 +62,7 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
   /** Initial request to send to HSM enclave, to begin handshake. */
   public byte[] initialRequest() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.HsmEnclaveClient_InitialRequest(guard.nativeHandle());
+      return filterExceptions(() -> Native.HsmEnclaveClient_InitialRequest(guard.nativeHandle()));
     }
   }
 
@@ -67,7 +70,10 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
   public void completeHandshake(byte[] handshakeResponse)
       throws EnclaveCommunicationFailureException, TrustedCodeMismatchException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.HsmEnclaveClient_CompleteHandshake(guard.nativeHandle(), handshakeResponse);
+      filterExceptions(
+          EnclaveCommunicationFailureException.class,
+          TrustedCodeMismatchException.class,
+          () -> Native.HsmEnclaveClient_CompleteHandshake(guard.nativeHandle(), handshakeResponse));
     }
   }
 
@@ -75,7 +81,9 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
   public byte[] establishedSend(byte[] plaintextToSend)
       throws EnclaveCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.HsmEnclaveClient_EstablishedSend(guard.nativeHandle(), plaintextToSend);
+      return filterExceptions(
+          EnclaveCommunicationFailureException.class,
+          () -> Native.HsmEnclaveClient_EstablishedSend(guard.nativeHandle(), plaintextToSend));
     }
   }
 
@@ -83,7 +91,9 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
   public byte[] establishedRecv(byte[] receivedCiphertext)
       throws EnclaveCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.HsmEnclaveClient_EstablishedRecv(guard.nativeHandle(), receivedCiphertext);
+      return filterExceptions(
+          EnclaveCommunicationFailureException.class,
+          () -> Native.HsmEnclaveClient_EstablishedRecv(guard.nativeHandle(), receivedCiphertext));
     }
   }
 }

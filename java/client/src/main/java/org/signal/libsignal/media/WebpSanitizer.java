@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.media;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.io.IOException;
 import java.io.InputStream;
 import org.signal.libsignal.internal.Native;
@@ -28,7 +30,10 @@ public class WebpSanitizer {
    * @throws ParseException If the input could not be parsed.
    */
   public static void sanitize(InputStream input) throws IOException, ParseException {
-    Native.WebpSanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input));
+    filterExceptions(
+        IOException.class,
+        ParseException.class,
+        () -> Native.WebpSanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input)));
   }
 
   /**

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.auth;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
@@ -22,7 +24,9 @@ public final class AuthCredentialPresentation extends ByteArray {
 
   public AuthCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.AuthCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.AuthCredentialPresentation_CheckValidContents(contents));
   }
 
   public UuidCiphertext getUuidCiphertext() {

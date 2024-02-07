@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.message;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -39,13 +41,17 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
 
   public PlaintextContent(byte[] serialized)
       throws InvalidMessageException, InvalidVersionException {
-    unsafeHandle = Native.PlaintextContent_Deserialize(serialized);
+    unsafeHandle =
+        filterExceptions(
+            InvalidMessageException.class,
+            InvalidVersionException.class,
+            () -> Native.PlaintextContent_Deserialize(serialized));
   }
 
   @Override
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PlaintextContent_GetSerialized(guard.nativeHandle());
+      return filterExceptions(() -> Native.PlaintextContent_GetSerialized(guard.nativeHandle()));
     }
   }
 
@@ -56,7 +62,7 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
 
   public byte[] getBody() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.PlaintextContent_GetBody(guard.nativeHandle());
+      return filterExceptions(() -> Native.PlaintextContent_GetBody(guard.nativeHandle()));
     }
   }
 }

@@ -153,7 +153,11 @@ for line in stdout.split('\n'):
             (java_arg_type, _is_throwing) = translate_to_java(arg_type)
             java_args.append('%s %s' % (java_arg_type, arg_name))
 
-    decls.append("  public static native %s %s(%s);" % (java_ret_type, java_fn_name, ", ".join(java_args)))
+    decls.append("  public static native %s %s(%s)%s;" % (
+        java_ret_type,
+        java_fn_name,
+        ", ".join(java_args),
+        " throws Exception" if is_throwing else ""))
 
 template_file = open(os.path.join(our_abs_dir, 'Native.java.in')).read()
 

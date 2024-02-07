@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.message;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import javax.crypto.spec.SecretKeySpec;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -30,7 +32,13 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
           InvalidVersionException,
           InvalidKeyException,
           LegacyMessageException {
-    unsafeHandle = Native.SignalMessage_Deserialize(serialized);
+    unsafeHandle =
+        filterExceptions(
+            InvalidMessageException.class,
+            InvalidVersionException.class,
+            InvalidKeyException.class,
+            LegacyMessageException.class,
+            () -> Native.SignalMessage_Deserialize(serialized));
   }
 
   public SignalMessage(long unsafeHandle) {
@@ -39,25 +47,26 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
 
   public ECPublicKey getSenderRatchetKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(Native.SignalMessage_GetSenderRatchetKey(guard.nativeHandle()));
+      return new ECPublicKey(
+          filterExceptions(() -> Native.SignalMessage_GetSenderRatchetKey(guard.nativeHandle())));
     }
   }
 
   public int getMessageVersion() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SignalMessage_GetMessageVersion(guard.nativeHandle());
+      return filterExceptions(() -> Native.SignalMessage_GetMessageVersion(guard.nativeHandle()));
     }
   }
 
   public int getCounter() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SignalMessage_GetCounter(guard.nativeHandle());
+      return filterExceptions(() -> Native.SignalMessage_GetCounter(guard.nativeHandle()));
     }
   }
 
   public byte[] getBody() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SignalMessage_GetBody(guard.nativeHandle());
+      return filterExceptions(() -> Native.SignalMessage_GetBody(guard.nativeHandle()));
     }
   }
 
@@ -69,11 +78,15 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
             new NativeHandleGuard(senderIdentityKey.getPublicKey());
         NativeHandleGuard receiverIdentityGuard =
             new NativeHandleGuard(receiverIdentityKey.getPublicKey()); ) {
-      if (!Native.SignalMessage_VerifyMac(
-          guard.nativeHandle(),
-          senderIdentityGuard.nativeHandle(),
-          receiverIdentityGuard.nativeHandle(),
-          macKey.getEncoded())) {
+      if (!filterExceptions(
+          InvalidMessageException.class,
+          InvalidKeyException.class,
+          () ->
+              Native.SignalMessage_VerifyMac(
+                  guard.nativeHandle(),
+                  senderIdentityGuard.nativeHandle(),
+                  receiverIdentityGuard.nativeHandle(),
+                  macKey.getEncoded()))) {
         throw new InvalidMessageException("Bad Mac!");
       }
     }
@@ -82,7 +95,7 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
   @Override
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SignalMessage_GetSerialized(guard.nativeHandle());
+      return filterExceptions(() -> Native.SignalMessage_GetSerialized(guard.nativeHandle()));
     }
   }
 

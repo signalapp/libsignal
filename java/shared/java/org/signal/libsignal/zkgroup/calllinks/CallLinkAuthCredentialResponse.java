@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -20,7 +21,9 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 public final class CallLinkAuthCredentialResponse extends ByteArray {
   public CallLinkAuthCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.CallLinkAuthCredentialResponse_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.CallLinkAuthCredentialResponse_CheckValidContents(contents));
   }
 
   public static CallLinkAuthCredentialResponse issueCredential(
@@ -54,11 +57,14 @@ public final class CallLinkAuthCredentialResponse extends ByteArray {
       Aci userId, Instant redemptionTime, GenericServerPublicParams params)
       throws VerificationFailedException {
     byte[] newContents =
-        Native.CallLinkAuthCredentialResponse_Receive(
-            getInternalContentsForJNI(),
-            userId.toServiceIdFixedWidthBinary(),
-            redemptionTime.getEpochSecond(),
-            params.getInternalContentsForJNI());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.CallLinkAuthCredentialResponse_Receive(
+                    getInternalContentsForJNI(),
+                    userId.toServiceIdFixedWidthBinary(),
+                    redemptionTime.getEpochSecond(),
+                    params.getInternalContentsForJNI()));
 
     try {
       return new CallLinkAuthCredential(newContents);

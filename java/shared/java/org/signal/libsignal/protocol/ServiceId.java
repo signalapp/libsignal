@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -85,7 +87,7 @@ public abstract class ServiceId {
     }
     byte[] storage;
     try {
-      storage = Native.ServiceId_ParseFromServiceIdString(serviceIdString);
+      storage = filterExceptions(() -> Native.ServiceId_ParseFromServiceIdString(serviceIdString));
     } catch (IllegalArgumentException ex) {
       throw new InvalidServiceIdException();
     }
@@ -98,7 +100,7 @@ public abstract class ServiceId {
     }
     byte[] storage;
     try {
-      storage = Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary);
+      storage = filterExceptions(() -> Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary));
     } catch (IllegalArgumentException ex) {
       throw new InvalidServiceIdException();
     }

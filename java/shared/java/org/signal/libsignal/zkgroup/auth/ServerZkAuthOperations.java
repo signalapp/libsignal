@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.auth;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -112,10 +113,13 @@ public class ServerZkAuthOperations {
       AuthCredentialPresentation authCredentialPresentation,
       Instant currentTime)
       throws VerificationFailedException {
-    Native.ServerSecretParams_VerifyAuthCredentialPresentation(
-        serverSecretParams.getInternalContentsForJNI(),
-        groupPublicParams.getInternalContentsForJNI(),
-        authCredentialPresentation.getInternalContentsForJNI(),
-        currentTime.getEpochSecond());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.ServerSecretParams_VerifyAuthCredentialPresentation(
+                serverSecretParams.getInternalContentsForJNI(),
+                groupPublicParams.getInternalContentsForJNI(),
+                authCredentialPresentation.getInternalContentsForJNI(),
+                currentTime.getEpochSecond()));
   }
 }

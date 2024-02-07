@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -15,7 +17,9 @@ public final class ReceiptCredentialRequestContext extends ByteArray {
 
   public ReceiptCredentialRequestContext(byte[] contents) throws InvalidInputException {
     super(contents, SIZE);
-    Native.ReceiptCredentialRequestContext_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.ReceiptCredentialRequestContext_CheckValidContents(contents));
   }
 
   public ReceiptCredentialRequest getRequest() {

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.zkgroup.InvalidInputException;
@@ -14,7 +16,11 @@ public final class ProfileKey extends ByteArray {
 
   public ProfileKey(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.ProfileKey_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () ->
+            filterExceptions(
+                InvalidInputException.class, () -> Native.ProfileKey_CheckValidContents(contents)));
   }
 
   public ProfileKeyCommitment getCommitment(Aci userId) {

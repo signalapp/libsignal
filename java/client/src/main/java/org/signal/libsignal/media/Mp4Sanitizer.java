@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.media;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.io.IOException;
 import java.io.InputStream;
 import org.signal.libsignal.internal.Native;
@@ -58,7 +60,10 @@ public class Mp4Sanitizer {
   public static SanitizedMetadata sanitize(InputStream input, long length)
       throws IOException, ParseException {
     long sanitizedMetadataHandle =
-        Native.Mp4Sanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input), length);
+        filterExceptions(
+            IOException.class,
+            ParseException.class,
+            () -> Native.Mp4Sanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input), length));
     try {
       byte[] sanitizedMetadata = Native.SanitizedMetadata_GetMetadata(sanitizedMetadataHandle);
       if (sanitizedMetadata.length == 0) {

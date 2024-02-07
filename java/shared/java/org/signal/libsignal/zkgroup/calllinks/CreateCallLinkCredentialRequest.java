@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -19,7 +20,9 @@ public final class CreateCallLinkCredentialRequest extends ByteArray {
 
   public CreateCallLinkCredentialRequest(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.CreateCallLinkCredentialRequest_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.CreateCallLinkCredentialRequest_CheckValidContents(contents));
   }
 
   /**

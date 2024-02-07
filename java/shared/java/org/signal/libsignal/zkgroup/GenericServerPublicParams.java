@@ -5,12 +5,16 @@
 
 package org.signal.libsignal.zkgroup;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
 
 public final class GenericServerPublicParams extends ByteArray {
   public GenericServerPublicParams(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.GenericServerPublicParams_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.GenericServerPublicParams_CheckValidContents(contents));
   }
 }

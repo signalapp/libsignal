@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.receipts;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -12,7 +14,12 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 public final class ReceiptCredentialPresentation extends ByteArray {
   public ReceiptCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.ReceiptCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () ->
+            filterExceptions(
+                InvalidInputException.class,
+                () -> Native.ReceiptCredentialPresentation_CheckValidContents(contents)));
   }
 
   public long getReceiptExpirationTime() {

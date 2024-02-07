@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.GenericServerSecretParams;
@@ -16,7 +18,9 @@ public final class CreateCallLinkCredentialPresentation extends ByteArray {
 
   public CreateCallLinkCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.CreateCallLinkCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.CreateCallLinkCredentialPresentation_CheckValidContents(contents));
   }
 
   public void verify(
@@ -31,11 +35,14 @@ public final class CreateCallLinkCredentialPresentation extends ByteArray {
       GenericServerSecretParams serverParams,
       CallLinkPublicParams callLinkParams)
       throws VerificationFailedException {
-    Native.CreateCallLinkCredentialPresentation_Verify(
-        getInternalContentsForJNI(),
-        roomId,
-        currentTime.getEpochSecond(),
-        serverParams.getInternalContentsForJNI(),
-        callLinkParams.getInternalContentsForJNI());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.CreateCallLinkCredentialPresentation_Verify(
+                getInternalContentsForJNI(),
+                roomId,
+                currentTime.getEpochSecond(),
+                serverParams.getInternalContentsForJNI(),
+                callLinkParams.getInternalContentsForJNI()));
   }
 }

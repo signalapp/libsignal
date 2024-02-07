@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.sgxsession;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
@@ -47,7 +49,7 @@ public class SgxClient implements NativeHandleGuard.Owner {
   /** Initial request to send to SGX service, which begins post-attestation handshake. */
   public byte[] initialRequest() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SgxClientState_InitialRequest(guard.nativeHandle());
+      return filterExceptions(() -> Native.SgxClientState_InitialRequest(guard.nativeHandle()));
     }
   }
 
@@ -57,21 +59,27 @@ public class SgxClient implements NativeHandleGuard.Owner {
    */
   public void completeHandshake(byte[] handshakeResponse) throws SgxCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.SgxClientState_CompleteHandshake(guard.nativeHandle(), handshakeResponse);
+      filterExceptions(
+          SgxCommunicationFailureException.class,
+          () -> Native.SgxClientState_CompleteHandshake(guard.nativeHandle(), handshakeResponse));
     }
   }
 
   /** Called by client after completeHandshake has succeeded, to encrypt a message to send. */
   public byte[] establishedSend(byte[] plaintextToSend) throws SgxCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SgxClientState_EstablishedSend(guard.nativeHandle(), plaintextToSend);
+      return filterExceptions(
+          SgxCommunicationFailureException.class,
+          () -> Native.SgxClientState_EstablishedSend(guard.nativeHandle(), plaintextToSend));
     }
   }
 
   /** Called by client after completeHandshake has succeeded, to decrypt a received message. */
   public byte[] establishedRecv(byte[] receivedCiphertext) throws SgxCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SgxClientState_EstablishedRecv(guard.nativeHandle(), receivedCiphertext);
+      return filterExceptions(
+          SgxCommunicationFailureException.class,
+          () -> Native.SgxClientState_EstablishedRecv(guard.nativeHandle(), receivedCiphertext));
     }
   }
 }

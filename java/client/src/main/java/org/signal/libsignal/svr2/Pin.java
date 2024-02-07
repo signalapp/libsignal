@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.svr2;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 
 /**
@@ -32,7 +34,7 @@ public class Pin {
    * @return A hashed pin string that can be verified later
    */
   public static String localHash(final byte[] pin) {
-    return Native.Pin_LocalHash(pin);
+    return filterExceptions(() -> Native.Pin_LocalHash(pin));
   }
 
   /**
@@ -43,6 +45,6 @@ public class Pin {
    * @return true if the pin matches the hash, false otherwise
    */
   public static boolean verifyLocalHash(final String encodedHash, final byte[] pin) {
-    return Native.Pin_VerifyLocalHash(encodedHash, pin);
+    return filterExceptions(() -> Native.Pin_VerifyLocalHash(encodedHash, pin));
   }
 }
