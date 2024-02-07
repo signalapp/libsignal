@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.message;
 import java.util.Optional;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
@@ -29,7 +30,8 @@ public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
     this.unsafeHandle = unsafeHandle;
   }
 
-  public DecryptionErrorMessage(byte[] serialized) throws InvalidMessageException {
+  public DecryptionErrorMessage(byte[] serialized)
+      throws InvalidKeyException, InvalidMessageException {
     this.unsafeHandle = Native.DecryptionErrorMessage_Deserialize(serialized);
   }
 
