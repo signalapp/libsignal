@@ -64,21 +64,24 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
   }
 
   /** Called by client upon receipt of first message from HSM enclave, to complete handshake. */
-  public void completeHandshake(byte[] handshakeResponse) {
+  public void completeHandshake(byte[] handshakeResponse)
+      throws EnclaveCommunicationFailureException, TrustedCodeMismatchException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       Native.HsmEnclaveClient_CompleteHandshake(guard.nativeHandle(), handshakeResponse);
     }
   }
 
   /** Called by client after completeHandshake has succeeded, to encrypt a message to send. */
-  public byte[] establishedSend(byte[] plaintextToSend) {
+  public byte[] establishedSend(byte[] plaintextToSend)
+      throws EnclaveCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return Native.HsmEnclaveClient_EstablishedSend(guard.nativeHandle(), plaintextToSend);
     }
   }
 
   /** Called by client after completeHandshake has succeeded, to decrypt a received message. */
-  public byte[] establishedRecv(byte[] receivedCiphertext) {
+  public byte[] establishedRecv(byte[] receivedCiphertext)
+      throws EnclaveCommunicationFailureException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return Native.HsmEnclaveClient_EstablishedRecv(guard.nativeHandle(), receivedCiphertext);
     }
