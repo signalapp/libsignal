@@ -22,7 +22,7 @@ use tungstenite::{http, Message};
 
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
-use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
+use crate::infra::{AsyncDuplexStream, ConnectionParams, StreamAndHost, TransportConnector};
 use crate::utils::timeout;
 use attest::client_connection::ClientConnection;
 use attest::enclave;
@@ -62,7 +62,7 @@ where
     T: TransportConnector,
 {
     type Service = WebSocketClient<T::Stream>;
-    type Channel = WebSocketStream<T::Stream>;
+    type Channel = (WebSocketStream<T::Stream>, url::Host);
     type Error = NetError;
 
     async fn connect_channel(
@@ -85,7 +85,8 @@ where
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
         start_ws_service(
-            channel,
+            channel.0,
+            channel.1,
             self.cfg.keep_alive_interval,
             self.cfg.max_idle_time,
         )
@@ -94,6 +95,7 @@ where
 
 fn start_ws_service<S: AsyncDuplexStream>(
     channel: WebSocketStream<S>,
+    remote_address: url::Host,
     keep_alive_interval: Duration,
     max_idle_time: Duration,
 ) -> (WebSocketClient<S>, ServiceStatus<NetError>) {
@@ -113,7 +115,11 @@ fn start_ws_service<S: AsyncDuplexStream>(
         last_keepalive_sent: Instant::now(),
     };
     (
-        WebSocketClient::new(ws_client_writer, ws_client_reader),
+        WebSocketClient {
+            ws_client_writer,
+            ws_client_reader,
+            remote_address,
+        },
         service_status,
     )
 }
@@ -235,8 +241,8 @@ async fn connect_websocket<T: TransportConnector>(
     endpoint: PathAndQuery,
     ws_config: tungstenite::protocol::WebSocketConfig,
     transport_connector: &T,
-) -> Result<WebSocketStream<T::Stream>, NetError> {
-    let ssl_stream = transport_connector
+) -> Result<(WebSocketStream<T::Stream>, url::Host), NetError> {
+    let StreamAndHost(ssl_stream, remote_address) = transport_connector
         .connect(connection_params, WS_ALPN)
         .await?;
 
@@ -273,7 +279,7 @@ async fn connect_websocket<T: TransportConnector>(
     )
     .await?;
 
-    Ok(ws_stream)
+    Ok((ws_stream, remote_address))
 }
 
 #[cfg_attr(test, derive(Clone, Debug, Eq, PartialEq))]
@@ -306,21 +312,12 @@ impl From<TextOrBinary> for Message {
 /// Wrapper for a websocket that can be used to send [`TextOrBinary`] messages.
 #[derive(Debug)]
 pub struct WebSocketClient<S = tokio_boring::SslStream<tokio::net::TcpStream>> {
-    ws_client_writer: WebSocketClientWriter<S>,
-    ws_client_reader: WebSocketClientReader<S>,
+    pub(crate) ws_client_writer: WebSocketClientWriter<S>,
+    pub(crate) ws_client_reader: WebSocketClientReader<S>,
+    pub(crate) remote_address: url::Host,
 }
 
 impl<S: AsyncDuplexStream> WebSocketClient<S> {
-    pub(crate) fn new(
-        ws_client_writer: WebSocketClientWriter<S>,
-        ws_client_reader: WebSocketClientReader<S>,
-    ) -> Self {
-        Self {
-            ws_client_writer,
-            ws_client_reader,
-        }
-    }
-
     /// Sends a request on the connection.
     ///
     /// An error is returned if the send fails.
@@ -334,10 +331,6 @@ impl<S: AsyncDuplexStream> WebSocketClient<S> {
     /// If the next response received is a [`Message::Close`], returns `None`.
     pub(crate) async fn receive(&mut self) -> Result<NextOrClose<TextOrBinary>, NetError> {
         self.ws_client_reader.next().await
-    }
-
-    pub(crate) fn split(self) -> (WebSocketClientWriter<S>, WebSocketClientReader<S>) {
-        (self.ws_client_writer, self.ws_client_reader)
     }
 }
 
@@ -540,7 +533,13 @@ mod test {
     fn websocket_test_client<S: AsyncDuplexStream>(
         channel: WebSocketStream<S>,
     ) -> WebSocketClient<S> {
-        start_ws_service(channel, WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME).0
+        start_ws_service(
+            channel,
+            url::Host::Domain("localhost".to_string()),
+            WS_KEEP_ALIVE_INTERVAL,
+            WS_MAX_IDLE_TIME,
+        )
+        .0
     }
 
     #[tokio::test]

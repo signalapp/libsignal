@@ -14,7 +14,7 @@ use hyper::client::conn::http2;
 use crate::infra::errors::NetError;
 use crate::infra::tokio_executor::TokioExecutor;
 use crate::infra::tokio_io::TokioIo;
-use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
+use crate::infra::{AsyncDuplexStream, ConnectionParams, StreamAndHost, TransportConnector};
 
 const HTTP_ALPN_H2_ONLY: &[u8] = b"\x02h2";
 
@@ -33,6 +33,7 @@ pub trait AggregatingHttpClient: Send + Sync + Clone {
 pub struct Http2Channel<T, S: AsyncDuplexStream + 'static> {
     pub aggregating_client: T,
     pub connection: Http2Connection<S>,
+    pub remote_address: url::Host,
 }
 
 #[derive(Clone, Debug)]
@@ -115,7 +116,7 @@ pub(crate) async fn http2_channel<C: TransportConnector>(
     transport_connector: &C,
     connection_params: &ConnectionParams,
 ) -> Result<Http2Channel<AggregatingHttp2Client, C::Stream>, NetError> {
-    let ssl_stream = transport_connector
+    let StreamAndHost(ssl_stream, remote_address) = transport_connector
         .connect(connection_params, HTTP_ALPN_H2_ONLY)
         .await?;
     let io = TokioIo::new(ssl_stream);
@@ -133,6 +134,7 @@ pub(crate) async fn http2_channel<C: TransportConnector>(
             },
         },
         connection,
+        remote_address,
     })
 }
 
@@ -177,6 +179,7 @@ mod test {
         let Http2Channel {
             mut aggregating_client,
             connection,
+            remote_address: _remote_address,
         } = http2_channel(&transport_connector, &FAKE_CONNECTION_PARAMS)
             .await
             .expect("can connect");

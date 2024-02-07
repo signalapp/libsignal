@@ -4,6 +4,7 @@
 //
 
 use std::fmt::Debug;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
@@ -19,7 +20,7 @@ use crate::infra::{ConnectionParams, HttpRequestDecorator};
 
 /// For a service that needs to go through some initialization procedure
 /// before it's ready for use, this enum describes its possible states.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ServiceState<T, E> {
     /// Contains an instance of the service which is initialized and ready to use.
     /// Also, since we're not actively listening for the event of service going inactive,
@@ -204,7 +205,8 @@ where
     }
 }
 
-struct ServiceWithReconnectData<C: ServiceConnector, M> {
+pub(crate) struct ServiceWithReconnectData<C: ServiceConnector, M> {
+    pub(crate) reconnect_count: AtomicU32,
     state: Mutex<ServiceState<C::Service, C::Error>>,
     service_initializer: ServiceInitializer<C, M>,
     connection_timeout: Duration,
@@ -231,7 +233,29 @@ where
                 state: Mutex::new(ServiceState::Cooldown(Instant::now())),
                 service_initializer: ServiceInitializer::new(service_connector, connection_manager),
                 connection_timeout,
+                reconnect_count: AtomicU32::new(0),
             }),
+        }
+    }
+
+    pub(crate) async fn is_connected(&self, deadline: Instant) -> bool {
+        let guard = match timeout_at(deadline, self.data.state.lock()).await {
+            Ok(guard) => guard,
+            Err(_) => {
+                log::info!("Timed out waiting for the state lock");
+                return false;
+            }
+        };
+        matches!(&*guard, ServiceState::Active(_, status) if !status.is_stopped())
+    }
+
+    pub(crate) fn reconnect_count(&self) -> u32 {
+        self.data.reconnect_count.load(Ordering::Relaxed)
+    }
+
+    pub(crate) async fn disconnect(&self) {
+        if let ServiceState::Active(_, service_status) = &*self.data.state.lock().await {
+            service_status.stop_service();
         }
     }
 
@@ -283,7 +307,10 @@ where
                 }
             };
             *guard = match timeout_at(deadline, self.data.service_initializer.connect()).await {
-                Ok(result) => result,
+                Ok(result) => {
+                    self.data.reconnect_count.fetch_add(1, Ordering::Relaxed);
+                    result
+                }
                 Err(_) => ServiceState::TimedOut,
             }
         }

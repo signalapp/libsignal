@@ -47,10 +47,17 @@ impl<C: TransportConnector> ServiceConnector for ChatOverHttp2ServiceConnector<C
         let Http2Channel {
             aggregating_client: request_sender,
             connection,
+            remote_address: _remote_address,
         } = channel;
         let service_status = ServiceStatus::new();
         start_event_listener(connection, service_status.clone());
-        (ChatOverHttp2 { request_sender }, service_status)
+        (
+            ChatOverHttp2 {
+                request_sender,
+                service_status: service_status.clone(),
+            },
+            service_status,
+        )
     }
 }
 
@@ -76,11 +83,16 @@ impl ChatService for ChatOverHttp2 {
             Err(err) => Err(err),
         }
     }
+
+    async fn disconnect(&self) {
+        self.service_status.stop_service()
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct ChatOverHttp2 {
     request_sender: AggregatingHttp2Client,
+    service_status: ServiceStatus<NetError>,
 }
 
 fn start_event_listener(

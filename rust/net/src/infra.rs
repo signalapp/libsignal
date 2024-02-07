@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::IpAddr;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::Arc;
@@ -142,6 +143,8 @@ impl HttpRequestDecorator {
     }
 }
 
+pub struct StreamAndHost<T>(T, url::Host);
+
 pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send + Sync {}
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send + Sync> AsyncDuplexStream for S {}
@@ -154,7 +157,7 @@ pub trait TransportConnector: Clone + Send + Sync {
         &self,
         connection_params: &ConnectionParams,
         alpn: &[u8],
-    ) -> Result<Self::Stream, NetError>;
+    ) -> Result<StreamAndHost<Self::Stream>, NetError>;
 }
 
 #[derive(Clone)]
@@ -168,8 +171,8 @@ impl TransportConnector for TcpSslTransportConnector {
         &self,
         connection_params: &ConnectionParams,
         alpn: &[u8],
-    ) -> Result<Self::Stream, NetError> {
-        let tcp_stream = connect_tcp(
+    ) -> Result<StreamAndHost<Self::Stream>, NetError> {
+        let StreamAndHost(tcp_stream, remote_address) = connect_tcp(
             &connection_params.dns_resolver,
             &connection_params.sni,
             connection_params.port,
@@ -184,7 +187,7 @@ impl TransportConnector for TcpSslTransportConnector {
             .await
             .map_err(|_| NetError::SslFailedHandshake)?;
 
-        Ok(ssl_stream)
+        Ok(StreamAndHost(ssl_stream, remote_address))
     }
 }
 
@@ -201,7 +204,7 @@ pub(crate) async fn connect_tcp(
     dns_resolver: &DnsResolver,
     host: &str,
     port: u16,
-) -> Result<TcpStream, NetError> {
+) -> Result<StreamAndHost<TcpStream>, NetError> {
     let dns_lookup = dns_resolver
         .lookup_ip(host)
         .await
@@ -230,12 +233,20 @@ pub(crate) async fn connect_tcp(
                     log::debug!("failed to connect to IP [{}] with an error: {:?}", ip, e)
                 })
                 .await
+                .map(|r| StreamAndHost(r, ip_addr_to_host(ip)))
         }
     });
 
     first_ok(staggered_futures)
         .await
         .ok_or(NetError::TcpConnectionFailed)
+}
+
+fn ip_addr_to_host(ip: IpAddr) -> url::Host {
+    match ip {
+        IpAddr::V4(v4) => url::Host::Ipv4(v4),
+        IpAddr::V6(v6) => url::Host::Ipv6(v6),
+    }
 }
 
 #[cfg(test)]
@@ -262,7 +273,7 @@ pub(crate) mod test {
         use crate::infra::reconnect::{
             ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
         };
-        use crate::infra::{ConnectionParams, TransportConnector};
+        use crate::infra::{ConnectionParams, StreamAndHost, TransportConnector};
 
         #[derive(Debug, Display)]
         pub(crate) enum TestError {
@@ -312,9 +323,9 @@ pub(crate) mod test {
 
             async fn connect(
                 &self,
-                _connection_params: &ConnectionParams,
+                connection_params: &ConnectionParams,
                 _alpn: &[u8],
-            ) -> Result<Self::Stream, NetError> {
+            ) -> Result<StreamAndHost<Self::Stream>, NetError> {
                 let (client, server) = tokio::io::duplex(1024);
                 let routes = self.filter.clone();
                 tokio::spawn(async {
@@ -322,7 +333,10 @@ pub(crate) mod test {
                         futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
                     warp::serve(routes).run_incoming(one_element_iter).await;
                 });
-                Ok(client)
+                Ok(StreamAndHost(
+                    client,
+                    url::Host::Domain(connection_params.host.to_string()),
+                ))
             }
         }
 

@@ -10,6 +10,7 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
+use url::Host;
 
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use crate::env::constants::WEB_SOCKET_PATH;
@@ -38,11 +39,64 @@ const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[async_trait]
 pub trait ChatService {
-    /// Sends request and get a response from the Chat Service.
+    /// Sends request and gets a response from the Chat Service.
     ///
     /// This API can be represented using different transports (e.g. WebSockets
     /// or HTTP) capable of sending [Request] objects.
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError>;
+
+    /// If the service is currently holding an open connection, closes that connection.
+    ///
+    /// Depending on the implementing logic, the connection may be re-established later
+    /// with a call to [ChatService::send].
+    async fn disconnect(&self);
+}
+
+#[async_trait]
+pub trait ChatServiceWithDebugInfo: ChatService {
+    /// Sends request and gets a response from the Chat Service along with the connection debug info.
+    async fn send_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, NetError>, DebugInfo);
+}
+
+pub trait RemoteAddressInfo {
+    /// Provides information about the remote address the service is connected to
+    ///
+    /// If IP information is available, implementation should prefer to return [Host::Ipv4] or [Host::Ipv6]
+    /// and only use [Host::Domain] as a fallback.
+    fn remote_address(&self) -> Host;
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8)]
+pub enum IpType {
+    Unknown = 0,
+    V4 = 1,
+    V6 = 2,
+}
+
+impl From<Host> for IpType {
+    fn from(host: Host) -> Self {
+        match host {
+            Host::Domain(_) => IpType::Unknown,
+            Host::Ipv4(_) => IpType::V4,
+            Host::Ipv6(_) => IpType::V6,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct DebugInfo {
+    /// Indicates if the connection was active at the time of the call.
+    pub connection_reused: bool,
+    /// Number of times a connection had to be established since the service was created.
+    pub reconnect_count: u32,
+    /// IP type of the connection that was used for the request. `0`, if information is not available
+    /// or if the connection failed.
+    pub ip_type: IpType,
 }
 
 #[derive(Clone, Debug)]
@@ -118,8 +172,8 @@ pub struct Chat<AuthService, UnauthService> {
 
 impl<AuthService, UnauthService> Chat<AuthService, UnauthService>
 where
-    AuthService: ChatService + Send + Sync,
-    UnauthService: ChatService + Send + Sync,
+    AuthService: ChatServiceWithDebugInfo + Send + Sync,
+    UnauthService: ChatServiceWithDebugInfo + Send + Sync,
 {
     pub fn new(
         auth_service: AuthorizedChatService<AuthService>,
@@ -147,9 +201,33 @@ where
         self.unauth_service.send(msg, timeout).await
     }
 
+    pub async fn send_authenticated_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, NetError>, DebugInfo) {
+        self.auth_service.send_and_debug(msg, timeout).await
+    }
+
+    pub async fn send_unauthenticated_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, NetError>, DebugInfo) {
+        self.unauth_service.send_and_debug(msg, timeout).await
+    }
+
+    pub async fn disconnect(&self) {
+        self.unauth_service.disconnect().await;
+        self.auth_service.disconnect().await;
+    }
+
     pub fn into_dyn(
         self,
-    ) -> Chat<Arc<dyn ChatService + Send + Sync>, Arc<dyn ChatService + Send + Sync>>
+    ) -> Chat<
+        Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
+        Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
+    >
     where
         AuthService: 'static,
         UnauthService: 'static,
@@ -166,8 +244,8 @@ pub struct AnonymousChatService<T> {
     inner: T,
 }
 
-impl<T: ChatService + Send + Sync + 'static> AnonymousChatService<T> {
-    fn into_dyn(self) -> AnonymousChatService<Arc<dyn ChatService + Send + Sync>> {
+impl<T: ChatServiceWithDebugInfo + Send + Sync + 'static> AnonymousChatService<T> {
+    fn into_dyn(self) -> AnonymousChatService<Arc<dyn ChatServiceWithDebugInfo + Send + Sync>> {
         AnonymousChatService {
             inner: Arc::new(self.inner),
         }
@@ -182,14 +260,32 @@ where
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
         self.inner.send(msg, timeout).await
     }
+
+    async fn disconnect(&self) {
+        self.inner.disconnect().await
+    }
+}
+
+#[async_trait]
+impl<T> ChatServiceWithDebugInfo for AnonymousChatService<T>
+where
+    T: ChatServiceWithDebugInfo + Send + Sync,
+{
+    async fn send_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, NetError>, DebugInfo) {
+        self.inner.send_and_debug(msg, timeout).await
+    }
 }
 
 pub struct AuthorizedChatService<T> {
     inner: T,
 }
 
-impl<T: ChatService + Send + Sync + 'static> AuthorizedChatService<T> {
-    fn into_dyn(self) -> AuthorizedChatService<Arc<dyn ChatService + Send + Sync>> {
+impl<T: ChatServiceWithDebugInfo + Send + Sync + 'static> AuthorizedChatService<T> {
+    fn into_dyn(self) -> AuthorizedChatService<Arc<dyn ChatServiceWithDebugInfo + Send + Sync>> {
         AuthorizedChatService {
             inner: Arc::new(self.inner),
         }
@@ -204,12 +300,56 @@ where
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
         self.inner.send(msg, timeout).await
     }
+
+    async fn disconnect(&self) {
+        self.inner.disconnect().await
+    }
 }
 
 #[async_trait]
 impl ChatService for Arc<dyn ChatService + Send + Sync> {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
         self.as_ref().send(msg, timeout).await
+    }
+
+    async fn disconnect(&self) {
+        self.as_ref().disconnect().await
+    }
+}
+
+#[async_trait]
+impl<T> ChatServiceWithDebugInfo for AuthorizedChatService<T>
+where
+    T: ChatServiceWithDebugInfo + Send + Sync,
+{
+    async fn send_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, NetError>, DebugInfo) {
+        self.inner.send_and_debug(msg, timeout).await
+    }
+}
+
+#[async_trait]
+impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+        self.send(msg, timeout).await
+    }
+
+    async fn disconnect(&self) {
+        self.disconnect().await
+    }
+}
+
+#[async_trait]
+impl ChatServiceWithDebugInfo for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
+    async fn send_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, NetError>, DebugInfo) {
+        self.send_and_debug(msg, timeout).await
     }
 }
 
@@ -218,7 +358,7 @@ fn build_authorized_chat_service(
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
     username: String,
     password: String,
-) -> AuthorizedChatService<impl ChatService> {
+) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
     let header_auth_decorator =
         HttpRequestDecorator::HeaderAuth(basic_authorization(&username, &password));
 
@@ -240,7 +380,7 @@ fn build_authorized_chat_service(
 fn build_anonymous_chat_service(
     connection_manager_ws: &MultiRouteConnectionManager,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
-) -> AnonymousChatService<impl ChatService> {
+) -> AnonymousChatService<impl ChatServiceWithDebugInfo> {
     // ws anonymous
     let chat_over_ws_anonymous = ServiceWithReconnect::new(
         service_connector_ws.clone(),
@@ -259,7 +399,7 @@ pub fn chat_service<T: TransportConnector + 'static>(
     incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
     transport_connector: T,
     connection_params_list: Vec<ConnectionParams>,
-) -> Chat<impl ChatService, impl ChatService> {
+) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
     let cfg = WebSocketConfig {
         ws_config: tungstenite::protocol::WebSocketConfig::default(),
         endpoint: PathAndQuery::from_static(WEB_SOCKET_PATH),
@@ -330,6 +470,12 @@ pub(crate) mod test {
                         service.clone().send(msg, timeout).await
                     }
                     _ => Err(NetError::NoServiceConnection),
+                }
+            }
+
+            async fn disconnect(&self) {
+                if let ServiceState::Active(_, status) = &*self.inner {
+                    status.stop_service()
                 }
             }
         }

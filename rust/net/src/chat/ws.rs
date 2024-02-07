@@ -14,14 +14,16 @@ use http::status::StatusCode;
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio_tungstenite::WebSocketStream;
+use url::Host;
 
 use crate::chat::{
-    ChatMessageType, ChatService, MessageProto, Request, RequestProto, Response, ResponseProto,
+    ChatMessageType, ChatService, MessageProto, RemoteAddressInfo, Request, RequestProto, Response,
+    ResponseProto,
 };
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ws::{
-    NextOrClose, TextOrBinary, WebSocketClientConnector, WebSocketClientReader,
+    NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
     WebSocketClientWriter,
 };
 use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
@@ -119,7 +121,7 @@ impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
 #[async_trait]
 impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnector<T> {
     type Service = ChatOverWebSocket<T::Stream>;
-    type Channel = WebSocketStream<T::Stream>;
+    type Channel = (WebSocketStream<T::Stream>, Host);
     type Error = NetError;
 
     async fn connect_channel(
@@ -133,7 +135,11 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
         let (ws_client, service_status) = self.ws_client_connector.start_service(channel);
-        let (ws_client_writer, ws_client_reader) = ws_client.split();
+        let WebSocketClient {
+            ws_client_writer,
+            ws_client_reader,
+            remote_address,
+        } = ws_client;
         let pending_messages: Arc<Mutex<PendingMessagesMap>> = Default::default();
         tokio::spawn(reader_task(
             ws_client_reader,
@@ -147,6 +153,7 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
                 ws_client_writer,
                 service_status: service_status.clone(),
                 pending_messages,
+                remote_address,
             },
             service_status,
         )
@@ -219,6 +226,13 @@ pub struct ChatOverWebSocket<S> {
     ws_client_writer: WebSocketClientWriter<S>,
     service_status: ServiceStatus<NetError>,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
+    remote_address: Host,
+}
+
+impl<S> RemoteAddressInfo for ChatOverWebSocket<S> {
+    fn remote_address(&self) -> Host {
+        self.remote_address.clone()
+    }
 }
 
 #[async_trait]
@@ -257,6 +271,10 @@ where
             map.remove(&id);
         }
         res
+    }
+
+    async fn disconnect(&self) {
+        self.service_status.stop_service()
     }
 }
 

@@ -42,6 +42,7 @@ tokio-boring = { git = "https://github.com/signalapp/boring", branch = "libsigna
 tokio-tungstenite = { version = "0.21.0" }
 tokio-util = "0.7.9"
 tungstenite = { version = "0.21.0" }
+url = "2.4.1"
 uuid = "1.1.2"
 
 [build-dependencies]
