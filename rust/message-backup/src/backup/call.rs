@@ -5,6 +5,7 @@
 
 use crate::backup::frame::{RecipientId, RingerRecipientId};
 use crate::backup::method::Contains;
+use crate::backup::time::Timestamp;
 use crate::backup::{ChatId, TryFromWith};
 use crate::proto::backup as proto;
 
@@ -14,6 +15,7 @@ pub struct Call {
     pub call_type: CallType,
     pub state: CallState,
     pub outgoing: bool,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -60,9 +62,8 @@ impl<C: Contains<RecipientId> + Contains<ChatId>> TryFromWith<proto::Call, C> fo
             outgoing,
             ringerRecipientId,
             state,
+            timestamp,
             special_fields: _,
-            // TODO validate this field.
-            timestamp: _,
         } = call;
 
         let conversation_recipient_id = ChatId(conversationRecipientId);
@@ -100,10 +101,13 @@ impl<C: Contains<RecipientId> + Contains<ChatId>> TryFromWith<proto::Call, C> fo
             }
         };
 
+        let timestamp = Timestamp::from_millis(timestamp, "Call.timestamp");
+
         Ok(Call {
             call_type,
             state,
             outgoing,
+            timestamp,
         })
     }
 }
@@ -113,6 +117,7 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::TryIntoWith as _;
 
     use super::*;
@@ -127,6 +132,7 @@ mod test {
                 outgoing: true,
                 state: proto::call::State::DECLINED_BY_USER.into(),
                 type_: proto::call::Type::AD_HOC_CALL.into(),
+                timestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
         }
@@ -154,6 +160,7 @@ mod test {
                 call_type: CallType::AdHoc,
                 state: CallState::DeclinedByUser,
                 outgoing: true,
+                timestamp: Timestamp::test_value(),
             })
         );
     }

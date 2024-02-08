@@ -47,6 +47,7 @@ futures = { version = "0.3.29", features = ["executor"] }
 hex-literal = "0.4.1"
 test-case = "3.3.1"
 test-log = "0.2.14"
+testing_logger = "0.1.1"
 
 [build-dependencies]
 protobuf = "3.3.0"

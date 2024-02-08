@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::num::NonZeroU64;
+
 use derive_where::derive_where;
 use libsignal_protocol::{Aci, Pni, ServiceIdKind};
 use uuid::Uuid;
 use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 
 use crate::backup::method::{Method, Store};
+use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -117,13 +120,13 @@ impl TryFrom<proto::Contact> for ContactData {
             pni,
             profileKey,
             registered,
+            unregisteredTimestamp,
 
             // TODO validate these fields
             username: _,
             e164: _,
             blocked: _,
             hidden: _,
-            unregisteredTimestamp: _,
             profileSharing: _,
             profileGivenName: _,
             profileFamilyName: _,
@@ -154,6 +157,9 @@ impl TryFrom<proto::Contact> for ContactData {
             proto::contact::Registered::REGISTERED => true,
             proto::contact::Registered::NOT_REGISTERED => false,
         };
+
+        let _ = NonZeroU64::new(unregisteredTimestamp)
+            .map(|u| Timestamp::from_millis(u.get(), "Contact.unregisteredTimestamp"));
 
         Ok(Self {
             aci,
@@ -190,10 +196,10 @@ impl TryFrom<proto::DistributionList> for DistributionListData {
         let proto::DistributionList {
             distributionId,
             privacyMode,
+            deletionTimestamp,
             // TODO validate these fields.
             name: _,
             allowReplies: _,
-            deletionTimestamp: _,
             memberRecipientIds: _,
             special_fields: _,
         } = value;
@@ -205,6 +211,9 @@ impl TryFrom<proto::DistributionList> for DistributionListData {
         );
 
         let privacy_mode = PrivacyMode::try_from(privacyMode.enum_value_or_default())?;
+
+        let _ = NonZeroU64::new(deletionTimestamp)
+            .map(|u| Timestamp::from_millis(u.get(), "DistributionList.deletionTimestamp"));
 
         Ok(Self {
             distribution_id,

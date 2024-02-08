@@ -16,6 +16,7 @@ use crate::backup::file::{VoiceMessageAttachment, VoiceMessageAttachmentError};
 use crate::backup::frame::{CallId, RecipientId};
 use crate::backup::method::{Contains, Method, Store};
 use crate::backup::sticker::{MessageSticker, MessageStickerError};
+use crate::backup::time::{Duration, Timestamp};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -27,7 +28,7 @@ pub enum ChatError {
     DuplicateId,
     /// no record for {0:?}
     NoRecipient(RecipientId),
-    /// {0}
+    /// chat item: {0}
     ChatItem(#[from] ChatItemError),
 }
 
@@ -78,6 +79,8 @@ pub enum ChatItemError {
 #[derive_where(Debug)]
 pub struct ChatData<M: Method = Store> {
     pub(super) items: M::List<ChatItemData>,
+    pub expiration_timer: Duration,
+    pub mute_until: Timestamp,
 }
 
 /// Validated version of [`proto::ChatItem`].
@@ -88,6 +91,9 @@ pub struct ChatItemData {
     pub message: ChatItemMessage,
     pub revisions: Vec<ChatItemData>,
     pub direction: Direction,
+    pub expire_start: Option<Timestamp>,
+    pub expires_in: Option<Duration>,
+    pub sent_at: Timestamp,
     _limit_construction_to_module: (),
 }
 
@@ -170,7 +176,9 @@ pub enum UpdateMessage {
     GroupChange {
         updates: Vec<group::GroupChatUpdate>,
     },
-    ExpirationTimerChange,
+    ExpirationTimerChange {
+        expires_in: Duration,
+    },
     ProfileChange {
         previous: String,
         new: String,
@@ -213,6 +221,7 @@ pub enum CallChatUpdate {
     GroupCall {
         started_call_aci: Option<Aci>,
         in_call_acis: Vec<Aci>,
+        started_call_at: Timestamp,
     },
 }
 
@@ -221,6 +230,8 @@ pub enum CallChatUpdate {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Reaction {
     pub author: RecipientId,
+    pub sent_timestamp: Timestamp,
+    pub received_timestamp: Option<Timestamp>,
     _limit_construction_to_module: (),
 }
 
@@ -237,6 +248,7 @@ pub enum ReactionError {
 pub struct Quote {
     pub author: RecipientId,
     pub quote_type: QuoteType,
+    pub target_sent_timestamp: Option<Timestamp>,
     _limit_construction_to_module: (),
 }
 
@@ -250,7 +262,10 @@ pub enum QuoteType {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Direction {
-    Incoming,
+    Incoming {
+        sent: Timestamp,
+        received: Timestamp,
+    },
     Outgoing(Vec<OutgoingSend>),
     Directionless,
 }
@@ -260,6 +275,7 @@ pub enum Direction {
 pub struct OutgoingSend {
     pub recipient: RecipientId,
     pub status: DeliveryStatus,
+    pub last_status_update: Timestamp,
 }
 
 #[derive(Debug)]
@@ -299,18 +315,23 @@ impl<M: Method> TryFrom<proto::Chat> for ChatData<M> {
         let proto::Chat {
             id: _,
             recipientId: _,
+            expirationTimerMs,
+            muteUntilMs,
             // TODO validate these fields
             archived: _,
             pinnedOrder: _,
-            expirationTimerMs: _,
-            muteUntilMs: _,
             markedUnread: _,
             dontNotifyForMentionsIfMuted: _,
             wallpaper: _,
             special_fields: _,
         } = value;
 
+        let expiration_timer = Duration::from_millis(expirationTimerMs);
+        let mute_until = Timestamp::from_millis(muteUntilMs, "Chat.muteUntilMs");
+
         Ok(Self {
+            expiration_timer,
+            mute_until,
             items: Default::default(),
         })
     }
@@ -326,12 +347,12 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatItem, R
             item,
             directionalDetails,
             revisions,
+            expireStartDate,
+            expiresInMs,
+            dateSent,
 
             // TODO validate these fields
-            dateSent: _,
             sealedSender: _,
-            expireStartDate: _,
-            expiresInMs: _,
             sms: _,
             special_fields: _,
         } = value;
@@ -354,11 +375,19 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatItem, R
             .map(|rev| rev.try_into_with(recipients))
             .collect::<Result<_, _>>()?;
 
+        let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent");
+        let expire_start =
+            expireStartDate.map(|date| Timestamp::from_millis(date, "ChatItem.expireStartDate"));
+        let expires_in = expiresInMs.map(Duration::from_millis);
+
         Ok(Self {
             author,
             message,
             revisions,
             direction,
+            sent_at,
+            expire_start,
+            expires_in,
             _limit_construction_to_module: (),
         })
     }
@@ -375,11 +404,17 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::chat_item::DirectionalDetails,
         match item {
             DirectionalDetails::Incoming(IncomingMessageDetails {
                 special_fields: _,
-                // TODO validate these fields.
-                dateReceived: _,
-                dateServerSent: _,
+                dateReceived,
+                dateServerSent,
+                // TODO validate this field.
                 read: _,
-            }) => Ok(Self::Incoming),
+            }) => {
+                let sent =
+                    Timestamp::from_millis(dateServerSent, "DirectionalDetails.dateServerSent");
+                let received =
+                    Timestamp::from_millis(dateReceived, "DirectionalDetails.dateReceived");
+                Ok(Self::Incoming { received, sent })
+            }
             DirectionalDetails::Outgoing(OutgoingMessageDetails {
                 sendStatus,
                 special_fields: _,
@@ -402,12 +437,12 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
         let proto::SendStatus {
             recipientId,
             deliveryStatus,
+            lastStatusUpdateTimestamp,
             special_fields: _,
             // TODO validate these fields
             networkFailure: _,
             identityKeyMismatch: _,
             sealedSender: _,
-            lastStatusUpdateTimestamp: _,
         } = item;
 
         let recipient = RecipientId(recipientId);
@@ -428,7 +463,16 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
             Status::SKIPPED => DeliveryStatus::Skipped,
         };
 
-        Ok(Self { recipient, status })
+        let last_status_update = Timestamp::from_millis(
+            lastStatusUpdateTimestamp,
+            "SendStatus.lastStatusUpdateTimestamp",
+        );
+
+        Ok(Self {
+            recipient,
+            status,
+            last_status_update,
+        })
     }
 }
 
@@ -746,10 +790,11 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateM
                 }
             }
             Update::ExpirationTimerChange(proto::ExpirationTimerChatUpdate {
-                // TODO validate this field
-                expiresInMs: _,
+                expiresInMs,
                 special_fields: _,
-            }) => Self::ExpirationTimerChange,
+            }) => Self::ExpirationTimerChange {
+                expires_in: Duration::from_millis(expiresInMs.into()),
+            },
             Update::ProfileChange(proto::ProfileChangeChatUpdate {
                 previousName,
                 newName,
@@ -803,8 +848,7 @@ impl<R: Contains<CallId>> TryFromWith<proto::call_chat_update::Call, R> for Call
                 let proto::GroupCallChatUpdate {
                     startedCallAci,
                     inCallAcis,
-                    // TODO validate these fields
-                    startedCallTimestamp: _,
+                    startedCallTimestamp,
                     special_fields: _,
                 } = group;
 
@@ -821,9 +865,15 @@ impl<R: Contains<CallId>> TryFromWith<proto::call_chat_update::Call, R> for Call
                     .map(uuid_bytes_to_aci)
                     .collect::<Result<_, _>>()?;
 
+                let started_call_at = Timestamp::from_millis(
+                    startedCallTimestamp,
+                    "ChatUpdate.Call.startedCallTimestamp",
+                );
+
                 Ok(Self::GroupCall {
                     started_call_aci,
                     in_call_acis,
+                    started_call_at,
                 })
             }
         }
@@ -837,8 +887,8 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
         let proto::Quote {
             authorId,
             type_,
+            targetSentTimestamp,
             // TODO validate these fields
-            targetSentTimestamp: _,
             text: _,
             attachments: _,
             bodyRanges: _,
@@ -850,6 +900,8 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
             return Err(QuoteError::AuthorNotFound(author));
         }
 
+        let target_sent_timestamp = targetSentTimestamp
+            .map(|timestamp| Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp"));
         let quote_type = match type_.enum_value_or_default() {
             proto::quote::Type::UNKNOWN => return Err(QuoteError::TypeUnknown),
             proto::quote::Type::NORMAL => QuoteType::Normal,
@@ -858,6 +910,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
         Ok(Self {
             author,
             quote_type,
+            target_sent_timestamp,
             _limit_construction_to_module: (),
         })
     }
@@ -869,10 +922,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
     fn try_from_with(item: proto::Reaction, context: &R) -> Result<Self, Self::Error> {
         let proto::Reaction {
             authorId,
+            sentTimestamp,
+            receivedTimestamp,
             // TODO validate these fields
             emoji: _,
-            sentTimestamp: _,
-            receivedTimestamp: _,
             sortOrder: _,
             special_fields: _,
         } = item;
@@ -881,8 +934,15 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
         if !context.contains(&author) {
             return Err(ReactionError::AuthorNotFound(author));
         }
+
+        let sent_timestamp = Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp");
+        let received_timestamp = receivedTimestamp
+            .map(|timestamp| Timestamp::from_millis(timestamp, "Reaction.receivedTimestamp"));
+
         Ok(Self {
             author,
+            sent_timestamp,
+            received_timestamp,
             _limit_construction_to_module: (),
         })
     }
@@ -893,6 +953,8 @@ mod test {
     use assert_matches::assert_matches;
     use protobuf::{EnumOrUnknown, MessageField, SpecialFields};
     use test_case::test_case;
+
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     use super::*;
 
@@ -905,8 +967,15 @@ mod test {
                     proto::StandardMessage::test_data(),
                 )),
                 directionalDetails: Some(proto::chat_item::DirectionalDetails::Incoming(
-                    proto::chat_item::IncomingMessageDetails::default(),
+                    proto::chat_item::IncomingMessageDetails {
+                        dateReceived: MillisecondsSinceEpoch::TEST_VALUE.0,
+                        dateServerSent: MillisecondsSinceEpoch::TEST_VALUE.0,
+                        ..Default::default()
+                    },
                 )),
+                expireStartDate: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
+                expiresInMs: Some(111),
+                dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
         }
@@ -958,6 +1027,8 @@ mod test {
         fn test_data() -> Self {
             Self {
                 authorId: proto::Recipient::TEST_ID,
+                sentTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
+                receivedTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 ..Default::default()
             }
         }
@@ -968,6 +1039,7 @@ mod test {
             Self {
                 authorId: proto::Recipient::TEST_ID,
                 type_: proto::quote::Type::NORMAL.into(),
+                targetSentTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 ..Default::default()
             }
         }
@@ -1021,6 +1093,8 @@ mod test {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 author: RecipientId(proto::Recipient::TEST_ID),
+                sent_timestamp: Timestamp::test_value(),
+                received_timestamp: Some(Timestamp::test_value()),
                 _limit_construction_to_module: (),
             }
         }
@@ -1041,6 +1115,7 @@ mod test {
                 quote: Some(Quote {
                     author: RecipientId(proto::Recipient::TEST_ID),
                     quote_type: QuoteType::Normal,
+                    target_sent_timestamp: Some(Timestamp::test_value()),
                     _limit_construction_to_module: (),
                 }),
                 _limit_construction_to_module: (),
@@ -1098,7 +1173,13 @@ mod test {
                 author: RecipientId(proto::Recipient::TEST_ID),
                 message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
                 revisions: vec![],
-                direction: Direction::Incoming,
+                direction: Direction::Incoming {
+                    received: Timestamp::test_value(),
+                    sent: Timestamp::test_value()
+                },
+                expire_start: Some(Timestamp::test_value()),
+                expires_in: Some(Duration::from_millis(111)),
+                sent_at: Timestamp::test_value(),
                 _limit_construction_to_module: (),
             })
         )
@@ -1231,6 +1312,7 @@ mod test {
                 quote: Some(Quote {
                     author: RecipientId(proto::Recipient::TEST_ID),
                     quote_type: QuoteType::Normal,
+                    target_sent_timestamp: Some(Timestamp::test_value()),
                     _limit_construction_to_module: ()
                 }),
                 reactions: vec![Reaction::from_proto_test_data()],
@@ -1325,6 +1407,7 @@ mod test {
             Self {
                 startedCallAci: Some(Self::TEST_ACI.into()),
                 inCallAcis: vec![Self::TEST_ACI.into()],
+                startedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
         }

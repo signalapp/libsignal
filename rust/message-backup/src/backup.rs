@@ -25,6 +25,7 @@ mod frame;
 pub(crate) mod method;
 mod recipient;
 mod sticker;
+mod time;
 
 pub struct PartialBackup<M: Method> {
     version: u64,

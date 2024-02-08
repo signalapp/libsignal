@@ -10,6 +10,7 @@
 use libsignal_protocol::{Aci, Pni, ServiceId};
 use protobuf::{EnumOrUnknown, Message};
 
+use crate::backup::time::Duration;
 use crate::proto::backup::{
     self as proto, group_invitation_revoked_update, GenericGroupUpdate, GroupAdminStatusUpdate,
     GroupAnnouncementOnlyChangeUpdate, GroupAttributesAccessLevelChangeUpdate, GroupAvatarUpdate,
@@ -104,7 +105,7 @@ enum ValidateFieldValue {
     IgnoredField,
     OptionalAci(Option<Vec<u8>>),
     Aci(Vec<u8>),
-    ExpirationMs(u32),
+    ExpiresInMs(u32),
     ServiceId(Vec<u8>),
     Invitees(Vec<group_invitation_revoked_update::Invitee>),
     AccessLevel(EnumOrUnknown<proto::GroupV2AccessLevel>),
@@ -132,8 +133,8 @@ impl ValidateFieldValue {
                     .map(Aci::from_uuid_bytes)
                     .map_err(|_| GroupUpdateFieldError::InvalidAci)?;
             }
-            Self::ExpirationMs(_ms) => {
-                // TODO validate expiration time
+            Self::ExpiresInMs(ms) => {
+                let _: Duration = Duration::from_millis(ms.into());
             }
             Self::ServiceId(id) => {
                 let _: ServiceId = ServiceId::parse_from_service_id_binary(&id)
@@ -382,7 +383,7 @@ impl_try_from_with_group_change!(
 impl_try_from_with_group_change!(
     GroupExpirationTimerUpdate,
     OptionalAci(updaterAci),
-    ExpirationMs(expiresInMs)
+    ExpiresInMs(expiresInMs)
 );
 
 #[cfg(test)]
