@@ -28,23 +28,23 @@ impl CryptographicMac {
         }
     }
 
-    pub fn update(&mut self, input: &[u8]) -> Result<()> {
+    pub fn update(&mut self, input: &[u8]) {
         match self {
             Self::HmacSha1(sha1) => sha1.update(input),
             Self::HmacSha256(sha256) => sha256.update(input),
         }
-        Ok(())
     }
 
-    pub fn update_and_get(&mut self, input: &[u8]) -> Result<&mut Self> {
-        self.update(input).map(|_| self)
+    pub fn update_and_get(&mut self, input: &[u8]) -> &mut Self {
+        self.update(input);
+        self
     }
 
-    pub fn finalize(&mut self) -> Result<Vec<u8>> {
-        Ok(match self {
+    pub fn finalize(&mut self) -> Vec<u8> {
+        match self {
             Self::HmacSha1(sha1) => sha1.finalize_reset().into_bytes().to_vec(),
             Self::HmacSha256(sha256) => sha256.finalize_reset().into_bytes().to_vec(),
-        })
+        }
     }
 }
 
@@ -65,20 +65,19 @@ impl CryptographicHash {
         }
     }
 
-    pub fn update(&mut self, input: &[u8]) -> Result<()> {
+    pub fn update(&mut self, input: &[u8]) {
         match self {
             Self::Sha1(sha1) => sha1.update(input),
             Self::Sha256(sha256) => sha256.update(input),
             Self::Sha512(sha512) => sha512.update(input),
         }
-        Ok(())
     }
 
-    pub fn finalize(&mut self) -> Result<Vec<u8>> {
-        Ok(match self {
+    pub fn finalize(&mut self) -> Vec<u8> {
+        match self {
             Self::Sha1(sha1) => sha1.finalize_reset().to_vec(),
             Self::Sha256(sha256) => sha256.finalize_reset().to_vec(),
             Self::Sha512(sha512) => sha512.finalize_reset().to_vec(),
-        })
+        }
     }
 }

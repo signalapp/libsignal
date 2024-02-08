@@ -211,7 +211,7 @@ fn CryptographicHash_New(algo: String) -> Result<CryptographicHash> {
 }
 
 #[bridge_fn_void(ffi = false, node = false)]
-fn CryptographicHash_Update(hash: &mut CryptographicHash, input: &[u8]) -> Result<()> {
+fn CryptographicHash_Update(hash: &mut CryptographicHash, input: &[u8]) {
     hash.update(input)
 }
 
@@ -221,14 +221,14 @@ fn CryptographicHash_UpdateWithOffset(
     input: &[u8],
     offset: u32,
     len: u32,
-) -> Result<()> {
+) {
     let offset = offset as usize;
     let len = len as usize;
     hash.update(&input[offset..(offset + len)])
 }
 
 #[bridge_fn(ffi = false, node = false)]
-fn CryptographicHash_Finalize(hash: &mut CryptographicHash) -> Result<Vec<u8>> {
+fn CryptographicHash_Finalize(hash: &mut CryptographicHash) -> Vec<u8> {
     hash.finalize()
 }
 
@@ -238,7 +238,7 @@ fn CryptographicMac_New(algo: String, key: &[u8]) -> Result<CryptographicMac> {
 }
 
 #[bridge_fn_void(ffi = false, node = false)]
-fn CryptographicMac_Update(mac: &mut CryptographicMac, input: &[u8]) -> Result<()> {
+fn CryptographicMac_Update(mac: &mut CryptographicMac, input: &[u8]) {
     mac.update(input)
 }
 
@@ -248,13 +248,13 @@ fn CryptographicMac_UpdateWithOffset(
     input: &[u8],
     offset: u32,
     len: u32,
-) -> Result<()> {
+) {
     let offset = offset as usize;
     let len = len as usize;
     mac.update(&input[offset..(offset + len)])
 }
 
 #[bridge_fn(ffi = false, node = false)]
-fn CryptographicMac_Finalize(mac: &mut CryptographicMac) -> Result<Vec<u8>> {
+fn CryptographicMac_Finalize(mac: &mut CryptographicMac) -> Vec<u8> {
     mac.finalize()
 }
