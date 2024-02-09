@@ -53,7 +53,7 @@ pub enum BridgeLayerError {
     BadArgument(String),
     BadJniParameter(&'static str),
     UnexpectedJniResultType(&'static str, &'static str),
-    NullHandle,
+    NullPointer(Option<&'static str>),
     IntegerOverflow(String),
     IncorrectArrayLength { expected: usize, actual: usize },
     CallbackException(&'static str, ThrownException),
@@ -89,7 +89,10 @@ impl fmt::Display for BridgeLayerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Jni(s) => write!(f, "JNI error {}", s),
-            Self::NullHandle => write!(f, "null handle"),
+            Self::NullPointer(None) => write!(f, "unexpected null"),
+            Self::NullPointer(Some(expected_type)) => {
+                write!(f, "got null where {expected_type} instance is expected")
+            }
             Self::BadArgument(m) => write!(f, "{}", m),
             Self::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
             Self::UnexpectedJniResultType(m, t) => {

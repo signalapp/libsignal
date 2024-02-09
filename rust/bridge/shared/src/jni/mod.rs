@@ -270,8 +270,8 @@ where
         e => e,
     };
 
-    let exception_type = match error {
-        SignalJniError::Bridge(BridgeLayerError::NullHandle) => {
+    let exception_type = match &error {
+        SignalJniError::Bridge(BridgeLayerError::NullPointer(_)) => {
             jni_class_name!(java.lang.NullPointerException)
         }
 
@@ -595,7 +595,7 @@ pub unsafe fn native_handle_cast<T>(
     highest bits are zero, greater than 64K, etc?
     */
     if handle == 0 {
-        return Err(BridgeLayerError::NullHandle);
+        return Err(BridgeLayerError::NullPointer(None));
     }
 
     Ok(&mut *(handle as *mut T))
@@ -723,7 +723,7 @@ pub fn check_jobject_type(
     class_name: &'static str,
 ) -> Result<(), BridgeLayerError> {
     if obj.is_null() {
-        return Err(BridgeLayerError::NullHandle);
+        return Err(BridgeLayerError::NullPointer(Some(class_name)));
     }
 
     let class = env.find_class(class_name)?;

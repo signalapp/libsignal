@@ -228,6 +228,9 @@ impl SimpleArgTypeInfo<'_> for u8 {
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &mut JNIEnv, foreign: &JString<'a>) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            return Err(BridgeLayerError::NullPointer(Some("java.lang.String")));
+        }
         Ok(env.get_string(foreign)?.into())
     }
 }
@@ -399,7 +402,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         }
 
         if foreign.is_null() {
-            return Err(BridgeLayerError::NullHandle);
+            return Err(BridgeLayerError::NullPointer(Some("CipherTextMessageRef")));
         }
 
         None.or_else(|| {
@@ -740,7 +743,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
             .map(|&raw_handle| unsafe {
                 (raw_handle as *const T)
                     .as_ref()
-                    .ok_or(BridgeLayerError::NullHandle)
+                    .ok_or(BridgeLayerError::NullPointer(None))
             })
             .collect()
     }
