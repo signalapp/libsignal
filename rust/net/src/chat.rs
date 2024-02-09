@@ -334,11 +334,11 @@ where
 #[async_trait]
 impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        self.send(msg, timeout).await
+        self.as_ref().send(msg, timeout).await
     }
 
     async fn disconnect(&self) {
-        self.disconnect().await
+        self.as_ref().disconnect().await
     }
 }
 
@@ -349,7 +349,7 @@ impl ChatServiceWithDebugInfo for Arc<dyn ChatServiceWithDebugInfo + Send + Sync
         msg: Request,
         timeout: Duration,
     ) -> (Result<Response, NetError>, DebugInfo) {
-        self.send_and_debug(msg, timeout).await
+        self.as_ref().send_and_debug(msg, timeout).await
     }
 }
 
