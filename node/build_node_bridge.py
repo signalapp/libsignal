@@ -100,6 +100,11 @@ def main(args=None):
             if len(tmpdir) < len(abs_build_dir):
                 cargo_env['CARGO_BUILD_TARGET_DIR'] = os.path.join(tmpdir, "libsignal")
 
+    elif node_os_name == 'darwin':
+        # macOS has a nice place for us to stash our version number.
+        if 'npm_package_version' in cargo_env:
+            cargo_env['RUSTFLAGS'] += ' -Clink-arg=-Wl,-current_version,%s' % cargo_env['npm_package_version']
+
     cmd = subprocess.Popen(cmdline, env=cargo_env)
     cmd.wait()
 
