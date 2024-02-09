@@ -5,8 +5,13 @@
 
 #![warn(clippy::unwrap_used)]
 
+use futures::executor;
 use libsignal_bridge::node::{AssumedImmutableBuffer, ResultTypeInfo, SignalNodeError};
 use libsignal_protocol::{IdentityKeyPair, SealedSenderV2SentMessage};
+use minidump::Minidump;
+use minidump_processor::ProcessorOptions;
+use minidump_unwind::symbols::string_symbol_supplier;
+use minidump_unwind::Symbolizer;
 use neon::prelude::*;
 use neon::types::buffer::TypedArray;
 
@@ -21,6 +26,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         "SealedSenderMultiRecipientMessage_Parse",
         sealed_sender_multi_recipient_message_parse,
     )?;
+    cx.export_function("MinidumpToJSONString", minidump_to_json_string)?;
     Ok(())
 }
 
@@ -151,4 +157,24 @@ fn sealed_sender_multi_recipient_message_parse(mut cx: FunctionContext) -> JsRes
         .expect("failed to construct result object");
 
     Ok(result)
+}
+
+/// ts: export function MinidumpToJSONString(buffer: Buffer): string
+fn minidump_to_json_string(mut cx: FunctionContext) -> JsResult<JsString> {
+    let buffer_arg = cx.argument::<JsBuffer>(0)?;
+    let dump = Minidump::read(buffer_arg.as_slice(&cx)).expect("Failed to parse minidump");
+    let provider = Symbolizer::new(string_symbol_supplier(std::collections::HashMap::new()));
+    let options = ProcessorOptions::default();
+
+    let state = executor::block_on(minidump_processor::process_minidump_with_options(
+        &dump, &provider, options,
+    ))
+    .expect("processing to finish");
+
+    let mut json = Vec::new();
+    state
+        .print_json(&mut json, false)
+        .expect("Failed to print json");
+
+    return Ok(cx.string(std::str::from_utf8(&json).expect("Failed to convert JSON to utf8")));
 }

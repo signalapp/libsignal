@@ -246,6 +246,7 @@ export function LookupRequest_setReturnAcisWithoutUaks(request: Wrapper<LookupRe
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Buffer): void;
 export function MessageBackupKey_New(masterKey: Buffer, aci: Buffer): MessageBackupKey;
 export function MessageBackupValidator_Validate(key: Wrapper<MessageBackupKey>, firstStream: InputStream, secondStream: InputStream, len: Buffer): Promise<MessageBackupValidationOutcome>;
+export function MinidumpToJSONString(buffer: Buffer): string;
 export function Mp4Sanitizer_Sanitize(input: InputStream, len: Buffer): Promise<SanitizedMetadata>;
 export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;
