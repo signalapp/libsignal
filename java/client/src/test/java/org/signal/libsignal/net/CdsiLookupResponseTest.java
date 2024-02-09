@@ -38,4 +38,9 @@ public class CdsiLookupResponseTest {
 
     assertEquals(expected, actual);
   }
+
+  @Test
+  public void cdsiLookupErrorConvert() {
+    assertThrows(java.lang.Exception.class, () -> Native.TESTING_CdsiLookupErrorConvert());
+  }
 }

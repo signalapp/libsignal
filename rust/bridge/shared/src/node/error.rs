@@ -395,7 +395,7 @@ impl SignalNodeError for std::io::Error {
     }
 }
 
-impl SignalNodeError for libsignal_net::cdsi::Error {
+impl SignalNodeError for libsignal_net::cdsi::LookupError {
     fn throw<'a>(
         self,
         cx: &mut impl Context<'a>,
@@ -414,7 +414,7 @@ impl SignalNodeError for libsignal_net::cdsi::Error {
             ),
             Self::Net(_)
             | Self::Protocol
-            | Self::AttestationError
+            | Self::AttestationError(_)
             | Self::InvalidResponse
             | Self::ParseError => (IO_ERROR, None),
         };

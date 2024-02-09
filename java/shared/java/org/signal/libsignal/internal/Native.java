@@ -577,6 +577,7 @@ public final class Native {
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
+  public static native void TESTING_CdsiLookupErrorConvert();
   public static native Map TESTING_CdsiLookupResponseConvert();
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);

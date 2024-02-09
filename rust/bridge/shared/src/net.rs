@@ -167,14 +167,14 @@ async fn CdsiLookup_new(
     password: String,
     request: &LookupRequest,
     timeout_millis: u32,
-) -> Result<CdsiLookup, cdsi::Error> {
+) -> Result<CdsiLookup, cdsi::LookupError> {
     let request = std::mem::take(&mut *request.0.lock().expect("not poisoned"));
     let auth = Auth { username, password };
 
     let connected = CdsiConnection::connect(&connection_manager.cdsi, auth).await?;
     let (token, remaining_response) = timeout(
         Duration::from_millis(timeout_millis.into()),
-        cdsi::Error::Net(NetError::Timeout),
+        cdsi::LookupError::Net(NetError::Timeout),
         connected.send_request(request),
     )
     .await?;
@@ -191,7 +191,7 @@ fn CdsiLookup_token(lookup: &CdsiLookup) -> &[u8] {
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false)]
-async fn CdsiLookup_complete(lookup: &CdsiLookup) -> Result<LookupResponse, cdsi::Error> {
+async fn CdsiLookup_complete(lookup: &CdsiLookup) -> Result<LookupResponse, cdsi::LookupError> {
     let CdsiLookup {
         token: _,
         remaining,

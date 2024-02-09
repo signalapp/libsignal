@@ -2,14 +2,16 @@
 // Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-
-use jni::objects::{GlobalRef, JObject, JString, JThrowable};
-use jni::{JNIEnv, JavaVM};
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
+use jni::objects::{GlobalRef, JObject, JString, JThrowable};
+use jni::{JNIEnv, JavaVM};
+use libsignal_net::infra::errors::NetError;
+
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_net::cdsi::CdsiError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
@@ -39,7 +41,8 @@ pub enum SignalJniError {
     Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
-    Cdsi(libsignal_net::cdsi::Error),
+    Cdsi(CdsiError),
+    Net(NetError),
     Bridge(BridgeLayerError),
 }
 
@@ -80,6 +83,7 @@ impl fmt::Display for SignalJniError {
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
+            SignalJniError::Net(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
         }
     }
@@ -212,9 +216,23 @@ impl From<signal_media::sanitize::webp::Error> for SignalJniError {
     }
 }
 
-impl From<libsignal_net::cdsi::Error> for SignalJniError {
-    fn from(e: libsignal_net::cdsi::Error) -> SignalJniError {
-        SignalJniError::Cdsi(e)
+impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
+    fn from(e: libsignal_net::cdsi::LookupError) -> SignalJniError {
+        use libsignal_net::cdsi::LookupError;
+        SignalJniError::Cdsi(match e {
+            LookupError::AttestationError(e) => return e.into(),
+            LookupError::Net(e) => return e.into(),
+            LookupError::InvalidResponse => CdsiError::InvalidResponse,
+            LookupError::Protocol => CdsiError::Protocol,
+            LookupError::RateLimited { retry_after } => CdsiError::RateLimited { retry_after },
+            LookupError::ParseError => CdsiError::ParseError,
+        })
+    }
+}
+
+impl From<NetError> for SignalJniError {
+    fn from(e: NetError) -> SignalJniError {
+        Self::Net(e)
     }
 }
 

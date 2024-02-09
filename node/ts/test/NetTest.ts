@@ -7,6 +7,7 @@ import { config, expect } from 'chai';
 import * as util from './util';
 import { Aci, Pni } from '../Address';
 import * as Native from '../../Native';
+import { ErrorCode, LibSignalErrorBase } from '../Errors';
 
 util.initLogger();
 config.truncateThreshold = 0;
@@ -36,6 +37,12 @@ describe('cdsi lookup', () => {
       };
 
       expect(Native.TESTING_CdsiLookupResponseConvert()).deep.equals(expected);
+    });
+
+    it('converts errors to native', () => {
+      expect(() => Native.TESTING_CdsiLookupErrorConvert())
+        .throws(LibSignalErrorBase)
+        .with.property('code', ErrorCode.IoError);
     });
   });
 });

@@ -530,7 +530,8 @@ where
             jni_class_name!(org.signal.libsignal.media.ParseException)
         }
 
-        SignalJniError::Cdsi(_) => jni_class_name!(org.signal.libsignal.cds2.CdsiLookupException),
+        SignalJniError::Cdsi(_) => jni_class_name!(org.signal.libsignal.net.CdsiLookupException),
+        SignalJniError::Net(_) => jni_class_name!(org.signal.libsignal.net.NetworkException),
     };
 
     let throwable = env

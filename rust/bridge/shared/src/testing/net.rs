@@ -4,7 +4,7 @@
 //
 
 use libsignal_bridge_macros::*;
-use libsignal_net::cdsi::{LookupResponse, LookupResponseEntry, E164};
+use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
@@ -38,4 +38,9 @@ fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
         ],
         debug_permits_used: DEBUG_PERMITS_USED,
     }
+}
+
+#[bridge_fn(ffi = false)]
+fn TESTING_CdsiLookupErrorConvert() -> Result<(), LookupError> {
+    Err(LookupError::ParseError)
 }
