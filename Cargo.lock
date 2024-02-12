@@ -1854,7 +1854,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.39.3"
+version = "0.40.0"
 dependencies = [
  "async-trait",
  "attest",
@@ -1875,7 +1875,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.39.3"
+version = "0.40.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -1996,7 +1996,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.39.3"
+version = "0.40.0"
 dependencies = [
  "async-trait",
  "cmake",
