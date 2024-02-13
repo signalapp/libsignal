@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: pip3 install flake8 mypy
     - run: shellcheck **/*.sh bin/verify_duplicate_crates bin/adb-run-test
     - run: python3 -m flake8 .

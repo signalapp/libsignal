@@ -30,7 +30,7 @@ jobs:
         # Ubuntu binaries are built using Docker, below
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.arm64-rust-target }}
 
@@ -51,7 +51,7 @@ jobs:
       shell: bash
       run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
 
@@ -69,7 +69,7 @@ jobs:
       working-directory: node
 
     - name: Upload library
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: libsignal_client (${{matrix.os}})
         path: node/prebuilds/*
@@ -80,12 +80,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: node/docker-prebuildify.sh
 
     - name: Upload library
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: libsignal_client (ubuntu-docker)
         path: node/prebuilds/*
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -112,16 +112,16 @@ jobs:
     needs: [build, build-docker, verify-rust]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
         registry-url: 'https://registry.npmjs.org/'
 
     - name: Download built libraries
       id: download
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
 

@@ -30,9 +30,9 @@ jobs:
       rust_ios: ${{ steps.filter.outputs.rust_ios }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2.11.1
+    - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0
       id: filter
       with:
         filters: |
@@ -105,14 +105,14 @@ jobs:
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --component rustfmt,clippy
 
     - name: Cache locally-built tools
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: local-tools
         key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version') }}
@@ -203,7 +203,7 @@ jobs:
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
@@ -228,7 +228,7 @@ jobs:
     if: ${{ needs.changes.outputs.java == 'true' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         # Download all commits so we can search for the merge base with origin/main.
         fetch-depth: 0
@@ -269,7 +269,7 @@ jobs:
     if: ${{ needs.changes.outputs.node == 'true' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -288,7 +288,7 @@ jobs:
     - run: brew install protobuf
       if: matrix.os == 'macos-latest'
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
 
@@ -323,7 +323,7 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -346,14 +346,14 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Run lint
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
       - name: Check out SignalCoreKit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: signalapp/SignalCoreKit
           path: SignalCoreKit

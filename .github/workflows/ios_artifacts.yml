@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - id: archive-name
       run: echo name=libsignal-client-ios-build-v$(sed -En "s/${VERSION_REGEX}/\1/p" LibSignalClient.podspec).tar.gz >> $GITHUB_OUTPUT
@@ -50,19 +50,19 @@ jobs:
     - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY ${{ steps.archive-name.outputs.name }}.sha256'
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
-    - uses: google-github-actions/auth@v1
+    - uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: 'projects/741367068918/locations/global/workloadIdentityPools/github/providers/github-actions'
         service_account: 'github-actions@signal-build-artifacts.iam.gserviceaccount.com'
 
-    - uses: google-github-actions/upload-cloud-storage@v1
+    - uses: google-github-actions/upload-cloud-storage@v2
       with:
         path: ${{ steps.archive-name.outputs.name }}
         destination: build-artifacts.signal.org/libraries
 
     # This step is expected to fail if not run on a tag.
     - name: Upload checksum to release
-      uses: ncipollo/release-action@4c75f0f2e4ae5f3c807cf0904605408e319dcaac # v1.11.1
+      uses: ncipollo/release-action@66b1844f0b7ef940787c9d128846d5ac09b3881f # v1.14
       with:
         allowUpdates: true
         artifactErrorsFailBuild: true
