@@ -308,13 +308,13 @@ pub enum QuoteError {
     TypeUnknown,
 }
 
-impl<M: Method> TryFrom<proto::Chat> for ChatData<M> {
+impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Chat, C> for ChatData<M> {
     type Error = ChatError;
 
-    fn try_from(value: proto::Chat) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::Chat, context: &C) -> Result<Self, Self::Error> {
         let proto::Chat {
             id: _,
-            recipientId: _,
+            recipientId,
             expirationTimerMs,
             muteUntilMs,
             // TODO validate these fields
@@ -325,6 +325,12 @@ impl<M: Method> TryFrom<proto::Chat> for ChatData<M> {
             wallpaper: _,
             special_fields: _,
         } = value;
+
+        let recipient_id = RecipientId(recipientId);
+
+        if !context.contains(&recipient_id) {
+            return Err(ChatError::NoRecipient(recipient_id));
+        }
 
         let expiration_timer = Duration::from_millis(expirationTimerMs);
         let mute_until = Timestamp::from_millis(muteUntilMs, "Chat.muteUntilMs");
@@ -548,7 +554,6 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::ContactMessage, R> for Contact
         let proto::ContactMessage {
             reactions,
             contact,
-            // TODO validate these fields
             special_fields: _,
         } = item;
 
@@ -804,14 +809,14 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateM
                 new: newName,
             },
             Update::ThreadMerge(proto::ThreadMergeChatUpdate {
+                special_fields: _,
                 // TODO validate this field
                 previousE164: _,
-                special_fields: _,
             }) => Self::ThreadMerge,
             Update::SessionSwitchover(proto::SessionSwitchoverChatUpdate {
+                special_fields: _,
                 // TODO validate this field
                 e164: _,
-                special_fields: _,
             }) => Self::SessionSwitchover,
             Update::CallingMessage(proto::CallChatUpdate {
                 call,

@@ -92,7 +92,8 @@ impl MessageBackupKey {
             .expand(INFO, &mut full_bytes)
             .expect("valid length");
 
-        // TODO split into arrays instead of slices when that is stabilized.
+        // TODO split into arrays instead of slices when the API for that is
+        // stabilized. See https://github.com/rust-lang/rust/issues/90091
         let (hmac_key, tail) = full_bytes.split_at(Self::HMAC_KEY_LEN);
         let (aes_key, iv) = tail.split_at(Self::AES_KEY_LEN);
 

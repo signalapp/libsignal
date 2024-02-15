@@ -10,7 +10,7 @@ use std::time::{Duration, SystemTime};
 use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{Call, CallError};
 use crate::backup::chat::{ChatData, ChatError, ChatItemError};
-use crate::backup::frame::{CallId, ChatId, GetForeignId as _, RecipientId};
+use crate::backup::frame::{CallId, ChatId, RecipientId};
 use crate::backup::method::{Contains, KeyExists, Map as _, Method, Store, ValidateOnly};
 use crate::backup::recipient::{RecipientData, RecipientError};
 use crate::backup::sticker::{PackId as StickerPackId, StickerId, StickerPack, StickerPackError};
@@ -222,13 +222,10 @@ impl<M: Method> PartialBackup<M> {
 
     fn add_chat(&mut self, chat: proto::Chat) -> Result<(), ChatFrameError> {
         let id = chat.id();
-        let recipient_id = chat.foreign_id();
 
-        if !self.recipients.contains(&recipient_id) {
-            return Err(ChatFrameError(id, ChatError::NoRecipient(recipient_id)));
-        }
-
-        let chat = chat.try_into().map_err(|e| ChatFrameError(id, e))?;
+        let chat = chat
+            .try_into_with(&self.recipients)
+            .map_err(|e| ChatFrameError(id, e))?;
         match self.chats.entry(id) {
             hash_map::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
             hash_map::Entry::Vacant(v) => {
@@ -239,7 +236,7 @@ impl<M: Method> PartialBackup<M> {
     }
 
     fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ChatFrameError> {
-        let chat_id = chat_item.foreign_id();
+        let chat_id = ChatId(chat_item.chatId);
 
         let chat_data = match self.chats.entry(chat_id) {
             hash_map::Entry::Occupied(o) => o.into_mut(),

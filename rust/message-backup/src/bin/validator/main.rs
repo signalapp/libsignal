@@ -42,7 +42,7 @@ struct Cli {
     #[arg(long)]
     print: bool,
 
-    // TODO once https://github.com/clap-rs/clap/issues/5292 is resolved, make
+    // TODO once https://github.com/clap-rs/clap/issues/5092 is resolved, make
     // `derive_key` and `key_parts` Optional at the top level.
     #[command(flatten)]
     derive_key: DeriveKey,
