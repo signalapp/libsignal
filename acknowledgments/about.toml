@@ -92,6 +92,15 @@ end = "SOFTWARE."
 checksum = "7d5e1fb4bbd5e89a687f94c3d3826db50e26bd6f4ade136a025dc2080c5bdc85"
 
 
+# const-str is embedded in a larger repo
+[const-str.clarify]
+license = "MIT"
+
+[[const-str.clarify.git]]
+path = "LICENSE"
+checksum = "565aacda8f5ea53f937f867ed49a0ac7e6828b60b4568803185cd0a13297d4e4"
+
+
 # Newer versions of convert_case have a LICENSE file, we'll use that one
 [convert_case.clarify]
 license = "MIT"
@@ -210,6 +219,15 @@ path = "LICENSE"
 checksum = "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
 
 
+# procfs-core is embedded in a larger repo
+[procfs-core.clarify]
+license = "MIT"
+
+[[procfs-core.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "c5bbf39118b0639bf8bd391ae0d7d81f25c1cb4066e0fdae6a405b20fb7ca170"
+
+
 # The prost-* crates are embedded in a larger repo.
 [prost-build.clarify]
 license = "Apache-2.0"
@@ -234,6 +252,22 @@ override-git-commit = "v0.9.0"
 [[prost-types.clarify.git]]
 path = "LICENSE"
 checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+
+
+# The protobuf crates are embedded in a larger repo
+[protobuf-parse.clarify]
+license = "MIT"
+
+[[protobuf-parse.clarify.git]]
+path = "LICENSE.txt"
+checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
+
+[protobuf-support.clarify]
+license = "MIT"
+
+[[protobuf-support.clarify.git]]
+path = "LICENSE.txt"
+checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
 
 
 # tokio-macros is embedded in a larger repo
