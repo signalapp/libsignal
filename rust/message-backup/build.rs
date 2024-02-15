@@ -37,6 +37,12 @@ fn main() {
 
     let make_codegen = || {
         let mut codegen = protobuf_codegen::Codegen::new();
+
+        // Use the lite runtime to reduce code size, unless the full runtime is
+        // needed for JSON conversion code.
+        #[cfg(not(feature = "json"))]
+        codegen.customize(Customize::default().lite_runtime(true));
+
         codegen
             .protoc()
             .protoc_extra_arg(
@@ -46,8 +52,6 @@ fn main() {
                 "--experimental_allow_proto3_optional",
             )
             .customize_callback(DeriveVisitUnknownFields)
-            // Use the lite runtime to reduce code size.
-            .customize(Customize::default().lite_runtime(true))
             .include("src")
             .out_dir(&out_dir);
         codegen

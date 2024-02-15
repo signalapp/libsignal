@@ -269,6 +269,14 @@ license = "MIT"
 path = "LICENSE.txt"
 checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
 
+[protobuf-json-mapping.clarify]
+license = "MIT"
+
+[[protobuf-json-mapping.clarify.git]]
+path = "LICENSE.txt"
+checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
+
+
 
 # tokio-macros is embedded in a larger repo
 [tokio-macros.clarify]

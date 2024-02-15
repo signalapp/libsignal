@@ -19,8 +19,12 @@ pub mod backup;
 pub mod frame;
 pub mod key;
 pub mod parse;
-pub(crate) mod proto;
 pub mod unknown;
+
+#[cfg(not(feature = "expose-proto-types"))]
+pub(crate) mod proto;
+#[cfg(feature = "expose-proto-types")]
+pub mod proto;
 
 pub struct BackupReader<R> {
     reader: VarintDelimitedReader<R>,

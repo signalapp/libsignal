@@ -132,7 +132,10 @@ mod test {
                 .write_raw_varint32(MESSAGE_SIZE.try_into().unwrap())
                 .expect("can hold varint");
             writer.flush().expect("can write");
-            assert_eq!(writer.total_bytes_written(), VARINT_LEN.try_into().unwrap());
+            assert_eq!(
+                writer.total_bytes_written(),
+                u64::try_from(VARINT_LEN).unwrap()
+            );
         }
 
         let reader = VarintDelimitedReader::new(short_buf.as_slice());

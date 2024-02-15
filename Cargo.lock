@@ -1910,12 +1910,15 @@ dependencies = [
  "hex-literal",
  "hkdf",
  "hmac",
+ "libsignal-message-backup",
  "libsignal-message-backup-macros",
  "libsignal-protocol",
  "log",
  "mediasan-common",
  "protobuf",
  "protobuf-codegen",
+ "protobuf-json-mapping",
+ "serde_json",
  "sha2",
  "signal-crypto",
  "subtle",
@@ -2894,6 +2897,17 @@ dependencies = [
  "protobuf-parse",
  "regex",
  "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "protobuf-json-mapping"
+version = "3.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "523039a90666b229b5260fb91c20686ef309b9d1b1fc3cacb283a0895753ec44"
+dependencies = [
+ "protobuf",
+ "protobuf-support",
  "thiserror",
 ]
 

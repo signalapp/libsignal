@@ -4711,7 +4711,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## protobuf 3.3.0, protobuf-codegen 3.3.0, protobuf-parse 3.3.0, protobuf-support 3.3.0
+## protobuf 3.3.0, protobuf-codegen 3.3.0, protobuf-json-mapping 3.3.0, protobuf-parse 3.3.0, protobuf-support 3.3.0
 
 ```
 Copyright (c) 2019 Stepan Koltsov
