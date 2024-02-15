@@ -35,7 +35,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: jniLibs
-        path: java/android/src/main/jniLibs/*
+        path: java/android/src/androidTest/jniLibs/*
         retention-days: 2
 
   android-emulator-tests:
@@ -67,7 +67,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jniLibs
-          path: java/android/src/main/jniLibs/
+          path: java/android/src/androidTest/jniLibs/
 
       # From reactivecircus/android-emulator-runner
       - name: AVD cache
@@ -96,7 +96,7 @@ jobs:
           api-level: 21
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
-          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
+          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries -x android:makeTestJniLibraries
           working-directory: java
 
   node-docker:

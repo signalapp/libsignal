@@ -159,7 +159,7 @@ public final class Native {
   public static native Map Cds2Metrics_extract(byte[] attestationMsg);
 
   public static native void CdsiLookup_Destroy(long handle);
-  public static native CompletableFuture<Map> CdsiLookup_complete(long asyncRuntime, long lookup);
+  public static native CompletableFuture<Object> CdsiLookup_complete(long asyncRuntime, long lookup);
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
   public static native byte[] CdsiLookup_token(long lookup);
 
@@ -578,7 +578,7 @@ public final class Native {
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
   public static native void TESTING_CdsiLookupErrorConvert();
-  public static native Map TESTING_CdsiLookupResponseConvert();
+  public static native Object TESTING_CdsiLookupResponseConvert();
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);

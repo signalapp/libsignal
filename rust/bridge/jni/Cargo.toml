@@ -25,5 +25,8 @@ rand = "0.8"
 log = { version = "0.4", features = ["release_max_level_info"] }
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 
+[features]
+testing-fns = ["libsignal-bridge/testing-fns"]
+
 [target.aarch64-linux-android.dependencies]
 cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto

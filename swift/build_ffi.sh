@@ -36,6 +36,10 @@ else
   export CARGO_PROFILE_RELEASE_LTO=thin
 fi
 
+if [[ "${CARGO_BUILD_TARGET:-}" != "aarch64-apple-ios" ]]; then
+  FEATURES="testing-fns"
+fi
+
 usage() {
   cat >&2 <<END
 Usage: $(basename "$0") [-d|-r] [-v] [--generate-ffi|--verify-ffi|--build-std]
@@ -123,7 +127,7 @@ if [[ -n "${BUILD_STD:-}" ]]; then
   fi
 fi
 
-echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${BUILD_STD:+-Zbuild-std}
+echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${FEATURES:+--features $FEATURES} ${BUILD_STD:+-Zbuild-std}
 
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 

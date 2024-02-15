@@ -1225,7 +1225,7 @@ macro_rules! jni_result_type {
         jni::JObject<'local>
     };
     (LookupResponse) => {
-        jni::JavaMap<'local>
+        jni::JObject<'local>
     };
     (CiphertextMessage) => {
         jni::JavaCiphertextMessage<'local>

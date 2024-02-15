@@ -56,3 +56,4 @@ nonzero_ext = "0.3.0"
 ffi = []
 jni = ["dep:jni", "bytemuck"]
 node = ["neon", "linkme", "signal-neon-futures"]
+testing-fns = []
