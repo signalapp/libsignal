@@ -75,10 +75,9 @@ macro_rules! impl_with_foreign_id {
 impl_with_foreign_id!(Chat, RecipientId, recipientId);
 impl_with_foreign_id!(ChatItem, ChatId, chatId);
 impl_with_foreign_id!(ChatItem, RecipientId, authorId);
-impl_with_foreign_id!(Call, ChatId, conversationRecipientId);
+impl_with_foreign_id!(Call, RecipientId, conversationRecipientId);
 impl WithForeignId<Option<RingerRecipientId>> for Call {
     fn foreign_id(&self) -> Option<RingerRecipientId> {
-        // TODO make the proto field optional.
         self.ringerRecipientId
             .map(RecipientId)
             .map(RingerRecipientId)

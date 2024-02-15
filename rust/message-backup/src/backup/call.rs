@@ -6,7 +6,7 @@
 use crate::backup::frame::{RecipientId, RingerRecipientId};
 use crate::backup::method::Contains;
 use crate::backup::time::Timestamp;
-use crate::backup::{ChatId, TryFromWith};
+use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ pub enum CallError {
     /// multiple records with the same ID
     DuplicateId,
     /// no record for {0:?}
-    NoConversation(ChatId),
+    NoConversation(RecipientId),
     /// no record for {0:?}
     NoRingerRecipient(RingerRecipientId),
     /// call type is UNKNOWN_TYPE
@@ -51,7 +51,7 @@ pub enum CallState {
     Missed,
 }
 
-impl<C: Contains<RecipientId> + Contains<ChatId>> TryFromWith<proto::Call, C> for Call {
+impl<C: Contains<RecipientId>> TryFromWith<proto::Call, C> for Call {
     type Error = CallError;
 
     fn try_from_with(call: proto::Call, context: &C) -> Result<Self, Self::Error> {
@@ -66,7 +66,7 @@ impl<C: Contains<RecipientId> + Contains<ChatId>> TryFromWith<proto::Call, C> fo
             special_fields: _,
         } = call;
 
-        let conversation_recipient_id = ChatId(conversationRecipientId);
+        let conversation_recipient_id = RecipientId(conversationRecipientId);
         let ringer_recipient_id = ringerRecipientId.map(|r| RingerRecipientId(RecipientId(r)));
 
         if !context.contains(&conversation_recipient_id) {
@@ -127,7 +127,7 @@ mod test {
         pub(crate) fn test_data() -> Self {
             Self {
                 callId: Self::TEST_ID,
-                conversationRecipientId: proto::Chat::TEST_ID,
+                conversationRecipientId: proto::Recipient::TEST_ID,
                 ringerRecipientId: Some(proto::Recipient::TEST_ID),
                 outgoing: true,
                 state: proto::call::State::DECLINED_BY_USER.into(),
@@ -143,12 +143,6 @@ mod test {
     impl Contains<RecipientId> for TestContext {
         fn contains(&self, key: &RecipientId) -> bool {
             key == &RecipientId(proto::Recipient::TEST_ID)
-        }
-    }
-
-    impl Contains<ChatId> for TestContext {
-        fn contains(&self, key: &ChatId) -> bool {
-            key == &ChatId(proto::Chat::TEST_ID)
         }
     }
 

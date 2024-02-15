@@ -1,0 +1,28 @@
+[
+  {
+    "version": "1",
+    "backupTimeMs": "1705692409729"
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "contact": {
+        "registered": "REGISTERED"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "self": {}
+    }
+  },
+  {
+    "call": {
+      "type": "AUDIO_CALL",
+      "state": "COMPLETED",
+      "conversationRecipientId": "1",
+      "ringerRecipientId": "1"
+    }
+  }
+]
