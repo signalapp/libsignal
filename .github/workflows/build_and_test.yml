@@ -336,6 +336,10 @@ jobs:
       run: swift test -v
       working-directory: swift
 
+    - name: Build Swift package documentation
+      run: swift package plugin generate-documentation --analyze --warnings-as-errors
+      working-directory: swift
+
   swift_cocoapod:
     name: Swift CocoaPod
 
