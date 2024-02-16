@@ -74,7 +74,7 @@ impl From<PartialBackup<Store>> for Backup {
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum ValidationError {
-    /// no item in frame
+    /// Frame.item is a oneof but has no value
     EmptyFrame,
     /// multiple AccountData frames found
     MultipleAccountData,

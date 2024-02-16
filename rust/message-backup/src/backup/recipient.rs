@@ -20,7 +20,7 @@ use crate::proto::backup::recipient::Destination as RecipientDestination;
 pub enum RecipientError {
     /// multiple frames with the same ID
     DuplicateRecipient,
-    /// no destination value
+    /// Recipient.destination is a oneof but is empty
     MissingDestination,
     /// invalid {0}
     InvalidServiceId(ServiceIdKind),

@@ -39,15 +39,15 @@ pub enum ChatItemError {
     NoChatForItem,
     /// no record for chat item author {0:?}
     AuthorNotFound(RecipientId),
-    /// no value for item
+    /// ChatItem.item is a oneof but is empty
     MissingItem,
     /// quote: {0}
     Quote(#[from] QuoteError),
     /// reaction: {0}
     Reaction(#[from] ReactionError),
-    /// ChatUpdateMessage has no update value
+    /// ChatUpdateMessage.update is a oneof but is empty
     UpdateIsEmpty,
-    /// CallChatUpdate has no call value
+    /// CallChatUpdate.call is a oneof but is empty
     CallIsEmpty,
     /// unknown call ID {0:?}
     NoCallForId(CallId),
@@ -55,7 +55,7 @@ pub enum ChatItemError {
     InvalidAci,
     /// GroupChange has no changes.
     GroupChangeIsEmpty,
-    /// GroupUpdate change {0} has no update value.
+    /// for GroupUpdate change {0}, Update.update is a oneof but is empty
     GroupChangeUpdateIsEmpty(usize),
     /// group update: {0}
     GroupUpdate(#[from] group::GroupUpdateError),
@@ -63,7 +63,7 @@ pub enum ChatItemError {
     StickerMessageMissingSticker,
     /// sticker message: {0}
     StickerMessage(#[from] MessageStickerError),
-    /// directionalDetails is empty
+    /// ChatItem.directionalDetails is a oneof but is empty
     NoDirection,
     /// outgoing message {0}
     Outgoing(#[from] OutgoingSendError),
@@ -998,7 +998,13 @@ mod test {
         pub(crate) fn test_voice_message_data() -> Self {
             Self {
                 attachments: vec![proto::MessageAttachment {
-                    pointer: Some(proto::FilePointer::default()).into(),
+                    pointer: Some(proto::FilePointer {
+                        locator: Some(proto::file_pointer::Locator::BackupLocator(
+                            Default::default(),
+                        )),
+                        ..Default::default()
+                    })
+                    .into(),
                     flag: proto::message_attachment::Flag::VOICE_MESSAGE.into(),
                     ..Default::default()
                 }],

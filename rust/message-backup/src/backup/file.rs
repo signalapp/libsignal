@@ -18,6 +18,8 @@ pub enum VoiceMessageAttachmentError {
     WrongFlag,
     /// missing file pointer
     NoFilePointer,
+    /// FilePointer.locator is a oneof but is empty
+    NoLocator,
 }
 
 impl TryFrom<proto::MessageAttachment> for VoiceMessageAttachment {
@@ -35,6 +37,7 @@ impl TryFrom<proto::MessageAttachment> for VoiceMessageAttachment {
         }
 
         let FilePointer {
+            locator,
             // TODO validate these fields
             key: _,
             contentType: _,
@@ -46,11 +49,12 @@ impl TryFrom<proto::MessageAttachment> for VoiceMessageAttachment {
             height: _,
             caption: _,
             blurHash: _,
-            locator: _,
             special_fields: _,
         } = pointer
             .into_option()
             .ok_or(VoiceMessageAttachmentError::NoFilePointer)?;
+
+        let _ = locator.ok_or(VoiceMessageAttachmentError::NoLocator)?;
 
         Ok(VoiceMessageAttachment {
             _limit_construction_to_module: (),

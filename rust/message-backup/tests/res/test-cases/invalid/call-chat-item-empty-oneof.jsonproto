@@ -1,0 +1,37 @@
+[
+  {
+    "version": "1",
+    "backupTimeMs": "1705692409729"
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "contact": {
+        "aci": "IiMfftM7TXC2Brinq8Wbvw==",
+        "registered": "REGISTERED"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "self": {}
+    }
+  },
+  {
+    "chat": {
+      "id": "1",
+      "recipientId": "2"
+    }
+  },
+  {
+    "chatItem": {
+      "chatId": "1",
+      "authorId": "2",
+      "directionless": {},
+      "updateMessage": {
+        "callingMessage": {}
+      }
+    }
+  }
+]
