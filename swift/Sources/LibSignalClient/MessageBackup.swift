@@ -75,9 +75,11 @@ public struct MessageBackupUnknownFields {
 
 private class ValidationOutcome: NativeHandleOwner {
   public var unknownFields: MessageBackupUnknownFields {
-    let fields = try! self.withNativeHandle { result in
-      try invokeFnReturningStringArray {
-        signal_message_backup_validation_outcome_get_unknown_fields($0, result)
+    let fields = failOnError {
+      try self.withNativeHandle { result in
+        try invokeFnReturningStringArray {
+          signal_message_backup_validation_outcome_get_unknown_fields($0, result)
+        }
       }
     }
     return MessageBackupUnknownFields(fields: fields)

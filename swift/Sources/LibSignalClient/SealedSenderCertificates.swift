@@ -198,7 +198,9 @@ public class SenderCertificate: NativeHandleOwner {
     }
 
     public var sender: SealedSenderAddress {
-        return try! SealedSenderAddress(e164: self.senderE164, uuidString: self.senderUuid, deviceId: self.deviceId)
+        return failOnError {
+            try SealedSenderAddress(e164: self.senderE164, uuidString: self.senderUuid, deviceId: self.deviceId)
+        }
     }
 
     public var serverCertificate: ServerCertificate {

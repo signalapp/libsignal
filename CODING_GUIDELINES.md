@@ -73,6 +73,8 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - **Write API docs** using [DocC syntax][] (a Markdown dialect), unless an API is trivial (or not app-team-facing). Even for internal methods, though, if you do write a comment, make it a doc comment (like for Rust code), because it shows up in IDEs.
 
+- To make sure that error messages get into logs, we use the `failOnError` helper instead of `try!` for forcing an unwrap on the result of an operation that can throw an error.
+
 [DocC syntax]: https://www.swift.org/documentation/docc/writing-symbol-documentation-in-your-source-files
 
 
