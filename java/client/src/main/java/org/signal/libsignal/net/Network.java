@@ -53,25 +53,6 @@ public class Network {
     return this.connectionManager;
   }
 
-  class TokioAsyncContext implements NativeHandleGuard.Owner {
-    private long nativeHandle;
-
-    private TokioAsyncContext() {
-      this.nativeHandle = Native.TokioAsyncContext_new();
-    }
-
-    @Override
-    public long unsafeNativeHandleWithoutGuard() {
-      return this.nativeHandle;
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected void finalize() {
-      Native.TokioAsyncContext_Destroy(this.nativeHandle);
-    }
-  }
-
   class ConnectionManager implements NativeHandleGuard.Owner {
     private long nativeHandle;
 

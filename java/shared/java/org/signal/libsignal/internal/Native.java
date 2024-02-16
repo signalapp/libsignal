@@ -66,6 +66,7 @@ public final class Native {
   static {
     loadLibrary();
     Logger_Initialize(SignalProtocolLogger.INFO, Log.class);
+    preloadClasses();
   }
 
   private Native() {}
@@ -578,7 +579,7 @@ public final class Native {
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
 
   public static native void TESTING_CdsiLookupErrorConvert();
-  public static native Object TESTING_CdsiLookupResponseConvert();
+  public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);
@@ -589,6 +590,7 @@ public final class Native {
   public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
   public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);
   public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
+  public static native CompletableFuture TESTING_FutureThrowsCustomErrorType(long asyncRuntime);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);
   public static native void TESTING_PanicInBodyAsync(Object input);
@@ -638,4 +640,6 @@ public final class Native {
   public static native int ValidatingMac_Update(long mac, byte[] bytes, int offset, int length);
 
   public static native void WebpSanitizer_Sanitize(InputStream input);
+
+  public static native void preloadClasses();
 }

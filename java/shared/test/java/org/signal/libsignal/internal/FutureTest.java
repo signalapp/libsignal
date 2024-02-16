@@ -24,4 +24,11 @@ public class FutureTest {
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertTrue(e.getCause() instanceof IllegalArgumentException);
   }
+
+  @Test
+  public void testFutureThrowsUnloadedException() throws Exception {
+    Future future = Native.TESTING_FutureThrowsCustomErrorType(1);
+    ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
+    assertTrue(e.getCause() instanceof org.signal.libsignal.internal.TestingException);
+  }
 }

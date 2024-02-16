@@ -25,7 +25,7 @@ describe('cdsi lookup', () => {
   const pni: string = Pni.fromUuid(pniUuid).getServiceIdString();
 
   describe('response conversion', () => {
-    it('converts to native', () => {
+    it('converts to native', async () => {
       const expectedEntries = new Map([
         [e164Both, { aci: aci, pni: pni }],
         [e164Pni, { aci: undefined, pni: pni }],
@@ -36,7 +36,11 @@ describe('cdsi lookup', () => {
         debugPermitsUsed: debugPermitsUsed,
       };
 
-      expect(Native.TESTING_CdsiLookupResponseConvert()).deep.equals(expected);
+      const asyncContext = Native.TokioAsyncContext_new();
+      const result = await Native.TESTING_CdsiLookupResponseConvert({
+        _nativeHandle: asyncContext,
+      });
+      expect(result).deep.equals(expected);
     });
 
     it('converts errors to native', () => {

@@ -896,8 +896,13 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         )?;
         let entries_jmap = JMap::from_env(env, &entries_hashmap)?;
 
-        let entry_class =
-            env.find_class(jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry))?;
+        let entry_class = {
+            const ENTRY_CLASS: &str =
+                jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry);
+            get_preloaded_class(env, ENTRY_CLASS)
+                .transpose()
+                .unwrap_or_else(|| env.find_class(ENTRY_CLASS))?
+        };
 
         for entry in records {
             let LookupResponseEntry { aci, e164, pni } = entry;
@@ -927,9 +932,16 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
             entries_jmap.put(env, &e164, &entry)?;
         }
 
+        let class = {
+            const RESPONSE_CLASS: &str =
+                jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse);
+            get_preloaded_class(env, RESPONSE_CLASS)
+                .transpose()
+                .unwrap_or_else(|| env.find_class(RESPONSE_CLASS))?
+        };
         Ok(new_object(
             env,
-            jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse),
+            class,
             jni_args!((entries_hashmap => java.util.Map, debug_permits_used => int) -> void),
         )?)
     }

@@ -44,6 +44,10 @@ pub enum SignalJniError {
     Cdsi(CdsiError),
     Net(NetError),
     Bridge(BridgeLayerError),
+    #[cfg(feature = "testing-fns")]
+    TestingError {
+        exception_class: &'static str,
+    },
 }
 
 /// Subset of errors that can happen in the bridge layer.
@@ -85,6 +89,10 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
             SignalJniError::Net(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
+            #[cfg(feature = "testing-fns")]
+            SignalJniError::TestingError { exception_class } => {
+                write!(f, "TestingError({})", exception_class)
+            }
         }
     }
 }

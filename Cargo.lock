@@ -1812,6 +1812,7 @@ dependencies = [
  "neon",
  "nonzero_ext",
  "num_enum",
+ "once_cell",
  "partial-default",
  "paste",
  "rand",

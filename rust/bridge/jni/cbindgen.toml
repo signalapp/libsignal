@@ -5,6 +5,7 @@
 
 language = "C"
 no_includes = true
+documentation = false
 
 [export]
 item_types = ["functions"]

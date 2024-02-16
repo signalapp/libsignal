@@ -40,6 +40,23 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
     })
 }
 
+/// Preload classes used in natively-spawned threads.
+///
+/// This is useful on Android where natively-spawned threads use a
+/// [`ClassLoader`] that doesn't have access to application-defined classes.
+/// Read more [here](https://developer.android.com/training/articles/perf-jni#faq:-why-didnt-findclass-find-my-class).
+///
+/// [`ClassLoader`]: https://docs.oracle.com/javase/8/docs/api/java/lang/ClassLoader.html
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_preloadClasses<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+) {
+    run_ffi_safe(&mut env, |env| {
+        preload_classes(env).map_err(SignalJniError::from)
+    })
+}
+
 #[cfg(not(target_os = "android"))]
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_1MultiRecipientParseSentMessage<

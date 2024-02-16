@@ -177,6 +177,23 @@ async fn TESTING_ErrorOnReturnIo(_needs_cleanup: Ignored<NeedsCleanup>) -> Ignor
     ErrorOnReturn
 }
 
+#[cfg(feature = "jni")]
+struct CustomErrorType;
+
+#[cfg(feature = "jni")]
+impl From<CustomErrorType> for crate::jni::SignalJniError {
+    fn from(CustomErrorType: CustomErrorType) -> Self {
+        Self::TestingError {
+            exception_class: jni_class_name!(org.signal.libsignal.internal.TestingException),
+        }
+    }
+}
+
+#[bridge_io(NonSuspendingBackgroundThreadRuntime, ffi = false, node = false)]
+async fn TESTING_FutureThrowsCustomErrorType() -> Result<(), CustomErrorType> {
+    std::future::ready(Err(CustomErrorType)).await
+}
+
 #[bridge_fn]
 fn TESTING_ReturnStringArray() -> Box<[String]> {
     ["easy", "as", "ABC", "123"]
