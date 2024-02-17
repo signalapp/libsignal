@@ -63,11 +63,15 @@ impl NodeLogger {
 const GLOBAL_LOG_FN_KEY: &str = "__libsignal_log_fn";
 
 impl log::Log for NodeLogger {
-    fn enabled(&self, _metadata: &log::Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        libsignal_bridge::logging::log_enabled_in_apps(metadata)
     }
 
     fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
         let target = record.target().to_string();
         let file = record.file().map(|s| s.to_string());
         let line = record.line();

@@ -62,11 +62,19 @@ pub struct FfiLogger {
 
 impl log::Log for FfiLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
+        if !libsignal_bridge::logging::log_enabled_in_apps(metadata) {
+            return false;
+        }
+
         let target = CString::new(metadata.target()).expect("no 0 bytes in log target");
         (self.enabled)(target.as_ptr(), metadata.level().into())
     }
 
     fn log(&self, record: &log::Record) {
+        if !libsignal_bridge::logging::log_enabled_in_apps(record.metadata()) {
+            return;
+        }
+
         let target = CString::new(record.target()).expect("no 0 bytes in log target");
         let file = record
             .file()

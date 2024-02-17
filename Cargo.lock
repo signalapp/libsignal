@@ -1826,6 +1826,7 @@ dependencies = [
  "signal-pin",
  "static_assertions",
  "subtle",
+ "test-case",
  "tokio",
  "usernames",
  "uuid",

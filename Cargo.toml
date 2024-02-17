@@ -1,4 +1,5 @@
 [workspace]
+# When adding new members, consider updating the log filter in rust/bridge/shared/src/logging.rs.
 members = [
     "rust/attest",
     "rust/crypto",

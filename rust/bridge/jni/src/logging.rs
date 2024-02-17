@@ -101,11 +101,14 @@ impl JniLogger {
 }
 
 impl log::Log for JniLogger {
-    fn enabled(&self, _metadata: &log::Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        libsignal_bridge::logging::log_enabled_in_apps(metadata)
     }
 
     fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
         if self.log_impl(record).is_err() {
             // Drop the error; it's not like we can log it!
         }
