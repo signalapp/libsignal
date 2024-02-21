@@ -52,5 +52,6 @@ pub const RANDOMNESS_LEN: usize = 32;
 pub mod attributes;
 pub mod credentials;
 pub mod issuance;
+pub mod pass;
 pub mod presentation;
 pub mod sho;

@@ -4488,6 +4488,7 @@ name = "zkcredential"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "cfg-if",
  "criterion",
  "curve25519-dalek",
  "derive-where",
@@ -4497,6 +4498,7 @@ dependencies = [
  "lazy_static",
  "partial-default",
  "poksho",
+ "rayon",
  "serde",
  "subtle",
 ]
