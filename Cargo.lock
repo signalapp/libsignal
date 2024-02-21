@@ -2648,9 +2648,11 @@ dependencies = [
 name = "poksho"
 version = "0.7.0"
 dependencies = [
+ "criterion",
  "curve25519-dalek",
  "hex",
  "hmac",
+ "rand",
  "sha2",
  "subtle",
 ]

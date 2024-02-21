@@ -18,3 +18,11 @@ hmac = { version = "0.12", features = ["reset"] }
 
 [dev-dependencies]
 hex = "0.4"
+
+# For benchmarking
+criterion = "0.5"
+rand = "0.8"
+
+[[bench]]
+name = "sho"
+harness = false
