@@ -4501,6 +4501,7 @@ dependencies = [
  "poksho",
  "rayon",
  "serde",
+ "sha2",
  "subtle",
 ]
 

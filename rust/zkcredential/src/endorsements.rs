@@ -5,23 +5,24 @@
 
 //! A lightweight alternative to credentials based on [3HashSDHI][], similar to [PrivacyPass][].
 //!
-//! A _pass_ can be used instead of a full credential when there are no attributes hidden from the
-//! verifying server, but exactly one attribute point needs to be hidden from the issuing server.
-//! (If no points need to be hidden at all, use something simpler like [HMAC][]!) Pass issuance uses
-//! the same sort of homogeneous elliptic-curve-based encryption as the more powerful credential
-//! system, but verification is much cheaper, and passes can be reused for multiple requests. This
-//! differs from credentials, where every use should have a new presentation to avoid being linkable
-//! with previous uses, but this isn't a concern because all of the attributes that went into the
-//! pass are public to the verifying server anyway.
+//! An _endorsement_ can be used instead of a full credential when there are no attributes hidden
+//! from the verifying server, but exactly one attribute point needs to be hidden from the issuing
+//! server. (If no points need to be hidden at all, use something simpler like [HMAC][]!)
+//! Endorsement issuance uses the same sort of homogeneous elliptic-curve-based encryption as the
+//! more powerful credential system, but verification is much cheaper, and the tokens generated from
+//! endorsements can be reused for multiple requests. This differs from credentials, where every use
+//! should have a new presentation to avoid being linkable with previous uses, but this isn't a
+//! concern because all of the attributes that went into the endorsement are public to the verifying
+//! server anyway.
 //!
 //! At a high level:
 //!
 //! 1. The client and issuing server agree on the set of public attributes ("tag info"), which the
 //!    issuing server uses to derive a signing key.
 //!
-//! 2. The issuing server issues an _endorsement_ for the hidden attribute (either blinded by the
-//!    client as part of the initial request, or encrypted ahead of time). This is combined with a
-//!    proof of validity in the form of a _response._
+//! 2. The issuing server issues a list of endorsements for a list of hidden attributes (either
+//!    blinded by the client as part of the initial request, or encrypted ahead of time). This is
+//!    combined with a proof of validity in the form of a _response._
 //!
 //! 3. The client _receives_ the response, provides the same set of tag info, and validates the
 //!    proof to extract the endorsements.
@@ -29,15 +30,16 @@
 //! 4. The client may optionally combine endorsements that have the same tag info, producing a new
 //!    endorsement for a *set* of attributes.
 //!
-//! 5. The client uses an endorsement to prepare a _pass,_ first reversing the effect of the
-//!    blinding or encryption, and then hashing the endorsement together with the tag info.
+//! 5. The client generates a _token_ from the endorsement, first reversing the effect of the
+//!    blinding or encryption, and then hashing the result.
 //!
-//! 6. The verifying server receives the pass, along with all of the attributes. It recreates the
-//!    pass by issuing an endorsement for the now-revealed attribute point and then performing the
-//!    same hashing operation. If the client-provided pass matches the new one exactly, it is valid.
+//! 6. The verifying server receives the token, along with all of the attributes. It recreates the
+//!    token by issuing an endorsement for the now-revealed attribute point and then performing the
+//!    same hashing operation. If the client-provided token matches the new one exactly, it is
+//!    valid.
 //!
 //! The API in this module supports bulk issuance of endorsements, with a single proof of validity
-//! that covers all endorsements issued together. Passes can then be lazily prepared on an
+//! that covers all endorsements issued together. Tokens can then be lazily generated on an
 //! individual basis from the validated endorsements.
 //!
 //! This model can be extended to endorsements over *tuples* of attribute points as long as the
@@ -53,12 +55,13 @@ use curve25519_dalek::{RistrettoPoint, Scalar};
 use partial_default::PartialDefault;
 use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use subtle::ConstantTimeEq;
 
 use crate::sho::ShoExt;
 use crate::{VerificationFailure, RANDOMNESS_LEN};
 
-/// A server's secret key for issuing endorsements and verifying passes.
+/// A server's secret key for issuing and verifying endorsements.
 ///
 /// Endorsements are not directly issued using this key. Instead, a [`ServerDerivedKeyPair`] is
 /// used, for domain separation, rotation, and additional authenticated info. One root key can be
@@ -90,7 +93,7 @@ impl Serialize for ServerRootKeyPair {
     }
 }
 
-/// A *specific* secret key pair for issuing endorsements and verifying passes.
+/// A *specific* secret key pair for issuing and verifying endorsements.
 ///
 /// Derived from a [`ServerRootKeyPair`].
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
@@ -143,7 +146,8 @@ impl ClientDecryptionKey {
 
     /// Produces a decryption key from a key pair used to encrypt attributes.
     ///
-    /// This key is appropriate for passes issued on the **first points** of encrypted attributes.
+    /// This key is appropriate for endorsements issued on the **first points** of encrypted
+    /// attributes.
     pub fn for_first_point_of_attribute<D>(key_pair: &crate::attributes::KeyPair<D>) -> Self {
         Self::from_blinding_scalar(key_pair.a1)
     }
@@ -163,50 +167,29 @@ pub struct EndorsementResponse {
 /// Endorsements are implicitly associated with both the point they were issued on, and the key used
 /// to generate them; the key is in turn is derived from a known set of "tag info".
 ///
-/// Endorsements may be persisted on the client, or may be eagerly converted to Passes using
-/// [`prepare_pass`][Self::prepare_pass].
+/// Endorsements may be persisted on the client, or may be eagerly converted to tokens using
+/// [`to_token`][Self::to_token].
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct Endorsement {
     R: RistrettoPoint,
 }
 
-/// Enough randomness that someone can't *guess* a correct pass, but as small as possible to avoid
+/// Enough randomness that someone can't *guess* a correct token, but as small as possible to avoid
 /// overhead!
-const RAW_PASS_LEN: usize = 16;
-
-/// An opaque token representing an endorsement of a particular attribute point with a given derived
-/// key.
-///
-/// The default `==` for a `Pass` uses constant-time comparison.
-#[derive(Eq, Clone, Serialize, Deserialize, PartialDefault)]
-#[serde(transparent)]
-pub struct Pass {
-    K: [u8; RAW_PASS_LEN],
-}
-
-impl PartialEq for Pass {
-    fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other).into()
-    }
-}
-
-impl subtle::ConstantTimeEq for Pass {
-    fn ct_eq(&self, other: &Self) -> subtle::Choice {
-        self.K.ct_eq(&other.K)
-    }
-}
+const TOKEN_LEN: usize = 16;
 
 impl ServerRootKeyPair {
     /// Derives a root key by hashing `randomness`.
     pub fn generate(randomness: [u8; RANDOMNESS_LEN]) -> Self {
         let mut sho = poksho::ShoHmacSha256::new(
-            b"Signal_ZKCredential_Pass_ServerRootKeyPair_generate_20240207",
+            b"Signal_ZKCredential_Endorsements_ServerRootKeyPair_generate_20240207",
         );
         sho.absorb_and_ratchet(&randomness);
         Self::from_raw(sho.get_scalar())
     }
 
-    fn from_raw(sk: Scalar) -> Self {
+    /// Use an existing secret as a root key.
+    pub fn from_raw(sk: Scalar) -> Self {
         Self {
             sk,
             public: ServerRootPublicKey {
@@ -224,8 +207,9 @@ impl ServerRootKeyPair {
     ///
     /// **The `tag_info` should include a domain separation string** as well as any "public
     /// attributes" specific to the endorsements being issued. This is critical to ensure that
-    /// endorsements for one kind of pass cannot be repurposed as endorsements for another pass.
-    /// Note that the client and verifying server must be able to produce the same set of info.
+    /// endorsements for one kind of attribute cannot be repurposed as endorsements for another
+    /// attribute. Note that the client and verifying server must be able to produce the same set of
+    /// info.
     pub fn derive_key(&self, mut tag_info: impl ShoApi) -> ServerDerivedKeyPair {
         let t = tag_info.get_scalar();
         ServerDerivedKeyPair {
@@ -236,6 +220,14 @@ impl ServerRootKeyPair {
 }
 
 impl ServerRootPublicKey {
+    /// Use an existing point as a root public key.
+    ///
+    /// This is expected to be a point calculated as `sk * G`, where `sk` is the corresponding
+    /// secret key scalar and `G` is the (standard) Ristretto basepoint.
+    pub fn from_raw(PK: RistrettoPoint) -> Self {
+        Self { PK }
+    }
+
     /// Derives a specific public key used to issue endorsements according to `tag_info`.
     ///
     /// See [`ServerRootKeyPair::derive_key`] for a discussion of what belongs in `tag_info`;
@@ -317,9 +309,11 @@ impl EndorsementResponse {
     ) -> Vec<Scalar> {
         debug_assert_eq!(E.len(), R.len());
         let mut gen = poksho::ShoHmacSha256::new(
-            b"Signal_ZKCredential_Pass_EndorsementResponse_ProofWeights_20240207",
+            b"Signal_ZKCredential_Endorsements_EndorsementResponse_ProofWeights_20240207",
         );
         gen.absorb_and_ratchet(public_key.PK_prime.compress().as_bytes());
+        // Absorb the sum of input points rather than each one independently, to save on compress()
+        // and SHA operations.
         gen.absorb_and_ratchet(E.iter().sum::<RistrettoPoint>().compress().as_bytes());
         for R_i in R {
             gen.absorb_and_ratchet(R_i.as_bytes());
@@ -429,7 +423,7 @@ impl Endorsement {
     /// Combines several endorsements into one.
     ///
     /// All endorsements must have been signed with the same server key, and they must be for points
-    /// hidden with the same client key, or the resulting endorsement will not produce a valid pass.
+    /// hidden with the same client key, or the resulting endorsement will not produce a valid token.
     ///
     /// This is a set-like operation: order does not matter, and the result is equivalent to the
     /// server issuing an endorsement of a sum of hidden attribute points. It is still an
@@ -441,40 +435,34 @@ impl Endorsement {
         }
     }
 
-    /// Generates a pass from this endorsement, for sending to the verifying server.
-    ///
-    /// To guarantee the security properties of 3HashSDHI, `info` must contain the same tag info
-    /// used to derive the key that generated this endorsement, though it may contain additional
-    /// information. The verifying server will need to match any additional information.
-    pub fn prepare_pass(&self, client_key: &ClientDecryptionKey, info: impl ShoApi) -> Pass {
+    /// Generates a token from this endorsement, for sending to the verifying server.
+    pub fn to_token(&self, client_key: &ClientDecryptionKey) -> Box<[u8]> {
         let P = self.R * client_key.a_inv;
-        Pass::from_signature_and_info(P, info)
+        Self::to_token_raw(P)
+    }
+
+    fn to_token_raw(unblinded_endorsement: RistrettoPoint) -> Box<[u8]> {
+        // Skip the Sho for this, we're hashing a single point into a single bitstring. We don't
+        // need domain separation at this level because it should already be in the computation of
+        // the endorsement point.
+        //
+        // Note that this deviates from 3HashSDHI, which hashes in the public and private attributes
+        // as well. We get equivalent (actually stronger) security guarantees from the response
+        // proof, which they have as an optional part of their system.
+        sha2::Sha256::digest(unblinded_endorsement.compress().as_bytes()).as_slice()[..TOKEN_LEN]
+            .into()
     }
 }
 
-impl Pass {
-    fn from_signature_and_info(P: RistrettoPoint, mut info: impl ShoApi) -> Pass {
-        info.absorb_and_ratchet(P.compress().as_bytes());
-        Pass {
-            K: info.squeeze_and_ratchet(RAW_PASS_LEN).try_into().unwrap(),
-        }
-    }
-
-    /// Verifies that this pass is valid for `point` according to `server_key`.
+impl ServerDerivedKeyPair {
+    /// Verifies that a token is valid for `point` according to this key.
     ///
-    /// `server_key` must be derived using the same tag info that was used to issue this pass,
-    /// unsurprisingly. `info` must match the info the client used to
-    /// [prepare](Endorsement::prepare_pass) the pass; this will frequently be the same as the tag
-    /// info, but may include extra information.
-    pub fn verify(
-        &self,
-        point: &RistrettoPoint,
-        server_key: &ServerDerivedKeyPair,
-        info: impl ShoApi,
-    ) -> Result<(), VerificationFailure> {
-        let P = server_key.sk_prime * point;
-        let expected = Pass::from_signature_and_info(P, info);
-        if self.ct_eq(&expected).into() {
+    /// If this key was derived using different tag info than the issuance of the endorsement that
+    /// generated this token, the verification will fail.
+    pub fn verify(&self, point: &RistrettoPoint, token: &[u8]) -> Result<(), VerificationFailure> {
+        let P = self.sk_prime * point;
+        let expected = Endorsement::to_token_raw(P);
+        if token.ct_eq(&expected).into() {
             Ok(())
         } else {
             Err(VerificationFailure)
@@ -551,79 +539,23 @@ mod tests {
             "wrong public key"
         );
 
-        let passes = endorsements
+        let tokens = endorsements
             .into_iter()
-            .map(|endorsement| endorsement.prepare_pass(&decrypt_key, info_sho.clone()));
+            .map(|endorsement| endorsement.to_token(&decrypt_key));
 
         // Server
 
         let wrong_key = root_key.derive_key(wrong_info_sho.clone());
 
-        for (pass, point) in passes.zip(client_provided_points) {
-            pass.verify(&point, &todays_key, info_sho.clone()).unwrap();
+        for (token, point) in tokens.zip(client_provided_points) {
+            todays_key.verify(&point, &token).unwrap();
             assert!(
-                pass.verify(&RISTRETTO_BASEPOINT_POINT, &todays_key, info_sho.clone())
+                todays_key
+                    .verify(&RISTRETTO_BASEPOINT_POINT, &token)
                     .is_err(),
                 "wrong point"
             );
-            assert!(
-                pass.verify(&point, &wrong_key, info_sho.clone()).is_err(),
-                "wrong key"
-            );
-            assert!(
-                pass.verify(&point, &todays_key, wrong_info_sho.clone())
-                    .is_err(),
-                "wrong info"
-            );
-        }
-    }
-
-    #[test]
-    fn extra_info_in_receive() {
-        let mut input_sho = poksho::ShoSha256::new(b"test");
-        let root_key = ServerRootKeyPair::generate([42; RANDOMNESS_LEN]);
-
-        // Client
-
-        let client_provided_points = [
-            input_sho.get_point(),
-            input_sho.get_point(),
-            input_sho.get_point(),
-        ];
-
-        let client_raw_key = input_sho.get_scalar();
-        let encrypted_points = client_provided_points.map(|p| client_raw_key * p);
-
-        let mut info_sho = poksho::ShoHmacSha256::new(b"ExamplePass");
-        info_sho.absorb_and_ratchet(b"today's date");
-
-        // Server
-
-        let todays_key = root_key.derive_key(info_sho.clone());
-        let issued_passes =
-            EndorsementResponse::issue(encrypted_points, &todays_key, [43; RANDOMNESS_LEN]);
-
-        // Client
-
-        let decrypt_key = ClientDecryptionKey::from_blinding_scalar(client_raw_key);
-        let todays_public_key = root_key.public.derive_key(info_sho.clone());
-
-        let endorsements = issued_passes
-            .receive(encrypted_points, &todays_public_key)
-            .unwrap();
-        assert_eq!(client_provided_points.len(), endorsements.len());
-
-        let mut pass_info = info_sho.clone();
-        pass_info.absorb_and_ratchet(b"extra info added for pass");
-        let passes = endorsements
-            .into_iter()
-            .map(|endorsement| endorsement.prepare_pass(&decrypt_key, pass_info.clone()));
-
-        // Server
-
-        for (pass, point) in passes.zip(client_provided_points) {
-            assert!(pass.verify(&point, &todays_key, info_sho.clone()).is_err());
-            pass.verify(&point, &todays_key, pass_info.clone()).unwrap();
+            assert!(wrong_key.verify(&point, &token).is_err(), "wrong key");
         }
     }
 
@@ -643,13 +575,13 @@ mod tests {
         let client_raw_key = input_sho.get_scalar();
         let encrypted_points = client_provided_points.map(|p| client_raw_key * p);
 
-        let mut info_sho = poksho::ShoHmacSha256::new(b"ExamplePass");
+        let mut info_sho = poksho::ShoHmacSha256::new(b"ExampleEndorsements");
         info_sho.absorb_and_ratchet(b"today's date");
 
         // Server
 
         let todays_key = root_key.derive_key(info_sho.clone());
-        let issued_passes =
+        let issued_endorsements =
             EndorsementResponse::issue(encrypted_points, &todays_key, [43; RANDOMNESS_LEN]);
 
         // Client
@@ -657,19 +589,19 @@ mod tests {
         let decrypt_key = ClientDecryptionKey::from_blinding_scalar(client_raw_key);
         let todays_public_key = root_key.public.derive_key(info_sho.clone());
 
-        let mut endorsements = issued_passes
+        let mut endorsements = issued_endorsements
             .receive(encrypted_points, &todays_public_key)
             .unwrap();
         endorsements.remove(1);
         let combined = Endorsement::combine(endorsements);
 
-        let pass = combined.prepare_pass(&decrypt_key, info_sho.clone());
-        pass.verify(
-            &(client_provided_points[0] + client_provided_points[2]),
-            &todays_key,
-            info_sho,
-        )
-        .unwrap();
+        let token = combined.to_token(&decrypt_key);
+        todays_key
+            .verify(
+                &(client_provided_points[0] + client_provided_points[2]),
+                &token,
+            )
+            .unwrap();
     }
 
     #[test]
@@ -722,7 +654,7 @@ mod tests {
         let client_raw_key = input_sho.get_scalar();
         let encrypted_points = client_provided_points.map(|p| client_raw_key * p);
 
-        let mut info_sho = poksho::ShoHmacSha256::new(b"ExamplePass");
+        let mut info_sho = poksho::ShoHmacSha256::new(b"ExampleEndorsements");
         info_sho.absorb_and_ratchet(b"today's date");
 
         // Server
@@ -750,8 +682,5 @@ mod tests {
             .unwrap();
         assert_eq!(client_provided_points.len(), endorsements.len());
         round_trip(&endorsements[0], POINT_BYTE_COUNT);
-
-        let pass = endorsements[0].prepare_pass(&decrypt_key, info_sho.clone());
-        round_trip(&pass, RAW_PASS_LEN);
     }
 }
