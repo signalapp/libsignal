@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol::*;
 use std::ffi::CString;
+
+use derive_where::derive_where;
+use libsignal_protocol::*;
 
 #[macro_use]
 mod convert;
@@ -65,10 +67,30 @@ impl<T> BorrowedMutableSliceOf<T> {
     }
 }
 
+/// A representation of a array allocated on the Rust heap for use in C code.
 #[repr(C)]
+#[derive_where(Debug)]
 pub struct OwnedBufferOf<T> {
     base: *mut T,
+    /// The number of elements in the buffer (not necessarily the number of bytes).
     length: usize,
+}
+
+impl<T> OwnedBufferOf<T> {
+    /// Converts back into a `Box`ed slice.
+    ///
+    /// Callers of this function must ensure that
+    /// - the `OwnedBufferOf` was originally created from `Box`
+    /// - any C code operating on the buffer left all its elements in a valid
+    /// state.
+    pub unsafe fn into_box(self) -> Box<[T]> {
+        let Self { base, length } = self;
+        if base.is_null() {
+            return Box::new([]);
+        }
+
+        Box::from_raw(std::slice::from_raw_parts_mut(base, length))
+    }
 }
 
 impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
@@ -81,13 +103,6 @@ impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
     }
 }
 
-impl<T> From<OwnedBufferOf<T>> for Box<[T]> {
-    fn from(value: OwnedBufferOf<T>) -> Self {
-        let OwnedBufferOf { base, length } = value;
-        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(base, length)) }
-    }
-}
-
 #[repr(C)]
 pub struct StringArray {
     bytes: OwnedBufferOf<std::ffi::c_uchar>,
@@ -95,11 +110,16 @@ pub struct StringArray {
 }
 
 impl StringArray {
-    pub fn into_boxed_parts(self) -> (Box<[u8]>, Box<[usize]>) {
+    /// Converts `self` into owned buffers of contents and string lengths.
+    ///
+    /// Callers of this function must ensure that
+    /// - the `StringArray` was originally allocated in Rust, and
+    /// - the lengths of the buffers were not modified.
+    pub unsafe fn into_boxed_parts(self) -> (Box<[u8]>, Box<[usize]>) {
         let Self { bytes, lengths } = self;
 
-        let bytes = Box::from(bytes);
-        let lengths = Box::from(lengths);
+        let bytes = bytes.into_box();
+        let lengths = lengths.into_box();
         (bytes, lengths)
     }
 }
@@ -118,6 +138,23 @@ impl<S: AsRef<str>> FromIterator<S> for StringArray {
             lengths: lengths.into_boxed_slice().into(),
         }
     }
+}
+
+#[repr(C)]
+#[derive(Debug)]
+/// cbindgen:field-names=[e164, rawAciUuid, rawPniUuid]
+pub struct FfiCdsiLookupResponseEntry {
+    /// Telephone number, as an unformatted e164.
+    pub e164: u64,
+    pub aci: [u8; 16],
+    pub pni: [u8; 16],
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct FfiCdsiLookupResponse {
+    entries: OwnedBufferOf<FfiCdsiLookupResponseEntry>,
+    debug_permits_used: i32,
 }
 
 #[inline(always)]

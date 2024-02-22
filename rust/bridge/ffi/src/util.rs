@@ -77,6 +77,10 @@ pub enum SignalErrorCode {
     InvalidMediaInput = 131,
     #[allow(dead_code)]
     UnsupportedMediaInput = 132,
+
+    Network = 133,
+    NetworkProtocol = 134,
+    RateLimited = 135,
 }
 
 impl From<&SignalFfiError> for SignalErrorCode {
@@ -309,6 +313,11 @@ impl From<&SignalFfiError> for SignalErrorCode {
                     }
                 }
             }
+            SignalFfiError::Network(_) => SignalErrorCode::Network,
+            SignalFfiError::NetworkProtocol => SignalErrorCode::NetworkProtocol,
+            SignalFfiError::RateLimited {
+                retry_after_seconds: _,
+            } => SignalErrorCode::RateLimited,
         }
     }
 }

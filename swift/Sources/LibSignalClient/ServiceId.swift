@@ -187,7 +187,7 @@ public class Aci: ServiceId {
         super.init(.aci, uuid)
     }
 
-    fileprivate override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
+    internal override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
         super.init(fromFixedWidthBinary: bytes)
     }
 }
@@ -197,7 +197,7 @@ public class Pni: ServiceId {
         super.init(.pni, uuid)
     }
 
-    fileprivate override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
+    internal override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
         super.init(fromFixedWidthBinary: bytes)
     }
 }

@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::ffi::{c_char, c_uchar, CStr};
+use std::num::{NonZeroU64, ParseIntError};
+use std::ops::Deref;
+
 use libsignal_protocol::*;
 use paste::paste;
-
-use std::ffi::{c_char, c_uchar, CStr};
-use std::num::ParseIntError;
-use std::ops::Deref;
+use uuid::Uuid;
 
 use crate::io::{InputStream, SyncInputStream};
 use crate::support::{FixedLengthBincodeSerializable, Serialized};
@@ -554,6 +555,32 @@ impl ResultTypeInfo for () {
     }
 }
 
+impl ResultTypeInfo for libsignal_net::cdsi::LookupResponse {
+    type ResultType = FfiCdsiLookupResponse;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self {
+            records,
+            debug_permits_used,
+        } = self;
+
+        let entries = records
+            .into_iter()
+            .map(|e| FfiCdsiLookupResponseEntry {
+                e164: NonZeroU64::from(e.e164).into(),
+                aci: e.aci.map(Uuid::from).unwrap_or(Uuid::nil()).into_bytes(),
+                pni: e.pni.map(Uuid::from).unwrap_or(Uuid::nil()).into_bytes(),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice()
+            .into();
+
+        Ok(FfiCdsiLookupResponse {
+            entries,
+            debug_permits_used,
+        })
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -688,6 +715,8 @@ macro_rules! ffi_result_type {
     (&[u8]) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Box<[String]>) => (ffi::StringArray);
+
+    (LookupResponse) => (ffi::FfiCdsiLookupResponse);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

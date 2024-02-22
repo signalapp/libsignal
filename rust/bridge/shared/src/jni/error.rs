@@ -4,6 +4,7 @@
 //
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+use std::time::Duration;
 
 use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
@@ -232,7 +233,11 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::Net(e) => return e.into(),
             LookupError::InvalidResponse => CdsiError::InvalidResponse,
             LookupError::Protocol => CdsiError::Protocol,
-            LookupError::RateLimited { retry_after } => CdsiError::RateLimited { retry_after },
+            LookupError::RateLimited {
+                retry_after_seconds,
+            } => CdsiError::RateLimited {
+                retry_after: Duration::from_secs(retry_after_seconds.into()),
+            },
             LookupError::ParseError => CdsiError::ParseError,
         })
     }

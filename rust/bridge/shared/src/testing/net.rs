@@ -9,12 +9,11 @@ use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-#[cfg(any(feature = "jni", feature = "node"))]
 use crate::net::TokioAsyncContext;
 use crate::support::*;
 use crate::*;
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     const E164_BOTH: E164 = E164::new(nonzero!(18005551011u64));
     const E164_PNI: E164 = E164::new(nonzero!(18005551012u64));
@@ -42,7 +41,7 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     }
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_CdsiLookupErrorConvert() -> Result<(), LookupError> {
     Err(LookupError::ParseError)
 }

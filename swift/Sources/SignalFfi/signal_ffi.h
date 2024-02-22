@@ -182,6 +182,9 @@ typedef enum {
   SignalErrorCodeIoError = 130,
   SignalErrorCodeInvalidMediaInput = 131,
   SignalErrorCodeUnsupportedMediaInput = 132,
+  SignalErrorCodeNetwork = 133,
+  SignalErrorCodeNetworkProtocol = 134,
+  SignalErrorCodeRateLimited = 135,
 } SignalErrorCode;
 
 /**
@@ -195,7 +198,11 @@ typedef struct SignalAes256GcmEncryption SignalAes256GcmEncryption;
 
 typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
+typedef struct SignalCdsiLookup SignalCdsiLookup;
+
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
+
+typedef struct SignalConnectionManager SignalConnectionManager;
 
 typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
 
@@ -210,6 +217,8 @@ typedef struct SignalKeyPair SignalKeyPair;
 typedef struct SignalKeySecret SignalKeySecret;
 
 typedef struct SignalKyberPreKeyRecord SignalKyberPreKeyRecord;
+
+typedef struct SignalLookupRequest SignalLookupRequest;
 
 typedef struct SignalMessageBackupKey SignalMessageBackupKey;
 
@@ -268,17 +277,51 @@ typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 
 typedef struct SignalTestingHandleType SignalTestingHandleType;
 
+typedef struct SignalTokioAsyncContext SignalTokioAsyncContext;
+
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
 
 typedef struct SignalValidatingMac SignalValidatingMac;
 
 typedef struct {
+  /**
+   * Telephone number, as an unformatted e164.
+   */
+  uint64_t e164;
+  uint8_t rawAciUuid[16];
+  uint8_t rawPniUuid[16];
+} SignalFfiCdsiLookupResponseEntry;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  SignalFfiCdsiLookupResponseEntry *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfFfiCdsiLookupResponseEntry;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
   unsigned char *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
   size_t length;
 } SignalOwnedBuffer;
 
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
 typedef struct {
   size_t *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
   size_t length;
 } SignalOwnedBufferOfusize;
 
@@ -412,6 +455,27 @@ typedef struct {
   SignalStoreSenderKey store_sender_key;
 } SignalSenderKeyStore;
 
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseCdsiLookup)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
+
+typedef struct {
+  SignalOwnedBufferOfFfiCdsiLookupResponseEntry entries;
+  int32_t debug_permits_used;
+} SignalFfiCdsiLookupResponse;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseFfiCdsiLookupResponse)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
+
 typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
 typedef int (*SignalSkip)(void *ctx, uint64_t amount);
@@ -472,6 +536,8 @@ void signal_free_string(const char *buf);
 
 void signal_free_buffer(const unsigned char *buf, size_t buf_len);
 
+void signal_free_lookup_response_entry_list(SignalOwnedBufferOfFfiCdsiLookupResponseEntry buffer);
+
 void signal_free_string_array(SignalStringArray array);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
@@ -481,6 +547,8 @@ SignalFfiError *signal_error_get_address(const SignalFfiError *err, SignalProtoc
 SignalFfiError *signal_error_get_uuid(const SignalFfiError *err, uint8_t (*out)[16]);
 
 uint32_t signal_error_get_type(const SignalFfiError *err);
+
+SignalFfiError *signal_error_get_retry_after_seconds(const SignalFfiError *err, uint32_t *out);
 
 void signal_error_free(SignalFfiError *err);
 
@@ -1218,6 +1286,36 @@ SignalFfiError *signal_group_send_credential_presentation_verify(SignalBorrowedB
 
 SignalFfiError *signal_verify_signature(bool *out, SignalBorrowedBuffer cert_pem, SignalBorrowedBuffer body, SignalBorrowedBuffer signature, uint64_t current_timestamp);
 
+SignalFfiError *signal_tokio_async_context_new(SignalTokioAsyncContext **out);
+
+SignalFfiError *signal_tokio_async_context_destroy(SignalTokioAsyncContext *p);
+
+SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uint8_t environment);
+
+SignalFfiError *signal_connection_manager_destroy(SignalConnectionManager *p);
+
+SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
+
+SignalFfiError *signal_lookup_request_add_e164(const SignalLookupRequest *request, const char *e164);
+
+SignalFfiError *signal_lookup_request_add_previous_e164(const SignalLookupRequest *request, const char *e164);
+
+SignalFfiError *signal_lookup_request_set_token(const SignalLookupRequest *request, SignalBorrowedBuffer token);
+
+SignalFfiError *signal_lookup_request_add_aci_and_access_key(const SignalLookupRequest *request, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalBorrowedBuffer access_key);
+
+SignalFfiError *signal_lookup_request_set_return_acis_without_uaks(const SignalLookupRequest *request, bool return_acis_without_uaks);
+
+SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
+
+SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
+
+SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request, uint32_t timeout_millis);
+
+SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCdsiLookup *lookup);
+
+SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
+
 SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
 
 SignalFfiError *signal_pin_hash_clone(SignalPinHash **new_obj, const SignalPinHash *obj);
@@ -1371,5 +1469,9 @@ SignalFfiError *signal_testing_error_on_return_async(const void **out, const voi
 SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
+
+SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime);
+
+SignalFfiError *signal_testing_cdsi_lookup_error_convert(bool *out);
 
 #endif /* SIGNAL_FFI_H_ */

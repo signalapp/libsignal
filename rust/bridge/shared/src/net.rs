@@ -7,7 +7,7 @@ use std::convert::TryInto as _;
 use std::future::Future;
 use std::time::Duration;
 
-use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
@@ -25,7 +25,13 @@ use crate::*;
 
 pub struct TokioAsyncContext(tokio::runtime::Runtime);
 
-#[bridge_fn(ffi = false)]
+/// Assert [`TokioAsyncContext`] is unwind-safe.
+///
+/// [`tokio::runtime::Runtime`] handles panics in spawned tasks internally, and
+/// spawning a task on it shouldn't cause logic errors if that panics.
+impl std::panic::RefUnwindSafe for TokioAsyncContext {}
+
+#[bridge_fn]
 fn TokioAsyncContext_new() -> TokioAsyncContext {
     TokioAsyncContext(tokio::runtime::Runtime::new().expect("failed to create runtime"))
 }
@@ -123,7 +129,7 @@ fn LookupRequest_setToken(request: &LookupRequest, token: &[u8]) {
     request.0.lock().expect("not poisoned").token = token.into();
 }
 
-#[bridge_fn]
+#[bridge_fn_void]
 fn LookupRequest_addAciAndAccessKey(
     request: &LookupRequest,
     aci: Aci,
@@ -160,7 +166,7 @@ pub struct CdsiLookup {
 }
 bridge_handle!(CdsiLookup, clone = false);
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn CdsiLookup_new(
     connection_manager: &ConnectionManager,
     username: String,
@@ -190,7 +196,7 @@ fn CdsiLookup_token(lookup: &CdsiLookup) -> &[u8] {
     &lookup.token.0
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn CdsiLookup_complete(lookup: &CdsiLookup) -> Result<LookupResponse, cdsi::LookupError> {
     let CdsiLookup {
         token: _,

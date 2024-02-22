@@ -22,6 +22,7 @@ testing-fns = ["libsignal-bridge/testing-fns"]
 
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
+libsignal-net = { path = "../../net" }
 device-transfer = { path = "../../device-transfer" }
 attest = { path = "../../attest" }
 signal-crypto = { path = "../../crypto" }

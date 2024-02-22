@@ -403,20 +403,21 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let (name, extra_props) = match self {
-            Self::RateLimited { retry_after } => (
+            Self::RateLimited {
+                retry_after_seconds,
+            } => (
                 RATE_LIMITED_ERROR,
                 Some({
                     let props = cx.empty_object();
-                    let retry_after = retry_after.as_secs().convert_into(cx)?;
+                    let retry_after = retry_after_seconds.convert_into(cx)?;
                     props.set(cx, "retryAfterSecs", retry_after)?;
                     props
                 }),
             ),
-            Self::Net(_)
-            | Self::Protocol
-            | Self::AttestationError(_)
-            | Self::InvalidResponse
-            | Self::ParseError => (IO_ERROR, None),
+            Self::AttestationError(e) => return e.throw(cx, module, operation_name),
+            Self::Net(_) | Self::Protocol | Self::InvalidResponse | Self::ParseError => {
+                (IO_ERROR, None)
+            }
         };
         let message = self.to_string();
         new_js_error(

@@ -64,6 +64,12 @@ impl E164 {
     }
 }
 
+impl From<E164> for NonZeroU64 {
+    fn from(value: E164) -> Self {
+        value.0
+    }
+}
+
 impl FromStr for E164 {
     type Err = ParseIntError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -246,7 +252,7 @@ pub enum LookupError {
     /// Invalid response received from the server.
     InvalidResponse,
     /// Retry later.
-    RateLimited { retry_after: Duration },
+    RateLimited { retry_after_seconds: u32 },
     /// Failed to parse the response from the server.
     ParseError,
 }
@@ -285,7 +291,7 @@ impl From<prost::DecodeError> for LookupError {
 
 #[derive(serde::Deserialize)]
 struct RateLimitExceededResponse {
-    retry_after: u32,
+    retry_after_seconds: u32,
 }
 
 impl RateLimitExceededResponse {
@@ -331,11 +337,12 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
             NextOrClose::Close(close) => {
                 if let Some(close) = close {
                     if u16::from(close.code) == RateLimitExceededResponse::CLOSE_CODE {
-                        if let Ok(RateLimitExceededResponse { retry_after }) =
-                            serde_json::from_str(&close.reason)
+                        if let Ok(RateLimitExceededResponse {
+                            retry_after_seconds,
+                        }) = serde_json::from_str(&close.reason)
                         {
                             return Err(LookupError::RateLimited {
-                                retry_after: Duration::from_secs(retry_after.into()),
+                                retry_after_seconds,
                             });
                         }
                     }

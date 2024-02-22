@@ -53,6 +53,9 @@ public enum SignalError: Error {
     case invalidMediaInput(String)
     case unsupportedMediaInput(String)
     case callbackError(String)
+    case networkError(String)
+    case networkProtocolError(String)
+    case rateLimitedError(retryAfter: TimeInterval, message: String)
     case unknown(UInt32, String)
 }
 
@@ -159,6 +162,15 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.unsupportedMediaInput(errStr)
     case SignalErrorCodeCallbackError:
         throw SignalError.callbackError(errStr)
+    case SignalErrorCodeNetwork:
+        throw SignalError.networkError(errStr)
+    case SignalErrorCodeNetworkProtocol:
+        throw SignalError.networkProtocolError(errStr)
+    case SignalErrorCodeRateLimited:
+        let retryAfterSeconds = try invokeFnReturningInteger {
+            signal_error_get_retry_after_seconds(error, $0)
+        }
+        throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

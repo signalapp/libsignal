@@ -34,6 +34,11 @@ pub enum SignalFfiError {
     UsernameProofError(usernames::ProofVerificationFailure),
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
+    Network(libsignal_net::infra::errors::NetError),
+    NetworkProtocol,
+    RateLimited {
+        retry_after_seconds: u32,
+    },
     #[cfg(feature = "signal-media")]
     Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
     #[cfg(feature = "signal-media")]
@@ -66,6 +71,11 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::UsernameProofError(e) => write!(f, "{}", e),
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
+            SignalFfiError::Network(e) => write!(f, "Network error: {e}"),
+            SignalFfiError::NetworkProtocol => write!(f, "Protocol error"),
+            SignalFfiError::RateLimited {
+                retry_after_seconds,
+            } => write!(f, "Rate limited; try again after {}s", retry_after_seconds),
             #[cfg(feature = "signal-media")]
             SignalFfiError::Mp4SanitizeParse(e) => {
                 write!(f, "Mp4 sanitizer failed to parse mp4 file: {}", e)
@@ -169,6 +179,25 @@ impl From<IoError> for SignalFfiError {
             Self::Signal(callback_err)
         } else {
             Self::Io(e)
+        }
+    }
+}
+
+impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
+    fn from(value: libsignal_net::cdsi::LookupError) -> Self {
+        use libsignal_net::cdsi::LookupError;
+
+        match value {
+            LookupError::AttestationError(e) => SignalFfiError::Sgx(e),
+            LookupError::Net(e) => SignalFfiError::Network(e),
+            LookupError::ParseError | LookupError::Protocol | LookupError::InvalidResponse => {
+                SignalFfiError::NetworkProtocol
+            }
+            LookupError::RateLimited {
+                retry_after_seconds: retry_after,
+            } => SignalFfiError::RateLimited {
+                retry_after_seconds: retry_after,
+            },
         }
     }
 }

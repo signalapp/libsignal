@@ -36,6 +36,10 @@ extension OpaquePointer: Completable {
         _ context: UnsafeRawPointer?) -> Void)?
 }
 
+extension SignalFfiCdsiLookupResponse: Completable {
+    typealias PromiseCallback = SignalCPromiseFfiCdsiLookupResponse
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.
