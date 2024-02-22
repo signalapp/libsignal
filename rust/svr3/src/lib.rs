@@ -12,7 +12,7 @@ mod ppss;
 pub use ppss::{MaskedShareSet, OPRFSession};
 
 mod errors;
-pub use errors::{Error, OPRFError, PPSSError};
+pub use errors::{Error, ErrorStatus, OPRFError, PPSSError};
 mod proto;
 use proto::svr3;
 use proto::svr3::{create_response, evaluate_response};
@@ -118,6 +118,17 @@ fn make_create_request(max_tries: u32, blinded_element: &[u8]) -> svr3::Request 
     }
 }
 
+impl From<create_response::Status> for ErrorStatus {
+    fn from(status: create_response::Status) -> Self {
+        match status {
+            create_response::Status::Ok => unreachable!(),
+            create_response::Status::Unset => Self::Unset,
+            create_response::Status::InvalidRequest => Self::InvalidRequest,
+            create_response::Status::Error => Self::Error,
+        }
+    }
+}
+
 fn decode_create_response(bytes: &[u8]) -> Result<[u8; 32], Error> {
     let decoded = svr3::Response::decode(bytes)?;
     if let Some(svr3::response::Inner::Create(response)) = decoded.inner {
@@ -127,15 +138,10 @@ fn decode_create_response(bytes: &[u8]) -> Result<[u8; 32], Error> {
                 .try_into()
                 .expect("response should be of right size"))
         } else {
-            let status_string = response.status().as_str_name();
-            Err(Error::Protocol(format!(
-                "Create response status: {status_string}"
-            )))
+            Err(Error::BadResponseStatus(response.status().into()))
         }
     } else {
-        Err(Error::Protocol(
-            "Unexpected or missing response".to_string(),
-        ))
+        Err(Error::BadResponse)
     }
 }
 
@@ -144,6 +150,18 @@ fn make_evaluate_request(blinded_element: &[u8]) -> svr3::Request {
         inner: Some(svr3::request::Inner::Evaluate(svr3::EvaluateRequest {
             blinded_element: blinded_element.to_vec(),
         })),
+    }
+}
+
+impl From<evaluate_response::Status> for ErrorStatus {
+    fn from(status: evaluate_response::Status) -> Self {
+        match status {
+            evaluate_response::Status::Ok => unreachable!(),
+            evaluate_response::Status::Unset => Self::Unset,
+            evaluate_response::Status::Missing => Self::Missing,
+            evaluate_response::Status::InvalidRequest => Self::InvalidRequest,
+            evaluate_response::Status::Error => Self::Error,
+        }
     }
 }
 
@@ -156,20 +174,16 @@ fn decode_evaluate_response(bytes: &[u8]) -> Result<[u8; 32], Error> {
                 .try_into()
                 .expect("response should be of right size"))
         } else {
-            let status_string = response.status().as_str_name();
-            Err(Error::Protocol(format!(
-                "Evaluate response status: {status_string}"
-            )))
+            Err(Error::BadResponseStatus(response.status().into()))
         }
     } else {
-        Err(Error::Protocol(
-            "Unexpected or missing response".to_string(),
-        ))
+        Err(Error::BadResponse)
     }
 }
 
 #[cfg(test)]
 mod test {
+    use assert_matches::assert_matches;
     use nonzero_ext::nonzero;
     use prost::Message;
     use rand_core::{OsRng, RngCore};
@@ -240,9 +254,12 @@ mod test {
         assert_eq!(should_succeed, result.is_ok());
     }
 
-    #[test_case(vec![1, 2, 3]; "bad_protobuf")]
-    #[test_case(make_evaluate_response(svr3::evaluate_response::Status::Ok).encode_to_vec(); "wrong_response_type")]
-    fn backup_invalid_response(response: Vec<u8>) {
+    #[test_case(vec![1, 2, 3], Error::BadData; "bad_protobuf")]
+    #[test_case(
+        make_evaluate_response(svr3::evaluate_response::Status::Ok).encode_to_vec(),
+        Error::BadResponse;
+        "wrong_response_type")]
+    fn backup_invalid_response(response: Vec<u8>, _expected: Error) {
         let backup = Backup::new(
             &[1, 2, 3],
             "password",
@@ -253,7 +270,7 @@ mod test {
         .expect("can create backup");
         let mut rng = OsRng;
         let result = backup.finalize(&mut rng, &[response]);
-        assert!(matches!(result, Err(Error::Protocol(_))));
+        assert_matches!(result, Err(_expected));
     }
 
     fn make_masked_share_set() -> MaskedShareSet {
@@ -271,7 +288,7 @@ mod test {
         assert_eq!(3, restore.requests.len());
         for request_bytes in restore.requests.into_iter() {
             let decode_result = svr3::Request::decode(&*request_bytes);
-            assert!(matches!(
+            assert_matches!(
                 decode_result,
                 Ok(svr3::Request {
                     inner: Some(svr3::request::Inner::Evaluate(svr3::EvaluateRequest {
@@ -279,7 +296,7 @@ mod test {
                     })),
                     ..
                 }) if !blinded_element.is_empty()
-            ));
+            );
         }
     }
 
@@ -313,12 +330,15 @@ mod test {
         assert_eq!(should_succeed, result.is_ok() || is_ppss_error);
     }
 
-    #[test_case(vec![1, 2, 3]; "bad_protobuf")]
-    #[test_case(make_create_response(svr3::create_response::Status::Ok).encode_to_vec(); "wrong_response_type")]
-    fn restore_invalid_response(response: Vec<u8>) {
+    #[test_case(vec![1, 2, 3], Error::BadData; "bad_protobuf")]
+    #[test_case(
+        make_create_response(svr3::create_response::Status::Ok).encode_to_vec(),
+        Error::BadResponse;
+        "wrong_response_type")]
+    fn restore_invalid_response(response: Vec<u8>, _expected: Error) {
         let restore = Restore::new("password", make_masked_share_set(), &mut OsRng)
             .expect("can create restore");
         let result = restore.finalize(&[response]);
-        assert!(matches!(result, Err(Error::Protocol(_))));
+        assert_matches!(result, Err(_expected));
     }
 }

@@ -30,7 +30,7 @@ pub enum SignalJniError {
     DeviceTransfer(DeviceTransferError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
-    Sgx(SgxError),
+    Enclave(EnclaveError),
     Pin(PinError),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
@@ -44,6 +44,7 @@ pub enum SignalJniError {
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Cdsi(CdsiError),
     Net(NetError),
+    Svr3(libsignal_net::svr3::Error),
     Bridge(BridgeLayerError),
     #[cfg(feature = "testing-fns")]
     TestingError {
@@ -74,7 +75,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::Protocol(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
-            SignalJniError::Sgx(e) => write!(f, "{}", e),
+            SignalJniError::Enclave(e) => write!(f, "{}", e),
             SignalJniError::Pin(e) => write!(f, "{}", e),
             SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
             SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
@@ -89,6 +90,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
             SignalJniError::Net(e) => write!(f, "{}", e),
+            SignalJniError::Svr3(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
             #[cfg(feature = "testing-fns")]
             SignalJniError::TestingError { exception_class } => {
@@ -149,9 +151,9 @@ impl From<HsmEnclaveError> for SignalJniError {
     }
 }
 
-impl From<SgxError> for SignalJniError {
-    fn from(e: SgxError) -> SignalJniError {
-        SignalJniError::Sgx(e)
+impl From<EnclaveError> for SignalJniError {
+    fn from(e: EnclaveError) -> SignalJniError {
+        SignalJniError::Enclave(e)
     }
 }
 
@@ -258,6 +260,19 @@ impl From<BridgeLayerError> for SignalJniError {
 impl From<jni::errors::Error> for BridgeLayerError {
     fn from(e: jni::errors::Error) -> BridgeLayerError {
         BridgeLayerError::Jni(e)
+    }
+}
+
+impl From<Svr3Error> for SignalJniError {
+    fn from(err: Svr3Error) -> Self {
+        match err {
+            Svr3Error::Net(inner) => inner.into(),
+            Svr3Error::AttestationError(inner) => inner.into(),
+            Svr3Error::Protocol(_)
+            | Svr3Error::RequestFailed(_)
+            | Svr3Error::RestoreFailed
+            | Svr3Error::DataMissing => SignalJniError::Svr3(err),
+        }
     }
 }
 

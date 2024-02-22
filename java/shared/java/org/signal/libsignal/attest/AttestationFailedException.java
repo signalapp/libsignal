@@ -5,12 +5,12 @@
 
 package org.signal.libsignal.attest;
 
-public class DcapException extends Exception {
-  public DcapException(String msg) {
+public class AttestationFailedException extends Exception {
+  public AttestationFailedException(String msg) {
     super(msg);
   }
 
-  public DcapException(Throwable t) {
+  public AttestationFailedException(Throwable t) {
     super(t);
   }
 }

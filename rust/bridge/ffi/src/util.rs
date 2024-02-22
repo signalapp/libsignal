@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use attest::enclave::Error as SgxError;
+use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_bridge::ffi::*;
@@ -131,7 +131,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidKey
             }
 
-            SignalFfiError::Sgx(SgxError::AttestationDataError { .. }) => {
+            SignalFfiError::Sgx(EnclaveError::AttestationDataError { .. }) => {
                 SignalErrorCode::InvalidAttestationData
             }
 
@@ -172,9 +172,9 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
-            | SignalFfiError::Sgx(SgxError::AttestationError(_))
-            | SignalFfiError::Sgx(SgxError::NoiseError(_))
-            | SignalFfiError::Sgx(SgxError::NoiseHandshakeError(_))
+            | SignalFfiError::Sgx(EnclaveError::AttestationError(_))
+            | SignalFfiError::Sgx(EnclaveError::NoiseError(_))
+            | SignalFfiError::Sgx(EnclaveError::NoiseHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
                 SignalErrorCode::InvalidMessage
@@ -190,7 +190,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::Signal(SignalProtocolError::InvalidState(_, _))
-            | SignalFfiError::Sgx(SgxError::InvalidBridgeStateError)
+            | SignalFfiError::Sgx(EnclaveError::InvalidBridgeStateError)
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
                 SignalErrorCode::InvalidState
             }

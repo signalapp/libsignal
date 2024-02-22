@@ -1795,11 +1795,14 @@ dependencies = [
  "aes-gcm-siv",
  "async-trait",
  "attest",
+ "base64",
  "bincode",
  "bytemuck",
+ "cfg-if",
  "derive-where",
  "device-transfer",
  "futures-util",
+ "hex",
  "hkdf",
  "hmac",
  "jni",
@@ -1807,6 +1810,7 @@ dependencies = [
  "libsignal-message-backup",
  "libsignal-net",
  "libsignal-protocol",
+ "libsignal-svr3",
  "linkme",
  "log",
  "mediasan-common",
@@ -2066,6 +2070,7 @@ dependencies = [
 name = "libsignal-svr3"
 version = "0.1.0"
 dependencies = [
+ "assert_matches",
  "attest",
  "base64",
  "bytemuck",
@@ -2081,6 +2086,7 @@ dependencies = [
  "prost-build",
  "rand_core",
  "sha2",
+ "strum_macros",
  "subtle",
  "test-case",
  "tokio",
@@ -3153,6 +3159,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
+
+[[package]]
 name = "rusty-fork"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3495,6 +3507,19 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "strum_macros"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a3417fc93d76740d974a01654a09777cb500428cc874ca9f45edfe0c4d4cd18"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.48",
+]
 
 [[package]]
 name = "subtle"

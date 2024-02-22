@@ -13,6 +13,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
 libsignal-net = { path = "../../net" }
+libsignal-svr3 = { path = "../../svr3" }
 signal-crypto = { path = "../../crypto" }
 device-transfer = { path = "../../device-transfer" }
 attest = { path = "../../attest" }
@@ -24,9 +25,12 @@ signal-media = { path = "../../media", optional = true }
 libsignal-bridge-macros = { path = "macros" }
 aes-gcm-siv = "0.11.1"
 async-trait = "0.1.41"
+base64 = "0.21"
 bincode = "1.0"
+cfg-if = "1.0"
 derive-where = "1.2.5"
 futures-util = "0.3.7"
+hex = "0.4.3"
 hkdf = "0.12"
 hmac = "0.12.0"
 log = "0.4"

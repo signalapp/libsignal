@@ -1316,6 +1316,10 @@ SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCds
 
 SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
 
+SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
+
+SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
+
 SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
 
 SignalFfiError *signal_pin_hash_clone(SignalPinHash **new_obj, const SignalPinHash *obj);

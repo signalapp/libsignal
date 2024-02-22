@@ -10,20 +10,22 @@ use thiserror::Error;
 use crate::auth::HttpBasicAuth;
 use crate::enclave::{EndpointConnection, NewHandshake, Svr3Flavor};
 use crate::infra::connection_manager::ConnectionManager;
-use crate::infra::errors::NetError;
+use crate::infra::errors::{LogSafeDisplay, NetError};
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
 use crate::infra::ws::{AttestedConnection, AttestedConnectionError, DefaultStream};
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum Error {
-    /// Network error
+    /// Network error: {0}
     Net(#[from] NetError),
-    /// Protocol error after establishing a connection.
+    /// Protocol error after establishing a connection
     Protocol,
-    /// SGX attestation failed.
-    AttestationError(String),
+    /// Enclave attestation failed: {0}
+    AttestationError(attest::enclave::Error),
 }
+
+impl LogSafeDisplay for Error {}
 
 impl From<AttestedConnectionError> for Error {
     fn from(value: AttestedConnectionError) -> Self {
@@ -31,7 +33,7 @@ impl From<AttestedConnectionError> for Error {
             AttestedConnectionError::ClientConnection(_) => Self::Protocol,
             AttestedConnectionError::Net(net) => Self::Net(net),
             AttestedConnectionError::Protocol => Self::Protocol,
-            AttestedConnectionError::Sgx(err) => Self::AttestationError(err.to_string()),
+            AttestedConnectionError::Sgx(err) => Self::AttestationError(err),
         }
     }
 }

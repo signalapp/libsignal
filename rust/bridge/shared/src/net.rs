@@ -7,12 +7,15 @@ use std::convert::TryInto as _;
 use std::future::Future;
 use std::time::Duration;
 
+use base64::prelude::{Engine, BASE64_STANDARD};
+use cfg_if::cfg_if;
+
 use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
-use libsignal_net::enclave::{Cdsi, EndpointConnection};
+use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EnclaveKind, EndpointConnection};
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::errors::NetError;
@@ -22,6 +25,17 @@ use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::support::*;
 use crate::*;
+
+cfg_if! {
+    if #[cfg(feature = "jni")] {
+        use futures_util::future::TryFutureExt as _;
+        use rand::rngs::OsRng;
+        use std::num::NonZeroU32;
+        use libsignal_net::enclave::{ Nitro, PpssSetup, Sgx, };
+        use libsignal_net::svr::{self, SvrConnection};
+        use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
+    }
+}
 
 pub struct TokioAsyncContext(tokio::runtime::Runtime);
 
@@ -57,13 +71,14 @@ bridge_handle!(TokioAsyncContext, clone = false);
 
 #[derive(num_enum::TryFromPrimitive)]
 #[repr(u8)]
+#[derive(Clone, Copy)]
 pub enum Environment {
     Staging = 0,
     Prod = 1,
 }
 
 impl Environment {
-    fn env(&self) -> Env<'static, Svr3Env> {
+    fn env<'a>(self) -> Env<'a, Svr3Env<'a>> {
         match self {
             Self::Staging => libsignal_net::env::STAGING,
             Self::Prod => libsignal_net::env::PROD,
@@ -73,24 +88,36 @@ impl Environment {
 
 pub struct ConnectionManager {
     cdsi: EndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
+    #[cfg(feature = "jni")]
+    svr3: (
+        EndpointConnection<Sgx, MultiRouteConnectionManager, TcpSslTransportConnector>,
+        EndpointConnection<Nitro, MultiRouteConnectionManager, TcpSslTransportConnector>,
+    ),
 }
 
 impl ConnectionManager {
     const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-
     fn new(environment: Environment) -> Self {
-        let cdsi_endpoint = environment.env().cdsi;
-        let connection_params = cdsi_endpoint
-            .domain_config
-            .connection_params_with_fallback();
         Self {
-            cdsi: EndpointConnection::new_multi(
-                cdsi_endpoint.mr_enclave,
-                connection_params,
-                Self::DEFAULT_CONNECT_TIMEOUT,
-                TcpSslTransportConnector,
+            cdsi: Self::endpoint_connection(environment.env().cdsi),
+            #[cfg(feature = "jni")]
+            svr3: (
+                Self::endpoint_connection(environment.env().svr3.sgx()),
+                Self::endpoint_connection(environment.env().svr3.nitro()),
             ),
         }
+    }
+
+    fn endpoint_connection<E: EnclaveKind>(
+        endpoint: EnclaveEndpoint<'static, E>,
+    ) -> EndpointConnection<E, MultiRouteConnectionManager, TcpSslTransportConnector> {
+        let params = endpoint.domain_config.connection_params_with_fallback();
+        EndpointConnection::new_multi(
+            endpoint.mr_enclave,
+            params,
+            Self::DEFAULT_CONNECT_TIMEOUT,
+            TcpSslTransportConnector,
+        )
     }
 }
 
@@ -210,6 +237,84 @@ async fn CdsiLookup_complete(lookup: &CdsiLookup) -> Result<LookupResponse, cdsi
         .expect("not completed yet");
 
     remaining.collect().await
+}
+
+#[bridge_fn]
+fn CreateOTP(username: String, secret: &[u8]) -> String {
+    Auth::otp(&username, secret, std::time::SystemTime::now())
+}
+
+#[bridge_fn]
+fn CreateOTPFromBase64(username: String, secret: String) -> String {
+    let secret = BASE64_STANDARD.decode(secret).expect("valid base64");
+    Auth::otp(&username, &secret, std::time::SystemTime::now())
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn Svr3Backup(
+    connection_manager: &ConnectionManager,
+    secret: Box<[u8]>,
+    password: String,
+    max_tries: u32,
+    username: String,         // hex-encoded uid
+    enclave_password: String, // timestamp:otp(...)
+    op_timeout_ms: u32,       // timeout spans both connecting and performing the operation
+) -> Result<Vec<u8>, svr3::Error> {
+    let secret = secret
+        .as_ref()
+        .try_into()
+        .expect("can only backup 32 bytes");
+    let max_tries: NonZeroU32 = max_tries.try_into().expect("non negative number of tries");
+    let mut rng = OsRng;
+    let share_set = timeout(
+        Duration::from_millis(op_timeout_ms.into()),
+        svr::Error::Net(NetError::Timeout).into(),
+        svr3_connect(connection_manager, username, enclave_password)
+            .map_err(|err| err.into())
+            .and_then(|connections| {
+                Svr3Env::backup(connections, &password, secret, max_tries, &mut rng)
+            }),
+    )
+    .await?;
+    Ok(share_set.serialize().expect("can serialize the share set"))
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+async fn Svr3Restore(
+    connection_manager: &ConnectionManager,
+    password: String,
+    share_set: Box<[u8]>,
+    username: String,         // hex-encoded uid
+    enclave_password: String, // timestamp:otp(...)
+    op_timeout_ms: u32,       // timeout spans both connecting and performing the operation
+) -> Result<Vec<u8>, svr3::Error> {
+    let mut rng = OsRng;
+    let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
+    let restored_secret = timeout(
+        Duration::from_millis(op_timeout_ms.into()),
+        svr::Error::Net(NetError::Timeout).into(),
+        svr3_connect(connection_manager, username, enclave_password)
+            .map_err(|err| err.into())
+            .and_then(|connections| Svr3Env::restore(connections, &password, share_set, &mut rng)),
+    )
+    .await?;
+    Ok(restored_secret.to_vec())
+}
+
+#[cfg(feature = "jni")]
+async fn svr3_connect<'a>(
+    connection_manager: &ConnectionManager,
+    username: String,
+    password: String,
+) -> Result<<Svr3Env<'a> as PpssSetup>::Connections, svr::Error> {
+    let auth = Auth { username, password };
+    let ConnectionManager {
+        cdsi: _cdsi,
+        svr3: (sgx, nitro),
+    } = connection_manager;
+    let sgx = SvrConnection::connect(auth.clone(), sgx).await?;
+    let nitro = SvrConnection::connect(auth, nitro).await?;
+    Ok((sgx, nitro))
 }
 
 #[cfg(test)]

@@ -6,7 +6,7 @@
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
-use attest::enclave::Error as SgxError;
+use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
@@ -25,7 +25,7 @@ pub enum SignalFfiError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
     HsmEnclave(HsmEnclaveError),
-    Sgx(SgxError),
+    Sgx(EnclaveError),
     Pin(PinError),
     SignalCrypto(SignalCryptoError),
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
@@ -111,8 +111,8 @@ impl From<HsmEnclaveError> for SignalFfiError {
     }
 }
 
-impl From<SgxError> for SignalFfiError {
-    fn from(e: SgxError) -> SignalFfiError {
+impl From<EnclaveError> for SignalFfiError {
+    fn from(e: EnclaveError) -> SignalFfiError {
         SignalFfiError::Sgx(e)
     }
 }

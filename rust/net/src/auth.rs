@@ -38,7 +38,7 @@ impl Auth {
     }
 
     const OTP_LEN: usize = 20;
-    fn otp(username: &str, secret: &[u8], now: SystemTime) -> String {
+    pub fn otp(username: &str, secret: &[u8], now: SystemTime) -> String {
         let ts = now
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()

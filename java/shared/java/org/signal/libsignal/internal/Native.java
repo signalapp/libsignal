@@ -183,6 +183,10 @@ public final class Native {
   public static native void CreateCallLinkCredential_CheckValidContents(byte[] paramsBytes);
   public static native byte[] CreateCallLinkCredential_PresentDeterministic(byte[] credentialBytes, byte[] roomId, byte[] userId, byte[] serverParamsBytes, byte[] callLinkParamsBytes, byte[] randomness);
 
+  public static native String CreateOTP(String username, byte[] secret);
+
+  public static native String CreateOTPFromBase64(String username, String secret);
+
   public static native void CryptographicHash_Destroy(long handle);
   public static native byte[] CryptographicHash_Finalize(long hash);
   public static native long CryptographicHash_New(String algo);
@@ -577,6 +581,10 @@ public final class Native {
   public static native long SignedPreKeyRecord_New(int id, long timestamp, long pubKey, long privKey, byte[] signature);
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp);
+
+  public static native CompletableFuture<byte[]> Svr3Backup(long asyncRuntime, long connectionManager, byte[] secret, String password, int maxTries, String username, String enclavePassword, int opTimeoutMs);
+
+  public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword, int opTimeoutMs);
 
   public static native void TESTING_CdsiLookupErrorConvert();
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);

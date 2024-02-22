@@ -275,6 +275,18 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::cdsi::E164 {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
+    type ArgType = JByteArray<'a>;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let vec = env.convert_byte_array(foreign)?;
+        Ok(vec.into_boxed_slice())
+    }
+}
+
 impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
     for &'storage [u8]
 {
@@ -1085,6 +1097,9 @@ macro_rules! jni_arg_type {
         jni::JByteArray<'local>
     };
     (&[u8; $len:expr]) => {
+        jni::JByteArray<'local>
+    };
+    (Box<[u8]>) => {
         jni::JByteArray<'local>
     };
     (ServiceId) => {

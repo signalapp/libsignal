@@ -7,11 +7,12 @@ use std::error::Error;
 use std::fmt::Display;
 use std::marker::PhantomData;
 
-use attest::enclave::Error as SgxError;
+use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
 use jni::JavaVM;
+use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use once_cell::sync::OnceCell;
 use signal_crypto::Error as SignalCryptoError;
@@ -389,17 +390,22 @@ where
             jni_class_name!(java.lang.IllegalStateException)
         }
 
-        SignalJniError::Sgx(SgxError::NoiseHandshakeError(_))
-        | SignalJniError::Sgx(SgxError::NoiseError(_)) => {
-            jni_class_name!(org.signal.libsignal.attest.SgxCommunicationFailureException)
+        SignalJniError::Enclave(EnclaveError::NoiseHandshakeError(_))
+        | SignalJniError::Enclave(EnclaveError::NoiseError(_)) => {
+            jni_class_name!(
+                org.signal
+                    .libsignal
+                    .sgxsession
+                    .SgxCommunicationFailureException
+            )
         }
-        SignalJniError::Sgx(SgxError::AttestationError(_)) => {
-            jni_class_name!(org.signal.libsignal.attest.DcapException)
+        SignalJniError::Enclave(EnclaveError::AttestationError(_)) => {
+            jni_class_name!(org.signal.libsignal.attest.AttestationFailedException)
         }
-        SignalJniError::Sgx(SgxError::AttestationDataError { .. }) => {
+        SignalJniError::Enclave(EnclaveError::AttestationDataError { .. }) => {
             jni_class_name!(org.signal.libsignal.attest.AttestationDataException)
         }
-        SignalJniError::Sgx(SgxError::InvalidBridgeStateError) => {
+        SignalJniError::Enclave(EnclaveError::InvalidBridgeStateError) => {
             jni_class_name!(java.lang.IllegalStateException)
         }
 
@@ -532,6 +538,15 @@ where
 
         SignalJniError::Cdsi(_) => jni_class_name!(org.signal.libsignal.net.CdsiLookupException),
         SignalJniError::Net(_) => jni_class_name!(org.signal.libsignal.net.NetworkException),
+
+        SignalJniError::Svr3(Svr3Error::RestoreFailed) => {
+            jni_class_name!(org.signal.libsignal.svr.RestoreFailedException)
+        }
+        SignalJniError::Svr3(Svr3Error::DataMissing) => {
+            jni_class_name!(org.signal.libsignal.svr.DataMissingException)
+        }
+        SignalJniError::Svr3(_) => jni_class_name!(org.signal.libsignal.svr.SvrException),
+
         #[cfg(feature = "testing-fns")]
         SignalJniError::TestingError { exception_class } => exception_class,
     };

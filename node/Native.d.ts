@@ -165,6 +165,8 @@ export function CreateCallLinkCredentialRequest_IssueDeterministic(requestBytes:
 export function CreateCallLinkCredentialResponse_CheckValidContents(responseBytes: Buffer): void;
 export function CreateCallLinkCredential_CheckValidContents(paramsBytes: Buffer): void;
 export function CreateCallLinkCredential_PresentDeterministic(credentialBytes: Buffer, roomId: Buffer, userId: Buffer, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer, randomness: Buffer): Buffer;
+export function CreateOTP(username: string, secret: Buffer): string;
+export function CreateOTPFromBase64(username: string, secret: string): string;
 export function DecryptionErrorMessage_Deserialize(data: Buffer): DecryptionErrorMessage;
 export function DecryptionErrorMessage_ExtractFromSerializedContent(bytes: Buffer): DecryptionErrorMessage;
 export function DecryptionErrorMessage_ForOriginalMessage(originalBytes: Buffer, originalType: number, originalTimestamp: Timestamp, originalSenderDeviceId: number): DecryptionErrorMessage;

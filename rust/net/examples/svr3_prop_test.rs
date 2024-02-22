@@ -251,9 +251,7 @@ impl StateMachineTest for Svr3Storage {
                             }
                             Err(err) => {
                                 match err {
-                                    Error::Logic(libsignal_svr3::Error::Protocol(msg))
-                                        if msg.contains("MISSING") =>
-                                    {
+                                    Error::DataMissing => {
                                         log::info!("\tvalue missing (no more attempts?)");
                                         // "Forget" the share-set value
                                         // This is what a good client would do.
@@ -267,9 +265,7 @@ impl StateMachineTest for Svr3Storage {
                                             "Should have exceeded the tries limit"
                                         );
                                     }
-                                    Error::Logic(libsignal_svr3::Error::Ppss(
-                                        libsignal_svr3::PPSSError::InvalidCommitment,
-                                    )) if expect_bad_commitment => {
+                                    Error::RestoreFailed if expect_bad_commitment => {
                                         log::info!(
                                             "\tbad commitment error (as expected) [{}]",
                                             err
