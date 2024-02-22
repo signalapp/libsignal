@@ -11,7 +11,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -359,10 +358,6 @@ public class GroupCipherTest {
   }
 
   private int randomInt() {
-    try {
-      return SecureRandom.getInstance("SHA1PRNG").nextInt(Integer.MAX_VALUE);
-    } catch (NoSuchAlgorithmException e) {
-      throw new AssertionError(e);
-    }
+    return new SecureRandom().nextInt(Integer.MAX_VALUE);
   }
 }
