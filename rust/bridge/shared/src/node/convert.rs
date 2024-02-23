@@ -4,6 +4,7 @@
 //
 
 use neon::prelude::*;
+use neon::types::JsBigInt;
 use paste::paste;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
@@ -278,13 +279,11 @@ impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
 }
 
 impl SimpleArgTypeInfo for u64 {
-    type ArgType = JsBuffer; // FIXME: eventually this should be a bigint
+    type ArgType = JsBigInt;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         foreign
-            .as_slice(cx)
-            .try_into()
-            .map(u64::from_be_bytes)
-            .or_else(|_| cx.throw_type_error("expected a buffer of 8 big-endian bytes"))
+            .to_u64(cx)
+            .or_else(|_| cx.throw_range_error("value out of range for Rust u64"))
     }
 }
 
@@ -678,12 +677,10 @@ impl<'a> ResultTypeInfo<'a> for crate::zkgroup::Timestamp {
 }
 
 impl<'a> ResultTypeInfo<'a> for u64 {
-    type ResultType = JsBuffer; // FIXME: eventually this should be a bigint
+    type ResultType = JsBigInt;
 
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let mut result = cx.buffer(8)?;
-        result.as_mut_slice(cx).copy_from_slice(&self.to_be_bytes());
-        Ok(result)
+        Ok(JsBigInt::from_u64(cx, self))
     }
 }
 

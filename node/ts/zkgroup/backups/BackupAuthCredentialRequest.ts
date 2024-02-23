@@ -11,7 +11,6 @@ import { RANDOM_LENGTH } from '../internal/Constants';
 
 import GenericServerSecretParams from '../GenericServerSecretParams';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse';
-import { bufferFromBigUInt64BE } from '../internal/BigIntUtil';
 
 export default class BackupAuthCredentialRequest extends ByteArray {
   private readonly __type?: never;
@@ -44,7 +43,7 @@ export default class BackupAuthCredentialRequest extends ByteArray {
       Native.BackupAuthCredentialRequest_IssueDeterministic(
         this.contents,
         timestamp,
-        bufferFromBigUInt64BE(receiptLevel),
+        receiptLevel,
         params.contents,
         random
       )

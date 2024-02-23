@@ -28,7 +28,7 @@ def translate_to_ts(typ):
         "i32": "number",
         "u8": "number",
         "u32": "number",
-        "u64": "Buffer",  # FIXME: eventually this should be a bigint
+        "u64": "bigint",
         "bool": "boolean",
         "String": "string",
         "&str": "string",

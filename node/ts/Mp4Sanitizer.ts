@@ -33,7 +33,6 @@
 
 import * as Native from '../Native';
 import { InputStream } from './io';
-import { bufferFromBigUInt64BE } from './zkgroup/internal/BigIntUtil';
 
 export class SanitizedMetadata {
   readonly _nativeHandle: Native.SanitizedMetadata;
@@ -65,8 +64,7 @@ export class SanitizedMetadata {
    * @returns The offset of the media data in the processed input.
    */
   getDataOffset(): bigint {
-    const buffer = Native.SanitizedMetadata_GetDataOffset(this);
-    return buffer.readBigUInt64BE();
+    return Native.SanitizedMetadata_GetDataOffset(this);
   }
 
   /**
@@ -74,8 +72,7 @@ export class SanitizedMetadata {
    * @returns The length of the media data in the processed input.
    */
   getDataLen(): bigint {
-    const buffer = Native.SanitizedMetadata_GetDataLen(this);
-    return buffer.readBigUInt64BE();
+    return Native.SanitizedMetadata_GetDataLen(this);
   }
 }
 
@@ -95,7 +92,7 @@ export async function sanitize(
 ): Promise<SanitizedMetadata> {
   const sanitizedMetadataNativeHandle = await Native.Mp4Sanitizer_Sanitize(
     input,
-    bufferFromBigUInt64BE(len)
+    len
   );
   return SanitizedMetadata._fromNativeHandle(sanitizedMetadataNativeHandle);
 }

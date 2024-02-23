@@ -12,7 +12,6 @@
 import * as Native from '../Native';
 import { Aci } from './Address';
 import { InputStream } from './io';
-import { bufferFromBigUInt64BE } from './zkgroup/internal/BigIntUtil';
 
 export type InputStreamFactory = () => InputStream;
 
@@ -87,7 +86,7 @@ export async function validate(
       backupKey,
       firstStream,
       secondStream,
-      bufferFromBigUInt64BE(length)
+      length
     )
   );
 }

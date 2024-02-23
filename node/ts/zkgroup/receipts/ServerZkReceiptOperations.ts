@@ -6,7 +6,6 @@
 import { randomBytes } from 'crypto';
 import * as Native from '../../../Native';
 import { RANDOM_LENGTH } from '../internal/Constants';
-import { bufferFromBigUInt64BE } from '../internal/BigIntUtil';
 import ServerSecretParams from '../ServerSecretParams';
 import ReceiptCredentialRequest from './ReceiptCredentialRequest';
 import ReceiptCredentialResponse from './ReceiptCredentialResponse';
@@ -45,7 +44,7 @@ export default class ServerZkReceiptOperations {
         random,
         receiptCredentialRequest.getContents(),
         receiptExpirationTime,
-        bufferFromBigUInt64BE(receiptLevel)
+        receiptLevel
       )
     );
   }

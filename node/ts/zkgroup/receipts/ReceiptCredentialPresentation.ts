@@ -22,9 +22,7 @@ export default class ReceiptCredentialPresentation extends ByteArray {
   }
 
   getReceiptLevel(): bigint {
-    return Native.ReceiptCredentialPresentation_GetReceiptLevel(
-      this.contents
-    ).readBigUInt64BE();
+    return Native.ReceiptCredentialPresentation_GetReceiptLevel(this.contents);
   }
 
   getReceiptSerialBytes(): ReceiptSerial {
