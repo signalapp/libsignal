@@ -170,6 +170,12 @@ jobs:
     # and crates don't generally support arbitrary nightly versions.
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
 
+    - name: cargo clean (reclaim disk space)
+      # Clean the contents of the target directory to avoid running out of disk space during the
+      # following steps.
+      run: cargo clean
+      if: matrix.version == 'stable'
+
     - name: Check that the protocol fuzz target still builds
       run: cargo +${{ matrix.toolchain }} check --all-targets
       working-directory: rust/protocol/fuzz
