@@ -6912,3 +6912,7 @@ written authorization of the copyright holder.
 
 ```
 
+
+## Kyber Patent License
+
+<https://csrc.nist.gov/csrc/media/Projects/post-quantum-cryptography/documents/selected-algos-2022/nist-pqc-license-summary-and-excerpts.pdf>
