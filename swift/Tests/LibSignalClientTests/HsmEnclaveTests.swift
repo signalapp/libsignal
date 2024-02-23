@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import XCTest
 import LibSignalClient
+import XCTest
 
 class HsmEnclaveTests: TestCaseBase {
-
     func testCreateClient() {
         let validKey = IdentityKeyPair.generate().publicKey
         var hashes = HsmCodeHashList()

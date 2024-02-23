@@ -62,7 +62,7 @@ public struct Username {
 
     public func createLink(previousEntropy: [UInt8]? = nil) throws -> ([UInt8], [UInt8]) {
         let bytes = failOnError {
-            return try self.value.withCString { usernamePtr in
+            try self.value.withCString { usernamePtr in
                 try (previousEntropy ?? []).withUnsafeBorrowedBuffer { entropyPtr in
                     try invokeFnReturningArray {
                         signal_username_link_create($0, usernamePtr, entropyPtr)
@@ -84,8 +84,8 @@ public struct Username {
     }
 
     public static func candidates(
-            from nickname: String,
-            withValidLengthWithin lengthRange: ClosedRange<UInt32> = 3...32
+        from nickname: String,
+        withValidLengthWithin lengthRange: ClosedRange<UInt32> = 3...32
     ) throws -> [Username] {
         let allCandidates = try nickname.withCString { nicknamePtr in
             try invokeFnReturningStringArray {
@@ -98,11 +98,11 @@ public struct Username {
 
 extension Username: CustomStringConvertible {
     public var description: String {
-        return value
+        return self.value
     }
 }
 
-extension Username: Equatable { }
+extension Username: Equatable {}
 
 private func generateHash(_ s: String) throws -> [UInt8] {
     try s.withCString { strPtr in

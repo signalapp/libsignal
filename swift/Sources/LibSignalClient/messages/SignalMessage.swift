@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class SignalMessage: NativeHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_message_destroy(handle)
     }
 
@@ -69,17 +69,21 @@ public class SignalMessage: NativeHandleOwner {
         }
     }
 
-    public func verifyMac<Bytes: ContiguousBytes>(sender: PublicKey,
-                                                  receiver: PublicKey,
-                                                  macKey: Bytes) throws -> Bool {
+    public func verifyMac<Bytes: ContiguousBytes>(
+        sender: PublicKey,
+        receiver: PublicKey,
+        macKey: Bytes
+    ) throws -> Bool {
         return try withNativeHandles(self, sender, receiver) { messageHandle, senderHandle, receiverHandle in
             try macKey.withUnsafeBorrowedBuffer {
                 var result: Bool = false
-                try checkError(signal_message_verify_mac(&result,
-                                                         messageHandle,
-                                                         senderHandle,
-                                                         receiverHandle,
-                                                         $0))
+                try checkError(signal_message_verify_mac(
+                    &result,
+                    messageHandle,
+                    senderHandle,
+                    receiverHandle,
+                    $0
+                ))
                 return result
             }
         }

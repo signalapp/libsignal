@@ -3,21 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import XCTest
 import LibSignalClient
+import XCTest
 
 class IasTests: TestCaseBase {
-
     func testSignatureValidation() throws {
         let signatureData = Data(base64Encoded: goodSignature)!
         let messageData = Data(base64Encoded: goodMessage)!
         let pemBytes = Array(goodPem.utf8)
 
         XCTAssertTrue(Ias.verify(
-                signature: signatureData,
-                of: messageData,
-                withCertificatesPem: pemBytes,
-                at: Date()
+            signature: signatureData,
+            of: messageData,
+            withCertificatesPem: pemBytes,
+            at: Date()
         ))
     }
 
@@ -28,10 +27,10 @@ class IasTests: TestCaseBase {
         pemBytes.swapAt(129, 140)
 
         XCTAssertFalse(Ias.verify(
-                signature: signatureData,
-                of: messageData,
-                withCertificatesPem: pemBytes,
-                at: Date()
+            signature: signatureData,
+            of: messageData,
+            withCertificatesPem: pemBytes,
+            at: Date()
         ))
     }
 
@@ -42,10 +41,10 @@ class IasTests: TestCaseBase {
         let pemBytes = Array(goodPem.utf8)
 
         XCTAssertFalse(Ias.verify(
-                signature: signatureData,
-                of: messageData,
-                withCertificatesPem: pemBytes,
-                at: Date()
+            signature: signatureData,
+            of: messageData,
+            withCertificatesPem: pemBytes,
+            at: Date()
         ))
     }
 
@@ -55,10 +54,10 @@ class IasTests: TestCaseBase {
         let pemBytes = Array(goodPem.utf8)
 
         XCTAssertFalse(Ias.verify(
-                signature: signatureData,
-                of: messageData,
-                withCertificatesPem: pemBytes,
-                at: .distantFuture
+            signature: signatureData,
+            of: messageData,
+            withCertificatesPem: pemBytes,
+            at: .distantFuture
         ))
     }
 

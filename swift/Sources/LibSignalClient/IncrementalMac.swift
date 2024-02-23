@@ -23,7 +23,7 @@ public enum SizeChoice {
 }
 
 public class IncrementalMacContext: NativeHandleOwner {
-    private var _digest: Data = Data()
+    private var _digest: Data = .init()
 
     public convenience init<Key: ContiguousBytes>(key: Key, chunkSize sizeChoice: SizeChoice) throws {
         let chunkSize = try sizeChoice.sizeInBytes()
@@ -35,14 +35,14 @@ public class IncrementalMacContext: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_incremental_mac_destroy(handle)
     }
 
     public func update<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let digest = try bytes.withUnsafeBorrowedBuffer { bytesPtr in
-            return try invokeFnReturningArray {
-                return signal_incremental_mac_update($0, unsafeNativeHandle, bytesPtr, 0, UInt32(bytesPtr.length))
+            try invokeFnReturningArray {
+                signal_incremental_mac_update($0, unsafeNativeHandle, bytesPtr, 0, UInt32(bytesPtr.length))
             }
         }
         self._digest.append(contentsOf: digest)
@@ -50,7 +50,7 @@ public class IncrementalMacContext: NativeHandleOwner {
 
     public func finalize() throws -> [UInt8] {
         let digest = try invokeFnReturningArray {
-            return signal_incremental_mac_finalize($0, unsafeNativeHandle)
+            signal_incremental_mac_finalize($0, unsafeNativeHandle)
         }
         self._digest.append(contentsOf: digest)
         return Array(self._digest)
@@ -73,14 +73,14 @@ public class ValidatingMacContext: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_validating_mac_destroy(handle)
     }
 
     public func update<Bytes: ContiguousBytes>(_ bytes: Bytes) throws -> UInt32 {
         let validBytesCount = try bytes.withUnsafeBorrowedBuffer { bytesPtr in
-            return try invokeFnReturningInteger {
-                return signal_validating_mac_update($0, unsafeNativeHandle, bytesPtr, 0, UInt32(bytesPtr.length))
+            try invokeFnReturningInteger {
+                signal_validating_mac_update($0, unsafeNativeHandle, bytesPtr, 0, UInt32(bytesPtr.length))
             }
         }
         if validBytesCount < 0 {
@@ -91,7 +91,7 @@ public class ValidatingMacContext: NativeHandleOwner {
 
     public func finalize() throws -> UInt32 {
         let validBytesCount = try invokeFnReturningInteger {
-            return signal_validating_mac_finalize($0, unsafeNativeHandle)
+            signal_validating_mac_finalize($0, unsafeNativeHandle)
         }
         if validBytesCount < 0 {
             throw SignalError.verificationFailed("Bad incremental MAC (finalize)")

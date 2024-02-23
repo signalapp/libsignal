@@ -7,7 +7,7 @@ import Foundation
 import SignalFfi
 
 public class ReceiptCredentialResponse: ByteArray {
-  public required init(contents: [UInt8]) throws {
-    try super.init(contents, checkValid: signal_receipt_credential_response_check_valid_contents)
-  }
+    public required init(contents: [UInt8]) throws {
+        try super.init(contents, checkValid: signal_receipt_credential_response_check_valid_contents)
+    }
 }

@@ -7,14 +7,13 @@ import Foundation
 import SignalFfi
 
 public class BackupAuthCredential: ByteArray {
-
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_backup_auth_credential_check_valid_contents)
     }
 
     public func present(serverParams: GenericServerPublicParams) -> BackupAuthCredentialPresentation {
         return failOnError {
-            present(serverParams: serverParams, randomness: try .generate())
+            self.present(serverParams: serverParams, randomness: try .generate())
         }
     }
 

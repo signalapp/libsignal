@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 #if canImport(Security)
 import Security
@@ -114,7 +114,7 @@ internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMut
 }
 
 internal func invokeFnReturningBool(fn: (UnsafeMutablePointer<Bool>?) -> SignalFfiErrorRef?) throws -> Bool {
-    var output: Bool = false
+    var output = false
     try checkError(fn(&output))
     return output
 }
@@ -161,7 +161,7 @@ internal func fillRandom(_ buffer: UnsafeMutableRawBufferPointer) throws {
 #if canImport(Security)
     let result = SecRandomCopyBytes(kSecRandomDefault, buffer.count, baseAddress)
     guard result == errSecSuccess else {
-      throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
+        throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
     }
 #else
     for i in buffer.indices {

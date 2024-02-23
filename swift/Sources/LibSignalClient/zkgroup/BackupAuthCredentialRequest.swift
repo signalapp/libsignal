@@ -13,7 +13,7 @@ public class BackupAuthCredentialRequest: ByteArray {
 
     public func issueCredential(timestamp: Date, receiptLevel: UInt64, params: GenericServerSecretParams) -> BackupAuthCredentialResponse {
         return failOnError {
-            issueCredential(timestamp: timestamp, receiptLevel: receiptLevel, params: params, randomness: try .generate())
+            self.issueCredential(timestamp: timestamp, receiptLevel: receiptLevel, params: params, randomness: try .generate())
         }
     }
 

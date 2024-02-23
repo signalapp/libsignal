@@ -10,8 +10,8 @@ public class ByteArray {
     private let contents: [UInt8]
 
     init(_ newContents: [UInt8], checkValid: (SignalBorrowedBuffer) -> SignalFfiErrorRef?) throws {
-        contents = newContents
-        try withUnsafeBorrowedBuffer { buffer in
+        self.contents = newContents
+        try self.withUnsafeBorrowedBuffer { buffer in
             try checkError(checkValid(buffer))
         }
     }
@@ -20,7 +20,7 @@ public class ByteArray {
         if newContents.count != expectedLength {
             throw SignalError.invalidType("\(type(of: self)) uses \(expectedLength) bytes, but tried to deserialize from an array of \(newContents.count) bytes")
         }
-        contents = newContents
+        self.contents = newContents
     }
 
     required init(contents: [UInt8]) throws {
@@ -28,7 +28,7 @@ public class ByteArray {
     }
 
     public func serialize() -> [UInt8] {
-        return contents
+        return self.contents
     }
 
     /// Passes a pointer to the serialized contents to `callback`.
@@ -45,7 +45,7 @@ public class ByteArray {
     func withUnsafePointerToSerialized<Serialized, Result>(_ callback: (UnsafePointer<Serialized>) throws -> Result) throws -> Result {
         precondition(MemoryLayout<Serialized>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
 
-        return try contents.withUnsafeBytes { buffer in
+        return try self.contents.withUnsafeBytes { buffer in
             let expectedSize = MemoryLayout<Serialized>.size
             guard expectedSize == buffer.count else {
                 throw SignalError.invalidType("\(type(of: self)) uses \(buffer.count) bytes, but was passed to a callback that uses \(expectedSize) bytes")
@@ -64,6 +64,6 @@ public class ByteArray {
     ///
     /// Used for types that don't have a fixed-length representation.
     func withUnsafeBorrowedBuffer<Result>(_ callback: (SignalBorrowedBuffer) throws -> Result) throws -> Result {
-        return try contents.withUnsafeBorrowedBuffer(callback)
+        return try self.contents.withUnsafeBorrowedBuffer(callback)
     }
 }

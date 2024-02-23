@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 #if canImport(SignalCoreKit)
 import SignalCoreKit

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public enum KeyFormat: UInt8, CaseIterable {
     // PKCS#8 is the default for backward compatibility
@@ -30,13 +30,15 @@ public struct DeviceTransferKey {
     }
 
     public func generateCertificate(_ name: String, _ daysTilExpire: Int) -> [UInt8] {
-        return privateKey.withUnsafeBorrowedBuffer { privateKeyBuffer in
+        return self.privateKey.withUnsafeBorrowedBuffer { privateKeyBuffer in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_device_transfer_generate_certificate($0,
-                                                                privateKeyBuffer,
-                                                                name,
-                                                                UInt32(daysTilExpire))
+                    signal_device_transfer_generate_certificate(
+                        $0,
+                        privateKeyBuffer,
+                        name,
+                        UInt32(daysTilExpire)
+                    )
                 }
             }
         }

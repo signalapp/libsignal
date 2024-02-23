@@ -27,8 +27,8 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     private var senderKeyMap: [SenderKeyName: SenderKeyRecord] = [:]
 
     public init() {
-        privateKey = IdentityKeyPair.generate()
-        registrationId = UInt32.random(in: 0...0x3FFF)
+        self.privateKey = IdentityKeyPair.generate()
+        self.registrationId = UInt32.random(in: 0...0x3FFF)
     }
 
     public init(identity: IdentityKeyPair, registrationId: UInt32) {
@@ -37,15 +37,15 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     }
 
     open func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair {
-        return privateKey
+        return self.privateKey
     }
 
     open func localRegistrationId(context: StoreContext) throws -> UInt32 {
-        return registrationId
+        return self.registrationId
     }
 
     open func saveIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws -> Bool {
-        if publicKeys.updateValue(identity, forKey: address) == nil {
+        if self.publicKeys.updateValue(identity, forKey: address) == nil {
             return false // newly created
         } else {
             return true
@@ -61,7 +61,7 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     }
 
     open func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey? {
-        return publicKeys[address]
+        return self.publicKeys[address]
     }
 
     open func loadPreKey(id: UInt32, context: StoreContext) throws -> PreKeyRecord {
@@ -73,11 +73,11 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     }
 
     open func storePreKey(_ record: PreKeyRecord, id: UInt32, context: StoreContext) throws {
-        prekeyMap[id] = record
+        self.prekeyMap[id] = record
     }
 
     open func removePreKey(id: UInt32, context: StoreContext) throws {
-        prekeyMap.removeValue(forKey: id)
+        self.prekeyMap.removeValue(forKey: id)
     }
 
     open func loadSignedPreKey(id: UInt32, context: StoreContext) throws -> SignedPreKeyRecord {
@@ -89,7 +89,7 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     }
 
     open func storeSignedPreKey(_ record: SignedPreKeyRecord, id: UInt32, context: StoreContext) throws {
-        signedPrekeyMap[id] = record
+        self.signedPrekeyMap[id] = record
     }
 
     open func loadKyberPreKey(id: UInt32, context: StoreContext) throws -> KyberPreKeyRecord {
@@ -101,15 +101,15 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     }
 
     open func storeKyberPreKey(_ record: KyberPreKeyRecord, id: UInt32, context: StoreContext) throws {
-        kyberPrekeyMap[id] = record
+        self.kyberPrekeyMap[id] = record
     }
 
     open func markKyberPreKeyUsed(id: UInt32, context: StoreContext) throws {
-        kyberPrekeysUsed.insert(id)
+        self.kyberPrekeysUsed.insert(id)
     }
 
     open func loadSession(for address: ProtocolAddress, context: StoreContext) throws -> SessionRecord? {
-        return sessionMap[address]
+        return self.sessionMap[address]
     }
 
     open func loadExistingSessions(for addresses: [ProtocolAddress], context: StoreContext) throws -> [SessionRecord] {
@@ -122,14 +122,14 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
     }
 
     open func storeSession(_ record: SessionRecord, for address: ProtocolAddress, context: StoreContext) throws {
-        sessionMap[address] = record
+        self.sessionMap[address] = record
     }
 
     open func storeSenderKey(from sender: ProtocolAddress, distributionId: UUID, record: SenderKeyRecord, context: StoreContext) throws {
-        senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)] = record
+        self.senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)] = record
     }
 
     open func loadSenderKey(from sender: ProtocolAddress, distributionId: UUID, context: StoreContext) throws -> SenderKeyRecord? {
-        return senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)]
+        return self.senderKeyMap[SenderKeyName(sender: sender, distributionId: distributionId)]
     }
 }

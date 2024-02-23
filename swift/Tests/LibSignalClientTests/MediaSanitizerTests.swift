@@ -5,8 +5,8 @@
 
 #if SIGNAL_MEDIA_SUPPORTED
 
-import XCTest
 @testable import LibSignalClient
+import XCTest
 
 class Mp4SanitizerTests: TestCaseBase {
     func testEmptyMp4() {
@@ -129,7 +129,7 @@ private func webp() -> [UInt8] {
 
     webp.append(contentsOf: "VP8L") // chunk type
     webp.append(contentsOf: [8, 0, 0, 0]) // chunk size
-    webp.append(contentsOf: [0x2f, 0, 0, 0, 0, 0x88, 0x88, 8]) // VP8L data
+    webp.append(contentsOf: [0x2F, 0, 0, 0, 0, 0x88, 0x88, 8]) // VP8L data
 
     return webp
 }

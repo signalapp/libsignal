@@ -16,38 +16,37 @@ import SignalFfi
  * - SeeAlso: ``GroupSendCredentialResponse``, ``GroupSendCredentialPresentation``
  */
 public class GroupSendCredential: ByteArray {
-
-  public required init(contents: [UInt8]) throws {
-    try super.init(contents, checkValid: signal_group_send_credential_check_valid_contents)
-  }
-
-  /**
-   * Generates a new presentation, so that multiple uses of this credential are harder to link.
-   */
-  public func present(serverParams: ServerPublicParams) -> GroupSendCredentialPresentation {
-    return failOnError {
-      present(serverParams: serverParams, randomness: try .generate())
+    public required init(contents: [UInt8]) throws {
+        try super.init(contents, checkValid: signal_group_send_credential_check_valid_contents)
     }
-  }
 
-  /**
-   * Generates a new presentation with a dedicated source of randomness.
-   *
-   * Should only be used for testing purposes.
-   *
-   * - SeeAlso: ``present(serverParams:)``
-   */
-  public func present(serverParams: ServerPublicParams, randomness: Randomness) -> GroupSendCredentialPresentation {
-    return failOnError {
-      try withUnsafeBorrowedBuffer { contents in
-        try serverParams.withUnsafePointerToSerialized { serverParams in
-          try randomness.withUnsafePointerToBytes { randomness in
-            try invokeFnReturningVariableLengthSerialized {
-              signal_group_send_credential_present_deterministic($0, contents, serverParams, randomness)
-            }
-          }
+    /**
+     * Generates a new presentation, so that multiple uses of this credential are harder to link.
+     */
+    public func present(serverParams: ServerPublicParams) -> GroupSendCredentialPresentation {
+        return failOnError {
+            self.present(serverParams: serverParams, randomness: try .generate())
         }
-      }
     }
-  }
+
+    /**
+     * Generates a new presentation with a dedicated source of randomness.
+     *
+     * Should only be used for testing purposes.
+     *
+     * - SeeAlso: ``present(serverParams:)``
+     */
+    public func present(serverParams: ServerPublicParams, randomness: Randomness) -> GroupSendCredentialPresentation {
+        return failOnError {
+            try withUnsafeBorrowedBuffer { contents in
+                try serverParams.withUnsafePointerToSerialized { serverParams in
+                    try randomness.withUnsafePointerToBytes { randomness in
+                        try invokeFnReturningVariableLengthSerialized {
+                            signal_group_send_credential_present_deterministic($0, contents, serverParams, randomness)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

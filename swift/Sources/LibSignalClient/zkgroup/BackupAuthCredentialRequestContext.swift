@@ -7,7 +7,6 @@ import Foundation
 import SignalFfi
 
 public class BackupAuthCredentialRequestContext: ByteArray {
-
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_backup_auth_credential_request_context_check_valid_contents)
     }
@@ -47,5 +46,4 @@ public class BackupAuthCredentialRequestContext: ByteArray {
             }
         }
     }
-
 }

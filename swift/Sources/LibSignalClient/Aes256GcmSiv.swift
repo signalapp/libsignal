@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class Aes256GcmSiv: NativeHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(key bytes: Bytes) throws {
@@ -16,29 +16,27 @@ public class Aes256GcmSiv: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_aes256_gcm_siv_destroy(handle)
     }
 
-    public func encrypt<MessageBytes, NonceBytes, AssociatedDataBytes>(
-      _ message: MessageBytes,
-      nonce: NonceBytes,
-      associatedData: AssociatedDataBytes
-    ) throws -> [UInt8]
-      where MessageBytes: ContiguousBytes,
-            NonceBytes: ContiguousBytes,
-            AssociatedDataBytes: ContiguousBytes {
-
+    public func encrypt(
+        _ message: some ContiguousBytes,
+        nonce: some ContiguousBytes,
+        associatedData: some ContiguousBytes
+    ) throws -> [UInt8] {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                     try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                         try invokeFnReturningArray {
-                            signal_aes256_gcm_siv_encrypt($0,
-                                                          nativeHandle,
-                                                          messageBuffer,
-                                                          nonceBuffer,
-                                                          adBuffer)
+                            signal_aes256_gcm_siv_encrypt(
+                                $0,
+                                nativeHandle,
+                                messageBuffer,
+                                nonceBuffer,
+                                adBuffer
+                            )
                         }
                     }
                 }
@@ -46,29 +44,27 @@ public class Aes256GcmSiv: NativeHandleOwner {
         }
     }
 
-    public func decrypt<MessageBytes, NonceBytes, AssociatedDataBytes> (
-      _ message: MessageBytes,
-      nonce: NonceBytes,
-      associatedData: AssociatedDataBytes) throws -> [UInt8]
-      where MessageBytes: ContiguousBytes,
-            NonceBytes: ContiguousBytes,
-            AssociatedDataBytes: ContiguousBytes {
-
+    public func decrypt(
+        _ message: some ContiguousBytes,
+        nonce: some ContiguousBytes,
+        associatedData: some ContiguousBytes
+    ) throws -> [UInt8] {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                     try associatedData.withUnsafeBorrowedBuffer { adBuffer in
                         try invokeFnReturningArray {
-                            signal_aes256_gcm_siv_decrypt($0,
-                                                          nativeHandle,
-                                                          messageBuffer,
-                                                          nonceBuffer,
-                                                          adBuffer)
+                            signal_aes256_gcm_siv_decrypt(
+                                $0,
+                                nativeHandle,
+                                messageBuffer,
+                                nonceBuffer,
+                                adBuffer
+                            )
                         }
                     }
                 }
             }
         }
     }
-
 }

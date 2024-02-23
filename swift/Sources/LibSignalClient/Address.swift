@@ -8,9 +8,11 @@ import SignalFfi
 public class ProtocolAddress: ClonableHandleOwner {
     public convenience init(name: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?
-        try checkError(signal_address_new(&handle,
-                                          name,
-                                          deviceId))
+        try checkError(signal_address_new(
+            &handle,
+            name,
+            deviceId
+        ))
         self.init(owned: handle!)
     }
 
@@ -25,11 +27,11 @@ public class ProtocolAddress: ClonableHandleOwner {
         }
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_address_clone(&newHandle, currentHandle)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_address_destroy(handle)
     }
 
@@ -47,7 +49,7 @@ public class ProtocolAddress: ClonableHandleOwner {
     ///
     /// In a future release ProtocolAddresses will *only* support ServiceIds.
     public var serviceId: ServiceId! {
-        return try? ServiceId.parseFrom(serviceIdString: name)
+        return try? ServiceId.parseFrom(serviceIdString: self.name)
     }
 
     public var deviceId: UInt32 {
@@ -63,7 +65,7 @@ public class ProtocolAddress: ClonableHandleOwner {
 
 extension ProtocolAddress: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "\(name).\(deviceId)"
+        return "\(self.name).\(self.deviceId)"
     }
 }
 

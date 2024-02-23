@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public struct DisplayableFingerprint {
     public let formatted: String
@@ -18,7 +18,7 @@ public struct ScannableFingerprint {
     /// Throws an error if `other` is not a valid fingerprint encoding, or if it uses an
     /// incompatible encoding version.
     public func compare<Other: ContiguousBytes>(againstEncoding other: Other) throws -> Bool {
-        var result: Bool = false
+        var result = false
         try encoding.withUnsafeBorrowedBuffer { encodingBuffer in
             try other.withUnsafeBorrowedBuffer { otherBuffer in
                 try checkError(signal_fingerprint_compare(&result, encodingBuffer, otherBuffer))
@@ -45,21 +45,26 @@ public struct NumericFingerprintGenerator {
         self.iterations = iterations
     }
 
-    public func create<LocalBytes, RemoteBytes>(version: Int,
-                                                localIdentifier: LocalBytes,
-                                                localKey: PublicKey,
-                                                remoteIdentifier: RemoteBytes,
-                                                remoteKey: PublicKey) throws -> Fingerprint
-    where LocalBytes: ContiguousBytes, RemoteBytes: ContiguousBytes {
+    public func create(
+        version: Int,
+        localIdentifier: some ContiguousBytes,
+        localKey: PublicKey,
+        remoteIdentifier: some ContiguousBytes,
+        remoteKey: PublicKey
+    ) throws -> Fingerprint {
         var obj: OpaquePointer?
         try withNativeHandles(localKey, remoteKey) { localKeyHandle, remoteKeyHandle in
             try localIdentifier.withUnsafeBorrowedBuffer { localBuffer in
                 try remoteIdentifier.withUnsafeBorrowedBuffer { remoteBuffer in
-                    try checkError(signal_fingerprint_new(&obj, UInt32(iterations), UInt32(version),
-                                                          localBuffer,
-                                                          localKeyHandle,
-                                                          remoteBuffer,
-                                                          remoteKeyHandle))
+                    try checkError(signal_fingerprint_new(
+                        &obj,
+                        UInt32(self.iterations),
+                        UInt32(version),
+                        localBuffer,
+                        localKeyHandle,
+                        remoteBuffer,
+                        remoteKeyHandle
+                    ))
                 }
             }
         }

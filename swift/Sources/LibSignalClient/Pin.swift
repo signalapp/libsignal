@@ -48,7 +48,7 @@ public func verifyLocalPin<Bytes: ContiguousBytes>(_ pin: Bytes, againstEncodedH
 
 /// A hash of the pin that can be used to interact with a Secure Value Recovery service.
 public class PinHash: NativeHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_pin_hash_destroy(handle)
     }
 
@@ -83,7 +83,6 @@ public class PinHash: NativeHandleOwner {
     /// - parameter salt: A 32 byte salt
     /// - returns: A `PinHash`
     public convenience init<PinBytes: ContiguousBytes, SaltBytes: ContiguousBytes>(normalizedPin: PinBytes, salt: SaltBytes) throws {
-
         var result: OpaquePointer?
         try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try salt.withUnsafeBytes { saltBytes in
@@ -114,5 +113,4 @@ public class PinHash: NativeHandleOwner {
         }
         self.init(owned: result!)
     }
-
 }

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import XCTest
 @testable import LibSignalClient
+import XCTest
 
 private struct FakeHandle {
     // We're using the tuple to guarantee in-memory layout for this test.

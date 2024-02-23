@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import XCTest
 import SignalFfi
+import XCTest
 
 #if canImport(SignalCoreKit)
 import SignalCoreKit
@@ -31,6 +31,6 @@ class TestCaseBase: XCTestCase {
     }()
 
     override class func setUp() {
-        precondition(loggingInitialized)
+        precondition(self.loggingInitialized)
     }
 }

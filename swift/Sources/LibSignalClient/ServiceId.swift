@@ -43,7 +43,7 @@ public enum ServiceIdError: Error {
 }
 
 public class ServiceId {
-    fileprivate var storage: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    private var storage: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     fileprivate init(fromFixedWidthBinary storage: ServiceIdStorage) {
         self.storage = storage
@@ -187,7 +187,7 @@ public class Aci: ServiceId {
         super.init(.aci, uuid)
     }
 
-    internal override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
+    override internal init(fromFixedWidthBinary bytes: ServiceIdStorage) {
         super.init(fromFixedWidthBinary: bytes)
     }
 }
@@ -197,7 +197,7 @@ public class Pni: ServiceId {
         super.init(.pni, uuid)
     }
 
-    internal override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
+    override internal init(fromFixedWidthBinary bytes: ServiceIdStorage) {
         super.init(fromFixedWidthBinary: bytes)
     }
 }

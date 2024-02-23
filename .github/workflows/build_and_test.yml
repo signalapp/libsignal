@@ -353,6 +353,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check formatting
+        run: swiftformat --swiftversion 5 --reporter github-actions-log --lint .
+        working-directory: swift
+
       - name: Run lint
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift

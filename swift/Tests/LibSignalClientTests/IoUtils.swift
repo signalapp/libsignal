@@ -25,30 +25,30 @@ public class ThrowsAfterInputStream: SignalInputStream {
     }
 
     public func read(into buffer: UnsafeMutableRawBufferPointer) throws -> Int {
-        if readBeforeThrow == 0 {
+        if self.readBeforeThrow == 0 {
             throw TestIoError()
         }
 
         var target = buffer
-        if buffer.count > readBeforeThrow {
-            target = UnsafeMutableRawBufferPointer(rebasing: buffer[..<Int(readBeforeThrow)])
+        if buffer.count > self.readBeforeThrow {
+            target = UnsafeMutableRawBufferPointer(rebasing: buffer[..<Int(self.readBeforeThrow)])
         }
 
         let read = try inner.read(into: target)
         if read > 0 {
-            readBeforeThrow -= UInt64(read)
+            self.readBeforeThrow -= UInt64(read)
         }
         return read
     }
 
     public func skip(by amount: UInt64) throws {
-        if readBeforeThrow < amount {
-            readBeforeThrow = 0
+        if self.readBeforeThrow < amount {
+            self.readBeforeThrow = 0
             throw TestIoError()
         }
 
-        try inner.skip(by: amount)
-        readBeforeThrow -= amount
+        try self.inner.skip(by: amount)
+        self.readBeforeThrow -= amount
     }
 
     private var inner: SignalInputStream

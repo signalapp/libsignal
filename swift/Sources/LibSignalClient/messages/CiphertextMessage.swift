@@ -19,18 +19,21 @@ public class CiphertextMessage: NativeHandleOwner {
         public static var whisper: Self {
             return Self(SignalCiphertextMessageTypeWhisper)
         }
+
         public static var preKey: Self {
             return Self(SignalCiphertextMessageTypePreKey)
         }
+
         public static var senderKey: Self {
             return Self(SignalCiphertextMessageTypeSenderKey)
         }
+
         public static var plaintext: Self {
             return Self(SignalCiphertextMessageTypePlaintext)
         }
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_ciphertext_message_destroy(handle)
     }
 

@@ -7,7 +7,6 @@ import Foundation
 import SignalFfi
 
 public enum Ias {
-
     public static func verify<
         Signature: ContiguousBytes,
         Body: ContiguousBytes,

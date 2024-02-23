@@ -8,7 +8,6 @@ import LibSignalClient
 import XCTest
 
 class PinTests: TestCaseBase {
-
     func testBadSaltLength() {
         XCTAssertThrowsError(try PinHash(normalizedPin: Array("password".utf8), salt: [0xFF])) {
             guard case SignalError.invalidType(_) = $0 else {

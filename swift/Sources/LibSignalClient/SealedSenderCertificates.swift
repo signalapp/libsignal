@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class ServerCertificate: NativeHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
@@ -25,7 +25,7 @@ public class ServerCertificate: NativeHandleOwner {
         self.init(owned: result!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_server_certificate_destroy(handle)
     }
 
@@ -94,19 +94,21 @@ public class SenderCertificate: NativeHandleOwner {
     public convenience init(sender: SealedSenderAddress, publicKey: PublicKey, expiration: UInt64, signerCertificate: ServerCertificate, signerKey: PrivateKey) throws {
         var result: OpaquePointer?
         try withNativeHandles(publicKey, signerCertificate, signerKey) { publicKeyHandle, signerCertificateHandle, signerKeyHandle in
-            try checkError(signal_sender_certificate_new(&result,
-                                                         sender.uuidString,
-                                                         sender.e164,
-                                                         sender.deviceId,
-                                                         publicKeyHandle,
-                                                         expiration,
-                                                         signerCertificateHandle,
-                                                         signerKeyHandle))
+            try checkError(signal_sender_certificate_new(
+                &result,
+                sender.uuidString,
+                sender.e164,
+                sender.deviceId,
+                publicKeyHandle,
+                expiration,
+                signerCertificateHandle,
+                signerKeyHandle
+            ))
         }
         self.init(owned: result!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_sender_certificate_destroy(handle)
     }
 
@@ -184,7 +186,7 @@ public class SenderCertificate: NativeHandleOwner {
     ///
     /// In a future release SenderCertificate will *only* support ACIs.
     public var senderAci: Aci! {
-        return try? Aci.parseFrom(serviceIdString: senderUuid)
+        return try? Aci.parseFrom(serviceIdString: self.senderUuid)
     }
 
     public var senderE164: String? {
@@ -214,7 +216,7 @@ public class SenderCertificate: NativeHandleOwner {
     }
 
     public func validate(trustRoot: PublicKey, time: UInt64) throws -> Bool {
-        var result: Bool = false
+        var result = false
         try withNativeHandles(self, trustRoot) { certificateHandle, trustRootHandle in
             try checkError(signal_sender_certificate_validate(&result, certificateHandle, trustRootHandle, time))
         }

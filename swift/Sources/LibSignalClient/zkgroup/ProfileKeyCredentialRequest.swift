@@ -7,7 +7,7 @@ import Foundation
 import SignalFfi
 
 public class ProfileKeyCredentialRequest: ByteArray {
-  public required init(contents: [UInt8]) throws {
-    try super.init(contents, checkValid: signal_profile_key_credential_request_check_valid_contents)
-  }
+    public required init(contents: [UInt8]) throws {
+        try super.init(contents, checkValid: signal_profile_key_credential_request_check_valid_contents)
+    }
 }

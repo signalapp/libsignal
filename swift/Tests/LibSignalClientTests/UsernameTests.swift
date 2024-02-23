@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import XCTest
 import LibSignalClient
+import XCTest
 
 class UsernameTests: TestCaseBase {
-
     func testTheBasicFlow() throws {
         let candidates = try Username.candidates(from: "hel10")
         let username = candidates[0]
@@ -48,10 +47,11 @@ class UsernameTests: TestCaseBase {
         let username = try Username("he110.42")
         XCTAssertEqual(32, username.hash.count)
         XCTAssertEqual([
-            0xf6, 0x3f, 0x05, 0x21, 0xeb, 0x3a, 0xdf, 0xe1,
-            0xd9, 0x36, 0xf4, 0xb6, 0x26, 0xb8, 0x95, 0x58,
-            0x48, 0x35, 0x07, 0xfb, 0xdb, 0x83, 0x8f, 0xc5,
-            0x54, 0xaf, 0x05, 0x91, 0x11, 0xcf, 0x32, 0x2e], username.hash)
+            0xF6, 0x3F, 0x05, 0x21, 0xEB, 0x3A, 0xDF, 0xE1,
+            0xD9, 0x36, 0xF4, 0xB6, 0x26, 0xB8, 0x95, 0x58,
+            0x48, 0x35, 0x07, 0xFB, 0xDB, 0x83, 0x8F, 0xC5,
+            0x54, 0xAF, 0x05, 0x91, 0x11, 0xCF, 0x32, 0x2E,
+        ], username.hash)
     }
 
     func testInvalidHash() throws {
@@ -84,10 +84,14 @@ class UsernameTests: TestCaseBase {
         XCTAssertEqual("jimio.01", jimio01.value)
         try Username.verify(proof: jimio01.generateProof(), forHash: jimio01.hash)
 
-        XCTAssertEqual("jimio.\(UInt64.max)",
-                       try Username(nickname: "jimio",
-                                    discriminator: "\(UInt64.max)",
-                                    withValidLengthWithin: 3...32).value)
+        XCTAssertEqual(
+            "jimio.\(UInt64.max)",
+            try Username(
+                nickname: "jimio",
+                discriminator: "\(UInt64.max)",
+                withValidLengthWithin: 3...32
+            ).value
+        )
     }
 
     func testCorrectErrorsForInvalidUsernamesFromParts() throws {

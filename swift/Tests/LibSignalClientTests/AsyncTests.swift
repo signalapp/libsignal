@@ -6,9 +6,9 @@
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
-import XCTest
 @testable import LibSignalClient
 import SignalFfi
+import XCTest
 
 final class AsyncTests: XCTestCase {
     func testSuccess() async throws {
@@ -39,7 +39,8 @@ final class AsyncTests: XCTestCase {
             XCTAssertEqual(
                 try invokeFnReturningInteger { result in
                     signal_testing_testing_handle_type_get_value(result, handle)
-                }, value)
+                }, value
+            )
         }
 
         do {
@@ -52,7 +53,8 @@ final class AsyncTests: XCTestCase {
             XCTAssertEqual(
                 try invokeFnReturningString { result in
                     signal_testing_other_testing_handle_type_get_value(result, otherHandle)
-                }, value)
+                }, value
+            )
         }
     }
 }

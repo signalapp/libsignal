@@ -7,7 +7,7 @@ import Foundation
 import SignalFfi
 
 public class AuthCredentialWithPni: ByteArray {
-  public required init(contents: [UInt8]) throws {
-    try super.init(contents, checkValid: signal_auth_credential_with_pni_check_valid_contents)
-  }
+    public required init(contents: [UInt8]) throws {
+        try super.init(contents, checkValid: signal_auth_credential_with_pni_check_valid_contents)
+    }
 }

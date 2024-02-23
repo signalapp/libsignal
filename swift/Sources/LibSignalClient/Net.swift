@@ -91,15 +91,15 @@ public class Net {
     ) async throws -> CdsiLookup {
         let timeoutMs = durationToMillis(timeout)
         let handle: OpaquePointer = try await invokeAsyncFunction { promise, context in
-            asyncContext.withNativeHandle { asyncContext in
-                connectionManager.withNativeHandle { connectionManager in
+            self.asyncContext.withNativeHandle { asyncContext in
+                self.connectionManager.withNativeHandle { connectionManager in
                     request.withNativeHandle { request in
                         signal_cdsi_lookup_new(promise, context, asyncContext, connectionManager, auth.username, auth.password, request, timeoutMs)
                     }
                 }
             }
         }
-        return CdsiLookup(native: handle, asyncContext: asyncContext)
+        return CdsiLookup(native: handle, asyncContext: self.asyncContext)
     }
 
     private var asyncContext: TokioAsyncContext
@@ -150,7 +150,8 @@ public class CdsiLookupRequest: NativeHandleOwner {
         prevE164s: [String],
         acisAndAccessKeys: [AciAndAccessKey],
         token: Data?,
-        returnAcisWithoutUaks: Bool) throws {
+        returnAcisWithoutUaks: Bool
+    ) throws {
         self.init()
         try self.withNativeHandle { handle in
             for e164 in e164s {
@@ -182,7 +183,7 @@ public class CdsiLookupRequest: NativeHandleOwner {
         }
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         signal_lookup_request_destroy(handle)
     }
 }
@@ -192,7 +193,7 @@ public class CdsiLookupRequest: NativeHandleOwner {
 /// Returned by ``Net/cdsiLookup(auth:request:timeout:)`` when a request is successfully initiated.
 public class CdsiLookup {
     class NativeCdsiLookup: NativeHandleOwner {
-        internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
             signal_cdsi_lookup_destroy(handle)
         }
     }
@@ -212,10 +213,10 @@ public class CdsiLookup {
     /// numbers.
     public var token: Data {
         failOnError {
-            try native.withNativeHandle { handle in
-              try invokeFnReturningData {
-                  signal_cdsi_lookup_token($0, handle)
-              }
+            try self.native.withNativeHandle { handle in
+                try invokeFnReturningData {
+                    signal_cdsi_lookup_token($0, handle)
+                }
             }
         }
     }
@@ -232,8 +233,8 @@ public class CdsiLookup {
     ///   `SignalError.networkProtocolError` for a CDSI or attested connection protocol issue.
     public func complete() async throws -> CdsiLookupResponse {
         let response: SignalFfiCdsiLookupResponse = try await invokeAsyncFunction { promise, context in
-            asyncContext.withNativeHandle { asyncContext in
-                native.withNativeHandle { handle in
+            self.asyncContext.withNativeHandle { asyncContext in
+                self.native.withNativeHandle { handle in
                     signal_cdsi_lookup_complete(promise, context, asyncContext, handle)
                 }
             }
@@ -285,7 +286,7 @@ public class LookupResponseEntryList: Collection {
     public subscript(bounds: Range<Index>) -> SubSequence { self.owned[bounds] }
 }
 
-let nilUuid =  uuid_t(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+let nilUuid = uuid_t(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 /// Entry contained in a successful CDSI lookup response.
 ///
@@ -336,7 +337,7 @@ internal class TokioAsyncContext: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         signal_tokio_async_context_destroy(handle)
     }
 }
@@ -348,7 +349,7 @@ internal class ConnectionManager: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         signal_connection_manager_destroy(handle)
     }
 }

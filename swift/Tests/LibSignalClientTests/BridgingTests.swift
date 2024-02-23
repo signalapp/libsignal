@@ -6,9 +6,9 @@
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
-import XCTest
 @testable import LibSignalClient
 import SignalFfi
+import XCTest
 
 private func fakeAsyncRuntime() -> OpaquePointer! {
     OpaquePointer(bitPattern: -1)

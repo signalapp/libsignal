@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class KEMKeyPair: ClonableHandleOwner {
-
     public static func generate() -> KEMKeyPair {
         return failOnError {
             try invokeFnReturningNativeHandle {
@@ -16,11 +15,11 @@ public class KEMKeyPair: ClonableHandleOwner {
         }
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_kyber_key_pair_clone(&newHandle, currentHandle)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_kyber_key_pair_destroy(handle)
     }
 
@@ -55,11 +54,11 @@ public class KEMPublicKey: ClonableHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_kyber_public_key_clone(&newHandle, currentHandle)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_kyber_public_key_destroy(handle)
     }
 
@@ -96,11 +95,11 @@ public class KEMSecretKey: ClonableHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_kyber_secret_key_clone(&newHandle, currentHandle)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_kyber_secret_key_destroy(handle)
     }
 
