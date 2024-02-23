@@ -16,7 +16,7 @@ const ERROR_CLASS_NAME: &str = "LibSignalErrorBase";
 #[allow(non_snake_case)]
 fn node_registerErrors(mut cx: FunctionContext) -> JsResult<JsValue> {
     let errors_module = cx.argument::<JsObject>(0)?;
-    cx.this()
+    cx.this::<JsObject>()?
         .set(&mut cx, ERRORS_PROPERTY_NAME, errors_module)?;
     Ok(cx.undefined().upcast())
 }
@@ -74,10 +74,7 @@ pub(crate) enum ThrownException {
 }
 
 impl ThrownException {
-    pub(crate) fn from_value<'a>(
-        cx: &mut CallContext<'a, JsObject>,
-        error: Handle<'a, JsValue>,
-    ) -> Self {
+    pub(crate) fn from_value<'a>(cx: &mut FunctionContext<'a>, error: Handle<'a, JsValue>) -> Self {
         if let Ok(e) = error.downcast::<JsError, _>(cx) {
             ThrownException::Error(e.root(cx))
         } else if let Ok(e) = error.downcast::<JsString, _>(cx) {

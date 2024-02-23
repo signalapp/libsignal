@@ -38,7 +38,10 @@ where
         node_function_name: &'static str,
     ) -> Self {
         let channel = cx.channel();
-        let error_module = cx.this().root(cx);
+        let error_module = cx
+            .this::<JsObject>()
+            .expect("'this' is the module containing errors, which is a valid object")
+            .root(cx);
         Self {
             deferred,
             channel,

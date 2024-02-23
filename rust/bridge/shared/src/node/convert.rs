@@ -780,7 +780,7 @@ where
     It::Item: AsRef<str>,
 {
     let it = it.into_iter();
-    let array = JsArray::new(cx, it.len().try_into().expect("< u32::MAX"));
+    let array = JsArray::new(cx, it.len());
     for (unknown, i) in it.zip(0..) {
         let message = JsString::new(cx, unknown.as_ref());
         array.set(cx, i, message)?;
@@ -901,8 +901,8 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         } = self;
 
         let map_constructor: Handle<'_, JsFunction> =
-            cx.global().get(cx, "Map").expect("Map constructor exists");
-        let num_elements = records.len().try_into().expect("< u32::MAX");
+            cx.global("Map").expect("Map constructor exists");
+        let num_elements = records.len();
 
         // Construct a JS Map by calling its constructor with an array of [K, V] arrays.
         let entries = JsArray::new(cx, num_elements);

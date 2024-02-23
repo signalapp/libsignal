@@ -35,7 +35,7 @@ fn identitykeypair_deserialize(mut cx: FunctionContext) -> JsResult<JsObject> {
     let buffer = cx.argument::<JsBuffer>(0)?;
     let identity_keypair_or_error = IdentityKeyPair::try_from(buffer.as_slice(&cx));
     let identity_keypair = identity_keypair_or_error.or_else(|e| {
-        let module = cx.this();
+        let module = cx.this()?;
         SignalNodeError::throw(e, &mut cx, module, "identitykeypair_deserialize")?;
         unreachable!()
     })?;
@@ -80,7 +80,7 @@ fn sealed_sender_multi_recipient_message_parse(mut cx: FunctionContext) -> JsRes
     let messages = match SealedSenderV2SentMessage::parse(&buffer) {
         Ok(messages) => messages,
         Err(e) => {
-            let module = cx.this();
+            let module = cx.this()?;
             SignalNodeError::throw(
                 e,
                 &mut cx,

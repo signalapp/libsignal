@@ -92,8 +92,7 @@ impl log::Log for NodeLogger {
             };
             let message_arg: Handle<JsValue> = cx.string(message).upcast();
 
-            let global_obj = cx.global();
-            let log_fn: Handle<JsFunction> = global_obj.get(&mut cx, GLOBAL_LOG_FN_KEY)?;
+            let log_fn: Handle<JsFunction> = cx.global(GLOBAL_LOG_FN_KEY)?;
             let undef = cx.undefined();
             log_fn.call(
                 &mut cx,
@@ -127,7 +126,7 @@ pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let max_level = u32::convert_from(&mut cx, max_level_arg)?;
     let callback = cx.argument::<JsFunction>(1)?;
 
-    let global = cx.global();
+    let global = cx.global_object();
     global.set(&mut cx, GLOBAL_LOG_FN_KEY, callback)?;
 
     let logger = NodeLogger::new(&mut cx);
