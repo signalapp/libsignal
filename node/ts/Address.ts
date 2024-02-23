@@ -7,7 +7,7 @@ import * as Native from '../Native';
 
 import * as uuid from 'uuid';
 
-enum ServiceIdKind {
+export enum ServiceIdKind {
   Aci = 0,
   Pni,
 }

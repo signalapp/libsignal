@@ -27,7 +27,7 @@ use crate::support::*;
 use crate::*;
 
 cfg_if! {
-    if #[cfg(feature = "jni")] {
+    if #[cfg(any(feature = "jni", feature = "node"))] {
         use futures_util::future::TryFutureExt as _;
         use rand::rngs::OsRng;
         use std::num::NonZeroU32;
@@ -88,7 +88,7 @@ impl Environment {
 
 pub struct ConnectionManager {
     cdsi: EndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
-    #[cfg(feature = "jni")]
+    #[cfg(any(feature = "jni", feature = "node"))]
     svr3: (
         EndpointConnection<Sgx, MultiRouteConnectionManager, TcpSslTransportConnector>,
         EndpointConnection<Nitro, MultiRouteConnectionManager, TcpSslTransportConnector>,
@@ -100,7 +100,7 @@ impl ConnectionManager {
     fn new(environment: Environment) -> Self {
         Self {
             cdsi: Self::endpoint_connection(environment.env().cdsi),
-            #[cfg(feature = "jni")]
+            #[cfg(any(feature = "jni", feature = "node"))]
             svr3: (
                 Self::endpoint_connection(environment.env().svr3.sgx()),
                 Self::endpoint_connection(environment.env().svr3.nitro()),
@@ -250,7 +250,7 @@ fn CreateOTPFromBase64(username: String, secret: String) -> String {
     Auth::otp(&username, &secret, std::time::SystemTime::now())
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn Svr3Backup(
     connection_manager: &ConnectionManager,
     secret: Box<[u8]>,
@@ -279,7 +279,7 @@ async fn Svr3Backup(
     Ok(share_set.serialize().expect("can serialize the share set"))
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, node = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn Svr3Restore(
     connection_manager: &ConnectionManager,
     password: String,
@@ -301,7 +301,7 @@ async fn Svr3Restore(
     Ok(restored_secret.to_vec())
 }
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "node"))]
 async fn svr3_connect<'a>(
     connection_manager: &ConnectionManager,
     username: String,

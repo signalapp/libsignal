@@ -351,6 +351,14 @@ impl SimpleArgTypeInfo for bool {
     }
 }
 
+impl SimpleArgTypeInfo for Box<[u8]> {
+    type ArgType = JsBuffer;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        Ok(foreign.as_slice(cx).to_vec().into())
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where

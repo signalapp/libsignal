@@ -32,6 +32,11 @@
  */
 
 import * as Native from '../Native';
+import {
+  IoError,
+  InvalidMediaInputError,
+  UnsupportedMediaInputError,
+} from './Errors';
 import { InputStream } from './io';
 
 export class SanitizedMetadata {
@@ -49,7 +54,7 @@ export class SanitizedMetadata {
 
   /**
    * Get the sanitized metadata, if any.
-   * @returns The sanitized metadata, or {@code null} if it didn't need to be sanitized.
+   * @returns The sanitized metadata, or `null` if it didn't need to be sanitized.
    */
   getMetadata(): Buffer | null {
     const metadata = Native.SanitizedMetadata_GetMetadata(this);
@@ -80,11 +85,11 @@ export class SanitizedMetadata {
  * Sanitize an MP4 input.
  *
  * @param input An MP4 format input stream.
- * @param length The exact length of the input stream.
+ * @param len The exact length of the input stream.
  * @returns The sanitized metadata.
- * @throws IoError If an IO error on the input occurs.
- * @throws InvalidMediaInputError If the input could not be parsed because it was invalid.
- * @throws UnsupportedMediaInputError If the input could not be parsed because it's unsupported in some way.
+ * @throws {IoError} If an IO error on the input occurs.
+ * @throws {InvalidMediaInputError} If the input could not be parsed because it was invalid.
+ * @throws {UnsupportedMediaInputError} If the input could not be parsed because it's unsupported in some way.
  */
 export async function sanitize(
   input: InputStream,

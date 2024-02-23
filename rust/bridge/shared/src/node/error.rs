@@ -4,6 +4,7 @@
 //
 use std::fmt;
 
+use libsignal_net::svr3::Error as Svr3Error;
 use paste::paste;
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
@@ -131,9 +132,12 @@ pub trait SignalNodeError: Sized + fmt::Display {
     }
 }
 
-const RATE_LIMITED_ERROR: &str = "RateLimitedError";
-const IO_ERROR: &str = "IoError";
 const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
+const IO_ERROR: &str = "IoError";
+const RATE_LIMITED_ERROR: &str = "RateLimitedError";
+const SVR3_DATA_MISSING: &str = "SvrDataMissing";
+const SVR3_REQUEST_FAILED: &str = "SvrRequestFailed";
+const SVR3_RESTORE_FAILED: &str = "SvrRestoreFailed";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
 
 impl SignalNodeError for neon::result::Throw {
@@ -428,6 +432,35 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
         .map(|e| cx.throw(e))
         // Make sure we still throw something.
         .unwrap_or_else(|| cx.throw_error(&message))
+    }
+}
+
+impl SignalNodeError for libsignal_net::svr3::Error {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let name = match self {
+            Svr3Error::Net(_) => Some(IO_ERROR),
+            Svr3Error::AttestationError(inner) => {
+                return inner.throw(cx, module, operation_name);
+            }
+            Svr3Error::RequestFailed(_) => Some(SVR3_REQUEST_FAILED),
+            Svr3Error::RestoreFailed => Some(SVR3_RESTORE_FAILED),
+            Svr3Error::DataMissing => Some(SVR3_DATA_MISSING),
+            Svr3Error::Protocol(_) => None,
+        };
+
+        let message = self.to_string();
+        match new_js_error(cx, module, name, &message, operation_name, None) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(message)
+            }
+        }
     }
 }
 

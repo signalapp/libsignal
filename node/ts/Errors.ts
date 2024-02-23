@@ -40,6 +40,10 @@ export enum ErrorCode {
   InvalidUsernameLinkEncryptedData,
 
   RateLimitedError,
+
+  SvrDataMissing,
+  SvrRequestFailed,
+  SvrRestoreFailed,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -195,6 +199,18 @@ export type RateLimitedError = LibSignalErrorBase & {
   readonly retryAfterSecs: number;
 };
 
+export type SvrDataMissingError = LibSignalErrorBase & {
+  code: ErrorCode.SvrDataMissing;
+};
+
+export type SvrRequestFailedError = LibSignalErrorCommon & {
+  code: ErrorCode.SvrRequestFailed;
+};
+
+export type SvrRestoreFailedError = LibSignalErrorCommon & {
+  code: ErrorCode.SvrRestoreFailed;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -221,4 +237,7 @@ export type LibSignalError =
   | InvalidUsernameLinkEncryptedData
   | IoError
   | InvalidMediaInputError
+  | SvrDataMissingError
+  | SvrRestoreFailedError
+  | SvrRequestFailedError
   | UnsupportedMediaInputError;

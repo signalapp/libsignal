@@ -430,6 +430,8 @@ export function SignedPreKeyRecord_GetSignature(obj: Wrapper<SignedPreKeyRecord>
 export function SignedPreKeyRecord_GetTimestamp(obj: Wrapper<SignedPreKeyRecord>): Timestamp;
 export function SignedPreKeyRecord_New(id: number, timestamp: Timestamp, pubKey: Wrapper<PublicKey>, privKey: Wrapper<PrivateKey>, signature: Buffer): SignedPreKeyRecord;
 export function SignedPreKeyRecord_Serialize(obj: Wrapper<SignedPreKeyRecord>): Buffer;
+export function Svr3Backup(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, secret: Buffer, password: string, maxTries: number, username: string, enclavePassword: string, opTimeoutMs: number): Promise<Buffer>;
+export function Svr3Restore(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, password: string, shareSet: Buffer, username: string, enclavePassword: string, opTimeoutMs: number): Promise<Buffer>;
 export function TESTING_CdsiLookupErrorConvert(): void;
 export function TESTING_CdsiLookupResponseConvert(asyncRuntime: Wrapper<TokioAsyncContext>): Promise<LookupResponse>;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
