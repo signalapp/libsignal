@@ -437,7 +437,7 @@ async fn ChatService_disconnect(chat: &Chat) {
 async fn ChatService_unauth_send(
     chat: &Chat,
     http_request: &HttpRequest,
-    timeout_seconds: u32,
+    timeout_millis: u32,
 ) -> Result<Response, NetError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = Request {
@@ -447,7 +447,7 @@ async fn ChatService_unauth_send(
         body: http_request.body.clone(),
     };
     chat.service
-        .send_unauthenticated(request, Duration::from_secs(timeout_seconds.into()))
+        .send_unauthenticated(request, Duration::from_millis(timeout_millis.into()))
         .await
 }
 
@@ -455,7 +455,7 @@ async fn ChatService_unauth_send(
 async fn ChatService_unauth_send_and_debug(
     chat: &Chat,
     http_request: &HttpRequest,
-    timeout_seconds: u32,
+    timeout_millis: u32,
 ) -> Result<ResponseAndDebugInfo, NetError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = Request {
@@ -466,7 +466,7 @@ async fn ChatService_unauth_send_and_debug(
     };
     let (result, debug_info) = chat
         .service
-        .send_unauthenticated_and_debug(request, Duration::from_secs(timeout_seconds.into()))
+        .send_unauthenticated_and_debug(request, Duration::from_millis(timeout_millis.into()))
         .await;
 
     result.map(|response| ResponseAndDebugInfo {

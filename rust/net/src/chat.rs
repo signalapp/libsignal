@@ -120,6 +120,7 @@ impl Request {
 #[derive(Clone, Debug)]
 pub struct Response {
     pub status: StatusCode,
+    pub message: Option<String>,
     pub body: Option<Box<[u8]>>,
     pub headers: HeaderMap,
 }
@@ -135,6 +136,7 @@ impl TryFrom<ResponseProto> for Response {
             .and_then(|status_code| {
                 StatusCode::from_u16(status_code).map_err(|_| NetError::IncomingDataInvalid)
             })?;
+        let message = response_proto.message;
         let body = response_proto.body.map(|v| v.into_boxed_slice());
         let headers = response_proto.headers.into_iter().try_fold(
             HeaderMap::new(),
@@ -152,6 +154,7 @@ impl TryFrom<ResponseProto> for Response {
         )?;
         Ok(Response {
             status,
+            message,
             body,
             headers,
         })

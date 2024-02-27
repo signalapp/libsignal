@@ -76,6 +76,7 @@ impl ChatService for ChatOverHttp2 {
                 };
                 Ok(Response {
                     status,
+                    message: Some(status.to_string()),
                     headers: parts.headers,
                     body,
                 })

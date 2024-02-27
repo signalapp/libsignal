@@ -23,6 +23,7 @@ interface LookupResponseEntry {
 
 interface Response {
   status: number;
+  message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Buffer | undefined;
 }
@@ -169,8 +170,8 @@ export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connect
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
 export function ChatService_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<void>;
 export function ChatService_new(connectionManager: Wrapper<ConnectionManager>, username: string, password: string): Chat;
-export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutSeconds: number): Promise<Response>;
-export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutSeconds: number): Promise<ResponseAndDebugInfo>;
+export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<Response>;
+export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;

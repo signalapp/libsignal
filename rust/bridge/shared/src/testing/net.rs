@@ -65,6 +65,7 @@ fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, Ne
     headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
     Ok(Response {
         status: StatusCode::OK,
+        message: None,
         body,
         headers,
     })

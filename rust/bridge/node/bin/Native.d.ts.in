@@ -23,6 +23,7 @@ interface LookupResponseEntry {
 
 interface Response {
   status: number;
+  message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Buffer | undefined;
 }

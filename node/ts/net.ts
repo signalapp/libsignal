@@ -13,7 +13,7 @@ import {
   SvrRequestFailedError,
 } from './Errors';
 
-const DEFAULT_CHAT_REQUEST_TIMEOUT_SECONDS = 5;
+const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
 // This must match the libsignal-bridge Rust enum of the same name.
 export enum Environment {
@@ -53,7 +53,7 @@ export type ChatRequest = Readonly<{
   path: string;
   headers: ReadonlyArray<[string, string]>;
   body?: Uint8Array;
-  timeoutSeconds?: number;
+  timeoutMillis?: number;
 }>;
 
 export class Net {
@@ -90,7 +90,7 @@ export class Net {
       this._asyncContext,
       this._chatService,
       Net.buildHttpRequest(chatRequest),
-      chatRequest.timeoutSeconds ?? DEFAULT_CHAT_REQUEST_TIMEOUT_SECONDS
+      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
     );
   }
 
@@ -101,7 +101,7 @@ export class Net {
       this._asyncContext,
       this._chatService,
       Net.buildHttpRequest(chatRequest),
-      chatRequest.timeoutSeconds ?? DEFAULT_CHAT_REQUEST_TIMEOUT_SECONDS
+      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
     );
   }
 

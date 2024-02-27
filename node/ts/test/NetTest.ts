@@ -11,6 +11,7 @@ import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import { Environment, Net, ServiceAuth } from '../net';
 import { randomBytes } from 'crypto';
+import { Response } from '../../Native';
 
 use(chaiAsPromised);
 
@@ -26,17 +27,19 @@ describe('chat service api', () => {
 
   it('converts Response object to native', () => {
     const status = 200;
-    const headers = [
+    const headers: ReadonlyArray<[string, string]> = [
       ['user-agent', 'test'],
       ['forwarded', '1.1.1.1'],
     ];
-    const expectedWithContent = {
+    const expectedWithContent: Response = {
       status: status,
+      message: undefined,
       headers: headers,
       body: Buffer.from('content'),
     };
-    const expectedWithoutContent = {
+    const expectedWithoutContent: Response = {
       status: status,
+      message: undefined,
       headers: headers,
       body: undefined,
     };

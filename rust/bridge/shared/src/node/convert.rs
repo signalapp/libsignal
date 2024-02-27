@@ -885,6 +885,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let Self {
             status,
+            message,
             body,
             headers,
         } = self;
@@ -901,12 +902,17 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
         }
 
         let status = cx.number(status.as_u16());
+        let message = match message {
+            Some(m) => cx.string(m).as_value(cx),
+            None => cx.undefined().as_value(cx),
+        };
         let body = match body {
             Some(b) => b.convert_into(cx)?.as_value(cx),
             None => cx.undefined().as_value(cx),
         };
 
         obj.set(cx, "status", status)?;
+        obj.set(cx, "message", message)?;
         obj.set(cx, "body", body)?;
         obj.set(cx, "headers", headers_arr)?;
 
