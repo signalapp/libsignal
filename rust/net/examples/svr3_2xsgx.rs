@@ -20,7 +20,7 @@ use rand_core::{CryptoRngCore, OsRng, RngCore};
 use attest::svr2::RaftConfig;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
-    EnclaveEndpoint, EndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
+    EnclaveEndpoint, EnclaveEndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
 };
 use libsignal_net::env::DomainConfig;
 use libsignal_net::infra::certs::RootCertificates;
@@ -106,7 +106,7 @@ async fn main() {
     let (uid_a, uid_b) = (make_uid(), make_uid());
 
     let connect = || async {
-        let connection_a = EndpointConnection::with_custom_properties(
+        let connection_a = EnclaveEndpointConnection::with_custom_properties(
             two_sgx_env.0,
             Duration::from_secs(10),
             TcpSslTransportConnector,
@@ -117,7 +117,7 @@ async fn main() {
             .await
             .expect("can attestedly connect");
 
-        let connection_b = EndpointConnection::with_custom_properties(
+        let connection_b = EnclaveEndpointConnection::with_custom_properties(
             two_sgx_env.1,
             Duration::from_secs(10),
             TcpSslTransportConnector,

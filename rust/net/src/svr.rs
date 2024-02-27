@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use thiserror::Error;
 
 use crate::auth::HttpBasicAuth;
-use crate::enclave::{EndpointConnection, NewHandshake, Svr3Flavor};
+use crate::enclave::{EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::{LogSafeDisplay, NetError};
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
@@ -65,7 +65,7 @@ where
 {
     pub async fn connect<C, T>(
         auth: impl HttpBasicAuth,
-        connection: &EndpointConnection<E, C, T>,
+        connection: &EnclaveEndpointConnection<E, C, T>,
     ) -> Result<Self, Error>
     where
         C: ConnectionManager,
@@ -73,8 +73,12 @@ where
     {
         // TODO: This is almost a direct copy of CdsiConnection::connect. They can be unified.
         let auth_decorator = auth.into();
-        let connector = ServiceConnectorWithDecorator::new(&connection.connector, auth_decorator);
-        let service_initializer = ServiceInitializer::new(&connector, &connection.manager);
+        let connector = ServiceConnectorWithDecorator::new(
+            &connection.endpoint_connection.connector,
+            auth_decorator,
+        );
+        let service_initializer =
+            ServiceInitializer::new(&connector, &connection.endpoint_connection.manager);
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),

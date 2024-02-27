@@ -116,14 +116,16 @@ pub struct ServiceStatus<E> {
     service_cancellation: CancellationToken,
 }
 
-impl<E> ServiceStatus<E> {
-    pub fn new() -> Self {
+impl<E> Default for ServiceStatus<E> {
+    fn default() -> Self {
         Self {
             maybe_error: Arc::new(OnceLock::new()),
             service_cancellation: CancellationToken::new(),
         }
     }
+}
 
+impl<E> ServiceStatus<E> {
     pub fn stop_service(&self) {
         self.service_cancellation.cancel();
     }
@@ -415,7 +417,7 @@ mod test {
             &self,
             _channel: Self::Channel,
         ) -> (Self::Service, ServiceStatus<Self::Error>) {
-            let service_status_arc = ServiceStatus::new();
+            let service_status_arc = ServiceStatus::default();
             let service = TestService::new(service_status_arc.clone());
             (service, service_status_arc)
         }

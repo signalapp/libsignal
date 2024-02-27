@@ -164,6 +164,8 @@ public final class Native {
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
   public static native byte[] CdsiLookup_token(long lookup);
 
+  public static native void Chat_Destroy(long handle);
+
   public static native void ConnectionManager_Destroy(long handle);
   public static native long ConnectionManager_new(int environment);
 
@@ -281,6 +283,8 @@ public final class Native {
   public static native byte[] HsmEnclaveClient_EstablishedSend(long cli, byte[] plaintextToSend) throws Exception;
   public static native byte[] HsmEnclaveClient_InitialRequest(long obj) throws Exception;
   public static native long HsmEnclaveClient_New(byte[] trustedPublicKey, byte[] trustedCodeHashes) throws Exception;
+
+  public static native void HttpRequest_Destroy(long handle);
 
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
   public static native byte[] IdentityKeyPair_Serialize(long publicKey, long privateKey);

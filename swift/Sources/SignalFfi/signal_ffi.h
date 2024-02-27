@@ -200,6 +200,8 @@ typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
 typedef struct SignalCdsiLookup SignalCdsiLookup;
 
+typedef struct SignalChat SignalChat;
+
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
 typedef struct SignalConnectionManager SignalConnectionManager;
@@ -209,6 +211,8 @@ typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
 typedef struct SignalFingerprint SignalFingerprint;
 
 typedef struct SignalHsmEnclaveClient SignalHsmEnclaveClient;
+
+typedef struct SignalHttpRequest SignalHttpRequest;
 
 typedef struct SignalIncrementalMac SignalIncrementalMac;
 
@@ -1319,6 +1323,10 @@ SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse 
 SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
 
 SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
+
+SignalFfiError *signal_chat_destroy(SignalChat *p);
+
+SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
 
 SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
 

@@ -13,7 +13,7 @@ use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMac
 use rand_core::OsRng;
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EndpointConnection, Nitro, PpssSetup, Sgx};
+use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, PpssSetup, Sgx};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
@@ -325,7 +325,7 @@ impl Svr3Storage {
         if let Some(duration) = self.config.sleep {
             tokio::time::sleep(duration).await;
         }
-        let sgx_connection = EndpointConnection::new(
+        let sgx_connection = EnclaveEndpointConnection::new(
             self.env.sgx(),
             Duration::from_secs(10),
             TcpSslTransportConnector,
@@ -335,7 +335,7 @@ impl Svr3Storage {
             .await
             .expect("can attestedly connect to SGX");
 
-        let nitro_connection = EndpointConnection::new(
+        let nitro_connection = EnclaveEndpointConnection::new(
             self.env.nitro(),
             Duration::from_secs(10),
             TcpSslTransportConnector,

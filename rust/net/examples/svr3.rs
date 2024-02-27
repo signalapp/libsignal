@@ -16,7 +16,7 @@ use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EndpointConnection, Nitro, Sgx};
+use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, Sgx};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
@@ -53,14 +53,17 @@ async fn main() {
     };
 
     let connect = || async {
-        let connection_a =
-            EndpointConnection::new(env.sgx(), Duration::from_secs(10), TcpSslTransportConnector);
+        let connection_a = EnclaveEndpointConnection::new(
+            env.sgx(),
+            Duration::from_secs(10),
+            TcpSslTransportConnector,
+        );
         let sgx_auth = Auth::from_uid_and_secret(uid, sgx_secret);
         let a = SvrConnection::<Sgx>::connect(sgx_auth, &connection_a)
             .await
             .expect("can attestedly connect to SGX");
 
-        let connection_b = EndpointConnection::new(
+        let connection_b = EnclaveEndpointConnection::new(
             env.nitro(),
             Duration::from_secs(10),
             TcpSslTransportConnector,

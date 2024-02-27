@@ -9,19 +9,13 @@ use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use bytes::Bytes;
-use tokio::sync::mpsc;
 use url::Host;
 
-use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
-use crate::env::constants::WEB_SOCKET_PATH;
-use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_CONNECTION_TIME, WS_MAX_IDLE_TIME};
-use crate::infra::connection_manager::{
-    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
-};
+use crate::chat::ws::ChatOverWebSocketServiceConnector;
+use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
-use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig};
-use crate::infra::{ConnectionParams, HttpRequestDecorator, TransportConnector};
+use crate::infra::{EndpointConnection, HttpRequestDecorator, TransportConnector};
 use crate::proto;
 use crate::utils::basic_authorization;
 
@@ -34,7 +28,6 @@ pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
 pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
-const ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
 const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[async_trait]
@@ -393,44 +386,23 @@ fn build_anonymous_chat_service(
     }
 }
 
-pub fn chat_service<T: TransportConnector + 'static>(
+pub fn chat_service(
+    endpoint_connection: &EndpointConnection<
+        MultiRouteConnectionManager,
+        ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
+    >,
     username: String,
     password: String,
-    incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
-    transport_connector: T,
-    connection_params_list: Vec<ConnectionParams>,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
-    let cfg = WebSocketConfig {
-        ws_config: tungstenite::protocol::WebSocketConfig::default(),
-        endpoint: PathAndQuery::from_static(WEB_SOCKET_PATH),
-        max_connection_time: WS_MAX_CONNECTION_TIME,
-        keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
-        max_idle_time: WS_MAX_IDLE_TIME,
-    };
-
-    let service_connector_ws = ChatOverWebSocketServiceConnector::new(
-        WebSocketClientConnector::new(transport_connector, cfg),
-        incoming_tx,
-    );
-    let connection_manager_ws = multi_route_manager(&connection_params_list);
-
     Chat::new(
         build_authorized_chat_service(
-            &connection_manager_ws,
-            &service_connector_ws,
+            &endpoint_connection.manager,
+            &endpoint_connection.connector,
             username,
             password,
         ),
-        build_anonymous_chat_service(&connection_manager_ws, &service_connector_ws),
+        build_anonymous_chat_service(&endpoint_connection.manager, &endpoint_connection.connector),
     )
-}
-
-fn multi_route_manager(routes: &[ConnectionParams]) -> MultiRouteConnectionManager {
-    let single_route_managers = routes
-        .iter()
-        .map(|cp| SingleRouteThrottlingConnectionManager::new(cp.clone(), ROUTE_CONNECTION_TIMEOUT))
-        .collect();
-    MultiRouteConnectionManager::new(single_route_managers, TOTAL_CONNECTION_TIMEOUT)
 }
 
 #[cfg(test)]

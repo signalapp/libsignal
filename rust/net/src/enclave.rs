@@ -11,12 +11,12 @@ use attest::{cds2, enclave, nitro};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 
-use crate::env::{DomainConfig, Svr3Env, WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
+use crate::env::{DomainConfig, Svr3Env};
 use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::infra::ws::{AttestedConnection, WebSocketClientConnector, WebSocketConfig};
-use crate::infra::{ConnectionParams, TransportConnector};
+use crate::infra::ws::{AttestedConnection, WebSocketClientConnector};
+use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection, TransportConnector};
 use crate::svr::SvrConnection;
 
 pub trait EnclaveKind {
@@ -173,14 +173,13 @@ impl<E: EnclaveKind> EndpointParams<E> {
     }
 }
 
-pub struct EndpointConnection<E: EnclaveKind, C, T> {
-    pub(crate) manager: C,
-    pub(crate) connector: WebSocketClientConnector<T>,
+pub struct EnclaveEndpointConnection<E: EnclaveKind, C, T> {
+    pub(crate) endpoint_connection: EndpointConnection<C, WebSocketClientConnector<T>>,
     pub(crate) params: EndpointParams<E>,
 }
 
 impl<E: EnclaveKind, T: TransportConnector>
-    EndpointConnection<E, SingleRouteThrottlingConnectionManager, T>
+    EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager, T>
 {
     pub fn new(
         endpoint: EnclaveEndpoint<'static, E>,
@@ -197,14 +196,16 @@ impl<E: EnclaveKind, T: TransportConnector>
         raft_config_override: Option<&'static RaftConfig>,
     ) -> Self {
         Self {
-            manager: SingleRouteThrottlingConnectionManager::new(
-                endpoint.domain_config.connection_params(),
-                connect_timeout,
-            ),
-            connector: WebSocketClientConnector::new(
-                transport_connector,
-                make_ws_config(&endpoint.mr_enclave, connect_timeout),
-            ),
+            endpoint_connection: EndpointConnection {
+                manager: SingleRouteThrottlingConnectionManager::new(
+                    endpoint.domain_config.connection_params(),
+                    connect_timeout,
+                ),
+                connector: WebSocketClientConnector::new(
+                    transport_connector,
+                    make_ws_config(E::url_path(endpoint.mr_enclave.as_ref()), connect_timeout),
+                ),
+            },
             params: EndpointParams {
                 mr_enclave: endpoint.mr_enclave,
                 raft_config_override,
@@ -213,26 +214,24 @@ impl<E: EnclaveKind, T: TransportConnector>
     }
 }
 
-impl<E: EnclaveKind, T: TransportConnector> EndpointConnection<E, MultiRouteConnectionManager, T> {
+impl<E: EnclaveKind, T: TransportConnector>
+    EnclaveEndpointConnection<E, MultiRouteConnectionManager, T>
+{
     pub fn new_multi(
         mr_enclave: MrEnclave<&'static [u8], E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         connect_timeout: Duration,
         transport_connector: T,
     ) -> Self {
+        let service_connector = WebSocketClientConnector::new(
+            transport_connector,
+            make_ws_config(E::url_path(mr_enclave.as_ref()), connect_timeout),
+        );
         Self {
-            manager: MultiRouteConnectionManager::new(
-                connection_params
-                    .into_iter()
-                    .map(|params| {
-                        SingleRouteThrottlingConnectionManager::new(params, connect_timeout)
-                    })
-                    .collect(),
+            endpoint_connection: EndpointConnection::new_multi(
+                connection_params,
                 connect_timeout,
-            ),
-            connector: WebSocketClientConnector::new(
-                transport_connector,
-                make_ws_config(&mr_enclave, connect_timeout),
+                service_connector,
             ),
             params: EndpointParams {
                 mr_enclave,
@@ -280,18 +279,5 @@ impl NewHandshake for Nitro {
             SystemTime::now(),
             params.raft_config_override,
         )
-    }
-}
-
-fn make_ws_config<S: EnclaveKind>(
-    mr_enclave: &MrEnclave<&'static [u8], S>,
-    connect_timeout: Duration,
-) -> WebSocketConfig {
-    WebSocketConfig {
-        ws_config: tungstenite::protocol::WebSocketConfig::default(),
-        endpoint: S::url_path(mr_enclave.as_ref()),
-        max_connection_time: connect_timeout,
-        keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
-        max_idle_time: WS_MAX_IDLE_TIME,
     }
 }

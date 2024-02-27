@@ -396,6 +396,25 @@ impl SignalNodeError for std::io::Error {
     }
 }
 
+impl SignalNodeError for libsignal_net::infra::errors::NetError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let name = Some(IO_ERROR);
+        let message = self.to_string();
+        match new_js_error(cx, module, name, &message, operation_name, None) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(message)
+            }
+        }
+    }
+}
+
 impl SignalNodeError for libsignal_net::cdsi::LookupError {
     fn throw<'a>(
         self,

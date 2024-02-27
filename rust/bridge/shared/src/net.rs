@@ -5,7 +5,14 @@
 
 use std::convert::TryInto as _;
 use std::future::Future;
+use std::panic::RefUnwindSafe;
+use std::sync::Arc;
 use std::time::Duration;
+
+use http::uri::PathAndQuery;
+use http::{HeaderMap, HeaderName, HeaderValue};
+use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use cfg_if::cfg_if;
@@ -15,12 +22,16 @@ use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
-use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EnclaveKind, EndpointConnection};
+use libsignal_net::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
+use libsignal_net::chat::{chat_service, ChatServiceWithDebugInfo, DebugInfo, Request, Response};
+use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind};
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::errors::NetError;
-use libsignal_net::infra::TcpSslTransportConnector;
+use libsignal_net::infra::ws::WebSocketClientConnector;
+use libsignal_net::infra::{make_ws_config, EndpointConnection, TcpSslTransportConnector};
 use libsignal_net::utils::timeout;
+use libsignal_net::{chat, env};
 use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::support::*;
@@ -87,18 +98,43 @@ impl Environment {
 }
 
 pub struct ConnectionManager {
-    cdsi: EndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
+    chat: EndpointConnection<
+        MultiRouteConnectionManager,
+        ChatOverWebSocketServiceConnector<TcpSslTransportConnector>,
+    >,
+    cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
     #[cfg(any(feature = "jni", feature = "node"))]
     svr3: (
-        EndpointConnection<Sgx, MultiRouteConnectionManager, TcpSslTransportConnector>,
-        EndpointConnection<Nitro, MultiRouteConnectionManager, TcpSslTransportConnector>,
+        EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager, TcpSslTransportConnector>,
+        EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager, TcpSslTransportConnector>,
     ),
 }
+
+impl RefUnwindSafe for ConnectionManager {}
 
 impl ConnectionManager {
     const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
     fn new(environment: Environment) -> Self {
+        let chat_endpoint = PathAndQuery::from_static(env::constants::WEB_SOCKET_PATH);
+        let chat_connection_params = environment
+            .env()
+            .chat_domain_config
+            .connection_params_with_fallback();
+        let (incoming_tx, _incoming_rx) =
+            mpsc::channel::<ServerRequest<tokio_boring::SslStream<TcpStream>>>(1);
+        let chat_connector = ChatOverWebSocketServiceConnector::new(
+            WebSocketClientConnector::new(
+                TcpSslTransportConnector,
+                make_ws_config(chat_endpoint, Self::DEFAULT_CONNECT_TIMEOUT),
+            ),
+            incoming_tx,
+        );
         Self {
+            chat: EndpointConnection::new_multi(
+                chat_connection_params,
+                Self::DEFAULT_CONNECT_TIMEOUT,
+                chat_connector,
+            ),
             cdsi: Self::endpoint_connection(environment.env().cdsi),
             #[cfg(any(feature = "jni", feature = "node"))]
             svr3: (
@@ -110,9 +146,9 @@ impl ConnectionManager {
 
     fn endpoint_connection<E: EnclaveKind>(
         endpoint: EnclaveEndpoint<'static, E>,
-    ) -> EndpointConnection<E, MultiRouteConnectionManager, TcpSslTransportConnector> {
+    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager, TcpSslTransportConnector> {
         let params = endpoint.domain_config.connection_params_with_fallback();
-        EndpointConnection::new_multi(
+        EnclaveEndpointConnection::new_multi(
             endpoint.mr_enclave,
             params,
             Self::DEFAULT_CONNECT_TIMEOUT,
@@ -309,12 +345,129 @@ async fn svr3_connect<'a>(
 ) -> Result<<Svr3Env<'a> as PpssSetup>::Connections, svr::Error> {
     let auth = Auth { username, password };
     let ConnectionManager {
+        chat: _chat,
         cdsi: _cdsi,
         svr3: (sgx, nitro),
     } = connection_manager;
     let sgx = SvrConnection::connect(auth.clone(), sgx).await?;
     let nitro = SvrConnection::connect(auth, nitro).await?;
     Ok((sgx, nitro))
+}
+
+pub struct Chat {
+    service: chat::Chat<
+        Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
+        Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
+    >,
+}
+
+impl RefUnwindSafe for Chat {}
+
+pub struct HttpRequest {
+    pub method: http::Method,
+    pub path: PathAndQuery,
+    pub body: Option<Box<[u8]>>,
+    pub headers: std::sync::Mutex<HeaderMap>,
+}
+
+pub struct ResponseAndDebugInfo {
+    pub response: Response,
+    pub debug_info: DebugInfo,
+}
+
+bridge_handle!(Chat, clone = false);
+bridge_handle!(HttpRequest, clone = false);
+
+#[bridge_fn(ffi = false, jni = false)]
+fn HttpRequest_new(
+    method: String,
+    path: String,
+    body_as_slice: Option<&[u8]>,
+) -> Result<HttpRequest, NetError> {
+    let body = body_as_slice.map(|slice| slice.to_vec().into_boxed_slice());
+    let method = http::Method::try_from(method.as_str())
+        .map_err(|_| NetError::InvalidHttpRequestComponent)?;
+    let path =
+        PathAndQuery::try_from(path.as_str()).map_err(|_| NetError::InvalidHttpRequestComponent)?;
+    Ok(HttpRequest {
+        method,
+        path,
+        body,
+        headers: Default::default(),
+    })
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn HttpRequest_add_header(
+    request: &HttpRequest,
+    name: String,
+    value: String,
+) -> Result<(), NetError> {
+    let mut guard = request.headers.lock().expect("not poisoned");
+    let header_key =
+        HeaderName::try_from(name).map_err(|_| NetError::InvalidHttpRequestComponent)?;
+    let header_value =
+        HeaderValue::try_from(value).map_err(|_| NetError::InvalidHttpRequestComponent)?;
+    (*guard).append(header_key, header_value);
+    Ok(())
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn ChatService_new(
+    connection_manager: &ConnectionManager,
+    username: String,
+    password: String,
+) -> Chat {
+    Chat {
+        service: chat_service(&connection_manager.chat, username, password).into_dyn(),
+    }
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn ChatService_disconnect(chat: &Chat) {
+    chat.service.disconnect().await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn ChatService_unauth_send(
+    chat: &Chat,
+    http_request: &HttpRequest,
+    timeout_seconds: u32,
+) -> Result<Response, NetError> {
+    let headers = http_request.headers.lock().expect("not poisoned").clone();
+    let request = Request {
+        method: http_request.method.clone(),
+        path: http_request.path.clone(),
+        headers,
+        body: http_request.body.clone(),
+    };
+    chat.service
+        .send_unauthenticated(request, Duration::from_secs(timeout_seconds.into()))
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn ChatService_unauth_send_and_debug(
+    chat: &Chat,
+    http_request: &HttpRequest,
+    timeout_seconds: u32,
+) -> Result<ResponseAndDebugInfo, NetError> {
+    let headers = http_request.headers.lock().expect("not poisoned").clone();
+    let request = Request {
+        method: http_request.method.clone(),
+        path: http_request.path.clone(),
+        headers,
+        body: http_request.body.clone(),
+    };
+    let (result, debug_info) = chat
+        .service
+        .send_unauthenticated_and_debug(request, Duration::from_secs(timeout_seconds.into()))
+        .await;
+
+    result.map(|response| ResponseAndDebugInfo {
+        response,
+        debug_info,
+    })
 }
 
 #[cfg(test)]

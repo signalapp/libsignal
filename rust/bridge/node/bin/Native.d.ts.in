@@ -21,6 +21,23 @@ interface LookupResponseEntry {
   readonly pni: string | undefined;
 }
 
+interface Response {
+  status: number;
+  headers: ReadonlyArray<[string, string]>;
+  body: Buffer | undefined;
+}
+
+interface DebugInfo {
+  connectionReused: boolean;
+  reconnectCount: number;
+  ipType: number;
+}
+
+interface ResponseAndDebugInfo {
+  response: Response;
+  debugInfo: DebugInfo;
+}
+
 interface SealedSenderMultiRecipientMessageRecipient {
   deviceIds: number[];
   registrationIds: number[];

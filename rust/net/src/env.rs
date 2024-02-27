@@ -20,7 +20,6 @@ use crate::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorS
 
 pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
-pub(crate) const WS_MAX_CONNECTION_TIME: Duration = Duration::from_secs(2);
 
 pub const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     hostname: "chat.signal.org",
@@ -270,5 +269,5 @@ pub const PROD: Env<'static, Svr3Env> = Env {
 };
 
 pub mod constants {
-    pub(crate) const WEB_SOCKET_PATH: &str = "/v1/websocket/";
+    pub const WEB_SOCKET_PATH: &str = "/v1/websocket/";
 }

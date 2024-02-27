@@ -18,7 +18,7 @@ use uuid::Uuid;
 use libsignal_core::{Aci, Pni};
 
 use crate::auth::HttpBasicAuth;
-use crate::enclave::{Cdsi, EndpointConnection};
+use crate::enclave::{Cdsi, EnclaveEndpointConnection};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
@@ -404,17 +404,17 @@ pub trait CdsiConnectionParams {
 }
 
 impl<C: ConnectionManager, T: TransportConnector> CdsiConnectionParams
-    for EndpointConnection<Cdsi, C, T>
+    for EnclaveEndpointConnection<Cdsi, C, T>
 {
     type ConnectionManager = C;
     type TransportConnector = T;
 
     fn connection_manager(&self) -> &Self::ConnectionManager {
-        &self.manager
+        &self.endpoint_connection.manager
     }
 
     fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector> {
-        &self.connector
+        &self.endpoint_connection.connector
     }
 
     fn mr_enclave(&self) -> &[u8] {

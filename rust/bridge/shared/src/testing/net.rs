@@ -3,13 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
+use libsignal_net::chat::{DebugInfo, IpType, Response};
+use libsignal_net::infra::errors::NetError;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-use crate::net::TokioAsyncContext;
+use crate::net::{HttpRequest, TokioAsyncContext};
 use crate::support::*;
 use crate::*;
 
@@ -44,4 +47,62 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
 #[bridge_fn]
 fn TESTING_CdsiLookupErrorConvert() -> Result<(), LookupError> {
     Err(LookupError::ParseError)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatServiceErrorConvert() -> Result<(), NetError> {
+    Err(NetError::Timeout)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, NetError> {
+    let body = match body_present {
+        true => Some(b"content".to_vec().into_boxed_slice()),
+        false => None,
+    };
+    let mut headers = HeaderMap::new();
+    headers.append(http::header::USER_AGENT, HeaderValue::from_static("test"));
+    headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
+    Ok(Response {
+        status: StatusCode::OK,
+        body,
+        headers,
+    })
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, NetError> {
+    Ok(DebugInfo {
+        connection_reused: true,
+        reconnect_count: 2,
+        ip_type: IpType::V4,
+    })
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatRequestGetMethod(request: &HttpRequest) -> String {
+    request.method.to_string()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatRequestGetPath(request: &HttpRequest) -> String {
+    request.path.to_string()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String) -> String {
+    request
+        .headers
+        .lock()
+        .expect("not poisoned")
+        .get(HeaderName::try_from(header_name).expect("valid header name"))
+        .expect("header value present")
+        .to_str()
+        .expect("value is a string")
+        .to_string()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Option<Vec<u8>> {
+    request.body.clone().map(|b| b.to_vec())
 }

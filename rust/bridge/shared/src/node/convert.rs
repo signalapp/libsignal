@@ -15,6 +15,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use crate::io::{InputStream, SyncInputStream};
+use crate::net::ResponseAndDebugInfo;
 use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -875,6 +876,81 @@ impl<'a, V: Value> OrUndefined<'a> for Option<Handle<'a, V>> {
     fn or_undefined(self, cx: &mut impl Context<'a>) -> Handle<'a, JsValue> {
         self.map(|v| v.as_value(cx))
             .unwrap_or_else(|| cx.undefined().as_value(cx))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            status,
+            body,
+            headers,
+        } = self;
+        let obj = JsObject::new(cx);
+
+        let headers_arr = JsArray::new(cx, headers.len());
+        for ((name, value), i) in headers.iter().zip(0..) {
+            let name = cx.string(name.as_str());
+            let value = cx.string(value.to_str().expect("valid header value"));
+            let entry = JsArray::new(cx, 2);
+            entry.set(cx, 0, name)?;
+            entry.set(cx, 1, value)?;
+            headers_arr.set(cx, i, entry)?;
+        }
+
+        let status = cx.number(status.as_u16());
+        let body = match body {
+            Some(b) => b.convert_into(cx)?.as_value(cx),
+            None => cx.undefined().as_value(cx),
+        };
+
+        obj.set(cx, "status", status)?;
+        obj.set(cx, "body", body)?;
+        obj.set(cx, "headers", headers_arr)?;
+
+        Ok(obj)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            connection_reused,
+            reconnect_count,
+            ip_type,
+        } = self;
+        let obj = JsObject::new(cx);
+
+        let connection_reused = cx.boolean(connection_reused);
+        let reconnect_count = cx.number(reconnect_count);
+        let ip_type = cx.number(ip_type as u8);
+
+        obj.set(cx, "connectionReused", connection_reused)?;
+        obj.set(cx, "reconnectCount", reconnect_count)?;
+        obj.set(cx, "ipType", ip_type)?;
+
+        Ok(obj)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            response,
+            debug_info,
+        } = self;
+        let obj = JsObject::new(cx);
+
+        let response = response.convert_into(cx)?;
+        let debug_info = debug_info.convert_into(cx)?;
+
+        obj.set(cx, "response", response)?;
+        obj.set(cx, "debugInfo", debug_info)?;
+
+        Ok(obj)
     }
 }
 

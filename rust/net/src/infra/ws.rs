@@ -48,7 +48,7 @@ pub struct WebSocketClientConnector<T> {
 }
 
 impl<T: TransportConnector> WebSocketClientConnector<T> {
-    pub(crate) fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
+    pub fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
         Self {
             transport_connector,
             cfg,
@@ -99,7 +99,7 @@ fn start_ws_service<S: AsyncDuplexStream>(
     keep_alive_interval: Duration,
     max_idle_time: Duration,
 ) -> (WebSocketClient<S>, ServiceStatus<NetError>) {
-    let service_status = ServiceStatus::new();
+    let service_status = ServiceStatus::default();
     let (ws_sink, ws_stream) = channel.split();
     let ws_client_writer = WebSocketClientWriter {
         ws_sink: Arc::new(Mutex::new(ws_sink)),

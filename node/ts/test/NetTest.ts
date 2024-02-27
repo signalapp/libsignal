@@ -17,6 +17,74 @@ use(chaiAsPromised);
 util.initLogger();
 config.truncateThreshold = 0;
 
+describe('chat service api', () => {
+  it('converts NetError to native', () => {
+    expect(() => Native.TESTING_ChatServiceErrorConvert())
+      .throws(LibSignalErrorBase)
+      .with.property('code', ErrorCode.IoError);
+  });
+
+  it('converts Response object to native', () => {
+    const status = 200;
+    const headers = [
+      ['user-agent', 'test'],
+      ['forwarded', '1.1.1.1'],
+    ];
+    const expectedWithContent = {
+      status: status,
+      headers: headers,
+      body: Buffer.from('content'),
+    };
+    const expectedWithoutContent = {
+      status: status,
+      headers: headers,
+      body: undefined,
+    };
+    expect(Native.TESTING_ChatServiceResponseConvert(true)).deep.equals(
+      expectedWithContent
+    );
+    expect(Native.TESTING_ChatServiceResponseConvert(false)).deep.equals(
+      expectedWithoutContent
+    );
+  });
+
+  it('converts DebugInfo object to native', () => {
+    const expected = {
+      connectionReused: true,
+      reconnectCount: 2,
+      ipType: 1,
+    };
+    expect(Native.TESTING_ChatServiceDebugInfoConvert()).deep.equals(expected);
+  });
+
+  it('constructs request object correctly', () => {
+    const verb = 'GET';
+    const path = '/test';
+    const userAgent = 'test';
+    const forwarded = '1.1.1.1';
+    const content = Buffer.from('content');
+    const headers: Array<[string, string]> = [
+      ['user-agent', userAgent],
+      ['forwarded', forwarded],
+    ];
+    const request = Net.buildHttpRequest({
+      verb: verb,
+      path: path,
+      headers: headers,
+      body: content,
+    });
+    expect(Native.TESTING_ChatRequestGetMethod(request)).equals(verb);
+    expect(Native.TESTING_ChatRequestGetPath(request)).equals(path);
+    expect(Native.TESTING_ChatRequestGetBody(request)).deep.equals(content);
+    expect(
+      Native.TESTING_ChatRequestGetHeaderValue(request, 'user-agent')
+    ).equals(userAgent);
+    expect(
+      Native.TESTING_ChatRequestGetHeaderValue(request, 'forwarded')
+    ).equals(forwarded);
+  });
+});
+
 describe('cdsi lookup', () => {
   const e164Both = '+18005551011';
   const e164Pni = '+18005551012';

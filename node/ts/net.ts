@@ -13,6 +13,8 @@ import {
   SvrRequestFailedError,
 } from './Errors';
 
+const DEFAULT_CHAT_REQUEST_TIMEOUT_SECONDS = 5;
+
 // This must match the libsignal-bridge Rust enum of the same name.
 export enum Environment {
   Staging = 0,
@@ -46,9 +48,20 @@ export interface CDSResponseType<Aci, Pni> {
   debugPermitsUsed: number;
 }
 
+export type ChatRequest = Readonly<{
+  verb: string;
+  path: string;
+  headers: ReadonlyArray<[string, string]>;
+  body?: Uint8Array;
+  timeoutSeconds?: number;
+}>;
+
 export class Net {
-  private readonly _asyncContext: Native.TokioAsyncContext;
-  private readonly _connectionManager: Native.ConnectionManager;
+  private readonly _asyncContext: { _nativeHandle: Native.TokioAsyncContext };
+  private readonly _chatService: { _nativeHandle: Native.Chat };
+  private readonly _connectionManager: {
+    _nativeHandle: Native.ConnectionManager;
+  };
 
   /**
    * Instance of the {@link Svr3Client} to access SVR3.
@@ -56,9 +69,56 @@ export class Net {
   svr3: Svr3Client;
 
   constructor(env: Environment) {
-    this._asyncContext = Native.TokioAsyncContext_new();
-    this._connectionManager = Native.ConnectionManager_new(env);
+    this._asyncContext = { _nativeHandle: Native.TokioAsyncContext_new() };
+    this._connectionManager = {
+      _nativeHandle: Native.ConnectionManager_new(env),
+    };
+    this._chatService = {
+      _nativeHandle: Native.ChatService_new(this._connectionManager, '', ''),
+    };
     this.svr3 = new Svr3ClientImpl(this._asyncContext, this._connectionManager);
+  }
+
+  async disconnectChatService(): Promise<void> {
+    await Native.ChatService_disconnect(this._asyncContext, this._chatService);
+  }
+
+  async unauthenticatedFetchAndDebug(
+    chatRequest: ChatRequest
+  ): Promise<Native.ResponseAndDebugInfo> {
+    return await Native.ChatService_unauth_send_and_debug(
+      this._asyncContext,
+      this._chatService,
+      Net.buildHttpRequest(chatRequest),
+      chatRequest.timeoutSeconds ?? DEFAULT_CHAT_REQUEST_TIMEOUT_SECONDS
+    );
+  }
+
+  async unauthenticatedFetch(
+    chatRequest: ChatRequest
+  ): Promise<Native.Response> {
+    return await Native.ChatService_unauth_send(
+      this._asyncContext,
+      this._chatService,
+      Net.buildHttpRequest(chatRequest),
+      chatRequest.timeoutSeconds ?? DEFAULT_CHAT_REQUEST_TIMEOUT_SECONDS
+    );
+  }
+
+  static buildHttpRequest(chatRequest: ChatRequest): {
+    _nativeHandle: Native.HttpRequest;
+  } {
+    const { verb, path, body, headers } = chatRequest;
+    const bodyBuffer: Buffer | null =
+      body !== undefined ? Buffer.from(body) : null;
+    const httpRequest = {
+      _nativeHandle: Native.HttpRequest_new(verb, path, bodyBuffer),
+    };
+    headers.forEach((header) => {
+      const [name, value] = header;
+      Native.HttpRequest_add_header(httpRequest, name, value);
+    });
+    return httpRequest;
   }
 
   async cdsiLookup(
@@ -89,18 +149,17 @@ export class Net {
     );
 
     const lookup = await Native.CdsiLookup_new(
-      { _nativeHandle: this._asyncContext },
-      { _nativeHandle: this._connectionManager },
+      this._asyncContext,
+      this._connectionManager,
       username,
       password,
       request,
       timeout
     );
 
-    return await Native.CdsiLookup_complete(
-      { _nativeHandle: this._asyncContext },
-      { _nativeHandle: lookup }
-    );
+    return await Native.CdsiLookup_complete(this._asyncContext, {
+      _nativeHandle: lookup,
+    });
   }
 }
 
@@ -214,8 +273,10 @@ export interface Svr3Client {
 
 class Svr3ClientImpl implements Svr3Client {
   constructor(
-    private readonly _asyncContext: Native.TokioAsyncContext,
-    private readonly _connectionManager: Native.ConnectionManager
+    private readonly _asyncContext: { _nativeHandle: Native.TokioAsyncContext },
+    private readonly _connectionManager: {
+      _nativeHandle: Native.ConnectionManager;
+    }
   ) {}
 
   async backup(
@@ -226,8 +287,8 @@ class Svr3ClientImpl implements Svr3Client {
     opTimeoutMs: number
   ): Promise<Buffer> {
     return Native.Svr3Backup(
-      { _nativeHandle: this._asyncContext },
-      { _nativeHandle: this._connectionManager },
+      this._asyncContext,
+      this._connectionManager,
       what,
       password,
       maxTries,
@@ -244,8 +305,8 @@ class Svr3ClientImpl implements Svr3Client {
     opTimeoutMs: number
   ): Promise<Buffer> {
     return Native.Svr3Restore(
-      { _nativeHandle: this._asyncContext },
-      { _nativeHandle: this._connectionManager },
+      this._asyncContext,
+      this._connectionManager,
       password,
       shareSet,
       auth.username,

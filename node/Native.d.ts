@@ -21,6 +21,23 @@ interface LookupResponseEntry {
   readonly pni: string | undefined;
 }
 
+interface Response {
+  status: number;
+  headers: ReadonlyArray<[string, string]>;
+  body: Buffer | undefined;
+}
+
+interface DebugInfo {
+  connectionReused: boolean;
+  reconnectCount: number;
+  ipType: number;
+}
+
+interface ResponseAndDebugInfo {
+  response: Response;
+  debugInfo: DebugInfo;
+}
+
 interface SealedSenderMultiRecipientMessageRecipient {
   deviceIds: number[];
   registrationIds: number[];
@@ -150,6 +167,10 @@ export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, c
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): Promise<LookupResponse>;
 export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>, timeoutMillis: number): Promise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
+export function ChatService_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<void>;
+export function ChatService_new(connectionManager: Wrapper<ConnectionManager>, username: string, password: string): Chat;
+export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutSeconds: number): Promise<Response>;
+export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutSeconds: number): Promise<ResponseAndDebugInfo>;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -215,6 +236,8 @@ export function HsmEnclaveClient_EstablishedRecv(cli: Wrapper<HsmEnclaveClient>,
 export function HsmEnclaveClient_EstablishedSend(cli: Wrapper<HsmEnclaveClient>, plaintextToSend: Buffer): Buffer;
 export function HsmEnclaveClient_InitialRequest(obj: Wrapper<HsmEnclaveClient>): Buffer;
 export function HsmEnclaveClient_New(trustedPublicKey: Buffer, trustedCodeHashes: Buffer): HsmEnclaveClient;
+export function HttpRequest_add_header(request: Wrapper<HttpRequest>, name: string, value: string): void;
+export function HttpRequest_new(method: string, path: string, bodyAsSlice: Buffer | null): HttpRequest;
 export function IdentityKeyPair_Deserialize(buffer: Buffer): {publicKey:PublicKey,privateKey:PrivateKey};
 export function IdentityKeyPair_Serialize(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>): Buffer;
 export function IdentityKeyPair_SignAlternateIdentity(publicKey: Wrapper<PublicKey>, privateKey: Wrapper<PrivateKey>, otherIdentity: Wrapper<PublicKey>): Buffer;
@@ -434,6 +457,13 @@ export function Svr3Backup(asyncRuntime: Wrapper<TokioAsyncContext>, connectionM
 export function Svr3Restore(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, password: string, shareSet: Buffer, username: string, enclavePassword: string, opTimeoutMs: number): Promise<Buffer>;
 export function TESTING_CdsiLookupErrorConvert(): void;
 export function TESTING_CdsiLookupResponseConvert(asyncRuntime: Wrapper<TokioAsyncContext>): Promise<LookupResponse>;
+export function TESTING_ChatRequestGetBody(request: Wrapper<HttpRequest>): Buffer | null;
+export function TESTING_ChatRequestGetHeaderValue(request: Wrapper<HttpRequest>, headerName: string): string;
+export function TESTING_ChatRequestGetMethod(request: Wrapper<HttpRequest>): string;
+export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): string;
+export function TESTING_ChatServiceDebugInfoConvert(): DebugInfo;
+export function TESTING_ChatServiceErrorConvert(): void;
+export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): Response;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowSync(_input: null): void;
@@ -488,6 +518,7 @@ interface AuthCredentialResponse { readonly __type: unique symbol; }
 interface AuthCredentialWithPni { readonly __type: unique symbol; }
 interface AuthCredentialWithPniResponse { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
+interface Chat { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface ConnectionManager { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
@@ -498,6 +529,7 @@ interface GroupMasterKey { readonly __type: unique symbol; }
 interface GroupPublicParams { readonly __type: unique symbol; }
 interface GroupSecretParams { readonly __type: unique symbol; }
 interface HsmEnclaveClient { readonly __type: unique symbol; }
+interface HttpRequest { readonly __type: unique symbol; }
 interface IncrementalMac { readonly __type: unique symbol; }
 interface KyberKeyPair { readonly __type: unique symbol; }
 interface KyberPreKeyRecord { readonly __type: unique symbol; }

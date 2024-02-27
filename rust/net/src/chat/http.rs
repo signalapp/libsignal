@@ -49,7 +49,7 @@ impl<C: TransportConnector> ServiceConnector for ChatOverHttp2ServiceConnector<C
             connection,
             remote_address: _remote_address,
         } = channel;
-        let service_status = ServiceStatus::new();
+        let service_status = ServiceStatus::default();
         start_event_listener(connection, service_status.clone());
         (
             ChatOverHttp2 {

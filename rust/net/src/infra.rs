@@ -9,6 +9,7 @@ use std::string::ToString;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
@@ -19,8 +20,13 @@ use tokio::net::TcpStream;
 use tokio_boring::SslStream;
 
 use crate::infra::certs::RootCertificates;
+use crate::infra::connection_manager::{
+    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
+};
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::NetError;
+use crate::infra::reconnect::ServiceConnector;
+use crate::infra::ws::WebSocketConfig;
 use crate::utils::first_ok;
 
 pub mod certs;
@@ -31,7 +37,7 @@ pub(crate) mod http;
 pub(crate) mod reconnect;
 pub(crate) mod tokio_executor;
 pub(crate) mod tokio_io;
-pub(crate) mod ws;
+pub mod ws;
 
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
@@ -197,6 +203,45 @@ impl TcpSslTransportConnector {
         ssl.set_verify_cert_store(certs.try_into()?)?;
         ssl.set_alpn_protos(alpn)?;
         Ok(ssl)
+    }
+}
+
+pub struct EndpointConnection<C, S> {
+    pub manager: C,
+    pub connector: S,
+}
+
+impl<S: ServiceConnector> EndpointConnection<MultiRouteConnectionManager, S> {
+    pub fn new_multi(
+        connection_params: impl IntoIterator<Item = ConnectionParams>,
+        connect_timeout: Duration,
+        service_connector: S,
+    ) -> Self {
+        Self {
+            manager: MultiRouteConnectionManager::new(
+                connection_params
+                    .into_iter()
+                    .map(|params| {
+                        SingleRouteThrottlingConnectionManager::new(params, connect_timeout)
+                    })
+                    .collect(),
+                connect_timeout,
+            ),
+            connector: service_connector,
+        }
+    }
+}
+
+pub fn make_ws_config(
+    websocket_endpoint: PathAndQuery,
+    connect_timeout: Duration,
+) -> WebSocketConfig {
+    WebSocketConfig {
+        ws_config: tungstenite::protocol::WebSocketConfig::default(),
+        endpoint: websocket_endpoint,
+        max_connection_time: connect_timeout,
+        keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
+        max_idle_time: WS_MAX_IDLE_TIME,
     }
 }
 

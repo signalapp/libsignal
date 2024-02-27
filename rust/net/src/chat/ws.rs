@@ -101,7 +101,7 @@ impl PendingMessagesMap {
 }
 
 #[derive_where(Clone)]
-pub(crate) struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
+pub struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
     ws_client_connector: WebSocketClientConnector<T>,
     incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
 }
