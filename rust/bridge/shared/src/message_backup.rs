@@ -42,6 +42,7 @@ impl From<Error> for MessageBackupValidationError {
             Error::Parse(ParseError::Io(e)) => Self::Io(e),
             e @ Error::NoFrames
             | e @ Error::InvalidProtobuf(_)
+            | e @ Error::HmacMismatch(_)
             | e @ Error::Parse(ParseError::Decode(_)) => Self::String(e.to_string()),
         }
     }
@@ -51,7 +52,7 @@ impl From<FrameValidationError> for MessageBackupValidationError {
     fn from(value: FrameValidationError) -> Self {
         match value {
             FrameValidationError::Io(e) => Self::Io(e),
-            e @ (FrameValidationError::TooShort | FrameValidationError::InvalidHmac) => {
+            e @ (FrameValidationError::TooShort | FrameValidationError::InvalidHmac(_)) => {
                 Self::String(e.to_string())
             }
         }

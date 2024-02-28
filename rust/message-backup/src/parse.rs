@@ -54,6 +54,11 @@ impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
         Ok(Some(buf.into_boxed_slice()))
     }
 
+    /// Consumes self, returning the inner [`AsyncRead`]er.
+    pub(crate) fn into_inner(self) -> R {
+        self.reader
+    }
+
     async fn read_next_varint(&mut self) -> Result<Option<usize>, ParseError> {
         let Self { buffer, reader } = self;
 

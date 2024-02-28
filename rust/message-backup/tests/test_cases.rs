@@ -10,7 +10,7 @@ use assert_matches::assert_matches;
 use dir_test::{dir_test, Fixture};
 use futures::io::Cursor;
 use futures::AsyncRead;
-use libsignal_message_backup::frame::FileReaderFactory;
+use libsignal_message_backup::frame::{FileReaderFactory, VerifyHmac};
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_message_backup::{BackupReader, ReadResult};
 use libsignal_protocol::Aci;
@@ -115,7 +115,7 @@ fn write_expected_error() -> bool {
     std::env::var_os("OVERWRITE_EXPECTED_OUTPUT").is_some()
 }
 
-fn validate(mut reader: BackupReader<impl AsyncRead + Unpin>) {
+fn validate(mut reader: BackupReader<impl AsyncRead + Unpin + VerifyHmac>) {
     reader.visitor = |msg| println!("{msg:#?}");
 
     let ReadResult {

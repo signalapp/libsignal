@@ -11,7 +11,8 @@ use futures::AsyncRead;
 
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::frame::{
-    CursorFactory, FileReaderFactory, FramesReader, ReaderFactory,
+    CursorFactory, FileReaderFactory, FramesReader, ReaderFactory, UnvalidatedHmacReader,
+    VerifyHmac,
 };
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
@@ -209,7 +210,7 @@ impl<'a> ReaderFactory for AsyncReaderFactory<'a> {
 /// Wrapper over encrypted- or plaintext-sourced [`BackupReader`].
 enum MaybeEncryptedBackupReader<R: AsyncRead + Unpin> {
     EncryptedCompressed(Box<BackupReader<FramesReader<R>>>),
-    PlaintextBinproto(BackupReader<R>),
+    PlaintextBinproto(BackupReader<UnvalidatedHmacReader<R>>),
 }
 
 struct PrintOutput(bool);
@@ -217,7 +218,7 @@ struct PrintOutput(bool);
 impl<R: AsyncRead + Unpin> MaybeEncryptedBackupReader<R> {
     async fn execute(self, print: PrintOutput, verbosity: ParseVerbosity) -> Result<(), Error> {
         async fn validate(
-            mut backup_reader: BackupReader<impl AsyncRead + Unpin>,
+            mut backup_reader: BackupReader<impl AsyncRead + Unpin + VerifyHmac>,
             PrintOutput(print): PrintOutput,
             verbosity: ParseVerbosity,
         ) -> Result<(), Error> {

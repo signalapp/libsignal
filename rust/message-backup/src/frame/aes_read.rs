@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::cell::RefCell;
 use std::pin::Pin;
+use std::rc::Rc;
 use std::task::Poll;
 
 use aes::Aes256;
@@ -27,17 +29,44 @@ const AES_IV_SIZE: usize = <<cbc::Decryptor<Aes256> as IvSizeUser>::IvSize as Un
 ///
 /// This exists as a named type to allow it to be held as a field in other types.
 #[derive(Debug)]
-pub(crate) struct Aes256CbcReader<R: AsyncRead + Unpin>(
-    futures::stream::IntoAsyncRead<Aes256CbcUnpadLast<Aes256CbcDecryptStream<BlockStream<R>>>>,
-);
+pub(crate) struct Aes256CbcReader<R: AsyncRead + Unpin> {
+    /// Reader for the bytes being produced.
+    ///
+    /// Bytes are pulled from the wrapped `R` reader, chunked into blocks which
+    /// are fed into an [`Aes256`] decryptor as a stream, then un-padded and
+    /// un-chunked in response to an [`AsyncRead::poll_read`] call.
+    reader: futures::stream::IntoAsyncRead<
+        Aes256CbcUnpadLast<Aes256CbcDecryptStream<BlockStream<RcReader<R>>>>,
+    >,
+    /// Separate reference to the wrapped reader for production via
+    /// [`Aes256CbcReader::into_inner`].
+    inner: Rc<RefCell<R>>,
+}
 
 impl<R: AsyncRead + Unpin> Aes256CbcReader<R> {
     pub(crate) fn new(key: &[u8; AES_KEY_SIZE], iv: &[u8; AES_IV_SIZE], reader: R) -> Self {
+        let rc_reader = Rc::new(RefCell::new(reader));
+        let reader = RcReader(rc_reader.clone());
         let stream: BlockStream<_> = ExactReadBlockStream::from_reader(reader).map_ok(Into::into);
         let decrypt: Aes256CbcDecryptStream<BlockStream<_>> =
             CbcStreamDecryptor::new(cbc::Decryptor::<Aes256>::new(key.into(), iv.into()), stream);
         let unpad = UnpadLast::<_, Pkcs7, _, 16>::new(decrypt);
-        Self(TryStreamExt::into_async_read(unpad))
+        Self {
+            reader: TryStreamExt::into_async_read(unpad),
+            inner: rc_reader,
+        }
+    }
+
+    /// Consumes the reader and returns the wrapped `R` reader.
+    ///
+    /// If this reader is exhaused (a call to [`AsyncRead::poll_read`] returned
+    /// `Poll::Ready(Ok(0))`), then the returned reader is also exhausted.
+    /// Otherwise no guarantees are made about the returned value.
+    pub(crate) fn into_inner(self) -> R {
+        let Self { reader, inner } = self;
+        drop(reader);
+
+        RefCell::into_inner(Rc::into_inner(inner).expect("only other reference was just dropped"))
     }
 }
 
@@ -47,7 +76,7 @@ impl<R: AsyncRead + Unpin> AsyncRead for Aes256CbcReader<R> {
         cx: &mut std::task::Context<'_>,
         buf: &mut [u8],
     ) -> Poll<futures::io::Result<usize>> {
-        Pin::new(&mut self.get_mut().0).poll_read(cx, buf)
+        Pin::new(&mut self.get_mut().reader).poll_read(cx, buf)
     }
 }
 
@@ -66,16 +95,32 @@ type BlockStream<R> = futures::prelude::stream::MapOk<
 /// A [`futures::Stream`] that decrypts individual blocks using AES256-CBC.
 type Aes256CbcDecryptStream<S> = CbcStreamDecryptor<Aes256, S>;
 
+/// A [`AsyncRead`]er that reads from shared mutable state.
+///
+/// Trivial implementer of `AsyncRead` around a `Rc<RefCell<R>>`.
+#[derive(Debug)]
+struct RcReader<R>(Rc<RefCell<R>>);
+
+impl<R: AsyncRead + Unpin> AsyncRead for RcReader<R> {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<std::io::Result<usize>> {
+        Pin::new(&mut *self.get_mut().0.borrow_mut()).poll_read(cx, buf)
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use futures::io::ErrorKind;
+    use std::task::ready;
 
     use aes::Aes256;
     use assert_matches::assert_matches;
     use cbc::cipher::block_padding::Pkcs7;
     use cbc::cipher::{BlockEncryptMut, KeyIvInit};
     use futures::executor::block_on;
-    use futures::io::{AsyncReadExt, Cursor};
+    use futures::io::{AsyncReadExt, Cursor, ErrorKind};
     use futures::{pin_mut, FutureExt, TryStreamExt};
     use test_case::test_case;
 
@@ -99,14 +144,23 @@ mod test {
         assert_eq!(decrypted, plaintext)
     }
 
+    fn aes_encrypted_bytes(plaintext: &[u8]) -> Vec<u8> {
+        let ciphertext = cbc::Encryptor::<Aes256>::new((&FAKE_KEY).into(), (&FAKE_IV).into())
+            .encrypt_padded_vec_mut::<Pkcs7>(plaintext);
+        assert_eq!(
+            ciphertext.len(),
+            (plaintext.len() + AES_BLOCK_SIZE - 1) / AES_BLOCK_SIZE * AES_BLOCK_SIZE
+        );
+        ciphertext
+    }
+
     #[test]
     fn aes_reader_inner_returns_pending() {
         let (sender, receiver) = futures::channel::mpsc::unbounded::<Result<Vec<u8>, _>>();
         let mut reader = Aes256CbcReader::new(&FAKE_KEY, &FAKE_IV, receiver.into_async_read());
 
         const PLAINTEXT: [u8; 2 * AES_BLOCK_SIZE + 2] = *b"Supercalifragilisticexpialidocious";
-        let ciphertext = cbc::Encryptor::<Aes256>::new((&FAKE_KEY).into(), (&FAKE_IV).into())
-            .encrypt_padded_vec_mut::<Pkcs7>(&PLAINTEXT);
+        let ciphertext = aes_encrypted_bytes(&PLAINTEXT);
         assert_eq!(ciphertext.len(), AES_BLOCK_SIZE * 3);
 
         let mut to_send = ciphertext.as_slice();
@@ -171,5 +225,49 @@ mod test {
         assert_matches!(
             reader.read(&mut buf).now_or_never(),
             Some(Err(e)) if e.kind() == ErrorKind::UnexpectedEof);
+    }
+
+    struct CountingReader<R> {
+        reader: R,
+        bytes: usize,
+    }
+
+    impl<R> CountingReader<R> {
+        fn new(reader: R) -> Self {
+            Self { reader, bytes: 0 }
+        }
+    }
+
+    impl<R: AsyncRead + Unpin> AsyncRead for CountingReader<R> {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+            buf: &mut [u8],
+        ) -> Poll<std::io::Result<usize>> {
+            let Self { reader, bytes } = self.get_mut();
+            let count = ready!(Pin::new(reader).poll_read(cx, buf))?;
+            *bytes += count;
+
+            Poll::Ready(Ok(count))
+        }
+    }
+
+    #[test]
+    fn into_inner() {
+        let ciphertext = aes_encrypted_bytes(&[0; 34]);
+        let ciphertext_len = ciphertext.len();
+        let cursor_reader = Cursor::new(ciphertext);
+        let mut reader =
+            Aes256CbcReader::new(&FAKE_KEY, &FAKE_IV, CountingReader::new(cursor_reader));
+
+        let mut out = vec![];
+        let _ = reader
+            .read_to_end(&mut out)
+            .now_or_never()
+            .expect("blocked unexpectedly")
+            .expect("read successfully");
+
+        let inner: CountingReader<_> = reader.into_inner();
+        assert_eq!(inner.bytes, ciphertext_len)
     }
 }

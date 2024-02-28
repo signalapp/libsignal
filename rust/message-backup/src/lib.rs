@@ -9,7 +9,7 @@ use futures::AsyncRead;
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 
-use crate::frame::ReaderFactory;
+use crate::frame::{HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac};
 use crate::key::MessageBackupKey;
 use crate::parse::VarintDelimitedReader;
 use crate::unknown::{FormatPath, PathPart, UnknownValue, VisitUnknownFieldsExt as _};
@@ -41,6 +41,8 @@ pub enum Error {
     NoFrames,
     /// invalid protobuf: {0}
     InvalidProtobuf(#[from] protobuf::Error),
+    /// mismatched HMAC: {0}
+    HmacMismatch(#[from] HmacMismatchError),
 }
 
 #[must_use]
@@ -85,15 +87,7 @@ impl<R> ReadResult<R> {
     }
 }
 
-impl<R: AsyncRead + Unpin> BackupReader<R> {
-    pub fn new_unencrypted(reader: R) -> Self {
-        let reader = VarintDelimitedReader::new(reader);
-        Self {
-            reader,
-            visitor: |_| (),
-        }
-    }
-
+impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
     pub async fn read_all(self) -> ReadResult<backup::Backup> {
         self.collect_all().await.map(Into::into)
     }
@@ -118,18 +112,31 @@ impl<R: AsyncRead + Unpin> BackupReader<R> {
     }
 }
 
+impl<R: AsyncRead + Unpin> BackupReader<UnvalidatedHmacReader<R>> {
+    pub fn new_unencrypted(reader: R) -> Self {
+        let reader = VarintDelimitedReader::new(UnvalidatedHmacReader::new(reader));
+        Self {
+            reader,
+            visitor: |_| (),
+        }
+    }
+}
+
 impl<R: AsyncRead + AsyncSkip + Unpin> BackupReader<frame::FramesReader<R>> {
     pub async fn new_encrypted_compressed(
         key: &MessageBackupKey,
         factory: impl ReaderFactory<Reader = R>,
     ) -> Result<Self, frame::ValidationError> {
         let reader = frame::FramesReader::new(key, factory).await?;
-        Ok(Self::new_unencrypted(reader))
+        Ok(Self {
+            reader: VarintDelimitedReader::new(reader),
+            visitor: |_| (),
+        })
     }
 }
 
 async fn read_all_frames<M: backup::method::Method>(
-    mut reader: VarintDelimitedReader<impl AsyncRead + Unpin>,
+    mut reader: VarintDelimitedReader<impl AsyncRead + Unpin + VerifyHmac>,
     mut visitor: impl FnMut(&dyn std::fmt::Debug),
     unknown_fields: &mut impl Extend<FoundUnknownField>,
 ) -> Result<backup::PartialBackup<M>, Error> {
@@ -161,6 +168,10 @@ async fn read_all_frames<M: backup::method::Method>(
 
         backup.add_frame(frame_proto)?
     }
+
+    // Before reporting success, check that the HMAC still matches. This
+    // prevents TOC/TOU issues.
+    reader.into_inner().verify_hmac()?;
 
     Ok(backup)
 }
