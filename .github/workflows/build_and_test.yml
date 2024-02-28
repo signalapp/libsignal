@@ -161,8 +161,15 @@ jobs:
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       if: matrix.version == 'nightly'
 
+    - name: cargo clean (reclaim disk space)
+      # Clean the contents of the target directory to avoid running out of disk space during the
+      # doc build.
+      run: cargo clean
+      if: matrix.version == 'stable'
+
     - name: Rust docs
-      run: cargo doc --workspace --all-features
+      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features
+      if: matrix.version == 'stable'
       env:
         RUSTFLAGS: -D warnings
 
