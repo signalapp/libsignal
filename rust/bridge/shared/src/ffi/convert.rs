@@ -4,6 +4,7 @@
 //
 
 use std::ffi::{c_char, c_uchar, CStr};
+use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
@@ -12,7 +13,7 @@ use paste::paste;
 use uuid::Uuid;
 
 use crate::io::{InputStream, SyncInputStream};
-use crate::support::{FixedLengthBincodeSerializable, Serialized};
+use crate::support::{AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
 
@@ -534,6 +535,26 @@ where
     }
 }
 
+impl<T, P> SimpleArgTypeInfo for AsType<T, P>
+where
+    P: TryInto<T> + SimpleArgTypeInfo,
+    P::Error: Display,
+{
+    type ArgType = P::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let p = P::convert_from(foreign)?;
+        p.try_into()
+            .map_err(|e| {
+                SignalFfiError::Signal(SignalProtocolError::InvalidArgument(format!(
+                    "invalid {}: {e}",
+                    std::any::type_name::<T>()
+                )))
+            })
+            .map(AsType::from)
+    }
+}
+
 impl<T> ResultTypeInfo for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + serde::Serialize,
@@ -672,6 +693,7 @@ macro_rules! ffi_arg_type {
     (Option<& $typ:ty>) => (*const $typ);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
+    (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

@@ -19,6 +19,29 @@ def print_usage_and_exit():
     sys.exit(2)
 
 
+def split_args(args):
+    """
+    Split Rust `arg: Type` pairs separated by commas.
+
+    Account for templates, tuples, and slices.
+    """
+    while ':' in args:
+        (name, args) = args.split(':', maxsplit=1)
+        open_pairs = 0
+        for (i, c) in enumerate(args):
+            if c == ',' and open_pairs == 0:
+                ty = args[:i]
+                args = args[i + 1:]
+                yield (name.strip(), ty.strip())
+                break
+            elif c in ['<', '(', '[']:
+                open_pairs += 1
+            elif c in ['>', ')', ']']:
+                open_pairs -= 1
+        else:
+            yield (name.strip(), args.strip())
+
+
 def translate_to_ts(typ):
     typ = typ.replace(' ', '')
 
@@ -83,6 +106,11 @@ def translate_to_ts(typ):
     if typ.startswith('Promise<'):
         assert typ.endswith('>')
         return 'Promise<' + translate_to_ts(typ[8:-1]) + '>'
+
+    if typ.startswith('AsType<'):
+        assert typ.endswith('>')
+        assert ',' in typ
+        return translate_to_ts(typ.split(',')[1][:-1])
 
     if typ.startswith('Ignored<'):
         assert typ.endswith('>')
@@ -162,14 +190,12 @@ def collect_decls(crate_dir, features=()):
 
         ts_ret_type = translate_to_ts(ret_type)
         ts_args = []
-        if args:
-            if '::' in args:
-                raise Exception(f'Paths are not supported. Use alias for the type of \'{args}\'')
+        if '::' in args:
+            raise Exception(f'Paths are not supported. Use alias for the type of \'{args}\'')
 
-            for arg in args.split(', '):
-                (arg_name, arg_type) = arg.split(': ')
-                ts_arg_type = translate_to_ts(arg_type)
-                ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
+        for (arg_name, arg_type) in split_args(args):
+            ts_arg_type = translate_to_ts(arg_type)
+            ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
 
         yield '%s(%s): %s;' % (prefix, ', '.join(ts_args), ts_ret_type)
 

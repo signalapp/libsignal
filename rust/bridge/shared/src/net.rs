@@ -158,8 +158,8 @@ impl ConnectionManager {
 }
 
 #[bridge_fn]
-pub fn ConnectionManager_new(environment: u8) -> ConnectionManager {
-    ConnectionManager::new(environment.try_into().expect("is valid environment value"))
+fn ConnectionManager_new(environment: AsType<Environment, u8>) -> ConnectionManager {
+    ConnectionManager::new(environment.into_inner())
 }
 
 bridge_handle!(ConnectionManager, clone = false);
@@ -291,7 +291,7 @@ async fn Svr3Backup(
     connection_manager: &ConnectionManager,
     secret: Box<[u8]>,
     password: String,
-    max_tries: u32,
+    max_tries: AsType<NonZeroU32, u32>,
     username: String,         // hex-encoded uid
     enclave_password: String, // timestamp:otp(...)
     op_timeout_ms: u32,       // timeout spans both connecting and performing the operation
@@ -300,7 +300,6 @@ async fn Svr3Backup(
         .as_ref()
         .try_into()
         .expect("can only backup 32 bytes");
-    let max_tries: NonZeroU32 = max_tries.try_into().expect("non negative number of tries");
     let mut rng = OsRng;
     let share_set = timeout(
         Duration::from_millis(op_timeout_ms.into()),
@@ -308,7 +307,13 @@ async fn Svr3Backup(
         svr3_connect(connection_manager, username, enclave_password)
             .map_err(|err| err.into())
             .and_then(|connections| {
-                Svr3Env::backup(connections, &password, secret, max_tries, &mut rng)
+                Svr3Env::backup(
+                    connections,
+                    &password,
+                    secret,
+                    max_tries.into_inner(),
+                    &mut rng,
+                )
             }),
     )
     .await?;

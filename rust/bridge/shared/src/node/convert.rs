@@ -9,6 +9,7 @@ use paste::paste;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 
+use std::fmt::Display;
 use std::hash::Hasher;
 use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
@@ -16,7 +17,7 @@ use std::slice;
 
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::ResponseAndDebugInfo;
-use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
 
@@ -1043,6 +1044,23 @@ full_range_integer!(u8);
 full_range_integer!(u16);
 full_range_integer!(u32);
 full_range_integer!(i32);
+
+impl<T, P> SimpleArgTypeInfo for AsType<T, P>
+where
+    T: 'static,
+    P: SimpleArgTypeInfo + TryInto<T> + 'static,
+    P::Error: Display,
+{
+    type ArgType = P::ArgType;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let p = P::convert_from(cx, foreign)?;
+        match p.try_into() {
+            Ok(t) => Ok(AsType::from(t)),
+            Err(e) => cx.throw_type_error(format!("invalid {}: {e}", std::any::type_name::<T>())),
+        }
+    }
+}
 
 impl<T> SimpleArgTypeInfo for Serialized<T>
 where

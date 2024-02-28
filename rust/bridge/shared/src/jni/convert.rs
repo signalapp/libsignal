@@ -16,7 +16,7 @@ use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::support::{Array, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
 
@@ -835,6 +835,29 @@ where
     }
 }
 
+impl<'a, T, P> SimpleArgTypeInfo<'a> for AsType<T, P>
+where
+    P: SimpleArgTypeInfo<'a> + TryInto<T>,
+    P::Error: Display,
+{
+    type ArgType = P::ArgType;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let p = P::convert_from(env, foreign)?;
+        p.try_into()
+            .map_err(|e| {
+                BridgeLayerError::BadArgument(format!(
+                    "invalid {}: {e}",
+                    std::any::type_name::<T>()
+                ))
+            })
+            .map(AsType::from)
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for ServiceId {
     type ArgType = JByteArray<'a>;
     fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
@@ -1143,6 +1166,9 @@ macro_rules! jni_arg_type {
     };
     (Serialized<$typ:ident>) => {
         jni::JByteArray<'local>
+    };
+    (AsType<$typ:ident, $bridged:ident>) => {
+        jni_arg_type!($bridged)
     };
 
     (Ignored<$typ:ty>) => (jni::JObject<'local>);
