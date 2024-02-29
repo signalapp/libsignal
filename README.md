@@ -175,6 +175,6 @@ Administration Regulations, Section 740.13) for both object code and source code
 
 ## License
 
-Copyright 2020-2023 Signal Messenger, LLC.
+Copyright 2020-2024 Signal Messenger, LLC
 
-Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
+Licensed under the GNU AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
