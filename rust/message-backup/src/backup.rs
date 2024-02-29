@@ -5,7 +5,6 @@
 
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
-use std::time::{Duration, SystemTime};
 
 use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{Call, CallError};
@@ -14,6 +13,7 @@ use crate::backup::frame::{CallId, ChatId, RecipientId};
 use crate::backup::method::{Contains, KeyExists, Map as _, Method, Store, ValidateOnly};
 use crate::backup::recipient::{RecipientData, RecipientError};
 use crate::backup::sticker::{PackId as StickerPackId, StickerId, StickerPack, StickerPackError};
+use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
 
@@ -28,8 +28,7 @@ mod sticker;
 mod time;
 
 pub struct PartialBackup<M: Method> {
-    version: u64,
-    backup_time: M::Value<SystemTime>,
+    meta: BackupMeta,
     account_data: Option<M::Value<AccountData<M>>>,
     recipients: M::Map<RecipientId, RecipientData<M>>,
     chats: HashMap<ChatId, ChatData<M>>,
@@ -39,8 +38,7 @@ pub struct PartialBackup<M: Method> {
 
 #[derive(Debug)]
 pub struct Backup {
-    pub version: u64,
-    pub backup_time: SystemTime,
+    pub meta: BackupMeta,
     pub account_data: Option<AccountData<Store>>,
     pub recipients: HashMap<RecipientId, RecipientData>,
     pub chats: HashMap<ChatId, ChatData>,
@@ -48,11 +46,28 @@ pub struct Backup {
     pub sticker_packs: HashMap<StickerPackId, StickerPack>,
 }
 
+#[derive(Debug)]
+pub struct BackupMeta {
+    /// The version of the backup format being parsed.
+    pub version: u64,
+    /// When the backup process started.
+    pub backup_time: Timestamp,
+    /// What purpose the backup was intended for.
+    pub purpose: Purpose,
+}
+
+#[derive(Debug)]
+pub enum Purpose {
+    /// Intended for immediate transfer from one device to another.
+    DeviceTransfer,
+    /// For remote storage and restoration at a later time.
+    RemoteBackup,
+}
+
 impl From<PartialBackup<Store>> for Backup {
     fn from(value: PartialBackup<Store>) -> Self {
         let PartialBackup {
-            version,
-            backup_time,
+            meta,
             account_data,
             recipients,
             chats,
@@ -61,8 +76,7 @@ impl From<PartialBackup<Store>> for Backup {
         } = value;
 
         Self {
-            version,
-            backup_time,
+            meta,
             account_data,
             recipients,
             chats,
@@ -171,9 +185,14 @@ impl<M: Method> PartialBackup<M> {
             special_fields: _,
         } = value;
 
-        Self {
+        let meta = BackupMeta {
             version,
-            backup_time: M::value(SystemTime::UNIX_EPOCH + Duration::from_millis(backupTimeMs)),
+            backup_time: Timestamp::from_millis(backupTimeMs, "BackupInfo.backupTimeMs"),
+            purpose: Purpose::RemoteBackup,
+        };
+
+        Self {
+            meta,
             account_data: None,
             recipients: Default::default(),
             chats: Default::default(),
@@ -250,6 +269,7 @@ impl<M: Method> PartialBackup<M> {
                 recipients: &self.recipients,
                 calls: &self.calls,
                 chats: &(),
+                meta: &self.meta,
             })
             .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?]);
 
@@ -264,6 +284,7 @@ impl<M: Method> PartialBackup<M> {
                 recipients: &self.recipients,
                 calls: &self.calls,
                 chats: &self.chats,
+                meta: &self.meta,
             })
             .map_err(|e| CallFrameError(call_id, e))?;
 
@@ -301,6 +322,7 @@ pub(super) struct ConvertContext<'a, Recipients, Calls, Chats> {
     recipients: &'a Recipients,
     calls: &'a Calls,
     chats: &'a Chats,
+    meta: &'a BackupMeta,
 }
 
 impl<R: Contains<RecipientId>, C, Ch> Contains<RecipientId> for ConvertContext<'_, R, C, Ch> {
@@ -325,6 +347,12 @@ impl<M: Method> Contains<(StickerPackId, StickerId)> for HashMap<StickerPackId, 
     fn contains(&self, (pack_id, sticker_id): &(StickerPackId, StickerId)) -> bool {
         self.get(pack_id)
             .is_some_and(|pack| pack.stickers.contains(sticker_id))
+    }
+}
+
+impl<'a, R, C, Ch> AsRef<BackupMeta> for ConvertContext<'a, R, C, Ch> {
+    fn as_ref(&self) -> &BackupMeta {
+        self.meta
     }
 }
 

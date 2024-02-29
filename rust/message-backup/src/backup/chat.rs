@@ -17,7 +17,7 @@ use crate::backup::frame::{CallId, RecipientId};
 use crate::backup::method::{Contains, Method, Store};
 use crate::backup::sticker::{MessageSticker, MessageStickerError};
 use crate::backup::time::{Duration, Timestamp};
-use crate::backup::{TryFromWith, TryIntoWith as _};
+use crate::backup::{BackupMeta, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 mod group;
@@ -73,6 +73,17 @@ pub enum ChatItemError {
     ChatUpdateUnknown,
     /// voice message: {0}
     VoiceMessage(#[from] VoiceMessageError),
+    /// found exactly one of expiration start date and duration
+    ExpirationMismatch,
+    /// expiration too soon: {0}
+    InvalidExpiration(#[from] InvalidExpiration),
+}
+
+#[derive(Debug, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct InvalidExpiration {
+    backup_time: Timestamp,
+    expires_at: Timestamp,
 }
 
 /// Validated version of [`proto::Chat`].
@@ -308,6 +319,26 @@ pub enum QuoteError {
     TypeUnknown,
 }
 
+impl std::fmt::Display for InvalidExpiration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            backup_time,
+            expires_at,
+        } = self;
+        match expires_at
+            .into_inner()
+            .duration_since(backup_time.into_inner())
+        {
+            Ok(until) => write!(f, "expires {}s after backup creation", until.as_secs()),
+            Err(e) => write!(
+                f,
+                "expired {}s before backup creation",
+                e.duration().as_secs()
+            ),
+        }
+    }
+}
+
 impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Chat, C> for ChatData<M> {
     type Error = ChatError;
 
@@ -343,10 +374,12 @@ impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Chat, C> for ChatDa
     }
 }
 
-impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatItem, R> for ChatItemData {
+impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
+    TryFromWith<proto::ChatItem, R> for ChatItemData
+{
     type Error = ChatItemError;
 
-    fn try_from_with(value: proto::ChatItem, recipients: &R) -> Result<Self, ChatItemError> {
+    fn try_from_with(value: proto::ChatItem, context: &R) -> Result<Self, ChatItemError> {
         let proto::ChatItem {
             chatId: _,
             authorId,
@@ -365,26 +398,50 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatItem, R
 
         let author = RecipientId(authorId);
 
-        if !recipients.contains(&author) {
+        if !context.contains(&author) {
             return Err(ChatItemError::AuthorNotFound(author));
         }
 
         let message =
-            ChatItemMessage::try_from_with(item.ok_or(ChatItemError::MissingItem)?, recipients)?;
+            ChatItemMessage::try_from_with(item.ok_or(ChatItemError::MissingItem)?, context)?;
 
         let direction = directionalDetails
             .ok_or(ChatItemError::NoDirection)?
-            .try_into_with(recipients)?;
+            .try_into_with(context)?;
 
         let revisions = revisions
             .into_iter()
-            .map(|rev| rev.try_into_with(recipients))
+            .map(|rev| rev.try_into_with(context))
             .collect::<Result<_, _>>()?;
 
         let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent");
         let expire_start =
             expireStartDate.map(|date| Timestamp::from_millis(date, "ChatItem.expireStartDate"));
         let expires_in = expiresInMs.map(Duration::from_millis);
+
+        let expires_at = match (expire_start, expires_in) {
+            (Some(expire_start), Some(expires_in)) => Some(expire_start + expires_in),
+            (None, None) => None,
+            (Some(_), None) | (None, Some(_)) => return Err(ChatItemError::ExpirationMismatch),
+        };
+
+        if let Some(expires_at) = expires_at {
+            // Ensure that ephemeral content that's due to expire soon isn't backed up.
+            let backup_time = context.as_ref().backup_time;
+            let allowed_expire_at = backup_time
+                + match context.as_ref().purpose {
+                    crate::backup::Purpose::DeviceTransfer => Duration::ZERO,
+                    crate::backup::Purpose::RemoteBackup => Duration::TWELVE_HOURS,
+                };
+
+            if expires_at < allowed_expire_at {
+                return Err(InvalidExpiration {
+                    expires_at,
+                    backup_time,
+                }
+                .into());
+            }
+        }
 
         Ok(Self {
             author,
@@ -482,8 +539,8 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
     }
 }
 
-impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::chat_item::Item, R>
-    for ChatItemMessage
+impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
+    TryFromWith<proto::chat_item::Item, R> for ChatItemMessage
 {
     type Error = ChatItemError;
 
@@ -955,11 +1012,14 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
 
 #[cfg(test)]
 mod test {
+    use std::time::UNIX_EPOCH;
+
     use assert_matches::assert_matches;
     use protobuf::{EnumOrUnknown, MessageField, SpecialFields};
     use test_case::test_case;
 
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
+    use crate::backup::Purpose;
 
     use super::*;
 
@@ -979,7 +1039,7 @@ mod test {
                     },
                 )),
                 expireStartDate: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
-                expiresInMs: Some(111),
+                expiresInMs: Some(12 * 60 * 60 * 1000),
                 dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
@@ -1162,7 +1222,23 @@ mod test {
         }
     }
 
-    struct TestContext;
+    impl BackupMeta {
+        fn test_value() -> Self {
+            Self {
+                backup_time: Timestamp::test_value(),
+                purpose: Purpose::RemoteBackup,
+                version: 0,
+            }
+        }
+    }
+
+    struct TestContext(BackupMeta);
+
+    impl Default for TestContext {
+        fn default() -> Self {
+            Self(BackupMeta::test_value())
+        }
+    }
 
     impl Contains<RecipientId> for TestContext {
         fn contains(&self, key: &RecipientId) -> bool {
@@ -1176,10 +1252,16 @@ mod test {
         }
     }
 
+    impl AsRef<BackupMeta> for TestContext {
+        fn as_ref(&self) -> &BackupMeta {
+            &self.0
+        }
+    }
+
     #[test]
     fn valid_chat_item() {
         assert_eq!(
-            proto::ChatItem::test_data().try_into_with(&TestContext),
+            proto::ChatItem::test_data().try_into_with(&TestContext::default()),
             Ok(ChatItemData {
                 author: RecipientId(proto::Recipient::TEST_ID),
                 message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
@@ -1189,7 +1271,7 @@ mod test {
                     sent: Timestamp::test_value()
                 },
                 expire_start: Some(Timestamp::test_value()),
-                expires_in: Some(Duration::from_millis(111)),
+                expires_in: Some(Duration::TWELVE_HOURS),
                 sent_at: Timestamp::test_value(),
                 _limit_construction_to_module: (),
             })
@@ -1250,7 +1332,7 @@ mod test {
         modifier(&mut message);
 
         let result = message
-            .try_into_with(&TestContext)
+            .try_into_with(&TestContext::default())
             .map(|_: ChatItemData| ());
         assert_eq!(result, expected);
     }
@@ -1258,7 +1340,7 @@ mod test {
     #[test]
     fn valid_standard_message() {
         assert_eq!(
-            proto::StandardMessage::test_data().try_into_with(&TestContext),
+            proto::StandardMessage::test_data().try_into_with(&TestContext::default()),
             Ok(StandardMessage::from_proto_test_data())
         );
     }
@@ -1266,7 +1348,7 @@ mod test {
     #[test]
     fn valid_contact_message() {
         assert_eq!(
-            proto::ContactMessage::test_data().try_into_with(&TestContext),
+            proto::ContactMessage::test_data().try_into_with(&TestContext::default()),
             Ok(ContactMessage {
                 contacts: vec![ContactAttachment::from_proto_test_data()],
                 reactions: vec![Reaction::from_proto_test_data()],
@@ -1310,7 +1392,7 @@ mod test {
         modifier(&mut message);
 
         let result = message
-            .try_into_with(&TestContext)
+            .try_into_with(&TestContext::default())
             .map(|_: ContactMessage| ());
         assert_eq!(result, expected);
     }
@@ -1318,7 +1400,8 @@ mod test {
     #[test]
     fn valid_voice_message() {
         assert_eq!(
-            proto::StandardMessage::test_voice_message_data().try_into_with(&TestContext),
+            proto::StandardMessage::test_voice_message_data()
+                .try_into_with(&TestContext::default()),
             Ok(VoiceMessage {
                 quote: Some(Quote {
                     author: RecipientId(proto::Recipient::TEST_ID),
@@ -1349,7 +1432,7 @@ mod test {
         modifier(&mut message);
 
         let result = message
-            .try_into_with(&TestContext)
+            .try_into_with(&TestContext::default())
             .map(|_: VoiceMessage| ());
         assert_eq!(result, expected);
     }
@@ -1367,7 +1450,7 @@ mod test {
         modifier(&mut message);
 
         let result = message
-            .try_into_with(&TestContext)
+            .try_into_with(&TestContext::default())
             .map(|_: StickerMessage| ());
         assert_eq!(result, expected);
     }
@@ -1375,7 +1458,10 @@ mod test {
     #[test]
     fn chat_update_message_no_item() {
         assert_matches!(
-            UpdateMessage::try_from_with(proto::ChatUpdateMessage::default(), &TestContext),
+            UpdateMessage::try_from_with(
+                proto::ChatUpdateMessage::default(),
+                &TestContext::default()
+            ),
             Err(ChatItemError::UpdateIsEmpty)
         );
     }
@@ -1394,7 +1480,7 @@ mod test {
             update: Some(update.into()),
             ..Default::default()
         }
-        .try_into_with(&TestContext)
+        .try_into_with(&TestContext::default())
         .map(|_: UpdateMessage| ());
 
         assert_eq!(result, expected)
@@ -1463,7 +1549,7 @@ mod test {
     fn call_chat_update(update: CallChatUpdateProto, expected: Result<(), ChatItemError>) {
         assert_eq!(
             update
-                .try_into_with(&TestContext)
+                .try_into_with(&TestContext::default())
                 .map(|_: CallChatUpdate| ()),
             expected
         );
@@ -1472,7 +1558,7 @@ mod test {
     #[test]
     fn valid_reaction() {
         assert_eq!(
-            proto::Reaction::test_data().try_into_with(&TestContext),
+            proto::Reaction::test_data().try_into_with(&TestContext::default()),
             Ok(Reaction::from_proto_test_data())
         )
     }
@@ -1491,7 +1577,71 @@ mod test {
         let mut reaction = proto::Reaction::test_data();
         modifier(&mut reaction);
 
-        let result = reaction.try_into_with(&TestContext).map(|_: Reaction| ());
+        let result = reaction
+            .try_into_with(&TestContext::default())
+            .map(|_: Reaction| ());
         assert_eq!(result, expected);
+    }
+
+    #[test_case(Purpose::DeviceTransfer, 3600, Ok(()))]
+    #[test_case(Purpose::RemoteBackup, 86400, Ok(()))]
+    #[test_case(
+        Purpose::RemoteBackup,
+        3600,
+        Err("expires 3600s after backup creation")
+    )]
+    #[test_case(Purpose::DeviceTransfer, -3600, Err("expired 3600s before backup creation"))]
+    #[test_case(Purpose::RemoteBackup, -3600, Err("expired 3600s before backup creation"))]
+    fn expiring_message(
+        backup_purpose: Purpose,
+        until_expiration_s: i64,
+        expected: Result<(), &str>,
+    ) {
+        const SINCE_RECEIVED_MS: u64 = 1000 * 60 * 60 * 5;
+
+        // There are three points in time here: the time when a message was
+        // received, the time when the backup was started, and the time when the
+        // message expires.
+        let received_at = Timestamp::test_value();
+        let backup_time = received_at + Duration::from_millis(SINCE_RECEIVED_MS);
+        let until_expiration_ms =
+            u64::try_from(SINCE_RECEIVED_MS as i64 + (1000 * until_expiration_s))
+                .expect("positive");
+
+        let meta = BackupMeta {
+            backup_time,
+            purpose: backup_purpose,
+            version: 0,
+        };
+
+        let mut item = proto::ChatItem::test_data();
+
+        item.expireStartDate = Some(
+            received_at
+                .into_inner()
+                .duration_since(UNIX_EPOCH)
+                .expect("valid")
+                .as_millis()
+                .try_into()
+                .unwrap(),
+        );
+        item.expiresInMs = Some(until_expiration_ms);
+
+        let result = ChatItemData::try_from_with(item, &TestContext(meta))
+            .map(|_| ())
+            .map_err(|e| assert_matches!(e, ChatItemError::InvalidExpiration(e) => e).to_string());
+        assert_eq!(result, expected.map_err(ToString::to_string));
+    }
+
+    #[test]
+    fn mismatch_between_expiration_start_and_duration_presence() {
+        let mut item = proto::ChatItem::test_data();
+        assert!(item.expireStartDate.is_some());
+        item.expiresInMs = None;
+
+        assert_matches!(
+            ChatItemData::try_from_with(item, &TestContext::default()),
+            Err(ChatItemError::ExpirationMismatch)
+        );
     }
 }

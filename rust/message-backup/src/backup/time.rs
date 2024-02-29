@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::ops::Add;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,11 +28,26 @@ impl Timestamp {
         }
         Self(UNIX_EPOCH + std::time::Duration::from_millis(since_epoch))
     }
+
+    pub(super) fn into_inner(self) -> SystemTime {
+        self.0
+    }
 }
 
 impl Duration {
+    pub(super) const ZERO: Self = Self(std::time::Duration::ZERO);
+    pub(super) const TWELVE_HOURS: Self = Self(std::time::Duration::from_secs(60 * 60 * 12));
+
     pub(super) const fn from_millis(millis: u64) -> Self {
         Self(std::time::Duration::from_millis(millis))
+    }
+}
+
+impl Add<Duration> for Timestamp {
+    type Output = Timestamp;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        Timestamp(self.0 + rhs.0)
     }
 }
 
