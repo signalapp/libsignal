@@ -26,16 +26,16 @@ sourceSets {
             srcDir '../../proto'
         }
     }
+    test {
+        java {
+            srcDir '../shared/test/java'
+        }
+    }
 }
 
 protobuf {
     protoc {
         artifact = 'com.google.protobuf:protoc:3.24.4'
-    }
-    test {
-        java {
-            srcDir '../shared/test/java'
-        }
     }
 }
 
