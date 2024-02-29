@@ -35,15 +35,20 @@ public enum SignalError: Error {
     case invalidSenderKeySession(distributionId: UUID, message: String)
     case duplicatedMessage(String)
     case verificationFailed(String)
-    case cannotBeEmpty(String)
-    case cannotStartWithDigit(String)
+    case nicknameCannotBeEmpty(String)
+    case nicknameCannotStartWithDigit(String)
     case missingSeparator(String)
-    case badDiscriminator(String)
+    case badDiscriminatorCharacter(String)
     case badNicknameCharacter(String)
     case nicknameTooShort(String)
     case nicknameTooLong(String)
     case usernameLinkInvalidEntropyDataLength(String)
     case usernameLinkInvalid(String)
+    case usernameDiscriminatorCannotBeEmpty(String)
+    case usernameDiscriminatorCannotBeZero(String)
+    case usernameDiscriminatorCannotBeSingleDigit(String)
+    case usernameDiscriminatorCannotHaveLeadingZeros(String)
+    case usernameDiscriminatorTooLarge(String)
     case ioError(String)
     case invalidMediaInput(String)
     case unsupportedMediaInput(String)
@@ -119,19 +124,29 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     case SignalErrorCodeVerificationFailure:
         throw SignalError.verificationFailed(errStr)
     case SignalErrorCodeUsernameCannotBeEmpty:
-        throw SignalError.cannotBeEmpty(errStr)
+        throw SignalError.nicknameCannotBeEmpty(errStr)
     case SignalErrorCodeUsernameCannotStartWithDigit:
-        throw SignalError.cannotStartWithDigit(errStr)
+        throw SignalError.nicknameCannotStartWithDigit(errStr)
     case SignalErrorCodeUsernameMissingSeparator:
         throw SignalError.missingSeparator(errStr)
-    case SignalErrorCodeUsernameBadDiscriminator:
-        throw SignalError.badDiscriminator(errStr)
-    case SignalErrorCodeUsernameBadCharacter:
+    case SignalErrorCodeUsernameBadDiscriminatorCharacter:
+        throw SignalError.badDiscriminatorCharacter(errStr)
+    case SignalErrorCodeUsernameBadNicknameCharacter:
         throw SignalError.badNicknameCharacter(errStr)
     case SignalErrorCodeUsernameTooShort:
         throw SignalError.nicknameTooShort(errStr)
     case SignalErrorCodeUsernameTooLong:
         throw SignalError.nicknameTooLong(errStr)
+    case SignalErrorCodeUsernameDiscriminatorCannotBeEmpty:
+        throw SignalError.usernameDiscriminatorCannotBeEmpty(errStr)
+    case SignalErrorCodeUsernameDiscriminatorCannotBeZero:
+        throw SignalError.usernameDiscriminatorCannotBeZero(errStr)
+    case SignalErrorCodeUsernameDiscriminatorCannotBeSingleDigit:
+        throw SignalError.usernameDiscriminatorCannotBeSingleDigit(errStr)
+    case SignalErrorCodeUsernameDiscriminatorCannotHaveLeadingZeros:
+        throw SignalError.usernameDiscriminatorCannotHaveLeadingZeros(errStr)
+    case SignalErrorCodeUsernameDiscriminatorTooLarge:
+        throw SignalError.usernameDiscriminatorTooLarge(errStr)
     case SignalErrorCodeUsernameLinkInvalidEntropyDataLength:
         throw SignalError.usernameLinkInvalidEntropyDataLength(errStr)
     case SignalErrorCodeUsernameLinkInvalid:

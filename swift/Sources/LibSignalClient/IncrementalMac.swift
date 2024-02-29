@@ -12,10 +12,13 @@ public enum SizeChoice {
 
     fileprivate func sizeInBytes() throws -> UInt32 {
         switch self {
-        case .bytes(let n): return n
-        case .chunkOf(let n): return try invokeFnReturningInteger {
-            signal_incremental_mac_calculate_chunk_size($0, n)
-        }}
+        case .bytes(let n):
+            return n
+        case .chunkOf(let n):
+            return try invokeFnReturningInteger {
+                signal_incremental_mac_calculate_chunk_size($0, n)
+            }
+        }
     }
 }
 

@@ -7,8 +7,10 @@
 
 pub mod api;
 pub mod common;
+/// cbindgen:ignore
 pub mod crypto;
 pub use api::*;
 pub use common::constants::*;
 pub use common::errors::*;
+pub use common::serialization::{deserialize, serialize};
 pub use common::simple_types::*;

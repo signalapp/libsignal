@@ -458,4 +458,127 @@ class ZKGroupTests: TestCaseBase {
     let result = try ProfileKey(contents: profileKeyBytes).deriveAccessKey()
     XCTAssertEqual(expectedAccessKey, result)
   }
+
+  func testBackupAuthCredentialDeterministic() throws {
+    let backupKey: [UInt8] = [
+        0xf9, 0xab, 0xbb, 0xff, 0xa7, 0xd4, 0x24, 0x92,
+        0x97, 0x65, 0xae, 0xcc, 0x84, 0xb6, 0x04, 0x63,
+        0x3c, 0x55, 0xac, 0x1b, 0xce, 0x82, 0xe1, 0xee,
+        0x06, 0xb7, 0x9b, 0xc9, 0xa5, 0x62, 0x93, 0x38]
+    let aci = UUID(uuidString: "e74beed0-e70f-4cfd-abbb-7e3eb333bbac")!
+    let serializedBackupID: [UInt8] = [0xe3, 0x92, 0x6f, 0x11, 0xdd, 0xd1, 0x43, 0xe6, 0xdd, 0x0f, 0x20, 0xbf, 0xcb, 0x08, 0x34, 0x9e]
+    let serializedRequestCredential = Data(base64Encoded: "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3994Aersq2yNRgcARBoedBeoEfKIXdty6X7l6+TiPFAqDvojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==")!
+    let receiptLevel: UInt64 = 1
+
+    let context = BackupAuthCredentialRequestContext.create(backupKey: backupKey, aci: aci)
+    let request = context.getRequest()
+    let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = serverSecretParams.getPublicParams()
+    XCTAssertEqual(request.serialize(), Array(serializedRequestCredential))
+
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = request.issueCredential(timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), receiptLevel: receiptLevel, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+    let credential = try context.receive(response, params: serverPublicParams, expectedReceiptLevel: receiptLevel)
+    XCTAssertEqual(credential.backupID, serializedBackupID)
+  }
+
+  func testBackupAuthCredential() throws {
+    let receiptLevel: UInt64 = 10
+
+    let serverSecretParams = GenericServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = serverSecretParams.getPublicParams()
+
+    // Client
+    let backupKey = TEST_ARRAY_32_1
+    let aci = UUID(uuidString: "e74beed0-e70f-4cfd-abbb-7e3eb333bbac")!
+    let context = BackupAuthCredentialRequestContext.create(backupKey: backupKey, aci: aci)
+    let request = context.getRequest()
+
+    // Server
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = request.issueCredential(timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), receiptLevel: receiptLevel, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+
+    // Client
+    let credential = try context.receive(response, params: serverPublicParams, expectedReceiptLevel: receiptLevel)
+    XCTAssertThrowsError(try context.receive(response, params: serverPublicParams, expectedReceiptLevel: receiptLevel + 1))
+
+    let presentation = credential.present(serverParams: serverPublicParams, randomness: TEST_ARRAY_32_3)
+
+    // Server
+    try presentation.verify(serverParams: serverSecretParams)
+    try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY)), serverParams: serverSecretParams)
+
+    // credential should be expired after 2 days
+    XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay + 1 + SECONDS_PER_DAY * 2)), serverParams: serverSecretParams))
+
+    // future credential should be invalid
+    XCTAssertThrowsError(try presentation.verify(now: Date(timeIntervalSince1970: TimeInterval(startOfDay - 1 - SECONDS_PER_DAY)), serverParams: serverSecretParams))
+  }
+
+  func testGroupSendCredential() {
+    let serverSecretParams = try! ServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = try! serverSecretParams.getPublicParams()
+
+    let aliceAci = try! Aci.parseFrom(serviceIdString: "9d0652a3-dcc3-4d11-975f-74d61598733f")
+    let bobAci = try! Aci.parseFrom(serviceIdString: "6838237d-02f6-4098-b110-698253d15961")
+    let eveAci = try! Aci.parseFrom(serviceIdString: "3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7")
+    let malloryAci = try! Aci.parseFrom(serviceIdString: "5d088142-6fd7-4dbd-af00-fdda1b3ce988")
+
+    let masterKey         = try! GroupMasterKey(contents: TEST_ARRAY_32_1)
+    let groupSecretParams = try! GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+    let aliceCiphertext  = try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt(aliceAci)
+    let groupCiphertexts = [aliceAci, bobAci, eveAci, malloryAci].map {
+      try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt($0)
+    }
+
+    // Server
+    let now = UInt64(Date().timeIntervalSince1970)
+    let startOfDay = now - (now % SECONDS_PER_DAY)
+    let response = GroupSendCredentialResponse.issueCredential(groupMembers: groupCiphertexts, requestingMember: aliceCiphertext, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+
+    // Client
+    let credential = try! response.receive(groupMembers: [aliceAci, bobAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams)
+    XCTAssertThrowsError(try response.receive(groupMembers: [aliceAci, bobAci, eveAci, malloryAci], localUser: bobAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: [bobAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: [aliceAci, eveAci, malloryAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams))
+
+    // Try again with the alternate receive.
+    _ = try! response.receive(groupMembers: groupCiphertexts, localUser: aliceCiphertext, serverParams: serverPublicParams, groupParams: groupSecretParams)
+    XCTAssertThrowsError(try response.receive(groupMembers: groupCiphertexts, localUser: groupCiphertexts[1], serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: Array(groupCiphertexts.dropFirst()), localUser: aliceCiphertext, serverParams: serverPublicParams, groupParams: groupSecretParams))
+    XCTAssertThrowsError(try response.receive(groupMembers: Array(groupCiphertexts.dropLast()), localUser: aliceCiphertext, serverParams: serverPublicParams, groupParams: groupSecretParams))
+
+    let presentation = credential.present(serverParams: serverPublicParams, randomness: TEST_ARRAY_32_3)
+
+    // Server
+    try! presentation.verify(groupMembers: [bobAci, eveAci, malloryAci], serverParams: serverSecretParams)
+    try! presentation.verify(groupMembers: [bobAci, eveAci, malloryAci], now: Date().addingTimeInterval(60 * 60), serverParams: serverSecretParams)
+
+    XCTAssertThrowsError(try presentation.verify(groupMembers: [aliceAci, bobAci, eveAci, malloryAci], serverParams: serverSecretParams))
+    XCTAssertThrowsError(try presentation.verify(groupMembers: [eveAci, malloryAci], serverParams: serverSecretParams))
+
+    // credential should definitely be expired after 2 days
+    XCTAssertThrowsError(try presentation.verify(groupMembers: [bobAci, eveAci, malloryAci], now: Date(timeIntervalSince1970: TimeInterval(startOfDay + SECONDS_PER_DAY * 2 + 1)), serverParams: serverSecretParams))
+  }
+
+  func testEmptyGroupSendCredential() {
+    let serverSecretParams = try! ServerSecretParams.generate(randomness: TEST_ARRAY_32)
+    let serverPublicParams = try! serverSecretParams.getPublicParams()
+
+    let aliceAci = try! Aci.parseFrom(serviceIdString: "9d0652a3-dcc3-4d11-975f-74d61598733f")
+
+    let masterKey         = try! GroupMasterKey(contents: TEST_ARRAY_32_1)
+    let groupSecretParams = try! GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+    let aliceCiphertext  = try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt(aliceAci)
+
+    // Server
+    let response = GroupSendCredentialResponse.issueCredential(groupMembers: [aliceCiphertext], requestingMember: aliceCiphertext, params: serverSecretParams, randomness: TEST_ARRAY_32_2)
+
+    // Client
+    _ = try! response.receive(groupMembers: [aliceAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams)
+  }
 }

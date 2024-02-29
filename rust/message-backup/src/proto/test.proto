@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package signal.backup.test;
+
+option java_package = "org.thoughtcrime.securesms.backup.v2.proto.test";
+
+enum TestEnum {
+  ZERO = 0;
+  ONE = 1;
+  TWO = 2;
+}
+
+enum TestEnumWithExtraVariants {
+  ZERO_EXTRA_VARIANTS = 0;
+  ONE_EXTRA_VARIANTS = 1;
+  TWO_EXTRA_VARIANTS = 2;
+  EXTRA_THREE = 3;
+  EXTRA_FOUR = 4;
+}
+
+message TestMessage {
+  oneof oneof {
+    bool oneof_bool = 600;
+    TestMessage oneof_message = 601;
+  }
+
+  string string = 700;
+
+  int64 int64 = 710;
+
+  repeated TestMessage repeated_message = 720;
+
+  bytes bytes = 730;
+
+  repeated uint64 repeated_uint64 = 740;
+
+  TestEnum enum = 750;
+
+  optional TestMessage nested_message = 760;
+
+  map<string, TestMessage> map = 770;
+}
+
+
+message TestMessageWithExtraFields {
+  oneof oneof {
+    bool oneof_bool = 600;
+    TestMessageWithExtraFields oneof_message = 601;
+
+    TestMessageWithExtraFields oneof_extra_message = 610;
+    string oneof_extra_string = 611;
+    int64 oneof_extra_int64 = 612;
+  }
+
+  string string = 700;
+  string extra_string = 701;
+
+  int64 int64 = 710;
+  int64 extra_int64 = 711;
+
+  repeated TestMessageWithExtraFields repeated_message = 720;
+  repeated TestMessageWithExtraFields extra_repeated_message = 721;
+
+  bytes bytes = 730;
+  bytes extra_bytes = 731;
+
+  repeated uint64 repeated_uint64 = 740;
+  repeated uint64 extra_repeated_uint64 = 741;
+
+  // Intentionally use the wrong enum type for the same field.
+  TestEnumWithExtraVariants enum = 750;
+
+  TestEnumWithExtraVariants extra_enum = 751;
+
+  optional TestMessageWithExtraFields nested_message = 760;
+  optional TestMessageWithExtraFields extra_nested_message = 761;
+
+  map<string, TestMessageWithExtraFields> map = 770;
+  map<string, TestMessageWithExtraFields> extra_map = 771;
+}

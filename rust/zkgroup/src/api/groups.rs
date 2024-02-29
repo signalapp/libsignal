@@ -4,9 +4,13 @@
 //
 
 pub mod group_params;
+mod group_send_credential;
 pub mod profile_key_ciphertext;
 pub mod uuid_ciphertext;
 
 pub use group_params::{GroupMasterKey, GroupPublicParams, GroupSecretParams};
+pub use group_send_credential::{
+    GroupSendCredential, GroupSendCredentialPresentation, GroupSendCredentialResponse,
+};
 pub use profile_key_ciphertext::ProfileKeyCiphertext;
 pub use uuid_ciphertext::UuidCiphertext;

@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryInto;
-
 use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};

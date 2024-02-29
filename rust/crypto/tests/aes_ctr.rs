@@ -17,7 +17,7 @@ fn aes_ctr_smoke_test() -> Result<(), signal_crypto::Error> {
     let mut aes_ctr = signal_crypto::Aes256Ctr32::from_key(&key, &nonce, init_ctr)?;
 
     let mut buf = input;
-    aes_ctr.process(&mut buf)?;
+    aes_ctr.process(&mut buf);
 
     assert_eq!(hex::encode(buf), hex::encode(output));
 
@@ -34,7 +34,7 @@ fn aes_ctr_long_test() -> Result<(), signal_crypto::Error> {
     let mut aes_ctr = signal_crypto::Aes256Ctr32::from_key(&key, &nonce, init_ctr)?;
 
     let mut buf = vec![0u8; output.len()];
-    aes_ctr.process(&mut buf)?;
+    aes_ctr.process(&mut buf);
 
     assert_eq!(hex::encode(buf), hex::encode(output));
 
@@ -54,7 +54,7 @@ fn aes_ctr_long_test() -> Result<(), signal_crypto::Error> {
                 remaining
             };
             assert!(this_time > 0);
-            aes_ctr.process(&mut buf[processed..processed + this_time])?;
+            aes_ctr.process(&mut buf[processed..processed + this_time]);
             processed += this_time;
         }
 

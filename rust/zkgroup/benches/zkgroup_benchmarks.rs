@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 extern crate zkgroup;
 
@@ -17,7 +17,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     let group_public_params = group_secret_params.get_public_params();
 
     // Random UID and issueTime
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let redemption_time = 123456u32;
 
     // SERVER
@@ -48,7 +48,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     let plaintext = group_secret_params
         .decrypt_service_id(uuid_ciphertext)
         .unwrap();
-    assert_eq!(plaintext, aci.into());
+    assert_eq!(plaintext, aci);
 
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
@@ -101,7 +101,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
         zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
     let group_public_params = group_secret_params.get_public_params();
 
-    let aci = libsignal_protocol::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let profile_key =
         zkgroup::profiles::ProfileKey::create(zkgroup::common::constants::TEST_ARRAY_32_1);
     let profile_key_commitment = profile_key.get_commitment(aci);
@@ -240,9 +240,144 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     );
 }
 
+pub fn benchmark_group_send(c: &mut Criterion) {
+    const DAY_ALIGNED_TIMESTAMP: zkgroup::Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+
+    // SERVER
+    let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
+    let server_public_params = server_secret_params.get_public_params();
+
+    // CLIENT
+    let master_key = zkgroup::groups::GroupMasterKey::new(zkgroup::TEST_ARRAY_32_1);
+    let group_secret_params =
+        zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
+
+    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
+
+    let all_members: Vec<libsignal_core::ServiceId> = std::iter::once(aci)
+        .chain((1u16..).map(|i| {
+            libsignal_core::Aci::from(uuid::Uuid::new_v5(
+                &uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16_1),
+                &i.to_be_bytes(),
+            ))
+        }))
+        .map(libsignal_core::ServiceId::from)
+        .take(1000)
+        .collect();
+    let all_member_ciphertexts: Vec<_> = all_members
+        .iter()
+        .map(|member| group_secret_params.encrypt_service_id(*member))
+        .collect();
+
+    let mut benchmark_group = c.benchmark_group("group_send_credential");
+    for group_size in [2, 5, 10, 100, 1000] {
+        let group = all_members.iter().take(group_size);
+        let group_ciphertexts = all_member_ciphertexts.iter().take(group_size);
+
+        let credential_response = zkgroup::groups::GroupSendCredentialResponse::issue_credential(
+            group_ciphertexts.clone().copied(),
+            &all_member_ciphertexts[0],
+            DAY_ALIGNED_TIMESTAMP,
+            &server_secret_params,
+            zkgroup::TEST_ARRAY_32_2,
+        )
+        .expect("valid request");
+
+        benchmark_group.bench_function(BenchmarkId::new("issue", group_size), |b| {
+            b.iter(|| {
+                zkgroup::groups::GroupSendCredentialResponse::issue_credential(
+                    group_ciphertexts.clone().copied(),
+                    &all_member_ciphertexts[0],
+                    DAY_ALIGNED_TIMESTAMP,
+                    &server_secret_params,
+                    zkgroup::TEST_ARRAY_32_2,
+                )
+                .expect("valid request")
+            })
+        });
+
+        let serialized_credential_response = zkgroup::serialize(&credential_response);
+
+        let credential = credential_response
+            .receive(
+                &server_public_params,
+                &group_secret_params,
+                group.clone().copied(),
+                all_members[0],
+                DAY_ALIGNED_TIMESTAMP,
+            )
+            .expect("issued credential should be valid");
+
+        benchmark_group.bench_function(
+            BenchmarkId::new("deserialize_and_receive", group_size),
+            |b| {
+                b.iter(|| {
+                    let credential_response: zkgroup::groups::GroupSendCredentialResponse =
+                        zkgroup::deserialize(&serialized_credential_response).expect("valid");
+                    credential_response
+                        .receive(
+                            &server_public_params,
+                            &group_secret_params,
+                            group.clone().copied(),
+                            all_members[0],
+                            DAY_ALIGNED_TIMESTAMP,
+                        )
+                        .expect("issued credential should be valid")
+                })
+            },
+        );
+
+        benchmark_group.bench_function(
+            BenchmarkId::new("deserialize_and_receive_with_ciphertexts", group_size),
+            |b| {
+                b.iter(|| {
+                    let credential_response: zkgroup::groups::GroupSendCredentialResponse =
+                        zkgroup::deserialize(&serialized_credential_response).expect("valid");
+                    credential_response
+                        .receive_with_ciphertexts(
+                            &server_public_params,
+                            &group_secret_params,
+                            group_ciphertexts.clone().copied(),
+                            &all_member_ciphertexts[0],
+                            DAY_ALIGNED_TIMESTAMP,
+                        )
+                        .expect("issued credential should be valid")
+                })
+            },
+        );
+
+        let presentation = credential.present(&server_public_params, zkgroup::TEST_ARRAY_32_3);
+
+        benchmark_group.bench_function(BenchmarkId::new("present", group_size), |b| {
+            b.iter(|| credential.present(&server_public_params, zkgroup::TEST_ARRAY_32_3))
+        });
+
+        presentation
+            .verify(
+                group.clone().skip(1).copied(),
+                DAY_ALIGNED_TIMESTAMP,
+                &server_secret_params,
+            )
+            .expect("credential should be valid for the timestamp given");
+
+        benchmark_group.bench_function(BenchmarkId::new("verify", group_size), |b| {
+            b.iter(|| {
+                presentation
+                    .verify(
+                        group.clone().skip(1).copied(),
+                        DAY_ALIGNED_TIMESTAMP,
+                        &server_secret_params,
+                    )
+                    .expect("credential should be valid for the timestamp given")
+            })
+        });
+    }
+}
+
 criterion_group!(
     benches,
     benchmark_integration_profile,
-    benchmark_integration_auth
+    benchmark_integration_auth,
+    benchmark_group_send,
 );
 criterion_main!(benches);

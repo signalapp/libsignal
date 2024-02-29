@@ -1,0 +1,93 @@
+// Copyright 2023 Signal Messenger, LLC
+// SPDX-License-Identifier: AGPL-3.0-only
+
+syntax = "proto3";
+
+package svr3.client;
+option optimize_for = LITE_RUNTIME;
+
+// Client protocol for SVR3.
+
+message Request {
+  oneof inner {
+    CreateRequest create = 1;
+    EvaluateRequest evaluate = 2;
+    RemoveRequest remove = 3;
+    QueryRequest query = 4;
+  }
+}
+
+message Response {
+  oneof inner {
+    CreateResponse create = 1;
+    EvaluateResponse evaluate = 2;
+    RemoveResponse remove = 3;
+    QueryResponse query = 4;
+  }
+}
+
+//
+// create
+//
+
+message CreateRequest {
+  uint32 max_tries = 1;
+  bytes blinded_element = 2;  // ristretto255 element, 32 bytes
+}
+
+message CreateResponse {
+  enum Status {
+    UNSET = 0;
+    OK = 1;
+    INVALID_REQUEST = 2;
+    ERROR = 3;
+  }
+  Status status = 1;
+  bytes evaluated_element = 2;  // ristretto255 element, 32 bytes
+}
+
+//
+// evaluate
+//
+
+message EvaluateRequest {
+  bytes blinded_element = 1;  // ristretto255 element, 32 bytes
+}
+
+message EvaluateResponse {
+  enum Status {
+    UNSET = 0;
+    OK = 1;
+    MISSING = 2;
+    INVALID_REQUEST = 3;
+    ERROR = 4;
+  }
+  Status status = 1;
+  bytes evaluated_element = 2;  // ristretto255 element, 32 bytes
+  uint32 tries_remaining = 3;
+}
+
+//
+// remove
+//
+
+message RemoveRequest {
+}
+message RemoveResponse {
+}
+
+//
+// query
+//
+
+message QueryRequest {
+}
+message QueryResponse {
+  enum Status {
+    UNSET = 0;
+    OK = 1;
+    MISSING = 2;
+  }
+  Status status = 1;
+  uint32 tries_remaining = 2;
+}

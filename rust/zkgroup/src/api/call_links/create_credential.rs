@@ -11,6 +11,7 @@
 //! - a timestamp, truncated to day granularity (chosen by the chat server at issuance, passed publicly to the calling server for verification)
 
 use curve25519_dalek::ristretto::RistrettoPoint;
+use partial_default::PartialDefault;
 use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +42,7 @@ impl zkcredential::attributes::RevealedAttribute for CallLinkRoomIdPoint {
 
 const CREDENTIAL_LABEL: &[u8] = b"20230413_Signal_CreateCallLinkCredential";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialRequestContext {
     reserved: ReservedBytes,
     blinded_room_id: zkcredential::issuance::blind::BlindedPoint,
@@ -75,7 +76,7 @@ impl CreateCallLinkCredentialRequestContext {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialRequest {
     reserved: ReservedBytes,
     blinded_room_id: zkcredential::issuance::blind::BlindedPoint,
@@ -94,7 +95,7 @@ pub struct CreateCallLinkCredentialRequest {
 impl CreateCallLinkCredentialRequest {
     pub fn issue(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         timestamp: Timestamp,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
@@ -111,7 +112,7 @@ impl CreateCallLinkCredentialRequest {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialResponse {
     reserved: ReservedBytes,
     // Does not include the room ID or the user ID, because the client already knows those.
@@ -123,7 +124,7 @@ impl CreateCallLinkCredentialRequestContext {
     pub fn receive(
         self,
         response: CreateCallLinkCredentialResponse,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         params: &GenericServerPublicParams,
     ) -> Result<CreateCallLinkCredential, ZkGroupVerificationFailure> {
         if response.timestamp % SECONDS_PER_DAY != 0 {
@@ -147,7 +148,7 @@ impl CreateCallLinkCredentialRequestContext {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredential {
     reserved: ReservedBytes,
     // We could avoid having to pass in the room ID or user ID again if we saved them here, but
@@ -161,13 +162,13 @@ impl CreateCallLinkCredential {
     pub fn present(
         &self,
         room_id: &[u8],
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         server_params: &GenericServerPublicParams,
         call_link_params: &CallLinkSecretParams,
         randomness: RandomnessBytes,
     ) -> CreateCallLinkCredentialPresentation {
         let user_id = UidStruct::from_service_id(user_id.into());
-        let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(user_id);
+        let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(&user_id);
         CreateCallLinkCredentialPresentation {
             reserved: [0],
             timestamp: self.timestamp,
@@ -180,11 +181,11 @@ impl CreateCallLinkCredential {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialPresentation {
     reserved: ReservedBytes,
     // The room ID is provided externally as part of the request.
-    user_id: uid_encryption::Ciphertext,
+    user_id: zkcredential::attributes::Ciphertext<uid_encryption::UidEncryptionDomain>,
     timestamp: Timestamp,
     proof: zkcredential::presentation::PresentationProof,
 }

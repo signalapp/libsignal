@@ -7,10 +7,11 @@
 name = "libsignal-protocol"
 version = "0.1.0"
 authors = ["Signal Messenger LLC"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-only"
 
 [dependencies]
+libsignal-core = { path = "../core" }
 signal-crypto = { path = "../crypto" }
 aes = { version = "0.8.3", features = ["zeroize"] }
 aes-gcm-siv = "0.11.1"
@@ -18,11 +19,14 @@ arrayref = "0.3.6"
 async-trait = "0.1.41"
 ctr = { version = "0.9.2", features = ["zeroize"] }
 curve25519-dalek = { version = "4.0.0", features = ["digest"] }
+derive-where = "1.2.5"
 hkdf = "0.12"
 hmac = "0.12"
-itertools = "0.10.5"
-prost = "0.9"
+indexmap = "2.1.0"
+itertools = "0.12.0"
+prost = "0.12"
 rand = "0.8"
+rayon = "1.8.0"
 sha2 = "0.10"
 static_assertions = "1.1"
 subtle = "2.3"
@@ -36,7 +40,19 @@ thiserror = "1.0.30"
 pqcrypto-kyber = { version = "0.7.6", default-features = false, features = ["std"] }
 pqcrypto-traits = "0.3.4"
 
+# WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
+# We keep this here for if/when that gets cleared up.
+pqcrypto-ml-kem = { version = "0.8.0", default-features = false, features = ["std"], package = "pqcrypto-kyber", optional = true }
+
+[features]
+kyber768 = []
+# ML-KEM matches the NIST standard version of Kyber. It may still change
+# incompatibly until the final version of the standard is published and
+# libsignal will update to match.
+mlkem1024 = ["pqcrypto-ml-kem"]
+
 [dev-dependencies]
+clap = { version = "4.4.11", features = ["derive"] }
 criterion = "0.5"
 hex-literal = "0.4.1"
 proptest = "1.0"
@@ -44,7 +60,7 @@ futures-util = "0.3.7"
 env_logger = "0.10.0"
 
 [build-dependencies]
-prost-build = "0.9"
+prost-build = "0.12"
 
 [[bench]]
 name = "curve"
@@ -65,3 +81,4 @@ harness = false
 [[bench]]
 name = "kem"
 harness = false
+required-features = ["kyber768"]

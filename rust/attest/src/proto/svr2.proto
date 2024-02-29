@@ -116,3 +116,9 @@ message RaftGroupConfig {
   // all Raft nodes will be required.
   uint32 super_majority = 4;
 }
+
+// Does not belong in SVR2 module, but put here to reuse RaftGroupConfig message
+message AttestationData {
+  bytes public_key = 1;
+  RaftGroupConfig group_config = 2;
+}

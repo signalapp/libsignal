@@ -4,7 +4,7 @@
 //
 
 use libsignal_protocol::*;
-use std::convert::TryFrom;
+
 use std::ops::Deref;
 
 pub(crate) use neon::context::Context;
@@ -34,6 +34,9 @@ pub use convert::*;
 
 mod error;
 pub use error::*;
+
+mod futures;
+pub use futures::*;
 
 mod io;
 pub use io::*;

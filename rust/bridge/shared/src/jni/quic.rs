@@ -16,7 +16,7 @@ pub struct JniQuicCallbackListener<'a> {
 }
 
 impl<'a> JniQuicCallbackListener<'a> {
-    pub fn new<'context: 'a>(env: &mut JNIEnv<'context>, listener: &'a JObject<'a>) -> Result<Self, SignalJniError> {
+    pub fn new<'context: 'a>(env: &mut JNIEnv<'context>, listener: &'a JObject<'a>) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             listener,
@@ -27,7 +27,7 @@ impl<'a> JniQuicCallbackListener<'a> {
 }
 
 impl<'a> JniQuicCallbackListener<'a> {
-    fn do_on_data(&mut self, data: Vec<u8>) -> Result<(), SignalJniError> {
+    fn do_on_data(&mut self, data: Vec<u8>) -> Result<(), BridgeLayerError> {
         self.env.borrow_mut().with_local_frame(8, |env| {
             let bytes = env.byte_array_from_slice(&data)?;
             let callback_args = jni_args!((

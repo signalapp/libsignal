@@ -12,21 +12,24 @@ description = "A zero-knowledge group library"
 license = "AGPL-3.0-only"
 
 [dependencies]
-libsignal-protocol = { path = "../protocol" }
+libsignal-core = { path = "../core" }
 poksho = { path = "../poksho" }
 signal-crypto = { path = "../crypto" }
 zkcredential = { path = "../zkcredential" }
 
+aes-gcm-siv = "0.11.1"
 bincode = "1.2.1"
-serde = { version = "1.0.106", features = ["derive"] }
-sha2 = "0.10.0"
+derive-where = "1.2.5"
+displaydoc = "0.2"
 hex = "0.4.0"
 hex-literal = "0.4.1"
-aes-gcm-siv = "0.11.1"
-displaydoc = "0.2"
 lazy_static = "1.4.0"
+partial-default = { version = "0.1.0", features = ["derive"] }
+serde = { version = "1.0.106", features = ["derive"] }
+sha2 = "0.10.0"
 subtle = "2.3"
 uuid = "1.1.2"
+hkdf = "0.12"
 
 # For generation
 base64 = { version = "0.21", optional = true }
@@ -34,16 +37,22 @@ rand = { version = "0.8", optional = true }
 
 [dependencies.curve25519-dalek]
 git = 'https://github.com/signalapp/curve25519-dalek'
-tag = 'signal-curve25519-4.0.0'
+tag = 'signal-curve25519-4.1.1'
 features = ["serde"]
-version = "4.0.0"
+version = "4.1.1"
 
 [dev-dependencies]
+uuid = { version = "1", features = ["v5"] }
+
 # For benchmarking
 criterion = "0.5"
 
 [[bench]]
 name = "zkgroup_benchmarks"
+harness = false
+
+[[bench]]
+name = "serialization"
 harness = false
 
 [[bin]]

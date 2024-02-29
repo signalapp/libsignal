@@ -3,7 +3,7 @@ name = "libsignal-protocol-fuzz"
 version = "0.0.0"
 authors = ["Automatically generated"]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [package.metadata]
 cargo-fuzz = true
@@ -25,6 +25,12 @@ members = ["."]
 [[bin]]
 name = "interaction"
 path = "fuzz_targets/interaction.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "sealed_sender_v2"
+path = "fuzz_targets/sealed_sender_v2.rs"
 test = false
 doc = false
 

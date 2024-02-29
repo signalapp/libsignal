@@ -7,5 +7,12 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 futures-util = "0.3.7"
-mp4san = "0.3.0"
+mediasan-common = "0.5.0"
+mp4san = { version = "0.5.0", optional = true }
 thiserror = "1.0.38"
+webpsan = { version = "0.5.0", optional = true, default_features = false }
+
+[features]
+default = ["mp4san", "webpsan"]
+mp4san = ["dep:mp4san"]
+webpsan = ["dep:webpsan"]

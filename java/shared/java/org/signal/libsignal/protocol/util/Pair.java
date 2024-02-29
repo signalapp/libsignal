@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.util;
 
+import java.util.Objects;
+
 public class Pair<T1, T2> {
   private final T1 v1;
   private final T2 v2;
@@ -22,19 +24,21 @@ public class Pair<T1, T2> {
     return v2;
   }
 
+  @Override
   public boolean equals(Object o) {
     return o instanceof Pair
-        && equal(((Pair) o).first(), first())
-        && equal(((Pair) o).second(), second());
+        && Objects.equals(((Pair) o).first(), first())
+        && Objects.equals(((Pair) o).second(), second());
   }
 
+  @Override
   public int hashCode() {
-    return first().hashCode() ^ second().hashCode();
+    return Objects.hash(first(), second());
   }
 
-  private boolean equal(Object first, Object second) {
-    if (first == null && second == null) return true;
-    if (first == null || second == null) return false;
-    return first.equals(second);
+  @Override
+  public String toString() {
+    // Useful for debugging, matches the description used by Apache Commons' Pair.
+    return "(" + first() + "," + second() + ")";
   }
 }

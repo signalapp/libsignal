@@ -9,11 +9,12 @@ use crate::common::constants::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use curve25519_dalek::ristretto::RistrettoPoint;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use subtle::{Choice, ConditionallySelectable};
 
-#[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyStruct {
     pub(crate) bytes: ProfileKeyBytes,
     pub(crate) M3: RistrettoPoint,
@@ -68,5 +69,11 @@ impl ConditionallySelectable for ProfileKeyStruct {
             M3: RistrettoPoint::conditional_select(&a.M3, &b.M3, choice),
             M4: RistrettoPoint::conditional_select(&a.M4, &b.M4, choice),
         }
+    }
+}
+
+impl zkcredential::attributes::Attribute for ProfileKeyStruct {
+    fn as_points(&self) -> [RistrettoPoint; 2] {
+        [self.M3, self.M4]
     }
 }

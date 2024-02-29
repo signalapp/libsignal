@@ -25,19 +25,36 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
+internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
+    var array = SignalFfi.SignalStringArray()
+    try checkError(fn(&array))
+
+    var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)
+    let lengths = UnsafeBufferPointer(start: array.lengths.base, count: array.lengths.length)
+
+    let result = lengths.map { length in
+        let view = bytes.prefix(length)
+        bytes = UnsafeBufferPointer(rebasing: bytes.suffix(from: length))
+        return String(decoding: view, as: Unicode.UTF8.self)
+    }
+
+    signal_free_string_array(array)
+    return result
+}
+
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
-    let result = Array(UnsafeBufferPointer(start: output.base, count: Int(output.length)))
-    signal_free_buffer(output.base, Int(output.length))
+    let result = Array(UnsafeBufferPointer(start: output.base, count: output.length))
+    signal_free_buffer(output.base, output.length)
     return result
 }
 
 internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data {
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
-    let result = Data(UnsafeBufferPointer(start: output.base, count: Int(output.length)))
-    signal_free_buffer(output.base, Int(output.length))
+    let result = Data(UnsafeBufferPointer(start: output.base, count: output.length))
+    signal_free_buffer(output.base, output.length)
     return result
 }
 
@@ -45,7 +62,7 @@ internal func invokeFnReturningDataNoCopy(fn: (UnsafeMutablePointer<SignalOwnedB
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
     guard let base = output.base else { return Data() }
-    return Data(bytesNoCopy: base, count: Int(output.length), deallocator: .custom { base, length in
+    return Data(bytesNoCopy: base, count: output.length, deallocator: .custom { base, length in
         signal_free_buffer(base, length)
     })
 }
@@ -53,7 +70,7 @@ internal func invokeFnReturningDataNoCopy(fn: (UnsafeMutablePointer<SignalOwnedB
 internal func invokeFnReturningFixedLengthArray<ResultAsTuple>(fn: (UnsafeMutablePointer<ResultAsTuple>) -> SignalFfiErrorRef?) throws -> [UInt8] {
     precondition(MemoryLayout<ResultAsTuple>.alignment == 1, "not a fixed-sized array (tuple) of UInt8")
     var output = Array(repeating: 0 as UInt8, count: MemoryLayout<ResultAsTuple>.size)
-    try output.withUnsafeMutableBytes { buffer -> Void in
+    try output.withUnsafeMutableBytes { buffer in
         let typedPointer = buffer.baseAddress!.assumingMemoryBound(to: ResultAsTuple.self)
         return try checkError(fn(typedPointer))
     }
@@ -124,13 +141,13 @@ extension ContiguousBytes {
 
 extension SignalBorrowedBuffer {
     internal init(_ buffer: UnsafeRawBufferPointer) {
-        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: UInt(buffer.count))
+        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
     }
 }
 
 extension SignalBorrowedMutableBuffer {
     internal init(_ buffer: UnsafeMutableRawBufferPointer) {
-        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: UInt(buffer.count))
+        self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
     }
 }
 

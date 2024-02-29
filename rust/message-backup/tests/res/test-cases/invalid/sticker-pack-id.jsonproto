@@ -1,0 +1,31 @@
+[
+  {
+    "version": "1",
+    "backupTimeMs": "1705692409729"
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "self": {}
+    }
+  },
+  {
+    "chat": {
+      "id": "1",
+      "recipientId": "1"
+    }
+  },
+  {
+    "chatItem": {
+      "chatId": "1",
+      "authorId": "1",
+      "directionless": {},
+      "stickerMessage": {
+        "sticker": {
+          "packId": "YXNkZgo=",
+          "stickerId": 5566
+        }
+      }
+    }
+  }
+]

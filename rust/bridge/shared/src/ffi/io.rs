@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::ffi::{c_int, c_void};
 use std::io;
 
 use async_trait::async_trait;
-use libc::{c_int, c_void};
+use libsignal_protocol::SignalProtocolError;
 
-use crate::io::{InputStream, InputStreamRead};
+use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 use super::CallbackError;
 
@@ -24,22 +25,46 @@ pub struct FfiInputStreamStruct {
     skip: Skip,
 }
 
+pub type FfiSyncInputStreamStruct = FfiInputStreamStruct;
+
+impl FfiInputStreamStruct {
+    fn do_read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut amount_read = 0;
+        let result = (self.read)(self.ctx, buf.as_mut_ptr(), buf.len(), &mut amount_read);
+        CallbackError::check(result).map_err(|e| {
+            let err = SignalProtocolError::for_application_callback("read")(e);
+            io::Error::new(io::ErrorKind::Other, err)
+        })?;
+        Ok(amount_read)
+    }
+
+    fn do_skip(&self, amount: u64) -> io::Result<()> {
+        let result = (self.skip)(self.ctx, amount);
+        CallbackError::check(result).map_err(|e| {
+            let err = SignalProtocolError::for_application_callback("skip")(e);
+            io::Error::new(io::ErrorKind::Other, err)
+        })
+    }
+}
+
 #[async_trait(?Send)]
 impl InputStream for &FfiInputStreamStruct {
     fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> io::Result<InputStreamRead<'out>> {
-        let mut amount_read = 0;
-        let result = (self.read)(self.ctx, buf.as_mut_ptr(), buf.len(), &mut amount_read);
-        match CallbackError::check(result) {
-            Some(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
-            None => Ok(InputStreamRead::Ready { amount_read }),
-        }
+        let amount_read = self.do_read(buf)?;
+        Ok(InputStreamRead::Ready { amount_read })
     }
 
     async fn skip(&self, amount: u64) -> io::Result<()> {
-        let result = (self.skip)(self.ctx, amount);
-        match CallbackError::check(result) {
-            Some(error) => Err(io::Error::new(io::ErrorKind::Other, error)),
-            None => Ok(()),
-        }
+        self.do_skip(amount)
+    }
+}
+
+impl SyncInputStream for &FfiInputStreamStruct {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.do_read(buf)
+    }
+
+    fn skip(&self, amount: u64) -> io::Result<()> {
+        self.do_skip(amount)
     }
 }

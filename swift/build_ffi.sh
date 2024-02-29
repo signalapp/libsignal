@@ -12,9 +12,12 @@ cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-export CARGO_PROFILE_RELEASE_LTO=fat # use fat LTO to reduce binary size
 export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
-export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+
+if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
+  # Avoid overriding RUSTFLAGS for host builds, because that resets the incremental build.
+  export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+fi
 
 # Work around cc crate bug with Catalyst targets
 export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS}"
@@ -22,6 +25,19 @@ export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS
 
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
   export IPHONEOS_DEPLOYMENT_TARGET=13
+  # Use full LTO to reduce binary size
+  export CARGO_PROFILE_RELEASE_LTO=fat
+  export CFLAGS="-flto=full ${CFLAGS:-}"
+else
+  # On Linux, cdylibs don't include public symbols from their dependencies,
+  # even if those symbols have been re-exported in the Rust source.
+  # Using LTO works around this at the cost of a slightly slower build.
+  # https://github.com/rust-lang/rfcs/issues/2771
+  export CARGO_PROFILE_RELEASE_LTO=thin
+fi
+
+if [[ "${CARGO_BUILD_TARGET:-}" != "aarch64-apple-ios" ]]; then
+  FEATURES="testing-fns"
 fi
 
 usage() {
@@ -111,7 +127,7 @@ if [[ -n "${BUILD_STD:-}" ]]; then
   fi
 fi
 
-echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${BUILD_STD:+-Zbuild-std}
+echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${FEATURES:+--features $FEATURES} ${BUILD_STD:+-Zbuild-std}
 
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 

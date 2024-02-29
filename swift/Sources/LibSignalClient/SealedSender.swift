@@ -162,6 +162,7 @@ public func sealedSenderEncrypt(_ content: UnidentifiedSenderMessageContent,
 
 public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessageContent,
                                               for recipients: [ProtocolAddress],
+                                              excludedRecipients: [ServiceId] = [],
                                               identityStore: IdentityKeyStore,
                                               sessionStore: SessionStore,
                                               context: StoreContext) throws -> [UInt8] {
@@ -173,16 +174,19 @@ public func sealedSenderMultiRecipientEncrypt(_ content: UnidentifiedSenderMessa
         let sessionHandles = sessions.map { $0.unsafeNativeHandle }
         return try content.withNativeHandle { contentHandle in
             return try recipientHandles.withUnsafeBufferPointer { recipientHandles in
-                let recipientHandlesBuffer = SignalBorrowedSliceOfProtocolAddress(base: recipientHandles.baseAddress, length: UInt(recipientHandles.count))
+                let recipientHandlesBuffer = SignalBorrowedSliceOfProtocolAddress(base: recipientHandles.baseAddress, length: recipientHandles.count)
                 return try sessionHandles.withUnsafeBufferPointer { sessionHandles in
-                    let sessionHandlesBuffer = SignalBorrowedSliceOfSessionRecord(base: sessionHandles.baseAddress, length: UInt(sessionHandles.count))
-                    return try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                        try invokeFnReturningArray {
-                            signal_sealed_sender_multi_recipient_encrypt($0,
-                                                                         recipientHandlesBuffer,
-                                                                         sessionHandlesBuffer,
-                                                                         contentHandle,
-                                                                         ffiIdentityStore)
+                    let sessionHandlesBuffer = SignalBorrowedSliceOfSessionRecord(base: sessionHandles.baseAddress, length: sessionHandles.count)
+                    return try ServiceId.concatenatedFixedWidthBinary(excludedRecipients).withUnsafeBorrowedBuffer { excludedRecipientsBuffer in
+                        return try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
+                            try invokeFnReturningArray {
+                                signal_sealed_sender_multi_recipient_encrypt($0,
+                                                                             recipientHandlesBuffer,
+                                                                             sessionHandlesBuffer,
+                                                                             excludedRecipientsBuffer,
+                                                                             contentHandle,
+                                                                             ffiIdentityStore)
+                            }
                         }
                     }
                 }

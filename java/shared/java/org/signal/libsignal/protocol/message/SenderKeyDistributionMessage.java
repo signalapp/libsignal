@@ -44,7 +44,7 @@ public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
 
   public UUID getDistributionId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyMessage_GetDistributionId(guard.nativeHandle());
+      return Native.SenderKeyDistributionMessage_GetDistributionId(guard.nativeHandle());
     }
   }
 

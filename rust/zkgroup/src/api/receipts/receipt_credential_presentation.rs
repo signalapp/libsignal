@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::receipt_struct::ReceiptStruct;
 use crate::{crypto, ReceiptLevel, ReceiptSerialBytes, ReservedBytes, Timestamp};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialPresentation {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: crypto::proofs::ReceiptCredentialPresentationProof,

@@ -18,7 +18,7 @@ jobs:
     outputs:
       has-changes: ${{ steps.check.outputs.has-changes }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: git log --after '24 hours ago' --exit-code || echo 'has-changes=true' >> $GITHUB_OUTPUT
       id: check
 
@@ -29,13 +29,13 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: make -C java java_test
     - name: Upload JNI libraries
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: jniLibs
-        path: java/android/src/main/jniLibs/*
+        path: java/android/src/androidTest/jniLibs/*
         retention-days: 2
 
   android-emulator-tests:
@@ -60,18 +60,18 @@ jobs:
             sudo udevadm control --reload-rules
             sudo udevadm trigger --name-match=kvm
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download JNI libraries
         id: download
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: jniLibs
-          path: java/android/src/main/jniLibs/
+          path: java/android/src/androidTest/jniLibs/
 
       # From reactivecircus/android-emulator-runner
       - name: AVD cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: avd-cache
         with:
           path: |
@@ -81,7 +81,7 @@ jobs:
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
+        uses: reactivecircus/android-emulator-runner@6b0df4b0efb23bb0ec63d881db79aefbc976e4b2 # v2.30.1
         with:
           arch: ${{ matrix.arch }}
           api-level: 21
@@ -90,13 +90,13 @@ jobs:
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
-        uses: reactivecircus/android-emulator-runner@d94c3fbe4fe6a29e4a5ba47c12fb47677c73656b # v2.28.0
+        uses: reactivecircus/android-emulator-runner@6b0df4b0efb23bb0ec63d881db79aefbc976e4b2 # v2.30.1
         with:
           arch: ${{ matrix.arch }}
           api-level: 21
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
-          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
+          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries -x android:makeTestJniLibraries
           working-directory: java
 
   node-docker:
@@ -106,8 +106,12 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: node/docker-prebuildify.sh
+    - run: yarn tsc && yarn test
+      working-directory: node
+      env:
+        PREBUILDS_ONLY: 1
 
   node-windows-arm64:
     name: Node (Windows ARM64 cross-compile)
@@ -116,17 +120,20 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-pc-windows-msvc
     # install nasm compiler for boring
     - name: Install nasm
       run: choco install nasm
       shell: cmd
+
+    - run: choco install protoc
+
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
       run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
     - run: npx yarn install --ignore-scripts --frozen-lockfile
@@ -134,6 +141,8 @@ jobs:
     - name: Build for arm64
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
+      env:
+        npm_config_dist_url: https://unofficial-builds.nodejs.org/download/release
 
   swift-cocoapod:
     name: Swift CocoaPod (all architectures)
@@ -142,15 +151,17 @@ jobs:
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Check out SignalCoreKit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: signalapp/SignalCoreKit
           path: SignalCoreKit
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
+
+      - run: brew install protobuf
 
       - name: Build for x86_64-apple-ios
         run: swift/build_ffi.sh --release
@@ -171,24 +182,42 @@ jobs:
         # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
         run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
 
-  rust-protocol-cross-version-testing:
-    name: libsignal-protocol Cross-version Tests
+  rust-stable-testing:
+    name: Rust tests (using latest stable)
     runs-on: ubuntu-latest
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
     - run: rustup +stable target add i686-unknown-linux-gnu
 
     - name: Run tests
+      run: cargo +stable test --workspace --all-features --verbose -- --include-ignored
+
+    - name: Test run benches
+      run: cargo +stable test --workspace --benches --all-features --verbose
+
+    - name: Build bins and examples
+      run: cargo +stable build --workspace  --bins --examples --all-features --verbose
+
+    - name: Run tests (32-bit)
+      # Exclude signal-neon-futures because those tests run Node
+      run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+
+    - name: cargo clean (reclaim disk space)
+      # Clean the contents of the target directory to avoid running out of disk space during the
+      # following steps.
+      run: cargo +stable clean
+
+    - name: Run libsignal-protocol cross-version tests
       run: cargo +stable test
       working-directory: rust/protocol/cross-version-testing
 
-    - name: Run tests (32-bit)
+    - name: Run libsignal-protocol cross-version tests (32-bit)
       run: cargo +stable test --target i686-unknown-linux-gnu
       working-directory: rust/protocol/cross-version-testing
 
@@ -198,7 +227,7 @@ jobs:
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-protocol-cross-version-testing]
+    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:

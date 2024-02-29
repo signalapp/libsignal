@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'LibSignalClient'
-  s.version          = '0.32.1'
+  s.version          = '0.40.1'
   s.summary          = 'A Swift wrapper library for communicating with the Signal messaging service.'
 
   s.homepage         = 'https://github.com/signalapp/libsignal'
@@ -22,6 +22,7 @@ Pod::Spec.new do |s|
   s.preserve_paths = [
     'swift/Sources/SignalFfi',
     'bin/fetch_archive.py',
+    'acknowledgments/acknowledgments.plist',
   ]
 
   s.pod_target_xcconfig = {

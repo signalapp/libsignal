@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use attest::enclave::Error as SgxError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
-use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_bridge::ffi::*;
 use libsignal_protocol::*;
@@ -59,13 +59,18 @@ pub enum SignalErrorCode {
     UsernameCannotBeEmpty = 120,
     UsernameCannotStartWithDigit = 121,
     UsernameMissingSeparator = 122,
-    UsernameBadDiscriminator = 123,
-    UsernameBadCharacter = 124,
+    UsernameBadDiscriminatorCharacter = 123,
+    UsernameBadNicknameCharacter = 124,
     UsernameTooShort = 125,
     UsernameTooLong = 126,
-
     UsernameLinkInvalidEntropyDataLength = 127,
     UsernameLinkInvalid = 128,
+
+    UsernameDiscriminatorCannotBeEmpty = 140,
+    UsernameDiscriminatorCannotBeZero = 141,
+    UsernameDiscriminatorCannotBeSingleDigit = 142,
+    UsernameDiscriminatorCannotHaveLeadingZeros = 143,
+    UsernameDiscriminatorTooLarge = 144,
 
     IoError = 130,
     #[allow(dead_code)]
@@ -163,7 +168,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             | SignalFfiError::Signal(SignalProtocolError::InvalidSealedSenderMessage(_))
             | SignalFfiError::Signal(SignalProtocolError::BadKEMCiphertextLength(_, _))
             | SignalFfiError::SignalCrypto(SignalCryptoError::InvalidTag)
-            | SignalFfiError::Sgx(SgxError::DcapError(_))
+            | SignalFfiError::Sgx(SgxError::AttestationError(_))
             | SignalFfiError::Sgx(SgxError::NoiseError(_))
             | SignalFfiError::Sgx(SgxError::NoiseHandshakeError(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))
@@ -210,11 +215,11 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidType
             }
 
-            SignalFfiError::UsernameError(UsernameError::CannotBeEmpty) => {
+            SignalFfiError::UsernameError(UsernameError::NicknameCannotBeEmpty) => {
                 SignalErrorCode::UsernameCannotBeEmpty
             }
 
-            SignalFfiError::UsernameError(UsernameError::CannotStartWithDigit) => {
+            SignalFfiError::UsernameError(UsernameError::NicknameCannotStartWithDigit) => {
                 SignalErrorCode::UsernameCannotStartWithDigit
             }
 
@@ -222,12 +227,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UsernameMissingSeparator
             }
 
-            SignalFfiError::UsernameError(UsernameError::BadDiscriminator) => {
-                SignalErrorCode::UsernameBadDiscriminator
-            }
-
             SignalFfiError::UsernameError(UsernameError::BadNicknameCharacter) => {
-                SignalErrorCode::UsernameBadCharacter
+                SignalErrorCode::UsernameBadNicknameCharacter
             }
 
             SignalFfiError::UsernameError(UsernameError::NicknameTooShort) => {
@@ -239,7 +240,31 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::UsernameTooLong
             }
 
-            SignalFfiError::UsernameError(UsernameError::ProofVerificationFailure) => {
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotBeEmpty) => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeEmpty
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotBeZero) => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeZero
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotBeSingleDigit) => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeSingleDigit
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorCannotHaveLeadingZeros) => {
+                SignalErrorCode::UsernameDiscriminatorCannotHaveLeadingZeros
+            }
+
+            SignalFfiError::UsernameError(UsernameError::BadDiscriminatorCharacter) => {
+                SignalErrorCode::UsernameBadDiscriminatorCharacter
+            }
+
+            SignalFfiError::UsernameError(UsernameError::DiscriminatorTooLarge) => {
+                SignalErrorCode::UsernameDiscriminatorTooLarge
+            }
+
+            SignalFfiError::UsernameProofError(usernames::ProofVerificationFailure) => {
                 SignalErrorCode::VerificationFailure
             }
 
@@ -252,8 +277,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::Io(_) => SignalErrorCode::IoError,
 
             #[cfg(feature = "signal-media")]
-            SignalFfiError::MediaSanitizeParse(err) => {
-                use signal_media::sanitize::ParseError;
+            SignalFfiError::Mp4SanitizeParse(err) => {
+                use signal_media::sanitize::mp4::ParseError;
                 match err.kind {
                     ParseError::InvalidBoxLayout { .. }
                     | ParseError::InvalidInput { .. }
@@ -263,6 +288,23 @@ impl From<&SignalFfiError> for SignalErrorCode {
                     ParseError::UnsupportedBoxLayout { .. }
                     | ParseError::UnsupportedBox { .. }
                     | ParseError::UnsupportedFormat { .. } => {
+                        SignalErrorCode::UnsupportedMediaInput
+                    }
+                }
+            }
+
+            #[cfg(feature = "signal-media")]
+            SignalFfiError::WebpSanitizeParse(err) => {
+                use signal_media::sanitize::webp::ParseError;
+                match err.kind {
+                    ParseError::InvalidChunkLayout { .. }
+                    | ParseError::InvalidInput { .. }
+                    | ParseError::InvalidVp8lPrefixCode { .. }
+                    | ParseError::MissingRequiredChunk { .. }
+                    | ParseError::TruncatedChunk => SignalErrorCode::InvalidMediaInput,
+
+                    ParseError::UnsupportedChunk { .. }
+                    | ParseError::UnsupportedVp8lVersion { .. } => {
                         SignalErrorCode::UnsupportedMediaInput
                     }
                 }

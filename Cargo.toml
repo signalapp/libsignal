@@ -6,10 +6,13 @@ members = [
     "rust/chat",
     "rust/grpc",
     "rust/media",
+    "rust/message-backup",
+    "rust/net",
     "rust/pin",
     "rust/poksho",
     "rust/protocol",
     "rust/quic",
+    "rust/svr3",
     "rust/usernames",
     "rust/zkcredential",
     "rust/zkgroup",
@@ -21,6 +24,7 @@ default-members = [
     "rust/crypto",
     "rust/device-transfer",
     "rust/media",
+    "rust/message-backup",
     "rust/pin",
     "rust/poksho",
     "rust/protocol",
@@ -32,7 +36,7 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 
 [patch.crates-io]
 # Use our fork of curve25519-dalek for zkgroup support.
-curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.0.0' }
+curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.1' }
 boring = { git = 'https://github.com/signalapp/boring', branch = 'libsignal' }
 
 [profile.dev.package.argon2]

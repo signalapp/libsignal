@@ -33,6 +33,18 @@ public struct Username {
         try self.init(username)
     }
 
+    public init(nickname: String, discriminator: String, withValidLengthWithin lengthRange: ClosedRange<UInt32>) throws {
+        self.hash = try nickname.withCString { nickname in
+            try discriminator.withCString { discriminator in
+                try invokeFnReturningFixedLengthArray {
+                    signal_username_hash_from_parts($0, nickname, discriminator, lengthRange.lowerBound, lengthRange.upperBound)
+                }
+            }
+        }
+        // If we generated the hash correctly, we can format the nickname and discriminator manually.
+        self.value = "\(nickname).\(discriminator)"
+    }
+
     public func generateProof(withRandomness randomness: Randomness? = nil) -> [UInt8] {
         failOnError {
             let randomness = try randomness ?? Randomness.generate()
@@ -48,11 +60,13 @@ public struct Username {
         }
     }
 
-    public func createLink() throws -> ([UInt8], [UInt8]) {
+    public func createLink(previousEntropy: [UInt8]? = nil) throws -> ([UInt8], [UInt8]) {
         let bytes = failOnError {
             return try self.value.withCString { usernamePtr in
-                try invokeFnReturningArray {
-                    signal_username_link_create($0, usernamePtr)
+                try (previousEntropy ?? []).withUnsafeBorrowedBuffer { entropyPtr in
+                    try invokeFnReturningArray {
+                        signal_username_link_create($0, usernamePtr, entropyPtr)
+                    }
                 }
             }
         }
@@ -74,11 +88,11 @@ public struct Username {
             withValidLengthWithin lengthRange: ClosedRange<UInt32> = 3...32
     ) throws -> [Username] {
         let allCandidates = try nickname.withCString { nicknamePtr in
-            try invokeFnReturningString {
+            try invokeFnReturningStringArray {
                 signal_username_candidates_from($0, nicknamePtr, lengthRange.lowerBound, lengthRange.upperBound)
             }
         }
-        return try allCandidates.split(separator: ",").map { try Username($0) }
+        return try allCandidates.map { try Username($0) }
     }
 }
 

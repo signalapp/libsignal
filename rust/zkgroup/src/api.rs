@@ -4,6 +4,7 @@
 //
 
 pub mod auth;
+pub mod backups;
 pub mod call_links;
 pub mod groups;
 pub mod profiles;

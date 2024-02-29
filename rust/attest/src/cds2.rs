@@ -7,12 +7,11 @@ use std::collections::HashMap;
 
 use hex_literal::hex;
 use prost::Message;
-use sgx_session::Result;
 
-use crate::dcap::MREnclave;
+use crate::dcap::{self, MREnclave};
+use crate::enclave::{Handshake, Result};
 use crate::proto::cds2;
 use crate::util::SmallMap;
-use crate::{dcap, sgx_session};
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value.
@@ -36,10 +35,10 @@ pub fn new_handshake(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
-) -> Result<sgx_session::Handshake> {
+) -> Result<Handshake> {
     // Deserialize attestation handshake start.
     let handshake_start = cds2::ClientHandshakeStart::decode(attestation_msg)?;
-    sgx_session::Handshake::new(
+    Ok(Handshake::for_sgx(
         mrenclave,
         &handshake_start.evidence,
         &handshake_start.endorsement,
@@ -47,7 +46,8 @@ pub fn new_handshake(
             .get(mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         current_time,
-    )
+    )?
+    .skip_raft_validation())
 }
 
 /// Extracts attestation metrics from a `ClientHandshakeStart` message
@@ -61,9 +61,9 @@ pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::util::testio::read_test_file;
     use std::time::{Duration, SystemTime};
+
+    use super::*;
 
     #[test]
     fn attest_cds2() {
@@ -71,8 +71,8 @@ mod test {
         let mrenclave = hex!("39d78f17f8aa9a8e9cdaf16595947a057bac21f014d1abfd6a99b2dfd4e18d1d");
 
         let attestation_msg = cds2::ClientHandshakeStart {
-            evidence: read_test_file("tests/data/cds2_test.evidence"),
-            endorsement: read_test_file("tests/data/cds2_test.endorsements"),
+            evidence: include_bytes!("../tests/data/cds2_test.evidence").to_vec(),
+            endorsement: include_bytes!("../tests/data/cds2_test.endorsements").to_vec(),
             ..Default::default()
         };
 

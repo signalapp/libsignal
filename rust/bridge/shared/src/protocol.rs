@@ -7,7 +7,6 @@ use libsignal_bridge_macros::*;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
-use std::convert::TryFrom;
 use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
@@ -72,6 +71,62 @@ impl From<u64> for Timestamp {
         Self::from_millis(value)
     }
 }
+
+/// Lazily parses ServiceIds from a buffer of concatenated Service-Id-FixedWidthBinary.
+///
+/// **Reports parse errors by panicking.** All errors represent mistakes on the app side of the
+/// bridge, though; a buffer that really is constructed from concatenating service IDs should never
+/// error.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ServiceIdSequence<'a>(&'a [u8]);
+
+impl<'a> ServiceIdSequence<'a> {
+    const SERVICE_ID_FIXED_WIDTH_BINARY_LEN: usize =
+        std::mem::size_of::<ServiceIdFixedWidthBinaryBytes>();
+
+    pub(crate) fn parse(input: &'a [u8]) -> Self {
+        let extra_bytes = input.len() % Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
+        assert!(
+            extra_bytes == 0,
+            concat!(
+                "input should be a concatenated list of Service-Id-FixedWidthBinary, ",
+                "but has length {} ({} extra bytes)"
+            ),
+            input.len(),
+            extra_bytes
+        );
+        Self(input)
+    }
+}
+
+impl Iterator for ServiceIdSequence<'_> {
+    type Item = ServiceId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0.is_empty() {
+            None
+        } else {
+            let (next, rest) = self.0.split_at(Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN);
+            self.0 = rest;
+            Some(
+                ServiceId::parse_from_service_id_fixed_width_binary(
+                    next.try_into().expect("just measured above"),
+                )
+                .expect(concat!(
+                    "input should be a concatenated list of Service-Id-FixedWidthBinary, ",
+                    "but one ServiceId was invalid"
+                )),
+            )
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.0.len() / Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
+        (len, Some(len))
+    }
+}
+
+impl ExactSizeIterator for ServiceIdSequence<'_> {}
 
 #[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(
@@ -1175,6 +1230,7 @@ async fn SealedSessionCipher_Encrypt(
 async fn SealedSender_MultiRecipientEncrypt(
     recipients: &[&ProtocolAddress],
     recipient_sessions: &[&SessionRecord],
+    excluded_recipients: ServiceIdSequence<'_>,
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
@@ -1182,6 +1238,7 @@ async fn SealedSender_MultiRecipientEncrypt(
     sealed_sender_multi_recipient_encrypt(
         recipients,
         recipient_sessions,
+        excluded_recipients,
         content,
         identity_key_store,
         &mut rng,
@@ -1194,6 +1251,7 @@ async fn SealedSender_MultiRecipientEncrypt(
 async fn SealedSender_MultiRecipientEncryptNode(
     recipients: &[&ProtocolAddress],
     recipient_sessions: &[SessionRecord],
+    excluded_recipients: ServiceIdSequence<'_>,
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
@@ -1201,6 +1259,7 @@ async fn SealedSender_MultiRecipientEncryptNode(
     sealed_sender_multi_recipient_encrypt(
         recipients,
         &recipient_sessions.iter().collect::<Vec<&SessionRecord>>(),
+        excluded_recipients,
         content,
         identity_key_store,
         &mut rng,
@@ -1212,11 +1271,17 @@ async fn SealedSender_MultiRecipientEncryptNode(
 fn SealedSender_MultiRecipientMessageForSingleRecipient(
     encoded_multi_recipient_message: &[u8],
 ) -> Result<Vec<u8>> {
-    let messages = sealed_sender_multi_recipient_fan_out(encoded_multi_recipient_message)?;
-    let [single_message] = <[_; 1]>::try_from(messages).map_err(|_| {
-        SignalProtocolError::InvalidArgument("encoded for more than one recipient".to_owned())
-    })?;
-    Ok(single_message)
+    let messages = SealedSenderV2SentMessage::parse(encoded_multi_recipient_message)?;
+    if messages.recipients.len() != 1 {
+        return Err(SignalProtocolError::InvalidArgument(
+            "only supports messages with exactly one recipient".to_owned(),
+        ));
+    }
+    let result = messages
+        .received_message_parts_for_recipient(&messages.recipients[0])
+        .as_ref()
+        .concat();
+    Ok(result)
 }
 
 #[bridge_fn(node = "SealedSender_DecryptToUsmc")]

@@ -3,25 +3,37 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[derive(displaydoc::Display, Debug)]
+#[derive(displaydoc::Display, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum UsernameError {
-    /// Name cannot be empty
-    CannotBeEmpty,
-    /// Name cannot start with a digit
-    CannotStartWithDigit,
     /// Username must contain a '.'
     MissingSeparator,
-    /// Invalid discriminator
-    BadDiscriminator,
+    /// Name cannot be empty
+    NicknameCannotBeEmpty,
+    /// Name cannot start with a digit
+    NicknameCannotStartWithDigit,
     /// Nickname contains disallowed character
     BadNicknameCharacter,
     /// Nickname is too short
     NicknameTooShort,
     /// Nickname is too long
     NicknameTooLong,
-    /// Username could not be verified
-    ProofVerificationFailure,
+    /// Discriminator cannot be empty
+    DiscriminatorCannotBeEmpty,
+    /// Discriminator cannot be zero
+    DiscriminatorCannotBeZero,
+    /// Discriminator cannot be a single digit
+    DiscriminatorCannotBeSingleDigit,
+    /// Discriminator cannot have leading zeros unless it would otherwise be a single digit
+    DiscriminatorCannotHaveLeadingZeros,
+    /// Discriminator must only be made up of digits
+    BadDiscriminatorCharacter,
+    /// Value is too large to be a username discriminator
+    DiscriminatorTooLarge,
 }
+
+#[derive(displaydoc::Display, Debug)]
+/// Username could not be verified
+pub struct ProofVerificationFailure;
 
 #[derive(displaydoc::Display, Debug)]
 pub enum UsernameLinkError {

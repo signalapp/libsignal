@@ -8,6 +8,7 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::array_utils::{ArrayLike, OneBased};
@@ -27,7 +28,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
-        bincode::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap();
+        crate::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap();
 }
 
 const NUM_SUPPORTED_ATTRS: usize = 6;
@@ -88,7 +89,8 @@ impl AttrScalars for PniCredential {
     type Storage = [Scalar; 6];
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
+#[partial_default(bound = "S::Storage: Default")]
 pub struct KeyPair<S: AttrScalars> {
     // private
     pub(crate) w: Scalar,
@@ -126,20 +128,20 @@ impl<S: AttrScalars> PartialEq for KeyPair<S> {
 }
 impl<S: AttrScalars> Eq for KeyPair<S> {}
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct PublicKey {
     pub(crate) C_W: RistrettoPoint,
     pub(crate) I: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialWithPni {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -154,7 +156,7 @@ pub struct ProfileKeyCredential {
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -170,7 +172,7 @@ pub struct BlindedExpiringProfileKeyCredentialWithSecretNonce {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct BlindedExpiringProfileKeyCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -186,7 +188,7 @@ pub struct PniCredential {
     pub(crate) V: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -202,7 +204,7 @@ pub struct BlindedReceiptCredentialWithSecretNonce {
     pub(crate) S2: RistrettoPoint,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct BlindedReceiptCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -511,7 +513,7 @@ mod tests {
 
         let uid_bytes = TEST_ARRAY_16;
         let redemption_time = 37;
-        let aci = libsignal_protocol::Aci::from_uuid_bytes(uid_bytes);
+        let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
         let uid = uid_struct::UidStruct::from_service_id(aci.into());
         let credential = keypair.create_auth_credential(uid, redemption_time, &mut sho);
         let proof = proofs::AuthCredentialIssuanceProof::new(

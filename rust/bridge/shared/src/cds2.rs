@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use ::attest::cds2;
-use ::attest::sgx_session::Result;
+use ::attest::enclave::Result;
 use libsignal_bridge_macros::*;
 
 use crate::protocol::Timestamp;

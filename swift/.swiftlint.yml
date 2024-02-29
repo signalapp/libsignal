@@ -21,3 +21,5 @@ file_header:
 inclusive_language:
   override_allowed_terms:
   - master
+excluded:
+  - .build/**

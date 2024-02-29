@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::constants::*;
@@ -11,7 +12,7 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerSecretParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_key_pair:
@@ -32,9 +33,11 @@ pub struct ServerSecretParams {
         crypto::credentials::KeyPair<crypto::credentials::ExpiringProfileKeyCredential>,
     auth_credentials_with_pni_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::AuthCredentialWithPni>,
+
+    pub(crate) generic_credential_key_pair: zkcredential::credentials::CredentialKeyPair,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerPublicParams {
     pub(crate) reserved: ReservedBytes,
     pub(crate) auth_credentials_public_key: crypto::credentials::PublicKey,
@@ -50,6 +53,8 @@ pub struct ServerPublicParams {
 
     expiring_profile_key_credentials_public_key: crypto::credentials::PublicKey,
     auth_credentials_with_pni_public_key: crypto::credentials::PublicKey,
+
+    pub(crate) generic_credential_public_key: zkcredential::credentials::CredentialPublicKey,
 }
 
 impl ServerSecretParams {
@@ -67,6 +72,8 @@ impl ServerSecretParams {
         let expiring_profile_key_credentials_key_pair =
             crypto::credentials::KeyPair::generate(&mut sho);
         let auth_credentials_with_pni_key_pair = crypto::credentials::KeyPair::generate(&mut sho);
+        let generic_credential_key_pair =
+            zkcredential::credentials::CredentialKeyPair::generate(randomness);
 
         Self {
             reserved: Default::default(),
@@ -77,6 +84,7 @@ impl ServerSecretParams {
             pni_credentials_key_pair,
             expiring_profile_key_credentials_key_pair,
             auth_credentials_with_pni_key_pair,
+            generic_credential_key_pair,
         }
     }
 
@@ -96,6 +104,7 @@ impl ServerSecretParams {
             auth_credentials_with_pni_public_key: self
                 .auth_credentials_with_pni_key_pair
                 .get_public_key(),
+            generic_credential_public_key: self.generic_credential_key_pair.public_key().clone(),
         }
     }
 
@@ -110,7 +119,7 @@ impl ServerSecretParams {
     pub fn issue_auth_credential(
         &self,
         randomness: RandomnessBytes,
-        aci: libsignal_protocol::Aci,
+        aci: libsignal_core::Aci,
         redemption_time: CoarseRedemptionTime,
     ) -> api::auth::AuthCredentialResponse {
         let mut sho = Sho::new(
@@ -139,8 +148,8 @@ impl ServerSecretParams {
     fn issue_auth_credential_with_pni(
         &self,
         randomness: RandomnessBytes,
-        aci: libsignal_protocol::Aci,
-        pni: libsignal_protocol::Pni,
+        aci: libsignal_core::Aci,
+        pni: libsignal_core::Pni,
         redemption_time: Timestamp,
         encode_pni_as_aci_for_backward_compatibility: bool,
     ) -> api::auth::AuthCredentialWithPniResponse {
@@ -151,7 +160,7 @@ impl ServerSecretParams {
 
         let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
         let pni_struct = if encode_pni_as_aci_for_backward_compatibility {
-            let pni_as_aci = libsignal_protocol::Aci::from(uuid::Uuid::from(pni));
+            let pni_as_aci = libsignal_core::Aci::from(uuid::Uuid::from(pni));
             crypto::uid_struct::UidStruct::from_service_id(pni_as_aci.into())
         } else {
             crypto::uid_struct::UidStruct::from_service_id(pni.into())
@@ -177,8 +186,8 @@ impl ServerSecretParams {
     pub fn issue_auth_credential_with_pni_as_service_id(
         &self,
         randomness: RandomnessBytes,
-        aci: libsignal_protocol::Aci,
-        pni: libsignal_protocol::Pni,
+        aci: libsignal_core::Aci,
+        pni: libsignal_core::Pni,
         redemption_time: Timestamp,
     ) -> api::auth::AuthCredentialWithPniResponse {
         self.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time, false)
@@ -187,8 +196,8 @@ impl ServerSecretParams {
     pub fn issue_auth_credential_with_pni_as_aci(
         &self,
         randomness: RandomnessBytes,
-        aci: libsignal_protocol::Aci,
-        pni: libsignal_protocol::Pni,
+        aci: libsignal_core::Aci,
+        pni: libsignal_core::Pni,
         redemption_time: Timestamp,
     ) -> api::auth::AuthCredentialWithPniResponse {
         self.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time, true)
@@ -337,7 +346,7 @@ impl ServerSecretParams {
         &self,
         randomness: RandomnessBytes,
         request: &api::profiles::ProfileKeyCredentialRequest,
-        aci: libsignal_protocol::Aci,
+        aci: libsignal_core::Aci,
         commitment: api::profiles::ProfileKeyCommitment,
         credential_expiration_time: Timestamp,
     ) -> Result<api::profiles::ExpiringProfileKeyCredentialResponse, ZkGroupVerificationFailure>
@@ -447,7 +456,7 @@ impl ServerPublicParams {
 
     pub fn receive_auth_credential(
         &self,
-        aci: libsignal_protocol::Aci,
+        aci: libsignal_core::Aci,
         redemption_time: CoarseRedemptionTime,
         response: &api::auth::AuthCredentialResponse,
     ) -> Result<api::auth::AuthCredential, ZkGroupVerificationFailure> {
@@ -469,8 +478,8 @@ impl ServerPublicParams {
 
     fn receive_auth_credential_with_pni(
         &self,
-        aci: libsignal_protocol::Aci,
-        pni: libsignal_protocol::Pni,
+        aci: libsignal_core::Aci,
+        pni: libsignal_core::Pni,
         redemption_time: Timestamp,
         response: &api::auth::AuthCredentialWithPniResponse,
         encode_pni_as_aci_for_backward_compatibility: bool,
@@ -480,7 +489,7 @@ impl ServerPublicParams {
             // Older AuthCredentialWithPnis used the same encoding for PNIs as ACIs.
             // This won't match up with UuidCiphertexts that hold correctly-encoded PNIs,
             // but can still be used as a valid ACI credential.
-            let pni_as_aci = libsignal_protocol::Aci::from(uuid::Uuid::from(pni));
+            let pni_as_aci = libsignal_core::Aci::from(uuid::Uuid::from(pni));
             crypto::uid_struct::UidStruct::from_service_id(pni_as_aci.into())
         } else {
             crypto::uid_struct::UidStruct::from_service_id(pni.into())
@@ -504,8 +513,8 @@ impl ServerPublicParams {
 
     pub fn receive_auth_credential_with_pni_as_service_id(
         &self,
-        aci: libsignal_protocol::Aci,
-        pni: libsignal_protocol::Pni,
+        aci: libsignal_core::Aci,
+        pni: libsignal_core::Pni,
         redemption_time: Timestamp,
         response: &api::auth::AuthCredentialWithPniResponse,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
@@ -514,8 +523,8 @@ impl ServerPublicParams {
 
     pub fn receive_auth_credential_with_pni_as_aci(
         &self,
-        aci: libsignal_protocol::Aci,
-        pni: libsignal_protocol::Pni,
+        aci: libsignal_core::Aci,
+        pni: libsignal_core::Pni,
         redemption_time: Timestamp,
         response: &api::auth::AuthCredentialWithPniResponse,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
@@ -605,7 +614,7 @@ impl ServerPublicParams {
     pub fn create_profile_key_credential_request_context(
         &self,
         randomness: RandomnessBytes,
-        aci: libsignal_protocol::Aci,
+        aci: libsignal_core::Aci,
         profile_key: api::profiles::ProfileKey,
     ) -> api::profiles::ProfileKeyCredentialRequestContext {
         let mut sho = Sho::new(

@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::simple_types::*;
 use crate::crypto;
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialWithPni {
     pub(crate) reserved: ReservedBytes,
     pub(crate) credential: crypto::credentials::AuthCredentialWithPni,

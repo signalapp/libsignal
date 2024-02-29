@@ -9,6 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   NDK_VERSION: 25.2.9519653
   RUST_BACKTRACE: 1
+  LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION: 1.72
 
 jobs:
   changes:
@@ -29,9 +30,9 @@ jobs:
       rust_ios: ${{ steps.filter.outputs.rust_ios }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: dorny/paths-filter@4512585405083f25c027a35db413c2b3b9006d50 # v2.11.1
+    - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0
       id: filter
       with:
         filters: |
@@ -51,6 +52,7 @@ jobs:
           - '.clippy.toml'
           - '.rustfmt.license-template'
           - '.rustfmt.toml'
+          - 'acknowledgments/**'
           - 'rust/**' # deliberately re-include rust/bridge/* and rust/protocol/cross-version-testing
           java:
           - *all
@@ -77,6 +79,7 @@ jobs:
           - '.github/stale.yml'
           - '.github/workflows/**'
           - '.gitignore'
+          - '.gitattributes'
 
     - name: Check pattern completeness
       run: echo "::error file=.github/workflows/build_and_test.yml::File not included in any filter" && false
@@ -96,20 +99,27 @@ jobs:
       matrix:
         version: [nightly, stable]
         include:
-          - version: stable
-            toolchain: "+stable"
+        - version: nightly
+          toolchain: "$(cat rust-toolchain)"
+        - version: stable
+          toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --component rustfmt,clippy --target i686-unknown-linux-gnu
+    - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --component rustfmt,clippy
+
+    - name: Cache locally-built tools
+      uses: actions/cache@v4
+      with:
+        path: local-tools
+        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version') }}
+
+    - name: Build cargo-about if needed
+      run: cargo +stable install --version $(cat acknowledgments/cargo-about-version) --locked cargo-about --root local-tools
       if: matrix.version == 'nightly'
-
-    - name: Install Rust (stable)
-      run: rustup +stable target add i686-unknown-linux-gnu
-      if: matrix.version == 'stable'
 
     # This should be done before anything else
     # because it also checks that the lockfile is up to date.
@@ -130,6 +140,10 @@ jobs:
       run: ./bin/update_versions.py
       if: matrix.version == 'nightly'
 
+    - name: Check acknowledgments
+      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --name-status --exit-code acknowledgments
+      if: matrix.version == 'nightly'
+
     - name: Install Protoc
       uses: arduino/setup-protoc@v1
       with:
@@ -137,20 +151,16 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build
-      run: cargo ${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
 
     - name: Run tests
-      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
-
-    - name: Run tests (32-bit)
-      # Exclude signal-neon-futures because those tests run Node
-      run: cargo ${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
 
     - name: Test run benches
-      run: cargo ${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
 
-    - name: Build bins
-      run: cargo ${{ matrix.toolchain }} build  --bins --all-features --verbose
+    - name: Build bins and examples
+      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose
 
     - name: Clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -166,18 +176,48 @@ jobs:
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
 
     - name: Check that the protocol fuzz target still builds
-      run: cargo +stable check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets
       working-directory: rust/protocol/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'
 
     - name: Check that the attest fuzz target still builds
-      run: cargo +stable check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets
       working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'
+
+  rust32:
+    name: Rust (32-bit testing)
+
+    runs-on: ubuntu-latest
+
+    needs: changes
+
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [nightly, stable]
+        include:
+        - version: nightly
+          toolchain: "$(cat rust-toolchain)"
+        - version: stable
+          toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
+
+    - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --target i686-unknown-linux-gnu
+
+    - name: Run tests (32-bit)
+      # Exclude signal-neon-futures because those tests run Node
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
 
   java:
     name: Java
@@ -186,13 +226,23 @@ jobs:
 
     needs: changes
 
+    permissions:
+      # Needed for check_code_size.py to examine previous runs.
+      actions: read
+      contents: read
+
     if: ${{ needs.changes.outputs.java == 'true' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        # Download all commits so we can search for the merge base with origin/main.
+        fetch-depth: 0
 
     - name: Install NDK
-      run: sudo ${ANDROID_HOME}/tools/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+      run: sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
@@ -205,10 +255,17 @@ jobs:
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
-    - run: ./gradlew build
+    - run: ./gradlew build assembleDebugAndroidTest android:lintDebug | tee ./gradle-output.txt
+      working-directory: java
+      shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
+
+    # Check for -Xcheck:jni warnings manually; Gradle doesn't capture them for some reason.
+    - run: "! grep WARNING ./gradle-output.txt"
       working-directory: java
 
     - run: java/check_code_size.py
+      env:
+        GH_TOKEN: ${{ github.token }}
 
   node:
     name: Node
@@ -224,7 +281,7 @@ jobs:
     if: ${{ needs.changes.outputs.node == 'true' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -234,7 +291,16 @@ jobs:
       run: choco install nasm
       shell: cmd
 
-    - uses: actions/setup-node@v3
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+      if: matrix.os == 'ubuntu-latest'
+
+    - run: choco install protoc
+      if: matrix.os == 'windows-latest'
+
+    - run: brew install protobuf
+      if: matrix.os == 'macos-latest'
+
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
 
@@ -269,15 +335,21 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - name: Build libsignal-ffi
       run: swift/build_ffi.sh -d -v --verify-ffi
 
     - name: Build Swift and run tests
       run: swift test -v
+      working-directory: swift
+
+    - name: Build Swift package documentation
+      run: swift package plugin generate-documentation --analyze --warnings-as-errors
       working-directory: swift
 
   swift_cocoapod:
@@ -290,19 +362,21 @@ jobs:
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Run lint
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
       - name: Check out SignalCoreKit
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: signalapp/SignalCoreKit
           path: SignalCoreKit
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
+
+      - run: brew install protobuf
 
       # Build only the targets that `pod lib lint` will test building.
       - name: Build for x86_64-apple-ios

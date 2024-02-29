@@ -27,16 +27,11 @@ use boring::hash::{Hasher, MessageDigest};
 use boring::nid::Nid;
 use boring::pkey::{PKey, Private, Public};
 use chrono::Utc;
-use lazy_static::lazy_static;
-use std::convert::TryFrom;
+
 use std::time::SystemTime;
 
-lazy_static! {
-    static ref EVIDENCE_BYTES: Vec<u8> =
-        crate::util::testio::read_test_file("tests/data/dcap.evidence");
-    static ref ENDORSEMENT_BYTES: Vec<u8> =
-        crate::util::testio::read_test_file("tests/data/dcap.endorsements");
-}
+const EVIDENCE_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.evidence");
+const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.endorsements");
 
 pub(crate) struct SigningInfo {
     pub root: TestCert,
@@ -133,8 +128,8 @@ impl FakeAttestation {
     /// when signed. To perform a test, manipulate evidence/endorsements
     /// before [`FakeAttestationBuilder::sign`]ing them.
     pub fn builder() -> FakeAttestationBuilder {
-        let uevidence = Evidence::try_from(EVIDENCE_BYTES.as_slice()).unwrap();
-        let mut uendorsements = SgxEndorsements::try_from(ENDORSEMENT_BYTES.as_slice()).unwrap();
+        let uevidence = Evidence::try_from(EVIDENCE_BYTES).unwrap();
+        let mut uendorsements = SgxEndorsements::try_from(ENDORSEMENT_BYTES).unwrap();
         let signing_info = SigningInfo::default();
         // by default, expire tcb_info/qe_id tomorrow
         let tomorrow = Utc::now() + chrono::Duration::days(1);

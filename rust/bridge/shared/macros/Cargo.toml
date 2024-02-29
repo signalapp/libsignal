@@ -7,7 +7,7 @@
 name = "libsignal-bridge-macros"
 version = "0.1.0"
 authors = ["Signal Messenger LLC"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-only"
 
 [lib]
@@ -17,11 +17,8 @@ proc-macro = true
 heck = "0.3.1"
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0" }
-syn-mid = "0.5"
-unzip3 = "1.0"
+syn = "2.0"
+syn-mid = "0.6"
 
-[features]
-ffi = []
-jni = []
-node = []
+[dev-dependencies]
+syn = { version = "2.0", features = ["extra-traits"] }

@@ -6,8 +6,6 @@
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError};
 
-use std::convert::TryFrom;
-
 use hmac::{Hmac, Mac};
 use prost::Message;
 use rand::{CryptoRng, Rng};

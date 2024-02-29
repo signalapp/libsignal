@@ -68,6 +68,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 ) -> Result<PreKeyBundle, SignalProtocolError> {
     let pre_key_pair = KeyPair::generate(&mut csprng);
     let signed_pre_key_pair = KeyPair::generate(&mut csprng);
+    let kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
 
     let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
     let signed_pre_key_signature = store
@@ -76,9 +77,17 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         .private_key()
         .calculate_signature(&signed_pre_key_public, &mut csprng)?;
 
+    let kyber_pre_key_public = kyber_pre_key_pair.public_key.serialize();
+    let kyber_pre_key_signature = store
+        .get_identity_key_pair()
+        .await?
+        .private_key()
+        .calculate_signature(&kyber_pre_key_public, &mut csprng)?;
+
     let device_id: u32 = csprng.gen();
     let pre_key_id: u32 = csprng.gen();
     let signed_pre_key_id: u32 = csprng.gen();
+    let kyber_pre_key_id: u32 = csprng.gen();
 
     let pre_key_bundle = PreKeyBundle::new(
         store.get_local_registration_id().await?,
@@ -89,6 +98,11 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         signed_pre_key_signature.to_vec(),
         *store.get_identity_key_pair().await?.identity_key(),
     )?;
+    let pre_key_bundle = pre_key_bundle.with_kyber_pre_key(
+        kyber_pre_key_id.into(),
+        kyber_pre_key_pair.public_key.clone(),
+        kyber_pre_key_signature.to_vec(),
+    );
 
     store
         .save_pre_key(
@@ -111,6 +125,17 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         )
         .await?;
 
+    store
+        .save_kyber_pre_key(
+            kyber_pre_key_id.into(),
+            &KyberPreKeyRecord::new(
+                kyber_pre_key_id.into(),
+                43,
+                &kyber_pre_key_pair,
+                &kyber_pre_key_signature,
+            ),
+        )
+        .await?;
     Ok(pre_key_bundle)
 }
 
@@ -194,6 +219,17 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
     let bob_session = initialize_bob_session_record(&bob_params)?;
 
     Ok((alice_session, bob_session))
+}
+
+pub fn extract_single_ssv2_received_message(input: &[u8]) -> (ServiceId, Vec<u8>) {
+    let message = SealedSenderV2SentMessage::parse(input).expect("valid");
+    assert_eq!(1, message.recipients.len());
+    let (service_id, recipient) = message.recipients.first().expect("checked length");
+    let result = message
+        .received_message_parts_for_recipient(recipient)
+        .as_ref()
+        .concat();
+    (*service_id, result)
 }
 
 pub enum IdChoice {

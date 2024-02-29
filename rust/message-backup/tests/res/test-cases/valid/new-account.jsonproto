@@ -1,0 +1,32 @@
+[
+  {
+    "version": "1",
+    "backupTimeMs": "1705692409729"
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "contact": {
+        "aci": "IiMfftM7TXC2Brinq8Wbvw==",
+        "pni": "kgNIuOIxTxmzIYUp0E+4Og==",
+        "e164": "18045550102",
+        "registered": "REGISTERED",
+        "profileKey": "a9y+KGrHvMM94LKU4dMlFVjFa36zyjxsCv1vcgvjsOs=",
+        "profileGivenName": "Alex iOS test",
+        "profileFamilyName": "Konradi"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "self": {}
+    }
+  },
+  {
+    "chat": {
+      "id": "1",
+      "recipientId": "2"
+    }
+  }
+]

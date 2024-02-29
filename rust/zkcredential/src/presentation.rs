@@ -24,6 +24,8 @@
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
+use curve25519_dalek::Scalar;
+use partial_default::PartialDefault;
 use poksho::{ShoApi, ShoHmacSha256};
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +37,7 @@ use crate::credentials::{
 use crate::sho::ShoExt;
 use crate::{VerificationFailure, RANDOMNESS_LEN};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 struct PresentationProofCommitments {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -46,7 +48,7 @@ struct PresentationProofCommitments {
 /// Demonstrates to the _verifying server_ that the client holds a particular credential.
 ///
 /// Use [`PresentationProofVerifier`] to validate the proof.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct PresentationProof {
     commitments: PresentationProofCommitments,
     poksho_proof: Vec<u8>,
@@ -58,8 +60,89 @@ struct AttributeRef {
     second_point_index: usize,
 }
 
-struct PresentationProofBuilderCore<'a, T: attributes::PublicKey + ?Sized> {
-    encryption_keys: Vec<&'a T>,
+/// A type-erased version of [`attributes::PublicKey`], to store heterogeneously in a
+/// [`PresentationProofBuilderCore`].
+struct AnyPublicKey {
+    id: &'static str,
+    G_a: fn() -> [RistrettoPoint; 2],
+    A: RistrettoPoint,
+}
+
+impl<D: attributes::Domain> From<attributes::PublicKey<D>> for AnyPublicKey {
+    fn from(value: attributes::PublicKey<D>) -> Self {
+        Self {
+            id: D::ID,
+            G_a: D::G_a,
+            A: value.A,
+        }
+    }
+}
+
+enum PublicKeyOrId {
+    PublicKey(AnyPublicKey),
+    Id(&'static str),
+}
+
+trait MayHavePublicKey {
+    fn id(&self) -> &'static str;
+    fn public_key(&self) -> Option<&AnyPublicKey>;
+}
+
+impl MayHavePublicKey for PublicKeyOrId {
+    fn id(&self) -> &'static str {
+        match self {
+            PublicKeyOrId::PublicKey(key) => key.id,
+            PublicKeyOrId::Id(id) => id,
+        }
+    }
+    fn public_key(&self) -> Option<&AnyPublicKey> {
+        if let PublicKeyOrId::PublicKey(public_key) = &self {
+            Some(public_key)
+        } else {
+            None
+        }
+    }
+}
+
+/// A type-erased version of [`attributes::KeyPair`], to store heterogeneously in a
+/// [`PresentationProofBuilderCore`].
+struct AnyKeyPair {
+    a1: Scalar,
+    a2: Scalar,
+    public_key_or_id: PublicKeyOrId,
+}
+
+impl AnyKeyPair {
+    fn without_public_key(self) -> Self {
+        Self {
+            public_key_or_id: PublicKeyOrId::Id(self.public_key_or_id.id()),
+            ..self
+        }
+    }
+}
+
+impl<D: attributes::Domain> From<attributes::KeyPair<D>> for AnyKeyPair {
+    fn from(value: attributes::KeyPair<D>) -> Self {
+        Self {
+            a1: value.a1,
+            a2: value.a2,
+            public_key_or_id: PublicKeyOrId::PublicKey(value.public_key.into()),
+        }
+    }
+}
+
+impl MayHavePublicKey for AnyKeyPair {
+    fn id(&self) -> &'static str {
+        self.public_key_or_id.id()
+    }
+
+    fn public_key(&self) -> Option<&AnyPublicKey> {
+        self.public_key_or_id.public_key()
+    }
+}
+
+struct PresentationProofBuilderCore<'a, T: MayHavePublicKey> {
+    encryption_keys: Vec<T>,
     attributes: Vec<AttributeRef>,
     attr_points: Vec<RistrettoPoint>,
     authenticated_message: &'a [u8],
@@ -73,7 +156,7 @@ struct PresentationProofBuilderCore<'a, T: attributes::PublicKey + ?Sized> {
 ///
 /// See also [`PresentationProofVerifier`].
 pub struct PresentationProofBuilder<'a> {
-    core: PresentationProofBuilderCore<'a, dyn attributes::KeyPair + 'a>,
+    core: PresentationProofBuilderCore<'a, AnyKeyPair>,
 }
 
 /// Used to verify presentation proofs.
@@ -87,11 +170,11 @@ pub struct PresentationProofBuilder<'a> {
 ///
 /// See also [`PresentationProofBuilder`].
 pub struct PresentationProofVerifier<'a> {
-    core: PresentationProofBuilderCore<'a, dyn attributes::PublicKey + 'a>,
+    core: PresentationProofBuilderCore<'a, PublicKeyOrId>,
     public_attrs: ShoHmacSha256,
 }
 
-impl<'a, T: attributes::PublicKey + ?Sized> PresentationProofBuilderCore<'a, T> {
+impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
     fn with_authenticated_message(message: &'a [u8]) -> Self {
         Self {
             encryption_keys: vec![],
@@ -102,7 +185,7 @@ impl<'a, T: attributes::PublicKey + ?Sized> PresentationProofBuilderCore<'a, T> 
         }
     }
 
-    fn add_attribute(&mut self, attr_points: &[RistrettoPoint], key: Option<&'a T>) {
+    fn add_attribute(&mut self, attr_points: &[RistrettoPoint], key: Option<T>) {
         let first_index = self.attr_points.len();
         self.attr_points.extend(attr_points);
         assert!(
@@ -145,18 +228,20 @@ impl<'a, T: attributes::PublicKey + ?Sized> PresentationProofBuilderCore<'a, T> 
         // proving the validity of the encryption keys.
         let mut encryption_sum_terms = vec![];
         for key in &self.encryption_keys {
-            let key = key.id();
-            let a1 = format!("a1_{}", key);
+            let key_id = key.id();
+            let a1 = format!("a1_{}", key_id);
 
             // These terms are an addition by Trevor Perrin to the original paper to more carefully
             // ensure the validity of the encryption keys used.
             // 0 = z1_uid * I + a1_uid * Z
-            st.add("0", &[(&format!("z1_{}", key), "I"), (&a1, "Z")]);
+            st.add("0", &[(&format!("z1_{}", key_id), "I"), (&a1, "Z")]);
 
-            encryption_sum_terms.push((a1, format!("G_a1_{}", key)));
-            encryption_sum_terms.push((format!("a2_{}", key), format!("G_a2_{}", key)));
+            if key.public_key().is_some() {
+                encryption_sum_terms.push((a1, format!("G_a1_{}", key_id)));
+                encryption_sum_terms.push((format!("a2_{}", key_id), format!("G_a2_{}", key_id)));
+            }
         }
-        if !self.encryption_keys.is_empty() {
+        if !encryption_sum_terms.is_empty() {
             // sum(A) = (a1_uid * G_a1_uid) + (a2_uid * G_a2_uid) +
             //          (a1_profilekey * G_a1_profilekey) + (a2_profilekey * G_a2_profilekey) +
             //          ...
@@ -249,18 +334,22 @@ impl<'a, T: attributes::PublicKey + ?Sized> PresentationProofBuilderCore<'a, T> 
             point_args.add("0", RistrettoPoint::identity());
             let mut sum_A = RistrettoPoint::identity();
             for key in &self.encryption_keys {
-                let [G_a1, G_a2] = key.G_a();
-                point_args.add(&format!("G_a1_{}", key.id()), G_a1);
-                point_args.add(&format!("G_a2_{}", key.id()), G_a2);
-                sum_A += key.A();
+                if let Some(key) = key.public_key() {
+                    let [G_a1, G_a2] = (key.G_a)();
+                    point_args.add(format!("G_a1_{}", key.id), G_a1);
+                    point_args.add(format!("G_a2_{}", key.id), G_a2);
+                    sum_A += key.A;
+                }
             }
-            point_args.add("sum(A)", sum_A);
+            if sum_A != RistrettoPoint::identity() {
+                point_args.add("sum(A)", sum_A);
+            }
         }
 
         let G_y_names: [_; NUM_SUPPORTED_ATTRS] =
             ["G_y0", "G_y1", "G_y2", "G_y3", "G_y4", "G_y5", "G_y6"];
         for (G_y_name, G_yn) in G_y_names
-            .iter()
+            .into_iter()
             .take(self.attr_points.len())
             .zip(credentials_system.G_y)
         {
@@ -310,8 +399,31 @@ impl<'a> PresentationProofBuilder<'a> {
     /// Adds an attribute to the proof, which will be encrypted using `key`.
     ///
     /// This is order-sensitive.
-    pub fn add_attribute(mut self, attr: &dyn Attribute, key: &'a dyn attributes::KeyPair) -> Self {
-        self.core.add_attribute(&attr.as_points(), Some(key));
+    pub fn add_attribute(
+        mut self,
+        attr: &dyn Attribute,
+        key: &attributes::KeyPair<impl attributes::Domain>,
+    ) -> Self {
+        self.core
+            .add_attribute(&attr.as_points(), Some(AnyKeyPair::from(*key)));
+        self
+    }
+
+    /// Adds an attribute to the proof, which will be encrypted using `key`.
+    ///
+    /// This still includes a proof that the attribute was correctly encrypted; however, the
+    /// verifying server will not be able to check which key performed that encryption.
+    ///
+    /// This is order-sensitive.
+    pub fn add_attribute_without_verified_key(
+        mut self,
+        attr: &dyn Attribute,
+        key: &attributes::KeyPair<impl attributes::Domain>,
+    ) -> Self {
+        self.core.add_attribute(
+            &attr.as_points(),
+            Some(AnyKeyPair::from(*key).without_public_key()),
+        );
         self
     }
 
@@ -388,10 +500,10 @@ impl<'a> PresentationProofBuilder<'a> {
         scalar_args.add("t", credential.t);
         scalar_args.add("z0", z0);
         for key in &self.core.encryption_keys {
-            let [a1, a2] = key.a();
-            scalar_args.add(&format!("a1_{}", key.id()), a1);
-            scalar_args.add(&format!("a2_{}", key.id()), a2);
-            scalar_args.add(&format!("z1_{}", key.id()), -z * a1);
+            let key_id = key.id();
+            scalar_args.add(format!("a1_{}", key_id), key.a1);
+            scalar_args.add(format!("a2_{}", key_id), key.a2);
+            scalar_args.add(format!("z1_{}", key_id), -z * key.a1);
         }
 
         let mut point_args = self.core.prepare_non_attribute_point_args(I, &commitments);
@@ -403,19 +515,18 @@ impl<'a> PresentationProofBuilder<'a> {
                 second_point_index,
             } = attr;
             point_args.add(
-                &format!("C_y{}", first_point_index),
+                format!("C_y{}", first_point_index),
                 commitments.C_y[first_point_index],
             );
 
             if let Some(key_index) = key_index {
-                let key = self.core.encryption_keys[key_index];
-                let [a1, a2] = key.a();
-                let E_A1 = a1 * self.core.attr_points[first_point_index];
-                let E_A2 = a2 * E_A1 + self.core.attr_points[second_point_index];
-                point_args.add(&format!("E_A{}", first_point_index), E_A1);
-                point_args.add(&format!("-E_A{}", first_point_index), -E_A1);
+                let key = &self.core.encryption_keys[key_index];
+                let E_A1 = key.a1 * self.core.attr_points[first_point_index];
+                let E_A2 = key.a2 * E_A1 + self.core.attr_points[second_point_index];
+                point_args.add(format!("E_A{}", first_point_index), E_A1);
+                point_args.add(format!("-E_A{}", first_point_index), -E_A1);
                 point_args.add(
-                    &format!("C_y{0}-E_A{0}", second_point_index),
+                    format!("C_y{0}-E_A{0}", second_point_index),
                     commitments.C_y[second_point_index] - E_A2,
                 );
             } else {
@@ -481,9 +592,29 @@ impl<'a> PresentationProofVerifier<'a> {
     pub fn add_attribute(
         mut self,
         attr: &dyn Attribute,
-        key: &'a dyn attributes::PublicKey,
+        key: &attributes::PublicKey<impl attributes::Domain>,
     ) -> Self {
-        self.core.add_attribute(&attr.as_points(), Some(key));
+        self.core.add_attribute(
+            &attr.as_points(),
+            Some(PublicKeyOrId::PublicKey(AnyPublicKey::from(*key))),
+        );
+        self
+    }
+
+    /// Adds an encrypted attribute to check against the credential, omitting the key it was
+    /// encrypted with.
+    ///
+    /// This still checks that the attribute was correctly encrypted; it just can't enforce which
+    /// key did so.
+    ///
+    /// This is order-sensitive.
+    pub fn add_attribute_without_verified_key(
+        mut self,
+        attr: &dyn Attribute,
+        key_id: &'static str,
+    ) -> Self {
+        self.core
+            .add_attribute(&attr.as_points(), Some(PublicKeyOrId::Id(key_id)));
         self
     }
 
@@ -544,19 +675,19 @@ impl<'a> PresentationProofVerifier<'a> {
                 second_point_index,
                 key_index,
             } = attr;
-            point_args.add(&format!("C_y{}", first_point_index), C_y[first_point_index]);
+            point_args.add(format!("C_y{}", first_point_index), C_y[first_point_index]);
 
             if key_index.is_some() {
                 point_args.add(
-                    &format!("E_A{}", first_point_index),
+                    format!("E_A{}", first_point_index),
                     self.core.attr_points[first_point_index],
                 );
                 point_args.add(
-                    &format!("-E_A{}", first_point_index),
+                    format!("-E_A{}", first_point_index),
                     -self.core.attr_points[first_point_index],
                 );
                 point_args.add(
-                    &format!("C_y{0}-E_A{0}", second_point_index),
+                    format!("C_y{0}-E_A{0}", second_point_index),
                     C_y[second_point_index] - self.core.attr_points[second_point_index],
                 );
             } else {

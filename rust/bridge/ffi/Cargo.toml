@@ -5,9 +5,9 @@
 
 [package]
 name = "libsignal-ffi"
-version = "0.32.1"
+version = "0.40.1"
 authors = ["Signal Messenger LLC"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-only"
 
 [lib]
@@ -18,6 +18,7 @@ crate-type = ["staticlib"]
 # Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:
 #     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
 signal-media = ["libsignal-bridge/signal-media"]
+testing-fns = ["libsignal-bridge/testing-fns"]
 
 [dependencies]
 libsignal-protocol = { path = "../../protocol" }
@@ -32,9 +33,8 @@ libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.
 futures-util = "0.3"
-libc = "0.2"
 rand = "0.8"
-log = "0.4"
+log = { version = "0.4", features = ["release_max_level_info"] }
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 
 # cmake 0.1.49 breaks no-toolchain cross-compilation for Mac Catalyst targets

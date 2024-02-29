@@ -2,26 +2,27 @@
 // Copyright 2020 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::borrow::Cow;
+use std::collections::HashMap;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use std::collections::HashMap;
 
 // Simple 'newtype' wrappers around HashMap to make string literals more convenient
 
 #[derive(Clone)]
-pub struct ScalarArgs(pub HashMap<String, Scalar>);
+pub struct ScalarArgs(pub HashMap<Cow<'static, str>, Scalar>);
 
 #[derive(Clone)]
-pub struct PointArgs(pub HashMap<String, RistrettoPoint>);
+pub struct PointArgs(pub HashMap<Cow<'static, str>, RistrettoPoint>);
 
 impl ScalarArgs {
     pub fn new() -> Self {
-        Self(HashMap::<String, Scalar>::new())
+        Self(HashMap::new())
     }
 
-    pub fn add(&mut self, s: &str, val: Scalar) {
-        self.0.insert(s.to_string(), val);
+    pub fn add(&mut self, s: impl Into<Cow<'static, str>>, val: Scalar) {
+        self.0.insert(s.into(), val);
     }
 }
 
@@ -33,11 +34,11 @@ impl Default for ScalarArgs {
 
 impl PointArgs {
     pub fn new() -> Self {
-        Self(HashMap::<String, RistrettoPoint>::new())
+        Self(HashMap::new())
     }
 
-    pub fn add(&mut self, s: &str, val: RistrettoPoint) {
-        self.0.insert(s.to_string(), val);
+    pub fn add(&mut self, s: impl Into<Cow<'static, str>>, val: RistrettoPoint) {
+        self.0.insert(s.into(), val);
     }
 }
 

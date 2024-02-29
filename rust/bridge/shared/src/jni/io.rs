@@ -11,20 +11,25 @@ use bytemuck::cast_slice_mut;
 
 use super::*;
 
-use crate::io::{InputStream, InputStreamRead};
+use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 pub type JavaInputStream<'a> = JObject<'a>;
+pub type JavaSyncInputStream<'a> = JObject<'a>;
 
+/// Implementation of [`InputStream`] for an argument to a bridge function.
 pub struct JniInputStream<'a> {
     env: RefCell<EnvHandle<'a>>,
     stream: &'a JObject<'a>,
 }
 
+/// Implementation of [`SyncInputStream`].
+pub type JniSyncInputStream<'a> = JniInputStream<'a>;
+
 impl<'a> JniInputStream<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
         stream: &'a JObject<'a>,
-    ) -> SignalJniResult<Self> {
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(env, stream, jni_class_name!(java.io.InputStream))?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -87,5 +92,15 @@ impl InputStream for JniInputStream<'_> {
     async fn skip(&self, amount: u64) -> io::Result<()> {
         self.do_skip(amount)?;
         Ok(())
+    }
+}
+
+impl SyncInputStream for JniInputStream<'_> {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(self.do_read(buf)?)
+    }
+
+    fn skip(&self, amount: u64) -> io::Result<()> {
+        Ok(self.do_skip(amount)?)
     }
 }

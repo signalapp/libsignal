@@ -7,19 +7,26 @@
 
 # To keep code size down, we try to avoid depending on multiple versions of crates.
 #
-# For now, these dependencies have conflicting requirements.
+# Sometimes we decide it's okay for certain dependencies.
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
-# bitflags:
-#  mostly provides a macro, with only a small bit of code that actually
-#  makes it into the final build.
-EXPECTED="\
-bitflags v1.3.2
+# pqcrypto-kyber: v0.7 is what we shipped PQXDH on, v0.8 contains the NIST standard version
+EXPECTED="
+pqcrypto-kyber v0.7.9
+pqcrypto-kyber v0.8.0"
 
-bitflags v2.3.3"
+check_cargo_tree() {
+    # Only check the mobile targets, where we care most about code size.
+    cargo tree --quiet --duplicates --edges normal,no-proc-macro \
+        --workspace --all-features --locked \
+        --target aarch64-apple-ios \
+        --target armv7-linux-androideabi \
+        --target aarch64-linux-android \
+        "$@"
+}
 
-if [[ "$(cargo tree --duplicates --edges normal,no-proc-macro --workspace --locked --depth 0)" != "${EXPECTED}" ]]; then
-    cargo tree --duplicates --edges normal,no-proc-macro --workspace --locked
+if [[ "$(check_cargo_tree --depth 0 | sort -u -V)" != "${EXPECTED}" ]]; then
+    check_cargo_tree
     exit 1
 fi

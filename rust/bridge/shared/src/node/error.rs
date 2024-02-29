@@ -2,12 +2,13 @@
 // Copyright 2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-
-use super::*;
+use std::fmt;
 
 use paste::paste;
-use signal_media::sanitize;
-use std::fmt;
+use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
+use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
+
+use super::*;
 
 const ERRORS_PROPERTY_NAME: &str = "Errors";
 const ERROR_CLASS_NAME: &str = "LibSignalErrorBase";
@@ -65,6 +66,56 @@ fn new_js_error<'a>(
     }
 }
 
+/// [`std::error::Error`] implementer that wraps a thrown value.
+#[derive(Debug)]
+pub(crate) enum ThrownException {
+    Error(Root<JsError>),
+    String(String),
+}
+
+impl ThrownException {
+    pub(crate) fn from_value<'a>(
+        cx: &mut CallContext<'a, JsObject>,
+        error: Handle<'a, JsValue>,
+    ) -> Self {
+        if let Ok(e) = error.downcast::<JsError, _>(cx) {
+            ThrownException::Error(e.root(cx))
+        } else if let Ok(e) = error.downcast::<JsString, _>(cx) {
+            ThrownException::String(e.value(cx))
+        } else {
+            ThrownException::String(
+                error
+                    .to_string(cx)
+                    .expect("can convert to string")
+                    .value(cx),
+            )
+        }
+    }
+}
+
+impl Default for ThrownException {
+    fn default() -> Self {
+        Self::String(String::default())
+    }
+}
+
+impl From<&str> for ThrownException {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_string())
+    }
+}
+
+impl std::fmt::Display for ThrownException {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Error(r) => write!(f, "{:?}", r),
+            Self::String(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl std::error::Error for ThrownException {}
+
 pub trait SignalNodeError: Sized + fmt::Display {
     fn throw<'a>(
         self,
@@ -83,6 +134,7 @@ pub trait SignalNodeError: Sized + fmt::Display {
     }
 }
 
+const RATE_LIMITED_ERROR: &str = "RateLimitedError";
 const IO_ERROR: &str = "IoError";
 const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
@@ -188,7 +240,7 @@ impl SignalNodeError for device_transfer::Error {}
 
 impl SignalNodeError for attest::hsm_enclave::Error {}
 
-impl SignalNodeError for attest::sgx_session::Error {}
+impl SignalNodeError for attest::enclave::Error {}
 
 impl SignalNodeError for signal_crypto::Error {}
 
@@ -204,19 +256,21 @@ impl SignalNodeError for usernames::UsernameError {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let name = match &self {
-            Self::BadNicknameCharacter => Some("BadNicknameCharacter"),
-            Self::NicknameTooShort => Some("NicknameTooShort"),
-            Self::NicknameTooLong => Some("NicknameTooLong"),
-            Self::CannotBeEmpty => Some("CannotBeEmpty"),
-            Self::CannotStartWithDigit => Some("CannotStartWithDigit"),
-            Self::MissingSeparator => Some("MissingSeparator"),
-            // These don't get a dedicated error code
-            // because clients won't need to distinguish them from other errors.
-            Self::BadDiscriminator => None,
-            Self::ProofVerificationFailure => None,
+            Self::BadNicknameCharacter => "BadNicknameCharacter",
+            Self::NicknameTooShort => "NicknameTooShort",
+            Self::NicknameTooLong => "NicknameTooLong",
+            Self::NicknameCannotBeEmpty => "NicknameCannotBeEmpty",
+            Self::NicknameCannotStartWithDigit => "CannotStartWithDigit",
+            Self::MissingSeparator => "MissingSeparator",
+            Self::DiscriminatorCannotBeEmpty => "DiscriminatorCannotBeEmpty",
+            Self::DiscriminatorCannotBeZero => "DiscriminatorCannotBeZero",
+            Self::DiscriminatorCannotBeSingleDigit => "DiscriminatorCannotBeSingleDigit",
+            Self::DiscriminatorCannotHaveLeadingZeros => "DiscriminatorCannotHaveLeadingZeros",
+            Self::BadDiscriminatorCharacter => "BadDiscriminatorCharacter",
+            Self::DiscriminatorTooLarge => "DiscriminatorTooLarge",
         };
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
+        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
             Some(error) => cx.throw(error),
             None => {
                 // Make sure we still throw something.
@@ -225,6 +279,8 @@ impl SignalNodeError for usernames::UsernameError {
         }
     }
 }
+
+impl SignalNodeError for usernames::ProofVerificationFailure {}
 
 impl SignalNodeError for usernames::UsernameLinkError {
     fn throw<'a>(
@@ -252,7 +308,7 @@ impl SignalNodeError for usernames::UsernameLinkError {
     }
 }
 
-impl SignalNodeError for sanitize::Error {
+impl SignalNodeError for Mp4Error {
     fn throw<'a>(
         self,
         cx: &mut impl Context<'a>,
@@ -260,25 +316,120 @@ impl SignalNodeError for sanitize::Error {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let name = match &self {
-            sanitize::Error::Io(_) => Some(IO_ERROR),
-            sanitize::Error::Parse(err) => match err.kind {
-                sanitize::ParseError::InvalidBoxLayout => Some(INVALID_MEDIA_INPUT),
-                sanitize::ParseError::InvalidInput => Some(INVALID_MEDIA_INPUT),
-                sanitize::ParseError::MissingRequiredBox(_) => Some(INVALID_MEDIA_INPUT),
-                sanitize::ParseError::TruncatedBox => Some(INVALID_MEDIA_INPUT),
-                sanitize::ParseError::UnsupportedBox(_) => Some(UNSUPPORTED_MEDIA_INPUT),
-                sanitize::ParseError::UnsupportedBoxLayout => Some(UNSUPPORTED_MEDIA_INPUT),
-                sanitize::ParseError::UnsupportedFormat(_) => Some(UNSUPPORTED_MEDIA_INPUT),
+            Mp4Error::Io(_) => IO_ERROR,
+            Mp4Error::Parse(err) => match err.kind {
+                Mp4ParseError::InvalidBoxLayout
+                | Mp4ParseError::InvalidInput
+                | Mp4ParseError::MissingRequiredBox(_)
+                | Mp4ParseError::TruncatedBox => INVALID_MEDIA_INPUT,
+                Mp4ParseError::UnsupportedBox(_)
+                | Mp4ParseError::UnsupportedBoxLayout
+                | Mp4ParseError::UnsupportedFormat(_) => UNSUPPORTED_MEDIA_INPUT,
             },
         };
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
+        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
             Some(error) => cx.throw(error),
             None => {
                 // Make sure we still throw something.
                 cx.throw_error(&message)
             }
         }
+    }
+}
+
+impl SignalNodeError for WebpError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let name = match &self {
+            WebpError::Io(_) => IO_ERROR,
+            WebpError::Parse(err) => match err.kind {
+                WebpParseError::InvalidChunkLayout
+                | WebpParseError::InvalidInput
+                | WebpParseError::InvalidVp8lPrefixCode
+                | WebpParseError::MissingRequiredChunk(_)
+                | WebpParseError::TruncatedChunk => INVALID_MEDIA_INPUT,
+                WebpParseError::UnsupportedChunk(_) | WebpParseError::UnsupportedVp8lVersion(_) => {
+                    UNSUPPORTED_MEDIA_INPUT
+                }
+            },
+        };
+        let message = self.to_string();
+        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(&message)
+            }
+        }
+    }
+}
+
+impl SignalNodeError for std::io::Error {
+    fn throw<'a>(
+        mut self,
+        cx: &mut impl Context<'a>,
+        _module: Handle<'a, JsObject>,
+        _operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let exception = (self.kind() == std::io::ErrorKind::Other)
+            .then(|| {
+                self.get_mut()
+                    .and_then(|e| e.downcast_mut::<ThrownException>())
+            })
+            .flatten()
+            .map(std::mem::take);
+
+        match exception {
+            Some(ThrownException::Error(e)) => {
+                let inner = e.into_inner(cx);
+                cx.throw(inner)
+            }
+            Some(ThrownException::String(s)) => cx.throw_error(s),
+            None => cx.throw_error(self.to_string()),
+        }
+    }
+}
+
+impl SignalNodeError for libsignal_net::cdsi::LookupError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let (name, extra_props) = match self {
+            Self::RateLimited { retry_after } => (
+                RATE_LIMITED_ERROR,
+                Some({
+                    let props = cx.empty_object();
+                    let retry_after = retry_after.as_secs().convert_into(cx)?;
+                    props.set(cx, "retryAfterSecs", retry_after)?;
+                    props
+                }),
+            ),
+            Self::Net(_)
+            | Self::Protocol
+            | Self::AttestationError(_)
+            | Self::InvalidResponse
+            | Self::ParseError => (IO_ERROR, None),
+        };
+        let message = self.to_string();
+        new_js_error(
+            cx,
+            module,
+            Some(name),
+            &message,
+            operation_name,
+            extra_props,
+        )
+        .map(|e| cx.throw(e))
+        // Make sure we still throw something.
+        .unwrap_or_else(|| cx.throw_error(&message))
     }
 }
 

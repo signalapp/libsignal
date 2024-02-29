@@ -8,7 +8,6 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
-use std::convert::TryInto;
 use std::fmt;
 use std::time::{Duration, SystemTime};
 

@@ -36,6 +36,8 @@ def translate_to_ts(typ):
         "ServiceId": "Buffer",
         "Aci": "Buffer",
         "Pni": "Buffer",
+        "E164": "string",
+        "ServiceIdSequence<'_>": "Buffer",
     }
 
     if typ in type_map:
@@ -53,6 +55,10 @@ def translate_to_ts(typ):
     if typ.startswith('&[&'):
         assert typ.endswith(']')
         return 'Wrapper<' + translate_to_ts(typ[3:-1]) + '>[]'
+
+    if typ.startswith('Box<['):
+        assert typ.endswith(']>')
+        return translate_to_ts(typ[5:-2]) + '[]'
 
     if typ.startswith('&['):
         assert typ.endswith(']')
@@ -77,6 +83,10 @@ def translate_to_ts(typ):
         assert typ.endswith('>')
         return 'Promise<' + translate_to_ts(typ[8:-1]) + '>'
 
+    if typ.startswith('Ignored<'):
+        assert typ.endswith('>')
+        return 'null'
+
     return typ
 
 
@@ -87,8 +97,12 @@ ignore_this_warning = re.compile(
 
 
 def camelcase(arg):
-    parts = arg.split('_')
-    return parts[0] + ''.join(x.title() for x in parts[1:])
+    return re.sub(
+        # Preserve double-underscores and leading underscores,
+        # but remove single underscores and capitalize the following letter.
+        r'([^_])_([^_])',
+        lambda match: match.group(1) + match.group(2).upper(),
+        arg)
 
 
 def collect_decls(crate_dir, features=()):
@@ -171,7 +185,7 @@ our_abs_dir = os.path.dirname(os.path.realpath(__file__))
 
 decls = itertools.chain(
     collect_decls(os.path.join(our_abs_dir, '..')),
-    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media')))
+    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media', 'testing-fns')))
 
 output_file_name = 'Native.d.ts'
 contents = open(os.path.join(our_abs_dir, output_file_name + '.in')).read()

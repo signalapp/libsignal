@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryFrom;
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 
+use attest::enclave::Error as SgxError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
-use attest::sgx_session::Error as SgxError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -32,10 +31,13 @@ pub enum SignalFfiError {
     ZkGroupVerificationFailure(ZkGroupVerificationFailure),
     ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
     UsernameError(UsernameError),
+    UsernameProofError(usernames::ProofVerificationFailure),
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     #[cfg(feature = "signal-media")]
-    MediaSanitizeParse(signal_media::sanitize::ParseErrorReport),
+    Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
+    #[cfg(feature = "signal-media")]
+    WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     NullPointer,
     InvalidUtf8String,
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
@@ -61,11 +63,16 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
             SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
             SignalFfiError::UsernameError(e) => write!(f, "{}", e),
+            SignalFfiError::UsernameProofError(e) => write!(f, "{}", e),
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
             #[cfg(feature = "signal-media")]
-            SignalFfiError::MediaSanitizeParse(e) => {
-                write!(f, "Media sanitizer failed to parse media file: {}", e)
+            SignalFfiError::Mp4SanitizeParse(e) => {
+                write!(f, "Mp4 sanitizer failed to parse mp4 file: {}", e)
+            }
+            #[cfg(feature = "signal-media")]
+            SignalFfiError::WebpSanitizeParse(e) => {
+                write!(f, "WebP sanitizer failed to parse webp file: {}", e)
             }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
@@ -130,6 +137,12 @@ impl From<UsernameError> for SignalFfiError {
     }
 }
 
+impl From<usernames::ProofVerificationFailure> for SignalFfiError {
+    fn from(e: usernames::ProofVerificationFailure) -> SignalFfiError {
+        SignalFfiError::UsernameProofError(e)
+    }
+}
+
 impl From<UsernameLinkError> for SignalFfiError {
     fn from(e: UsernameLinkError) -> SignalFfiError {
         SignalFfiError::UsernameLinkError(e)
@@ -137,18 +150,47 @@ impl From<UsernameLinkError> for SignalFfiError {
 }
 
 impl From<IoError> for SignalFfiError {
-    fn from(e: IoError) -> SignalFfiError {
-        Self::Io(e)
+    fn from(mut e: IoError) -> SignalFfiError {
+        let original_error = (e.kind() == IoErrorKind::Other)
+            .then(|| {
+                e.get_mut()
+                    .and_then(|e| e.downcast_mut::<SignalProtocolError>())
+            })
+            .flatten()
+            .map(|e| {
+                // We can't get the inner error out without putting something in
+                // its place, so leave some random (cheap-to-construct) error.
+                // TODO: use IoError::downcast() once it is stabilized
+                // (https://github.com/rust-lang/rust/issues/99262).
+                std::mem::replace(e, SignalProtocolError::InvalidPreKeyId)
+            });
+
+        if let Some(callback_err) = original_error {
+            Self::Signal(callback_err)
+        } else {
+            Self::Io(e)
+        }
     }
 }
 
 #[cfg(feature = "signal-media")]
-impl From<signal_media::sanitize::Error> for SignalFfiError {
-    fn from(e: signal_media::sanitize::Error) -> SignalFfiError {
-        use signal_media::sanitize::Error;
+impl From<signal_media::sanitize::mp4::Error> for SignalFfiError {
+    fn from(e: signal_media::sanitize::mp4::Error) -> SignalFfiError {
+        use signal_media::sanitize::mp4::Error;
         match e {
-            Error::Io(e) => Self::Io(e.into()),
-            Error::Parse(e) => Self::MediaSanitizeParse(e),
+            Error::Io(e) => Self::Io(e),
+            Error::Parse(e) => Self::Mp4SanitizeParse(e),
+        }
+    }
+}
+
+#[cfg(feature = "signal-media")]
+impl From<signal_media::sanitize::webp::Error> for SignalFfiError {
+    fn from(e: signal_media::sanitize::webp::Error) -> SignalFfiError {
+        use signal_media::sanitize::webp::Error;
+        match e {
+            Error::Io(e) => Self::Io(e),
+            Error::Parse(e) => Self::WebpSanitizeParse(e),
         }
     }
 }
@@ -177,10 +219,12 @@ pub struct CallbackError {
 }
 
 impl CallbackError {
-    /// Returns `None` if `value` is zero; otherwise, wraps the value in `Self`.
-    pub fn check(value: i32) -> Option<Self> {
-        let value = std::num::NonZeroI32::try_from(value).ok()?;
-        Some(Self { value })
+    /// Returns `Ok(())` if `value` is zero; otherwise, wraps the value in `Self` as an error.
+    pub fn check(value: i32) -> Result<(), Self> {
+        match std::num::NonZeroI32::try_from(value).ok() {
+            None => Ok(()),
+            Some(value) => Err(Self { value }),
+        }
     }
 }
 

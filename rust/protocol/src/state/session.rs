@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryInto;
 use std::result::Result;
 use std::time::{Duration, SystemTime};
 
@@ -517,7 +516,27 @@ impl SessionState {
     }
 
     pub(crate) fn clear_unacknowledged_pre_key_message(&mut self) {
+        // Explicitly destructuring the SessionStructure in case there are new
+        // pending fields that need to be cleared.
+        let SessionStructure {
+            session_version: _session_version,
+            local_identity_public: _local_identity_public,
+            remote_identity_public: _remote_identity_public,
+            root_key: _root_key,
+            previous_counter: _previous_counter,
+            sender_chain: _sender_chain,
+            receiver_chains: _receiver_chains,
+            pending_pre_key: _pending_pre_key,
+            pending_kyber_pre_key: _pending_kyber_pre_key,
+            remote_registration_id: _remote_registration_id,
+            local_registration_id: _local_registration_id,
+            alice_base_key: _alice_base_key,
+        } = &self.session;
+        // ####### IMPORTANT #######
+        // Don't forget to clean up new pending fields.
+        // ####### IMPORTANT #######
         self.session.pending_pre_key = None;
+        self.session.pending_kyber_pre_key = None;
     }
 
     pub(crate) fn set_remote_registration_id(&mut self, registration_id: u32) {
@@ -657,20 +676,26 @@ impl SessionRecord {
     }
 
     // A non-fallible version of archive_current_state.
-    fn archive_current_state_inner(&mut self) {
-        if let Some(current_session) = self.current_session.take() {
+    //
+    // Returns `true` if there was a session to archive, `false` if not.
+    fn archive_current_state_inner(&mut self) -> bool {
+        if let Some(mut current_session) = self.current_session.take() {
             if self.previous_sessions.len() >= consts::ARCHIVED_STATES_MAX_LENGTH {
                 self.previous_sessions.pop();
             }
+            current_session.clear_unacknowledged_pre_key_message();
             self.previous_sessions
                 .insert(0, current_session.session.encode_to_vec());
+            true
         } else {
-            log::info!("Skipping archive, current session state is fresh",);
+            false
         }
     }
 
     pub fn archive_current_state(&mut self) -> Result<(), SignalProtocolError> {
-        self.archive_current_state_inner();
+        if !self.archive_current_state_inner() {
+            log::info!("Skipping archive, current session state is fresh");
+        }
         Ok(())
     }
 

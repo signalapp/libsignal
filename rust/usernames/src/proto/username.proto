@@ -9,4 +9,5 @@ package signal.proto.username;
 
 message UsernameData {
   string username = 1;
+  bytes padding = 2;
 }

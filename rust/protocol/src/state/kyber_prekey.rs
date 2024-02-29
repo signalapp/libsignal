@@ -8,7 +8,6 @@ use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::state::GenericSignedPreKey;
 use crate::{kem, PrivateKey, Result};
 
-use std::convert::TryInto;
 use std::fmt;
 
 /// A unique identifier selecting among this client's known signed pre-keys.

@@ -4,7 +4,6 @@
 //
 
 use hmac::digest::{crypto_common, OutputSizeUser};
-use std::convert::TryInto;
 
 use crypto_common::KeyInit;
 use hmac::digest::typenum::Unsigned;

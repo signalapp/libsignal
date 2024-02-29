@@ -5,9 +5,13 @@
 
 language = "C"
 no_includes = true
+documentation = false
 
 [export]
 item_types = ["functions"]
+
+[export.rename]
+"JavaSyncInputStream" = "JavaInputStream"
 
 [fn]
 args = "horizontal"
@@ -21,4 +25,4 @@ extra_bindings = ["libsignal-bridge"]
 
 [parse.expand]
 crates = ["libsignal-jni", "libsignal-bridge"]
-features = ["libsignal-bridge/jni", "libsignal-bridge/signal-media"]
+features = ["libsignal-bridge/jni", "libsignal-bridge/signal-media", "libsignal-bridge/testing-fns"]

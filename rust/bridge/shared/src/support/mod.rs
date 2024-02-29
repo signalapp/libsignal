@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
+
 pub(crate) use paste::paste;
 
 mod serialized;
@@ -182,4 +184,28 @@ macro_rules! bridge_get {
             bridge_get!($typ::$method as [<Get $method:camel>] -> $result $(, $param = $val)*);
         }
     };
+}
+
+/// Reports a result from a future to some receiver.
+pub trait ResultReporter {
+    /// The type that will receive the result.
+    type Receiver;
+
+    /// Reports the result to the provided completer.
+    fn report_to(self, receiver: Self::Receiver);
+}
+
+/// Abstracts over executing a future with type `F`.
+///
+/// Putting the future type in the trait signature allows runtimes to impose additional
+/// requirements, such as `Send`, on the Futures they can run.
+pub trait AsyncRuntime<F: Future>
+where
+    F::Output: ResultReporter,
+{
+    /// Runs the provided future to completion, then reports the result.
+    ///
+    /// Executes the provided future to completion, then reports the output to
+    /// the provided completer.
+    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver);
 }

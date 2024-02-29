@@ -138,13 +138,11 @@ mod test {
     use chrono::DateTime;
     use std::time::Duration;
 
-    use crate::util::testio::read_test_file;
-
     use super::*;
 
     #[test]
     fn happy_path() {
-        verify_signature(&GOOD_PEM, &GOOD_MESSAGE, &GOOD_SIGNATURE, SystemTime::now()).unwrap();
+        verify_signature(GOOD_PEM, &GOOD_MESSAGE, &GOOD_SIGNATURE, SystemTime::now()).unwrap();
     }
 
     #[test]
@@ -152,7 +150,7 @@ mod test {
         let future_time = DateTime::parse_from_rfc3339("2038-01-19T03:14:06Z").unwrap();
         let time: SystemTime =
             SystemTime::UNIX_EPOCH + Duration::from_millis(future_time.timestamp_millis() as u64);
-        verify_signature(&GOOD_PEM, &GOOD_MESSAGE, &GOOD_SIGNATURE, time)
+        verify_signature(GOOD_PEM, &GOOD_MESSAGE, &GOOD_SIGNATURE, time)
             .expect_err("CRL has expired");
     }
 
@@ -160,7 +158,7 @@ mod test {
     fn bad_signature_test() {
         let signature = corrupt(GOOD_SIGNATURE.clone());
 
-        verify_signature(&GOOD_PEM, &GOOD_MESSAGE, &signature, SystemTime::now())
+        verify_signature(GOOD_PEM, &GOOD_MESSAGE, &signature, SystemTime::now())
             .expect_err("signature does not match");
     }
 
@@ -168,7 +166,7 @@ mod test {
     fn bad_data_test() {
         let body = corrupt(GOOD_MESSAGE.clone());
 
-        verify_signature(&GOOD_PEM, &body, &GOOD_SIGNATURE, SystemTime::now())
+        verify_signature(GOOD_PEM, &body, &GOOD_SIGNATURE, SystemTime::now())
             .expect_err("signature does not match");
     }
 
@@ -183,12 +181,12 @@ mod test {
         decode_block(string.as_str()).unwrap()
     }
 
+    const GOOD_PEM: &[u8] = include_bytes!("../tests/data/ias-sig-cert.pem");
     lazy_static! {
-        static ref GOOD_PEM: Vec<u8> = read_test_file("tests/data/ias-sig-cert.pem");
         static ref GOOD_SIGNATURE: Vec<u8> =
             base64_to_bytes("Hj4zz2gLX+g1T4avpcpXxmBqI5bpKKLOy4HLCTO0PwKcV+Q3fhDJVuVy0+SEgzC1TlmARKyH/DVynWu3pA9FA+4BvZxb7nLbaMG4PXdYu56sHDCzFVPsm9TPgqsVu5PbVXatZQ0oVxMkzKtPae3fy/ootXkG+4ahOU6Hwqa0Uy6+HYzL2CJZRJjHV6/iZjgTLjYsQqS0mZiaUuFoqn8RRb8/f7/9SujDSLa8dmKBqaZCtZpeHh4posLWjOhTJx07FhBRh5EV01gXFfys56h2NTc7MpmYbzt2onfH/3lDM8DfdNUJl0TfikzJyVdLWXi0MyAS2nrRhHFwVp365FYEJg==");
         static ref GOOD_MESSAGE: Vec<u8> = base64_to_bytes(
-            std::str::from_utf8(&read_test_file("tests/data/ias-valid-message.txt"))
+            std::str::from_utf8(include_bytes!("../tests/data/ias-valid-message.txt"))
                 .expect("Invalid UTF-8")
         );
 

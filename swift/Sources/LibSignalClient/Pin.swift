@@ -77,7 +77,7 @@ public class PinHash: NativeHandleOwner {
     /// Hash a pin for use with a remote SecureValueRecovery1 service.
     ///
     /// Note: This should be used with SVR1 only. For SVR1, the salt should be the backup id.
-    /// For SVR2 clients, use ``PinHash/init(pin:username:mrenclave:)`` which handles salt construction.
+    /// For SVR2 clients, use ``PinHash/init(normalizedPin:username:mrenclave:)`` which handles salt construction.
     ///
     /// - parameter normalizedPin: A normalized, UTF-8 encoded byte representation of the pin to verify
     /// - parameter salt: A 32 byte salt
@@ -97,7 +97,7 @@ public class PinHash: NativeHandleOwner {
 
     /// Hash a pin for use with a remote SecureValueRecovery2 service.
     ///
-    /// Note: This should be used with SVR2 only. For SVR1 clients, use ``PinHash/init(pin:salt:)``
+    /// Note: This should be used with SVR2 only. For SVR1 clients, use ``PinHash/init(normalizedPin:salt:)``
     ///
     /// - parameter normalizedPin: An already normalized UTF-8 encoded byte representation of the pin
     /// - parameter username: The Basic Auth username used to authenticate with SVR2

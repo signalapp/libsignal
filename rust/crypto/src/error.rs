@@ -15,8 +15,6 @@ pub enum Error {
     InvalidInputSize,
     /// invalid authentication tag
     InvalidTag,
-    /// invalid object state
-    InvalidState,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

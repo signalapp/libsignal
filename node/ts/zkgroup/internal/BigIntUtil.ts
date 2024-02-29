@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-const UINT64_MAX = BigInt('0xFFFFFFFFFFFFFFFF');
+const UINT64_MAX = 0xffffffffffffffffn;
 
 export function bufferFromBigUInt64BE(value: bigint): Buffer {
   if (value < 0 || value > UINT64_MAX) {

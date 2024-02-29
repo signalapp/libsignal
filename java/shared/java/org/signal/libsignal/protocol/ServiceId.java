@@ -7,10 +7,13 @@ package org.signal.libsignal.protocol;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 
 public abstract class ServiceId {
+  private static final byte FIXED_WIDTH_BINARY_LENGTH = 17;
+
   private static final byte ACI_MARKER = 0x00;
   private static final byte PNI_MARKER = 0x01;
 
@@ -27,7 +30,7 @@ public abstract class ServiceId {
     if (uuid == null) {
       throw new IllegalArgumentException("Source UUID must be specified");
     }
-    ByteBuffer bytes = ByteBuffer.wrap(new byte[17]);
+    ByteBuffer bytes = ByteBuffer.wrap(new byte[FIXED_WIDTH_BINARY_LENGTH]);
     long high = uuid.getMostSignificantBits();
     long low = uuid.getLeastSignificantBits();
     bytes.put(marker);
@@ -116,6 +119,16 @@ public abstract class ServiceId {
         // This is already handled on the Rust side
         throw new InvalidServiceIdException();
     }
+  }
+
+  public static byte[] toConcatenatedFixedWidthBinary(List<ServiceId> serviceIds) {
+    byte[] result = new byte[FIXED_WIDTH_BINARY_LENGTH * serviceIds.size()];
+    int offset = 0;
+    for (ServiceId next : serviceIds) {
+      System.arraycopy(next.storage, 0, result, offset, FIXED_WIDTH_BINARY_LENGTH);
+      offset += FIXED_WIDTH_BINARY_LENGTH;
+    }
+    return result;
   }
 
   private static UUID uuidFromBytes(ByteBuffer buffer) {

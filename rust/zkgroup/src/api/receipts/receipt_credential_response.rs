@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::simple_types::*;
 use crate::crypto;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialResponse {
     pub(crate) reserved: ReservedBytes,
     pub(crate) receipt_expiration_time: Timestamp,

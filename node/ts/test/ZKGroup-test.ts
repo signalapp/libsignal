@@ -22,8 +22,11 @@ import {
   CreateCallLinkCredentialRequestContext,
   CallLinkSecretParams,
   CallLinkAuthCredentialResponse,
+  BackupAuthCredentialRequestContext,
+  GroupSendCredentialResponse,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
+import { Uuid } from '..';
 
 const SECONDS_PER_DAY = 86400;
 
@@ -551,7 +554,7 @@ describe('ZKGroup', () => {
 
     // issuance server
     const receiptExpirationTime = 31337;
-    const receiptLevel = BigInt('3');
+    const receiptLevel = 3n;
     const response = serverOps.issueReceiptCredential(
       request,
       receiptExpirationTime,
@@ -684,5 +687,283 @@ describe('ZKGroup', () => {
 
     const result = new ProfileKey(profileKey).deriveAccessKey();
     assertArrayEquals(expectedAccessKey, result);
+  });
+
+  describe('BackupAuthCredential', () => {
+    const SERVER_SECRET_RANDOM = hexToBuffer(
+      '6987b92bdea075d3f8b42b39d780a5be0bc264874a18e11cac694e4fe28f6cca'
+    );
+    const BACKUP_KEY = hexToBuffer(
+      'f9abbbffa7d424929765aecc84b604633c55ac1bce82e1ee06b79bc9a5629338'
+    );
+    const TEST_USER_ID: Uuid = 'e74beed0-e70f-4cfd-abbb-7e3eb333bbac';
+
+    const SERIALIZED_BACKUP_ID = hexToBuffer(
+      'e3926f11ddd143e6dd0f20bfcb08349e'
+    );
+    const SERIALIZED_REQUEST_CREDENTIAL = Buffer.from(
+      'AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3994Aersq2yNRgcARBoedBeoEfKIXdty6X7l6+TiPFAqDvojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==',
+      'base64'
+    );
+
+    it('testDeterministic', () => {
+      const receiptLevel = 1n;
+      const context = BackupAuthCredentialRequestContext.create(
+        BACKUP_KEY,
+        TEST_USER_ID
+      );
+      const request = context.getRequest();
+      assertArrayEquals(request.serialize(), SERIALIZED_REQUEST_CREDENTIAL);
+
+      const serverSecretParams =
+        GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
+
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const response = request.issueCredential(
+        startOfDay,
+        receiptLevel,
+        serverSecretParams
+      );
+      const credential = context.receive(
+        response,
+        serverSecretParams.getPublicParams(),
+        receiptLevel
+      );
+      assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
+    });
+
+    it('testIntegration', () => {
+      const receiptLevel = 10n;
+
+      const serverSecretParams =
+        GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      // client
+      const context = BackupAuthCredentialRequestContext.create(
+        BACKUP_KEY,
+        TEST_USER_ID
+      );
+      const request = context.getRequest();
+
+      // issuance server
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const response = request.issueCredentialWithRandom(
+        startOfDay,
+        receiptLevel,
+        serverSecretParams,
+        TEST_ARRAY_32_1
+      );
+
+      // client
+      const credential = context.receive(
+        response,
+        serverPublicParams,
+        receiptLevel
+      );
+      assert.throws(() =>
+        context.receive(response, serverPublicParams, receiptLevel + 1n)
+      );
+      const presentation = credential.presentWithRandom(
+        serverPublicParams,
+        TEST_ARRAY_32_2
+      );
+
+      // redemption server
+      presentation.verify(serverSecretParams);
+      presentation.verify(
+        serverSecretParams,
+        new Date(1000 * (startOfDay + SECONDS_PER_DAY))
+      );
+
+      // credential should be expired after 2 days
+      assert.throws(() =>
+        presentation.verify(
+          serverSecretParams,
+          new Date(1000 * (startOfDay + 1 + SECONDS_PER_DAY * 2))
+        )
+      );
+
+      // future credential should be invalid
+      assert.throws(() =>
+        presentation.verify(
+          serverSecretParams,
+          new Date(1000 * (startOfDay - 1 - SECONDS_PER_DAY))
+        )
+      );
+    });
+  });
+
+  describe('GroupSendCredential', () => {
+    it('works in normal usage', () => {
+      const serverSecretParams =
+        ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      const aliceAci = Aci.parseFromServiceIdString(
+        '9d0652a3-dcc3-4d11-975f-74d61598733f'
+      );
+      const bobAci = Aci.parseFromServiceIdString(
+        '6838237d-02f6-4098-b110-698253d15961'
+      );
+      const eveAci = Aci.parseFromServiceIdString(
+        '3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7'
+      );
+      const malloryAci = Aci.parseFromServiceIdString(
+        '5d088142-6fd7-4dbd-af00-fdda1b3ce988'
+      );
+
+      const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+      const groupSecretParams =
+        GroupSecretParams.deriveFromMasterKey(masterKey);
+
+      const aliceCiphertext = new ClientZkGroupCipher(
+        groupSecretParams
+      ).encryptServiceId(aliceAci);
+      const groupCiphertexts = [aliceAci, bobAci, eveAci, malloryAci].map(
+        (next) =>
+          new ClientZkGroupCipher(groupSecretParams).encryptServiceId(next)
+      );
+
+      // Server
+      const response = GroupSendCredentialResponse.issueCredential(
+        groupCiphertexts,
+        aliceCiphertext,
+        serverSecretParams
+      );
+
+      // Client
+      const credential = response.receive(
+        [aliceAci, bobAci, eveAci, malloryAci],
+        aliceAci,
+        serverPublicParams,
+        groupSecretParams
+      );
+      assert.throws(() =>
+        response.receive(
+          [aliceAci, bobAci, eveAci, malloryAci],
+          bobAci,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receive(
+          [bobAci, eveAci, malloryAci],
+          aliceAci,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receive(
+          [aliceAci, eveAci, malloryAci],
+          aliceAci,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+
+      // Try the other receive too
+      void response.receiveWithCiphertexts(
+        groupCiphertexts,
+        aliceCiphertext,
+        serverPublicParams,
+        groupSecretParams
+      );
+      assert.throws(() =>
+        response.receiveWithCiphertexts(
+          groupCiphertexts,
+          groupCiphertexts[1],
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receiveWithCiphertexts(
+          groupCiphertexts.slice(1),
+          aliceCiphertext,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+      assert.throws(() =>
+        response.receiveWithCiphertexts(
+          groupCiphertexts.slice(0, -1),
+          aliceCiphertext,
+          serverPublicParams,
+          groupSecretParams
+        )
+      );
+
+      const presentation = credential.presentWithRandom(
+        serverPublicParams,
+        TEST_ARRAY_32_2
+      );
+
+      // Server
+      presentation.verify([bobAci, eveAci, malloryAci], serverSecretParams);
+      presentation.verify(
+        [bobAci, eveAci, malloryAci],
+        serverSecretParams,
+        new Date(Date.now() + 60 * 60 * 1000)
+      );
+
+      assert.throws(() =>
+        presentation.verify(
+          [aliceAci, bobAci, eveAci, malloryAci],
+          serverSecretParams
+        )
+      );
+      assert.throws(() =>
+        presentation.verify([eveAci, malloryAci], serverSecretParams)
+      );
+
+      // credential should definitely be expired after 2 days
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      assert.throws(() =>
+        presentation.verify(
+          [bobAci, eveAci, malloryAci],
+          serverSecretParams,
+          new Date(1000 * (startOfDay + 2 * SECONDS_PER_DAY + 1))
+        )
+      );
+    });
+
+    it('works with empty credentials', () => {
+      const serverSecretParams =
+        ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      const aliceAci = Aci.parseFromServiceIdString(
+        '9d0652a3-dcc3-4d11-975f-74d61598733f'
+      );
+
+      const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+      const groupSecretParams =
+        GroupSecretParams.deriveFromMasterKey(masterKey);
+
+      const aliceCiphertext = new ClientZkGroupCipher(
+        groupSecretParams
+      ).encryptServiceId(aliceAci);
+
+      // Server
+      const response = GroupSendCredentialResponse.issueCredential(
+        [aliceCiphertext],
+        aliceCiphertext,
+        serverSecretParams
+      );
+
+      // Client
+      const _credential = response.receive(
+        [aliceAci],
+        aliceAci,
+        serverPublicParams,
+        groupSecretParams
+      );
+    });
   });
 });

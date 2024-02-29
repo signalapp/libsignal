@@ -5,9 +5,10 @@
 
 use crate::common::simple_types::*;
 use crate::crypto;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialWithPniResponse {
     pub(crate) reserved: ReservedBytes,
     pub(crate) credential: crypto::credentials::AuthCredentialWithPni,

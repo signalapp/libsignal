@@ -20,7 +20,6 @@
 //!     arabic 0-9 equivalents.
 //!  3. The string must then be [NFKD normalized](https://unicode.org/reports/tr15/#Norm_Forms)
 //!
-use std::convert::TryInto;
 
 use argon2::password_hash::{rand_core, Salt, SaltString};
 use argon2::{

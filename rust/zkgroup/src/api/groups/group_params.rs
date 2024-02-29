@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::convert::TryInto;
-
 use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::sho::*;
@@ -13,6 +11,7 @@ use crate::{api, crypto};
 use aes_gcm_siv::aead::generic_array::GenericArray;
 use aes_gcm_siv::aead::Aead;
 use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, Default)]
@@ -20,7 +19,7 @@ pub struct GroupMasterKey {
     pub(crate) bytes: [u8; GROUP_MASTER_KEY_LEN],
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupSecretParams {
     reserved: ReservedBytes,
     master_key: GroupMasterKey,
@@ -30,7 +29,7 @@ pub struct GroupSecretParams {
     pub(crate) profile_key_enc_key_pair: crypto::profile_key_encryption::KeyPair,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupPublicParams {
     reserved: ReservedBytes,
     group_id: GroupIdentifierBytes,
@@ -68,9 +67,9 @@ impl GroupSecretParams {
         let mut blob_key: AesKeyBytes = Default::default();
         group_id.copy_from_slice(&sho.squeeze(GROUP_IDENTIFIER_LEN)[..]);
         blob_key.copy_from_slice(&sho.squeeze(AES_KEY_LEN)[..]);
-        let uid_enc_key_pair = crypto::uid_encryption::KeyPair::derive_from(&mut sho);
+        let uid_enc_key_pair = crypto::uid_encryption::KeyPair::derive_from(sho.as_mut());
         let profile_key_enc_key_pair =
-            crypto::profile_key_encryption::KeyPair::derive_from(&mut sho);
+            crypto::profile_key_encryption::KeyPair::derive_from(sho.as_mut());
 
         Self {
             reserved: Default::default(),
@@ -93,15 +92,15 @@ impl GroupSecretParams {
     pub fn get_public_params(&self) -> GroupPublicParams {
         GroupPublicParams {
             reserved: Default::default(),
-            uid_enc_public_key: self.uid_enc_key_pair.get_public_key(),
-            profile_key_enc_public_key: self.profile_key_enc_key_pair.get_public_key(),
+            uid_enc_public_key: self.uid_enc_key_pair.public_key,
+            profile_key_enc_public_key: self.profile_key_enc_key_pair.public_key,
             group_id: self.group_id,
         }
     }
 
     pub fn encrypt_service_id(
         &self,
-        service_id: libsignal_protocol::ServiceId,
+        service_id: libsignal_core::ServiceId,
     ) -> api::groups::UuidCiphertext {
         let uid = crypto::uid_struct::UidStruct::from_service_id(service_id);
         self.encrypt_uid_struct(uid)
@@ -111,7 +110,7 @@ impl GroupSecretParams {
         &self,
         uid: crypto::uid_struct::UidStruct,
     ) -> api::groups::UuidCiphertext {
-        let ciphertext = self.uid_enc_key_pair.encrypt(uid);
+        let ciphertext = self.uid_enc_key_pair.encrypt(&uid);
         api::groups::UuidCiphertext {
             reserved: Default::default(),
             ciphertext,
@@ -121,14 +120,17 @@ impl GroupSecretParams {
     pub fn decrypt_service_id(
         &self,
         ciphertext: api::groups::UuidCiphertext,
-    ) -> Result<libsignal_protocol::ServiceId, ZkGroupVerificationFailure> {
-        self.uid_enc_key_pair.decrypt(ciphertext.ciphertext)
+    ) -> Result<libsignal_core::ServiceId, ZkGroupVerificationFailure> {
+        crypto::uid_encryption::UidEncryptionDomain::decrypt(
+            &self.uid_enc_key_pair,
+            &ciphertext.ciphertext,
+        )
     }
 
     pub fn encrypt_profile_key(
         &self,
         profile_key: api::profiles::ProfileKey,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> api::groups::ProfileKeyCiphertext {
         self.encrypt_profile_key_bytes(profile_key.bytes, user_id)
     }
@@ -136,13 +138,13 @@ impl GroupSecretParams {
     pub fn encrypt_profile_key_bytes(
         &self,
         profile_key_bytes: ProfileKeyBytes,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> api::groups::ProfileKeyCiphertext {
         let profile_key = crypto::profile_key_struct::ProfileKeyStruct::new(
             profile_key_bytes,
             uuid::Uuid::from(user_id).into_bytes(),
         );
-        let ciphertext = self.profile_key_enc_key_pair.encrypt(profile_key);
+        let ciphertext = self.profile_key_enc_key_pair.encrypt(&profile_key);
         api::groups::ProfileKeyCiphertext {
             reserved: Default::default(),
             ciphertext,
@@ -152,12 +154,14 @@ impl GroupSecretParams {
     pub fn decrypt_profile_key(
         &self,
         ciphertext: api::groups::ProfileKeyCiphertext,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> Result<api::profiles::ProfileKey, ZkGroupVerificationFailure> {
-        let profile_key_struct = self.profile_key_enc_key_pair.decrypt(
-            ciphertext.ciphertext,
-            uuid::Uuid::from(user_id).into_bytes(),
-        )?;
+        let profile_key_struct =
+            crypto::profile_key_encryption::ProfileKeyEncryptionDomain::decrypt(
+                &self.profile_key_enc_key_pair,
+                &ciphertext.ciphertext,
+                uuid::Uuid::from(user_id).into_bytes(),
+            )?;
         Ok(api::profiles::ProfileKey {
             bytes: profile_key_struct.bytes,
         })

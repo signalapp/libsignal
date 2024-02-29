@@ -9,7 +9,9 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
+use zkcredential::attributes::Attribute;
 
 use crate::common::array_utils::OneBased;
 use crate::common::constants::*;
@@ -23,32 +25,32 @@ use crate::crypto::{
     profile_key_struct, receipt_credential_request, uid_encryption, uid_struct,
 };
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialWithPniIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ProfileKeyCredentialRequestProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ReceiptCredentialIssuanceProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialPresentationProofV2 {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -59,7 +61,7 @@ pub struct AuthCredentialPresentationProofV2 {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct AuthCredentialWithPniPresentationProof {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -76,7 +78,7 @@ pub struct AuthCredentialWithPniPresentationProof {
 ///
 /// Kept around so that v1 ProfileKeyCredentialPresentations can still be deserialized,
 /// even though they can't be verified.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationProofV1 {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -93,7 +95,7 @@ pub struct ProfileKeyCredentialPresentationProofV1 {
 ///
 /// Kept around so that v2 ProfileKeyCredentialPresentations can still be deserialized,
 /// even though they can't be verified.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationProofV2 {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -106,7 +108,7 @@ pub struct ProfileKeyCredentialPresentationProofV2 {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialPresentationProof {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -119,7 +121,7 @@ pub struct ExpiringProfileKeyCredentialPresentationProof {
     poksho_proof: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct ReceiptCredentialPresentationProof {
     C_x0: RistrettoPoint,
     C_x1: RistrettoPoint,
@@ -555,7 +557,7 @@ impl ExpiringProfileKeyCredentialIssuanceProof {
         credential_expiration_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let credentials_system = credentials::SystemParams::get_hardcoded();
-        let aci = libsignal_protocol::Aci::from_uuid_bytes(aci_bytes);
+        let aci = libsignal_core::Aci::from_uuid_bytes(aci_bytes);
         let uid = uid_struct::UidStruct::from_service_id(aci.into());
 
         let m5 = TimestampStruct::calc_m_from(credential_expiration_time);
@@ -751,6 +753,8 @@ impl AuthCredentialPresentationProofV2 {
         let I = credentials_public_key.I;
         let Z = z * I;
 
+        let [E_A1, E_A2] = uid_ciphertext.as_points();
+
         // Scalars listed in order of stmts for debugging
         let mut scalar_args = poksho::ScalarArgs::new();
         scalar_args.add("z", z);
@@ -768,12 +772,12 @@ impl AuthCredentialPresentationProofV2 {
         point_args.add("C_x0", C_x0);
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
-        point_args.add("A", uid_enc_key_pair.A);
+        point_args.add("A", uid_enc_key_pair.public_key.A);
         point_args.add("G_a1", uid_system.G_a1);
         point_args.add("G_a2", uid_system.G_a2);
-        point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
+        point_args.add("C_y2-E_A2", C_y2 - E_A2);
         point_args.add("G_y2", credentials_system.G_y[2]);
-        point_args.add("-E_A1", -uid_ciphertext.E_A1);
+        point_args.add("-E_A1", -E_A1);
         point_args.add("C_y3", C_y3);
         point_args.add("G_y3", credentials_system.G_y[3]);
 
@@ -828,6 +832,7 @@ impl AuthCredentialPresentationProofV2 {
             ..
         } = credentials_key_pair;
 
+        let [E_A1, E_A2] = uid_ciphertext.as_points();
         let m3 = encode_redemption_time(redemption_time);
         let M3 = m3 * credentials_system.G_m3;
         let Z = C_V - W - x0 * C_x0 - x1 * C_x1 - y1 * C_y1 - y2 * C_y2 - y3 * (C_y3 + M3);
@@ -843,10 +848,10 @@ impl AuthCredentialPresentationProofV2 {
         point_args.add("A", uid_enc_public_key.A);
         point_args.add("G_a1", enc_system.G_a1);
         point_args.add("G_a2", enc_system.G_a2);
-        point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
+        point_args.add("C_y2-E_A2", C_y2 - E_A2);
         point_args.add("G_y2", credentials_system.G_y[2]);
-        point_args.add("-E_A1", -uid_ciphertext.E_A1);
-        //point_args.add("E_A1", uid_ciphertext.E_A1);
+        point_args.add("-E_A1", -E_A1);
+        //point_args.add("E_A1", E_A1);
         //point_args.add("C_y1", C_y1);
         //point_args.add("G_y1", credentials_system.G_y[1]);
         point_args.add("C_y3", C_y3);
@@ -912,6 +917,9 @@ impl AuthCredentialWithPniPresentationProof {
         let I = credentials_public_key.I;
         let Z = z * I;
 
+        let [E_A1, E_A2] = aci_ciphertext.as_points();
+        let [E_B1, E_B2] = pni_ciphertext.as_points();
+
         // Scalars listed in order of stmts for debugging
         let mut scalar_args = poksho::ScalarArgs::new();
         scalar_args.add("z", z);
@@ -931,21 +939,21 @@ impl AuthCredentialWithPniPresentationProof {
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
 
-        point_args.add("A", uid_enc_key_pair.A);
+        point_args.add("A", uid_enc_key_pair.public_key.A);
         point_args.add("G_a1", uid_system.G_a1);
         point_args.add("G_a2", uid_system.G_a2);
 
-        point_args.add("C_y2-E_A2", C_y2 - aci_ciphertext.E_A2);
+        point_args.add("C_y2-E_A2", C_y2 - E_A2);
         point_args.add("G_y2", credentials_system.G_y[2]);
-        point_args.add("-E_A1", -aci_ciphertext.E_A1);
-        point_args.add("E_A1", aci_ciphertext.E_A1);
+        point_args.add("-E_A1", -E_A1);
+        point_args.add("E_A1", E_A1);
         point_args.add("C_y1", C_y1);
         point_args.add("G_y1", credentials_system.G_y[1]);
 
-        point_args.add("C_y4-E_B2", C_y4 - pni_ciphertext.E_A2);
+        point_args.add("C_y4-E_B2", C_y4 - E_B2);
         point_args.add("G_y4", credentials_system.G_y[4]);
-        point_args.add("-E_B1", -pni_ciphertext.E_A1);
-        point_args.add("E_B1", pni_ciphertext.E_A1);
+        point_args.add("-E_B1", -E_B1);
+        point_args.add("E_B1", E_B1);
         point_args.add("C_y3", C_y3);
         point_args.add("G_y3", credentials_system.G_y[3]);
         point_args.add("0", RistrettoPoint::identity());
@@ -1007,6 +1015,8 @@ impl AuthCredentialWithPniPresentationProof {
             ..
         } = credentials_key_pair;
 
+        let [E_A1, E_A2] = aci_ciphertext.as_points();
+        let [E_B1, E_B2] = pni_ciphertext.as_points();
         let m5 = TimestampStruct::calc_m_from(redemption_time);
         let M5 = m5 * credentials_system.G_m5;
         let Z = C_V
@@ -1032,17 +1042,17 @@ impl AuthCredentialWithPniPresentationProof {
         point_args.add("G_a1", uid_enc_system.G_a1);
         point_args.add("G_a2", uid_enc_system.G_a2);
 
-        point_args.add("C_y2-E_A2", C_y2 - aci_ciphertext.E_A2);
+        point_args.add("C_y2-E_A2", C_y2 - E_A2);
         point_args.add("G_y2", credentials_system.G_y[2]);
-        point_args.add("-E_A1", -aci_ciphertext.E_A1);
-        point_args.add("E_A1", aci_ciphertext.E_A1);
+        point_args.add("-E_A1", -E_A1);
+        point_args.add("E_A1", E_A1);
         point_args.add("C_y1", C_y1);
         point_args.add("G_y1", credentials_system.G_y[1]);
 
-        point_args.add("C_y4-E_B2", C_y4 - pni_ciphertext.E_A2);
+        point_args.add("C_y4-E_B2", C_y4 - E_B2);
         point_args.add("G_y4", credentials_system.G_y[4]);
-        point_args.add("-E_B1", -pni_ciphertext.E_A1);
-        point_args.add("E_B1", pni_ciphertext.E_A1);
+        point_args.add("-E_B1", -E_B1);
+        point_args.add("E_B1", E_B1);
         point_args.add("C_y3", C_y3);
         point_args.add("G_y3", credentials_system.G_y[3]);
         point_args.add("0", RistrettoPoint::identity());
@@ -1108,7 +1118,7 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         let credentials_system = credentials::SystemParams::get_hardcoded();
         let uid_system = uid_encryption::SystemParams::get_hardcoded();
         let profile_key_system = profile_key_encryption::SystemParams::get_hardcoded();
-        let aci = libsignal_protocol::Aci::from_uuid_bytes(aci_bytes);
+        let aci = libsignal_core::Aci::from_uuid_bytes(aci_bytes);
         let uid = uid_struct::UidStruct::from_service_id(aci.into());
         let profile_key = profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, aci_bytes);
 
@@ -1126,10 +1136,13 @@ impl ExpiringProfileKeyCredentialPresentationProof {
 
         let z0 = -z * credential.t;
         let z1 = -z * uid_enc_key_pair.a1;
-        let z2 = -z * profile_key_enc_key_pair.b1;
+        let z2 = -z * profile_key_enc_key_pair.a1;
 
         let I = credentials_public_key.I;
         let Z = z * I;
+
+        let [E_A1, E_A2] = uid_ciphertext.as_points();
+        let [E_B1, E_B2] = profile_key_ciphertext.as_points();
 
         // Scalars listed in order of stmts for debugging
         let mut scalar_args = poksho::ScalarArgs::new();
@@ -1138,8 +1151,8 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         scalar_args.add("z0", z0);
         scalar_args.add("a1", uid_enc_key_pair.a1);
         scalar_args.add("a2", uid_enc_key_pair.a2);
-        scalar_args.add("b1", profile_key_enc_key_pair.b1);
-        scalar_args.add("b2", profile_key_enc_key_pair.b2);
+        scalar_args.add("b1", profile_key_enc_key_pair.a1);
+        scalar_args.add("b2", profile_key_enc_key_pair.a2);
         scalar_args.add("z1", z1);
         scalar_args.add("z2", z2);
 
@@ -1153,23 +1166,26 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
 
-        point_args.add("A+B", uid_enc_key_pair.A + profile_key_enc_key_pair.B);
+        point_args.add(
+            "A+B",
+            uid_enc_key_pair.public_key.A + profile_key_enc_key_pair.public_key.A,
+        );
         point_args.add("G_a1", uid_system.G_a1);
         point_args.add("G_a2", uid_system.G_a2);
         point_args.add("G_b1", profile_key_system.G_b1);
         point_args.add("G_b2", profile_key_system.G_b2);
 
-        point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
+        point_args.add("C_y2-E_A2", C_y2 - E_A2);
         point_args.add("G_y2", credentials_system.G_y[2]);
-        point_args.add("-E_A1", -uid_ciphertext.E_A1);
-        point_args.add("E_A1", uid_ciphertext.E_A1);
+        point_args.add("-E_A1", -E_A1);
+        point_args.add("E_A1", E_A1);
         point_args.add("C_y1", C_y1);
         point_args.add("G_y1", credentials_system.G_y[1]);
 
-        point_args.add("C_y4-E_B2", C_y4 - profile_key_ciphertext.E_B2);
+        point_args.add("C_y4-E_B2", C_y4 - E_B2);
         point_args.add("G_y4", credentials_system.G_y[4]);
-        point_args.add("-E_B1", -profile_key_ciphertext.E_B1);
-        point_args.add("E_B1", profile_key_ciphertext.E_B1);
+        point_args.add("-E_B1", -E_B1);
+        point_args.add("E_B1", E_B1);
         point_args.add("C_y3", C_y3);
         point_args.add("G_y3", credentials_system.G_y[3]);
         point_args.add("0", RistrettoPoint::identity());
@@ -1233,6 +1249,8 @@ impl ExpiringProfileKeyCredentialPresentationProof {
             ..
         } = credentials_key_pair;
 
+        let [E_A1, E_A2] = uid_ciphertext.as_points();
+        let [E_B1, E_B2] = profile_key_ciphertext.as_points();
         let m5 = TimestampStruct::calc_m_from(credential_expiration_time);
         let M5 = m5 * credentials_system.G_m5;
 
@@ -1255,23 +1273,23 @@ impl ExpiringProfileKeyCredentialPresentationProof {
         point_args.add("G_x0", credentials_system.G_x0);
         point_args.add("G_x1", credentials_system.G_x1);
 
-        point_args.add("A+B", uid_enc_public_key.A + profile_key_enc_public_key.B);
+        point_args.add("A+B", uid_enc_public_key.A + profile_key_enc_public_key.A);
         point_args.add("G_a1", uid_enc_system.G_a1);
         point_args.add("G_a2", uid_enc_system.G_a2);
         point_args.add("G_b1", profile_key_enc_system.G_b1);
         point_args.add("G_b2", profile_key_enc_system.G_b2);
 
-        point_args.add("C_y2-E_A2", C_y2 - uid_ciphertext.E_A2);
+        point_args.add("C_y2-E_A2", C_y2 - E_A2);
         point_args.add("G_y2", credentials_system.G_y[2]);
-        point_args.add("-E_A1", -uid_ciphertext.E_A1);
-        point_args.add("E_A1", uid_ciphertext.E_A1);
+        point_args.add("-E_A1", -E_A1);
+        point_args.add("E_A1", E_A1);
         point_args.add("C_y1", C_y1);
         point_args.add("G_y1", credentials_system.G_y[1]);
 
-        point_args.add("C_y4-E_B2", C_y4 - profile_key_ciphertext.E_B2);
+        point_args.add("C_y4-E_B2", C_y4 - E_B2);
         point_args.add("G_y4", credentials_system.G_y[4]);
-        point_args.add("-E_B1", -profile_key_ciphertext.E_B1);
-        point_args.add("E_B1", profile_key_ciphertext.E_B1);
+        point_args.add("-E_B1", -E_B1);
+        point_args.add("E_B1", E_B1);
         point_args.add("C_y3", C_y3);
         point_args.add("G_y3", credentials_system.G_y[3]);
         point_args.add("0", RistrettoPoint::identity());

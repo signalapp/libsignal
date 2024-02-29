@@ -20,7 +20,24 @@ export function generateCandidates(
     nickname,
     minNicknameLength,
     maxNicknameLength
-  ).split(',');
+  );
+}
+
+export function fromParts(
+  nickname: string,
+  discriminator: string,
+  minNicknameLength: number,
+  maxNicknameLength: number
+): { username: string; hash: Buffer } {
+  const hash = Native.Username_HashFromParts(
+    nickname,
+    discriminator,
+    minNicknameLength,
+    maxNicknameLength
+  );
+  // If we generated the hash correctly, we can format the nickname and discriminator manually.
+  const username = `${nickname}.${discriminator}`;
+  return { username, hash };
 }
 
 export function hash(username: string): Buffer {
@@ -46,8 +63,14 @@ export function decryptUsernameLink(usernameLink: UsernameLink): string {
   );
 }
 
-export function createUsernameLink(username: string): UsernameLink {
-  const usernameLinkData = Native.UsernameLink_Create(username);
+export function createUsernameLink(
+  username: string,
+  previousEntropy?: Buffer
+): UsernameLink {
+  const usernameLinkData = Native.UsernameLink_Create(
+    username,
+    previousEntropy ?? null
+  );
   const entropy = usernameLinkData.slice(0, 32);
   const encryptedUsername = usernameLinkData.slice(32);
   return { entropy, encryptedUsername };

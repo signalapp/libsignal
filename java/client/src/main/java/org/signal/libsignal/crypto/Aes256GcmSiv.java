@@ -27,8 +27,7 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
     return this.unsafeHandle;
   }
 
-  byte[] encrypt(byte[] plaintext, byte[] nonce, byte[] associated_data)
-      throws InvalidMessageException, IllegalArgumentException {
+  byte[] encrypt(byte[] plaintext, byte[] nonce, byte[] associated_data) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return Native.Aes256GcmSiv_Encrypt(guard.nativeHandle(), plaintext, nonce, associated_data);
     }

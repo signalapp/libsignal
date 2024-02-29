@@ -24,7 +24,7 @@ pub mod node;
 #[macro_use]
 mod support;
 
-pub use support::describe_panic;
+pub use support::{describe_panic, AsyncRuntime, ResultReporter};
 
 pub mod crypto;
 pub mod protocol;
@@ -51,6 +51,9 @@ pub mod zkgroup;
 #[cfg(feature = "ffi")]
 pub mod ias;
 
+#[cfg(any(feature = "node", feature = "jni"))]
+pub mod net;
+
 // Desktop does not use SVR
 #[cfg(any(feature = "jni", feature = "ffi"))]
 mod pin;
@@ -58,9 +61,15 @@ mod pin;
 mod svr2;
 
 pub mod incremental_mac;
+pub mod message_backup;
 pub mod usernames;
 
 mod io;
 
 #[cfg(feature = "signal-media")]
 pub mod media;
+
+// These APIs are only useful for tests. To save on code size, we omit them by default.
+// To run tests, build with `--features testing-fns`.
+#[cfg(feature = "testing-fns")]
+mod testing;

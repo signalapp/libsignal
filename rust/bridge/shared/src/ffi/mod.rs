@@ -13,6 +13,9 @@ pub use convert::*;
 mod error;
 pub use error::*;
 
+mod futures;
+pub use futures::*;
+
 mod io;
 pub use io::*;
 
@@ -78,6 +81,45 @@ impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
     }
 }
 
+impl<T> From<OwnedBufferOf<T>> for Box<[T]> {
+    fn from(value: OwnedBufferOf<T>) -> Self {
+        let OwnedBufferOf { base, length } = value;
+        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(base, length)) }
+    }
+}
+
+#[repr(C)]
+pub struct StringArray {
+    bytes: OwnedBufferOf<std::ffi::c_uchar>,
+    lengths: OwnedBufferOf<usize>,
+}
+
+impl StringArray {
+    pub fn into_boxed_parts(self) -> (Box<[u8]>, Box<[usize]>) {
+        let Self { bytes, lengths } = self;
+
+        let bytes = Box::from(bytes);
+        let lengths = Box::from(lengths);
+        (bytes, lengths)
+    }
+}
+
+impl<S: AsRef<str>> FromIterator<S> for StringArray {
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        let it = iter.into_iter();
+        let (mut bytes, mut lengths) = (Vec::new(), Vec::with_capacity(it.size_hint().0));
+        for s in it {
+            let s = s.as_ref();
+            bytes.extend_from_slice(s.as_bytes());
+            lengths.push(s.len());
+        }
+        Self {
+            bytes: bytes.into_boxed_slice().into(),
+            lengths: lengths.into_boxed_slice().into(),
+        }
+    }
+}
+
 #[inline(always)]
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,
@@ -128,13 +170,24 @@ macro_rules! ffi_bridge_destroy {
     ( $typ:ty as $ffi_name:ident ) => {
         paste! {
             #[cfg(feature = "ffi")]
-            #[no_mangle]
-            pub unsafe extern "C" fn [<signal_ $ffi_name _destroy>](
+            #[export_name = concat!(
+                env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"),
+                stringify!($ffi_name),
+                "_destroy",
+            )]
+            #[allow(non_snake_case)]
+            pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _destroy>](
                 p: *mut $typ
             ) -> *mut ffi::SignalFfiError {
+                // The only thing the closure does is drop the value if there is
+                // one. Drop shouldn't panic, and if it does and leaves the
+                // value in an (internally) inconsistent state, that's fine
+                // for the purposes of unwind safety since this is the last
+                // reference to the value.
+                let p = std::panic::AssertUnwindSafe(p);
                 ffi::run_ffi_safe(|| {
                     if !p.is_null() {
-                        drop(Box::from_raw(p));
+                        drop(Box::from_raw(*p));
                     }
                     Ok(())
                 })

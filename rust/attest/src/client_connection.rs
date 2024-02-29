@@ -21,6 +21,7 @@ pub(crate) const NOISE_TRANSPORT_PER_PAYLOAD_OVERHEAD: usize = 16;
 pub(crate) const NOISE_TRANSPORT_PER_PAYLOAD_MAX: usize =
     NOISE_TRANSPORT_PER_PACKET_MAX - NOISE_TRANSPORT_PER_PAYLOAD_OVERHEAD;
 
+#[derive(Debug)]
 pub struct ClientConnection {
     pub transport: snow::TransportState,
 }

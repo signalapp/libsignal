@@ -1,0 +1,23 @@
+#
+# Copyright (C) 2024 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+[package]
+name = "libsignal-message-backup-macros"
+version = "0.1.0"
+edition = "2021"
+authors = ["Signal Messenger LLC"]
+license = "AGPL-3.0-only"
+
+[lib]
+proc_macro = true
+
+[dependencies]
+heck = "0.3.1"
+lazy_static = "1.4.0"
+proc-macro2 = "1.0.74"
+quote = "1.0.35"
+syn = { version = "2.0.46", features = ["full", "extra-traits"] }
+
+[dev-dependencies]
+test-case = "3.3.1"

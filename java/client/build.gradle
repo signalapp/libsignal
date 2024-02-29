@@ -26,6 +26,11 @@ sourceSets {
             srcDir '../../proto'
         }
     }
+    test {
+        java {
+            srcDir '../shared/test/java'
+        }
+    }
 }
 
 protobuf {
@@ -36,10 +41,11 @@ protobuf {
 
 dependencies {
     implementation group: 'com.google.protobuf', name: 'protobuf-java', version: '3.24.4'
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13'
 }
 
 test {
+    jvmArgs '-Xcheck:jni'
     testLogging {
         events 'passed'
         showStandardStreams = true

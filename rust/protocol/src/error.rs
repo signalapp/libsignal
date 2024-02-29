@@ -102,3 +102,13 @@ pub enum SignalProtocolError {
     /// bad KEM ciphertext length <{1}> for key with type <{0}>
     BadKEMCiphertextLength(kem::KeyType, usize),
 }
+
+impl SignalProtocolError {
+    /// Convenience factory for [`SignalProtocolError::ApplicationCallbackError`].
+    #[inline]
+    pub fn for_application_callback<E: std::error::Error + Send + Sync + UnwindSafe + 'static>(
+        method: &'static str,
+    ) -> impl FnOnce(E) -> Self {
+        move |error| Self::ApplicationCallbackError(method, Box::new(error))
+    }
+}

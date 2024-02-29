@@ -5,6 +5,12 @@
 
 package org.signal.libsignal.protocol.groups;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -13,7 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.DuplicateMessageException;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -25,13 +31,14 @@ import org.signal.libsignal.protocol.groups.state.InMemorySenderKeyStore;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.SenderKeyDistributionMessage;
 
-public class GroupCipherTest extends TestCase {
+public class GroupCipherTest {
 
   private static final SignalProtocolAddress SENDER_ADDRESS =
       new SignalProtocolAddress("+14150001111", 1);
   private static final UUID DISTRIBUTION_ID =
       UUID.fromString("d1d1d1d1-7000-11eb-b32a-33b8a8a487a6");
 
+  @Test
   public void testNoSession()
       throws InvalidMessageException,
           InvalidVersionException,
@@ -66,6 +73,7 @@ public class GroupCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testBasicEncryptDecrypt()
       throws LegacyMessageException,
           DuplicateMessageException,
@@ -86,6 +94,17 @@ public class GroupCipherTest extends TestCase {
         aliceSessionBuilder.create(SENDER_ADDRESS, DISTRIBUTION_ID);
     SenderKeyDistributionMessage receivedAliceDistributionMessage =
         new SenderKeyDistributionMessage(sentAliceDistributionMessage.serialize());
+
+    assertEquals(DISTRIBUTION_ID, receivedAliceDistributionMessage.getDistributionId());
+    assertEquals(0, receivedAliceDistributionMessage.getIteration());
+    assertArrayEquals(
+        sentAliceDistributionMessage.getChainKey(), receivedAliceDistributionMessage.getChainKey());
+    assertEquals(
+        sentAliceDistributionMessage.getSignatureKey(),
+        receivedAliceDistributionMessage.getSignatureKey());
+    assertEquals(
+        sentAliceDistributionMessage.getChainId(), receivedAliceDistributionMessage.getChainId());
+
     bobSessionBuilder.process(SENDER_ADDRESS, receivedAliceDistributionMessage);
 
     CiphertextMessage ciphertextFromAlice =
@@ -95,6 +114,7 @@ public class GroupCipherTest extends TestCase {
     assertTrue(new String(plaintextFromAlice).equals("smert ze smert"));
   }
 
+  @Test
   public void testLargeMessages()
       throws InvalidMessageException,
           InvalidVersionException,
@@ -126,6 +146,7 @@ public class GroupCipherTest extends TestCase {
     assertTrue(Arrays.equals(plaintext, plaintextFromAlice));
   }
 
+  @Test
   public void testBasicRatchet()
       throws LegacyMessageException,
           DuplicateMessageException,
@@ -171,8 +192,15 @@ public class GroupCipherTest extends TestCase {
     assertTrue(new String(plaintextFromAlice).equals("smert ze smert"));
     assertTrue(new String(plaintextFromAlice2).equals("smert ze smert2"));
     assertTrue(new String(plaintextFromAlice3).equals("smert ze smert3"));
+
+    SenderKeyDistributionMessage anotherAliceDistributionMessage =
+        aliceSessionBuilder.create(SENDER_ADDRESS, DISTRIBUTION_ID);
+    assertEquals(
+        sentAliceDistributionMessage.getChainId(), anotherAliceDistributionMessage.getChainId());
+    assertEquals(3, anotherAliceDistributionMessage.getIteration());
   }
 
+  @Test
   public void testLateJoin()
       throws NoSessionException,
           InvalidMessageException,
@@ -212,6 +240,7 @@ public class GroupCipherTest extends TestCase {
     assertEquals(new String(plaintext), "welcome to the group");
   }
 
+  @Test
   public void testOutOfOrder()
       throws LegacyMessageException,
           DuplicateMessageException,
@@ -248,6 +277,7 @@ public class GroupCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testEncryptNoSession() {
     InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
     GroupCipher aliceGroupCipher =
@@ -260,6 +290,7 @@ public class GroupCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testTooFarInFuture()
       throws DuplicateMessageException,
           InvalidMessageException,
@@ -293,6 +324,7 @@ public class GroupCipherTest extends TestCase {
     }
   }
 
+  @Test
   public void testMessageKeyLimit() throws Exception {
     InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
     InMemorySenderKeyStore bobStore = new InMemorySenderKeyStore();

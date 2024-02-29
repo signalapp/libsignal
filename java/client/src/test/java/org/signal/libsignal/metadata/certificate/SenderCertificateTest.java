@@ -8,8 +8,6 @@ package org.signal.libsignal.metadata.certificate;
 import java.util.Optional;
 import java.util.UUID;
 import junit.framework.TestCase;
-import org.signal.libsignal.internal.Native;
-import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ecc.Curve;
@@ -98,29 +96,14 @@ public class SenderCertificateTest extends TestCase {
       long expires)
       throws InvalidKeyException, InvalidCertificateException {
     ECKeyPair serverKey = Curve.generateKeyPair();
-
-    try (NativeHandleGuard serverPublicGuard = new NativeHandleGuard(serverKey.getPublicKey());
-        NativeHandleGuard trustRootPrivateGuard =
-            new NativeHandleGuard(trustRoot.getPrivateKey()); ) {
-      ServerCertificate serverCertificate =
-          new ServerCertificate(
-              Native.ServerCertificate_New(
-                  1, serverPublicGuard.nativeHandle(), trustRootPrivateGuard.nativeHandle()));
-
-      try (NativeHandleGuard identityGuard = new NativeHandleGuard(identityKey);
-          NativeHandleGuard serverCertificateGuard = new NativeHandleGuard(serverCertificate);
-          NativeHandleGuard serverPrivateGuard =
-              new NativeHandleGuard(serverKey.getPrivateKey()); ) {
-        return new SenderCertificate(
-            Native.SenderCertificate_New(
-                uuid.toString(),
-                e164,
-                deviceId,
-                identityGuard.nativeHandle(),
-                expires,
-                serverCertificateGuard.nativeHandle(),
-                serverPrivateGuard.nativeHandle()));
-      }
-    }
+    ServerCertificate serverCertificate =
+        new ServerCertificate(trustRoot.getPrivateKey(), 1, serverKey.getPublicKey());
+    return serverCertificate.issue(
+        serverKey.getPrivateKey(),
+        uuid.toString(),
+        Optional.ofNullable(e164),
+        deviceId,
+        identityKey,
+        expires);
   }
 }

@@ -6,7 +6,7 @@
 //! SGX report body, ported from Open Enclave headers in v0.17.7.
 
 use bitflags::bitflags;
-use std::convert::{TryFrom, TryInto};
+
 use std::intrinsics::transmute;
 
 use crate::endian::*;

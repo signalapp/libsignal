@@ -35,17 +35,24 @@ android {
             java {
                 // Also run all the Android-agnostic tests by default.
                 srcDir '../client/src/test/java'
+                srcDir '../shared/test/java'
             }
             resources {
                 srcDir '../client/src/test/resources'
             }
         }
     }
+
+    packagingOptions {
+        jniLibs {
+            pickFirst 'lib/*/libsignal_jni.so'
+        }
+    }
 }
 
 dependencies {
     androidTestImplementation "androidx.test:runner:1.4.0"
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     api project(':client')
 }
@@ -53,19 +60,38 @@ dependencies {
 tasks.register('libsWithDebugSymbols', Zip) {
     from 'src/main/jniLibs'
     classifier 'debug-symbols'
+    dependsOn 'makeJniLibraries'
 }
 
 preBuild {
+    dependsOn 'collectAssets'
     dependsOn 'makeJniLibraries'
+    dependsOn 'makeTestJniLibraries'
 }
 
 task makeJniLibraries(type:Exec) {
   group 'Rust'
-  description 'Build the JNI libraries'
+  description 'Build the JNI libraries for Android'
 
   // Explicitly specify 'bash' for Windows compatibility.
   commandLine 'bash', '../build_jni.sh', 'android'
   environment 'ANDROID_NDK_HOME', android.ndkDirectory
+}
+
+task makeTestJniLibraries(type:Exec) {
+  group 'Rust'
+  description 'Build JNI libraries for Android for testing'
+
+  // Explicitly specify 'bash' for Windows compatibility.
+  commandLine 'bash', '../build_jni.sh', 'android', '--testing'
+  environment 'ANDROID_NDK_HOME', android.ndkDirectory
+}
+
+task collectAssets(type:Copy) {
+    from('../../acknowledgments/acknowledgments.md') {
+        rename 'acknowledgments.md', 'libsignal.md'
+    }
+    into 'src/main/assets/acknowledgments'
 }
 
 // MARK: Publication

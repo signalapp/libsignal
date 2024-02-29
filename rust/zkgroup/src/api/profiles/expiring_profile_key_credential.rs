@@ -5,9 +5,10 @@
 
 use crate::common::simple_types::*;
 use crate::crypto;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredential {
     pub(crate) version: ReservedBytes,
     pub(crate) credential: crypto::credentials::ExpiringProfileKeyCredential,
@@ -17,7 +18,7 @@ pub struct ExpiringProfileKeyCredential {
 }
 
 impl ExpiringProfileKeyCredential {
-    pub fn aci(&self) -> libsignal_protocol::Aci {
+    pub fn aci(&self) -> libsignal_core::Aci {
         uuid::Uuid::from_bytes(self.aci_bytes).into()
     }
 

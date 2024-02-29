@@ -7,9 +7,10 @@ use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV1 {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: crypto::proofs::ProfileKeyCredentialPresentationProofV1,
@@ -34,7 +35,7 @@ impl ProfileKeyCredentialPresentationV1 {
 }
 
 /// Like [`ProfileKeyCredentialPresentationV1`], but with an optimized proof.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV2 {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::ProfileKeyCredentialPresentationProofV2,
@@ -58,7 +59,7 @@ impl ProfileKeyCredentialPresentationV2 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialPresentation {
     pub(crate) version: ReservedBytes,
     pub(crate) proof: crypto::proofs::ExpiringProfileKeyCredentialPresentationProof,
@@ -97,21 +98,19 @@ impl AnyProfileKeyCredentialPresentation {
     pub fn new(presentation_bytes: &[u8]) -> Result<Self, ZkGroupDeserializationFailure> {
         match presentation_bytes[0] {
             PRESENTATION_VERSION_1 => {
-                match bincode::deserialize::<ProfileKeyCredentialPresentationV1>(presentation_bytes)
-                {
+                match crate::deserialize::<ProfileKeyCredentialPresentationV1>(presentation_bytes) {
                     Ok(presentation) => Ok(AnyProfileKeyCredentialPresentation::V1(presentation)),
                     Err(_) => Err(ZkGroupDeserializationFailure),
                 }
             }
             PRESENTATION_VERSION_2 => {
-                match bincode::deserialize::<ProfileKeyCredentialPresentationV2>(presentation_bytes)
-                {
+                match crate::deserialize::<ProfileKeyCredentialPresentationV2>(presentation_bytes) {
                     Ok(presentation) => Ok(AnyProfileKeyCredentialPresentation::V2(presentation)),
                     Err(_) => Err(ZkGroupDeserializationFailure),
                 }
             }
             PRESENTATION_VERSION_3 => {
-                match bincode::deserialize::<ExpiringProfileKeyCredentialPresentation>(
+                match crate::deserialize::<ExpiringProfileKeyCredentialPresentation>(
                     presentation_bytes,
                 ) {
                     Ok(presentation) => Ok(AnyProfileKeyCredentialPresentation::V3(presentation)),
@@ -160,7 +159,7 @@ impl AnyProfileKeyCredentialPresentation {
             uid_enc_ciphertext: self.get_uuid_ciphertext().ciphertext,
             profile_key_enc_ciphertext: self.get_profile_key_ciphertext().ciphertext,
         };
-        let result = bincode::serialize(&v1).expect("can serialize");
+        let result = crate::serialize(&v1);
         debug_assert_eq!(result.len(), PROFILE_KEY_CREDENTIAL_PRESENTATION_V1_LEN);
         result
     }

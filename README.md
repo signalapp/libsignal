@@ -21,7 +21,8 @@ server-side. Use outside of Signal is unsupported. In particular, the products o
 are the Java, Swift, and TypeScript libraries that wrap the underlying Rust implementations. All
 APIs and implementations are subject to change without notice, as are the JNI, C, and Node add-on
 "bridge" layers. However, backwards-incompatible changes to the Java, Swift, TypeScript, and
-non-bridge Rust APIs will be reflected in the version number on a best-effort basis.
+non-bridge Rust APIs will be reflected in the version number on a best-effort basis, including
+increases to the minimum supported tools versions.
 
 [Double Ratchet algorithm]: https://signal.org/docs/
 [libsignal-protocol-java]: https://github.com/signalapp/libsignal-protocol-java
@@ -41,11 +42,11 @@ non-bridge Rust APIs will be reflected in the version number on a best-effort ba
 # Building
 
 To build anything in this repository you must have [Rust](https://rust-lang.org) installed,
-as well as Clang, libclang, [CMake](https://cmake.org), and Make.
+as well as Clang, libclang, [CMake](https://cmake.org), Make, protoc, and git.
 On a Debian-like system, you can get these extra dependencies through `apt`:
 
 ```shell
-$ apt-get install clang libclang-dev cmake make
+$ apt-get install clang libclang-dev cmake make protobuf-compiler git
 ```
 
 The build currently uses a specific version of the Rust nightly compiler, which
@@ -84,6 +85,31 @@ $ make java_test
 When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
 addition to rebuilding.
 
+### Maven Central
+
+Signal publishes Java packages on [Maven Central](https://central.sonatype.org) for its own use,
+under the names org.signal:libsignal-server, org.signal:libsignal-client, and
+org.signal:libsignal-android. libsignal-client and libsignal-server contain native libraries for
+Debian-flavored x86_64 Linux as well as Windows (x86_64) and macOS (x86_64 and arm64).
+libsignal-android contains native libraries for armeabi-v7a, arm64-v8a, x86, and x86_64 Android.
+
+When building for Android you need *both* libsignal-android and libsignal-client, but the Windows
+and macOS libraries in libsignal-client won't automatically be excluded from your final app. You can
+explicitly exclude them using `packagingOptions`:
+
+```
+android {
+  // ...
+  packagingOptions {
+    resources {
+      exclude "libsignal_jni.dylib"
+      exclude "signal_jni.dll"
+    }
+  }
+  // ...
+}
+```
+
 
 ## Swift
 
@@ -111,6 +137,13 @@ When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_t
 addition to rebuilding.
 
 [nvm]: https://github.com/nvm-sh/nvm
+
+### NPM
+
+Signal publishes the NPM package `@signalapp/libsignal-client` for its own use, including native
+libraries for Windows, macOS, and Debian-flavored Linux. Both x64 and arm64 builds are included for
+all three platforms, but the arm64 builds for Windows and Linux are considered experimental, since
+there are no official builds of Signal for those architectures.
 
 
 # Contributions

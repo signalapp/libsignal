@@ -5,9 +5,10 @@
 
 use crate::common::simple_types::*;
 use crate::crypto;
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCommitment {
     pub(crate) reserved: ReservedBytes,
     pub(crate) commitment: crypto::profile_key_commitment::Commitment,

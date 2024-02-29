@@ -80,7 +80,7 @@ public class HsmEnclaveClientTest extends TestCase {
     fail();
   }
 
-  public void testEstablishedSendFailsPriorToEstablishment() {
+  public void testEstablishedSendFailsPriorToEstablishment() throws Exception {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();
     hashes.add(
@@ -97,7 +97,7 @@ public class HsmEnclaveClientTest extends TestCase {
     fail();
   }
 
-  public void testEstablishedRecvFailsPriorToEstablishment() {
+  public void testEstablishedRecvFailsPriorToEstablishment() throws Exception {
     byte[] validKey = new byte[32];
     List<byte[]> hashes = new ArrayList<>();
     hashes.add(

@@ -55,6 +55,11 @@ public final class Username {
     this.hash = hash(username);
   }
 
+  private Username(String username, byte[] hash) {
+    this.username = username;
+    this.hash = hash;
+  }
+
   public String getUsername() {
     return this.username;
   }
@@ -65,12 +70,23 @@ public final class Username {
 
   public static List<Username> candidatesFrom(
       String nickname, int minNicknameLength, int maxNicknameLength) throws BaseUsernameException {
-    String names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
-    ArrayList<Username> result = new ArrayList<>();
-    for (String name : names.split(",")) {
-      result.add(new Username(name));
+    Object[] names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
+    ArrayList<Username> result = new ArrayList<>(names.length);
+    for (Object name : names) {
+      result.add(new Username((String) name));
     }
     return result;
+  }
+
+  public static Username fromParts(
+      String nickname, String discriminator, int minNicknameLength, int maxNicknameLength)
+      throws BaseUsernameException {
+    byte[] hash =
+        Native.Username_HashFromParts(
+            nickname, discriminator, minNicknameLength, maxNicknameLength);
+    // If we generated the hash correctly, we can format the nickname and discriminator manually.
+    String username = nickname + "." + discriminator;
+    return new Username(username, hash);
   }
 
   public static Username fromLink(final UsernameLink usernameLink) throws BaseUsernameException {
@@ -92,7 +108,11 @@ public final class Username {
   }
 
   public UsernameLink generateLink() throws BaseUsernameException {
-    final byte[] bytes = Native.UsernameLink_Create(username);
+    return generateLink(null);
+  }
+
+  public UsernameLink generateLink(byte[] previousEntropy) throws BaseUsernameException {
+    final byte[] bytes = Native.UsernameLink_Create(username, previousEntropy);
     final byte[] entropy = Arrays.copyOfRange(bytes, 0, 32);
     final byte[] enctyptedUsername = Arrays.copyOfRange(bytes, 32, bytes.length);
     return new UsernameLink(entropy, enctyptedUsername);
@@ -101,8 +121,8 @@ public final class Username {
   @Deprecated
   public static List<String> generateCandidates(
       String nickname, int minNicknameLength, int maxNicknameLength) throws BaseUsernameException {
-    String names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
-    return Arrays.asList(names.split(","));
+    Object[] names = Native.Username_CandidatesFrom(nickname, minNicknameLength, maxNicknameLength);
+    return Arrays.asList((String[]) names);
   }
 
   @Deprecated

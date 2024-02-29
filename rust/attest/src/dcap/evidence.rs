@@ -7,7 +7,6 @@
 
 use sha2::Digest;
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
 
 use crate::dcap::sgx_quote::SgxQuote;
 use crate::dcap::{Error, Expireable};
@@ -140,19 +139,17 @@ impl CustomClaims<'_> {
 mod test {
     use super::*;
     use crate::dcap::MREnclave;
-    use crate::util::testio::read_test_file;
     use hex_literal::hex;
-    use std::convert::TryFrom;
 
     const EXPECTED_MRENCLAVE: MREnclave =
         hex!("337ac97ce088a132daeb1308ea3159f807de4a827e875b2c90ce21bf4751196f");
 
     #[test]
     fn from_bytes() {
-        let data = read_test_file("tests/data/dcap.evidence");
-        let pkey = hex::decode(read_test_file("tests/data/dcap.pubkey")).unwrap();
+        const DATA: &[u8] = include_bytes!("../../tests/data/dcap.evidence");
+        let pkey = hex::decode(include_bytes!("../../tests/data/dcap.pubkey")).unwrap();
 
-        let evidence = Evidence::try_from(data.as_slice()).expect("should parse");
+        let evidence = Evidence::try_from(DATA).expect("should parse");
         assert_eq!(pkey, evidence.claims.map.get("pk").unwrap().as_slice());
         assert_eq!(
             EXPECTED_MRENCLAVE,

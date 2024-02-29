@@ -8,6 +8,7 @@
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use lazy_static::lazy_static;
+use partial_default::PartialDefault;
 use poksho::{ShoApi, ShoHmacSha256, ShoSha256};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +18,7 @@ use crate::RANDOMNESS_LEN;
 /// A credential created by the issuing server over a set of attributes.
 ///
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct Credential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
@@ -25,7 +26,7 @@ pub struct Credential {
 }
 
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub(crate) struct CredentialPrivateKey {
     pub(crate) w: Scalar,
     pub(crate) wprime: Scalar,
@@ -79,7 +80,7 @@ impl CredentialPrivateKey {
 /// A public key used by the client to receive and verify credentials.
 ///
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub struct CredentialPublicKey {
     pub(crate) C_W: RistrettoPoint,
     /// The value of `I` depends on the total number of attributes used.
@@ -126,7 +127,7 @@ impl<'a> From<&'a CredentialPrivateKey> for CredentialPublicKey {
 /// A key pair used by the issuing server to sign credentials.
 ///
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, PartialDefault)]
 #[serde(from = "CredentialPrivateKey")]
 pub struct CredentialKeyPair {
     private_key: CredentialPrivateKey,

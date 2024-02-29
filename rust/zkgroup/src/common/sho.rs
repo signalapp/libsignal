@@ -44,3 +44,9 @@ impl Sho {
         Scalar::from_bytes_mod_order_wide(&scalar_bytes)
     }
 }
+
+impl AsMut<poksho::ShoHmacSha256> for Sho {
+    fn as_mut(&mut self) -> &mut poksho::ShoHmacSha256 {
+        &mut self.internal_sho
+    }
+}

@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialRequestContext {
     pub(crate) reserved: ReservedBytes,
     pub(crate) receipt_serial_bytes: ReceiptSerialBytes,

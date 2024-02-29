@@ -126,8 +126,6 @@ async fn process_prekey_impl(
         message.kyber_ciphertext(),
     );
 
-    session_record.archive_current_state()?;
-
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;
 
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);

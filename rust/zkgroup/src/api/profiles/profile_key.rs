@@ -7,10 +7,11 @@ use crate::common::constants::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use signal_crypto::Aes256GcmEncryption;
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKey {
     pub bytes: ProfileKeyBytes,
 }
@@ -36,7 +37,7 @@ impl ProfileKey {
 
     pub fn get_commitment(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> api::profiles::ProfileKeyCommitment {
         let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
         let profile_key = crypto::profile_key_struct::ProfileKeyStruct::new(self.bytes, uid_bytes);
@@ -50,7 +51,7 @@ impl ProfileKey {
 
     pub fn get_profile_key_version(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
     ) -> api::profiles::ProfileKeyVersion {
         let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
         let mut combined_array = [0u8; PROFILE_KEY_LEN + UUID_LEN];
@@ -74,7 +75,7 @@ impl ProfileKey {
         let nonce = &[0u8; AESGCM_NONCE_LEN];
         let mut cipher = Aes256GcmEncryption::new(&self.bytes, nonce, &[]).unwrap();
         let mut buf = [0u8; ACCESS_KEY_LEN];
-        cipher.encrypt(&mut buf[..]).unwrap();
+        cipher.encrypt(&mut buf[..]);
         buf
     }
 }

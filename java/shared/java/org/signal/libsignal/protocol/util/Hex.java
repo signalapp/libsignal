@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /** Utility for generating hex dumps. */
@@ -59,6 +60,18 @@ public class Hex {
   public static byte[] fromStringCondensedAssert(String encoded) {
     try {
       return fromStringCondensed(encoded);
+    } catch (IOException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  public static byte[] fromStringsCondensedAssert(String... encoded) {
+    try {
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      for (String next : encoded) {
+        outputStream.write(fromStringCondensed(next));
+      }
+      return outputStream.toByteArray();
     } catch (IOException e) {
       throw new AssertionError(e);
     }

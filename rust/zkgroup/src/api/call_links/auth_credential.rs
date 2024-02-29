@@ -9,6 +9,7 @@
 //! - the user's ACI (provided by the chat server at issuance, passed encrypted to the calling server for verification)
 //! - a "redemption time", truncated to day granularity (chosen by the chat server at issuance based on parameters from the client, passed publicly to the calling server for verification)
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::common::simple_types::*;
@@ -22,7 +23,7 @@ use super::{CallLinkPublicParams, CallLinkSecretParams};
 
 const CREDENTIAL_LABEL: &[u8] = b"20230421_Signal_CallLinkAuthCredential";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredentialResponse {
     reserved: ReservedBytes,
     proof: zkcredential::issuance::IssuanceProof,
@@ -32,7 +33,7 @@ pub struct CallLinkAuthCredentialResponse {
 
 impl CallLinkAuthCredentialResponse {
     pub fn issue_credential(
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         redemption_time: Timestamp,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
@@ -49,7 +50,7 @@ impl CallLinkAuthCredentialResponse {
 
     pub fn receive(
         self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         redemption_time: Timestamp,
         params: &GenericServerPublicParams,
     ) -> Result<CallLinkAuthCredential, ZkGroupVerificationFailure> {
@@ -69,7 +70,7 @@ impl CallLinkAuthCredentialResponse {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredential {
     reserved: ReservedBytes,
     credential: zkcredential::credentials::Credential,
@@ -80,7 +81,7 @@ pub struct CallLinkAuthCredential {
 impl CallLinkAuthCredential {
     pub fn present(
         &self,
-        user_id: libsignal_protocol::Aci,
+        user_id: libsignal_core::Aci,
         redemption_time: Timestamp,
         server_params: &GenericServerPublicParams,
         call_link_params: &CallLinkSecretParams,
@@ -93,17 +94,18 @@ impl CallLinkAuthCredential {
         CallLinkAuthCredentialPresentation {
             reserved: [0],
             proof,
-            ciphertext: call_link_params.uid_enc_key_pair.encrypt(uid_attr),
+            ciphertext: call_link_params.uid_enc_key_pair.encrypt(&uid_attr),
             redemption_time,
         }
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkAuthCredentialPresentation {
     pub(crate) reserved: ReservedBytes,
     pub(crate) proof: zkcredential::presentation::PresentationProof,
-    pub(crate) ciphertext: uid_encryption::Ciphertext,
+    pub(crate) ciphertext:
+        zkcredential::attributes::Ciphertext<uid_encryption::UidEncryptionDomain>,
     pub(crate) redemption_time: Timestamp,
 }
 

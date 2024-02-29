@@ -81,7 +81,8 @@ RUN    apt-get install -y \
                git \
                gpg-agent \
                libclang-dev \
-               make
+               make \
+               protobuf-compiler
 USER libsignal
 
 # install protoc

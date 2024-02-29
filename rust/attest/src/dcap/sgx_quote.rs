@@ -14,7 +14,7 @@ use boring::error::ErrorStack;
 use boring::nid::Nid;
 use boring::pkey::Public;
 use sha2::Digest;
-use std::convert::{TryFrom, TryInto};
+
 use std::intrinsics::transmute;
 use std::time::SystemTime;
 
@@ -359,7 +359,7 @@ mod tests {
     use super::*;
 
     use boring::pkey::Private;
-    use std::convert::TryFrom;
+
     use std::fs;
     use std::path::Path;
 

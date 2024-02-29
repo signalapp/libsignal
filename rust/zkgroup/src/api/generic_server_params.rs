@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 use crate::{RandomnessBytes, ReservedBytes};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerSecretParams {
     reserved: ReservedBytes,
     pub(crate) credential_key: zkcredential::credentials::CredentialKeyPair,
@@ -29,7 +30,7 @@ impl GenericServerSecretParams {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerPublicParams {
     reserved: ReservedBytes,
     pub(crate) credential_key: zkcredential::credentials::CredentialPublicKey,

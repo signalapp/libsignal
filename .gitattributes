@@ -1,0 +1,7 @@
+# Prevent auto-merging of generated acknowledgment files
+acknowledgments/acknowledgments.* -merge -text
+acknowledgments/acknowledgments.*.hbs merge text=auto
+
+# Treat encrypted and unencrypted message backup files as binary
+*.binproto binary
+*.binproto.encrypted binary

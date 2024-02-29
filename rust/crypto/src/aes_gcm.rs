@@ -40,7 +40,7 @@ impl GcmGhash {
         })
     }
 
-    fn update(&mut self, msg: &[u8]) -> Result<()> {
+    fn update(&mut self, msg: &[u8]) {
         if self.msg_buf_offset > 0 {
             let taking = std::cmp::min(msg.len(), TAG_SIZE - self.msg_buf_offset);
             self.msg_buf[self.msg_buf_offset..self.msg_buf_offset + taking]
@@ -58,7 +58,7 @@ impl GcmGhash {
                 self.msg_buf_offset = 0;
                 return self.update(&msg[taking..]);
             } else {
-                return Ok(());
+                return;
             }
         }
 
@@ -84,11 +84,9 @@ impl GcmGhash {
         self.msg_buf[0..leftover].copy_from_slice(&msg[full_blocks * 16..]);
         self.msg_buf_offset = leftover;
         assert!(self.msg_buf_offset < TAG_SIZE);
-
-        Ok(())
     }
 
-    fn finalize(mut self) -> Result<[u8; TAG_SIZE]> {
+    fn finalize(mut self) -> [u8; TAG_SIZE] {
         if self.msg_buf_offset > 0 {
             self.ghash
                 .update_padded(&self.msg_buf[..self.msg_buf_offset]);
@@ -105,7 +103,7 @@ impl GcmGhash {
             *b ^= self.ghash_pad[i];
         }
 
-        Ok(hash.into())
+        hash.into()
     }
 }
 
@@ -125,7 +123,7 @@ fn setup_gcm(key: &[u8], nonce: &[u8], associated_data: &[u8]) -> Result<(Aes256
     let mut ctr = Aes256Ctr32::new(aes256, nonce, 1)?;
 
     let mut ghash_pad = [0u8; 16];
-    ctr.process(&mut ghash_pad)?;
+    ctr.process(&mut ghash_pad);
 
     let ghash = GcmGhash::new(&h, ghash_pad, associated_data)?;
     Ok((ctr, ghash))
@@ -145,13 +143,12 @@ impl Aes256GcmEncryption {
         Ok(Self { ctr, ghash })
     }
 
-    pub fn encrypt(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.ctr.process(buf)?;
-        self.ghash.update(buf)?;
-        Ok(())
+    pub fn encrypt(&mut self, buf: &mut [u8]) {
+        self.ctr.process(buf);
+        self.ghash.update(buf);
     }
 
-    pub fn compute_tag(self) -> Result<[u8; TAG_SIZE]> {
+    pub fn compute_tag(self) -> [u8; TAG_SIZE] {
         self.ghash.finalize()
     }
 }
@@ -170,10 +167,9 @@ impl Aes256GcmDecryption {
         Ok(Self { ctr, ghash })
     }
 
-    pub fn decrypt(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.ghash.update(buf)?;
-        self.ctr.process(buf)?;
-        Ok(())
+    pub fn decrypt(&mut self, buf: &mut [u8]) {
+        self.ghash.update(buf);
+        self.ctr.process(buf);
     }
 
     pub fn verify_tag(self, tag: &[u8]) -> Result<()> {
@@ -181,7 +177,7 @@ impl Aes256GcmDecryption {
             return Err(Error::InvalidTag);
         }
 
-        let computed_tag = self.ghash.finalize()?;
+        let computed_tag = self.ghash.finalize();
 
         let tag_ok = tag.ct_eq(&computed_tag);
 

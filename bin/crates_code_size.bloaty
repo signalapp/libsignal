@@ -10,8 +10,8 @@ custom_data_source: {
     replacement: "stdlib"
   }
   rewrite: {
-    pattern: "/\\.?cargo/registry/src/github.com-[^/]+/([^/]+)-\\d[^/]*/"
-    replacement: "\\1"
+    pattern: "/\\.?cargo/registry/src/(github.com|index.crates.io)-[^/]+/([^/]+)-\\d[^/]*/"
+    replacement: "\\2"
   }
   rewrite: {
     pattern: "/\\.?cargo/git/checkouts/([^/]+)-[0-9a-f]+/"
@@ -22,8 +22,12 @@ custom_data_source: {
     replacement: "\\1"
   }
   rewrite: {
-    pattern: "/target/[^/]+/([^/]+/)?build/([^/]+)-[0-9a-f]+/"
-    replacement: "\\2 (generated)"
+    pattern: "(^|.+/)target/[^/]+/([^/]+/)?build/([^/]+)-[0-9a-f]+/.+"
+    replacement: "\\3 (generated)"
+  }
+  rewrite: {
+    pattern: "(.+):[0-9]+"
+    replacement: "\\1"
   }
   rewrite: {
     pattern: "\\[section .debug.+\\]"

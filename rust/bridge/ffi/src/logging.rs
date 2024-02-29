@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libc::c_char;
-use std::ffi::CString;
+use std::ffi::{c_char, CString};
 
 #[repr(C)]
 pub enum LogLevel {

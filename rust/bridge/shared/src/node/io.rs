@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::io::{InputStream, InputStreamRead};
+use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 use super::*;
 
@@ -20,6 +20,11 @@ pub struct NodeInputStream {
     eof_reached: Cell<bool>,
 }
 
+pub struct NodeSyncInputStream<'a> {
+    buffer: AssumedImmutableBuffer<'a>,
+    pos: Cell<usize>,
+}
+
 impl NodeInputStream {
     pub(crate) fn new(cx: &mut FunctionContext, stream: Handle<JsObject>) -> Self {
         Self {
@@ -29,7 +34,7 @@ impl NodeInputStream {
         }
     }
 
-    async fn do_read(&self, amount: u32) -> Result<Vec<u8>, String> {
+    async fn do_read(&self, amount: u32) -> Result<Vec<u8>, ThrownException> {
         let stream_object_shared = self.stream_object.clone();
         let read_data = JsFuture::get_promise(&self.js_channel, move |cx| {
             let stream_object = stream_object_shared.to_inner(cx);
@@ -44,10 +49,7 @@ impl NodeInputStream {
                 Ok(b) => Ok(b.as_slice(cx).to_vec()),
                 Err(_) => Err("unexpected result from _read".into()),
             },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
+            Err(error) => Err(ThrownException::from_value(cx, error)),
         })
         .await?;
         if read_data.is_empty() {
@@ -56,7 +58,7 @@ impl NodeInputStream {
         Ok(read_data)
     }
 
-    async fn do_skip(&self, amount: u64) -> Result<(), String> {
+    async fn do_skip(&self, amount: u64) -> Result<(), ThrownException> {
         let amount = amount as f64;
         if amount > MAX_SAFE_JS_INTEGER {
             return Err("skipped more than fits in JsInteger".into());
@@ -76,10 +78,7 @@ impl NodeInputStream {
                 Ok(_) => Ok(()),
                 Err(_) => Err("unexpected result from _skip".into()),
             },
-            Err(error) => Err(error
-                .to_string(cx)
-                .expect("can convert to string")
-                .value(cx)),
+            Err(error) => Err(ThrownException::from_value(cx, error)),
         })
         .await
     }
@@ -111,5 +110,33 @@ impl InputStream for NodeInputStream {
         self.do_skip(amount)
             .await
             .map_err(|err| IoError::new(IoErrorKind::Other, err))
+    }
+}
+
+impl<'a> NodeSyncInputStream<'a> {
+    pub(crate) fn new(buffer: AssumedImmutableBuffer<'a>) -> Self {
+        Self {
+            buffer,
+            pos: Default::default(),
+        }
+    }
+}
+
+impl SyncInputStream for NodeSyncInputStream<'_> {
+    fn read(&self, buf: &mut [u8]) -> IoResult<usize> {
+        let buffer_remaining = &self.buffer[self.pos.get()..];
+        let amount_read = buffer_remaining.len().min(buf.len());
+        buf[..amount_read].copy_from_slice(&buffer_remaining[..amount_read]);
+        self.pos.set(self.pos.get() + amount_read);
+        Ok(amount_read)
+    }
+
+    fn skip(&self, amount: u64) -> IoResult<()> {
+        let buffer_remaining = self.buffer[self.pos.get()..].len();
+        if (buffer_remaining as u64) < amount {
+            return Err(IoErrorKind::UnexpectedEof.into());
+        }
+        self.pos.set(self.pos.get() + amount as usize);
+        Ok(())
     }
 }

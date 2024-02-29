@@ -25,10 +25,12 @@ jobs:
           arm64-rust-target: aarch64-apple-darwin
         - os: windows-latest
           arm64-rust-target: aarch64-pc-windows-msvc
+          # This can be removed when we update to a Node version that officially supports win-arm64.
+          custom-arm64-dist-url: https://unofficial-builds.nodejs.org/download/release
         # Ubuntu binaries are built using Docker, below
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.arm64-rust-target }}
 
@@ -38,12 +40,18 @@ jobs:
       run: choco install nasm
       shell: cmd
 
+    - run: choco install protoc
+      if: startsWith(matrix.os, 'windows')
+
+    - run: brew install protobuf
+      if: startsWith(matrix.os, 'macos')
+
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
       run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
 
@@ -53,13 +61,15 @@ jobs:
     - name: Build for arm64
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
+      env:
+        npm_config_dist_url: ${{ matrix.custom-arm64-dist-url }}
 
     - name: Build for the host (should be x64)
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
 
     - name: Upload library
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: libsignal_client (${{matrix.os}})
         path: node/prebuilds/*
@@ -70,12 +80,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: node/docker-prebuildify.sh
 
     - name: Upload library
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: libsignal_client (ubuntu-docker)
         path: node/prebuilds/*
@@ -85,9 +95,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
@@ -100,16 +112,16 @@ jobs:
     needs: [build, build-docker, verify-rust]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version-file: '.nvmrc'
         registry-url: 'https://registry.npmjs.org/'
 
     - name: Download built libraries
       id: download
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
 
