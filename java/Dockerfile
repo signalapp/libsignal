@@ -85,6 +85,11 @@ RUN    apt-get install -y \
                protobuf-compiler
 USER libsignal
 
+# install protoc
+RUN    curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip
+RUN    unzip protoc-25.1-linux-x86_64.zip -d ~/.local
+ENV PATH="/home/libsignal/.local/bin:${PATH}"
+
 # Convert ssh to https for git dependency access without a key.
 RUN    git config --global url."https://github".insteadOf ssh://git@github
 

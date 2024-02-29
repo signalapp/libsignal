@@ -22,6 +22,9 @@ signal-pin = { path = "../../pin" }
 libsignal-message-backup = { path = "../../message-backup" }
 signal-media = { path = "../../media", optional = true }
 libsignal-bridge-macros = { path = "macros" }
+signal-chat = { path = "../../chat" }
+signal-grpc = { path = "../../grpc" }
+signal-quic = { path = "../../quic" }
 aes-gcm-siv = "0.11.1"
 async-trait = "0.1.41"
 bincode = "1.0"

@@ -13,8 +13,11 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_net::cdsi::CdsiError;
 use libsignal_protocol::*;
+use signal_chat::Error as SignalChatError;
 use signal_crypto::Error as SignalCryptoError;
+use signal_grpc::Error as GrpcError;
 use signal_pin::Error as PinError;
+use signal_quic::Error as QuicError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
@@ -27,6 +30,9 @@ use super::*;
 pub enum SignalJniError {
     Protocol(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
+    SignalChat(SignalChatError),
+    Grpc(GrpcError),
+    Quic(QuicError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
     Sgx(SgxError),
@@ -72,6 +78,9 @@ impl fmt::Display for SignalJniError {
         match self {
             SignalJniError::Protocol(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
+            SignalJniError::SignalChat(e) => write!(f, "{}", e),
+            SignalJniError::Grpc(e) => write!(f, "{}", e),
+            SignalJniError::Quic(e) => write!(f, "{}", e),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
             SignalJniError::Sgx(e) => write!(f, "{}", e),
             SignalJniError::Pin(e) => write!(f, "{}", e),
@@ -139,6 +148,24 @@ impl From<SignalProtocolError> for SignalJniError {
 impl From<DeviceTransferError> for SignalJniError {
     fn from(e: DeviceTransferError) -> SignalJniError {
         SignalJniError::DeviceTransfer(e)
+    }
+}
+
+impl From<SignalChatError> for SignalJniError {
+    fn from(e: SignalChatError) -> SignalJniError {
+        SignalJniError::SignalChat(e)
+    }
+}
+
+impl From<GrpcError> for SignalJniError {
+    fn from(e: GrpcError) -> SignalJniError {
+        SignalJniError::Grpc(e)
+    }
+}
+
+impl From<QuicError> for SignalJniError {
+    fn from(e: QuicError) -> SignalJniError {
+        SignalJniError::Quic(e)
     }
 }
 

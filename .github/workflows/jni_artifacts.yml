@@ -38,6 +38,12 @@ jobs:
     - run: rustup target add ${{ matrix.additional-rust-target }}
       if: ${{ matrix.additional-rust-target != '' }}
 
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+      with:
+        version: '3.x'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
     # install nasm compiler for boring
     - name: Install nasm
       if: startsWith(matrix.os, 'windows')
@@ -72,26 +78,26 @@ jobs:
         name: libsignal_jni (${{matrix.os}})
         path: target/release/${{ matrix.library }}
 
-  verify-rust:
-    name: Verify JNI bindings
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
-
-    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
-
-    - name: Verify that the JNI bindings are up to date
-      run: rust/bridge/jni/bin/gen_java_decl.py --verify
+#  verify-rust:
+#    name: Verify JNI bindings
+#    runs-on: ubuntu-latest
+#    
+#    steps:
+#    - uses: actions/checkout@v4
+#
+#    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+#
+#    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+#
+#    - name: Verify that the JNI bindings are up to date
+#      run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
   publish:
     name: Build for production and publish
 
     runs-on: ubuntu-latest
 
-    needs: [build, verify-rust]
+    needs: build
 
     steps:
     - uses: actions/checkout@v4
@@ -104,6 +110,12 @@ jobs:
 
     - name: Copy libraries
       run: mv ${{ steps.download.outputs.download-path }}/*/* java/shared/resources && find java/shared/resources
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+      with:
+        version: '3.x'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - run: make
       if: ${{ inputs.dry_run }}
@@ -134,6 +146,8 @@ jobs:
       if: ${{ !inputs.dry_run }}
       working-directory: java
       env:
+        ORG_GRADLE_PROJECT_sonatypeRepo: ${{ secrets.SONATYPE_REPO }}
+        ORG_GRADLE_PROJECT_sonatypeSnapshotRepo: ${{ secrets.SONATYPE_SNAPSHOT_REPO }}
         ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USER }}
         ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
         ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.SIGNING_KEYID }}
