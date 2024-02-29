@@ -15,9 +15,9 @@ async-trait = "0.1.41"
 displaydoc = "0.2"
 futures = "0.3.28"
 mio = { version = "0.8", features = ["net", "os-poll"] }
-quiche = "0.17.2"
-ring = "0.16"
+quiche = "0.20"
+ring = "0.17"
 thiserror = "1.0.30"
 tokio = { version = "1.28", features = [ "sync", "rt", "rt-multi-thread" ] }
 tokio-stream = "0.1"
-url = "1"
+url = "2.4.1"

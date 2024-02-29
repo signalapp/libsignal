@@ -13,11 +13,11 @@ license = "AGPL-3.0-only"
 [dependencies]
 async-trait = "0.1.41"
 displaydoc = "0.2"
-prost = "0.11"
+prost = "0.12.3"
 thiserror = "1.0.30"
 tokio = { version = "1.28", features = [ "sync", "rt", "rt-multi-thread" ] }
 tokio-stream = "0.1"
-tonic = { version = "0.9", features = [ "tls", "tls-webpki-roots" ] }
+tonic = { version = "0.11.0", features = [ "tls", "tls-webpki-roots" ] }
 
 [build-dependencies]
-tonic-build = "0.9"
+tonic-build = "0.11.0"

@@ -391,7 +391,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type ArgType = JavaGrpcReplyListener<'param>;
     type StoredType = JniGrpcReplyListener<'storage>;
 
-    fn borrow(env: &mut JNIEnv<'context>, store: &'param Self::ArgType) -> SignalJniResult<Self::StoredType> {
+    fn borrow(env: &mut JNIEnv<'context>, store: &'param Self::ArgType) -> Result<Self::StoredType, BridgeLayerError> {
         Self::StoredType::new(env, store)
     }
 
@@ -406,7 +406,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     type ArgType = JavaQuicCallbackListener<'param>;
     type StoredType = JniQuicCallbackListener<'storage>;
 
-    fn borrow(env: &mut JNIEnv<'context>, store: &'param Self::ArgType) -> SignalJniResult<Self::StoredType> {
+    fn borrow(env: &mut JNIEnv<'context>, store: &'param Self::ArgType) -> Result<Self::StoredType, BridgeLayerError> {
         Self::StoredType::new(env, store)
     }
 
@@ -483,9 +483,9 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
 
 impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
     type ArgType = JavaMap<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &JavaMap<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &JavaMap<'a>) -> Result<Self, BridgeLayerError> {
         if foreign.is_null() {
-            return Err(SignalJniError::NullHandle);
+            return Err(BridgeLayerError::NullPointer(Some("grpc::GrpcHeaders")));
         }
 
         let mut headers = HashMap::new();
@@ -512,7 +512,7 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::grpc::GrpcHeaders {
 impl <'a> ResultTypeInfo<'a> for signal_grpc::GrpcReply {
     type ResultType = JByteArray<'a>;
 
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> SignalJniResult<Self::ResultType> {
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let message = env.byte_array_from_slice(&self.message)?;
         let args = jni_args!((
             self.statuscode => int,
@@ -530,9 +530,9 @@ impl <'a> ResultTypeInfo<'a> for signal_grpc::GrpcReply {
 
 impl<'a> SimpleArgTypeInfo<'a> for crate::quic::QuicHeaders {
     type ArgType = JavaMap<'a>;
-    fn convert_from(env: &mut JNIEnv, foreign: &JavaMap<'a>) -> SignalJniResult<Self> {
+    fn convert_from(env: &mut JNIEnv, foreign: &JavaMap<'a>) -> Result<Self, BridgeLayerError> {
         if foreign.is_null() {
-            return Err(SignalJniError::NullHandle);
+            return Err(BridgeLayerError::NullPointer(Some("quic::QuicHeaders")));
         }
 
         let mut headers = HashMap::new();

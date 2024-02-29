@@ -16,7 +16,7 @@ pub struct JniGrpcReplyListener<'a> {
 }
 
 impl<'a> JniGrpcReplyListener<'a> {
-    pub fn new<'context: 'a>(env: &mut JNIEnv<'context>, listener: &'a JObject<'a>) -> Result<Self, SignalJniError> {
+    pub fn new<'context: 'a>(env: &mut JNIEnv<'context>, listener: &'a JObject<'a>) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             &listener,
@@ -27,7 +27,7 @@ impl<'a> JniGrpcReplyListener<'a> {
 }
 
 impl<'a> JniGrpcReplyListener<'a> {
-    fn do_on_reply(&mut self, reply: GrpcReply) -> Result<(), SignalJniError> {
+    fn do_on_reply(&mut self, reply: GrpcReply) -> Result<(), BridgeLayerError> {
         self.env.borrow_mut().with_local_frame(8, |env| {
             let jni_reply = reply.convert_into(env)?;
             let callback_args = jni_args!((
@@ -39,7 +39,7 @@ impl<'a> JniGrpcReplyListener<'a> {
         })
     }
 
-    fn do_on_error(&mut self, error: String) -> Result<(), SignalJniError> {
+    fn do_on_error(&mut self, error: String) -> Result<(), BridgeLayerError> {
         self.env.borrow_mut().with_local_frame(8, |env| {
             let message = env.new_string(error.to_string())?;
             let callback_args = jni_args!((
