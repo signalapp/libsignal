@@ -7,6 +7,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_bridge::ffi::*;
+use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
@@ -81,6 +82,9 @@ pub enum SignalErrorCode {
     Network = 133,
     NetworkProtocol = 134,
     RateLimited = 135,
+
+    SvrDataMissing = 150,
+    SvrRestoreFailed = 151,
 }
 
 impl From<&SignalFfiError> for SignalErrorCode {
@@ -314,10 +318,13 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 }
             }
             SignalFfiError::Network(_) => SignalErrorCode::Network,
-            SignalFfiError::NetworkProtocol => SignalErrorCode::NetworkProtocol,
+            SignalFfiError::NetworkProtocol(_) => SignalErrorCode::NetworkProtocol,
             SignalFfiError::RateLimited {
                 retry_after_seconds: _,
             } => SignalErrorCode::RateLimited,
+            SignalFfiError::Svr(Svr3Error::DataMissing) => SignalErrorCode::SvrDataMissing,
+            SignalFfiError::Svr(Svr3Error::RestoreFailed) => SignalErrorCode::SvrRestoreFailed,
+            SignalFfiError::Svr(_) => SignalErrorCode::UnknownError,
         }
     }
 }

@@ -5,6 +5,7 @@
 
 use std::convert::TryInto as _;
 use std::future::Future;
+use std::num::NonZeroU32;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,7 +16,6 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
-use cfg_if::cfg_if;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
 use libsignal_net::auth::Auth;
@@ -24,12 +24,16 @@ use libsignal_net::cdsi::{
 };
 use libsignal_net::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use libsignal_net::chat::{chat_service, ChatServiceWithDebugInfo, DebugInfo, Request, Response};
-use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind};
+use libsignal_net::enclave::{
+    Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx,
+};
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::errors::NetError;
 use libsignal_net::infra::ws::WebSocketClientConnector;
 use libsignal_net::infra::{make_ws_config, EndpointConnection, TcpSslTransportConnector};
+use libsignal_net::svr::{self, SvrConnection};
+use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
 use libsignal_net::utils::timeout;
 use libsignal_net::{chat, env};
 use libsignal_protocol::{Aci, SignalProtocolError};
@@ -37,16 +41,8 @@ use libsignal_protocol::{Aci, SignalProtocolError};
 use crate::support::*;
 use crate::*;
 
-cfg_if! {
-    if #[cfg(any(feature = "jni", feature = "node"))] {
-        use futures_util::future::TryFutureExt as _;
-        use rand::rngs::OsRng;
-        use std::num::NonZeroU32;
-        use libsignal_net::enclave::{ Nitro, PpssSetup, Sgx, };
-        use libsignal_net::svr::{self, SvrConnection};
-        use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
-    }
-}
+use futures_util::future::TryFutureExt as _;
+use rand::rngs::OsRng;
 
 pub struct TokioAsyncContext(tokio::runtime::Runtime);
 
@@ -103,7 +99,6 @@ pub struct ConnectionManager {
         ChatOverWebSocketServiceConnector<TcpSslTransportConnector>,
     >,
     cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
-    #[cfg(any(feature = "jni", feature = "node"))]
     svr3: (
         EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager, TcpSslTransportConnector>,
         EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager, TcpSslTransportConnector>,
@@ -136,7 +131,6 @@ impl ConnectionManager {
                 chat_connector,
             ),
             cdsi: Self::endpoint_connection(environment.env().cdsi),
-            #[cfg(any(feature = "jni", feature = "node"))]
             svr3: (
                 Self::endpoint_connection(environment.env().svr3.sgx()),
                 Self::endpoint_connection(environment.env().svr3.nitro()),
@@ -286,7 +280,7 @@ fn CreateOTPFromBase64(username: String, secret: String) -> String {
     Auth::otp(&username, &secret, std::time::SystemTime::now())
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn Svr3Backup(
     connection_manager: &ConnectionManager,
     secret: Box<[u8]>,
@@ -320,7 +314,7 @@ async fn Svr3Backup(
     Ok(share_set.serialize().expect("can serialize the share set"))
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn Svr3Restore(
     connection_manager: &ConnectionManager,
     password: String,
@@ -342,7 +336,6 @@ async fn Svr3Restore(
     Ok(restored_secret.to_vec())
 }
 
-#[cfg(any(feature = "jni", feature = "node"))]
 async fn svr3_connect<'a>(
     connection_manager: &ConnectionManager,
     username: String,

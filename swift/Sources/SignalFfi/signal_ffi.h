@@ -185,6 +185,8 @@ typedef enum {
   SignalErrorCodeNetwork = 133,
   SignalErrorCodeNetworkProtocol = 134,
   SignalErrorCodeRateLimited = 135,
+  SignalErrorCodeSvrDataMissing = 150,
+  SignalErrorCodeSvrRestoreFailed = 151,
 } SignalErrorCode;
 
 /**
@@ -479,6 +481,14 @@ typedef struct {
  * `SignalCPromiseProtocolAddress`.
  */
 typedef void (*SignalCPromiseFfiCdsiLookupResponse)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
 
 typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
@@ -1323,6 +1333,10 @@ SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse 
 SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
 
 SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
+
+SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
+
+SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
 
 SignalFfiError *signal_chat_destroy(SignalChat *p);
 

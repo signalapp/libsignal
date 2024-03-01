@@ -9,6 +9,7 @@ use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
@@ -35,10 +36,11 @@ pub enum SignalFfiError {
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     Network(libsignal_net::infra::errors::NetError),
-    NetworkProtocol,
+    NetworkProtocol(String),
     RateLimited {
         retry_after_seconds: u32,
     },
+    Svr(Svr3Error),
     #[cfg(feature = "signal-media")]
     Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
     #[cfg(feature = "signal-media")]
@@ -72,10 +74,11 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
             SignalFfiError::Network(e) => write!(f, "Network error: {e}"),
-            SignalFfiError::NetworkProtocol => write!(f, "Protocol error"),
+            SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
             SignalFfiError::RateLimited {
                 retry_after_seconds,
             } => write!(f, "Rate limited; try again after {}s", retry_after_seconds),
+            SignalFfiError::Svr(e) => write!(f, "SVR error: {e}"),
             #[cfg(feature = "signal-media")]
             SignalFfiError::Mp4SanitizeParse(e) => {
                 write!(f, "Mp4 sanitizer failed to parse mp4 file: {}", e)
@@ -191,13 +194,26 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
             LookupError::AttestationError(e) => SignalFfiError::Sgx(e),
             LookupError::Net(e) => SignalFfiError::Network(e),
             LookupError::ParseError | LookupError::Protocol | LookupError::InvalidResponse => {
-                SignalFfiError::NetworkProtocol
+                SignalFfiError::NetworkProtocol(value.to_string())
             }
             LookupError::RateLimited {
                 retry_after_seconds: retry_after,
             } => SignalFfiError::RateLimited {
                 retry_after_seconds: retry_after,
             },
+        }
+    }
+}
+
+impl From<Svr3Error> for SignalFfiError {
+    fn from(err: Svr3Error) -> Self {
+        match err {
+            Svr3Error::Net(inner) => SignalFfiError::Network(inner),
+            Svr3Error::AttestationError(inner) => SignalFfiError::Sgx(inner),
+            Svr3Error::Protocol(inner) => SignalFfiError::NetworkProtocol(inner.to_string()),
+            Svr3Error::RequestFailed(_) | Svr3Error::RestoreFailed | Svr3Error::DataMissing => {
+                SignalFfiError::Svr(err)
+            }
         }
     }
 }

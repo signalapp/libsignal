@@ -191,7 +191,7 @@ export interface Svr3Client {
    *   data.
    *
    * @param what - The secret to be stored. Must be 32 bytes long.
-   * @param password - User-provide password that will be used to derive the
+   * @param password - User-provided password that will be used to derive the
    * encryption key for the secret.
    * @param maxTries - Number of times the secret will be allowed to be guessed.
    * Each call to {@link Svr3Client#restore} that has reached the server will
@@ -232,7 +232,7 @@ export interface Svr3Client {
    * Error messages are expected to be log-safe and not contain any sensitive
    * data.
    *
-   * @param password - User-provide password that will be used to derive the
+   * @param password - User-provided password that will be used to derive the
    * decryption key for the secret.
    * @param shareSet - a serialized masked share set returned by a call to
    * {@link Svr3Client#backup}.

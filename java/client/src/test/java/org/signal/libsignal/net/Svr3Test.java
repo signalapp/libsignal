@@ -89,12 +89,9 @@ public class Svr3Test {
   @Test
   public void zeroTries() throws Exception {
     Network net = new Network(Network.Environment.STAGING);
-    try {
-      net.svr3().backup(STORED_SECRET, "password", 0, this.auth, TIMEOUT).get();
-    } catch (ExecutionException ex) {
-      Throwable cause = ex.getCause();
-      assertTrue("Unexpected exception: " + cause, cause instanceof AssertionError);
-    }
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> net.svr3().backup(STORED_SECRET, "password", 0, this.auth, TIMEOUT).get());
   }
 
   @Test

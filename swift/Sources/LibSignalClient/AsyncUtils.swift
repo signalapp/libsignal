@@ -42,6 +42,15 @@ extension SignalFfiCdsiLookupResponse: Completable {
     typealias PromiseCallback = SignalCPromiseFfiCdsiLookupResponse
 }
 
+extension SignalOwnedBuffer: Completable {
+    typealias PromiseCallback = SignalCPromiseOwnedBufferOfc_uchar
+}
+
+@available(*, unavailable, message: "SignalOwnedBuffer should be used instead")
+extension [UInt8]: Completable {
+    typealias PromiseCallback = SignalCPromiseOwnedBufferOfc_uchar
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

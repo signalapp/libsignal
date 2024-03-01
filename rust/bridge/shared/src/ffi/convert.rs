@@ -291,6 +291,15 @@ impl SimpleArgTypeInfo for libsignal_net::cdsi::E164 {
     }
 }
 
+impl SimpleArgTypeInfo for Box<[u8]> {
+    type ArgType = BorrowedSliceOf<c_uchar>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let slice = unsafe { foreign.as_slice()? };
+        Ok(slice.into())
+    }
+}
+
 impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
     type ArgType = *const [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -691,6 +700,7 @@ macro_rules! ffi_arg_type {
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
+    (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));

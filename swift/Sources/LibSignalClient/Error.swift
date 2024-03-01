@@ -57,6 +57,8 @@ public enum SignalError: Error {
     case networkProtocolError(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
     case unknown(UInt32, String)
+    case svrDataMissing(String)
+    case svrRestoreFailed(String)
 }
 
 internal typealias SignalFfiErrorRef = OpaquePointer
@@ -171,6 +173,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             signal_error_get_retry_after_seconds(error, $0)
         }
         throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
+    case SignalErrorCodeSvrDataMissing:
+        throw SignalError.svrDataMissing(errStr)
+    case SignalErrorCodeSvrRestoreFailed:
+        throw SignalError.svrRestoreFailed(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

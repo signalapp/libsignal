@@ -22,10 +22,14 @@ public class Net {
         case production = 1
     }
 
+    /// An SVR3 client providing backup and restore functionality.
+    public let svr3: Svr3Client
+
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
     public init(env: Environment) {
         self.asyncContext = TokioAsyncContext()
         self.connectionManager = ConnectionManager(env: env)
+        self.svr3 = Svr3Client(self.asyncContext, self.connectionManager)
     }
 
     /// Like ``cdsiLookup(auth:request:timeout:)`` but with the parameters to ``CdsiLookupRequest`` broken out.
@@ -115,6 +119,16 @@ public struct Auth {
     public init(username: String, password: String) {
         self.username = username
         self.password = password
+    }
+}
+
+extension Auth {
+    // To be used by the tests
+    internal init(username: String, enclaveSecret: String) throws {
+        let otp = try invokeFnReturningString {
+            signal_create_otp_from_base64($0, username, enclaveSecret)
+        }
+        self.init(username: username, password: otp)
     }
 }
 
