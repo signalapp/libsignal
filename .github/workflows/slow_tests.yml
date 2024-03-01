@@ -1,5 +1,8 @@
 name: Slow Tests
 
+env:
+  ENCLAVE_SECRET: ${{secrets.SVR_ENCLAVE_SECRET}}
+
 on:
   schedule:
     # "High load times include the start of every hour.
