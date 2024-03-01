@@ -84,7 +84,7 @@ Pod::Spec.new do |s|
         elif [ -e "${SCRIPT_INPUT_FILE_0}" ]; then
           mkdir -p "${LIBSIGNAL_FFI_TEMP_DIR}"
           cd "${LIBSIGNAL_FFI_TEMP_DIR}"
-          tar --modification-time -x -f "${SCRIPT_INPUT_FILE_0}"
+          tar -m -x -f "${SCRIPT_INPUT_FILE_0}"
         else
           echo 'error: could not download libsignal_ffi.a; please provide LIBSIGNAL_FFI_PREBUILD_CHECKSUM' >&2
           exit 1
