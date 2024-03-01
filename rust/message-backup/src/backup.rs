@@ -56,12 +56,32 @@ pub struct BackupMeta {
     pub purpose: Purpose,
 }
 
-#[derive(Debug)]
+#[repr(u8)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    num_enum::TryFromPrimitive,
+    strum::EnumString,
+    strum::Display,
+    strum::IntoStaticStr,
+)]
 pub enum Purpose {
     /// Intended for immediate transfer from one device to another.
-    DeviceTransfer,
+    #[strum(
+        serialize = "device_transfer",
+        serialize = "device-transfer",
+        serialize = "transfer"
+    )]
+    DeviceTransfer = 0,
     /// For remote storage and restoration at a later time.
-    RemoteBackup,
+    #[strum(
+        serialize = "remote_backup",
+        serialize = "remote-backup",
+        serialize = "backup"
+    )]
+    RemoteBackup = 1,
 }
 
 impl From<PartialBackup<Store>> for Backup {
@@ -166,19 +186,19 @@ trait WithId {
 pub struct RecipientFrameError(RecipientId, RecipientError);
 
 impl PartialBackup<ValidateOnly> {
-    pub fn new_validator(value: proto::BackupInfo) -> Self {
-        Self::new(value)
+    pub fn new_validator(value: proto::BackupInfo, purpose: Purpose) -> Self {
+        Self::new(value, purpose)
     }
 }
 
 impl PartialBackup<Store> {
-    pub fn new_store(value: proto::BackupInfo) -> Self {
-        Self::new(value)
+    pub fn new_store(value: proto::BackupInfo, purpose: Purpose) -> Self {
+        Self::new(value, purpose)
     }
 }
 
 impl<M: Method> PartialBackup<M> {
-    pub fn new(value: proto::BackupInfo) -> Self {
+    pub fn new(value: proto::BackupInfo, purpose: Purpose) -> Self {
         let proto::BackupInfo {
             version,
             backupTimeMs,
@@ -188,7 +208,7 @@ impl<M: Method> PartialBackup<M> {
         let meta = BackupMeta {
             version,
             backup_time: Timestamp::from_millis(backupTimeMs, "BackupInfo.backupTimeMs"),
-            purpose: Purpose::RemoteBackup,
+            purpose,
         };
 
         Self {
@@ -459,7 +479,7 @@ mod test {
 
     trait TestPartialBackupMethod: Method + Sized {
         fn empty() -> PartialBackup<Self> {
-            PartialBackup::new(proto::BackupInfo::new())
+            PartialBackup::new(proto::BackupInfo::new(), Purpose::RemoteBackup)
         }
 
         fn fake() -> PartialBackup<Self> {

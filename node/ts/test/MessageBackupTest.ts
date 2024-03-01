@@ -18,6 +18,7 @@ describe('MessageBackup', () => {
   const masterKey = Buffer.from(new Uint8Array(32).fill('M'.charCodeAt(0)));
   const aci = Aci.fromUuidBytes(new Uint8Array(16).fill(0x11));
   const testKey = new MessageBackup.MessageBackupKey(masterKey, aci);
+  const purpose = MessageBackup.Purpose.RemoteBackup;
 
   describe('validate', () => {
     it('successfully validates a minimal backup', async () => {
@@ -27,6 +28,7 @@ describe('MessageBackup', () => {
 
       const outcome = await MessageBackup.validate(
         testKey,
+        purpose,
         () => new Uint8ArrayInputStream(input),
         BigInt(input.length)
       );
@@ -36,6 +38,7 @@ describe('MessageBackup', () => {
     it('produces an error message on empty input', async () => {
       const outcome = await MessageBackup.validate(
         testKey,
+        purpose,
         () => new Uint8ArrayInputStream(new Uint8Array()),
         0n
       );
@@ -46,8 +49,9 @@ describe('MessageBackup', () => {
       try {
         await MessageBackup.validate(
           testKey,
+          purpose,
           () => new ErrorInputStream(),
-          BigInt(234)
+          234n
         );
         assert.fail('did not throw');
       } catch (e) {

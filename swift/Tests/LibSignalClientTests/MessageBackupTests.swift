@@ -43,14 +43,14 @@ class MessageBackupTests: TestCaseBase {
         let bytes = readResource(forName: "new_account.binproto.encrypted")
         let makeStream = { ThrowsAfterInputStream(inner: SignalInputStreamAdapter(bytes), readBeforeThrow: UInt64(bytes.count) - 1) }
         XCTAssertThrowsError(
-            try validateMessageBackup(key: MessageBackupKey.testKey(), length: UInt64(bytes.count), makeStream: makeStream)
+            try validateMessageBackup(key: MessageBackupKey.testKey(), purpose: .remoteBackup, length: UInt64(bytes.count), makeStream: makeStream)
         ) { error in
             if error is TestIoError {} else { XCTFail("\(error)") }
         }
     }
 
     static func validateBackup(bytes: some Collection<UInt8>) throws -> MessageBackupUnknownFields {
-        try validateMessageBackup(key: MessageBackupKey.testKey(), length: UInt64(bytes.count), makeStream: { SignalInputStreamAdapter(bytes) })
+        try validateMessageBackup(key: MessageBackupKey.testKey(), purpose: .remoteBackup, length: UInt64(bytes.count), makeStream: { SignalInputStreamAdapter(bytes) })
     }
 }
 

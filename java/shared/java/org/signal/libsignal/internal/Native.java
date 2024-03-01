@@ -337,7 +337,7 @@ public final class Native {
   public static native void MessageBackupKey_Destroy(long handle);
   public static native long MessageBackupKey_New(byte[] masterKey, byte[] aci);
 
-  public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len) throws Exception;
+  public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len, int purpose) throws Exception;
 
   public static native long Mp4Sanitizer_Sanitize(InputStream input, long len) throws Exception;
 

@@ -28,10 +28,16 @@ public class MessageBackupKey: NativeHandleOwner {
     }
 }
 
+public enum MessageBackupPurpose: UInt8 {
+    // This needs to be kept in sync with the Rust version of the enum.
+    case deviceTransfer = 0, remoteBackup = 1
+}
+
 /// Validates a message backup file.
 ///
 /// - Parameters:
 ///  - key: The key used to decrypt the backup file.
+///  - purpose: Whether the backup is intended for transfer or remote storage.
 ///  - length: The exact length of the backup file, in bytes.
 ///  - makeStream: A callback that produces InputStreams needed for backups.
 ///
@@ -41,13 +47,13 @@ public class MessageBackupKey: NativeHandleOwner {
 ///  - `SignalError.ioError`: If an IO error on the input occurs.
 ///  - `MessageBackupValidationError`: If validation fails
 public func validateMessageBackup(
-    key: MessageBackupKey, length: UInt64, makeStream: () -> SignalInputStream
+    key: MessageBackupKey, purpose: MessageBackupPurpose, length: UInt64, makeStream: () -> SignalInputStream
 ) throws -> MessageBackupUnknownFields {
     let outcome: ValidationOutcome = try withInputStream(makeStream()) { firstInput in
         try withInputStream(makeStream()) { secondInput in
             try key.withNativeHandle { key in
                 try invokeFnReturningNativeHandle {
-                    signal_message_backup_validator_validate($0, key, firstInput, secondInput, length)
+                    signal_message_backup_validator_validate($0, key, firstInput, secondInput, length, purpose.rawValue)
                 }
             }
         }

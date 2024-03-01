@@ -5754,7 +5754,7 @@ SOFTWARE.
 
 ```
 
-## strum_macros 0.26.1
+## strum 0.26.1, strum_macros 0.26.1
 
 ```
 MIT License

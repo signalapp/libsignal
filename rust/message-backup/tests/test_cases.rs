@@ -10,10 +10,13 @@ use assert_matches::assert_matches;
 use dir_test::{dir_test, Fixture};
 use futures::io::Cursor;
 use futures::AsyncRead;
+use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{FileReaderFactory, VerifyHmac};
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_message_backup::{BackupReader, ReadResult};
 use libsignal_protocol::Aci;
+
+const BACKUP_PURPOSE: Purpose = Purpose::RemoteBackup;
 
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
@@ -29,12 +32,13 @@ fn is_valid_json_proto(input: Fixture<&str>) {
 
     // Check via the library interface.
     let input = Cursor::new(&*binary);
-    let reader = BackupReader::new_unencrypted(input);
+    let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
     validate(reader);
 
     // The CLI tool should agree.
     validator_command()
         .arg("-")
+        .args(["--purpose", BACKUP_PURPOSE.into()])
         .write_stdin(binary)
         .ok()
         .expect("command failed");
@@ -55,8 +59,12 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     let path = input.into_content();
     // Check via the library interface.
     let factory = FileReaderFactory { path: &path };
-    let reader = futures::executor::block_on(BackupReader::new_encrypted_compressed(&key, factory))
-        .expect("invalid HMAC");
+    let reader = futures::executor::block_on(BackupReader::new_encrypted_compressed(
+        &key,
+        factory,
+        Purpose::RemoteBackup,
+    ))
+    .expect("invalid HMAC");
     validate(reader);
 
     // The CLI tool should agree.
@@ -67,6 +75,8 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
             "--master-key".to_string(),
             hex::encode(MASTER_KEY),
             path.to_string_lossy().into_owned(),
+            "--purpose".to_string(),
+            BACKUP_PURPOSE.to_string(),
         ])
         .ok()
         .expect("command failed");
@@ -90,7 +100,7 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
         libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
 
     let input = Cursor::new(&*binary);
-    let reader = BackupReader::new_unencrypted(input);
+    let reader = BackupReader::new_unencrypted(input, Purpose::RemoteBackup);
 
     let ReadResult {
         result,

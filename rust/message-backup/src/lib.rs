@@ -9,6 +9,7 @@ use futures::AsyncRead;
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 
+use crate::backup::Purpose;
 use crate::frame::{HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac};
 use crate::key::MessageBackupKey;
 use crate::parse::VarintDelimitedReader;
@@ -27,6 +28,7 @@ pub(crate) mod proto;
 pub mod proto;
 
 pub struct BackupReader<R> {
+    purpose: Purpose,
     reader: VarintDelimitedReader<R>,
     pub visitor: fn(&dyn std::fmt::Debug),
 }
@@ -101,10 +103,14 @@ impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
     pub async fn collect_all<M: backup::method::Method>(
         self,
     ) -> ReadResult<backup::PartialBackup<M>> {
-        let Self { reader, visitor } = self;
+        let Self {
+            reader,
+            visitor,
+            purpose,
+        } = self;
 
         let mut found_unknown_fields = Vec::new();
-        let result = read_all_frames(reader, visitor, &mut found_unknown_fields).await;
+        let result = read_all_frames(purpose, reader, visitor, &mut found_unknown_fields).await;
         ReadResult {
             found_unknown_fields,
             result,
@@ -113,10 +119,11 @@ impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
 }
 
 impl<R: AsyncRead + Unpin> BackupReader<UnvalidatedHmacReader<R>> {
-    pub fn new_unencrypted(reader: R) -> Self {
+    pub fn new_unencrypted(reader: R, purpose: Purpose) -> Self {
         let reader = VarintDelimitedReader::new(UnvalidatedHmacReader::new(reader));
         Self {
             reader,
+            purpose,
             visitor: |_| (),
         }
     }
@@ -126,16 +133,19 @@ impl<R: AsyncRead + AsyncSkip + Unpin> BackupReader<frame::FramesReader<R>> {
     pub async fn new_encrypted_compressed(
         key: &MessageBackupKey,
         factory: impl ReaderFactory<Reader = R>,
+        purpose: Purpose,
     ) -> Result<Self, frame::ValidationError> {
         let reader = frame::FramesReader::new(key, factory).await?;
         Ok(Self {
             reader: VarintDelimitedReader::new(reader),
+            purpose,
             visitor: |_| (),
         })
     }
 }
 
 async fn read_all_frames<M: backup::method::Method>(
+    purpose: Purpose,
     mut reader: VarintDelimitedReader<impl AsyncRead + Unpin + VerifyHmac>,
     mut visitor: impl FnMut(&dyn std::fmt::Debug),
     unknown_fields: &mut impl Extend<FoundUnknownField>,
@@ -157,7 +167,7 @@ async fn read_all_frames<M: backup::method::Method>(
     visitor(&backup_info);
     add_found_unknown(backup_info.collect_unknown_fields(), 0);
 
-    let mut backup = backup::PartialBackup::new(backup_info);
+    let mut backup = backup::PartialBackup::new(backup_info, purpose);
     let mut frame_index = 1;
 
     while let Some(frame) = reader.read_next().await? {

@@ -6,6 +6,7 @@
 #[cfg(any(feature = "jni", feature = "ffi"))]
 use futures_util::FutureExt as _;
 use libsignal_bridge_macros::*;
+use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{
     LimitedReaderFactory, ValidationError as FrameValidationError,
 };
@@ -90,6 +91,7 @@ async fn MessageBackupValidator_Validate(
     first_stream: &mut dyn InputStream,
     second_stream: &mut dyn InputStream,
     len: u64,
+    purpose: AsType<Purpose, u8>,
 ) -> Result<MessageBackupValidationOutcome, std::io::Error> {
     let MessageBackupKey(key) = key;
 
@@ -100,7 +102,7 @@ async fn MessageBackupValidator_Validate(
     let factory = LimitedReaderFactory::new(streams);
 
     let (error, found_unknown_fields) =
-        match BackupReader::new_encrypted_compressed(key, factory).await {
+        match BackupReader::new_encrypted_compressed(key, factory, purpose.into_inner()).await {
             Err(e) => (Some(e.into()), Vec::new()),
             Ok(reader) => {
                 let ReadResult {
