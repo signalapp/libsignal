@@ -102,18 +102,18 @@ mod tests {
     #[test]
     fn attest_svr2() {
         const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
         let mrenclave_bytes =
-            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
+            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
         new_handshake(&mrenclave_bytes, HANDSHAKE_BYTES, current_time).unwrap();
     }
 
     #[test]
     fn attest_svr2_bad_config() {
         const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
         let mrenclave_bytes =
-            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
+            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
 
         assert!(new_handshake_with_constants(
             &mrenclave_bytes,

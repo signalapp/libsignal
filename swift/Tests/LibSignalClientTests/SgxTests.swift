@@ -22,10 +22,10 @@ class SgxTests: TestCaseBase {
 
         (
             ServiceType.svr2,
-            // echo a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95 | xxd -r -p | base64
-            Data(base64Encoded: "qKJhQgprubYaolv4p56L0g12UlMf6zOBy//URtJwvpU=")!,
+            // echo acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482 | xxd -r -p | base64
+            Data(base64Encoded: "rLGXOqC7vRSztOBvFFSX2Uj9SpjvxQD8zjY7O3Q+xII=")!,
             readResource(forName: "svr2handshakestart.data"),
-            Date(timeIntervalSince1970: 1_683_836_600)
+            Date(timeIntervalSince1970: 1_709_245_753)
         ),
     ]
 
@@ -74,10 +74,10 @@ class SgxTests: TestCaseBase {
         }
     }
 
-    func testEstablishedSendFailsPriorToEstablishment() {
+    func testEstablishedSendFailsPriorToEstablishment() throws {
         let plaintext: [UInt8] = [0x01, 0x02, 0x03]
         for (serviceType, mrenclave, attestationMsg, currentDate) in self.testCases {
-            let client = try! SgxTests.build(
+            let client = try SgxTests.build(
                 serviceType: serviceType,
                 mrenclave: mrenclave,
                 attestationMessage: attestationMsg,
@@ -87,10 +87,10 @@ class SgxTests: TestCaseBase {
         }
     }
 
-    func testEstablishedRecvFailsPriorToEstablishment() {
+    func testEstablishedRecvFailsPriorToEstablishment() throws {
         let receivedCiphertext: [UInt8] = [0x01, 0x02, 0x03]
         for (serviceType, mrenclave, attestationMsg, currentDate) in self.testCases {
-            let client = try! SgxTests.build(
+            let client = try SgxTests.build(
                 serviceType: serviceType,
                 mrenclave: mrenclave,
                 attestationMessage: attestationMsg,

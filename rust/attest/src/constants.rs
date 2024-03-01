@@ -34,18 +34,8 @@ pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], PcrMap, 1>  = Smal
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 5> =
+pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 3> =
     &SmallMap::new([
-        (
-            // Previous SVR2 staging
-            &hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-        (
-            // Previous SVR2 prod
-            &hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
         (
             ENCLAVE_ID_SVR2_STAGING,
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
@@ -65,28 +55,8 @@ pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'
 pub(crate) const DEFAULT_SW_ADVISORIES: &[&str] = &[];
 
 /// Expected raft configuration for a given enclave.
-pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftConfig, 6> =
+pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftConfig, 4> =
     SmallMap::new([
-        (
-            // Previous SVR2 staging
-            &hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
-            &RaftConfig {
-                min_voting_replicas: 3,
-                max_voting_replicas: 5,
-                super_majority: 0,
-                group_id: 15525669046665930652,
-            },
-        ),
-        (
-            // Previous SVR2 prod
-            &hex!("6ee1042f9e20f880326686dd4ba50c25359f01e9f733eeba4382bca001d45094"),
-            &RaftConfig {
-                min_voting_replicas: 4,
-                max_voting_replicas: 7,
-                super_majority: 2,
-                group_id: 3950115602363750357,
-            },
-        ),
         (
             ENCLAVE_ID_SVR2_STAGING,
             &RaftConfig {
