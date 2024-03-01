@@ -4520,6 +4520,7 @@ dependencies = [
  "partial-default",
  "poksho",
  "rand",
+ "rayon",
  "serde",
  "sha2",
  "signal-crypto",

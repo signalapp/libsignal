@@ -92,9 +92,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalRESERVED_LEN 1
 
-#define SignalSERVER_SECRET_PARAMS_LEN 2689
+#define SignalSERVER_SECRET_PARAMS_LEN 2721
 
-#define SignalSERVER_PUBLIC_PARAMS_LEN 641
+#define SignalSERVER_PUBLIC_PARAMS_LEN 673
 
 #define SignalUUID_CIPHERTEXT_LEN 65
 
