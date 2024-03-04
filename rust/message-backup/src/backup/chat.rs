@@ -49,10 +49,8 @@ pub enum ChatItemError {
     UpdateIsEmpty,
     /// CallChatUpdate.call is a oneof but is empty
     CallIsEmpty,
-    /// unknown call ID {0:?}
-    NoCallForId(CallId),
-    /// invalid ACI uuid
-    InvalidAci,
+    /// call update: {0}
+    CallUpdate(#[from] CallChatUpdateError),
     /// GroupChange has no changes.
     GroupChangeIsEmpty,
     /// for GroupUpdate change {0}, Update.update is a oneof but is empty
@@ -236,6 +234,17 @@ pub enum CallChatUpdate {
     },
 }
 
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum CallChatUpdateError {
+    /// unknown call ID {0:?}
+    NoCallForId(CallId),
+    /// IndividualCallChatUpdate.type is UNKNOWN
+    CallTypeUnknown,
+    /// invalid ACI uuid
+    InvalidAci,
+}
+
 /// Validated version of [`proto::Reaction`].
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -391,7 +400,6 @@ impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
             dateSent,
 
             // TODO validate these fields
-            sealedSender: _,
             sms: _,
             special_fields: _,
         } = value;
@@ -471,6 +479,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::chat_item::DirectionalDetails,
                 dateServerSent,
                 // TODO validate this field.
                 read: _,
+                sealedSender: _,
             }) => {
                 let sent =
                     Timestamp::from_millis(dateServerSent, "DirectionalDetails.dateServerSent");
@@ -888,7 +897,7 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateM
 }
 
 impl<R: Contains<CallId>> TryFromWith<proto::call_chat_update::Call, R> for CallChatUpdate {
-    type Error = ChatItemError;
+    type Error = CallChatUpdateError;
     fn try_from_with(
         item: proto::call_chat_update::Call,
         context: &R,
@@ -900,10 +909,17 @@ impl<R: Contains<CallId>> TryFromWith<proto::call_chat_update::Call, R> for Call
                 context
                     .contains(&id)
                     .then_some(Self::Call(id))
-                    .ok_or(ChatItemError::NoCallForId(id))
+                    .ok_or(CallChatUpdateError::NoCallForId(id))
             }
-            Call::CallMessage(proto::IndividualCallChatUpdate { special_fields: _ }) => {
-                // TODO check "type" field once it gets added upstream.
+            Call::CallMessage(proto::IndividualCallChatUpdate {
+                special_fields: _,
+                type_,
+            }) => {
+                if type_.enum_value_or_default()
+                    == proto::individual_call_chat_update::Type::UNKNOWN
+                {
+                    return Err(CallChatUpdateError::CallTypeUnknown);
+                }
                 Ok(Self::CallMessage)
             }
             Call::GroupCall(group) => {
@@ -918,7 +934,7 @@ impl<R: Contains<CallId>> TryFromWith<proto::call_chat_update::Call, R> for Call
                     bytes
                         .try_into()
                         .map(Aci::from_uuid_bytes)
-                        .map_err(|_| ChatItemError::InvalidAci)
+                        .map_err(|_| CallChatUpdateError::InvalidAci)
                 };
                 let started_call_aci = startedCallAci.map(uuid_bytes_to_aci).transpose()?;
 
@@ -1492,6 +1508,7 @@ mod test {
         const TEST_WRONG_CALL_ID: Self = Self::CallId(proto::Call::TEST_ID + 1);
         fn test_call_message() -> Self {
             Self::CallMessage(proto::IndividualCallChatUpdate {
+                type_: proto::individual_call_chat_update::Type::INCOMING_VIDEO_CALL.into(),
                 special_fields: SpecialFields::new(),
             })
         }
@@ -1531,7 +1548,7 @@ mod test {
     }
 
     #[test_case(CallChatUpdateProto::TEST_CALL_ID, Ok(()))]
-    #[test_case(CallChatUpdateProto::TEST_WRONG_CALL_ID, Err(ChatItemError::NoCallForId(CallId(proto::Call::TEST_ID + 1))))]
+    #[test_case(CallChatUpdateProto::TEST_WRONG_CALL_ID, Err(CallChatUpdateError::NoCallForId(CallId(proto::Call::TEST_ID + 1))))]
     #[test_case(CallChatUpdateProto::test_call_message(), Ok(()))]
     #[test_case(CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::test_data()), Ok(()))]
     #[test_case(
@@ -1540,13 +1557,13 @@ mod test {
     )]
     #[test_case(
         CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::bad_started_call_aci()),
-        Err(ChatItemError::InvalidAci)
+        Err(CallChatUpdateError::InvalidAci)
     )]
     #[test_case(
         CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::bad_in_call_aci()),
-        Err(ChatItemError::InvalidAci)
+        Err(CallChatUpdateError::InvalidAci)
     )]
-    fn call_chat_update(update: CallChatUpdateProto, expected: Result<(), ChatItemError>) {
+    fn call_chat_update(update: CallChatUpdateProto, expected: Result<(), CallChatUpdateError>) {
         assert_eq!(
             update
                 .try_into_with(&TestContext::default())

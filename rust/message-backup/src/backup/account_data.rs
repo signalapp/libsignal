@@ -109,7 +109,6 @@ impl TryFrom<proto::account_data::AccountSettings> for AccountSettings {
             readReceipts: _,
             sealedSenderIndicators: _,
             typingIndicators: _,
-            noteToSelfMarkedUnread: _,
             linkPreviews: _,
             notDiscoverableByPhoneNumber: _,
             preferContactAvatars: _,
