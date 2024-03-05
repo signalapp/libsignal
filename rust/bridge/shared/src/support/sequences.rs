@@ -4,6 +4,8 @@
 //
 
 use libsignal_protocol::{ServiceId, ServiceIdFixedWidthBinaryBytes};
+use rayon::iter::ParallelIterator as _;
+use rayon::slice::ParallelSlice as _;
 
 /// Lazily parses ServiceIds from a buffer of concatenated Service-Id-FixedWidthBinary.
 ///
@@ -49,6 +51,17 @@ impl<'a> IntoIterator for ServiceIdSequence<'a> {
     fn into_iter(self) -> Self::IntoIter {
         self.0
             .chunks_exact(Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN)
+            .map(Self::parse_single_chunk)
+    }
+}
+
+impl<'a> rayon::iter::IntoParallelIterator for ServiceIdSequence<'a> {
+    type Iter = rayon::iter::Map<rayon::slice::ChunksExact<'a, u8>, fn(&[u8]) -> ServiceId>;
+    type Item = ServiceId;
+
+    fn into_par_iter(self) -> Self::Iter {
+        self.0
+            .par_chunks_exact(Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN)
             .map(Self::parse_single_chunk)
     }
 }

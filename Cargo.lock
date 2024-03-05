@@ -1812,6 +1812,7 @@ dependencies = [
  "partial-default",
  "paste",
  "rand",
+ "rayon",
  "scopeguard",
  "serde",
  "serde_derive",
