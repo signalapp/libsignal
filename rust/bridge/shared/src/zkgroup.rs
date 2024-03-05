@@ -1299,3 +1299,184 @@ fn GroupSendCredentialPresentation_Verify(
 
     presentation.verify(group_members, now.as_seconds(), &server_params)
 }
+
+#[bridge_fn_void]
+fn GroupSendDerivedKeyPair_CheckValidContents(
+    bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendDerivedKeyPair>(bytes)
+}
+
+#[bridge_fn]
+fn GroupSendDerivedKeyPair_ForExpiration(
+    expiration: Timestamp,
+    server_params: Serialized<ServerSecretParams>,
+) -> Vec<u8> {
+    zkgroup::serialize(&GroupSendDerivedKeyPair::for_expiration(
+        expiration.as_seconds(),
+        &server_params,
+    ))
+}
+
+#[bridge_fn_void]
+fn GroupSendEndorsementsResponse_CheckValidContents(
+    bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendEndorsementsResponse>(bytes)
+}
+
+#[bridge_fn]
+fn GroupSendEndorsementsResponse_IssueDeterministic(
+    concatenated_group_member_ciphertexts: &[u8],
+    key_pair: &[u8],
+    randomness: &[u8; RANDOMNESS_LEN],
+) -> Vec<u8> {
+    assert!(concatenated_group_member_ciphertexts.len() % UUID_CIPHERTEXT_LEN == 0);
+    let user_id_ciphertexts = concatenated_group_member_ciphertexts
+        .chunks_exact(UUID_CIPHERTEXT_LEN)
+        .map(|serialized| {
+            zkgroup::deserialize::<UuidCiphertext>(serialized)
+                .expect("should have been parsed previously")
+        });
+
+    let key_pair = zkgroup::deserialize::<GroupSendDerivedKeyPair>(key_pair)
+        .expect("should have been parsed previously");
+
+    zkgroup::serialize(&GroupSendEndorsementsResponse::issue(
+        user_id_ciphertexts,
+        &key_pair,
+        *randomness,
+    ))
+}
+
+#[bridge_fn]
+fn GroupSendEndorsementsResponse_GetExpiration(response_bytes: &[u8]) -> Timestamp {
+    let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
+        .expect("should have been parsed previously");
+    Timestamp::from_seconds(response.expiration())
+}
+
+#[bridge_fn]
+fn GroupSendEndorsementsResponse_ReceiveWithServiceIds(
+    response_bytes: &[u8],
+    group_members: ServiceIdSequence<'_>,
+    now: Timestamp,
+    group_params: Serialized<GroupSecretParams>,
+    server_params: Serialized<ServerPublicParams>,
+) -> Result<Box<[Vec<u8>]>, ZkGroupVerificationFailure> {
+    let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
+        .expect("should have been parsed previously");
+
+    let endorsements = response.receive_with_service_ids(
+        group_members,
+        now.as_seconds(),
+        &group_params,
+        &server_params,
+    )?;
+    Ok(endorsements
+        .into_iter()
+        .map(|e| zkgroup::serialize(&e))
+        .collect())
+}
+
+#[bridge_fn]
+fn GroupSendEndorsementsResponse_ReceiveWithCiphertexts(
+    response_bytes: &[u8],
+    concatenated_group_member_ciphertexts: &[u8],
+    now: Timestamp,
+    server_params: Serialized<ServerPublicParams>,
+) -> Result<Box<[Vec<u8>]>, ZkGroupVerificationFailure> {
+    let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
+        .expect("should have been parsed previously");
+
+    assert!(concatenated_group_member_ciphertexts.len() % UUID_CIPHERTEXT_LEN == 0);
+    let user_id_ciphertexts = concatenated_group_member_ciphertexts
+        .chunks_exact(UUID_CIPHERTEXT_LEN)
+        .map(|serialized| {
+            zkgroup::deserialize::<UuidCiphertext>(serialized)
+                .expect("should have been parsed previously")
+        });
+
+    let endorsements =
+        response.receive_with_ciphertexts(user_id_ciphertexts, now.as_seconds(), &server_params)?;
+    Ok(endorsements
+        .into_iter()
+        .map(|e| zkgroup::serialize(&e))
+        .collect())
+}
+
+#[bridge_fn_void]
+fn GroupSendEndorsement_CheckValidContents(
+    bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendEndorsement>(bytes)
+}
+
+#[bridge_fn]
+fn GroupSendEndorsement_Combine(endorsements: Vec<&[u8]>) -> Vec<u8> {
+    let combined = GroupSendEndorsement::combine(
+        endorsements
+            .into_iter()
+            .map(|next| zkgroup::deserialize(next).expect("should have been parsed previously")),
+    );
+    zkgroup::serialize(&combined)
+}
+
+#[bridge_fn]
+fn GroupSendEndorsement_Remove(endorsement: &[u8], to_remove: &[u8]) -> Vec<u8> {
+    let endorsement = zkgroup::deserialize::<GroupSendEndorsement>(endorsement)
+        .expect("should have been parsed previously");
+    let to_remove = zkgroup::deserialize::<GroupSendEndorsement>(to_remove)
+        .expect("should have been parsed previously");
+
+    zkgroup::serialize(&endorsement.remove(&to_remove))
+}
+
+#[bridge_fn]
+fn GroupSendEndorsement_ToToken(
+    endorsement: &[u8],
+    group_params: Serialized<GroupSecretParams>,
+) -> Vec<u8> {
+    let endorsement = zkgroup::deserialize::<GroupSendEndorsement>(endorsement)
+        .expect("should have been parsed previously");
+    zkgroup::serialize(&endorsement.to_token(&group_params))
+}
+
+#[bridge_fn_void]
+fn GroupSendToken_CheckValidContents(bytes: &[u8]) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendToken>(bytes)
+}
+
+#[bridge_fn]
+fn GroupSendToken_ToFullToken(token: &[u8], expiration: Timestamp) -> Vec<u8> {
+    let token =
+        zkgroup::deserialize::<GroupSendToken>(token).expect("should have been parsed previously");
+    zkgroup::serialize(&token.into_full_token(expiration.as_seconds()))
+}
+
+#[bridge_fn_void]
+fn GroupSendFullToken_CheckValidContents(
+    bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    validate_serialization::<GroupSendFullToken>(bytes)
+}
+
+#[bridge_fn]
+fn GroupSendFullToken_GetExpiration(token: &[u8]) -> Timestamp {
+    let token = zkgroup::deserialize::<GroupSendFullToken>(token)
+        .expect("should have been parsed previously");
+    Timestamp::from_seconds(token.expiration())
+}
+#[bridge_fn]
+fn GroupSendFullToken_Verify(
+    token: &[u8],
+    user_ids: ServiceIdSequence<'_>,
+    now: Timestamp,
+    key_pair: &[u8],
+) -> Result<(), ZkGroupVerificationFailure> {
+    let token = zkgroup::deserialize::<GroupSendFullToken>(token)
+        .expect("should have been parsed previously");
+    let key_pair = zkgroup::deserialize::<GroupSendDerivedKeyPair>(key_pair)
+        .expect("should have been parsed previously");
+    token.verify(user_ids, now.as_seconds(), &key_pair)
+}

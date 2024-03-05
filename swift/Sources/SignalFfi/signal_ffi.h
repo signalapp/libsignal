@@ -1309,6 +1309,38 @@ SignalFfiError *signal_group_send_credential_presentation_check_valid_contents(S
 
 SignalFfiError *signal_group_send_credential_presentation_verify(SignalBorrowedBuffer presentation_bytes, SignalBorrowedBuffer group_members, uint64_t now, const unsigned char (*server_params)[SignalSERVER_SECRET_PARAMS_LEN]);
 
+SignalFfiError *signal_group_send_derived_key_pair_check_valid_contents(SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_group_send_derived_key_pair_for_expiration(SignalOwnedBuffer *out, uint64_t expiration, const unsigned char (*server_params)[SignalSERVER_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_group_send_endorsements_response_check_valid_contents(SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_group_send_endorsements_response_issue_deterministic(SignalOwnedBuffer *out, SignalBorrowedBuffer concatenated_group_member_ciphertexts, SignalBorrowedBuffer key_pair, const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+
+SignalFfiError *signal_group_send_endorsements_response_get_expiration(uint64_t *out, SignalBorrowedBuffer response_bytes);
+
+SignalFfiError *signal_group_send_endorsements_response_receive_with_service_ids(SignalBytestringArray *out, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer group_members, uint64_t now, const unsigned char (*group_params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*server_params)[SignalSERVER_PUBLIC_PARAMS_LEN]);
+
+SignalFfiError *signal_group_send_endorsements_response_receive_with_ciphertexts(SignalBytestringArray *out, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer concatenated_group_member_ciphertexts, uint64_t now, const unsigned char (*server_params)[SignalSERVER_PUBLIC_PARAMS_LEN]);
+
+SignalFfiError *signal_group_send_endorsement_check_valid_contents(SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_group_send_endorsement_combine(SignalOwnedBuffer *out, SignalBorrowedSliceOfBuffers endorsements);
+
+SignalFfiError *signal_group_send_endorsement_remove(SignalOwnedBuffer *out, SignalBorrowedBuffer endorsement, SignalBorrowedBuffer to_remove);
+
+SignalFfiError *signal_group_send_endorsement_to_token(SignalOwnedBuffer *out, SignalBorrowedBuffer endorsement, const unsigned char (*group_params)[SignalGROUP_SECRET_PARAMS_LEN]);
+
+SignalFfiError *signal_group_send_token_check_valid_contents(SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_group_send_token_to_full_token(SignalOwnedBuffer *out, SignalBorrowedBuffer token, uint64_t expiration);
+
+SignalFfiError *signal_group_send_full_token_check_valid_contents(SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_group_send_full_token_get_expiration(uint64_t *out, SignalBorrowedBuffer token);
+
+SignalFfiError *signal_group_send_full_token_verify(bool *out, SignalBorrowedBuffer token, SignalBorrowedBuffer user_ids, uint64_t now, SignalBorrowedBuffer key_pair);
+
 SignalFfiError *signal_verify_signature(bool *out, SignalBorrowedBuffer cert_pem, SignalBorrowedBuffer body, SignalBorrowedBuffer signature, uint64_t current_timestamp);
 
 SignalFfiError *signal_tokio_async_context_new(SignalTokioAsyncContext **out);

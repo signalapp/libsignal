@@ -272,6 +272,27 @@ public final class Native {
   public static native void GroupSendCredential_CheckValidContents(byte[] paramsBytes) throws Exception;
   public static native byte[] GroupSendCredential_PresentDeterministic(byte[] credentialBytes, byte[] serverParams, byte[] randomness) throws Exception;
 
+  public static native void GroupSendDerivedKeyPair_CheckValidContents(byte[] bytes) throws Exception;
+  public static native byte[] GroupSendDerivedKeyPair_ForExpiration(long expiration, byte[] serverParams);
+
+  public static native void GroupSendEndorsement_CheckValidContents(byte[] bytes) throws Exception;
+  public static native byte[] GroupSendEndorsement_Combine(Object[] endorsements);
+  public static native byte[] GroupSendEndorsement_Remove(byte[] endorsement, byte[] toRemove);
+  public static native byte[] GroupSendEndorsement_ToToken(byte[] endorsement, byte[] groupParams);
+
+  public static native void GroupSendEndorsementsResponse_CheckValidContents(byte[] bytes) throws Exception;
+  public static native long GroupSendEndorsementsResponse_GetExpiration(byte[] responseBytes);
+  public static native byte[] GroupSendEndorsementsResponse_IssueDeterministic(byte[] concatenatedGroupMemberCiphertexts, byte[] keyPair, byte[] randomness);
+  public static native Object[] GroupSendEndorsementsResponse_ReceiveWithCiphertexts(byte[] responseBytes, byte[] concatenatedGroupMemberCiphertexts, long now, byte[] serverParams) throws Exception;
+  public static native Object[] GroupSendEndorsementsResponse_ReceiveWithServiceIds(byte[] responseBytes, byte[] groupMembers, long now, byte[] groupParams, byte[] serverParams) throws Exception;
+
+  public static native void GroupSendFullToken_CheckValidContents(byte[] bytes) throws Exception;
+  public static native long GroupSendFullToken_GetExpiration(byte[] token);
+  public static native void GroupSendFullToken_Verify(byte[] token, byte[] userIds, long now, byte[] keyPair) throws Exception;
+
+  public static native void GroupSendToken_CheckValidContents(byte[] bytes) throws Exception;
+  public static native byte[] GroupSendToken_ToFullToken(byte[] token, long expiration);
+
   public static native long GroupSessionBuilder_CreateSenderKeyDistributionMessage(long sender, UUID distributionId, SenderKeyStore store) throws Exception;
   public static native void GroupSessionBuilder_ProcessSenderKeyDistributionMessage(long sender, long senderKeyDistributionMessage, SenderKeyStore store) throws Exception;
 
