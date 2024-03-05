@@ -278,7 +278,6 @@ mod test {
     use tokio::time;
 
     use crate::infra::certs::RootCertificates;
-    use crate::infra::dns::DnsResolver;
     use crate::infra::test::shared::{
         TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
@@ -500,7 +499,6 @@ mod test {
             443,
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
-            DnsResolver::default().into(),
         )
     }
 }

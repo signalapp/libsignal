@@ -336,7 +336,6 @@ mod test {
     use crate::infra::connection_manager::{
         SingleRouteThrottlingConnectionManager, MAX_COOLDOWN_INTERVAL,
     };
-    use crate::infra::dns::DnsResolver;
     use crate::infra::reconnect::{
         ServiceConnector, ServiceState, ServiceStatus, ServiceWithReconnect,
     };
@@ -430,7 +429,6 @@ mod test {
             443,
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
-            DnsResolver::default().into(),
         )
     }
 

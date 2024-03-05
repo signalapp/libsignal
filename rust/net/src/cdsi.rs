@@ -303,15 +303,25 @@ pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
 
 impl<S: AsyncDuplexStream> CdsiConnection<S> {
     /// Connect to remote host and verify remote attestation.
-    pub async fn connect<P, T>(env: &P, auth: impl HttpBasicAuth) -> Result<Self, LookupError>
+    pub async fn connect<C, T>(
+        endpoint: &EnclaveEndpointConnection<Cdsi, C>,
+        transport_connector: T,
+        auth: impl HttpBasicAuth,
+    ) -> Result<Self, LookupError>
     where
-        P: CdsiConnectionParams<TransportConnector = T>,
+        C: ConnectionManager,
         T: TransportConnector<Stream = S>,
     {
         let auth_decorator = auth.into();
-        let connection_manager = env.connection_manager();
-        let connector = ServiceConnectorWithDecorator::new(env.connector(), auth_decorator);
-        let service_initializer = ServiceInitializer::new(&connector, connection_manager);
+        let connector = ServiceConnectorWithDecorator::new(
+            WebSocketClientConnector::new(
+                transport_connector,
+                endpoint.endpoint_connection.config.clone(),
+            ),
+            auth_decorator,
+        );
+        let service_initializer =
+            ServiceInitializer::new(&connector, &endpoint.endpoint_connection.manager);
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),
@@ -320,7 +330,11 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
             ServiceState::TimedOut => Err(LookupError::Net(NetError::Timeout)),
         }?;
         let attested = AttestedConnection::connect(websocket, |attestation_msg| {
-            attest::cds2::new_handshake(env.mr_enclave(), attestation_msg, SystemTime::now())
+            attest::cds2::new_handshake(
+                endpoint.params.mr_enclave.as_ref(),
+                attestation_msg,
+                SystemTime::now(),
+            )
         })
         .await?;
 
@@ -383,42 +397,6 @@ impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
                 .map_err(LookupError::from)?;
         }
         Ok(response.try_into()?)
-    }
-}
-
-pub trait CdsiConnectionParams {
-    /// The type returned by `connection_manager`.
-    type ConnectionManager: ConnectionManager;
-
-    /// The `TransportConnector` used by the `WebSocketClientConnector`
-    type TransportConnector: TransportConnector;
-
-    /// A connection manager with routes to the remote CDSI service.
-    fn connection_manager(&self) -> &Self::ConnectionManager;
-
-    /// A connector for websocket protocol
-    fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector>;
-
-    /// The signature of the remote enclave for verifying attestation.
-    fn mr_enclave(&self) -> &[u8];
-}
-
-impl<C: ConnectionManager, T: TransportConnector> CdsiConnectionParams
-    for EnclaveEndpointConnection<Cdsi, C, T>
-{
-    type ConnectionManager = C;
-    type TransportConnector = T;
-
-    fn connection_manager(&self) -> &Self::ConnectionManager {
-        &self.endpoint_connection.manager
-    }
-
-    fn connector(&self) -> &WebSocketClientConnector<Self::TransportConnector> {
-        &self.endpoint_connection.connector
-    }
-
-    fn mr_enclave(&self) -> &[u8] {
-        self.params.mr_enclave.as_ref()
     }
 }
 

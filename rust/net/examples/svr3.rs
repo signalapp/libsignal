@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
+use libsignal_net::infra::dns::DnsResolver;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
@@ -53,23 +54,16 @@ async fn main() {
     };
 
     let connect = || async {
-        let connection_a = EnclaveEndpointConnection::new(
-            env.sgx(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-        );
+        let connector = TcpSslTransportConnector::new(DnsResolver::default());
+        let connection_a = EnclaveEndpointConnection::new(env.sgx(), Duration::from_secs(10));
         let sgx_auth = Auth::from_uid_and_secret(uid, sgx_secret);
-        let a = SvrConnection::<Sgx>::connect(sgx_auth, &connection_a)
+        let a = SvrConnection::<Sgx>::connect(sgx_auth, &connection_a, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
-        let connection_b = EnclaveEndpointConnection::new(
-            env.nitro(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-        );
+        let connection_b = EnclaveEndpointConnection::new(env.nitro(), Duration::from_secs(10));
         let nitro_auth = Auth::from_uid_and_secret(uid, nitro_secret);
-        let b = SvrConnection::<Nitro>::connect(nitro_auth, &connection_b)
+        let b = SvrConnection::<Nitro>::connect(nitro_auth, &connection_b, connector)
             .await
             .expect("can attestedly connect to Nitro");
 

@@ -157,7 +157,6 @@ mod test {
             port: FAKE_PORT,
             http_request_decorator: Default::default(),
             certs: crate::infra::certs::RootCertificates::Native,
-            dns_resolver: crate::infra::dns::DnsResolver::default().into()
         };
     }
 

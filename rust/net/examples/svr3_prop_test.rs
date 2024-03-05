@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
+use libsignal_net::infra::dns::DnsResolver;
 use proptest::prelude::*;
 use proptest::test_runner::Config;
 use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
@@ -322,26 +323,21 @@ impl Svr3Storage {
     }
 
     async fn connect(&self, uid: Uid) -> <Svr3Env as PpssSetup>::Connections {
+        let connector = TcpSslTransportConnector::new(DnsResolver::default());
         if let Some(duration) = self.config.sleep {
             tokio::time::sleep(duration).await;
         }
-        let sgx_connection = EnclaveEndpointConnection::new(
-            self.env.sgx(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-        );
+        let sgx_connection =
+            EnclaveEndpointConnection::new(self.env.sgx(), Duration::from_secs(10));
         let sgx_auth = Auth::from_uid_and_secret(uid, self.sgx_secret);
-        let a = SvrConnection::<Sgx>::connect(sgx_auth, &sgx_connection)
+        let a = SvrConnection::<Sgx>::connect(sgx_auth, &sgx_connection, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
-        let nitro_connection = EnclaveEndpointConnection::new(
-            self.env.nitro(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-        );
+        let nitro_connection =
+            EnclaveEndpointConnection::new(self.env.nitro(), Duration::from_secs(10));
         let nitro_auth = Auth::from_uid_and_secret(uid, self.nitro_secret);
-        let b = SvrConnection::<Nitro>::connect(nitro_auth, &nitro_connection)
+        let b = SvrConnection::<Nitro>::connect(nitro_auth, &nitro_connection, connector)
             .await
             .expect("can attestedly connect to Nitro");
 

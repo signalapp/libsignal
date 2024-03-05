@@ -15,8 +15,8 @@ use crate::env::{DomainConfig, Svr3Env};
 use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::infra::ws::{AttestedConnection, WebSocketClientConnector};
-use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection, TransportConnector};
+use crate::infra::ws::AttestedConnection;
+use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection};
 use crate::svr::SvrConnection;
 
 pub trait EnclaveKind {
@@ -173,26 +173,19 @@ impl<E: EnclaveKind> EndpointParams<E> {
     }
 }
 
-pub struct EnclaveEndpointConnection<E: EnclaveKind, C, T> {
-    pub(crate) endpoint_connection: EndpointConnection<C, WebSocketClientConnector<T>>,
+pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
+    pub(crate) endpoint_connection: EndpointConnection<C>,
     pub(crate) params: EndpointParams<E>,
 }
 
-impl<E: EnclaveKind, T: TransportConnector>
-    EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager, T>
-{
-    pub fn new(
-        endpoint: EnclaveEndpoint<'static, E>,
-        connect_timeout: Duration,
-        transport_connector: T,
-    ) -> Self {
-        Self::with_custom_properties(endpoint, connect_timeout, transport_connector, None)
+impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
+    pub fn new(endpoint: EnclaveEndpoint<'static, E>, connect_timeout: Duration) -> Self {
+        Self::with_custom_properties(endpoint, connect_timeout, None)
     }
 
     pub fn with_custom_properties(
         endpoint: EnclaveEndpoint<'static, E>,
         connect_timeout: Duration,
-        transport_connector: T,
         raft_config_override: Option<&'static RaftConfig>,
     ) -> Self {
         Self {
@@ -201,10 +194,7 @@ impl<E: EnclaveKind, T: TransportConnector>
                     endpoint.domain_config.connection_params(),
                     connect_timeout,
                 ),
-                connector: WebSocketClientConnector::new(
-                    transport_connector,
-                    make_ws_config(E::url_path(endpoint.mr_enclave.as_ref()), connect_timeout),
-                ),
+                config: make_ws_config(E::url_path(endpoint.mr_enclave.as_ref()), connect_timeout),
             },
             params: EndpointParams {
                 mr_enclave: endpoint.mr_enclave,
@@ -214,24 +204,17 @@ impl<E: EnclaveKind, T: TransportConnector>
     }
 }
 
-impl<E: EnclaveKind, T: TransportConnector>
-    EnclaveEndpointConnection<E, MultiRouteConnectionManager, T>
-{
+impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
     pub fn new_multi(
         mr_enclave: MrEnclave<&'static [u8], E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         connect_timeout: Duration,
-        transport_connector: T,
     ) -> Self {
-        let service_connector = WebSocketClientConnector::new(
-            transport_connector,
-            make_ws_config(E::url_path(mr_enclave.as_ref()), connect_timeout),
-        );
         Self {
             endpoint_connection: EndpointConnection::new_multi(
                 connection_params,
                 connect_timeout,
-                service_connector,
+                make_ws_config(E::url_path(mr_enclave.as_ref()), connect_timeout),
             ),
             params: EndpointParams {
                 mr_enclave,

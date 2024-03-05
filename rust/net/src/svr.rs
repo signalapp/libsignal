@@ -12,7 +12,9 @@ use crate::enclave::{EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::{LogSafeDisplay, NetError};
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
-use crate::infra::ws::{AttestedConnection, AttestedConnectionError, DefaultStream};
+use crate::infra::ws::{
+    AttestedConnection, AttestedConnectionError, DefaultStream, WebSocketClientConnector,
+};
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 
 #[derive(Debug, Error, displaydoc::Display)]
@@ -65,7 +67,8 @@ where
 {
     pub async fn connect<C, T>(
         auth: impl HttpBasicAuth,
-        connection: &EnclaveEndpointConnection<E, C, T>,
+        connection: &EnclaveEndpointConnection<E, C>,
+        transport_connector: T,
     ) -> Result<Self, Error>
     where
         C: ConnectionManager,
@@ -73,10 +76,11 @@ where
     {
         // TODO: This is almost a direct copy of CdsiConnection::connect. They can be unified.
         let auth_decorator = auth.into();
-        let connector = ServiceConnectorWithDecorator::new(
-            &connection.endpoint_connection.connector,
-            auth_decorator,
+        let websocket_connector = WebSocketClientConnector::new(
+            transport_connector,
+            connection.endpoint_connection.config.clone(),
         );
+        let connector = ServiceConnectorWithDecorator::new(&websocket_connector, auth_decorator);
         let service_initializer =
             ServiceInitializer::new(&connector, &connection.endpoint_connection.manager);
         let connection_attempt_result = service_initializer.connect().await;

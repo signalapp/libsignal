@@ -15,9 +15,12 @@ use crate::chat::ws::ChatOverWebSocketServiceConnector;
 use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
+use crate::infra::ws::WebSocketClientConnector;
 use crate::infra::{EndpointConnection, HttpRequestDecorator, TransportConnector};
 use crate::proto;
 use crate::utils::basic_authorization;
+
+use self::ws::ServerRequest;
 
 pub mod chat_reconnect;
 pub mod http;
@@ -389,22 +392,20 @@ fn build_anonymous_chat_service(
     }
 }
 
-pub fn chat_service(
-    endpoint_connection: &EndpointConnection<
-        MultiRouteConnectionManager,
-        ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
-    >,
+pub fn chat_service<T: TransportConnector + 'static>(
+    endpoint: &EndpointConnection<MultiRouteConnectionManager>,
+    transport_connector: T,
+    incoming_tx: tokio::sync::mpsc::Sender<ServerRequest<T::Stream>>,
     username: String,
     password: String,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
+    let ws_service_connector = ChatOverWebSocketServiceConnector::new(
+        WebSocketClientConnector::new(transport_connector, endpoint.config.clone()),
+        incoming_tx,
+    );
     Chat::new(
-        build_authorized_chat_service(
-            &endpoint_connection.manager,
-            &endpoint_connection.connector,
-            username,
-            password,
-        ),
-        build_anonymous_chat_service(&endpoint_connection.manager, &endpoint_connection.connector),
+        build_authorized_chat_service(&endpoint.manager, &ws_service_connector, username, password),
+        build_anonymous_chat_service(&endpoint.manager, &ws_service_connector),
     )
 }
 
@@ -425,7 +426,6 @@ pub(crate) mod test {
         use crate::chat::{ChatService, Request, Response};
         use crate::infra::certs::RootCertificates;
         use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
-        use crate::infra::dns::DnsResolver;
         use crate::infra::errors::{LogSafeDisplay, NetError};
         use crate::infra::reconnect::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
@@ -471,7 +471,6 @@ pub(crate) mod test {
                 443,
                 Default::default(),
                 RootCertificates::Signal,
-                DnsResolver::default().into(),
             );
             SingleRouteThrottlingConnectionManager::new(connection_params, TIMEOUT_DURATION)
         }

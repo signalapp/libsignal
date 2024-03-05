@@ -14,6 +14,7 @@ use std::time::Duration;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
+use libsignal_net::infra::dns::DnsResolver;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
@@ -106,25 +107,24 @@ async fn main() {
     let (uid_a, uid_b) = (make_uid(), make_uid());
 
     let connect = || async {
+        let connector = TcpSslTransportConnector::new(DnsResolver::default());
         let connection_a = EnclaveEndpointConnection::with_custom_properties(
             two_sgx_env.0,
             Duration::from_secs(10),
-            TcpSslTransportConnector,
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
-        let a = SvrConnection::connect(make_auth(uid_a), &connection_a)
+        let a = SvrConnection::connect(make_auth(uid_a), &connection_a, connector.clone())
             .await
             .expect("can attestedly connect");
 
         let connection_b = EnclaveEndpointConnection::with_custom_properties(
             two_sgx_env.1,
             Duration::from_secs(10),
-            TcpSslTransportConnector,
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
 
-        let b = SvrConnection::connect(make_auth(uid_b), &connection_b)
+        let b = SvrConnection::connect(make_auth(uid_b), &connection_b, connector)
             .await
             .expect("can attestedly connect");
         (a, b)

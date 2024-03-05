@@ -7,7 +7,6 @@ use const_str::ip_addr;
 use std::collections::HashMap;
 use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
 use std::time::Duration;
 
 use rand::seq::SliceRandom;
@@ -15,7 +14,7 @@ use rand::{thread_rng, Rng};
 
 use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx};
 use crate::infra::certs::RootCertificates;
-use crate::infra::dns::{DnsResolver, LookupResult};
+use crate::infra::dns::LookupResult;
 use crate::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq};
 
 pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
@@ -143,34 +142,29 @@ pub struct DomainConfig {
 }
 
 impl DomainConfig {
-    pub fn connection_params(&self) -> ConnectionParams {
-        let static_dns_map = HashMap::from([(
+    pub fn static_fallback(&self) -> (&'static str, LookupResult) {
+        (
             self.hostname,
             LookupResult::new(self.ip_v4.into(), self.ip_v6.into()),
-        )]);
+        )
+    }
+
+    pub fn connection_params(&self) -> ConnectionParams {
         ConnectionParams::new(
             self.hostname,
             self.hostname,
             443,
             HttpRequestDecoratorSeq::default(),
             *self.cert,
-            Arc::new(DnsResolver::new_with_static_fallback(static_dns_map)),
         )
     }
 
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
         let direct = self.connection_params();
         let rng = thread_rng();
-        let shuffled_g_params = PROXY_CONFIG_G.shuffled_connection_params(
-            self.proxy_path,
-            direct.dns_resolver.clone(),
-            rng.clone(),
-        );
-        let shuffled_f_params = PROXY_CONFIG_F.shuffled_connection_params(
-            self.proxy_path,
-            direct.dns_resolver.clone(),
-            rng,
-        );
+        let shuffled_g_params =
+            PROXY_CONFIG_G.shuffled_connection_params(self.proxy_path, rng.clone());
+        let shuffled_f_params = PROXY_CONFIG_F.shuffled_connection_params(self.proxy_path, rng);
         let proxy_params = itertools::interleave(shuffled_g_params, shuffled_f_params);
         iter::once(direct).chain(proxy_params).collect()
     }
@@ -185,7 +179,6 @@ impl ProxyConfig {
     pub fn shuffled_connection_params<'a>(
         &'a self,
         proxy_path: &'static str,
-        dns_resolver: Arc<DnsResolver>,
         mut rng: impl Rng,
     ) -> impl Iterator<Item = ConnectionParams> + 'a {
         let mut sni_list = self.sni_list.to_vec();
@@ -197,7 +190,6 @@ impl ProxyConfig {
                 443,
                 HttpRequestDecorator::PathPrefix(proxy_path).into(),
                 RootCertificates::Native,
-                dns_resolver.clone(),
             )
         })
     }
@@ -208,6 +200,25 @@ pub struct Env<'a, Svr3> {
     pub svr2: EnclaveEndpoint<'a, Sgx>,
     pub svr3: Svr3,
     pub chat_domain_config: DomainConfig,
+}
+
+impl<'a> Env<'a, Svr3Env<'a>> {
+    /// Returns a static mapping from hostnames to [`LookupResult`]s.
+    pub fn static_fallback(&self) -> HashMap<&'a str, LookupResult> {
+        let Self {
+            cdsi,
+            svr2,
+            svr3,
+            chat_domain_config,
+        } = self;
+        HashMap::from([
+            cdsi.domain_config.static_fallback(),
+            svr2.domain_config.static_fallback(),
+            svr3.sgx().domain_config.static_fallback(),
+            svr3.nitro().domain_config.static_fallback(),
+            chat_domain_config.static_fallback(),
+        ])
+    }
 }
 
 pub struct Svr3Env<'a>(EnclaveEndpoint<'a, Sgx>, EnclaveEndpoint<'a, Nitro>);

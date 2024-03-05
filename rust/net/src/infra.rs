@@ -25,7 +25,6 @@ use crate::infra::connection_manager::{
 };
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::NetError;
-use crate::infra::reconnect::ServiceConnector;
 use crate::infra::ws::WebSocketConfig;
 use crate::utils::first_ok;
 
@@ -80,7 +79,6 @@ pub struct ConnectionParams {
     pub port: u16,
     pub http_request_decorator: HttpRequestDecoratorSeq,
     pub certs: RootCertificates,
-    pub dns_resolver: Arc<DnsResolver>,
 }
 
 impl ConnectionParams {
@@ -90,7 +88,6 @@ impl ConnectionParams {
         port: u16,
         http_request_decorator: HttpRequestDecoratorSeq,
         certs: RootCertificates,
-        dns_resolver: Arc<DnsResolver>,
     ) -> Self {
         Self {
             sni: Arc::from(sni),
@@ -98,7 +95,6 @@ impl ConnectionParams {
             port,
             http_request_decorator,
             certs,
-            dns_resolver,
         }
     }
 
@@ -167,7 +163,9 @@ pub trait TransportConnector: Clone + Send + Sync {
 }
 
 #[derive(Clone)]
-pub struct TcpSslTransportConnector;
+pub struct TcpSslTransportConnector {
+    dns_resolver: Arc<DnsResolver>,
+}
 
 #[async_trait]
 impl TransportConnector for TcpSslTransportConnector {
@@ -179,7 +177,7 @@ impl TransportConnector for TcpSslTransportConnector {
         alpn: &[u8],
     ) -> Result<StreamAndHost<Self::Stream>, NetError> {
         let StreamAndHost(tcp_stream, remote_address) = connect_tcp(
-            &connection_params.dns_resolver,
+            &self.dns_resolver,
             &connection_params.sni,
             connection_params.port,
         )
@@ -198,6 +196,12 @@ impl TransportConnector for TcpSslTransportConnector {
 }
 
 impl TcpSslTransportConnector {
+    pub fn new(resolver: DnsResolver) -> Self {
+        Self {
+            dns_resolver: Arc::new(resolver),
+        }
+    }
+
     fn builder(certs: RootCertificates, alpn: &[u8]) -> Result<SslConnectorBuilder, NetError> {
         let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
         ssl.set_verify_cert_store(certs.try_into()?)?;
@@ -206,16 +210,16 @@ impl TcpSslTransportConnector {
     }
 }
 
-pub struct EndpointConnection<C, S> {
+pub struct EndpointConnection<C> {
     pub manager: C,
-    pub connector: S,
+    pub config: WebSocketConfig,
 }
 
-impl<S: ServiceConnector> EndpointConnection<MultiRouteConnectionManager, S> {
+impl EndpointConnection<MultiRouteConnectionManager> {
     pub fn new_multi(
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         connect_timeout: Duration,
-        service_connector: S,
+        config: WebSocketConfig,
     ) -> Self {
         Self {
             manager: MultiRouteConnectionManager::new(
@@ -227,7 +231,7 @@ impl<S: ServiceConnector> EndpointConnection<MultiRouteConnectionManager, S> {
                     .collect(),
                 connect_timeout,
             ),
-            connector: service_connector,
+            config,
         }
     }
 }

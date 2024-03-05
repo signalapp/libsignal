@@ -10,27 +10,26 @@ use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 
+use base64::prelude::{Engine, BASE64_STANDARD};
+use futures_util::future::TryFutureExt as _;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue};
-use tokio::net::TcpStream;
+use rand::rngs::OsRng;
 use tokio::sync::mpsc;
-
-use base64::prelude::{Engine, BASE64_STANDARD};
 
 use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
-use libsignal_net::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use libsignal_net::chat::{chat_service, ChatServiceWithDebugInfo, DebugInfo, Request, Response};
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx,
 };
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
+use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::NetError;
-use libsignal_net::infra::ws::WebSocketClientConnector;
 use libsignal_net::infra::{make_ws_config, EndpointConnection, TcpSslTransportConnector};
 use libsignal_net::svr::{self, SvrConnection};
 use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
@@ -40,9 +39,6 @@ use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::support::*;
 use crate::*;
-
-use futures_util::future::TryFutureExt as _;
-use rand::rngs::OsRng;
 
 pub struct TokioAsyncContext(tokio::runtime::Runtime);
 
@@ -94,15 +90,13 @@ impl Environment {
 }
 
 pub struct ConnectionManager {
-    chat: EndpointConnection<
-        MultiRouteConnectionManager,
-        ChatOverWebSocketServiceConnector<TcpSslTransportConnector>,
-    >,
-    cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager, TcpSslTransportConnector>,
+    chat: EndpointConnection<MultiRouteConnectionManager>,
+    cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager>,
     svr3: (
-        EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager, TcpSslTransportConnector>,
-        EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager, TcpSslTransportConnector>,
+        EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager>,
+        EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager>,
     ),
+    transport_connector: TcpSslTransportConnector,
 }
 
 impl RefUnwindSafe for ConnectionManager {}
@@ -110,43 +104,38 @@ impl RefUnwindSafe for ConnectionManager {}
 impl ConnectionManager {
     const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
     fn new(environment: Environment) -> Self {
+        let dns_resolver =
+            DnsResolver::new_with_static_fallback(environment.env().static_fallback());
+        let transport_connector = TcpSslTransportConnector::new(dns_resolver);
         let chat_endpoint = PathAndQuery::from_static(env::constants::WEB_SOCKET_PATH);
         let chat_connection_params = environment
             .env()
             .chat_domain_config
             .connection_params_with_fallback();
-        let (incoming_tx, _incoming_rx) =
-            mpsc::channel::<ServerRequest<tokio_boring::SslStream<TcpStream>>>(1);
-        let chat_connector = ChatOverWebSocketServiceConnector::new(
-            WebSocketClientConnector::new(
-                TcpSslTransportConnector,
-                make_ws_config(chat_endpoint, Self::DEFAULT_CONNECT_TIMEOUT),
-            ),
-            incoming_tx,
-        );
+        let chat_ws_config = make_ws_config(chat_endpoint, Self::DEFAULT_CONNECT_TIMEOUT);
         Self {
             chat: EndpointConnection::new_multi(
                 chat_connection_params,
                 Self::DEFAULT_CONNECT_TIMEOUT,
-                chat_connector,
+                chat_ws_config,
             ),
             cdsi: Self::endpoint_connection(environment.env().cdsi),
             svr3: (
                 Self::endpoint_connection(environment.env().svr3.sgx()),
                 Self::endpoint_connection(environment.env().svr3.nitro()),
             ),
+            transport_connector,
         }
     }
 
     fn endpoint_connection<E: EnclaveKind>(
         endpoint: EnclaveEndpoint<'static, E>,
-    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager, TcpSslTransportConnector> {
+    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         let params = endpoint.domain_config.connection_params_with_fallback();
         EnclaveEndpointConnection::new_multi(
             endpoint.mr_enclave,
             params,
             Self::DEFAULT_CONNECT_TIMEOUT,
-            TcpSslTransportConnector,
         )
     }
 }
@@ -234,7 +223,12 @@ async fn CdsiLookup_new(
     let request = std::mem::take(&mut *request.0.lock().expect("not poisoned"));
     let auth = Auth { username, password };
 
-    let connected = CdsiConnection::connect(&connection_manager.cdsi, auth).await?;
+    let connected = CdsiConnection::connect(
+        &connection_manager.cdsi,
+        connection_manager.transport_connector.clone(),
+        auth,
+    )
+    .await?;
     let (token, remaining_response) = timeout(
         Duration::from_millis(timeout_millis.into()),
         cdsi::LookupError::Net(NetError::Timeout),
@@ -346,9 +340,10 @@ async fn svr3_connect<'a>(
         chat: _chat,
         cdsi: _cdsi,
         svr3: (sgx, nitro),
+        transport_connector,
     } = connection_manager;
-    let sgx = SvrConnection::connect(auth.clone(), sgx).await?;
-    let nitro = SvrConnection::connect(auth, nitro).await?;
+    let sgx = SvrConnection::connect(auth.clone(), sgx, transport_connector.clone()).await?;
+    let nitro = SvrConnection::connect(auth, nitro, transport_connector.clone()).await?;
     Ok((sgx, nitro))
 }
 
@@ -416,8 +411,16 @@ fn ChatService_new(
     username: String,
     password: String,
 ) -> Chat {
+    let (incoming_tx, _incoming_rx) = mpsc::channel(1);
     Chat {
-        service: chat_service(&connection_manager.chat, username, password).into_dyn(),
+        service: chat_service(
+            &connection_manager.chat,
+            connection_manager.transport_connector.clone(),
+            incoming_tx,
+            username,
+            password,
+        )
+        .into_dyn(),
     }
 }
 
