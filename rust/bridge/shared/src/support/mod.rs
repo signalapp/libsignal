@@ -8,8 +8,10 @@ use std::future::Future;
 pub(crate) use paste::paste;
 
 mod as_type;
+mod sequences;
 mod serialized;
 pub(crate) use as_type::*;
+pub(crate) use sequences::*;
 pub(crate) use serialized::*;
 
 mod transform_helper;

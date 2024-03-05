@@ -342,7 +342,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
 }
 
 impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
-    for crate::protocol::ServiceIdSequence<'storage>
+    for crate::support::ServiceIdSequence<'storage>
 {
     type ArgType = JByteArray<'context>;
     type StoredType = AutoElements<'context, 'context, 'param, jbyte>;

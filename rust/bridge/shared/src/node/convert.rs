@@ -567,7 +567,7 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
 
 /// See [`AssumedImmutableBuffer`].
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
-    for crate::protocol::ServiceIdSequence<'storage>
+    for crate::support::ServiceIdSequence<'storage>
 {
     type ArgType = JsBuffer;
     type StoredType = AssumedImmutableBuffer<'context>;
@@ -583,7 +583,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
 }
 
 /// See [`PersistentAssumedImmutableBuffer`].
-impl<'a> AsyncArgTypeInfo<'a> for crate::protocol::ServiceIdSequence<'a> {
+impl<'a> AsyncArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     type ArgType = JsBuffer;
     type StoredType = PersistentAssumedImmutableBuffer;
     fn save_async_arg(

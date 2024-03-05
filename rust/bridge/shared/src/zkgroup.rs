@@ -25,7 +25,6 @@ use zkgroup::backups::{
     BackupAuthCredentialRequestContext, BackupAuthCredentialResponse,
 };
 
-use crate::protocol::ServiceIdSequence;
 use crate::support::*;
 use crate::*;
 

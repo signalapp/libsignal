@@ -149,7 +149,7 @@ impl<'a> ArgTypeInfo<'a> for &'a mut [u8] {
     }
 }
 
-impl<'a> ArgTypeInfo<'a> for crate::protocol::ServiceIdSequence<'a> {
+impl<'a> ArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     type ArgType = <&'a [u8] as ArgTypeInfo<'a>>::ArgType;
     type StoredType = Self::ArgType;
 
