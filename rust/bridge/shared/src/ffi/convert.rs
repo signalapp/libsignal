@@ -13,7 +13,7 @@ use paste::paste;
 use uuid::Uuid;
 
 use crate::io::{InputStream, SyncInputStream};
-use crate::support::{AsType, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
 
@@ -160,6 +160,35 @@ impl<'a> ArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         let buffer = <&'a [u8]>::load_from(stored);
         Self::parse(buffer)
+    }
+}
+
+impl<'a> ArgTypeInfo<'a> for Vec<&'a [u8]> {
+    type ArgType = BorrowedSliceOf<BorrowedSliceOf<u8>>;
+    type StoredType = Vec<&'a [u8]>;
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let slices = unsafe { foreign.as_slice()? };
+        slices
+            .iter()
+            .map(|next| unsafe {
+                let next_slice = next.as_slice()?;
+                // The lifetime of `next.as_slice()` is tied to the lifetime of `slices`. However,
+                // we expect all of the slices in the argument to outlive this function call. (We
+                // could make this safer by following the Java bridge in providing the parameter as
+                // a reference rather than a value, at the expense of making the ArgTypeInfo traits
+                // more complicated.)
+                //
+                // We *do* know that 'a won't outlive the function call, because ArgTypeInfo
+                // constrains its 'a to the lifetime of the storage. That's why we're not using
+                // SimpleArgTypeInfo here, even though we could.
+                Ok(extend_lifetime::<'_, 'a, _>(next_slice))
+            })
+            .collect()
+    }
+
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        std::mem::take(stored)
     }
 }
 
@@ -693,6 +722,7 @@ macro_rules! ffi_arg_type {
     (&[u8]) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (&mut [u8]) => (ffi::BorrowedMutableSliceOf<std::ffi::c_uchar>);
     (ServiceIdSequence<'_>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
+    (Vec<&[u8]>) => (ffi::BorrowedSliceOf<ffi_arg_type!(&[u8])>);
     (String) => (*const std::ffi::c_char);
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);

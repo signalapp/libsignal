@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{AutoLocal, JMap, JObjectArray};
+use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_net::cdsi::LookupResponseEntry;
@@ -357,6 +357,45 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         let buffer = <&'storage [u8]>::load_from(stored);
         Self::parse(buffer)
+    }
+}
+
+/// Represents a sequence of byte arrays as `ByteBuffer[]`.
+///
+/// We use a ByteBuffer instead of a `byte[]` because ByteBuffer can expose its storage without
+/// having to "release" it afterwards; as long as the object is live, the storage is valid. By
+/// contrast, `byte[][]` can't have all of its elements borrowed at once, because the `jni` crate is
+/// strict about the lifetimes for that.
+impl<'a> SimpleArgTypeInfo<'a> for Vec<&'a [u8]> {
+    type ArgType = JObjectArray<'a>;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let len = env.get_array_length(foreign)?;
+        let slices: Vec<&[u8]> = (0..len)
+            .map(|i| {
+                let next = AutoLocal::new(
+                    JByteBuffer::from(env.get_object_array_element(foreign, i)?),
+                    env,
+                );
+                let len = env.get_direct_buffer_capacity(&next)?;
+                let addr = env.get_direct_buffer_address(&next)?;
+                if !addr.is_null() {
+                    Ok(unsafe { std::slice::from_raw_parts(addr, len) })
+                } else {
+                    if len != 0 {
+                        return Err(BridgeLayerError::NullPointer(Some(
+                            "ByteBuffer direct address",
+                        )));
+                    }
+                    Ok([].as_slice())
+                }
+            })
+            .collect::<Result<_, _>>()?;
+
+        Ok(slices)
     }
 }
 
@@ -1155,6 +1194,9 @@ macro_rules! jni_arg_type {
     };
     (ServiceIdSequence<'_>) => {
         jni::JByteArray<'local>
+    };
+    (Vec<&[u8]>) => {
+        jni::JObjectArray<'local>
     };
     (Timestamp) => {
         jni::jlong

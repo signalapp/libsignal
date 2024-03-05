@@ -28,6 +28,14 @@ pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
     }
 }
 
+/// Extremely unsafe function to extend the lifetime of a reference.
+///
+/// Only here so that we're not directly calling [`std::mem::transmute`], which is even more unsafe.
+/// All call sites need to explain why extending the lifetime is safe.
+pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> &'b T {
+    std::mem::transmute::<&'a T, &'b T>(some_ref)
+}
+
 /// Exposes a Rust type to each of the bridges as a boxed value.
 ///
 /// Full form:

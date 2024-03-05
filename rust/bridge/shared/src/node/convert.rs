@@ -17,7 +17,7 @@ use std::slice;
 
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::ResponseAndDebugInfo;
-use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
+use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
 
@@ -597,6 +597,30 @@ impl<'a> AsyncArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     }
 }
 
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Vec<&'storage [u8]> {
+    type ArgType = JsArray;
+    type StoredType = Vec<AssumedImmutableBuffer<'context>>;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let count = foreign.len(cx);
+        (0..count)
+            .map(|i| {
+                let next = foreign.get(cx, i)?;
+                Ok(AssumedImmutableBuffer::new(cx, next))
+            })
+            .collect()
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        // This effectively makes a copy of the storage with the hashes dropped. That's not very
+        // efficient, but it's not likely to be a performance bottleneck either.
+        stored.iter().map(|buffer| buffer as &[u8]).collect()
+    }
+}
+
 macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
@@ -1107,14 +1131,6 @@ where
         let result = zkgroup::serialize(self.deref());
         result.convert_into(cx)
     }
-}
-
-/// Extremely unsafe function to extend the lifetime of a reference.
-///
-/// Only here so that we're not directly calling [`std::mem::transmute`], which is even more unsafe.
-/// All call sites need to explain why extending the lifetime is safe.
-pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> &'b T {
-    std::mem::transmute::<&'a T, &'b T>(some_ref)
 }
 
 /// The name of the property on JavaScript objects that wrap a boxed Rust value.

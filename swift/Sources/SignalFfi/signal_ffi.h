@@ -463,6 +463,11 @@ typedef struct {
   SignalStoreSenderKey store_sender_key;
 } SignalSenderKeyStore;
 
+typedef struct {
+  const SignalBorrowedBuffer *base;
+  size_t length;
+} SignalBorrowedSliceOfBuffers;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
