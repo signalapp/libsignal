@@ -774,22 +774,26 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
 impl<'a> ResultTypeInfo<'a> for Box<[String]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        make_string_array(cx, &*self)
+        make_array(cx, self.into_vec())
     }
 }
 
-fn make_string_array<'a, It: IntoIterator>(
-    cx: &mut impl Context<'a>,
-    it: It,
-) -> JsResult<'a, JsArray>
+impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self.into_vec())
+    }
+}
+
+fn make_array<'a, It: IntoIterator>(cx: &mut impl Context<'a>, it: It) -> JsResult<'a, JsArray>
 where
     It::IntoIter: ExactSizeIterator,
-    It::Item: AsRef<str>,
+    It::Item: ResultTypeInfo<'a>,
 {
     let it = it.into_iter();
     let array = JsArray::new(cx, it.len());
-    for (unknown, i) in it.zip(0..) {
-        let message = JsString::new(cx, unknown.as_ref());
+    for (next, i) in it.zip(0..) {
+        let message = next.convert_into(cx)?;
         array.set(cx, i, message)?;
     }
     Ok(array)
@@ -852,7 +856,7 @@ impl<'a> ResultTypeInfo<'a> for crate::message_backup::MessageBackupValidationOu
         } = self;
         let error_message = error_message.convert_into(cx)?;
         let unknown_field_messages =
-            make_string_array(cx, found_unknown_fields.into_iter().map(|s| s.to_string()))?;
+            make_array(cx, found_unknown_fields.into_iter().map(|s| s.to_string()))?;
 
         let obj = JsObject::new(cx);
         obj.set(cx, "errorMessage", error_message)?;

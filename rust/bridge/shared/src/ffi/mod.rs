@@ -104,16 +104,17 @@ impl<T> From<Box<[T]>> for OwnedBufferOf<T> {
 }
 
 #[repr(C)]
-pub struct StringArray {
+pub struct BytestringArray {
     bytes: OwnedBufferOf<std::ffi::c_uchar>,
     lengths: OwnedBufferOf<usize>,
 }
+pub type StringArray = BytestringArray;
 
-impl StringArray {
+impl BytestringArray {
     /// Converts `self` into owned buffers of contents and string lengths.
     ///
     /// Callers of this function must ensure that
-    /// - the `StringArray` was originally allocated in Rust, and
+    /// - the `BytestringArray` was originally allocated in Rust, and
     /// - the lengths of the buffers were not modified.
     pub unsafe fn into_boxed_parts(self) -> (Box<[u8]>, Box<[usize]>) {
         let Self { bytes, lengths } = self;
@@ -124,13 +125,13 @@ impl StringArray {
     }
 }
 
-impl<S: AsRef<str>> FromIterator<S> for StringArray {
+impl<S: AsRef<[u8]>> FromIterator<S> for BytestringArray {
     fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
         let it = iter.into_iter();
         let (mut bytes, mut lengths) = (Vec::new(), Vec::with_capacity(it.size_hint().0));
         for s in it {
             let s = s.as_ref();
-            bytes.extend_from_slice(s.as_bytes());
+            bytes.extend_from_slice(s);
             lengths.push(s.len());
         }
         Self {

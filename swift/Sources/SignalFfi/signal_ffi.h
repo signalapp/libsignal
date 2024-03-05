@@ -336,7 +336,7 @@ typedef struct {
 typedef struct {
   SignalOwnedBuffer bytes;
   SignalOwnedBufferOfusize lengths;
-} SignalStringArray;
+} SignalBytestringArray;
 
 typedef struct {
   const unsigned char *base;
@@ -492,6 +492,8 @@ typedef void (*SignalCPromiseFfiCdsiLookupResponse)(SignalFfiError *error, const
  */
 typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
 
+typedef SignalBytestringArray SignalStringArray;
+
 typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
 typedef int (*SignalSkip)(void *ctx, uint64_t amount);
@@ -554,7 +556,7 @@ void signal_free_buffer(const unsigned char *buf, size_t buf_len);
 
 void signal_free_lookup_response_entry_list(SignalOwnedBufferOfFfiCdsiLookupResponseEntry buffer);
 
-void signal_free_string_array(SignalStringArray array);
+void signal_free_bytestring_array(SignalBytestringArray array);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
 

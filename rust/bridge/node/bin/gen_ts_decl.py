@@ -84,6 +84,10 @@ def translate_to_ts(typ):
         assert typ.endswith(']>')
         return translate_to_ts(typ[5:-2]) + '[]'
 
+    if typ.startswith('Vec<'):
+        assert typ.endswith('>')
+        return translate_to_ts(typ[4:-1]) + '[]'
+
     if typ.startswith('&['):
         assert typ.endswith(']')
         return 'Wrapper<' + translate_to_ts(typ[2:-1]) + '>[]'

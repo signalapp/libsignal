@@ -38,7 +38,7 @@ internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStrin
         return String(decoding: view, as: Unicode.UTF8.self)
     }
 
-    signal_free_string_array(array)
+    signal_free_bytestring_array(array)
     return result
 }
 

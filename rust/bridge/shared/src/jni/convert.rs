@@ -982,12 +982,21 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     }
 }
 
-fn make_string_array<'a, It: IntoIterator>(
+/// Converts each element of `it` to a Java object, storing the result in an array.
+///
+/// `element_type_signature` should use [`jni_class_name`] if it's a plain class and
+/// [`jni_signature`] if it's an array (according to the official docs for the JNI [FindClass][]
+/// operation).
+///
+/// [FindClass]: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
+fn make_object_array<'a, It: IntoIterator>(
     env: &mut JNIEnv<'a>,
+    element_type_signature: &str,
     it: It,
 ) -> Result<JObjectArray<'a>, BridgeLayerError>
 where
-    It::Item: AsRef<str>,
+    It::Item: ResultTypeInfo<'a>,
+    <It::Item as ResultTypeInfo<'a>>::ResultType: Into<JObject<'a>>,
     It::IntoIter: ExactSizeIterator,
 {
     let it = it.into_iter();
@@ -995,12 +1004,12 @@ where
     let array = env.new_object_array(
         len.try_into()
             .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{len}_usize to i32")))?,
-        jni_class_name!(java.lang.String),
+        element_type_signature,
         JavaObject::null(),
     )?;
 
-    for (index, s) in it.enumerate() {
-        let value = AutoLocal::new(env.new_string(s)?, env);
+    for (index, next) in it.enumerate() {
+        let value = AutoLocal::new(next.convert_into(env)?.into(), env);
         env.set_object_array_element(
             &array,
             index.try_into().expect("max size validated above"),
@@ -1014,7 +1023,14 @@ where
 impl<'a> ResultTypeInfo<'a> for Box<[String]> {
     type ResultType = JObjectArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        make_string_array(env, &*self)
+        make_object_array(env, jni_class_name!(java.lang.String), self.into_vec())
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
+    type ResultType = JObjectArray<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        make_object_array(env, jni_signature!([byte]), self.into_vec())
     }
 }
 
@@ -1027,8 +1043,11 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
             found_unknown_fields,
         } = self;
 
-        let unknown_fields =
-            make_string_array(env, found_unknown_fields.into_iter().map(|f| f.to_string()))?;
+        let unknown_fields = make_object_array(
+            env,
+            jni_class_name!(java.lang.String),
+            found_unknown_fields.into_iter().map(|f| f.to_string()),
+        )?;
         let error_message = error_message.convert_into(env)?;
 
         let new_object = new_object(
@@ -1250,14 +1269,17 @@ macro_rules! jni_result_type {
     (&[u8]) => {
         jni::JByteArray<'local>
     };
-    (Box<[String]>) => {
-        jni::JObjectArray<'local>
+    (Vec<u8>) => {
+        jni::JByteArray<'local>
     };
     (&[String]) => {
         jni::JObjectArray<'local>
     };
-    (Vec<u8>) => {
-        jni::JByteArray<'local>
+    (Box<[String]>) => {
+        jni::JObjectArray<'local>
+    };
+    (Box<[Vec<u8>]>) => {
+        jni::JObjectArray<'local>
     };
     (Cds2Metrics) => {
         jni::JavaMap<'local>

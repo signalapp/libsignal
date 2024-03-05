@@ -50,7 +50,7 @@ pub unsafe extern "C" fn signal_free_lookup_response_entry_list(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_free_string_array(array: StringArray) {
+pub unsafe extern "C" fn signal_free_bytestring_array(array: BytestringArray) {
     drop(array.into_boxed_parts())
 }
 

@@ -399,6 +399,14 @@ impl ResultTypeInfo for Box<[String]> {
     }
 }
 
+/// Allocates and returns an array of Rust-owned bytestrings.
+impl ResultTypeInfo for Box<[Vec<u8>]> {
+    type ResultType = BytestringArray;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(BytestringArray::from_iter(&*self))
+    }
+}
+
 impl ResultTypeInfo for Vec<u8> {
     type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -747,6 +755,7 @@ macro_rules! ffi_result_type {
     (&[u8]) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Box<[String]>) => (ffi::StringArray);
+    (Box<[Vec<u8>]>) => (ffi::BytestringArray);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
 
