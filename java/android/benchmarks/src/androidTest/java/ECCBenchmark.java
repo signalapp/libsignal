@@ -5,13 +5,10 @@
 
 import androidx.benchmark.BenchmarkState;
 import androidx.benchmark.junit4.BenchmarkRule;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.signal.libsignal.protocol.ecc.*;
 
-@RunWith(AndroidJUnit4.class)
 public class ECCBenchmark {
   @Rule public final BenchmarkRule benchmarkRule = new BenchmarkRule();
 
