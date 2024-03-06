@@ -31,7 +31,21 @@ jobs:
         # Ubuntu binaries are built using Docker, below
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+    - name: Checking run eligibility
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      with:
+        script: |
+          const dryRun = ${{ inputs.dry_run }};
+          const refType = '${{ github.ref_type }}';
+          const refName = '${{ github.ref_name }}';
+          console.log(dryRun 
+            ? `Running in 'dry run' mode on '${refName}' ${refType}` 
+            : `Running on '${refName}' ${refType}`);
+          if (refType !== 'tag' && !dryRun) {
+            core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
+          }
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -67,7 +81,7 @@ jobs:
       if: matrix.os == 'macos-latest'
 
     - name: Upload library
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: libsignal_jni (${{matrix.os}})
         path: target/release/${{ matrix.library }}
@@ -77,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -94,11 +108,11 @@ jobs:
     needs: [build, verify-rust]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
     - name: Download built libraries
       id: download
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
       with:
         path: artifacts
 
@@ -111,21 +125,21 @@ jobs:
 
     - name: Upload libsignal-android
       if: ${{ inputs.dry_run }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: libsignal-android
         path: java/android/build/outputs/aar/libsignal-android-release.aar
 
     - name: Upload libsignal-client
       if: ${{ inputs.dry_run }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: libsignal-client
         path: java/client/build/libs/libsignal-client-*.jar
 
     - name: Upload libsignal-server
       if: ${{ inputs.dry_run }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: libsignal-server
         path: java/server/build/libs/libsignal-server-*.jar

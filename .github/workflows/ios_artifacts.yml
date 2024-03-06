@@ -1,7 +1,13 @@
 name: Build iOS Artifacts
 
 on:
-  workflow_dispatch: {} # no parameters
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Just build, don't publish"
+        default: false
+        required: false
+        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -19,7 +25,21 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+    - name: Checking run eligibility
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      with:
+        script: |
+          const dryRun = ${{ inputs.dry_run }};
+          const refType = '${{ github.ref_type }}';
+          const refName = '${{ github.ref_name }}';
+          console.log(dryRun 
+            ? `Running in 'dry run' mode on '${refName}' ${refType}` 
+            : `Running on '${refName}' ${refType}`);
+          if (refType !== 'tag' && !dryRun) {
+            core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
+          }
 
     - id: archive-name
       run: echo name=libsignal-client-ios-build-v$(sed -En "s/${VERSION_REGEX}/\1/p" LibSignalClient.podspec).tar.gz >> $GITHUB_OUTPUT
@@ -50,12 +70,20 @@ jobs:
     - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY ${{ steps.archive-name.outputs.name }}.sha256'
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
-    - uses: google-github-actions/auth@v2
+    - name: Attach artifact to the run
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        path: ${{ steps.archive-name.outputs.name }}
+        name: libsignal-client-ios
+
+    - uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
+      if: ${{ !inputs.dry_run }}
       with:
         workload_identity_provider: 'projects/741367068918/locations/global/workloadIdentityPools/github/providers/github-actions'
         service_account: 'github-actions@signal-build-artifacts.iam.gserviceaccount.com'
 
-    - uses: google-github-actions/upload-cloud-storage@v2
+    - uses: google-github-actions/upload-cloud-storage@22121cd842b0d185e042e28d969925b538c33d77 # v2.1.0
+      if: ${{ !inputs.dry_run }}
       with:
         path: ${{ steps.archive-name.outputs.name }}
         destination: build-artifacts.signal.org/libraries
@@ -63,6 +91,7 @@ jobs:
     # This step is expected to fail if not run on a tag.
     - name: Upload checksum to release
       uses: ncipollo/release-action@66b1844f0b7ef940787c9d128846d5ac09b3881f # v1.14
+      if: ${{ !inputs.dry_run }}
       with:
         allowUpdates: true
         artifactErrorsFailBuild: true
