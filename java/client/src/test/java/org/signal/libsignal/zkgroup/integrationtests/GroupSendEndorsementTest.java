@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.Test;
@@ -224,5 +225,45 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
 
       fullBobToken.verify(Arrays.asList(bobServiceId), bobKey);
     }
+  }
+
+  @Test
+  public void test1000PersonGroup() throws Exception {
+    // SERVER
+    // Generate keys
+    ServerSecretParams serverSecretParams =
+        ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
+    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+
+    // CLIENT
+    // Generate keys
+    GroupMasterKey masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+    GroupSecretParams groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
+
+    // Set up group state
+    ServiceId.Aci[] members = new ServiceId.Aci[1000];
+    for (int i = 0; i < members.length; ++i) {
+      members[i] = new ServiceId.Aci(UUID.randomUUID());
+    }
+
+    UuidCiphertext[] encryptedMembers = new UuidCiphertext[members.length];
+    final ClientZkGroupCipher cipher = new ClientZkGroupCipher(groupSecretParams);
+    for (int i = 0; i < members.length; ++i) {
+      encryptedMembers[i] = cipher.encrypt(members[i]);
+    }
+
+    // SERVER
+    // Issue endorsements
+    Instant expiration = Instant.now().truncatedTo(ChronoUnit.DAYS).plus(2, ChronoUnit.DAYS);
+    GroupSendDerivedKeyPair keyPair =
+        GroupSendDerivedKeyPair.forExpiration(expiration, serverSecretParams);
+    GroupSendEndorsementsResponse response =
+        GroupSendEndorsementsResponse.issue(Arrays.asList(encryptedMembers), keyPair);
+
+    // CLIENT
+    // Gets stored endorsements
+    // Just don't crash (this did crash on a lower-end 32-bit phone once).
+    response.receive(Arrays.asList(members), members[0], groupSecretParams, serverPublicParams);
+    response.receive(Arrays.asList(encryptedMembers), encryptedMembers[0], serverPublicParams);
   }
 }
