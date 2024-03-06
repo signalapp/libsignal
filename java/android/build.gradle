@@ -69,22 +69,28 @@ preBuild {
     dependsOn 'makeTestJniLibraries'
 }
 
-task makeJniLibraries(type:Exec) {
-  group 'Rust'
-  description 'Build the JNI libraries for Android'
+String[] archsFromProperty(String prop) {
+    findProperty(prop)?.split(',')?.findAll { it != '' }?.collect { 'android-' + it }
+}
 
-  // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', '../build_jni.sh', 'android'
-  environment 'ANDROID_NDK_HOME', android.ndkDirectory
+task makeJniLibraries(type:Exec) {
+    group 'Rust'
+    description 'Build the JNI libraries for Android'
+
+    def archs = archsFromProperty('androidArchs') ?: ['android']
+    // Explicitly specify 'bash' for Windows compatibility.
+    commandLine 'bash', '../build_jni.sh', *archs
+    environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 
 task makeTestJniLibraries(type:Exec) {
-  group 'Rust'
-  description 'Build JNI libraries for Android for testing'
+    group 'Rust'
+    description 'Build JNI libraries for Android for testing'
 
-  // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', '../build_jni.sh', 'android', '--testing'
-  environment 'ANDROID_NDK_HOME', android.ndkDirectory
+    def archs = archsFromProperty('androidTestingArchs') ?: archsFromProperty('androidArchs') ?: ['android']
+    // Explicitly specify 'bash' for Windows compatibility.
+    commandLine 'bash', '../build_jni.sh', '--testing', *archs
+    environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 
 task collectAssets(type:Copy) {
