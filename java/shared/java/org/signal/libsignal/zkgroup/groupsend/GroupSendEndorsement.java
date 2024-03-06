@@ -50,6 +50,10 @@ public final class GroupSendEndorsement extends ByteArray {
         () -> Native.GroupSendEndorsement_CheckValidContents(contents));
   }
 
+  GroupSendEndorsement(byte[] contents, UncheckedAndUncloned marker) {
+    super(contents, marker);
+  }
+
   /**
    * Combines several endorsements into one.
    *

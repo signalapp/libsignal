@@ -173,7 +173,9 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
 
     List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length);
     for (byte[] contents : endorsementContents) {
-      endorsements.add(filterExceptions(() -> new GroupSendEndorsement(contents)));
+      // Normally we don't notice the cost of validating just-created zkgroup objects,
+      // but in this case we may have up to 1000 of these. Let's assume they're created correctly.
+      endorsements.add(new GroupSendEndorsement(contents, ByteArray.UNCHECKED_AND_UNCLONED));
     }
     return new ReceivedEndorsements(endorsements, groupMembers, localUser);
   }
@@ -224,7 +226,9 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
 
     List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length);
     for (byte[] contents : endorsementContents) {
-      endorsements.add(filterExceptions(() -> new GroupSendEndorsement(contents)));
+      // Normally we don't notice the cost of validating just-created zkgroup objects,
+      // but in this case we may have up to 1000 of these. Let's assume they're created correctly.
+      endorsements.add(new GroupSendEndorsement(contents, ByteArray.UNCHECKED_AND_UNCLONED));
     }
     return new ReceivedEndorsements(endorsements, groupMembers, localUser);
   }

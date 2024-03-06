@@ -11,10 +11,23 @@ import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public abstract class ByteArray {
 
+  /** Marker for ByteArray subclasses that want to skip validation. */
+  public static enum UncheckedAndUncloned {
+    UNCHECKED_AND_UNCLONED;
+  }
+
+  /** Marker for ByteArray subclasses that want to skip validation. */
+  public static final UncheckedAndUncloned UNCHECKED_AND_UNCLONED =
+      UncheckedAndUncloned.UNCHECKED_AND_UNCLONED;
+
   protected final byte[] contents;
 
   protected ByteArray(byte[] contents) {
     this.contents = contents.clone();
+  }
+
+  protected ByteArray(byte[] contents, UncheckedAndUncloned marker) {
+    this.contents = contents;
   }
 
   protected ByteArray(byte[] contents, int expectedLength) throws InvalidInputException {
