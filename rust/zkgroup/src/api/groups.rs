@@ -4,15 +4,11 @@
 //
 
 pub mod group_params;
-mod group_send_credential;
 mod group_send_endorsement;
 pub mod profile_key_ciphertext;
 pub mod uuid_ciphertext;
 
 pub use group_params::{GroupMasterKey, GroupPublicParams, GroupSecretParams};
-pub use group_send_credential::{
-    GroupSendCredential, GroupSendCredentialPresentation, GroupSendCredentialResponse,
-};
 pub use group_send_endorsement::{
     GroupSendDerivedKeyPair, GroupSendEndorsement, GroupSendEndorsementsResponse,
     GroupSendFullToken, GroupSendToken,

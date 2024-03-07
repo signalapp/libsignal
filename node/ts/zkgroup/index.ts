@@ -76,9 +76,6 @@ export { default as BackupAuthCredentialResponse } from './backups/BackupAuthCre
 
 // Group Send
 
-export { default as GroupSendCredential } from './groupsend/GroupSendCredential';
-export { default as GroupSendCredentialPresentation } from './groupsend/GroupSendCredentialPresentation';
-export { default as GroupSendCredentialResponse } from './groupsend/GroupSendCredentialResponse';
 export { default as GroupSendDerivedKeyPair } from './groupsend/GroupSendDerivedKeyPair';
 export { default as GroupSendEndorsement } from './groupsend/GroupSendEndorsement';
 export { default as GroupSendEndorsementsResponse } from './groupsend/GroupSendEndorsementsResponse';
