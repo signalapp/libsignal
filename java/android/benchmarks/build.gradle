@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.library' version '7.0.0'
+    id 'com.android.library' version '8.3.0'
     id 'androidx.benchmark' version '1.1.1'
 }
 
@@ -10,11 +10,11 @@ repositories {
 }
 
 android {
-    compileSdkVersion 31
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 33
         multiDexEnabled true
 
         // Uncomment this to build 32-bit-only benchmarks.
@@ -29,8 +29,8 @@ android {
 
     compileOptions {
         coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     namespace "org.signal.libsignal.benchmarks"

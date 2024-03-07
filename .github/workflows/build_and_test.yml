@@ -245,6 +245,8 @@ jobs:
     if: ${{ needs.changes.outputs.java == 'true' }}
 
     steps:
+    - run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
         # Download all commits so we can search for the merge base with origin/main.

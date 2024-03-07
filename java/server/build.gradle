@@ -4,7 +4,7 @@ plugins {
     id 'signing'
 }
 
-sourceCompatibility = 1.8
+sourceCompatibility = 17
 archivesBaseName = "libsignal-server"
 
 repositories {

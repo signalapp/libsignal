@@ -19,7 +19,7 @@ RUN    apt-get update
 
 # Install only what's needed to set up Rust and Android
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN    apt-get install -y curl openjdk-11-jdk-headless unzip
+RUN    apt-get install -y curl openjdk-17-jdk-headless unzip
 
 ARG UID
 ARG GID
@@ -38,8 +38,8 @@ WORKDIR /home/libsignal
 # Android SDK setup...
 ARG ANDROID_SDK_FILENAME=commandlinetools-linux-7583922_latest.zip
 ARG ANDROID_SDK_SHA=124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf
-ARG ANDROID_API_LEVELS=android-30
-ARG ANDROID_BUILD_TOOLS_VERSION=30.0.2
+ARG ANDROID_API_LEVELS=android-34
+ARG ANDROID_BUILD_TOOLS_VERSION=34.0.0
 ARG NDK_VERSION=25.2.9519653
 ENV ANDROID_HOME /home/libsignal/android-sdk
 ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
