@@ -478,6 +478,8 @@ mod test {
 
     use tokio::sync::{mpsc, oneshot};
 
+    use test_case::test_case;
+
     use super::*;
 
     /// [`ResultReporter`] that notifies when it starts reporting.
@@ -586,5 +588,11 @@ mod test {
             .into_inner()
             .expect("not poisoned");
         assert_eq!(result, Some(FUTURE_RESULT));
+    }
+
+    #[test_case(Environment::Staging; "staging")]
+    #[test_case(Environment::Prod; "prod")]
+    fn can_create_connection_manager(env: Environment) {
+        let _ = ConnectionManager::new(env);
     }
 }

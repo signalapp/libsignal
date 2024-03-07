@@ -270,11 +270,11 @@ pub const PROD: Env<'static, Svr3Env> = Env {
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX,
-            mr_enclave: MrEnclave::new(&[0; 32]),
+            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO,
-            mr_enclave: MrEnclave::new(&[0; 32]),
+            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
         },
     ),
 };
