@@ -87,8 +87,9 @@ public class GroupSendEndorsements {
     final BenchmarkState state = benchmarkRule.getState();
     final ServerPublicParams serverPublicParams = serverParams.getPublicParams();
     final List<GroupSendEndorsement> endorsements =
-        response.receive(Arrays.asList(encryptedMembers), encryptedMembers[0], serverPublicParams)
-            .endorsements;
+        response
+            .receive(Arrays.asList(encryptedMembers), encryptedMembers[0], serverPublicParams)
+            .endorsements();
 
     while (state.keepRunning()) {
       for (GroupSendEndorsement next : endorsements) {

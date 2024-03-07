@@ -1317,9 +1317,10 @@ fn GroupSendEndorsementsResponse_GetExpiration(response_bytes: &[u8]) -> Timesta
 }
 
 #[bridge_fn]
-fn GroupSendEndorsementsResponse_ReceiveWithServiceIds(
+fn GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
     response_bytes: &[u8],
     group_members: ServiceIdSequence<'_>,
+    local_user: ServiceId,
     now: Timestamp,
     group_params: Serialized<GroupSecretParams>,
     server_params: Serialized<ServerPublicParams>,
@@ -1327,22 +1328,35 @@ fn GroupSendEndorsementsResponse_ReceiveWithServiceIds(
     let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
         .expect("should have been parsed previously");
 
+    let local_user_index = group_members
+        .into_iter()
+        .position(|next| next == local_user)
+        .expect("local user not included in member list");
+
     let endorsements = response.receive_with_service_ids(
         group_members,
         now.as_seconds(),
         &group_params,
         &server_params,
     )?;
+    let combined_endorsement = GroupSendEndorsement::combine(
+        endorsements[..local_user_index]
+            .iter()
+            .chain(&endorsements[local_user_index + 1..])
+            .copied(),
+    );
     Ok(endorsements
         .into_iter()
+        .chain([combined_endorsement])
         .map(|e| zkgroup::serialize(&e))
         .collect())
 }
 
 #[bridge_fn]
-fn GroupSendEndorsementsResponse_ReceiveWithCiphertexts(
+fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
     response_bytes: &[u8],
     concatenated_group_member_ciphertexts: &[u8],
+    local_user_ciphertext: &[u8],
     now: Timestamp,
     server_params: Serialized<ServerPublicParams>,
 ) -> Result<Box<[Vec<u8>]>, ZkGroupVerificationFailure> {
@@ -1350,6 +1364,11 @@ fn GroupSendEndorsementsResponse_ReceiveWithCiphertexts(
         .expect("should have been parsed previously");
 
     assert!(concatenated_group_member_ciphertexts.len() % UUID_CIPHERTEXT_LEN == 0);
+    let local_user_index = concatenated_group_member_ciphertexts
+        .chunks_exact(UUID_CIPHERTEXT_LEN)
+        .position(|serialized| serialized == local_user_ciphertext)
+        .expect("local user not included in member list");
+
     let user_id_ciphertexts = concatenated_group_member_ciphertexts
         .chunks_exact(UUID_CIPHERTEXT_LEN)
         .map(|serialized| {
@@ -1359,8 +1378,15 @@ fn GroupSendEndorsementsResponse_ReceiveWithCiphertexts(
 
     let endorsements =
         response.receive_with_ciphertexts(user_id_ciphertexts, now.as_seconds(), &server_params)?;
+    let combined_endorsement = GroupSendEndorsement::combine(
+        endorsements[..local_user_index]
+            .iter()
+            .chain(&endorsements[local_user_index + 1..])
+            .copied(),
+    );
     Ok(endorsements
         .into_iter()
+        .chain([combined_endorsement])
         .map(|e| zkgroup::serialize(&e))
         .collect())
 }

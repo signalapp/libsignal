@@ -92,7 +92,8 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
             serverPublicParams);
 
     assertThrows(
-        VerificationFailedException.class,
+        "missing local user",
+        AssertionError.class,
         () ->
             response.receive(
                 Arrays.asList(bobServiceId, eveServiceId, malloryServiceId),
@@ -100,6 +101,7 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
                 groupSecretParams,
                 serverPublicParams));
     assertThrows(
+        "missing another user",
         VerificationFailedException.class,
         () ->
             response.receive(
@@ -112,13 +114,14 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
     {
       GroupSendEndorsementsResponse.ReceivedEndorsements repeatReceivedEndorsements =
           response.receive(groupCiphertexts, aliceCiphertext, serverPublicParams);
-      assertEquals(receivedEndorsements.endorsements, repeatReceivedEndorsements.endorsements);
+      assertEquals(receivedEndorsements.endorsements(), repeatReceivedEndorsements.endorsements());
       assertEquals(
-          receivedEndorsements.combinedEndorsement, repeatReceivedEndorsements.combinedEndorsement);
+          receivedEndorsements.combinedEndorsement(),
+          repeatReceivedEndorsements.combinedEndorsement());
 
       assertThrows(
           "missing local user",
-          VerificationFailedException.class,
+          AssertionError.class,
           () ->
               response.receive(
                   groupCiphertexts.stream().skip(1).collect(Collectors.toList()),
@@ -135,7 +138,7 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
     }
 
     GroupSendEndorsement.Token combinedToken =
-        receivedEndorsements.combinedEndorsement.toToken(groupSecretParams);
+        receivedEndorsements.combinedEndorsement().toToken(groupSecretParams);
     GroupSendFullToken fullCombinedToken = combinedToken.toFullToken(response.getExpiration());
 
     // SERVER
@@ -179,8 +182,9 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
     {
       // CLIENT
       GroupSendEndorsement everybodyButMallory =
-          receivedEndorsements.combinedEndorsement.byRemoving(
-              receivedEndorsements.endorsements.get(3));
+          receivedEndorsements
+              .combinedEndorsement()
+              .byRemoving(receivedEndorsements.endorsements().get(3));
       GroupSendFullToken fullEverybodyButMalloryToken =
           everybodyButMallory.toToken(groupSecretParams).toFullToken(response.getExpiration());
 
@@ -199,8 +203,8 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
       GroupSendEndorsement bobAndEve =
           GroupSendEndorsement.combine(
               Arrays.asList(
-                  receivedEndorsements.endorsements.get(1),
-                  receivedEndorsements.endorsements.get(2)));
+                  receivedEndorsements.endorsements().get(1),
+                  receivedEndorsements.endorsements().get(2)));
       GroupSendFullToken fullBobAndEveToken =
           bobAndEve.toToken(groupSecretParams).toFullToken(response.getExpiration());
 
@@ -215,7 +219,7 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
     // Single-user
     {
       // CLIENT
-      GroupSendEndorsement bobEndorsement = receivedEndorsements.endorsements.get(1);
+      GroupSendEndorsement bobEndorsement = receivedEndorsements.endorsements().get(1);
       GroupSendFullToken fullBobToken =
           bobEndorsement.toToken(groupSecretParams).toFullToken(response.getExpiration());
 

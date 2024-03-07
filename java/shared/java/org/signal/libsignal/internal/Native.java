@@ -279,8 +279,8 @@ public final class Native {
   public static native void GroupSendEndorsementsResponse_CheckValidContents(byte[] bytes) throws Exception;
   public static native long GroupSendEndorsementsResponse_GetExpiration(byte[] responseBytes);
   public static native byte[] GroupSendEndorsementsResponse_IssueDeterministic(byte[] concatenatedGroupMemberCiphertexts, byte[] keyPair, byte[] randomness);
-  public static native Object[] GroupSendEndorsementsResponse_ReceiveWithCiphertexts(byte[] responseBytes, byte[] concatenatedGroupMemberCiphertexts, long now, byte[] serverParams) throws Exception;
-  public static native Object[] GroupSendEndorsementsResponse_ReceiveWithServiceIds(byte[] responseBytes, byte[] groupMembers, long now, byte[] groupParams, byte[] serverParams) throws Exception;
+  public static native Object[] GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(byte[] responseBytes, byte[] concatenatedGroupMemberCiphertexts, byte[] localUserCiphertext, long now, byte[] serverParams) throws Exception;
+  public static native Object[] GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(byte[] responseBytes, byte[] groupMembers, byte[] localUser, long now, byte[] groupParams, byte[] serverParams) throws Exception;
 
   public static native void GroupSendFullToken_CheckValidContents(byte[] bytes) throws Exception;
   public static native long GroupSendFullToken_GetExpiration(byte[] token);

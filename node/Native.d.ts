@@ -238,8 +238,8 @@ export function GroupSendEndorsement_ToToken(endorsement: Buffer, groupParams: S
 export function GroupSendEndorsementsResponse_CheckValidContents(bytes: Buffer): void;
 export function GroupSendEndorsementsResponse_GetExpiration(responseBytes: Buffer): Timestamp;
 export function GroupSendEndorsementsResponse_IssueDeterministic(concatenatedGroupMemberCiphertexts: Buffer, keyPair: Buffer, randomness: Buffer): Buffer;
-export function GroupSendEndorsementsResponse_ReceiveWithCiphertexts(responseBytes: Buffer, concatenatedGroupMemberCiphertexts: Buffer, now: Timestamp, serverParams: Serialized<ServerPublicParams>): Buffer[];
-export function GroupSendEndorsementsResponse_ReceiveWithServiceIds(responseBytes: Buffer, groupMembers: Buffer, now: Timestamp, groupParams: Serialized<GroupSecretParams>, serverParams: Serialized<ServerPublicParams>): Buffer[];
+export function GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(responseBytes: Buffer, concatenatedGroupMemberCiphertexts: Buffer, localUserCiphertext: Buffer, now: Timestamp, serverParams: Serialized<ServerPublicParams>): Buffer[];
+export function GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(responseBytes: Buffer, groupMembers: Buffer, localUser: Buffer, now: Timestamp, groupParams: Serialized<GroupSecretParams>, serverParams: Serialized<ServerPublicParams>): Buffer[];
 export function GroupSendFullToken_CheckValidContents(bytes: Buffer): void;
 export function GroupSendFullToken_GetExpiration(token: Buffer): Timestamp;
 export function GroupSendFullToken_Verify(token: Buffer, userIds: Buffer, now: Timestamp, keyPair: Buffer): void;

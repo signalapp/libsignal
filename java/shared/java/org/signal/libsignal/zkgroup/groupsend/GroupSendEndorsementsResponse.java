@@ -8,7 +8,6 @@ package org.signal.libsignal.zkgroup.groupsend;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
-import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -84,43 +83,8 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    * provided, plus a combined endorsement for "everyone but me", intended for multi-recipient
    * sends.
    */
-  public class ReceivedEndorsements {
-    /**
-     * One endorsement per member of the group, in the same order the members were originally
-     * provided.
-     */
-    public List<GroupSendEndorsement> endorsements;
-
-    /** An endorsement for everyone in the group but the local user, for multi-recipient sends. */
-    public GroupSendEndorsement combinedEndorsement;
-
-    <T> ReceivedEndorsements(
-        List<GroupSendEndorsement> endorsements, List<T> members, T localMember) {
-      this.endorsements = endorsements;
-
-      int memberCount = members.size();
-      assert endorsements.size() == memberCount;
-
-      ByteBuffer[] buffers = new ByteBuffer[memberCount - 1];
-      int nextOffset = 0;
-      for (int i = 0; i < memberCount; ++i) {
-        if (members.get(i).equals(localMember)) {
-          continue;
-        }
-        if (nextOffset == memberCount - 1) {
-          throw new IllegalArgumentException("member list did not contain the local user");
-        }
-        byte[] nextEndorsementRaw = endorsements.get(i).getInternalContentsForJNI();
-        buffers[nextOffset] = ByteBuffer.allocateDirect(nextEndorsementRaw.length);
-        buffers[nextOffset].put(nextEndorsementRaw);
-        ++nextOffset;
-      }
-
-      byte[] rawCombinedEndorsement = Native.GroupSendEndorsement_Combine(buffers);
-      this.combinedEndorsement =
-          filterExceptions(() -> new GroupSendEndorsement(rawCombinedEndorsement));
-    }
-  }
+  public record ReceivedEndorsements(
+      List<GroupSendEndorsement> endorsements, GroupSendEndorsement combinedEndorsement) {}
 
   /**
    * Receives, validates, and extracts the endorsements from a response.
@@ -164,20 +128,25 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
             VerificationFailedException.class,
             () ->
                 (byte[][])
-                    Native.GroupSendEndorsementsResponse_ReceiveWithServiceIds(
+                    Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
                         getInternalContentsForJNI(),
                         ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
+                        localUser.toServiceIdFixedWidthBinary(),
                         now.getEpochSecond(),
                         groupParams.getInternalContentsForJNI(),
                         serverParams.getInternalContentsForJNI()));
 
-    List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length);
-    for (byte[] contents : endorsementContents) {
+    List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length - 1);
+    for (int i = 0; i < endorsementContents.length - 1; ++i) {
       // Normally we don't notice the cost of validating just-created zkgroup objects,
       // but in this case we may have up to 1000 of these. Let's assume they're created correctly.
-      endorsements.add(new GroupSendEndorsement(contents, ByteArray.UNCHECKED_AND_UNCLONED));
+      endorsements.add(
+          new GroupSendEndorsement(endorsementContents[i], ByteArray.UNCHECKED_AND_UNCLONED));
     }
-    return new ReceivedEndorsements(endorsements, groupMembers, localUser);
+    GroupSendEndorsement combinedEndorsement =
+        new GroupSendEndorsement(
+            endorsementContents[endorsementContents.length - 1], ByteArray.UNCHECKED_AND_UNCLONED);
+    return new ReceivedEndorsements(endorsements, combinedEndorsement);
   }
 
   /**
@@ -218,18 +187,23 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
             VerificationFailedException.class,
             () ->
                 (byte[][])
-                    Native.GroupSendEndorsementsResponse_ReceiveWithCiphertexts(
+                    Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
                         getInternalContentsForJNI(),
                         UuidCiphertext.serializeAndConcatenate(groupMembers),
+                        localUser.getInternalContentsForJNI(),
                         now.getEpochSecond(),
                         serverParams.getInternalContentsForJNI()));
 
-    List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length);
-    for (byte[] contents : endorsementContents) {
+    List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length - 1);
+    for (int i = 0; i < endorsementContents.length - 1; ++i) {
       // Normally we don't notice the cost of validating just-created zkgroup objects,
       // but in this case we may have up to 1000 of these. Let's assume they're created correctly.
-      endorsements.add(new GroupSendEndorsement(contents, ByteArray.UNCHECKED_AND_UNCLONED));
+      endorsements.add(
+          new GroupSendEndorsement(endorsementContents[i], ByteArray.UNCHECKED_AND_UNCLONED));
     }
-    return new ReceivedEndorsements(endorsements, groupMembers, localUser);
+    GroupSendEndorsement combinedEndorsement =
+        new GroupSendEndorsement(
+            endorsementContents[endorsementContents.length - 1], ByteArray.UNCHECKED_AND_UNCLONED);
+    return new ReceivedEndorsements(endorsements, combinedEndorsement);
   }
 }
