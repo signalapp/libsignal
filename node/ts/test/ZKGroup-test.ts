@@ -24,6 +24,9 @@ import {
   CallLinkAuthCredentialResponse,
   BackupAuthCredentialRequestContext,
   GroupSendCredentialResponse,
+  GroupSendEndorsementsResponse,
+  GroupSendDerivedKeyPair,
+  GroupSendEndorsement,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
 import { Uuid } from '..';
@@ -977,6 +980,208 @@ describe('ZKGroup', () => {
         serverPublicParams,
         groupSecretParams
       );
+    });
+  });
+
+  describe('GroupSendEndorsement', () => {
+    it('works in normal usage', () => {
+      const serverSecretParams =
+        ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      const aliceAci = Aci.parseFromServiceIdString(
+        '9d0652a3-dcc3-4d11-975f-74d61598733f'
+      );
+      const bobAci = Aci.parseFromServiceIdString(
+        '6838237d-02f6-4098-b110-698253d15961'
+      );
+      const eveAci = Aci.parseFromServiceIdString(
+        '3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7'
+      );
+      const malloryAci = Aci.parseFromServiceIdString(
+        '5d088142-6fd7-4dbd-af00-fdda1b3ce988'
+      );
+
+      const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+      const groupSecretParams =
+        GroupSecretParams.deriveFromMasterKey(masterKey);
+
+      const aliceCiphertext = new ClientZkGroupCipher(
+        groupSecretParams
+      ).encryptServiceId(aliceAci);
+      const groupCiphertexts = [aliceAci, bobAci, eveAci, malloryAci].map(
+        (next) =>
+          new ClientZkGroupCipher(groupSecretParams).encryptServiceId(next)
+      );
+
+      // Server
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const expiration = startOfDay + 2 * SECONDS_PER_DAY;
+      const todaysKey = GroupSendDerivedKeyPair.forExpiration(
+        new Date(1000 * expiration),
+        serverSecretParams
+      );
+      const response = GroupSendEndorsementsResponse.issue(
+        groupCiphertexts,
+        todaysKey
+      );
+
+      // Client
+      const receivedEndorsements = response.receiveWithServiceIds(
+        [aliceAci, bobAci, eveAci, malloryAci],
+        aliceAci,
+        groupSecretParams,
+        serverPublicParams
+      );
+      // Missing local user
+      assert.throws(() =>
+        response.receiveWithServiceIds(
+          [bobAci, eveAci, malloryAci],
+          aliceAci,
+          groupSecretParams,
+          serverPublicParams
+        )
+      );
+      // Missing another user
+      assert.throws(() =>
+        response.receiveWithServiceIds(
+          [aliceAci, eveAci, malloryAci],
+          aliceAci,
+          groupSecretParams,
+          serverPublicParams
+        )
+      );
+
+      // Try the other receive too
+      {
+        const receivedEndorsementsAlternate = response.receiveWithCiphertexts(
+          groupCiphertexts,
+          aliceCiphertext,
+          serverPublicParams
+        );
+        assertArrayEquals(
+          receivedEndorsements.combinedEndorsement.getContents(),
+          receivedEndorsementsAlternate.combinedEndorsement.getContents()
+        );
+
+        // Missing local user
+        assert.throws(() =>
+          response.receiveWithCiphertexts(
+            groupCiphertexts.slice(1),
+            aliceCiphertext,
+            serverPublicParams
+          )
+        );
+        // Missing another user
+        assert.throws(() =>
+          response.receiveWithCiphertexts(
+            groupCiphertexts.slice(0, -1),
+            aliceCiphertext,
+            serverPublicParams
+          )
+        );
+      }
+
+      const combinedToken =
+        receivedEndorsements.combinedEndorsement.toToken(groupSecretParams);
+      const fullCombinedToken = combinedToken.toFullToken(
+        response.getExpiration()
+      );
+
+      // SERVER
+      // Verify token
+      const verifyKey = GroupSendDerivedKeyPair.forExpiration(
+        fullCombinedToken.getExpiration(),
+        serverSecretParams
+      );
+
+      fullCombinedToken.verify([bobAci, eveAci, malloryAci], verifyKey);
+      fullCombinedToken.verify(
+        [bobAci, eveAci, malloryAci],
+        verifyKey,
+        new Date(1000 * (now + 60 * 60))
+      ); // one hour from now
+
+      // Included extra user
+      assert.throws(() =>
+        fullCombinedToken.verify(
+          [aliceAci, bobAci, eveAci, malloryAci],
+          verifyKey
+        )
+      );
+      // Missing user
+      assert.throws(() =>
+        fullCombinedToken.verify([eveAci, malloryAci], verifyKey)
+      );
+      // Expired
+      assert.throws(() =>
+        fullCombinedToken.verify(
+          [bobAci, eveAci, malloryAci],
+          verifyKey,
+          new Date(1000 * (expiration + 1))
+        )
+      );
+
+      // Excluding a user
+      {
+        // CLIENT
+        const everybodyButMallory =
+          receivedEndorsements.combinedEndorsement.byRemoving(
+            receivedEndorsements.endorsements[3]
+          );
+        const fullEverybodyButMalloryToken = everybodyButMallory
+          .toToken(groupSecretParams)
+          .toFullToken(response.getExpiration());
+
+        // SERVER
+        const everybodyButMalloryKey = GroupSendDerivedKeyPair.forExpiration(
+          fullEverybodyButMalloryToken.getExpiration(),
+          serverSecretParams
+        );
+
+        fullEverybodyButMalloryToken.verify(
+          [bobAci, eveAci],
+          everybodyButMalloryKey
+        );
+      }
+
+      // Custom combine
+      {
+        // CLIENT
+        const bobAndEve = GroupSendEndorsement.combine([
+          receivedEndorsements.endorsements[1],
+          receivedEndorsements.endorsements[2],
+        ]);
+        const fullBobAndEveToken = bobAndEve
+          .toToken(groupSecretParams)
+          .toFullToken(response.getExpiration());
+
+        // SERVER
+        const bobAndEveKey = GroupSendDerivedKeyPair.forExpiration(
+          fullBobAndEveToken.getExpiration(),
+          serverSecretParams
+        );
+
+        fullBobAndEveToken.verify([bobAci, eveAci], bobAndEveKey);
+      }
+
+      // Single-user
+      {
+        // CLIENT
+        const bobEndorsement = receivedEndorsements.endorsements[1];
+        const fullBobToken = bobEndorsement
+          .toToken(groupSecretParams)
+          .toFullToken(response.getExpiration());
+
+        // SERVER
+        const bobKey = GroupSendDerivedKeyPair.forExpiration(
+          fullBobToken.getExpiration(),
+          serverSecretParams
+        );
+
+        fullBobToken.verify([bobAci], bobKey);
+      }
     });
   });
 });

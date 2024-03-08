@@ -5,12 +5,21 @@
 
 import { LibSignalErrorBase } from '../../Errors';
 
+export const UNCHECKED_AND_UNCLONED: unique symbol = Symbol();
+
 export default class ByteArray {
   contents: Buffer;
 
-  constructor(contents: Buffer, checkValid: (contents: Buffer) => void) {
-    checkValid(contents);
-    this.contents = Buffer.from(contents);
+  constructor(
+    contents: Buffer,
+    checkValid: ((contents: Buffer) => void) | typeof UNCHECKED_AND_UNCLONED
+  ) {
+    if (checkValid === UNCHECKED_AND_UNCLONED) {
+      this.contents = contents;
+    } else {
+      checkValid(contents);
+      this.contents = Buffer.from(contents);
+    }
   }
 
   protected static checkLength(
