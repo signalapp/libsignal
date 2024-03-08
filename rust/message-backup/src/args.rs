@@ -9,7 +9,7 @@ use libsignal_protocol::Aci;
 pub enum ParseHexError<const N: usize> {
     #[error("character {c} at position {index} is not a hex digit")]
     InvalidHexCharacter { c: char, index: usize },
-    #[error("got {count} hex digits, expected {}",  2 * N)]
+    #[error("got {count} hex digits, expected {} ({N} bytes)",  2 * N)]
     WrongNumberOfDigits { count: usize },
 }
 
@@ -34,3 +34,18 @@ pub fn parse_aci(input: &str) -> Result<Aci, AciParseError> {
 /// invalid ACI, expected a UUID like "55555555-5555-5555-5555-555555555555"
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub struct AciParseError;
+
+#[cfg(test)]
+mod test {
+    use test_case::test_case;
+
+    #[test_case("abcd", Ok([0xab, 0xcd]))]
+    #[test_case("bard", Err("character r at position 2 is not a hex digit"))]
+    #[test_case("ab", Err("got 2 hex digits, expected 4 (2 bytes)"))]
+    #[test_case("abc", Err("got 3 hex digits, expected 4 (2 bytes)"))]
+    fn parse_hex_bytes(input: &str, expected: Result<[u8; 2], &str>) {
+        let result = super::parse_hex_bytes(input).map_err(|e| e.to_string());
+
+        assert_eq!(result, expected.map_err(String::from))
+    }
+}
