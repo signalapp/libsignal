@@ -1329,7 +1329,7 @@ SignalFfiError *signal_group_send_full_token_check_valid_contents(SignalBorrowed
 
 SignalFfiError *signal_group_send_full_token_get_expiration(uint64_t *out, SignalBorrowedBuffer token);
 
-SignalFfiError *signal_group_send_full_token_verify(bool *out, SignalBorrowedBuffer token, SignalBorrowedBuffer user_ids, uint64_t now, SignalBorrowedBuffer key_pair);
+SignalFfiError *signal_group_send_full_token_verify(SignalBorrowedBuffer token, SignalBorrowedBuffer user_ids, uint64_t now, SignalBorrowedBuffer key_pair);
 
 SignalFfiError *signal_verify_signature(bool *out, SignalBorrowedBuffer cert_pem, SignalBorrowedBuffer body, SignalBorrowedBuffer signature, uint64_t current_timestamp);
 

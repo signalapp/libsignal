@@ -1453,7 +1453,8 @@ fn GroupSendFullToken_GetExpiration(token: &[u8]) -> Timestamp {
         .expect("should have been parsed previously");
     Timestamp::from_seconds(token.expiration())
 }
-#[bridge_fn]
+
+#[bridge_fn_void]
 fn GroupSendFullToken_Verify(
     token: &[u8],
     user_ids: ServiceIdSequence<'_>,

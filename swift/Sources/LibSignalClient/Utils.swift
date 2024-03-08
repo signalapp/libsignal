@@ -25,21 +25,33 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
-internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
-    var array = SignalFfi.SignalStringArray()
+private func invokeFnReturningSomeBytestringArray<Element>(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?, transform: (UnsafeBufferPointer<UInt8>) -> Element) throws -> [Element] {
+    var array = SignalFfi.SignalBytestringArray()
     try checkError(fn(&array))
 
-    var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)
+    var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)[...]
     let lengths = UnsafeBufferPointer(start: array.lengths.base, count: array.lengths.length)
 
     let result = lengths.map { length in
-        let view = bytes.prefix(length)
-        bytes = UnsafeBufferPointer(rebasing: bytes.suffix(from: length))
-        return String(decoding: view, as: Unicode.UTF8.self)
+        let view = UnsafeBufferPointer(rebasing: bytes.prefix(length))
+        bytes = bytes.dropFirst(length)
+        return transform(view)
     }
 
     signal_free_bytestring_array(array)
     return result
+}
+
+internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
+    return try invokeFnReturningSomeBytestringArray(fn: fn) {
+        String(decoding: $0, as: Unicode.UTF8.self)
+    }
+}
+
+internal func invokeFnReturningBytestringArray(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?) throws -> [[UInt8]] {
+    return try invokeFnReturningSomeBytestringArray(fn: fn) {
+        Array($0)
+    }
 }
 
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8] {

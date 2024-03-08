@@ -149,7 +149,7 @@ public class ServiceId {
         return try callback(&self.storage)
     }
 
-    internal static func concatenatedFixedWidthBinary(_ serviceIds: [ServiceId]) -> [UInt8] {
+    internal static func concatenatedFixedWidthBinary(_ serviceIds: some Collection<ServiceId>) -> [UInt8] {
         var result = Array(repeating: 0 as UInt8, count: serviceIds.count * MemoryLayout<ServiceIdStorage>.size)
         var offset = 0
         for next in serviceIds {

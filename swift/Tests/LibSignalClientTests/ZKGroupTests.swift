@@ -585,4 +585,211 @@ class ZKGroupTests: TestCaseBase {
         // Client
         _ = try! response.receive(groupMembers: [aliceAci], localUser: aliceAci, serverParams: serverPublicParams, groupParams: groupSecretParams)
     }
+
+    func testGroupSendIntegration() throws {
+        let serverSecretParams = try! ServerSecretParams.generate(randomness: self.TEST_ARRAY_32)
+        let serverPublicParams = try! serverSecretParams.getPublicParams()
+
+        let aliceAci = try! Aci.parseFrom(serviceIdString: "9d0652a3-dcc3-4d11-975f-74d61598733f")
+        let bobAci = try! Aci.parseFrom(serviceIdString: "6838237d-02f6-4098-b110-698253d15961")
+        let eveAci = try! Aci.parseFrom(serviceIdString: "3f0f4734-e331-4434-bd4f-6d8f6ea6dcc7")
+        let malloryAci = try! Aci.parseFrom(serviceIdString: "5d088142-6fd7-4dbd-af00-fdda1b3ce988")
+
+        let masterKey = try! GroupMasterKey(contents: self.TEST_ARRAY_32_1)
+        let groupSecretParams = try! GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+        let aliceCiphertext = try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt(aliceAci)
+        let groupCiphertexts = [aliceAci, bobAci, eveAci, malloryAci].map {
+            try! ClientZkGroupCipher(groupSecretParams: groupSecretParams).encrypt($0)
+        }
+
+        // SERVER
+        let now = UInt64(Date().timeIntervalSince1970)
+        let startOfDay = now - (now % SECONDS_PER_DAY)
+        let expiration = Date(timeIntervalSince1970: TimeInterval(startOfDay + 2 * SECONDS_PER_DAY))
+
+        // Issue endorsements
+        let keyPair = GroupSendDerivedKeyPair.forExpiration(expiration, params: serverSecretParams)
+        let response = GroupSendEndorsementsResponse.issue(groupMembers: groupCiphertexts, keyPair: keyPair)
+
+        // CLIENT
+        // Gets stored endorsements
+        let receivedEndorsements = try response.receive(
+            groupMembers: [aliceAci, bobAci, eveAci, malloryAci],
+            localUser: aliceAci,
+            groupParams: groupSecretParams,
+            serverParams: serverPublicParams
+        )
+
+        XCTAssertThrowsError(
+            try response.receive(
+                groupMembers: [bobAci, eveAci, malloryAci],
+                localUser: aliceAci,
+                groupParams: groupSecretParams,
+                serverParams: serverPublicParams
+            ),
+            "missing local user"
+        )
+        XCTAssertThrowsError(
+            try response.receive(
+                groupMembers: [aliceAci, eveAci, malloryAci],
+                localUser: aliceAci,
+                groupParams: groupSecretParams,
+                serverParams: serverPublicParams
+            ),
+            "missing another user"
+        )
+
+        // Try receive with ciphertexts instead.
+        do {
+            let repeatReceivedEndorsements = try response.receive(
+                groupMembers: groupCiphertexts,
+                localUser: aliceCiphertext,
+                serverParams: serverPublicParams
+            )
+            XCTAssertEqual(
+                receivedEndorsements.endorsements.map { $0.serialize() },
+                repeatReceivedEndorsements.endorsements.map { $0.serialize() }
+            )
+            XCTAssertEqual(
+                receivedEndorsements.combinedEndorsement.serialize(),
+                repeatReceivedEndorsements.combinedEndorsement.serialize()
+            )
+
+            XCTAssertThrowsError(
+                try response.receive(
+                    groupMembers: groupCiphertexts[1...],
+                    localUser: aliceCiphertext,
+                    serverParams: serverPublicParams
+                ),
+                "missing local user"
+            )
+            XCTAssertThrowsError(
+                try response.receive(
+                    groupMembers: groupCiphertexts[..<3],
+                    localUser: aliceCiphertext,
+                    serverParams: serverPublicParams
+                ),
+                "missing another user"
+            )
+        }
+
+        let combinedToken = receivedEndorsements.combinedEndorsement.toToken(groupParams: groupSecretParams)
+        let fullCombinedToken = combinedToken.toFullToken(expiration: response.expiration)
+
+        // SERVER
+        // Verify token
+        let verifyKey = GroupSendDerivedKeyPair.forExpiration(fullCombinedToken.expiration, params: serverSecretParams)
+
+        try fullCombinedToken.verify(
+            userIds: [bobAci, eveAci, malloryAci],
+            keyPair: verifyKey
+        )
+        try fullCombinedToken.verify(
+            userIds: [bobAci, eveAci, malloryAci],
+            now: Date(timeIntervalSinceNow: 60 * 60),
+            keyPair: verifyKey
+        )
+
+        XCTAssertThrowsError(
+            try fullCombinedToken.verify(
+                userIds: [aliceAci, bobAci, eveAci, malloryAci],
+                keyPair: verifyKey
+            ),
+            "included extra user"
+        )
+        XCTAssertThrowsError(
+            try fullCombinedToken.verify(
+                userIds: [eveAci, malloryAci],
+                keyPair: verifyKey
+            ),
+            "missing user"
+        )
+
+        XCTAssertThrowsError(
+            try fullCombinedToken.verify(
+                userIds: [bobAci, eveAci, malloryAci],
+                now: expiration.addingTimeInterval(1),
+                keyPair: verifyKey
+            ),
+            "expired"
+        )
+
+        // Excluding a user
+        do {
+            // CLIENT
+            let everybodyButMallory = receivedEndorsements
+                .combinedEndorsement
+                .byRemoving(receivedEndorsements.endorsements[3])
+            let fullEverybodyButMalloryToken = everybodyButMallory
+                .toToken(groupParams: groupSecretParams)
+                .toFullToken(expiration: response.expiration)
+
+            // SERVER
+            let everybodyButMalloryKey = GroupSendDerivedKeyPair.forExpiration(fullEverybodyButMalloryToken.expiration, params: serverSecretParams)
+
+            try fullEverybodyButMalloryToken.verify(
+                userIds: [bobAci, eveAci],
+                keyPair: everybodyButMalloryKey
+            )
+        }
+
+        // Custom combine
+        do {
+            // CLIENT
+            let bobAndEve = GroupSendEndorsement.combine(receivedEndorsements.endorsements[1...2])
+            let fullBobAndEveToken = bobAndEve.toToken(groupParams: groupSecretParams).toFullToken(expiration: response.expiration)
+
+            // SERVER
+            let bobAndEveKey = GroupSendDerivedKeyPair.forExpiration(fullBobAndEveToken.expiration, params: serverSecretParams)
+
+            try fullBobAndEveToken.verify(userIds: [bobAci, eveAci], keyPair: bobAndEveKey)
+        }
+
+        // Single-user
+        do {
+            // CLIENT
+            let bobEndorsement = receivedEndorsements.endorsements[1]
+            let fullBobToken = bobEndorsement.toToken(groupParams: groupSecretParams).toFullToken(expiration: response.expiration)
+
+            // SERVER
+            let bobKey = GroupSendDerivedKeyPair.forExpiration(fullBobToken.expiration, params: serverSecretParams)
+
+            try fullBobToken.verify(userIds: [bobAci], keyPair: bobKey)
+        }
+    }
+
+    func test1000PersonGroup() throws {
+        // SERVER
+        // Generate keys
+        let serverSecretParams =
+            try ServerSecretParams.generate(randomness: self.TEST_ARRAY_32)
+        let serverPublicParams = try serverSecretParams.getPublicParams()
+
+        // CLIENT
+        // Generate keys
+        let masterKey = try GroupMasterKey(contents: TEST_ARRAY_32_1)
+        let groupSecretParams = try GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+        // Set up group state
+        let members = (0..<1000).map { _ in Aci(fromUUID: UUID()) }
+
+        let cipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
+        let encryptedMembers = try members.map { try cipher.encrypt($0) }
+
+        // SERVER
+        // Issue endorsements
+        let now = UInt64(Date().timeIntervalSince1970)
+        let startOfDay = now - (now % SECONDS_PER_DAY)
+        let expiration = Date(timeIntervalSince1970: TimeInterval(startOfDay + 2 * SECONDS_PER_DAY))
+
+        let keyPair = GroupSendDerivedKeyPair.forExpiration(expiration, params: serverSecretParams)
+        let response = GroupSendEndorsementsResponse.issue(groupMembers: encryptedMembers, keyPair: keyPair)
+
+        // CLIENT
+        // Gets stored endorsements
+        // Just don't crash (this did crash on a lower-end Android phone once).
+        _ = try response.receive(groupMembers: members, localUser: members[0], groupParams: groupSecretParams, serverParams: serverPublicParams)
+        _ = try response.receive(groupMembers: encryptedMembers, localUser: encryptedMembers[0], serverParams: serverPublicParams)
+    }
 }
