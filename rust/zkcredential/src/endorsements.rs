@@ -42,12 +42,6 @@
 //! that covers all endorsements issued together. Tokens can then be lazily generated on an
 //! individual basis from the validated endorsements.
 //!
-//! Note that the "combine" operation (and its reverse, "remove") imply that the client has a
-//! limited ability to synthesize endorsements that the issuing server never sees---for instance,
-//! given an endorsement for attribute point P, the client can synthesize an endorsement for 2P, 3P,
-//! -P, etc. Because of this, it's critical that the points used for the hidden attributes not be
-//! algebraically related (a hash is recommended).
-//!
 //! This model can be extended to endorsements over *tuples* of attribute points as long as the
 //! client uses only a single blinding key, but that has not been implemented here.
 //!
@@ -175,7 +169,7 @@ pub struct EndorsementResponse {
 ///
 /// Endorsements may be persisted on the client, or may be eagerly converted to tokens using
 /// [`to_token`][Self::to_token].
-#[derive(Clone, Copy, Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct Endorsement {
     R: RistrettoPoint,
 }
@@ -429,64 +423,15 @@ impl Endorsement {
     /// Combines several endorsements into one.
     ///
     /// All endorsements must have been signed with the same server key, and they must be for points
-    /// hidden with the same client key, or the resulting endorsement will not produce a valid
-    /// token.
+    /// hidden with the same client key, or the resulting endorsement will not produce a valid token.
     ///
     /// This is a set-like operation: order does not matter, and the result is equivalent to the
     /// server issuing an endorsement of a sum of hidden attribute points. It is still an
     /// all-or-nothing endorsement; it does not allow one endorsement to be used for *any* point in
     /// the set, nor arbitrary subsets.
-    ///
-    /// This is equivalent to calling [`Self::combine_with`] repeatedly.
     pub fn combine(endorsements: impl IntoIterator<Item = Endorsement>) -> Endorsement {
         Endorsement {
             R: endorsements.into_iter().map(|each| each.R).sum(),
-        }
-    }
-
-    /// Combines this endorsement with another.
-    ///
-    /// Both endorsements must have been signed with the same server key, and they must be for
-    /// points hidden with the same client key, or the resulting endorsement will not produce a
-    /// valid token.
-    ///
-    /// This is a set-like operation: order does not matter, and the result is equivalent to the
-    /// server issuing an endorsement of a sum of hidden attribute points. It is still an
-    /// all-or-nothing endorsement; it does not allow one endorsement to be used for *either* point
-    /// in the set.
-    ///
-    /// This is equivalent to [`Self::combine`].
-    pub fn combine_with(&self, other: &Endorsement) -> Endorsement {
-        Endorsement {
-            R: self.R + other.R,
-        }
-    }
-
-    /// Creates an endorsement with `other` removed from `self`.
-    ///
-    /// This is useful when `self` represents a [combined](Self::combine) endorsement, but you want
-    /// to remove some of the attributes from the original combined set.
-    ///
-    /// ```
-    /// # use zkcredential::endorsements::Endorsement;
-    /// # fn example(a: Endorsement, b: Endorsement, c: Endorsement) {
-    /// let abc = Endorsement::combine([a, b, c]);
-    /// let a_and_c = abc.remove(&b); // Equivalent to a.combine_with(c).
-    /// # }
-    /// ```
-    ///
-    /// Both endorsements must have been signed with the same server key, and they must be for
-    /// points hidden with the same client key, or the resulting endorsement will not produce a
-    /// valid token. Removing endorsements not present in `self` will also result in an endorsement
-    /// that won't produce valid tokens.
-    ///
-    /// This is a set-like operation: order does not matter, and the result is equivalent to the
-    /// server issuing an endorsement of a difference of hidden attribute points. Multiple
-    /// endorsements can be removed by calling this method repeatedly, or by removing a single
-    /// combined endorsement.
-    pub fn remove(&self, other: &Endorsement) -> Endorsement {
-        Endorsement {
-            R: self.R - other.R,
         }
     }
 
@@ -644,10 +589,11 @@ mod tests {
         let decrypt_key = ClientDecryptionKey::from_blinding_scalar(client_raw_key);
         let todays_public_key = root_key.public.derive_key(info_sho.clone());
 
-        let endorsements = issued_endorsements
+        let mut endorsements = issued_endorsements
             .receive(encrypted_points, &todays_public_key)
             .unwrap();
-        let combined = Endorsement::combine(endorsements.iter().copied()).remove(&endorsements[1]);
+        endorsements.remove(1);
+        let combined = Endorsement::combine(endorsements);
 
         let token = combined.to_token(&decrypt_key);
         todays_key
@@ -656,10 +602,6 @@ mod tests {
                 &token,
             )
             .unwrap();
-
-        let manually_combined = endorsements[0].combine_with(&endorsements[2]);
-        let manual_token = manually_combined.to_token(&decrypt_key);
-        assert_eq!(&token, &manual_token);
     }
 
     #[test]

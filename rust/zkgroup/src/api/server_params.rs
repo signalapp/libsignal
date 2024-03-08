@@ -36,7 +36,6 @@ pub struct ServerSecretParams {
         crypto::credentials::KeyPair<crypto::credentials::AuthCredentialWithPni>,
 
     pub(crate) generic_credential_key_pair: zkcredential::credentials::CredentialKeyPair,
-    pub(crate) endorsement_key_pair: zkcredential::endorsements::ServerRootKeyPair,
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
@@ -57,7 +56,6 @@ pub struct ServerPublicParams {
     auth_credentials_with_pni_public_key: crypto::credentials::PublicKey,
 
     pub(crate) generic_credential_public_key: zkcredential::credentials::CredentialPublicKey,
-    pub(crate) endorsement_public_key: zkcredential::endorsements::ServerRootPublicKey,
 }
 
 impl ServerSecretParams {
@@ -77,8 +75,6 @@ impl ServerSecretParams {
         let auth_credentials_with_pni_key_pair = crypto::credentials::KeyPair::generate(&mut sho);
         let generic_credential_key_pair =
             zkcredential::credentials::CredentialKeyPair::generate(randomness);
-        let endorsement_key_pair =
-            zkcredential::endorsements::ServerRootKeyPair::generate(randomness);
 
         Self {
             reserved: Default::default(),
@@ -90,7 +86,6 @@ impl ServerSecretParams {
             expiring_profile_key_credentials_key_pair,
             auth_credentials_with_pni_key_pair,
             generic_credential_key_pair,
-            endorsement_key_pair,
         }
     }
 
@@ -111,7 +106,6 @@ impl ServerSecretParams {
                 .auth_credentials_with_pni_key_pair
                 .get_public_key(),
             generic_credential_public_key: self.generic_credential_key_pair.public_key().clone(),
-            endorsement_public_key: self.endorsement_key_pair.public_key().clone(),
         }
     }
 
