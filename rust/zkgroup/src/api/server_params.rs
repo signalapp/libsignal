@@ -183,11 +183,12 @@ impl ServerSecretParams {
             redemption_time,
             &mut sho,
         );
-        api::auth::AuthCredentialWithPniResponse {
-            reserved: Default::default(),
+        api::auth::AuthCredentialWithPniV0Response {
+            version: VersionByte,
             credential,
             proof,
         }
+        .into()
     }
 
     pub fn issue_auth_credential_with_pni_as_service_id(
@@ -258,6 +259,10 @@ impl ServerSecretParams {
                     presentation.pni_ciphertext,
                     presentation.redemption_time,
                 )
+            }
+
+            api::auth::AnyAuthCredentialPresentation::V4(presentation) => {
+                presentation.verify(self, &group_public_params, presentation.redemption_time())
             }
         }
     }
@@ -488,9 +493,17 @@ impl ServerPublicParams {
         aci: libsignal_core::Aci,
         pni: libsignal_core::Pni,
         redemption_time: Timestamp,
-        response: &api::auth::AuthCredentialWithPniResponse,
+        response: api::auth::AuthCredentialWithPniResponse,
         encode_pni_as_aci_for_backward_compatibility: bool,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
+        let response = match response {
+            api::auth::AuthCredentialWithPniResponse::Zkc(response) => {
+                return response
+                    .receive(aci, pni, redemption_time, self)
+                    .map(Into::into)
+            }
+            api::auth::AuthCredentialWithPniResponse::V0(response) => response,
+        };
         let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
         let pni_struct = if encode_pni_as_aci_for_backward_compatibility {
             // Older AuthCredentialWithPnis used the same encoding for PNIs as ACIs.
@@ -509,13 +522,14 @@ impl ServerPublicParams {
             redemption_time,
         )?;
 
-        Ok(api::auth::AuthCredentialWithPni {
-            reserved: Default::default(),
+        Ok(api::auth::AuthCredentialWithPniV0 {
+            version: VersionByte,
             credential: response.credential,
             aci: aci_struct,
             pni: pni_struct,
             redemption_time,
-        })
+        }
+        .into())
     }
 
     pub fn receive_auth_credential_with_pni_as_service_id(
@@ -523,7 +537,7 @@ impl ServerPublicParams {
         aci: libsignal_core::Aci,
         pni: libsignal_core::Pni,
         redemption_time: Timestamp,
-        response: &api::auth::AuthCredentialWithPniResponse,
+        response: api::auth::AuthCredentialWithPniResponse,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
         self.receive_auth_credential_with_pni(aci, pni, redemption_time, response, false)
     }
@@ -533,7 +547,7 @@ impl ServerPublicParams {
         aci: libsignal_core::Aci,
         pni: libsignal_core::Pni,
         redemption_time: Timestamp,
-        response: &api::auth::AuthCredentialWithPniResponse,
+        response: api::auth::AuthCredentialWithPniResponse,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
         self.receive_auth_credential_with_pni(aci, pni, redemption_time, response, true)
     }
@@ -588,7 +602,15 @@ impl ServerPublicParams {
         randomness: RandomnessBytes,
         group_secret_params: api::groups::GroupSecretParams,
         auth_credential: api::auth::AuthCredentialWithPni,
-    ) -> api::auth::AuthCredentialWithPniPresentation {
+    ) -> api::auth::AnyAuthCredentialPresentation {
+        let auth_credential = match auth_credential {
+            api::auth::AuthCredentialWithPni::Zkc(auth_credential) => {
+                return auth_credential
+                    .present(self, &group_secret_params, randomness)
+                    .into()
+            }
+            api::auth::AuthCredentialWithPni::V0(auth_credential) => auth_credential,
+        };
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20220617_Random_ServerPublicParams_CreateAuthCredentialWithPniPresentation",
             &randomness,
@@ -616,6 +638,7 @@ impl ServerPublicParams {
             pni_ciphertext: pni_ciphertext.ciphertext,
             redemption_time: auth_credential.redemption_time,
         }
+        .into()
     }
 
     pub fn create_profile_key_credential_request_context(

@@ -32,8 +32,8 @@ public class ClientZkAuthOperations {
         return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
             try aci.withPointerToFixedWidthBinary { aci in
                 try pni.withPointerToFixedWidthBinary { pni in
-                    try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
-                        try invokeFnReturningSerialized {
+                    try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
+                        try invokeFnReturningVariableLengthSerialized {
                             signal_server_public_params_receive_auth_credential_with_pni_as_service_id($0, serverPublicParams, aci, pni, redemptionTime, authCredentialResponse)
                         }
                     }
@@ -52,8 +52,8 @@ public class ClientZkAuthOperations {
         return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
             try aci.withPointerToFixedWidthBinary { aci in
                 try pni.withPointerToFixedWidthBinary { pni in
-                    try authCredentialResponse.withUnsafePointerToSerialized { authCredentialResponse in
-                        try invokeFnReturningSerialized {
+                    try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
+                        try invokeFnReturningVariableLengthSerialized {
                             signal_server_public_params_receive_auth_credential_with_pni_as_aci($0, serverPublicParams, aci, pni, redemptionTime, authCredentialResponse)
                         }
                     }
@@ -88,7 +88,7 @@ public class ClientZkAuthOperations {
         return try self.serverPublicParams.withUnsafePointerToSerialized { contents in
             try randomness.withUnsafePointerToBytes { randomness in
                 try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
-                    try authCredential.withUnsafePointerToSerialized { authCredential in
+                    try authCredential.withUnsafeBorrowedBuffer { authCredential in
                         try invokeFnReturningVariableLengthSerialized {
                             signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic($0, contents, randomness, groupSecretParams, authCredential)
                         }

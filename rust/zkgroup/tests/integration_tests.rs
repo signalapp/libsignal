@@ -39,6 +39,8 @@ const AUTH_CREDENTIAL_PRESENTATION_V3_RESULT: &[u8] = &hex!("02ec2374624ee8de073
 
 const AUTH_CREDENTIAL_PRESENTATION_V3_RESULT_WITH_PNI_AS_ACI: &[u8] = &hex!("02ec2374624ee8de07393f4c4f625afe1793a3fe0cfcf19a447ee93667e52dc7763800382c6ee41e49bb60c40cbd76657e1f6c737f502d6f47abe16bd4efab1f71948d7634771cd04573a75f3c8e77e70c55f5550753ad077cfe5bb3edee0b0e2ab8087285653df8415b9fea2f5410c4094059a2217e280865bfeba660538da207f8879e4afc64bb8390b8ddc4676186870e5a345a85325ab1dfd98be019531a16100a6a4917959f0f87ef75ef35350e6da9d7d638cf8cf9f106c94734a32b85337441d22a99cf08c24d11f4e7beddbf7fc91a10145215b950a2b78e7fbbc7707f8eebb47578ae1c9da0af2f74eb2675c8aec04c6df80b566ed3ced45cd9520453e000000000000000deaff541b1ef79a282ca4e553ed1e2cc3e1c95510c6d3b9037a5a672411a350e825cb0fdbf4cc517ddaa482b4b2467ec91362544153b83191aba0b413ca0b00034a1a949d107b3e74156d5d9b196480ee37f0df1b42a136ffea8968139a0aa01595fc8e20231f3587806c9c4713c87acc8fef60d3f1a849d184dd495588bf303b1fce75e4c7a177c644b62d2adbc042c7798cfd6c43921541649d23a90e87d0f14303050fcc15d975aef8d56bfabcf55b05e9344916bb6aeb4351898df158903be4fefc933c6a2032e343a59f1ce1e1f4de8f381a59f35f98c3c224936fe5404765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474fe74409060615679fc115473683d63abd9ced46c7f2ad736046de5a2c7d2522f122895597049cfd7cc5beb6dc72aa990ae9a62ec8e256a1cbf5f3f284233bb070060c77b02000000");
 
+const AUTH_CREDENTIAL_PRESENTATION_V4_RESULT: &[u8] = &hex!("035e3e79afda8dc0d489fcf7c78f71e1502f2e06e8aeb20149046f85b3004d3f7f982d57dfad49cd1e6c335755cef4cc5e8d3de1eb4f5e8f24d71cf9f2220ae750f47181d71aaabbd48a1916813ec08eea935eb013395bf72f9139da8ef4f9530d05000000000000007a080544e6ee8ee2ff0dc298f18841103a9f9ec38631df8682e241755f86f74e26301872f4f32a9bb80f5b17651c0c83253a8013532384061a1febf79e58e60fa215b31da678305fa2a271655e35824630d0804680ec0bf29b1c775652683c3a5cec537c3514df730f267371d909f29cc6252af30afe3ea846c0cf56478bdc5b7a7f983ea7c24ecef4b371286a6414b2c38a57a7f59a9df33e430736c1a2ca14e00000000000000015416082ff7e3a741a4c3c31be3c95d4a31f2cf742685e0b17cd7f7205230e0e4e67b4b6ed45e705de13a1cb7170897bb32c9db6f9a1108fddfc7fae9eb2ca0c5fc3d8ccbd79d992eeed333626a1f0c37f0b25625955611e5ba33c782c50550045923582280cd93c3e9555b4e36eec20993f60b6aeb9ddb7f2856c4659546f037b33534a0292c77a501a70796f24ff37c8311bdfea8bb6c78f909563fe6e3b0386f36adc92090694ebb106a837bac046ad26e2472ee16408e9fd84269fd78c00c5dde91fcf202a6afad3441b9e2a34f4831d5bf560c81b38d951cb7c88e4d701765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474de749a0fef17b06bbce74ca5d0f7a0c45f443a1901f1e3e016d3548e50a2fa19ce6b27ac467ed9c9f5018b2a4456b6c2b1a91454422fdd473c9636a8459e1c170060c77b02000000");
+
 const PROFILE_KEY_CREDENTIAL_PRESENTATION_V1: &[u8] = &hex!("00c4d19bca1ae844585168869da4133e0e0bb59f2ce17b7ac65bff5da9610eca103429d8022a94bae2b5b1057b5595b8ad70bfc2d0e1ad662cb75e6bae0782be6f00e3db793bc28561f0196c2e74da6f303fa8bcb70c94096671b73f7b3a95fb002200d5b9180fa0ef7d3014d01344145b4d38480d72ff25c24294e305e5705072e0d32cc4e84f5caf31486089a4b934c80c92eba43472ff23a5af93c397535d33801f0e6fc6eb2ee0d117f03bb4fd38a8b9c88d94708131f38742ca804a3cfc4f9476bc2d03f53d17001c36478afbe9cc535a224b2df6b2b08bef06cbc7d4dc42ccfc3459f7ac5c4419ae9f3c8a161d554d047778943216240858da3b1101984c40010000000000007a01eea6b2adad14d71ab8b8e411bef3c596e954b70e4031570cb1abd7e932083241f1caca3116708fa4319fbbdfe351376c23644ae09a42f0155db4996c9d0c7ffc8521c1914c0e1a20ae51e65df64dd5e6e5985b3d9d31732046d2d77f9c08aaccf056b84026073976eec6164cbdaee5d9e76e497f0c290af681cabd5c5101282abb26c3680d6087ce053310fe8a94f59d8ae23caac5fc0ed0c379888abf028a6f29f89d4fe2acc1706341b2245ba1885bca57e1e27ccf7ed79371500965009f960c2ba00fad3e93383b87ce119cac0b3360eb99284ce78e2cbed680f7960373e0ab75c190254160c2353614109489e653c9b2e1c93f92c7c5ad583d987a04bd3541b24485c33ea49bac43c87c4ab3efde2e2d7ec10a40be544199f925b20b2c55542bc56410571e41cd8e0286f609a66768b5061ccb4777af32309928dd09765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
 
 const PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_RESULT: [u8; zkgroup::PROFILE_KEY_CREDENTIAL_PRESENTATION_V2_LEN] = hex!("01e0f49cef4f25c31d1bfdc4a328fd508d2222b6decee2a253cf71e8821e97cc3f86824f79b1884b43c67f854717b1a47f56c8ff50a1c07fddbf4f6e857027d548583b54079dd61d54cdd39cd4acae5f8b3bbfa2bb6b3502b69b36da77addddc145ef254a16f2baec1e3d7e8dc80730bc608fcd0e4d8cfef3330a496380c7ac648686b9c5b914d0a77ee84848aa970b2404450179b4022eef003387f6bdbcba30344cadfd5e3f1677caa2c785f4fefe042a1b2adf4f4b8fa6023e41d704bda901d3a697904770ac46e0e304cf19f91ce9ab0ed1ccad8a6febd72313455f139b9222e9a30a2265c6cd22ee5b907fc95967417a0d8ca338a5ee4d51bba78039c314e4001000000000000749d54772b8137e570157c068a5cfebb464b6c1133c72d9abfda72db421cd00561ac4eecb94313c6912013e32c322ea36743b01814fe919ca84b9aea9c78b10ba021506f7ad8c6625e87e07ce32b559036af6b67e2c0383a643cb93cdc2b9800e90588a18fcc449cd466c28c6db73507d8282dd00808b5927fee3336ed0a2202dfb1e176fece6a4104caa2a866c475209967638ea2f1466847da7301a77b9007dfb332a30e9bbfae8a8398165ec9dd4778214e0d6ed35a34071bdf3b3b19510ff2a617bc53eb0e6b0ddc501db027bb47e4f4127d7a0104945f3d3dc7ec1741038b9b80e2c7f131c519ee26ffcb7cb9d3556cd35a12bef1d4b376fc513197ba00ce8f012a0b374164222ba79a39e74e150813474ca6f87ba705c0f06e7b7068039c5edd9dd1a5ab6793ac211989907686b45650221187d4d59ae492679f3b4308765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
@@ -200,7 +202,7 @@ fn test_integration_auth_with_pni() {
             aci,
             pni,
             redemption_time,
-            &auth_credential_response,
+            auth_credential_response.clone(),
         )
         .unwrap();
 
@@ -209,7 +211,7 @@ fn test_integration_auth_with_pni() {
             aci,
             pni,
             redemption_time,
-            &auth_credential_response,
+            auth_credential_response.clone(),
         )
         .is_err());
 
@@ -219,12 +221,12 @@ fn test_integration_auth_with_pni() {
     let presentation = server_public_params.create_auth_credential_with_pni_presentation(
         randomness,
         group_secret_params,
-        auth_credential,
+        auth_credential.clone(),
     );
 
     let presentation_bytes = &bincode::serialize(&presentation).unwrap();
 
-    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation.into();
+    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation;
 
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
@@ -332,7 +334,7 @@ fn test_integration_auth_with_pni_using_pni_as_aci() {
             aci,
             pni,
             redemption_time,
-            &auth_credential_response,
+            auth_credential_response.clone(),
         )
         .unwrap();
 
@@ -341,7 +343,7 @@ fn test_integration_auth_with_pni_using_pni_as_aci() {
             aci,
             pni,
             redemption_time,
-            &auth_credential_response,
+            auth_credential_response,
         )
         .is_err());
 
@@ -356,7 +358,7 @@ fn test_integration_auth_with_pni_using_pni_as_aci() {
 
     let presentation_bytes = &bincode::serialize(&presentation).unwrap();
 
-    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation.into();
+    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation;
 
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
@@ -412,6 +414,108 @@ fn test_integration_auth_with_pni_using_pni_as_aci() {
             redemption_time + 2 * SECONDS_PER_DAY + 2,
         )
         .expect_err("credential not valid past deadline");
+}
+
+#[test]
+fn test_integration_auth_zkc() {
+    let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
+    let server_public_params = server_secret_params.get_public_params();
+
+    let master_key = zkgroup::groups::GroupMasterKey::new(zkgroup::TEST_ARRAY_32_1);
+    let group_secret_params =
+        zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
+    let group_public_params = group_secret_params.get_public_params();
+
+    // Random UID and issueTime
+    let aci = libsignal_core::Aci::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16));
+    let pni = libsignal_core::Pni::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16_1));
+    let redemption_time = 123456 * SECONDS_PER_DAY;
+
+    // SERVER
+    // Issue credential
+    let randomness = zkgroup::TEST_ARRAY_32_2;
+    let auth_credential_response =
+        zkgroup::auth::AuthCredentialWithPniZkcResponse::issue_credential(
+            aci,
+            pni,
+            redemption_time,
+            &server_secret_params,
+            randomness,
+        );
+
+    // CLIENT
+    let auth_credential = auth_credential_response
+        .clone()
+        .receive(aci, pni, redemption_time, &server_public_params)
+        .unwrap();
+
+    // Create and receive presentation
+    let randomness = zkgroup::TEST_ARRAY_32_5;
+
+    let presentation =
+        auth_credential.present(&server_public_params, &group_secret_params, randomness);
+
+    let presentation_bytes = &bincode::serialize(&presentation).unwrap();
+
+    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation.into();
+
+    let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
+
+    assert_hex_eq!(
+        AUTH_CREDENTIAL_PRESENTATION_V4_RESULT[..],
+        presentation_bytes[..]
+    );
+
+    assert_hex_eq!(
+        AUTH_CREDENTIAL_PRESENTATION_V4_RESULT[..],
+        presentation_any_bytes[..]
+    );
+
+    let presentation_parsed = bincode::deserialize::<
+        zkgroup::auth::AuthCredentialWithPniZkcPresentation,
+    >(presentation_bytes)
+    .unwrap();
+
+    assert!(
+        presentation_any.get_pni_ciphertext().unwrap()
+            == group_secret_params.encrypt_service_id(pni.into())
+    );
+
+    presentation_parsed
+        .verify(&server_secret_params, &group_public_params, redemption_time)
+        .unwrap();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time,
+        )
+        .unwrap();
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time - SECONDS_PER_DAY - 1,
+        )
+        .expect_err("credential not valid before redemption time (allowing for clock skew)");
+
+    server_secret_params
+        .verify_auth_credential_presentation(
+            group_public_params,
+            &presentation_any,
+            redemption_time + 2 * SECONDS_PER_DAY + 2,
+        )
+        .expect_err("credential not valid past deadline");
+
+    // Test encoding, which will also detect if the serialized lengths change.
+    let mut auth_credential_response_bytes =
+        [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_WITH_PNI_RESPONSE_LEN];
+    let mut auth_credential_bytes = [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_WITH_PNI_LEN];
+    auth_credential_response_bytes
+        .copy_from_slice(&bincode::serialize(&auth_credential_response).unwrap());
+    auth_credential_bytes.copy_from_slice(&bincode::serialize(&auth_credential).unwrap());
 }
 
 #[test]

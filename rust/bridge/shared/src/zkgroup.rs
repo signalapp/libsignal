@@ -66,8 +66,6 @@ macro_rules! fixed_length_serializable {
 
 fixed_length_serializable!(AuthCredential);
 fixed_length_serializable!(AuthCredentialResponse);
-fixed_length_serializable!(AuthCredentialWithPni);
-fixed_length_serializable!(AuthCredentialWithPniResponse);
 fixed_length_serializable!(ExpiringProfileKeyCredential);
 fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
 fixed_length_serializable!(GroupMasterKey);
@@ -256,16 +254,18 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
     aci: Aci,
     pni: Pni,
     redemption_time: Timestamp,
-    response: Serialized<AuthCredentialWithPniResponse>,
-) -> Result<Serialized<AuthCredentialWithPni>, ZkGroupVerificationFailure> {
-    Ok(params
-        .receive_auth_credential_with_pni_as_service_id(
+    auth_credential_with_pni_response_bytes: &[u8],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let response = AuthCredentialWithPniResponse::new(auth_credential_with_pni_response_bytes)
+        .expect("previously validated");
+    Ok(zkgroup::serialize(
+        &params.receive_auth_credential_with_pni_as_service_id(
             aci,
             pni,
             redemption_time.as_seconds(),
-            &response,
-        )?
-        .into())
+            response,
+        )?,
+    ))
 }
 
 #[bridge_fn]
@@ -274,11 +274,18 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
     aci: Aci,
     pni: Pni,
     redemption_time: Timestamp,
-    response: Serialized<AuthCredentialWithPniResponse>,
-) -> Result<Serialized<AuthCredentialWithPni>, ZkGroupVerificationFailure> {
-    Ok(params
-        .receive_auth_credential_with_pni_as_aci(aci, pni, redemption_time.as_seconds(), &response)?
-        .into())
+    auth_credential_with_pni_response_bytes: &[u8],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let response = AuthCredentialWithPniResponse::new(auth_credential_with_pni_response_bytes)
+        .expect("previously validated");
+    Ok(zkgroup::serialize(
+        &params.receive_auth_credential_with_pni_as_aci(
+            aci,
+            pni,
+            redemption_time.as_seconds(),
+            response,
+        )?,
+    ))
 }
 
 #[bridge_fn]
@@ -300,13 +307,15 @@ fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
     server_public_params: Serialized<ServerPublicParams>,
     randomness: &[u8; RANDOMNESS_LEN],
     group_secret_params: Serialized<GroupSecretParams>,
-    auth_credential: Serialized<AuthCredentialWithPni>,
+    auth_credential_with_pni_bytes: &[u8],
 ) -> Vec<u8> {
+    let auth_credential =
+        AuthCredentialWithPni::new(auth_credential_with_pni_bytes).expect("previously validated");
     zkgroup::serialize(
         &server_public_params.create_auth_credential_with_pni_presentation(
             *randomness,
             group_secret_params.into_inner(),
-            auth_credential.into_inner(),
+            auth_credential,
         ),
     )
 }
@@ -411,15 +420,15 @@ fn ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
     aci: Aci,
     pni: Pni,
     redemption_time: Timestamp,
-) -> Serialized<AuthCredentialWithPniResponse> {
-    server_secret_params
-        .issue_auth_credential_with_pni_as_service_id(
+) -> Vec<u8> {
+    zkgroup::serialize(
+        &server_secret_params.issue_auth_credential_with_pni_as_service_id(
             *randomness,
             aci,
             pni,
             redemption_time.as_seconds(),
-        )
-        .into()
+        ),
+    )
 }
 
 #[bridge_fn]
@@ -429,10 +438,43 @@ fn ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
     aci: Aci,
     pni: Pni,
     redemption_time: Timestamp,
-) -> Serialized<AuthCredentialWithPniResponse> {
-    server_secret_params
-        .issue_auth_credential_with_pni_as_aci(*randomness, aci, pni, redemption_time.as_seconds())
-        .into()
+) -> Vec<u8> {
+    zkgroup::serialize(&server_secret_params.issue_auth_credential_with_pni_as_aci(
+        *randomness,
+        aci,
+        pni,
+        redemption_time.as_seconds(),
+    ))
+}
+#[bridge_fn]
+fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
+    server_secret_params: Serialized<ServerSecretParams>,
+    randomness: &[u8; RANDOMNESS_LEN],
+    aci: Aci,
+    pni: Pni,
+    redemption_time: Timestamp,
+) -> Vec<u8> {
+    zkgroup::serialize(&AuthCredentialWithPniZkcResponse::issue_credential(
+        aci,
+        pni,
+        redemption_time.as_seconds(),
+        &server_secret_params,
+        *randomness,
+    ))
+}
+
+#[bridge_fn_void]
+fn AuthCredentialWithPni_CheckValidContents(
+    bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    AuthCredentialWithPni::new(bytes).map(|_| ())
+}
+
+#[bridge_fn_void]
+fn AuthCredentialWithPniResponse_CheckValidContents(
+    bytes: &[u8],
+) -> Result<(), ZkGroupDeserializationFailure> {
+    AuthCredentialWithPniResponse::new(bytes).map(|_| ())
 }
 
 #[bridge_fn_void]

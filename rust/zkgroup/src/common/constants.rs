@@ -10,6 +10,7 @@ pub const NUM_RECEIPT_CRED_ATTRIBUTES: usize = 2;
 pub const PRESENTATION_VERSION_1: u8 = 0;
 pub const PRESENTATION_VERSION_2: u8 = 1;
 pub const PRESENTATION_VERSION_3: u8 = 2;
+pub const PRESENTATION_VERSION_4: u8 = 3;
 
 pub const AES_KEY_LEN: usize = 32;
 pub const AESGCM_NONCE_LEN: usize = 12;

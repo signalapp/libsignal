@@ -102,6 +102,32 @@ public class ServerZkAuthOperations {
     }
   }
 
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPniZkc(
+      Aci aci, Pni pni, Instant redemptionTime) {
+    return issueAuthCredentialWithPniZkc(new SecureRandom(), aci, pni, redemptionTime);
+  }
+
+  public AuthCredentialWithPniResponse issueAuthCredentialWithPniZkc(
+      SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
+    byte[] random = new byte[RANDOM_LENGTH];
+
+    secureRandom.nextBytes(random);
+
+    byte[] newContents =
+        Native.ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
+            serverSecretParams.getInternalContentsForJNI(),
+            random,
+            aci.toServiceIdFixedWidthBinary(),
+            pni.toServiceIdFixedWidthBinary(),
+            redemptionTime.getEpochSecond());
+
+    try {
+      return new AuthCredentialWithPniResponse(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public void verifyAuthCredentialPresentation(
       GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation)
       throws VerificationFailedException {

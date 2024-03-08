@@ -147,7 +147,7 @@ pub trait Domain {
     fn G_a() -> [RistrettoPoint; 2];
 }
 
-/// Derives reasonable generator points `G_a` for `D`, based on its [`ID`][Domain::ID], and caches
+/// Derives reasonable generator points `G_a` for `D`, based on its [`ID`][Domain::ID], and caches
 /// them in `storage`.
 pub fn derive_default_generator_points<D: Domain>(
     storage: &std::sync::OnceLock<[RistrettoPoint; 2]>,

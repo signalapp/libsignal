@@ -136,8 +136,8 @@ export function AuthCredentialPresentation_GetPniCiphertext(presentationBytes: B
 export function AuthCredentialPresentation_GetRedemptionTime(presentationBytes: Buffer): Timestamp;
 export function AuthCredentialPresentation_GetUuidCiphertext(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function AuthCredentialResponse_CheckValidContents(buffer: Buffer): void;
-export function AuthCredentialWithPniResponse_CheckValidContents(buffer: Buffer): void;
-export function AuthCredentialWithPni_CheckValidContents(buffer: Buffer): void;
+export function AuthCredentialWithPniResponse_CheckValidContents(bytes: Buffer): void;
+export function AuthCredentialWithPni_CheckValidContents(bytes: Buffer): void;
 export function AuthCredential_CheckValidContents(buffer: Buffer): void;
 export function BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function BackupAuthCredentialPresentation_Verify(presentationBytes: Buffer, now: Timestamp, serverParamsBytes: Buffer): void;
@@ -395,14 +395,14 @@ export function ServerCertificate_GetSignature(obj: Wrapper<ServerCertificate>):
 export function ServerCertificate_New(keyId: number, serverKey: Wrapper<PublicKey>, trustRoot: Wrapper<PrivateKey>): ServerCertificate;
 export function ServerPublicParams_CheckValidContents(buffer: Buffer): void;
 export function ServerPublicParams_CreateAuthCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredential: Serialized<AuthCredential>): Buffer;
-export function ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredential: Serialized<AuthCredentialWithPni>): Buffer;
+export function ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredentialWithPniBytes: Buffer): Buffer;
 export function ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<ExpiringProfileKeyCredential>): Buffer;
 export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, userId: Buffer, profileKey: Serialized<ProfileKey>): Serialized<ProfileKeyCredentialRequestContext>;
 export function ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, receiptCredential: Serialized<ReceiptCredential>): Serialized<ReceiptCredentialPresentation>;
 export function ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(serverPublicParams: Serialized<ServerPublicParams>, randomness: Buffer, receiptSerial: Buffer): Serialized<ReceiptCredentialRequestContext>;
 export function ServerPublicParams_ReceiveAuthCredential(params: Serialized<ServerPublicParams>, aci: Buffer, redemptionTime: number, response: Serialized<AuthCredentialResponse>): Serialized<AuthCredential>;
-export function ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(params: Serialized<ServerPublicParams>, aci: Buffer, pni: Buffer, redemptionTime: Timestamp, response: Serialized<AuthCredentialWithPniResponse>): Serialized<AuthCredentialWithPni>;
-export function ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(params: Serialized<ServerPublicParams>, aci: Buffer, pni: Buffer, redemptionTime: Timestamp, response: Serialized<AuthCredentialWithPniResponse>): Serialized<AuthCredentialWithPni>;
+export function ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(params: Serialized<ServerPublicParams>, aci: Buffer, pni: Buffer, redemptionTime: Timestamp, authCredentialWithPniResponseBytes: Buffer): Buffer;
+export function ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(params: Serialized<ServerPublicParams>, aci: Buffer, pni: Buffer, redemptionTime: Timestamp, authCredentialWithPniResponseBytes: Buffer): Buffer;
 export function ServerPublicParams_ReceiveExpiringProfileKeyCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<ProfileKeyCredentialRequestContext>, response: Serialized<ExpiringProfileKeyCredentialResponse>, currentTimeInSeconds: Timestamp): Serialized<ExpiringProfileKeyCredential>;
 export function ServerPublicParams_ReceiveReceiptCredential(serverPublicParams: Serialized<ServerPublicParams>, requestContext: Serialized<ReceiptCredentialRequestContext>, response: Serialized<ReceiptCredentialResponse>): Serialized<ReceiptCredential>;
 export function ServerPublicParams_VerifySignature(serverPublicParams: Serialized<ServerPublicParams>, message: Buffer, notarySignature: Buffer): void;
@@ -410,8 +410,9 @@ export function ServerSecretParams_CheckValidContents(buffer: Buffer): void;
 export function ServerSecretParams_GenerateDeterministic(randomness: Buffer): Serialized<ServerSecretParams>;
 export function ServerSecretParams_GetPublicParams(params: Serialized<ServerSecretParams>): Serialized<ServerPublicParams>;
 export function ServerSecretParams_IssueAuthCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, aci: Buffer, redemptionTime: number): Serialized<AuthCredentialResponse>;
-export function ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Serialized<AuthCredentialWithPniResponse>;
-export function ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Serialized<AuthCredentialWithPniResponse>;
+export function ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Buffer;
+export function ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Buffer;
+export function ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Buffer;
 export function ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ProfileKeyCredentialRequest>, userId: Buffer, commitment: Serialized<ProfileKeyCommitment>, expirationInSeconds: Timestamp): Serialized<ExpiringProfileKeyCredentialResponse>;
 export function ServerSecretParams_IssueReceiptCredentialDeterministic(serverSecretParams: Serialized<ServerSecretParams>, randomness: Buffer, request: Serialized<ReceiptCredentialRequest>, receiptExpirationTime: Timestamp, receiptLevel: bigint): Serialized<ReceiptCredentialResponse>;
 export function ServerSecretParams_SignDeterministic(params: Serialized<ServerSecretParams>, randomness: Buffer, message: Buffer): Buffer;
@@ -516,8 +517,6 @@ export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, targe
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthCredential { readonly __type: unique symbol; }
 interface AuthCredentialResponse { readonly __type: unique symbol; }
-interface AuthCredentialWithPni { readonly __type: unique symbol; }
-interface AuthCredentialWithPniResponse { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface Chat { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }

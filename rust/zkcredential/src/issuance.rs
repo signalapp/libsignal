@@ -31,7 +31,7 @@ use crate::{VerificationFailure, RANDOMNESS_LEN};
 /// Contains a [`Credential`] along with a proof of its validity.
 ///
 /// Use [`IssuanceProofBuilder`] to validate and extract the credential.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct IssuanceProof {
     credential: Credential,
     poksho_proof: Vec<u8>,

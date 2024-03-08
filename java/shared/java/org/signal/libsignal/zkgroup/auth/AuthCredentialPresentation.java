@@ -19,6 +19,7 @@ public final class AuthCredentialPresentation extends ByteArray {
     V1,
     V2,
     V3,
+    V4,
     UNKNOWN
   };
 
@@ -58,15 +59,11 @@ public final class AuthCredentialPresentation extends ByteArray {
   }
 
   public Version getVersion() {
-    switch (this.contents[0]) {
-      case 0:
-        return Version.V1;
-      case 1:
-        return Version.V2;
-      case 2:
-        return Version.V3;
-      default:
-        return Version.UNKNOWN;
+    byte version = this.contents[0];
+    final Version[] values = Version.values();
+    if (version < values.length) {
+      return values[version];
     }
+    return Version.UNKNOWN;
   }
 }

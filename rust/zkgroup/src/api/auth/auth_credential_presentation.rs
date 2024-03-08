@@ -2,14 +2,15 @@
 // Copyright 2020-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use partial_default::PartialDefault;
+use serde::{Deserialize, Serialize, Serializer};
 
+use crate::auth::AuthCredentialWithPniZkcPresentation;
 use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::serialization::VersionByte;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
-use partial_default::PartialDefault;
-use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialPresentationV2 {
@@ -65,6 +66,7 @@ impl AuthCredentialWithPniPresentation {
 pub enum AnyAuthCredentialPresentation {
     V2(AuthCredentialPresentationV2),
     V3(AuthCredentialWithPniPresentation),
+    V4(AuthCredentialWithPniZkcPresentation),
 }
 
 #[repr(u8)]
@@ -76,28 +78,28 @@ enum PresentationVersion {
     #[partial_default]
     V2 = PRESENTATION_VERSION_2,
     V3 = PRESENTATION_VERSION_3,
+    V4 = PRESENTATION_VERSION_4,
 }
 
 impl AnyAuthCredentialPresentation {
     pub fn new(presentation_bytes: &[u8]) -> Result<Self, ZkGroupDeserializationFailure> {
-        match presentation_bytes[0] {
-            PRESENTATION_VERSION_1 => {
-                // No longer supported.
-                Err(ZkGroupDeserializationFailure)
+        let first = *presentation_bytes
+            .first()
+            .ok_or(ZkGroupDeserializationFailure)?;
+        let version =
+            PresentationVersion::try_from(first).map_err(|_| ZkGroupDeserializationFailure)?;
+        match version {
+            PresentationVersion::V2 => {
+                Ok(crate::deserialize::<AuthCredentialPresentationV2>(presentation_bytes)?.into())
             }
-            PRESENTATION_VERSION_2 => {
-                match crate::deserialize::<AuthCredentialPresentationV2>(presentation_bytes) {
-                    Ok(presentation) => Ok(AnyAuthCredentialPresentation::V2(presentation)),
-                    Err(_) => Err(ZkGroupDeserializationFailure),
-                }
-            }
-            PRESENTATION_VERSION_3 => {
-                match crate::deserialize::<AuthCredentialWithPniPresentation>(presentation_bytes) {
-                    Ok(presentation) => Ok(AnyAuthCredentialPresentation::V3(presentation)),
-                    Err(_) => Err(ZkGroupDeserializationFailure),
-                }
-            }
-            _ => Err(ZkGroupDeserializationFailure),
+            PresentationVersion::V3 => Ok(crate::deserialize::<AuthCredentialWithPniPresentation>(
+                presentation_bytes,
+            )?
+            .into()),
+            PresentationVersion::V4 => Ok(crate::deserialize::<
+                AuthCredentialWithPniZkcPresentation,
+            >(presentation_bytes)?
+            .into()),
         }
     }
 
@@ -105,6 +107,7 @@ impl AnyAuthCredentialPresentation {
         match self {
             AnyAuthCredentialPresentation::V2(presentation) => presentation.get_uuid_ciphertext(),
             AnyAuthCredentialPresentation::V3(presentation) => presentation.get_aci_ciphertext(),
+            AnyAuthCredentialPresentation::V4(presentation) => presentation.aci_ciphertext(),
         }
     }
 
@@ -114,6 +117,7 @@ impl AnyAuthCredentialPresentation {
             AnyAuthCredentialPresentation::V3(presentation) => {
                 Some(presentation.get_pni_ciphertext())
             }
+            AnyAuthCredentialPresentation::V4(presentation) => Some(presentation.pni_ciphertext()),
         }
     }
 
@@ -123,6 +127,7 @@ impl AnyAuthCredentialPresentation {
                 u64::from(presentation.get_redemption_time()) * SECONDS_PER_DAY
             }
             AnyAuthCredentialPresentation::V3(presentation) => presentation.get_redemption_time(),
+            AnyAuthCredentialPresentation::V4(presentation) => presentation.redemption_time(),
         }
     }
 }
@@ -135,6 +140,7 @@ impl Serialize for AnyAuthCredentialPresentation {
         match self {
             AnyAuthCredentialPresentation::V2(presentation) => presentation.serialize(serializer),
             AnyAuthCredentialPresentation::V3(presentation) => presentation.serialize(serializer),
+            AnyAuthCredentialPresentation::V4(presentation) => presentation.serialize(serializer),
         }
     }
 }
@@ -147,5 +153,10 @@ impl From<AuthCredentialPresentationV2> for AnyAuthCredentialPresentation {
 impl From<AuthCredentialWithPniPresentation> for AnyAuthCredentialPresentation {
     fn from(presentation: AuthCredentialWithPniPresentation) -> Self {
         Self::V3(presentation)
+    }
+}
+impl From<AuthCredentialWithPniZkcPresentation> for AnyAuthCredentialPresentation {
+    fn from(presentation: AuthCredentialWithPniZkcPresentation) -> Self {
+        Self::V4(presentation)
     }
 }

@@ -112,9 +112,9 @@ public final class Native {
 
   public static native void AuthCredentialResponse_CheckValidContents(byte[] buffer) throws Exception;
 
-  public static native void AuthCredentialWithPniResponse_CheckValidContents(byte[] buffer) throws Exception;
+  public static native void AuthCredentialWithPniResponse_CheckValidContents(byte[] bytes) throws Exception;
 
-  public static native void AuthCredentialWithPni_CheckValidContents(byte[] buffer) throws Exception;
+  public static native void AuthCredentialWithPni_CheckValidContents(byte[] bytes) throws Exception;
 
   public static native void AuthCredential_CheckValidContents(byte[] buffer) throws Exception;
 
@@ -501,14 +501,14 @@ public final class Native {
 
   public static native void ServerPublicParams_CheckValidContents(byte[] buffer) throws Exception;
   public static native byte[] ServerPublicParams_CreateAuthCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
-  public static native byte[] ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredential);
+  public static native byte[] ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredentialWithPniBytes);
   public static native byte[] ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);
   public static native byte[] ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] userId, byte[] profileKey);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptCredential);
   public static native byte[] ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(byte[] serverPublicParams, byte[] randomness, byte[] receiptSerial);
   public static native byte[] ServerPublicParams_ReceiveAuthCredential(byte[] params, byte[] aci, int redemptionTime, byte[] response) throws Exception;
-  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(byte[] params, byte[] aci, byte[] pni, long redemptionTime, byte[] response) throws Exception;
-  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(byte[] params, byte[] aci, byte[] pni, long redemptionTime, byte[] response) throws Exception;
+  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(byte[] params, byte[] aci, byte[] pni, long redemptionTime, byte[] authCredentialWithPniResponseBytes) throws Exception;
+  public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(byte[] params, byte[] aci, byte[] pni, long redemptionTime, byte[] authCredentialWithPniResponseBytes) throws Exception;
   public static native byte[] ServerPublicParams_ReceiveExpiringProfileKeyCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response, long currentTimeInSeconds) throws Exception;
   public static native byte[] ServerPublicParams_ReceiveReceiptCredential(byte[] serverPublicParams, byte[] requestContext, byte[] response) throws Exception;
   public static native void ServerPublicParams_VerifySignature(byte[] serverPublicParams, byte[] message, byte[] notarySignature) throws Exception;
@@ -519,6 +519,7 @@ public final class Native {
   public static native byte[] ServerSecretParams_IssueAuthCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] aci, int redemptionTime);
   public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] aci, byte[] pni, long redemptionTime);
   public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] aci, byte[] pni, long redemptionTime);
+  public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] aci, byte[] pni, long redemptionTime);
   public static native byte[] ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, byte[] userId, byte[] commitment, long expirationInSeconds) throws Exception;
   public static native byte[] ServerSecretParams_IssueReceiptCredentialDeterministic(byte[] serverSecretParams, byte[] randomness, byte[] request, long receiptExpirationTime, long receiptLevel);
   public static native byte[] ServerSecretParams_SignDeterministic(byte[] params, byte[] randomness, byte[] message);

@@ -105,8 +105,7 @@ impl CallLinkAuthCredential {
 pub struct CallLinkAuthCredentialPresentation {
     reserved: ReservedByte,
     pub(crate) proof: zkcredential::presentation::PresentationProof,
-    pub(crate) ciphertext:
-        zkcredential::attributes::Ciphertext<uid_encryption::UidEncryptionDomain>,
+    pub(crate) ciphertext: uid_encryption::Ciphertext,
     pub(crate) redemption_time: Timestamp,
 }
 

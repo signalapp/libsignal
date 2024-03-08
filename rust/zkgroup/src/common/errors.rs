@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use zkcredential::VerificationFailure;
+
 #[derive(Debug, displaydoc::Display)]
 /// Verification failure in zkgroup
 pub struct ZkGroupVerificationFailure;
@@ -10,3 +12,9 @@ pub struct ZkGroupVerificationFailure;
 #[derive(Debug, displaydoc::Display)]
 /// Deserialization failure in zkgroup
 pub struct ZkGroupDeserializationFailure;
+
+impl From<VerificationFailure> for ZkGroupVerificationFailure {
+    fn from(VerificationFailure: VerificationFailure) -> Self {
+        Self
+    }
+}

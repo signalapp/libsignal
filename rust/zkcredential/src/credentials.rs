@@ -18,13 +18,15 @@ use crate::RANDOMNESS_LEN;
 /// A credential created by the issuing server over a set of attributes.
 ///
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct Credential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
+/// A secret key used to compute a MAC over a set of attributes
+///
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
 #[derive(Serialize, Deserialize, Clone, PartialDefault)]
 pub(crate) struct CredentialPrivateKey {
@@ -37,6 +39,7 @@ pub(crate) struct CredentialPrivateKey {
 }
 
 impl CredentialPrivateKey {
+    /// Creates a new secret key using the given source of random bytes.
     fn generate(randomness: [u8; RANDOMNESS_LEN]) -> Self {
         let mut sho =
             ShoHmacSha256::new(b"Signal_ZKCredential_CredentialPrivateKey_generate_20230410");
@@ -59,7 +62,12 @@ impl CredentialPrivateKey {
         }
     }
 
+    /// Produces a MAC over the given attributes.
+    ///
     /// Implements the credential computation described in Chase-Perrin-Zaverucha section 3.1.
+    ///
+    /// # Panics
+    /// if more than [`NUM_SUPPORTED_ATTRS`] attributes are passed in.
     pub(crate) fn credential_core(&self, M: &[RistrettoPoint], sho: &mut dyn ShoApi) -> Credential {
         assert!(
             M.len() <= NUM_SUPPORTED_ATTRS,

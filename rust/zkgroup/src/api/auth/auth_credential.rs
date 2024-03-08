@@ -17,3 +17,10 @@ pub struct AuthCredential {
     pub(crate) uid: crypto::uid_struct::UidStruct,
     pub(crate) redemption_time: CoarseRedemptionTime,
 }
+
+#[derive(Serialize, Deserialize, PartialDefault)]
+pub struct AuthCredentialResponse {
+    pub(crate) reserved: ReservedByte,
+    pub(crate) credential: crypto::credentials::AuthCredential,
+    pub(crate) proof: crypto::proofs::AuthCredentialIssuanceProof,
+}
