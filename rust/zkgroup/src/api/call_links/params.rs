@@ -4,22 +4,23 @@
 //
 
 use crate::common::errors::*;
+use crate::common::serialization::ReservedByte;
 use crate::common::sho::*;
-use crate::common::simple_types::*;
+
 use crate::{api, crypto};
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkSecretParams {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     pub(crate) uid_enc_key_pair:
         zkcredential::attributes::KeyPair<crypto::uid_encryption::UidEncryptionDomain>,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkPublicParams {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     pub(crate) uid_enc_public_key:
         zkcredential::attributes::PublicKey<crypto::uid_encryption::UidEncryptionDomain>,
 }

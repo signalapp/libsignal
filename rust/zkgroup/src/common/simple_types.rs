@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::common::constants::*;
 use curve25519_dalek::scalar::Scalar;
+
+use crate::common::constants::*;
 
 pub type AesKeyBytes = [u8; AES_KEY_LEN];
 pub type GroupMasterKeyBytes = [u8; GROUP_MASTER_KEY_LEN];
 pub type UidBytes = [u8; UUID_LEN];
 pub type ProfileKeyBytes = [u8; PROFILE_KEY_LEN];
 pub type RandomnessBytes = [u8; RANDOMNESS_LEN];
-pub type ReservedBytes = [u8; RESERVED_LEN];
 pub type SignatureBytes = [u8; SIGNATURE_LEN];
 pub type NotarySignatureBytes = [u8; SIGNATURE_LEN];
 pub type GroupIdentifierBytes = [u8; GROUP_IDENTIFIER_LEN];

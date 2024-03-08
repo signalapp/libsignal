@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::common::simple_types::*;
-use crate::crypto;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
+use crate::common::serialization::ReservedByte;
+use crate::crypto;
+
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, PartialDefault)]
 pub struct ProfileKeyCiphertext {
-    pub(crate) reserved: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) ciphertext: crypto::profile_key_encryption::Ciphertext,
 }

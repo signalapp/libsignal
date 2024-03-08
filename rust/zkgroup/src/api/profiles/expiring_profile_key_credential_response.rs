@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::crypto;
 use partial_default::PartialDefault;
@@ -10,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredentialResponse {
-    pub(crate) version: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) blinded_credential: crypto::credentials::BlindedExpiringProfileKeyCredential,
     pub(crate) credential_expiration_time: Timestamp,
     pub(crate) proof: crypto::proofs::ExpiringProfileKeyCredentialIssuanceProof,

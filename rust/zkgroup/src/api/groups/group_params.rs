@@ -5,6 +5,7 @@
 
 use crate::common::constants::*;
 use crate::common::errors::*;
+use crate::common::serialization::ReservedByte;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
@@ -21,7 +22,7 @@ pub struct GroupMasterKey {
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupSecretParams {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     master_key: GroupMasterKey,
     group_id: GroupIdentifierBytes,
     blob_key: AesKeyBytes,
@@ -31,7 +32,7 @@ pub struct GroupSecretParams {
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct GroupPublicParams {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     group_id: GroupIdentifierBytes,
     pub(crate) uid_enc_public_key: crypto::uid_encryption::PublicKey,
     pub(crate) profile_key_enc_public_key: crypto::profile_key_encryption::PublicKey,

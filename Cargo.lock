@@ -4517,6 +4517,7 @@ dependencies = [
  "hkdf",
  "lazy_static",
  "libsignal-core",
+ "num_enum",
  "partial-default",
  "poksho",
  "rand",
@@ -4525,6 +4526,7 @@ dependencies = [
  "sha2",
  "signal-crypto",
  "subtle",
+ "test-case",
  "uuid",
  "zkcredential",
 ]

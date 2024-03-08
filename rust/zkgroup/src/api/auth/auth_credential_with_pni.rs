@@ -6,12 +6,13 @@
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
+use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::crypto;
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialWithPni {
-    pub(crate) reserved: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) credential: crypto::credentials::AuthCredentialWithPni,
     pub(crate) aci: crypto::uid_struct::UidStruct,
     pub(crate) pni: crypto::uid_struct::UidStruct,

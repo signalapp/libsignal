@@ -5,6 +5,7 @@
 
 use crate::common::constants::*;
 use crate::common::errors::*;
+use crate::common::serialization::VersionByte;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 use partial_default::PartialDefault;
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialPresentationV2 {
-    pub(crate) version: ReservedBytes,
+    pub(crate) version: VersionByte<PRESENTATION_VERSION_2>,
     pub(crate) proof: crypto::proofs::AuthCredentialPresentationProofV2,
     pub(crate) ciphertext: crypto::uid_encryption::Ciphertext,
     pub(crate) redemption_time: CoarseRedemptionTime,
@@ -33,7 +34,7 @@ impl AuthCredentialPresentationV2 {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct AuthCredentialWithPniPresentation {
-    pub(crate) version: ReservedBytes,
+    pub(crate) version: VersionByte<PRESENTATION_VERSION_3>,
     pub(crate) proof: crypto::proofs::AuthCredentialWithPniPresentationProof,
     pub(crate) aci_ciphertext: crypto::uid_encryption::Ciphertext,
     pub(crate) pni_ciphertext: crypto::uid_encryption::Ciphertext,
@@ -64,6 +65,17 @@ impl AuthCredentialWithPniPresentation {
 pub enum AnyAuthCredentialPresentation {
     V2(AuthCredentialPresentationV2),
     V3(AuthCredentialWithPniPresentation),
+}
+
+#[repr(u8)]
+#[derive(
+    Copy, Clone, Debug, PartialDefault, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
+)]
+enum PresentationVersion {
+    // V1 is no longer supported.
+    #[partial_default]
+    V2 = PRESENTATION_VERSION_2,
+    V3 = PRESENTATION_VERSION_3,
 }
 
 impl AnyAuthCredentialPresentation {

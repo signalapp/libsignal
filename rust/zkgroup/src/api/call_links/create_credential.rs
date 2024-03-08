@@ -15,6 +15,7 @@ use partial_default::PartialDefault;
 use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 
+use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::crypto::uid_encryption;
@@ -44,7 +45,7 @@ const CREDENTIAL_LABEL: &[u8] = b"20230413_Signal_CreateCallLinkCredential";
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialRequestContext {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     blinded_room_id: zkcredential::issuance::blind::BlindedPoint,
     key_pair: zkcredential::issuance::blind::BlindingKeyPair,
 }
@@ -61,7 +62,7 @@ impl CreateCallLinkCredentialRequestContext {
             .into();
 
         Self {
-            reserved: [0],
+            reserved: Default::default(),
             blinded_room_id,
             key_pair,
         }
@@ -69,7 +70,7 @@ impl CreateCallLinkCredentialRequestContext {
 
     pub fn get_request(&self) -> CreateCallLinkCredentialRequest {
         CreateCallLinkCredentialRequest {
-            reserved: [0],
+            reserved: Default::default(),
             blinded_room_id: self.blinded_room_id,
             public_key: *self.key_pair.public_key(),
         }
@@ -78,7 +79,7 @@ impl CreateCallLinkCredentialRequestContext {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialRequest {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     blinded_room_id: zkcredential::issuance::blind::BlindedPoint,
     public_key: zkcredential::issuance::blind::BlindingPublicKey,
     // Note that unlike ProfileKeyCredentialRequest, we don't have a proof. This is because our only
@@ -101,7 +102,7 @@ impl CreateCallLinkCredentialRequest {
         randomness: RandomnessBytes,
     ) -> CreateCallLinkCredentialResponse {
         CreateCallLinkCredentialResponse {
-            reserved: [0],
+            reserved: Default::default(),
             timestamp,
             blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&timestamp)
@@ -114,7 +115,7 @@ impl CreateCallLinkCredentialRequest {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialResponse {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     // Does not include the room ID or the user ID, because the client already knows those.
     timestamp: Timestamp,
     blinded_credential: zkcredential::issuance::blind::BlindedIssuanceProof,
@@ -132,7 +133,7 @@ impl CreateCallLinkCredentialRequestContext {
         }
 
         Ok(CreateCallLinkCredential {
-            reserved: [0],
+            reserved: Default::default(),
             timestamp: response.timestamp,
             credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&response.timestamp)
@@ -150,7 +151,7 @@ impl CreateCallLinkCredentialRequestContext {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredential {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     // We could avoid having to pass in the room ID or user ID again if we saved them here, but
     // that's readily available information in the apps, so we may as well keep the credential
     // small.
@@ -170,7 +171,7 @@ impl CreateCallLinkCredential {
         let user_id = UidStruct::from_service_id(user_id.into());
         let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(&user_id);
         CreateCallLinkCredentialPresentation {
-            reserved: [0],
+            reserved: Default::default(),
             timestamp: self.timestamp,
             user_id: encrypted_user_id,
             proof: zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
@@ -183,7 +184,7 @@ impl CreateCallLinkCredential {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialPresentation {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     // The room ID is provided externally as part of the request.
     user_id: zkcredential::attributes::Ciphertext<uid_encryption::UidEncryptionDomain>,
     timestamp: Timestamp,
@@ -217,7 +218,7 @@ impl CreateCallLinkCredentialPresentation {
 
     pub fn get_user_id(&self) -> UuidCiphertext {
         UuidCiphertext {
-            reserved: [0],
+            reserved: Default::default(),
             ciphertext: self.user_id,
         }
     }

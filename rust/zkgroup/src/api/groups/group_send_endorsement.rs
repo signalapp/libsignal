@@ -18,9 +18,10 @@ use serde::{Deserialize, Serialize};
 use zkcredential::attributes::Attribute as _;
 
 use crate::common::array_utils;
+use crate::common::serialization::ReservedByte;
 use crate::groups::{GroupSecretParams, UuidCiphertext};
 use crate::{
-    crypto, RandomnessBytes, ReservedBytes, ServerPublicParams, ServerSecretParams, Timestamp,
+    crypto, RandomnessBytes, ServerPublicParams, ServerSecretParams, Timestamp,
     ZkGroupVerificationFailure, SECONDS_PER_DAY,
 };
 
@@ -33,7 +34,7 @@ const SECONDS_PER_HOUR: u64 = 60 * 60;
 /// rotated every 24 hours.
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendDerivedKeyPair {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     key_pair: zkcredential::endorsements::ServerDerivedKeyPair,
     expiration: Timestamp,
 }
@@ -50,7 +51,7 @@ impl GroupSendDerivedKeyPair {
     /// Derives the appropriate key pair for the given expiration.
     pub fn for_expiration(expiration: Timestamp, params: &ServerSecretParams) -> Self {
         Self {
-            reserved: [0],
+            reserved: ReservedByte::default(),
             key_pair: params
                 .endorsement_key_pair
                 .derive_key(Self::tag_info(expiration)),
@@ -65,7 +66,7 @@ impl GroupSendDerivedKeyPair {
 /// change (being careful of expiration, of course). It is the same for every requesting member.
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendEndorsementsResponse {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     endorsements: zkcredential::endorsements::EndorsementResponse,
     expiration: Timestamp,
 }
@@ -125,7 +126,7 @@ impl GroupSendEndorsementsResponse {
         // endorsements in the sorted order we computed above.
 
         Self {
-            reserved: [0],
+            reserved: ReservedByte::default(),
             endorsements,
             expiration: key_pair.expiration,
         }
@@ -207,7 +208,7 @@ impl GroupSendEndorsementsResponse {
             endorsements
                 .into_iter()
                 .map(|endorsement| GroupSendEndorsement {
-                    reserved: [0],
+                    reserved: ReservedByte::default(),
                     endorsement,
                 })
                 .zip(member_points.iter().map(|(i, _)| *i)),
@@ -256,7 +257,7 @@ impl GroupSendEndorsementsResponse {
             endorsements
                 .into_iter()
                 .map(|endorsement| GroupSendEndorsement {
-                    reserved: [0],
+                    reserved: ReservedByte::default(),
                     endorsement,
                 })
                 .zip(member_points.iter().map(|(i, _)| *i)),
@@ -301,7 +302,7 @@ impl GroupSendEndorsementsResponse {
             endorsements
                 .into_iter()
                 .map(|endorsement| GroupSendEndorsement {
-                    reserved: [0],
+                    reserved: ReservedByte::default(),
                     endorsement,
                 })
                 .zip(points_to_check.iter().map(|(i, _)| *i)),
@@ -312,7 +313,7 @@ impl GroupSendEndorsementsResponse {
 /// A single endorsement, for one or multiple group members.
 #[derive(Serialize, Deserialize, PartialDefault, Clone, Copy)]
 pub struct GroupSendEndorsement {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     endorsement: zkcredential::endorsements::Endorsement,
 }
 
@@ -369,7 +370,7 @@ impl GroupSendEndorsement {
             );
         let raw_token = self.endorsement.to_token(&client_key);
         GroupSendToken {
-            reserved: [0],
+            reserved: ReservedByte::default(),
             raw_token,
         }
     }
@@ -381,7 +382,7 @@ impl GroupSendEndorsement {
 /// but must be converted to a GroupSendFullToken before sending it to the server.
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendToken {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     raw_token: Box<[u8]>,
 }
 
@@ -403,7 +404,7 @@ impl GroupSendToken {
 /// This will be serialized and sent to the chat server for verification.
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendFullToken {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     raw_token: Box<[u8]>,
     expiration: Timestamp,
 }

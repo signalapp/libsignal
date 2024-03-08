@@ -16,6 +16,7 @@ use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::{Attribute, Domain};
 
+use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::crypto::uid_encryption;
 use crate::crypto::uid_struct::UidStruct;
@@ -95,7 +96,7 @@ where
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendCredentialResponse {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     proof: zkcredential::issuance::IssuanceProof,
     user_id_set: UserIdSet<uid_encryption::Ciphertext>,
     expiration: Timestamp,
@@ -130,7 +131,7 @@ impl GroupSendCredentialResponse {
             .add_public_attribute(&expiration)
             .issue(&params.generic_credential_key_pair, randomness);
         Ok(Self {
-            reserved: [0],
+            reserved: Default::default(),
             proof,
             user_id_set,
             expiration,
@@ -172,7 +173,7 @@ impl GroupSendCredentialResponse {
             zkcredential::attributes::KeyPair::inverse_of(&group_params.uid_enc_key_pair);
 
         Ok(GroupSendCredential {
-            reserved: [0],
+            reserved: Default::default(),
             credential: raw_credential,
             user_id_set_ciphertext: user_id_set_ciphertext.into(),
             expiration: self.expiration,
@@ -212,7 +213,7 @@ impl GroupSendCredentialResponse {
             zkcredential::attributes::KeyPair::inverse_of(&group_params.uid_enc_key_pair);
 
         Ok(GroupSendCredential {
-            reserved: [0],
+            reserved: Default::default(),
             credential: raw_credential,
             user_id_set_ciphertext,
             expiration: self.expiration,
@@ -223,7 +224,7 @@ impl GroupSendCredentialResponse {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendCredential {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     credential: zkcredential::credentials::Credential,
     user_id_set_ciphertext: UserIdSet<crate::crypto::uid_encryption::Ciphertext>,
     expiration: Timestamp,
@@ -248,7 +249,7 @@ impl GroupSendCredential {
                 randomness,
             );
         GroupSendCredentialPresentation {
-            reserved: [0],
+            reserved: Default::default(),
             proof,
             expiration: self.expiration,
         }
@@ -257,7 +258,7 @@ impl GroupSendCredential {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GroupSendCredentialPresentation {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     proof: zkcredential::presentation::PresentationProof,
     // Does not include the set of user IDs because that's in the message payload
     expiration: Timestamp,

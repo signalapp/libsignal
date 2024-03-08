@@ -24,6 +24,7 @@ displaydoc = "0.2"
 hex = "0.4.0"
 hex-literal = "0.4.1"
 lazy_static = "1.4.0"
+num_enum = "0.6.1"
 partial-default = { version = "0.1.0", features = ["derive"] }
 rayon = "1.8.0"
 serde = { version = "1.0.106", features = ["derive"] }
@@ -48,6 +49,7 @@ uuid = { version = "1", features = ["v5"] }
 
 # For benchmarking
 criterion = "0.5"
+test-case = "3.3.1"
 
 [[bench]]
 name = "zkgroup_benchmarks"

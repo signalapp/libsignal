@@ -18,11 +18,11 @@
 use curve25519_dalek::ristretto::RistrettoPoint;
 use hkdf::Hkdf;
 use partial_default::PartialDefault;
+use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-use poksho::ShoApi;
-
+use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
@@ -47,7 +47,7 @@ const CREDENTIAL_LABEL: &[u8] = b"20231003_Signal_BackupAuthCredential";
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequestContext {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
     // A 16-byte identifier derived from the the backup-key
     backup_id: [u8; 16],
@@ -80,7 +80,7 @@ impl BackupAuthCredentialRequestContext {
             .into();
 
         Self {
-            reserved: [0],
+            reserved: Default::default(),
             blinded_backup_id,
             backup_id,
             key_pair,
@@ -89,7 +89,7 @@ impl BackupAuthCredentialRequestContext {
 
     pub fn get_request(&self) -> BackupAuthCredentialRequest {
         BackupAuthCredentialRequest {
-            reserved: [0],
+            reserved: Default::default(),
             blinded_backup_id: self.blinded_backup_id,
             public_key: *self.key_pair.public_key(),
         }
@@ -98,7 +98,7 @@ impl BackupAuthCredentialRequestContext {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequest {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
     public_key: zkcredential::issuance::blind::BlindingPublicKey,
 }
@@ -112,7 +112,7 @@ impl BackupAuthCredentialRequest {
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialResponse {
         BackupAuthCredentialResponse {
-            reserved: [0],
+            reserved: Default::default(),
             redemption_time,
             receipt_level,
             blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
@@ -126,7 +126,7 @@ impl BackupAuthCredentialRequest {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialResponse {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     redemption_time: Timestamp,
     receipt_level: ReceiptLevel,
     blinded_credential: zkcredential::issuance::blind::BlindedIssuanceProof,
@@ -148,7 +148,7 @@ impl BackupAuthCredentialRequestContext {
         }
 
         Ok(BackupAuthCredential {
-            reserved: [0],
+            reserved: Default::default(),
             redemption_time: response.redemption_time,
             receipt_level: response.receipt_level,
             credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
@@ -168,7 +168,7 @@ impl BackupAuthCredentialRequestContext {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredential {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     redemption_time: Timestamp,
     receipt_level: ReceiptLevel,
     credential: zkcredential::credentials::Credential,
@@ -182,7 +182,7 @@ impl BackupAuthCredential {
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialPresentation {
         BackupAuthCredentialPresentation {
-            reserved: [0],
+            version: Default::default(),
             redemption_time: self.redemption_time,
             receipt_level: self.receipt_level,
             backup_id: self.backup_id,
@@ -199,7 +199,7 @@ impl BackupAuthCredential {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialPresentation {
-    reserved: ReservedBytes,
+    version: ReservedByte,
     receipt_level: ReceiptLevel,
     redemption_time: Timestamp,
     proof: zkcredential::presentation::PresentationProof,

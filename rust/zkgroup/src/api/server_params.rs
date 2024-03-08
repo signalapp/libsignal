@@ -8,13 +8,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::common::constants::*;
 use crate::common::errors::*;
+use crate::common::serialization::{ReservedByte, VersionByte};
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerSecretParams {
-    pub(crate) reserved: ReservedBytes,
+    reserved: ReservedByte,
     pub(crate) auth_credentials_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::AuthCredential>,
 
@@ -40,7 +41,7 @@ pub struct ServerSecretParams {
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerPublicParams {
-    pub(crate) reserved: ReservedBytes,
+    reserved: ReservedByte,
     pub(crate) auth_credentials_public_key: crypto::credentials::PublicKey,
 
     // Now unused
@@ -390,7 +391,7 @@ impl ServerSecretParams {
         );
 
         Ok(api::profiles::ExpiringProfileKeyCredentialResponse {
-            version: Default::default(),
+            reserved: Default::default(),
             blinded_credential: blinded_credential_with_secret_nonce
                 .get_blinded_expiring_profile_key_credential(),
             credential_expiration_time,
@@ -575,7 +576,7 @@ impl ServerPublicParams {
         );
 
         api::auth::AuthCredentialPresentationV2 {
-            version: [PRESENTATION_VERSION_2],
+            version: VersionByte,
             proof,
             ciphertext: uuid_ciphertext.ciphertext,
             redemption_time: auth_credential.redemption_time,
@@ -609,7 +610,7 @@ impl ServerPublicParams {
         );
 
         api::auth::AuthCredentialWithPniPresentation {
-            version: [PRESENTATION_VERSION_3],
+            version: VersionByte,
             proof,
             aci_ciphertext: aci_ciphertext.ciphertext,
             pni_ciphertext: pni_ciphertext.ciphertext,
@@ -688,7 +689,7 @@ impl ServerPublicParams {
             .decrypt_blinded_expiring_profile_key_credential(response.blinded_credential);
 
         Ok(api::profiles::ExpiringProfileKeyCredential {
-            version: Default::default(),
+            reserved: Default::default(),
             credential,
             aci_bytes: context.aci_bytes,
             profile_key_bytes: context.profile_key_bytes,
@@ -729,7 +730,7 @@ impl ServerPublicParams {
         );
 
         api::profiles::ExpiringProfileKeyCredentialPresentation {
-            version: [PRESENTATION_VERSION_3],
+            version: VersionByte,
             proof,
             uid_enc_ciphertext: uuid_ciphertext.ciphertext,
             profile_key_enc_ciphertext: profile_key_ciphertext.ciphertext,
