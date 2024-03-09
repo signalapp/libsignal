@@ -355,6 +355,10 @@ jobs:
       run: swift test -v
       working-directory: swift
 
+    - name: Build and run Swift benchmarks (in debug mode)
+      run: swift run -v Benchmarks --allow-debug-build
+      working-directory: swift/Benchmarks
+
     - name: Build Swift package documentation
       run: swift package plugin generate-documentation --analyze --warnings-as-errors
       working-directory: swift

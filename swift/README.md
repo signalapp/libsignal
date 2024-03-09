@@ -59,6 +59,18 @@ When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag 
 
 ...is not supported. In theory we could make this work through the use of a custom pkg-config file and requiring clients to set `PKG_CONFIG_PATH` (or install the Rust build products), but since Signal itself does not use this configuration it's considered extra maintenance burden. Development as a package is supported as a lightweight convenience (as well as a cross-platform one), but the CocoaPods build is considered the canonical one.
 
+
+# Benchmarks
+
+The package in Benchmarks is set up for *relative* benchmarking on a build machine (rather than on iOS devices). This is mostly interesting to test that the bridging layer is not imposing undue overhead. Best results will come from testing on an Apple Silicon Mac, since that's closest in system libraries to an iOS device.
+
+1. Build the Rust library using `swift/build_ffi.sh --release`.
+
+2. `swift run -c release` from within the `swift/Benchmarks/` directory.
+
+SwiftPM hides the executable in `.build/release/`, but you can find it there to run profiling tools on it.
+
+
 # Catalyst Support
 
 Mac Catalyst is not supported by this repository, but we've done experiments with it in the past. Rust targets for Catalyst are still in tier 3 support, so we use the experimental `-Zbuild-std` flag to build the standard library.
