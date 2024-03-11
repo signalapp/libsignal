@@ -82,57 +82,6 @@ class ZKGroupTests: TestCaseBase {
         0x33, 0x3C, 0x02, 0xFE, 0x4A, 0x33, 0x85, 0x80, 0x22, 0xFD, 0xD7, 0xA4, 0xAB, 0x36, 0x7B, 0x06,
     ]
 
-    func testAuthIntegration() throws {
-        let aci = Aci(fromUUID: TEST_ARRAY_16)
-        let redemptionTime: UInt32 = 123_456
-
-        // Generate keys (client's are per-group, server's are not)
-        // ---
-
-        // SERVER
-        let serverSecretParams = try ServerSecretParams.generate(randomness: self.TEST_ARRAY_32)
-        let serverPublicParams = try serverSecretParams.getPublicParams()
-        let serverZkAuth = ServerZkAuthOperations(serverSecretParams: serverSecretParams)
-
-        // CLIENT
-        let masterKey = try GroupMasterKey(contents: TEST_ARRAY_32_1)
-        let groupSecretParams = try GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
-
-        XCTAssertEqual((try groupSecretParams.getMasterKey()).serialize(), masterKey.serialize())
-
-        let groupPublicParams = try groupSecretParams.getPublicParams()
-
-        // SERVER
-        // Issue credential
-        let authCredentialResponse = try serverZkAuth.issueAuthCredential(randomness: self.TEST_ARRAY_32_2, aci: aci, redemptionTime: redemptionTime)
-
-        // CLIENT
-        // Receive credential
-        let clientZkAuthCipher = ClientZkAuthOperations(serverPublicParams: serverPublicParams)
-        let clientZkGroupCipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
-        let authCredential = try clientZkAuthCipher.receiveAuthCredential(aci: aci, redemptionTime: redemptionTime, authCredentialResponse: authCredentialResponse)
-
-        // Create and decrypt user entry
-        let uuidCiphertext = try clientZkGroupCipher.encrypt(aci)
-        let plaintext = try clientZkGroupCipher.decrypt(uuidCiphertext)
-        XCTAssertEqual(aci, plaintext)
-
-        // Create presentation
-        let presentation = try clientZkAuthCipher.createAuthCredentialPresentation(randomness: self.TEST_ARRAY_32_5, groupSecretParams: groupSecretParams, authCredential: authCredential)
-
-        // Verify presentation
-        let uuidCiphertextRecv = try presentation.getUuidCiphertext()
-        XCTAssertEqual(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize())
-        XCTAssertNil(try presentation.getPniCiphertext())
-        XCTAssertEqual(
-            try presentation.getRedemptionTime(),
-            Date(timeIntervalSince1970: TimeInterval(redemptionTime) * TimeInterval(SECONDS_PER_DAY))
-        )
-        try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime) * TimeInterval(SECONDS_PER_DAY)))
-
-        XCTAssertEqual(presentation.serialize(), self.authPresentationResult)
-    }
-
     func testAuthWithPniIntegration() throws {
         let aci = Aci(fromUUID: TEST_ARRAY_16)
         let pni = Pni(fromUUID: TEST_ARRAY_16_1)

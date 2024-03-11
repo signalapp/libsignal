@@ -18,27 +18,45 @@ fn benchmark_integration_auth(c: &mut Criterion) {
 
     // Random UID and issueTime
     let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
-    let redemption_time = 123456u32;
+    let pni = libsignal_core::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
+    let redemption_time = 123456;
 
     // SERVER
     // Issue credential
     let randomness = zkgroup::TEST_ARRAY_32_2;
-    let auth_credential_response =
-        server_secret_params.issue_auth_credential(randomness, aci, redemption_time);
+    let auth_credential_response = server_secret_params
+        .issue_auth_credential_with_pni_as_service_id(randomness, aci, pni, redemption_time);
 
-    c.bench_function("issue_auth_credential", |b| {
-        b.iter(|| server_secret_params.issue_auth_credential(randomness, aci, redemption_time))
+    c.bench_function("issue_auth_credential_with_pni_as_service_id", |b| {
+        b.iter(|| {
+            server_secret_params.issue_auth_credential_with_pni_as_service_id(
+                randomness,
+                aci,
+                pni,
+                redemption_time,
+            )
+        })
     });
 
     // CLIENT
     let auth_credential = server_public_params
-        .receive_auth_credential(aci, redemption_time, &auth_credential_response)
+        .receive_auth_credential_with_pni_as_service_id(
+            aci,
+            pni,
+            redemption_time,
+            auth_credential_response.clone(),
+        )
         .unwrap();
 
     c.bench_function("receive_auth_credential", |b| {
         b.iter(|| {
             server_public_params
-                .receive_auth_credential(aci, redemption_time, &auth_credential_response)
+                .receive_auth_credential_with_pni_as_service_id(
+                    aci,
+                    pni,
+                    redemption_time,
+                    auth_credential_response.clone(),
+                )
                 .unwrap()
         })
     });
@@ -53,18 +71,18 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation_v2 = server_public_params.create_auth_credential_presentation_v2(
+    let presentation_v2 = server_public_params.create_auth_credential_with_pni_presentation(
         randomness,
         group_secret_params,
-        auth_credential,
+        auth_credential.clone(),
     );
 
-    c.bench_function("create_auth_credential_presentation_v2", |b| {
+    c.bench_function("create_auth_credential_with_pni_presentation", |b| {
         b.iter(|| {
-            server_public_params.create_auth_credential_presentation_v2(
+            server_public_params.create_auth_credential_with_pni_presentation(
                 randomness,
                 group_secret_params,
-                auth_credential,
+                auth_credential.clone(),
             )
         })
     });
@@ -79,7 +97,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     c.bench_function("verify_auth_credential_presentation_v2", |b| {
         b.iter(|| {
             server_secret_params
-                .verify_auth_credential_presentation_v2(
+                .verify_auth_credential_presentation(
                     group_public_params,
                     &presentation_v2,
                     redemption_time,

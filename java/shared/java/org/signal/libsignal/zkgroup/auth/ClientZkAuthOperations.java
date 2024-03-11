@@ -25,26 +25,6 @@ public class ClientZkAuthOperations {
     this.serverPublicParams = serverPublicParams;
   }
 
-  public AuthCredential receiveAuthCredential(
-      Aci aci, int redemptionTime, AuthCredentialResponse authCredentialResponse)
-      throws VerificationFailedException {
-    byte[] newContents =
-        filterExceptions(
-            VerificationFailedException.class,
-            () ->
-                Native.ServerPublicParams_ReceiveAuthCredential(
-                    serverPublicParams.getInternalContentsForJNI(),
-                    aci.toServiceIdFixedWidthBinary(),
-                    redemptionTime,
-                    authCredentialResponse.getInternalContentsForJNI()));
-
-    try {
-      return new AuthCredential(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
-  }
-
   /**
    * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse.
    *
@@ -97,32 +77,6 @@ public class ClientZkAuthOperations {
 
     try {
       return new AuthCredentialWithPni(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
-  }
-
-  public AuthCredentialPresentation createAuthCredentialPresentation(
-      GroupSecretParams groupSecretParams, AuthCredential authCredential) {
-    return createAuthCredentialPresentation(new SecureRandom(), groupSecretParams, authCredential);
-  }
-
-  public AuthCredentialPresentation createAuthCredentialPresentation(
-      SecureRandom secureRandom,
-      GroupSecretParams groupSecretParams,
-      AuthCredential authCredential) {
-    byte[] random = new byte[RANDOM_LENGTH];
-    secureRandom.nextBytes(random);
-
-    byte[] newContents =
-        Native.ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            groupSecretParams.getInternalContentsForJNI(),
-            authCredential.getInternalContentsForJNI());
-
-    try {
-      return new AuthCredentialPresentation(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }

@@ -16,10 +16,7 @@ export { default as NotarySignature } from './NotarySignature';
 export { default as ClientZkAuthOperations } from './auth/ClientZkAuthOperations';
 export { default as ServerZkAuthOperations } from './auth/ServerZkAuthOperations';
 
-export { default as AuthCredential } from './auth/AuthCredential';
-export { default as AuthCredentialResponse } from './auth/AuthCredentialResponse';
 export { default as AuthCredentialPresentation } from './auth/AuthCredentialPresentation';
-
 export { default as AuthCredentialWithPni } from './auth/AuthCredentialWithPni';
 export { default as AuthCredentialWithPniResponse } from './auth/AuthCredentialWithPniResponse';
 

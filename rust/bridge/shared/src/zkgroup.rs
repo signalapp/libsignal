@@ -63,8 +63,6 @@ macro_rules! fixed_length_serializable {
     };
 }
 
-fixed_length_serializable!(AuthCredential);
-fixed_length_serializable!(AuthCredentialResponse);
 fixed_length_serializable!(ExpiringProfileKeyCredential);
 fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
 fixed_length_serializable!(GroupMasterKey);
@@ -236,18 +234,6 @@ fn ServerSecretParams_SignDeterministic(
 }
 
 #[bridge_fn]
-fn ServerPublicParams_ReceiveAuthCredential(
-    params: Serialized<ServerPublicParams>,
-    aci: Aci,
-    redemption_time: u32,
-    response: Serialized<AuthCredentialResponse>,
-) -> Result<Serialized<AuthCredential>, ZkGroupVerificationFailure> {
-    Ok(params
-        .receive_auth_credential(aci, redemption_time, &response)?
-        .into())
-}
-
-#[bridge_fn]
 fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
     params: Serialized<ServerPublicParams>,
     aci: Aci,
@@ -284,20 +270,6 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
             redemption_time.as_seconds(),
             response,
         )?,
-    ))
-}
-
-#[bridge_fn]
-fn ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    group_secret_params: Serialized<GroupSecretParams>,
-    auth_credential: Serialized<AuthCredential>,
-) -> Vec<u8> {
-    zkgroup::serialize(&server_public_params.create_auth_credential_presentation(
-        *randomness,
-        group_secret_params.into_inner(),
-        auth_credential.into_inner(),
     ))
 }
 
@@ -397,18 +369,6 @@ fn ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
 ) -> Serialized<ReceiptCredentialPresentation> {
     server_public_params
         .create_receipt_credential_presentation(*randomness, &receipt_credential)
-        .into()
-}
-
-#[bridge_fn]
-fn ServerSecretParams_IssueAuthCredentialDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
-    randomness: &[u8; RANDOMNESS_LEN],
-    aci: Aci,
-    redemption_time: u32,
-) -> Serialized<AuthCredentialResponse> {
-    server_secret_params
-        .issue_auth_credential(*randomness, aci, redemption_time)
         .into()
 }
 

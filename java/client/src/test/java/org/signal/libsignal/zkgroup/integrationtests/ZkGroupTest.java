@@ -7,7 +7,6 @@ package org.signal.libsignal.zkgroup.integrationtests;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
@@ -25,9 +24,7 @@ import org.signal.libsignal.zkgroup.SecureRandomTest;
 import org.signal.libsignal.zkgroup.ServerPublicParams;
 import org.signal.libsignal.zkgroup.ServerSecretParams;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
-import org.signal.libsignal.zkgroup.auth.AuthCredential;
 import org.signal.libsignal.zkgroup.auth.AuthCredentialPresentation;
-import org.signal.libsignal.zkgroup.auth.AuthCredentialResponse;
 import org.signal.libsignal.zkgroup.auth.AuthCredentialWithPni;
 import org.signal.libsignal.zkgroup.auth.AuthCredentialWithPniResponse;
 import org.signal.libsignal.zkgroup.auth.ClientZkAuthOperations;
@@ -95,285 +92,6 @@ public final class ZkGroupTest extends SecureRandomTest {
   }
 
   @Test
-  public void testAuthIntegration() throws VerificationFailedException, InvalidInputException {
-
-    Aci aci = new Aci(TEST_UUID);
-    int redemptionTime = 123456;
-
-    // Generate keys (client's are per-group, server's are not)
-    // ---
-
-    // SERVER
-    ServerSecretParams serverSecretParams =
-        ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
-    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
-
-    // SERVER - deserialize test
-    {
-      new ServerSecretParams(serverSecretParams.serialize());
-      new ServerPublicParams(serverPublicParams.serialize());
-      try {
-        byte[] temp = new byte[32]; // wrong length
-        new ServerSecretParams(temp);
-        throw new AssertionError("Failed to catch invalid ServerSecretParams deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        new ServerSecretParams(makeBadArray(serverSecretParams.serialize()));
-        throw new AssertionError("Failed to catch invalid ServerSecretParams deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        byte[] temp = new byte[32]; // wrong length
-        new ServerPublicParams(temp);
-        throw new AssertionError("Failed to catch invalid ServerPublicParams deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        new ServerPublicParams(makeBadArray(serverPublicParams.serialize()));
-        throw new AssertionError("Failed to catch invalid ServerPublicParams deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-    }
-
-    ServerZkAuthOperations serverZkAuth = new ServerZkAuthOperations(serverSecretParams);
-
-    // CLIENT
-    GroupMasterKey masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
-    GroupSecretParams groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
-
-    assertArrayEquals(groupSecretParams.getMasterKey().serialize(), masterKey.serialize());
-
-    GroupPublicParams groupPublicParams = groupSecretParams.getPublicParams();
-
-    // CLIENT - deserialize test
-    {
-      new GroupSecretParams(groupSecretParams.serialize());
-      new GroupPublicParams(groupPublicParams.serialize());
-      try {
-        byte[] temp = new byte[10]; // wrong length
-        new GroupMasterKey(temp);
-        throw new AssertionError("Failed to catch invalid GroupMasterKey deserialize");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        byte[] temp = new byte[10]; // wrong length
-        new GroupSecretParams(temp);
-        throw new AssertionError("Failed to catch invalid GroupSecretParams deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        new GroupSecretParams(makeBadArray(groupSecretParams.serialize()));
-        throw new AssertionError("Failed to catch invalid GroupSecretParams deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        byte[] temp = new byte[10]; // wrong length
-        new GroupPublicParams(temp);
-        throw new AssertionError("Failed to catch invalid GroupPublicParams deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        new GroupPublicParams(makeBadArray(groupPublicParams.serialize()));
-        throw new AssertionError("Failed to catch invalid GroupPublicParams deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-    }
-
-    // SERVER
-    // Issue credential
-    AuthCredentialResponse authCredentialResponse =
-        serverZkAuth.issueAuthCredential(createSecureRandom(TEST_ARRAY_32_2), aci, redemptionTime);
-
-    // CLIENT
-    // Receive credential
-    ClientZkAuthOperations clientZkAuthCipher = new ClientZkAuthOperations(serverPublicParams);
-    ClientZkGroupCipher clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    AuthCredential authCredential =
-        clientZkAuthCipher.receiveAuthCredential(aci, redemptionTime, authCredentialResponse);
-
-    // CLIENT - deserialize test
-    {
-      new AuthCredentialResponse(authCredentialResponse.serialize());
-      try {
-        byte[] temp = new byte[10];
-        new AuthCredentialResponse(temp);
-        throw new AssertionError("Failed to catch invalid AuthCredentialResponse deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        new AuthCredentialResponse(makeBadArray(authCredentialResponse.serialize()));
-        throw new AssertionError("Failed to catch invalid AuthCredentialResponse deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-    }
-
-    // CLIENT - verify test
-    {
-      UUID badUuid = TEST_UUID_1;
-      try {
-        clientZkAuthCipher.receiveAuthCredential(
-            new Aci(badUuid), redemptionTime, authCredentialResponse);
-        throw new AssertionError("Failed to catch invalid AuthCredential 1");
-      } catch (VerificationFailedException e) {
-        // expected
-      }
-
-      byte[] temp = authCredentialResponse.serialize();
-      temp[1]++;
-      AuthCredentialResponse badResponse = new AuthCredentialResponse(temp);
-      try {
-        clientZkAuthCipher.receiveAuthCredential(aci, redemptionTime, badResponse);
-        throw new AssertionError("Failed to catch invalid AuthCredential 2");
-      } catch (VerificationFailedException e) {
-        // expected
-      }
-    }
-
-    // Create and decrypt user entry
-    UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(aci);
-    ServiceId plaintext = clientZkGroupCipher.decrypt(uuidCiphertext);
-    assertEquals(aci, plaintext);
-
-    // CLIENT - deserialize test
-    {
-      new UuidCiphertext(uuidCiphertext.serialize());
-      try {
-        byte[] temp = new byte[10];
-        new UuidCiphertext(temp);
-        throw new AssertionError("Failed to catch invalid UuidCiphertext deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-
-      try {
-        new UuidCiphertext(makeBadArray(uuidCiphertext.serialize()));
-        throw new AssertionError("Failed to catch invalid UuidCiphertext deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-    }
-
-    // CLIENT - verify test
-    {
-      byte[] temp = uuidCiphertext.serialize();
-      temp[3]++; // We need a bad ciphertext that passes deserialization, this seems to work
-      try {
-        clientZkGroupCipher.decrypt(new UuidCiphertext(temp));
-        throw new AssertionError("Failed to catch invalid UuidCiphertext decrypt");
-      } catch (VerificationFailedException e) {
-        // expected
-      }
-    }
-
-    // CLIENT - Create presentation
-    AuthCredentialPresentation presentation =
-        clientZkAuthCipher.createAuthCredentialPresentation(
-            createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
-    assertEquals(
-        presentation.serialize()[0],
-        1); // Check V2 (versions start from 1 but are encoded starting from 0)
-    assertEquals(presentation.getVersion(), AuthCredentialPresentation.Version.V2);
-    assertArrayEquals(presentation.serialize(), authPresentationResultV2);
-
-    // CLIENT - deserialize test
-    {
-      new AuthCredentialPresentation(presentation.serialize());
-      byte[] temp = new byte[10];
-      try {
-        new AuthCredentialPresentation(temp);
-        throw new AssertionError(
-            "Failed to catch invalid AuthCredentialPresentation deserialize 1");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-      try {
-        new AuthCredentialPresentation(makeBadArray(presentation.serialize()));
-        throw new AssertionError(
-            "Failed to catch invalid AuthCredentialPresentation deserialize 2");
-      } catch (InvalidInputException e) {
-        // expected
-      }
-    }
-
-    // SERVER - Verify presentation, using times at the edge of the acceptable window
-    Instant redemptionInstant = Instant.ofEpochSecond(86400L * redemptionTime);
-    UuidCiphertext uuidCiphertextRecv = presentation.getUuidCiphertext();
-    assertArrayEquals(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize());
-    assertNull(presentation.getPniCiphertext());
-    assertEquals(presentation.getRedemptionTime(), redemptionInstant);
-
-    serverZkAuth.verifyAuthCredentialPresentation(
-        groupPublicParams, presentation, redemptionInstant.minus(1, ChronoUnit.DAYS));
-    serverZkAuth.verifyAuthCredentialPresentation(
-        groupPublicParams, presentation, redemptionInstant.plus(2, ChronoUnit.DAYS));
-
-    try {
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams,
-          presentation,
-          redemptionInstant.minus(1, ChronoUnit.DAYS).minus(1, ChronoUnit.SECONDS));
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #1!");
-    } catch (VerificationFailedException e) {
-      // good
-    }
-
-    try {
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams,
-          presentation,
-          redemptionInstant.plus(2, ChronoUnit.DAYS).plus(1, ChronoUnit.SECONDS));
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #2!");
-    } catch (VerificationFailedException e) {
-      // good
-    }
-
-    try {
-      byte[] temp = presentation.serialize();
-      temp[3]++; // We need a bad presentation that passes deserialization, this seems to work
-      AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams, presentationTemp, redemptionInstant);
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #3!");
-    } catch (VerificationFailedException e) {
-      // expected
-    }
-
-    try {
-      byte[] temp = presentation.serialize();
-      temp[0] = 0; // This interprets a V2 as V1, so should fail
-      AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams, presentationTemp, redemptionInstant);
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #4");
-    } catch (InvalidInputException e) {
-      // expected
-    }
-
-    try {
-      byte[] temp = presentation.serialize();
-      temp[0] = 40; // This interprets a V2 as a non-existent version, so should fail
-      AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams, presentationTemp, redemptionInstant);
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #5");
-    } catch (InvalidInputException e) {
-      // expected
-    }
-  }
-
-  @Test
   public void testAuthIntegrationCurrentTime()
       throws VerificationFailedException, InvalidInputException {
 
@@ -381,8 +99,8 @@ public final class ZkGroupTest extends SecureRandomTest {
     // redemption date to compare against test vectors, it uses the current time
 
     Aci aci = new Aci(TEST_UUID);
-    int redemptionTime =
-        (int) (Instant.now().truncatedTo(ChronoUnit.DAYS).getEpochSecond() / 86400);
+    Pni pni = new Pni(TEST_UUID_1);
+    Instant redemptionInstant = Instant.now().truncatedTo(ChronoUnit.DAYS);
 
     // Generate keys (client's are per-group, server's are not)
     // ---
@@ -403,15 +121,17 @@ public final class ZkGroupTest extends SecureRandomTest {
 
     // SERVER
     // Issue credential
-    AuthCredentialResponse authCredentialResponse =
-        serverZkAuth.issueAuthCredential(createSecureRandom(TEST_ARRAY_32_2), aci, redemptionTime);
+    AuthCredentialWithPniResponse authCredentialResponse =
+        serverZkAuth.issueAuthCredentialWithPniAsServiceId(
+            createSecureRandom(TEST_ARRAY_32_2), aci, pni, redemptionInstant);
 
     // CLIENT
     // Receive credential
     ClientZkAuthOperations clientZkAuthCipher = new ClientZkAuthOperations(serverPublicParams);
     ClientZkGroupCipher clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    AuthCredential authCredential =
-        clientZkAuthCipher.receiveAuthCredential(aci, redemptionTime, authCredentialResponse);
+    AuthCredentialWithPni authCredential =
+        clientZkAuthCipher.receiveAuthCredentialWithPniAsServiceId(
+            aci, pni, redemptionInstant.getEpochSecond(), authCredentialResponse);
 
     // Create and decrypt user entry
     UuidCiphertext uuidCiphertext = clientZkGroupCipher.encrypt(aci);
@@ -424,7 +144,6 @@ public final class ZkGroupTest extends SecureRandomTest {
             createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
 
     // Verify presentation, using times at the edge of the acceptable window
-    Instant redemptionInstant = Instant.ofEpochSecond(86400L * redemptionTime);
     UuidCiphertext uuidCiphertextRecv = presentation.getUuidCiphertext();
     assertArrayEquals(uuidCiphertext.serialize(), uuidCiphertextRecv.serialize());
     assertEquals(presentation.getRedemptionTime(), redemptionInstant);

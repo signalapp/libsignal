@@ -8,7 +8,6 @@ import { RANDOM_LENGTH } from '../internal/Constants';
 import * as Native from '../../../Native';
 
 import ServerSecretParams from '../ServerSecretParams';
-import AuthCredentialResponse from './AuthCredentialResponse';
 import AuthCredentialPresentation from './AuthCredentialPresentation';
 import AuthCredentialWithPniResponse from './AuthCredentialWithPniResponse';
 import GroupPublicParams from '../groups/GroupPublicParams';
@@ -19,30 +18,6 @@ export default class ServerZkAuthOperations {
 
   constructor(serverSecretParams: ServerSecretParams) {
     this.serverSecretParams = serverSecretParams;
-  }
-
-  issueAuthCredential(
-    aci: Aci,
-    redemptionTime: number
-  ): AuthCredentialResponse {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.issueAuthCredentialWithRandom(random, aci, redemptionTime);
-  }
-
-  issueAuthCredentialWithRandom(
-    random: Buffer,
-    aci: Aci,
-    redemptionTime: number
-  ): AuthCredentialResponse {
-    return new AuthCredentialResponse(
-      Native.ServerSecretParams_IssueAuthCredentialDeterministic(
-        this.serverSecretParams.getContents(),
-        random,
-        aci.getServiceIdFixedWidthBinary(),
-        redemptionTime
-      )
-    );
   }
 
   issueAuthCredentialWithPniAsServiceId(

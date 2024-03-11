@@ -9,9 +9,7 @@ import * as Native from '../../../Native';
 import { RANDOM_LENGTH } from '../internal/Constants';
 
 import ServerPublicParams from '../ServerPublicParams';
-import AuthCredential from './AuthCredential';
 import AuthCredentialPresentation from './AuthCredentialPresentation';
-import AuthCredentialResponse from './AuthCredentialResponse';
 import AuthCredentialWithPni from './AuthCredentialWithPni';
 import AuthCredentialWithPniResponse from './AuthCredentialWithPniResponse';
 import GroupSecretParams from '../groups/GroupSecretParams';
@@ -22,21 +20,6 @@ export default class ClientZkAuthOperations {
 
   constructor(serverPublicParams: ServerPublicParams) {
     this.serverPublicParams = serverPublicParams;
-  }
-
-  receiveAuthCredential(
-    aci: Aci,
-    redemptionTime: number,
-    authCredentialResponse: AuthCredentialResponse
-  ): AuthCredential {
-    return new AuthCredential(
-      Native.ServerPublicParams_ReceiveAuthCredential(
-        this.serverPublicParams.getContents(),
-        aci.getServiceIdFixedWidthBinary(),
-        redemptionTime,
-        authCredentialResponse.getContents()
-      )
-    );
   }
 
   /**
@@ -82,34 +65,6 @@ export default class ClientZkAuthOperations {
         pni.getServiceIdFixedWidthBinary(),
         redemptionTime,
         authCredentialResponse.getContents()
-      )
-    );
-  }
-
-  createAuthCredentialPresentation(
-    groupSecretParams: GroupSecretParams,
-    authCredential: AuthCredential
-  ): AuthCredentialPresentation {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.createAuthCredentialPresentationWithRandom(
-      random,
-      groupSecretParams,
-      authCredential
-    );
-  }
-
-  createAuthCredentialPresentationWithRandom(
-    random: Buffer,
-    groupSecretParams: GroupSecretParams,
-    authCredential: AuthCredential
-  ): AuthCredentialPresentation {
-    return new AuthCredentialPresentation(
-      Native.ServerPublicParams_CreateAuthCredentialPresentationDeterministic(
-        this.serverPublicParams.getContents(),
-        random,
-        groupSecretParams.getContents(),
-        authCredential.getContents()
       )
     );
   }

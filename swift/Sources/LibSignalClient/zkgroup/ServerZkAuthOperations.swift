@@ -13,22 +13,6 @@ public class ServerZkAuthOperations {
         self.serverSecretParams = serverSecretParams
     }
 
-    public func issueAuthCredential(aci: Aci, redemptionTime: UInt32) throws -> AuthCredentialResponse {
-        return try self.issueAuthCredential(randomness: Randomness.generate(), aci: aci, redemptionTime: redemptionTime)
-    }
-
-    public func issueAuthCredential(randomness: Randomness, aci: Aci, redemptionTime: UInt32) throws -> AuthCredentialResponse {
-        return try self.serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
-            try randomness.withUnsafePointerToBytes { randomness in
-                try aci.withPointerToFixedWidthBinary { aci in
-                    try invokeFnReturningSerialized {
-                        signal_server_secret_params_issue_auth_credential_deterministic($0, serverSecretParams, randomness, aci, redemptionTime)
-                    }
-                }
-            }
-        }
-    }
-
     public func issueAuthCredentialWithPniAsServiceId(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
         return try self.issueAuthCredentialWithPniAsServiceId(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
     }
