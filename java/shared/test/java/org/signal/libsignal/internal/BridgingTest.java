@@ -80,12 +80,12 @@ public class BridgingTest {
     ByteBuffer second = ByteBuffer.allocateDirect(3);
     second.put(new byte[] {4, 5, 6});
     byte[][] result =
-        (byte[][]) Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {first, empty, second});
+        Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {first, empty, second});
     assertArrayEquals(result, new byte[][] {{1, 2, 3, 1, 2, 3}, {}, {4, 5, 6, 4, 5, 6}});
   }
 
   @Test
   public void testProcessEmptyBytestringArray() {
-    assertArrayEquals(Native.TESTING_ProcessBytestringArray(new byte[][] {}), new byte[][] {});
+    assertArrayEquals(Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {}), new byte[][] {});
   }
 }

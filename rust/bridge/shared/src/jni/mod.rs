@@ -49,6 +49,9 @@ use usernames::{UsernameError, UsernameLinkError};
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
 
+// Aliases with a certain spelling that gen_java_decl.py will pick out when generating Native.java.
+pub type JavaArrayOfByteArray<'a> = JObjectArray<'a>;
+pub type JavaByteBufferArray<'a> = JObjectArray<'a>;
 pub type JavaObject<'a> = JObject<'a>;
 pub type JavaUUID<'a> = JObject<'a>;
 pub type JavaCiphertextMessage<'a> = JObject<'a>;

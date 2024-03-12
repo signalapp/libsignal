@@ -127,14 +127,13 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                (byte[][])
-                    Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
-                        getInternalContentsForJNI(),
-                        ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
-                        localUser.toServiceIdFixedWidthBinary(),
-                        now.getEpochSecond(),
-                        groupParams.getInternalContentsForJNI(),
-                        serverParams.getInternalContentsForJNI()));
+                Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
+                    getInternalContentsForJNI(),
+                    ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
+                    localUser.toServiceIdFixedWidthBinary(),
+                    now.getEpochSecond(),
+                    groupParams.getInternalContentsForJNI(),
+                    serverParams.getInternalContentsForJNI()));
 
     List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length - 1);
     for (int i = 0; i < endorsementContents.length - 1; ++i) {
@@ -186,13 +185,12 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                (byte[][])
-                    Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
-                        getInternalContentsForJNI(),
-                        UuidCiphertext.serializeAndConcatenate(groupMembers),
-                        localUser.getInternalContentsForJNI(),
-                        now.getEpochSecond(),
-                        serverParams.getInternalContentsForJNI()));
+                Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
+                    getInternalContentsForJNI(),
+                    UuidCiphertext.serializeAndConcatenate(groupMembers),
+                    localUser.getInternalContentsForJNI(),
+                    now.getEpochSecond(),
+                    serverParams.getInternalContentsForJNI()));
 
     List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length - 1);
     for (int i = 0; i < endorsementContents.length - 1; ++i) {

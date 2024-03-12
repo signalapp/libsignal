@@ -22,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.concurrent.Future;
 import java.util.UUID;
@@ -272,15 +273,15 @@ public final class Native {
   public static native byte[] GroupSendDerivedKeyPair_ForExpiration(long expiration, byte[] serverParams);
 
   public static native void GroupSendEndorsement_CheckValidContents(byte[] bytes) throws Exception;
-  public static native byte[] GroupSendEndorsement_Combine(Object[] endorsements);
+  public static native byte[] GroupSendEndorsement_Combine(ByteBuffer[] endorsements);
   public static native byte[] GroupSendEndorsement_Remove(byte[] endorsement, byte[] toRemove);
   public static native byte[] GroupSendEndorsement_ToToken(byte[] endorsement, byte[] groupParams);
 
   public static native void GroupSendEndorsementsResponse_CheckValidContents(byte[] bytes) throws Exception;
   public static native long GroupSendEndorsementsResponse_GetExpiration(byte[] responseBytes);
   public static native byte[] GroupSendEndorsementsResponse_IssueDeterministic(byte[] concatenatedGroupMemberCiphertexts, byte[] keyPair, byte[] randomness);
-  public static native Object[] GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(byte[] responseBytes, byte[] concatenatedGroupMemberCiphertexts, byte[] localUserCiphertext, long now, byte[] serverParams) throws Exception;
-  public static native Object[] GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(byte[] responseBytes, byte[] groupMembers, byte[] localUser, long now, byte[] groupParams, byte[] serverParams) throws Exception;
+  public static native byte[][] GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(byte[] responseBytes, byte[] concatenatedGroupMemberCiphertexts, byte[] localUserCiphertext, long now, byte[] serverParams) throws Exception;
+  public static native byte[][] GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(byte[] responseBytes, byte[] groupMembers, byte[] localUser, long now, byte[] groupParams, byte[] serverParams) throws Exception;
 
   public static native void GroupSendFullToken_CheckValidContents(byte[] bytes) throws Exception;
   public static native long GroupSendFullToken_GetExpiration(byte[] token);
@@ -632,7 +633,7 @@ public final class Native {
   public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
-  public static native Object[] TESTING_ProcessBytestringArray(Object[] input);
+  public static native byte[][] TESTING_ProcessBytestringArray(ByteBuffer[] input);
   public static native Object[] TESTING_ReturnStringArray();
   public static native int TESTING_TestingHandleType_getValue(long handle);
 

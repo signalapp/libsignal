@@ -101,6 +101,8 @@ def translate_to_java(typ):
         "jint": "int",
         "jlong": "long",
         "jboolean": "boolean",
+        "JavaArrayOfByteArray": "byte[][]",
+        "JavaByteBufferArray": "ByteBuffer[]",
     }
 
     if typ in type_map:

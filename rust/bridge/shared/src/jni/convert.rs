@@ -1196,7 +1196,7 @@ macro_rules! jni_arg_type {
         jni::JByteArray<'local>
     };
     (Vec<&[u8]>) => {
-        jni::JObjectArray<'local>
+        jni::JavaByteBufferArray<'local>
     };
     (Timestamp) => {
         jni::jlong
@@ -1321,7 +1321,7 @@ macro_rules! jni_result_type {
         jni::JObjectArray<'local>
     };
     (Box<[Vec<u8>]>) => {
-        jni::JObjectArray<'local>
+        jni::JavaArrayOfByteArray<'local>
     };
     (Cds2Metrics) => {
         jni::JavaMap<'local>
