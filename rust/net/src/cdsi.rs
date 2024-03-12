@@ -7,24 +7,20 @@ use std::default::Default;
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
+use libsignal_core::{Aci, Pni};
 use prost::Message as _;
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio_boring::SslStream;
 use uuid::Uuid;
 
-use libsignal_core::{Aci, Pni};
-
 use crate::auth::HttpBasicAuth;
 use crate::enclave::{Cdsi, EnclaveEndpointConnection};
 use crate::infra::connection_manager::ConnectionManager;
 use crate::infra::errors::NetError;
-use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
-use crate::infra::ws::{
-    AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketClientConnector,
-};
+use crate::infra::ws::{AttestedConnection, AttestedConnectionError, NextOrClose};
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 
@@ -283,6 +279,16 @@ impl From<AttestedConnectionError> for LookupError {
     }
 }
 
+impl From<crate::enclave::Error> for LookupError {
+    fn from(value: crate::enclave::Error) -> Self {
+        match value {
+            crate::svr::Error::AttestationError(err) => Self::AttestationError(err),
+            crate::svr::Error::Net(err) => Self::Net(err),
+            crate::svr::Error::Protocol => Self::Protocol,
+        }
+    }
+}
+
 impl From<prost::DecodeError> for LookupError {
     fn from(_value: prost::DecodeError) -> Self {
         Self::Protocol
@@ -312,33 +318,8 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
         C: ConnectionManager,
         T: TransportConnector<Stream = S>,
     {
-        let auth_decorator = auth.into();
-        let connector = ServiceConnectorWithDecorator::new(
-            WebSocketClientConnector::new(
-                transport_connector,
-                endpoint.endpoint_connection.config.clone(),
-            ),
-            auth_decorator,
-        );
-        let service_initializer =
-            ServiceInitializer::new(&connector, &endpoint.endpoint_connection.manager);
-        let connection_attempt_result = service_initializer.connect().await;
-        let websocket = match connection_attempt_result {
-            ServiceState::Active(websocket, _) => Ok(websocket),
-            ServiceState::Cooldown(_) => Err(LookupError::Net(NetError::NoServiceConnection)),
-            ServiceState::Error(e) => Err(LookupError::Net(e)),
-            ServiceState::TimedOut => Err(LookupError::Net(NetError::Timeout)),
-        }?;
-        let attested = AttestedConnection::connect(websocket, |attestation_msg| {
-            attest::cds2::new_handshake(
-                endpoint.params.mr_enclave.as_ref(),
-                attestation_msg,
-                SystemTime::now(),
-            )
-        })
-        .await?;
-
-        Ok(Self(attested))
+        let connection = endpoint.connect(auth, transport_connector).await?;
+        Ok(Self(connection))
     }
 
     pub async fn send_request(

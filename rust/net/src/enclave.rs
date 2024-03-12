@@ -11,12 +11,17 @@ use attest::{cds2, enclave, nitro};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 
+use crate::auth::HttpBasicAuth;
 use crate::env::{DomainConfig, Svr3Env};
 use crate::infra::connection_manager::{
-    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
+    ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::infra::ws::AttestedConnection;
-use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection};
+use crate::infra::errors::{LogSafeDisplay, NetError};
+use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
+use crate::infra::ws::{AttestedConnection, AttestedConnectionError, WebSocketClientConnector};
+use crate::infra::{
+    make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, TransportConnector,
+};
 use crate::svr::SvrConnection;
 
 pub trait EnclaveKind {
@@ -176,6 +181,64 @@ impl<E: EnclaveKind> EndpointParams<E> {
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
     pub(crate) endpoint_connection: EndpointConnection<C>,
     pub(crate) params: EndpointParams<E>,
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum Error {
+    /// Network error: {0}
+    Net(#[from] NetError),
+    /// Protocol error after establishing a connection
+    Protocol,
+    /// Enclave attestation failed: {0}
+    AttestationError(attest::enclave::Error),
+}
+
+impl LogSafeDisplay for Error {}
+
+impl From<AttestedConnectionError> for Error {
+    fn from(value: AttestedConnectionError) -> Self {
+        match value {
+            AttestedConnectionError::ClientConnection(_) => Self::Protocol,
+            AttestedConnectionError::Net(net) => Self::Net(net),
+            AttestedConnectionError::Protocol => Self::Protocol,
+            AttestedConnectionError::Sgx(err) => Self::AttestationError(err),
+        }
+    }
+}
+
+impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnection<E, C> {
+    pub async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
+        &self,
+        auth: impl HttpBasicAuth,
+        transport_connector: T,
+    ) -> Result<AttestedConnection<S>, Error>
+    where
+        C: ConnectionManager,
+    {
+        let auth_decorator = auth.into();
+        let connector = ServiceConnectorWithDecorator::new(
+            WebSocketClientConnector::new(
+                transport_connector,
+                self.endpoint_connection.config.clone(),
+            ),
+            auth_decorator,
+        );
+        let service_initializer =
+            ServiceInitializer::new(connector, &self.endpoint_connection.manager);
+        let connection_attempt_result = service_initializer.connect().await;
+        let websocket = match connection_attempt_result {
+            ServiceState::Active(websocket, _) => Ok(websocket),
+            ServiceState::Cooldown(_) => Err(Error::Net(NetError::NoServiceConnection)),
+            ServiceState::Error(e) => Err(Error::Net(e)),
+            ServiceState::TimedOut => Err(Error::Net(NetError::Timeout)),
+        }?;
+        let attested = AttestedConnection::connect(websocket, |attestation_msg| {
+            E::new_handshake(&self.params, attestation_msg)
+        })
+        .await?;
+
+        Ok(attested)
+    }
 }
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
