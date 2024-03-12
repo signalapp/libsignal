@@ -201,3 +201,12 @@ fn TESTING_ReturnStringArray() -> Box<[String]> {
         .into_iter()
         .collect()
 }
+
+#[bridge_fn]
+fn TESTING_ProcessBytestringArray(input: Vec<&[u8]>) -> Box<[Vec<u8>]> {
+    input
+        .into_iter()
+        .map(|x| [x, x].concat())
+        .collect::<Vec<Vec<u8>>>()
+        .into_boxed_slice()
+}

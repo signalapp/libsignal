@@ -501,6 +501,7 @@ export function TESTING_PanicOnLoadSync(_needsCleanup: null, _input: null): void
 export function TESTING_PanicOnReturnAsync(_needsCleanup: null): Promise<null>;
 export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): Promise<null>;
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
+export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
 export function TESTING_ReturnStringArray(): string[];
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
 export function TokioAsyncContext_new(): TokioAsyncContext;

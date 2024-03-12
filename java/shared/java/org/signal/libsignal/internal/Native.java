@@ -632,6 +632,7 @@ public final class Native {
   public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
+  public static native Object[] TESTING_ProcessBytestringArray(Object[] input);
   public static native Object[] TESTING_ReturnStringArray();
   public static native int TESTING_TestingHandleType_getValue(long handle);
 

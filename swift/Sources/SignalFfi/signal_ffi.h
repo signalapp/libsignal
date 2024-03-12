@@ -1529,6 +1529,8 @@ SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer promi
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 
+SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *out, SignalBorrowedSliceOfBuffers input);
+
 SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime);
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(bool *out);

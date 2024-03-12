@@ -94,4 +94,20 @@ describe('bridge_fn', () => {
       '123',
     ]);
   });
+
+  it('can process bytestring arrays', () => {
+    const result = Native.TESTING_ProcessBytestringArray([
+      Buffer.of(1, 2, 3),
+      Buffer.of(),
+      Buffer.of(4, 5, 6),
+    ]);
+    assert.deepStrictEqual(
+      result.map((buffer) => Array.from(buffer)),
+      [[1, 2, 3, 1, 2, 3], [], [4, 5, 6, 4, 5, 6]]
+    );
+  });
+
+  it('can process empty bytestring arrays', () => {
+    assert.deepStrictEqual(Native.TESTING_ProcessBytestringArray([]), []);
+  });
 });

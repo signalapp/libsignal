@@ -180,6 +180,35 @@ final class BridgingTests: XCTestCase {
         }
         XCTAssertEqual(array, EXPECTED)
     }
+
+    func testBytestringArray() throws {
+        let first: [UInt8] = [1, 2, 3]
+        let empty: [UInt8] = []
+        let second: [UInt8] = [4, 5, 6]
+        let result = try first.withUnsafeBytes { first in
+            try empty.withUnsafeBytes { empty in
+                try second.withUnsafeBytes { second in
+                    let slices = [SignalBorrowedBuffer(first), SignalBorrowedBuffer(empty), SignalBorrowedBuffer(second)]
+                    return try slices.withUnsafeBufferPointer { slices in
+                        try invokeFnReturningBytestringArray {
+                            signal_testing_process_bytestring_array($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+                        }
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(result, [[1, 2, 3, 1, 2, 3], [], [4, 5, 6, 4, 5, 6]])
+    }
+
+    func testBytestringArrayEmpty() throws {
+        let slices: [SignalBorrowedBuffer] = []
+        let result = try slices.withUnsafeBufferPointer { slices in
+            try invokeFnReturningBytestringArray {
+                signal_testing_process_bytestring_array($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+            }
+        }
+        XCTAssertEqual(result, [])
+    }
 }
 
 #endif
