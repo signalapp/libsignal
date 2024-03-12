@@ -132,7 +132,7 @@ impl FakeAttestation {
         let mut uendorsements = SgxEndorsements::try_from(ENDORSEMENT_BYTES).unwrap();
         let signing_info = SigningInfo::default();
         // by default, expire tcb_info/qe_id tomorrow
-        let tomorrow = Utc::now() + chrono::Duration::days(1);
+        let tomorrow = Utc::now() + chrono::Days::new(1);
         uendorsements.tcb_info.next_update = tomorrow;
         uendorsements.qe_id_info.next_update = tomorrow;
         FakeAttestationBuilder {

@@ -22,8 +22,8 @@ hex-literal = "0.4.1"
 hkdf = "0.12.3"
 hmac = "0.12"
 http = "1.0.0"
-http-body-util = "0.1.0-rc.3"
-hyper = { version = "1.0.0-rc.4", features = ["http1", "http2", "client"] }
+http-body-util = "0.1.1"
+hyper = { version = "1.2.0", features = ["http1", "http2", "client"] }
 itertools = "0.12.0"
 lazy_static = "1.4.0"
 libsignal-core = { path = "../core" }

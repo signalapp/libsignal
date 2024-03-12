@@ -210,6 +210,14 @@ path = "LICENSE"
 checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 
 
+[neon.clarify]
+license = "MIT"
+
+[[neon.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "e47f19ffc3ed618c75d166781681b27c30f841f9b5b10fc488150b9128b19cac"
+
+
 # partial-default-derive is embedded in a larger repo
 [partial-default-derive.clarify]
 license = "AGPL-3.0-only"

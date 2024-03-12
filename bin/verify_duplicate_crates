@@ -14,7 +14,7 @@
 # pqcrypto-kyber: v0.7 is what we shipped PQXDH on, v0.8 contains the NIST standard version
 EXPECTED="
 pqcrypto-kyber v0.7.9
-pqcrypto-kyber v0.8.0"
+pqcrypto-kyber v0.8.1"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.
