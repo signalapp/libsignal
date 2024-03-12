@@ -316,14 +316,17 @@ pub fn benchmark_group_send_endorsements(c: &mut Criterion) {
 
         let serialized_response = zkgroup::serialize(&endorsement_response);
 
-        let endorsements = endorsement_response
+        let endorsements: Vec<_> = endorsement_response
             .receive_with_service_ids_single_threaded(
                 group.iter().copied(),
                 now,
                 &group_secret_params,
                 &server_public_params,
             )
-            .expect("issued endorsements should be valid");
+            .expect("issued endorsements should be valid")
+            .into_iter()
+            .map(|received| received.decompressed)
+            .collect();
 
         benchmark_group.bench_function(
             BenchmarkId::new("deserialize_and_receive_with_service_ids", group_size),

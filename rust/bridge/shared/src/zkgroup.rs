@@ -1206,11 +1206,12 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
         endorsements[..local_user_index]
             .iter()
             .chain(&endorsements[local_user_index + 1..])
-            .copied(),
+            .map(|received| received.decompressed),
     );
     Ok(endorsements
-        .into_iter()
-        .chain([combined_endorsement])
+        .iter()
+        .map(|received| received.compressed)
+        .chain([combined_endorsement.compress()])
         .map(|e| zkgroup::serialize(&e))
         .collect())
 }
@@ -1245,11 +1246,12 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
         endorsements[..local_user_index]
             .iter()
             .chain(&endorsements[local_user_index + 1..])
-            .copied(),
+            .map(|received| received.decompressed),
     );
     Ok(endorsements
-        .into_iter()
-        .chain([combined_endorsement])
+        .iter()
+        .map(|received| received.compressed)
+        .chain([combined_endorsement.compress()])
         .map(|e| zkgroup::serialize(&e))
         .collect())
 }

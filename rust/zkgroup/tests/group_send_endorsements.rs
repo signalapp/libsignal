@@ -52,14 +52,17 @@ fn test_endorsement() {
         // client generated materials; issuance response -> redemption request
         let server_public_params = server_secret_params.get_public_params();
         let expiration = response.expiration();
-        let endorsements = response
+        let endorsements: Vec<_> = response
             .receive_with_service_ids(
                 group_members,
                 DAY_ALIGNED_TIMESTAMP,
                 &group_secret_params,
                 &server_public_params,
             )
-            .expect("issued endorsements should be valid");
+            .expect("issued endorsements should be valid")
+            .into_iter()
+            .map(|received| received.decompressed)
+            .collect();
 
         let combined_endorsements =
             zkgroup::groups::GroupSendEndorsement::combine(endorsements.clone())
@@ -91,13 +94,16 @@ fn test_endorsement() {
         // client generated materials; issuance response -> redemption request
         let server_public_params = server_secret_params.get_public_params();
         let expiration = response.expiration();
-        let endorsements = response
+        let endorsements: Vec<_> = response
             .receive_with_ciphertexts(
                 ciphertexts.iter().copied(),
                 DAY_ALIGNED_TIMESTAMP,
                 &server_public_params,
             )
-            .expect("issued endorsements should be valid");
+            .expect("issued endorsements should be valid")
+            .into_iter()
+            .map(|received| received.decompressed)
+            .collect();
 
         let combined_endorsements =
             zkgroup::groups::GroupSendEndorsement::combine(endorsements.clone())

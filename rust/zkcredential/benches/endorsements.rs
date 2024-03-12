@@ -37,7 +37,10 @@ fn endorsement_flow(c: &mut Criterion) {
         });
 
         let receive_endorsements = |issued: EndorsementResponse| {
-            issued.receive(points.clone(), &todays_public_key).unwrap()
+            issued
+                .receive(points.clone(), &todays_public_key)
+                .unwrap()
+                .decompressed
         };
 
         group.bench_function(BenchmarkId::new("receive", count), |b| {

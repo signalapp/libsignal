@@ -22,7 +22,7 @@ use crate::common::serialization::ReservedByte;
 use crate::groups::{GroupSecretParams, UuidCiphertext};
 use crate::{
     crypto, RandomnessBytes, ServerPublicParams, ServerSecretParams, Timestamp,
-    ZkGroupVerificationFailure, SECONDS_PER_DAY,
+    ZkGroupDeserializationFailure, ZkGroupVerificationFailure, SECONDS_PER_DAY,
 };
 
 const SECONDS_PER_HOUR: u64 = 60 * 60;
@@ -183,7 +183,7 @@ impl GroupSendEndorsementsResponse {
         now: Timestamp,
         group_params: &GroupSecretParams,
         server_params: &ServerPublicParams,
-    ) -> Result<Vec<GroupSendEndorsement>, ZkGroupVerificationFailure> {
+    ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure> {
         let derived_key = self.derive_public_signing_key_from_expiration(now, server_params)?;
 
         // The endorsements are sorted by the serialized *ciphertext* representations.
@@ -206,10 +206,18 @@ impl GroupSendEndorsementsResponse {
 
         Ok(array_utils::collect_permutation(
             endorsements
+                .compressed
                 .into_iter()
-                .map(|endorsement| GroupSendEndorsement {
-                    reserved: ReservedByte::default(),
-                    endorsement,
+                .zip(endorsements.decompressed)
+                .map(|(compressed, decompressed)| ReceivedEndorsement {
+                    compressed: GroupSendEndorsement {
+                        reserved: ReservedByte::default(),
+                        endorsement: compressed,
+                    },
+                    decompressed: GroupSendEndorsement {
+                        reserved: ReservedByte::default(),
+                        endorsement: decompressed,
+                    },
                 })
                 .zip(member_points.iter().map(|(i, _)| *i)),
         ))
@@ -228,7 +236,7 @@ impl GroupSendEndorsementsResponse {
         now: Timestamp,
         group_params: &GroupSecretParams,
         server_params: &ServerPublicParams,
-    ) -> Result<Vec<GroupSendEndorsement>, ZkGroupVerificationFailure>
+    ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure>
     where
         T: rayon::iter::IntoParallelIterator<Item = libsignal_core::ServiceId>,
         T::Iter: rayon::iter::IndexedParallelIterator,
@@ -255,10 +263,18 @@ impl GroupSendEndorsementsResponse {
 
         Ok(array_utils::collect_permutation(
             endorsements
+                .compressed
                 .into_iter()
-                .map(|endorsement| GroupSendEndorsement {
-                    reserved: ReservedByte::default(),
-                    endorsement,
+                .zip(endorsements.decompressed)
+                .map(|(compressed, decompressed)| ReceivedEndorsement {
+                    compressed: GroupSendEndorsement {
+                        reserved: ReservedByte::default(),
+                        endorsement: compressed,
+                    },
+                    decompressed: GroupSendEndorsement {
+                        reserved: ReservedByte::default(),
+                        endorsement: decompressed,
+                    },
                 })
                 .zip(member_points.iter().map(|(i, _)| *i)),
         ))
@@ -277,7 +293,7 @@ impl GroupSendEndorsementsResponse {
         member_ciphertexts: impl IntoIterator<Item = UuidCiphertext>,
         now: Timestamp,
         server_params: &ServerPublicParams,
-    ) -> Result<Vec<GroupSendEndorsement>, ZkGroupVerificationFailure> {
+    ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure> {
         let derived_key = self.derive_public_signing_key_from_expiration(now, server_params)?;
 
         // Note: we could save some work here by pulling the single point we need out of the
@@ -300,10 +316,18 @@ impl GroupSendEndorsementsResponse {
 
         Ok(array_utils::collect_permutation(
             endorsements
+                .compressed
                 .into_iter()
-                .map(|endorsement| GroupSendEndorsement {
-                    reserved: ReservedByte::default(),
-                    endorsement,
+                .zip(endorsements.decompressed)
+                .map(|(compressed, decompressed)| ReceivedEndorsement {
+                    compressed: GroupSendEndorsement {
+                        reserved: ReservedByte::default(),
+                        endorsement: compressed,
+                    },
+                    decompressed: GroupSendEndorsement {
+                        reserved: ReservedByte::default(),
+                        endorsement: decompressed,
+                    },
                 })
                 .zip(points_to_check.iter().map(|(i, _)| *i)),
         ))
@@ -311,10 +335,74 @@ impl GroupSendEndorsementsResponse {
 }
 
 /// A single endorsement, for one or multiple group members.
+///
+/// `Storage` is usually [`curve25519_dalek::RistrettoPoint`], but the `receive` APIs on
+/// [`GroupSendEndorsementsResponse`] produce "compressed" endorsements, since they are usually
+/// immediately serialized.
 #[derive(Serialize, Deserialize, PartialDefault, Clone, Copy)]
-pub struct GroupSendEndorsement {
+pub struct GroupSendEndorsement<Storage = curve25519_dalek::RistrettoPoint> {
     reserved: ReservedByte,
-    endorsement: zkcredential::endorsements::Endorsement,
+    endorsement: zkcredential::endorsements::Endorsement<Storage>,
+}
+
+/// An endorsement as extracted from a [`GroupSendEndorsementsResponse`].
+///
+/// The `receive` process has to work with the endorsements in both compressed and decompressed
+/// forms, so it might as well provide both to the caller. The compressed form is appropriate for
+/// serialization (in fact it is essentially already serialized), while the decompressed form
+/// supports further operations. Depending on what a client wants to do with the endorsements,
+/// either or both could be useful.
+///
+/// The fields are public to support deconstruction one field at a time.
+#[allow(missing_docs)]
+#[derive(Clone, Copy, PartialDefault)]
+pub struct ReceivedEndorsement {
+    // Why does this zip together the compressed and decompressed endorsements, while zkcredential
+    // uses two separate Vecs? Because the zkcredential processing has two Vecs already constructed,
+    // and keeping them in that format can save on memory usage and copies (even though they *could*
+    // be zipped together). zkgroup adds a version byte to every endorsement, which means the
+    // existing memory allocation isn't sufficient anyway, and thus we're better off constructing a
+    // single big Vec rather than two smaller ones, especially since we have to un-permute the
+    // results. (It's close, though, only a 3-6% difference at the largest group sizes.)
+    pub compressed: GroupSendEndorsement<curve25519_dalek::ristretto::CompressedRistretto>,
+    pub decompressed: GroupSendEndorsement,
+}
+
+impl GroupSendEndorsement<curve25519_dalek::ristretto::CompressedRistretto> {
+    /// Attempts to decompress the GroupSendEndorsement.
+    ///
+    /// Produces [`ZkGroupDeserializationFailure`] if the compressed storage isn't a valid
+    /// representation of a point.
+    ///
+    /// Deserializing an `GroupSendEndorsement<RistrettoPoint>` is equivalent to deserializing an
+    /// `GroupSendEndorsement<CompressedRistretto>` and then calling `decompress`.
+    pub fn decompress(
+        self,
+    ) -> Result<GroupSendEndorsement<curve25519_dalek::RistrettoPoint>, ZkGroupDeserializationFailure>
+    {
+        Ok(GroupSendEndorsement {
+            reserved: self.reserved,
+            endorsement: self
+                .endorsement
+                .decompress()
+                .map_err(|_| ZkGroupDeserializationFailure)?,
+        })
+    }
+}
+
+impl GroupSendEndorsement<curve25519_dalek::RistrettoPoint> {
+    /// Compresses the GroupSendEndorsement for storage.
+    ///
+    /// Serializing an `GroupSendEndorsement<RistrettoPoint>` is equivalent to calling `compress` and
+    /// serializing the resulting `GroupSendEndorsement<CompressedRistretto>`.
+    pub fn compress(
+        self,
+    ) -> GroupSendEndorsement<curve25519_dalek::ristretto::CompressedRistretto> {
+        GroupSendEndorsement {
+            reserved: self.reserved,
+            endorsement: self.endorsement.compress(),
+        }
+    }
 }
 
 impl GroupSendEndorsement {

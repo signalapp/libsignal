@@ -175,9 +175,55 @@ pub struct EndorsementResponse {
 ///
 /// Endorsements may be persisted on the client, or may be eagerly converted to tokens using
 /// [`to_token`][Self::to_token].
+///
+/// `Storage` should be [`RistrettoPoint`] or [`CompressedRistretto`].
 #[derive(Clone, Copy, Serialize, Deserialize, PartialDefault)]
-pub struct Endorsement {
-    R: RistrettoPoint,
+pub struct Endorsement<Storage = RistrettoPoint> {
+    R: Storage,
+}
+
+impl Endorsement<CompressedRistretto> {
+    /// Attempts to decompress the endorsement.
+    ///
+    /// Produces [`VerificationFailure`] if the compressed storage isn't a valid representation of a
+    /// point.
+    ///
+    /// Deserializing an `Endorsement<RistrettoPoint>` is equivalent to deserializing an
+    /// `Endorsement<CompressedRistretto>` and then calling `decompress`.
+    pub fn decompress(self) -> Result<Endorsement<RistrettoPoint>, VerificationFailure> {
+        match self.R.decompress() {
+            Some(R) => Ok(Endorsement { R }),
+            None => Err(VerificationFailure),
+        }
+    }
+}
+
+impl Endorsement<RistrettoPoint> {
+    /// Compresses the endorsement for storage.
+    ///
+    /// Serializing an `Endorsement<RistrettoPoint>` is equivalent to calling `compress` and
+    /// serializing the resulting `Endorsement<CompressedRistretto>`.
+    pub fn compress(self) -> Endorsement<CompressedRistretto> {
+        Endorsement {
+            R: self.R.compress(),
+        }
+    }
+}
+
+/// Endorsements as extracted from an [`EndorsementResponse`].
+///
+/// The [`receive`](EndorsementResponse::receive) process has to work with the endorsements in both
+/// compressed and decompressed forms, so it might as well provide both to the caller. The
+/// compressed form is appropriate for serialization (in fact it is essentially already serialized),
+/// while the decompressed form supports further operations. Depending on what a client wants to do
+/// with the endorsements, either or both could be useful.
+///
+/// The fields are public to support deconstruction one field at a time.
+#[allow(missing_docs)]
+#[derive(Clone)]
+pub struct ReceivedEndorsements {
+    pub compressed: Vec<Endorsement<CompressedRistretto>>,
+    pub decompressed: Vec<Endorsement>,
 }
 
 /// Enough randomness that someone can't *guess* a correct token, but as small as possible to avoid
@@ -358,7 +404,7 @@ impl EndorsementResponse {
         self,
         hidden_attribute_points: impl IntoIterator<Item = RistrettoPoint>,
         server_public_key: &ServerDerivedPublicKey,
-    ) -> Result<Vec<Endorsement>, VerificationFailure> {
+    ) -> Result<ReceivedEndorsements, VerificationFailure> {
         let hidden_attribute_points = Vec::from_iter(hidden_attribute_points);
         if hidden_attribute_points.len() != self.R.len() {
             return Err(VerificationFailure);
@@ -367,7 +413,7 @@ impl EndorsementResponse {
         let weights_for_proof =
             Self::generate_weights_for_proof(server_public_key, &hidden_attribute_points, &self.R);
 
-        let decompress_or_default = |R_i: CompressedRistretto| {
+        let decompress_or_default = |R_i: &CompressedRistretto| {
             // If any R_i fails to decompress, substituting RistrettoPoint::default() will make the
             // proof verification below fail.
             R_i.decompress().unwrap_or_default()
@@ -377,9 +423,9 @@ impl EndorsementResponse {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "rayon")] {
                     use rayon::prelude::*;
-                    self.R.into_par_iter().map(decompress_or_default).collect()
+                    self.R.par_iter().map(decompress_or_default).collect()
                 } else {
-                    self.R.into_iter().map(decompress_or_default).collect()
+                    self.R.iter().map(decompress_or_default).collect()
                 }
             }
         };
@@ -421,7 +467,14 @@ impl EndorsementResponse {
             .verify_proof(&self.proof, &point_args, b"")
             .map_err(|_| VerificationFailure)?;
 
-        Ok(R.into_iter().map(|R_i| Endorsement { R: R_i }).collect())
+        Ok(ReceivedEndorsements {
+            compressed: self
+                .R
+                .into_iter()
+                .map(|R_i| Endorsement { R: R_i })
+                .collect(),
+            decompressed: R.into_iter().map(|R_i| Endorsement { R: R_i }).collect(),
+        })
     }
 }
 
@@ -567,7 +620,25 @@ mod tests {
             .clone()
             .receive(encrypted_points, &todays_public_key)
             .unwrap();
-        assert_eq!(client_provided_points.len(), endorsements.len());
+        assert_eq!(
+            client_provided_points.len(),
+            endorsements.decompressed.len()
+        );
+        assert_eq!(
+            endorsements.decompressed.len(),
+            endorsements.compressed.len()
+        );
+
+        for (decompressed, compressed) in endorsements
+            .decompressed
+            .iter()
+            .zip(&endorsements.compressed)
+        {
+            assert_eq!(
+                decompressed.compress().R.as_bytes(),
+                compressed.R.as_bytes(),
+            );
+        }
 
         assert!(
             response
@@ -595,6 +666,7 @@ mod tests {
         );
 
         let tokens = endorsements
+            .decompressed
             .into_iter()
             .map(|endorsement| endorsement.to_token(&decrypt_key));
 
@@ -646,7 +718,8 @@ mod tests {
 
         let endorsements = issued_endorsements
             .receive(encrypted_points, &todays_public_key)
-            .unwrap();
+            .unwrap()
+            .decompressed;
         let combined = Endorsement::combine(endorsements.iter().copied()).remove(&endorsements[1]);
 
         let token = combined.to_token(&decrypt_key);
@@ -738,7 +811,8 @@ mod tests {
             .clone()
             .receive(encrypted_points, &todays_public_key)
             .unwrap();
-        assert_eq!(client_provided_points.len(), endorsements.len());
-        round_trip(&endorsements[0], POINT_BYTE_COUNT);
+        assert_eq!(client_provided_points.len(), endorsements.compressed.len());
+        round_trip(&endorsements.compressed[0], POINT_BYTE_COUNT);
+        round_trip(&endorsements.decompressed[0], POINT_BYTE_COUNT);
     }
 }
