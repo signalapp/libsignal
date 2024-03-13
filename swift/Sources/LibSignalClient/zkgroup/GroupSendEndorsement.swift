@@ -142,4 +142,14 @@ public class GroupSendEndorsement: ByteArray {
             }
         }
     }
+
+    /// Generates a token used to authenticate sends, ready to put in an auth header.
+    ///
+    /// `expiration` must be the same expiration that was in the original
+    /// ``GroupSendEndorsementsResponse``, or the resulting token will fail to verify.
+    ///
+    /// Equivalent to ``toToken(groupParams:)`` followed by ``Token/toFullToken(expiration:)``.
+    public func toFullToken(groupParams: GroupSecretParams, expiration: Date) -> GroupSendFullToken {
+        return self.toToken(groupParams: groupParams).toFullToken(expiration: expiration)
+    }
 }

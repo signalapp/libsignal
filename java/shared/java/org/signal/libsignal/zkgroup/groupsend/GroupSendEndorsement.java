@@ -135,4 +135,16 @@ public final class GroupSendEndorsement extends ByteArray {
             getInternalContentsForJNI(), groupParams.getInternalContentsForJNI());
     return filterExceptions(() -> new Token(rawResult));
   }
+
+  /**
+   * Generates a token used to authenticate sends, ready to put in an auth header.
+   *
+   * <p>{@code expiration} must be the same expiration that was in the original {@link
+   * GroupSendEndorsementsResponse}, or the resulting token will fail to verify.
+   *
+   * <p>Equivalent to {@link #toToken} followed by {@link Token#toFullToken}.
+   */
+  public GroupSendFullToken toFullToken(GroupSecretParams groupParams, Instant expiration) {
+    return toToken(groupParams).toFullToken(expiration);
+  }
 }

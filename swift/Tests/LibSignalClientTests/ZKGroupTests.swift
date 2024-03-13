@@ -657,8 +657,7 @@ class ZKGroupTests: TestCaseBase {
                 .combinedEndorsement
                 .byRemoving(receivedEndorsements.endorsements[3])
             let fullEverybodyButMalloryToken = everybodyButMallory
-                .toToken(groupParams: groupSecretParams)
-                .toFullToken(expiration: response.expiration)
+                .toFullToken(groupParams: groupSecretParams, expiration: response.expiration)
 
             // SERVER
             let everybodyButMalloryKey = GroupSendDerivedKeyPair.forExpiration(fullEverybodyButMalloryToken.expiration, params: serverSecretParams)
@@ -673,7 +672,7 @@ class ZKGroupTests: TestCaseBase {
         do {
             // CLIENT
             let bobAndEve = GroupSendEndorsement.combine(receivedEndorsements.endorsements[1...2])
-            let fullBobAndEveToken = bobAndEve.toToken(groupParams: groupSecretParams).toFullToken(expiration: response.expiration)
+            let fullBobAndEveToken = bobAndEve.toFullToken(groupParams: groupSecretParams, expiration: response.expiration)
 
             // SERVER
             let bobAndEveKey = GroupSendDerivedKeyPair.forExpiration(fullBobAndEveToken.expiration, params: serverSecretParams)
@@ -685,7 +684,7 @@ class ZKGroupTests: TestCaseBase {
         do {
             // CLIENT
             let bobEndorsement = receivedEndorsements.endorsements[1]
-            let fullBobToken = bobEndorsement.toToken(groupParams: groupSecretParams).toFullToken(expiration: response.expiration)
+            let fullBobToken = bobEndorsement.toFullToken(groupParams: groupSecretParams, expiration: response.expiration)
 
             // SERVER
             let bobKey = GroupSendDerivedKeyPair.forExpiration(fullBobToken.expiration, params: serverSecretParams)

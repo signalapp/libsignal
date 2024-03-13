@@ -186,7 +186,7 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
               .combinedEndorsement()
               .byRemoving(receivedEndorsements.endorsements().get(3));
       GroupSendFullToken fullEverybodyButMalloryToken =
-          everybodyButMallory.toToken(groupSecretParams).toFullToken(response.getExpiration());
+          everybodyButMallory.toFullToken(groupSecretParams, response.getExpiration());
 
       // SERVER
       GroupSendDerivedKeyPair everybodyButMalloryKey =
@@ -206,7 +206,7 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
                   receivedEndorsements.endorsements().get(1),
                   receivedEndorsements.endorsements().get(2)));
       GroupSendFullToken fullBobAndEveToken =
-          bobAndEve.toToken(groupSecretParams).toFullToken(response.getExpiration());
+          bobAndEve.toFullToken(groupSecretParams, response.getExpiration());
 
       // SERVER
       GroupSendDerivedKeyPair bobAndEveKey =
@@ -221,7 +221,7 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
       // CLIENT
       GroupSendEndorsement bobEndorsement = receivedEndorsements.endorsements().get(1);
       GroupSendFullToken fullBobToken =
-          bobEndorsement.toToken(groupSecretParams).toFullToken(response.getExpiration());
+          bobEndorsement.toFullToken(groupSecretParams, response.getExpiration());
 
       // SERVER
       GroupSendDerivedKeyPair bobKey =

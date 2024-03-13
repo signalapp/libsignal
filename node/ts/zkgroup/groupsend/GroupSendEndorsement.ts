@@ -7,6 +7,7 @@ import ByteArray, { UNCHECKED_AND_UNCLONED } from '../internal/ByteArray';
 import * as Native from '../../../Native';
 
 import GroupSecretParams from '../groups/GroupSecretParams';
+import GroupSendFullToken from './GroupSendFullToken';
 import GroupSendToken from './GroupSendToken';
 
 // For docs
@@ -86,5 +87,20 @@ export default class GroupSendEndorsement extends ByteArray {
     return new GroupSendToken(
       Native.GroupSendEndorsement_ToToken(this.contents, groupParams.contents)
     );
+  }
+
+  /**
+   * Generates a token used to authenticate sends, ready to put in an auth header.
+   *
+   * `expiration` must be the same expiration that was in the original {@link
+   * GroupSendEndorsementsResponse}, or the resulting token will fail to verify.
+   *
+   * Equivalent to {@link #toToken} followed by {@link GroupSendToken#toFullToken}.
+   */
+  toFullToken(
+    groupParams: GroupSecretParams,
+    expiration: Date
+  ): GroupSendFullToken {
+    return this.toToken(groupParams).toFullToken(expiration);
   }
 }

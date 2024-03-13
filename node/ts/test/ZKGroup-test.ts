@@ -958,9 +958,10 @@ describe('ZKGroup', () => {
           receivedEndorsements.combinedEndorsement.byRemoving(
             receivedEndorsements.endorsements[3]
           );
-        const fullEverybodyButMalloryToken = everybodyButMallory
-          .toToken(groupSecretParams)
-          .toFullToken(response.getExpiration());
+        const fullEverybodyButMalloryToken = everybodyButMallory.toFullToken(
+          groupSecretParams,
+          response.getExpiration()
+        );
 
         // SERVER
         const everybodyButMalloryKey = GroupSendDerivedKeyPair.forExpiration(
@@ -981,9 +982,10 @@ describe('ZKGroup', () => {
           receivedEndorsements.endorsements[1],
           receivedEndorsements.endorsements[2],
         ]);
-        const fullBobAndEveToken = bobAndEve
-          .toToken(groupSecretParams)
-          .toFullToken(response.getExpiration());
+        const fullBobAndEveToken = bobAndEve.toFullToken(
+          groupSecretParams,
+          response.getExpiration()
+        );
 
         // SERVER
         const bobAndEveKey = GroupSendDerivedKeyPair.forExpiration(
@@ -998,9 +1000,10 @@ describe('ZKGroup', () => {
       {
         // CLIENT
         const bobEndorsement = receivedEndorsements.endorsements[1];
-        const fullBobToken = bobEndorsement
-          .toToken(groupSecretParams)
-          .toFullToken(response.getExpiration());
+        const fullBobToken = bobEndorsement.toFullToken(
+          groupSecretParams,
+          response.getExpiration()
+        );
 
         // SERVER
         const bobKey = GroupSendDerivedKeyPair.forExpiration(
