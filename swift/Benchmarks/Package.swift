@@ -7,8 +7,8 @@
 
 import PackageDescription
 
-let rustBuildDir = "../../target/release/"
-let rustFallbackBuildDir = "../../target/debug/"
+let rustReleaseBuildDir = "../../target/release/"
+let rustDebugBuildDir = "../../target/debug/"
 
 let package = Package(
     name: "Benchmarks",
@@ -29,10 +29,10 @@ let package = Package(
                 .product(name: "Benchmark", package: "swift-benchmark"),
                 .product(name: "LibSignalClient", package: "swift" /* the folder name, sigh */ ),
             ],
-            linkerSettings: [.unsafeFlags([
-                "-L\(rustBuildDir)",
-                "-L\(rustFallbackBuildDir)",
-            ])]
+            linkerSettings: [
+                .unsafeFlags(["-L\(rustReleaseBuildDir)"], .when(configuration: .release)),
+                .unsafeFlags(["-L\(rustDebugBuildDir)"], .when(configuration: .debug)),
+            ]
         ),
     ]
 )
