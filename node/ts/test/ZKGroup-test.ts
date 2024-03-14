@@ -1014,5 +1014,53 @@ describe('ZKGroup', () => {
         fullBobToken.verify([bobAci], bobKey);
       }
     });
+
+    it('can handle 1-person groups', () => {
+      const serverSecretParams =
+        ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+      const serverPublicParams = serverSecretParams.getPublicParams();
+
+      const aliceAci = Aci.parseFromServiceIdString(
+        '9d0652a3-dcc3-4d11-975f-74d61598733f'
+      );
+
+      const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+      const groupSecretParams =
+        GroupSecretParams.deriveFromMasterKey(masterKey);
+
+      const aliceCiphertext = new ClientZkGroupCipher(
+        groupSecretParams
+      ).encryptServiceId(aliceAci);
+      const groupCiphertexts = [aliceAci].map((next) =>
+        new ClientZkGroupCipher(groupSecretParams).encryptServiceId(next)
+      );
+
+      // Server
+      const now = Math.floor(Date.now() / 1000);
+      const startOfDay = now - (now % SECONDS_PER_DAY);
+      const expiration = startOfDay + 2 * SECONDS_PER_DAY;
+      const todaysKey = GroupSendDerivedKeyPair.forExpiration(
+        new Date(1000 * expiration),
+        serverSecretParams
+      );
+      const response = GroupSendEndorsementsResponse.issue(
+        groupCiphertexts,
+        todaysKey
+      );
+
+      // Client
+      // Just don't crash.
+      response.receiveWithServiceIds(
+        [aliceAci],
+        aliceAci,
+        groupSecretParams,
+        serverPublicParams
+      );
+      response.receiveWithCiphertexts(
+        [aliceCiphertext],
+        aliceCiphertext,
+        serverPublicParams
+      );
+    });
   });
 });

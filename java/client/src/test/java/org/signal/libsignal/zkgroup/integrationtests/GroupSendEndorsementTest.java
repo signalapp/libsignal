@@ -270,4 +270,36 @@ public final class GroupSendEndorsementTest extends SecureRandomTest {
     response.receive(Arrays.asList(members), members[0], groupSecretParams, serverPublicParams);
     response.receive(Arrays.asList(encryptedMembers), encryptedMembers[0], serverPublicParams);
   }
+
+  @Test
+  public void test1PersonGroup() throws Exception {
+    // SERVER
+    // Generate keys
+    ServerSecretParams serverSecretParams =
+        ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
+    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+
+    // CLIENT
+    // Generate keys
+    GroupMasterKey masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+    GroupSecretParams groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
+
+    // Set up group state
+    ServiceId.Aci member = new ServiceId.Aci(UUID.randomUUID());
+    UuidCiphertext encryptedMember = new ClientZkGroupCipher(groupSecretParams).encrypt(member);
+
+    // SERVER
+    // Issue endorsements
+    Instant expiration = Instant.now().truncatedTo(ChronoUnit.DAYS).plus(2, ChronoUnit.DAYS);
+    GroupSendDerivedKeyPair keyPair =
+        GroupSendDerivedKeyPair.forExpiration(expiration, serverSecretParams);
+    GroupSendEndorsementsResponse response =
+        GroupSendEndorsementsResponse.issue(Arrays.asList(encryptedMember), keyPair);
+
+    // CLIENT
+    // Gets stored endorsements
+    // Just don't crash.
+    response.receive(Arrays.asList(member), member, groupSecretParams, serverPublicParams);
+    response.receive(Arrays.asList(encryptedMember), encryptedMember, serverPublicParams);
+  }
 }

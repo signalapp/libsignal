@@ -340,6 +340,7 @@ impl GroupSendEndorsementsResponse {
 /// [`GroupSendEndorsementsResponse`] produce "compressed" endorsements, since they are usually
 /// immediately serialized.
 #[derive(Serialize, Deserialize, PartialDefault, Clone, Copy)]
+#[partial_default(bound = "Storage: curve25519_dalek::traits::Identity")]
 pub struct GroupSendEndorsement<Storage = curve25519_dalek::RistrettoPoint> {
     reserved: ReservedByte,
     endorsement: zkcredential::endorsements::Endorsement<Storage>,
@@ -416,9 +417,15 @@ impl GroupSendEndorsement {
         endorsements: impl IntoIterator<Item = GroupSendEndorsement>,
     ) -> GroupSendEndorsement {
         let mut endorsements = endorsements.into_iter();
-        let mut result = endorsements
-            .next()
-            .expect("must pass at least one endorsement");
+        let Some(mut result) = endorsements.next() else {
+            // If we ever have multiple versions, it's not obvious which version to default to here,
+            // since we normally require the versions to match when calling `combine` or `remove`.
+            // But for now it's okay.
+            return GroupSendEndorsement {
+                reserved: ReservedByte::default(),
+                endorsement: Default::default(),
+            };
+        };
         for next in endorsements {
             assert_eq!(
                 result.reserved, next.reserved,

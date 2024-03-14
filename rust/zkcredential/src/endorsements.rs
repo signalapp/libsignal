@@ -177,7 +177,7 @@ pub struct EndorsementResponse {
 /// [`to_token`][Self::to_token].
 ///
 /// `Storage` should be [`RistrettoPoint`] or [`CompressedRistretto`].
-#[derive(Clone, Copy, Serialize, Deserialize, PartialDefault)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Endorsement<Storage = RistrettoPoint> {
     R: Storage,
 }
@@ -206,6 +206,19 @@ impl Endorsement<RistrettoPoint> {
     pub fn compress(self) -> Endorsement<CompressedRistretto> {
         Endorsement {
             R: self.R.compress(),
+        }
+    }
+}
+
+/// The default endorsement is the "identity" of the `combine` and `remove` operations.
+impl<Storage: curve25519_dalek::traits::Identity> Default for Endorsement<Storage> {
+    fn default() -> Self {
+        // This could actually just be a synthesized Default, because the Default for both
+        // RistrettoPoint and CompressedRistretto is the identity point. But having an explicit impl
+        // provides a place to attach a doc comment, and using the Identity trait makes it extra
+        // clear what the expectation is.
+        Self {
+            R: Storage::identity(),
         }
     }
 }
@@ -814,5 +827,46 @@ mod tests {
         assert_eq!(client_provided_points.len(), endorsements.compressed.len());
         round_trip(&endorsements.compressed[0], POINT_BYTE_COUNT);
         round_trip(&endorsements.decompressed[0], POINT_BYTE_COUNT);
+    }
+
+    #[test]
+    fn default_is_identity() {
+        assert_eq!(Endorsement::combine([]).R, Endorsement::default().R);
+
+        let mut input_sho = poksho::ShoSha256::new(b"test");
+        let root_key = ServerRootKeyPair::generate([42; RANDOMNESS_LEN]);
+
+        // Client
+
+        let client_provided_points = [
+            input_sho.get_point(),
+            input_sho.get_point(),
+            input_sho.get_point(),
+        ];
+
+        let client_raw_key = input_sho.get_scalar();
+        let encrypted_points = client_provided_points.map(|p| client_raw_key * p);
+
+        let mut info_sho = poksho::ShoHmacSha256::new(b"ExamplePass");
+        info_sho.absorb_and_ratchet(b"today's date");
+
+        // Server
+
+        let todays_key = root_key.derive_key(info_sho.clone());
+        let response =
+            EndorsementResponse::issue(encrypted_points, &todays_key, [43; RANDOMNESS_LEN]);
+
+        // Client
+
+        let todays_public_key = root_key.public.derive_key(info_sho.clone());
+        let endorsements = response
+            .clone()
+            .receive(encrypted_points, &todays_public_key)
+            .unwrap()
+            .decompressed;
+        assert_eq!(
+            endorsements[0].remove(&endorsements[0]).R,
+            Endorsement::default().R
+        );
     }
 }

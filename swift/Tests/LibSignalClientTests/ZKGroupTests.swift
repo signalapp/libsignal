@@ -726,4 +726,38 @@ class ZKGroupTests: TestCaseBase {
         _ = try response.receive(groupMembers: members, localUser: members[0], groupParams: groupSecretParams, serverParams: serverPublicParams)
         _ = try response.receive(groupMembers: encryptedMembers, localUser: encryptedMembers[0], serverParams: serverPublicParams)
     }
+
+    func test1PersonGroup() throws {
+        // SERVER
+        // Generate keys
+        let serverSecretParams =
+            try ServerSecretParams.generate(randomness: self.TEST_ARRAY_32)
+        let serverPublicParams = try serverSecretParams.getPublicParams()
+
+        // CLIENT
+        // Generate keys
+        let masterKey = try GroupMasterKey(contents: TEST_ARRAY_32_1)
+        let groupSecretParams = try GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+
+        // Set up group state
+        let member = Aci(fromUUID: UUID())
+
+        let cipher = ClientZkGroupCipher(groupSecretParams: groupSecretParams)
+        let encryptedMember = try cipher.encrypt(member)
+
+        // SERVER
+        // Issue endorsements
+        let now = UInt64(Date().timeIntervalSince1970)
+        let startOfDay = now - (now % SECONDS_PER_DAY)
+        let expiration = Date(timeIntervalSince1970: TimeInterval(startOfDay + 2 * SECONDS_PER_DAY))
+
+        let keyPair = GroupSendDerivedKeyPair.forExpiration(expiration, params: serverSecretParams)
+        let response = GroupSendEndorsementsResponse.issue(groupMembers: [encryptedMember], keyPair: keyPair)
+
+        // CLIENT
+        // Gets stored endorsements
+        // Just don't crash.
+        _ = try response.receive(groupMembers: [member], localUser: member, groupParams: groupSecretParams, serverParams: serverPublicParams)
+        _ = try response.receive(groupMembers: [encryptedMember], localUser: encryptedMember, serverParams: serverPublicParams)
+    }
 }
