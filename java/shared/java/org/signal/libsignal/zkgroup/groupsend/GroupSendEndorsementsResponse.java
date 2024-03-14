@@ -91,9 +91,8 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    *
    * <p>Note that the {@code receive} operation is provided for both {@link ServiceId}s and {@link
    * UuidCiphertext}s. If you already have the ciphertexts for the group members available, {@link
-   * #receive(List, UuidCiphertext, ServerPublicParams)} will be <em>significantly</em> faster; if
-   * you don't, this method is faster than generating the ciphertexts and throwing them away
-   * afterwards.
+   * #receive(List, UuidCiphertext, ServerPublicParams)} should be faster; if you don't, this method
+   * is faster than generating the ciphertexts and throwing them away afterwards.
    *
    * <p>{@code localUser} should be included in {@code groupMembers}.
    *
@@ -153,9 +152,9 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    *
    * <p>Note that the {@code receive} operation is provided for both {@link ServiceId}s and {@link
    * UuidCiphertext}s. If you already have the ciphertexts for the group members available, this
-   * method will be <em>significantly</em> faster; if you don't, {@link #receive(List,
-   * ServiceId.Aci, GroupSecretParams, ServerPublicParams)} is faster than generating the
-   * ciphertexts and throwing them away afterwards.
+   * method should be faster; if you don't, {@link #receive(List, ServiceId.Aci, GroupSecretParams,
+   * ServerPublicParams)} is faster than generating the ciphertexts and throwing them away
+   * afterwards.
    *
    * <p>{@code localUser} should be included in {@code groupMembers}.
    *

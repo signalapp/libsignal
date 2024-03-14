@@ -79,9 +79,8 @@ public class GroupSendEndorsementsResponse: ByteArray {
     ///
     /// Note that the `receive` operation is provided for both ``ServiceId``s and
     /// ``UuidCiphertext``s. If you already have the ciphertexts for the group members available,
-    /// ``receive(groupMembers:localUser:now:serverParams:)`` will be *significantly* faster; if you
-    /// don't, this method is faster than generating the ciphertexts and throwing them away
-    /// afterwards.
+    /// ``receive(groupMembers:localUser:now:serverParams:)`` should be faster; if you don't, this
+    /// method is faster than generating the ciphertexts and throwing them away afterwards.
     ///
     /// `localUser` should be included in `groupMembers`.
     ///
@@ -119,7 +118,7 @@ public class GroupSendEndorsementsResponse: ByteArray {
     ///
     /// Note that the `receive` operation is provided for both ``ServiceId``s and
     /// ``UuidCiphertext``s. If you already have the ciphertexts for the group members available,
-    /// this method will be *significantly* faster; if you don't,
+    /// this method should be faster; if you don't,
     /// ``receive(groupMembers:localUser:now:groupParams:serverParams:)`` is faster than generating
     /// the ciphertexts and throwing them away afterwards.
     ///

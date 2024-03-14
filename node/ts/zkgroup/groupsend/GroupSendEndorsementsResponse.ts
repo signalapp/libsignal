@@ -92,8 +92,8 @@ export default class GroupSendEndorsementsResponse extends ByteArray {
    *
    * Note that the `receive` operation is provided for both {@link ServiceId}s and {@link
    * UuidCiphertext}s. If you already have the ciphertexts for the group members available, {@link
-   * #receiveWithCiphertexts} will be *significantly* faster; if you don't, this method is faster
-   * than generating the ciphertexts and throwing them away afterwards.
+   * #receiveWithCiphertexts} should be faster; if you don't, this method is faster than generating
+   * the ciphertexts and throwing them away afterwards.
    *
    * `localUser` should be included in `groupMembers`.
    *
@@ -134,8 +134,8 @@ export default class GroupSendEndorsementsResponse extends ByteArray {
    *
    * Note that the `receive` operation is provided for both {@link ServiceId}s and {@link
    * UuidCiphertext}s. If you already have the ciphertexts for the group members available, this
-   * method will be *significantly* faster; if you don't, {@link #receiveWithServiceIds} is faster
-   * than generating the ciphertexts and throwing them away afterwards.
+   * method should be faster; if you don't, {@link #receiveWithServiceIds} is faster than generating
+   * the ciphertexts and throwing them away afterwards.
    *
    * `localUser` should be included in `groupMembers`.
    *
