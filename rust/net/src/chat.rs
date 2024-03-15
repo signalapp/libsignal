@@ -8,7 +8,6 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
-use bytes::Bytes;
 use url::Host;
 
 use crate::chat::ws::ChatOverWebSocketServiceConnector;
@@ -23,7 +22,6 @@ use crate::utils::basic_authorization;
 use self::ws::ServerRequest;
 
 pub mod chat_reconnect;
-pub mod http;
 pub mod ws;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;
@@ -103,23 +101,6 @@ pub struct Request {
     pub path: PathAndQuery,
 }
 
-impl Request {
-    pub(crate) fn into_parts(self) -> (PathAndQuery, ::http::request::Builder, Bytes) {
-        let Request {
-            method,
-            body,
-            headers,
-            path,
-        } = self;
-
-        let mut builder = ::http::request::Request::builder().method(method);
-        let headers_map = builder.headers_mut().expect("have headers");
-        headers_map.extend(headers);
-
-        (path, builder, body.map_or_else(Bytes::new, Bytes::from))
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Response {
     pub status: StatusCode,
@@ -174,16 +155,6 @@ where
     AuthService: ChatServiceWithDebugInfo + Send + Sync,
     UnauthService: ChatServiceWithDebugInfo + Send + Sync,
 {
-    pub fn new(
-        auth_service: AuthorizedChatService<AuthService>,
-        unauth_service: AnonymousChatService<UnauthService>,
-    ) -> Self {
-        Self {
-            auth_service,
-            unauth_service,
-        }
-    }
-
     pub async fn send_authenticated(
         &self,
         msg: Request,
@@ -235,11 +206,18 @@ where
             auth_service,
             unauth_service,
         } = self;
-        Chat::new(auth_service.into_dyn(), unauth_service.into_dyn())
+        {
+            let auth_service = auth_service.into_dyn();
+            let unauth_service = unauth_service.into_dyn();
+            Chat {
+                auth_service,
+                unauth_service,
+            }
+        }
     }
 }
 
-pub struct AnonymousChatService<T> {
+struct AnonymousChatService<T> {
     inner: T,
 }
 
@@ -279,7 +257,7 @@ where
     }
 }
 
-pub struct AuthorizedChatService<T> {
+struct AuthorizedChatService<T> {
     inner: T,
 }
 
@@ -403,10 +381,19 @@ pub fn chat_service<T: TransportConnector + 'static>(
         WebSocketClientConnector::new(transport_connector, endpoint.config.clone()),
         incoming_tx,
     );
-    Chat::new(
-        build_authorized_chat_service(&endpoint.manager, &ws_service_connector, username, password),
-        build_anonymous_chat_service(&endpoint.manager, &ws_service_connector),
-    )
+    {
+        let auth_service = build_authorized_chat_service(
+            &endpoint.manager,
+            &ws_service_connector,
+            username,
+            password,
+        );
+        let unauth_service = build_anonymous_chat_service(&endpoint.manager, &ws_service_connector);
+        Chat {
+            auth_service,
+            unauth_service,
+        }
+    }
 }
 
 #[cfg(test)]

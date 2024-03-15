@@ -21,7 +21,7 @@ use crate::infra::{ConnectionParams, HttpRequestDecorator};
 /// For a service that needs to go through some initialization procedure
 /// before it's ready for use, this enum describes its possible states.
 #[derive(Debug)]
-pub enum ServiceState<T, E> {
+pub(crate) enum ServiceState<T, E> {
     /// Contains an instance of the service which is initialized and ready to use.
     /// Also, since we're not actively listening for the event of service going inactive,
     /// the `ServiceStatus` could be used to see if the service is actually running.
@@ -39,7 +39,7 @@ pub enum ServiceState<T, E> {
 /// See [crate::chat::http::ChatOverHttp2ServiceConnector]
 /// and [crate::chat::ws::ChatOverWebSocketServiceConnector]
 #[async_trait]
-pub trait ServiceConnector: Clone {
+pub(crate) trait ServiceConnector: Clone {
     type Service;
     type Channel;
     type Error;
@@ -74,13 +74,13 @@ where
 }
 
 #[derive(Clone)]
-pub struct ServiceConnectorWithDecorator<C> {
+pub(crate) struct ServiceConnectorWithDecorator<C> {
     inner: C,
     decorator: HttpRequestDecorator,
 }
 
 impl<C: ServiceConnector> ServiceConnectorWithDecorator<C> {
-    pub fn new(inner: C, decorator: HttpRequestDecorator) -> Self {
+    pub(crate) fn new(inner: C, decorator: HttpRequestDecorator) -> Self {
         Self { inner, decorator }
     }
 }
@@ -111,7 +111,7 @@ where
 
 #[derive(Debug)]
 #[derive_where(Clone)]
-pub struct ServiceStatus<E> {
+pub(crate) struct ServiceStatus<E> {
     maybe_error: Arc<OnceLock<E>>,
     service_cancellation: CancellationToken,
 }
@@ -126,29 +126,29 @@ impl<E> Default for ServiceStatus<E> {
 }
 
 impl<E> ServiceStatus<E> {
-    pub fn stop_service(&self) {
+    pub(crate) fn stop_service(&self) {
         self.service_cancellation.cancel();
     }
 
-    pub fn stop_service_with_error(&self, error: E) {
+    pub(crate) fn stop_service_with_error(&self, error: E) {
         self.stop_service();
         self.maybe_error.get_or_init(|| error);
     }
 
-    pub fn is_stopped(&self) -> bool {
+    pub(crate) fn is_stopped(&self) -> bool {
         self.service_cancellation.is_cancelled()
     }
 
-    pub async fn stopped(&self) {
+    pub(crate) async fn stopped(&self) {
         self.service_cancellation.cancelled().await
     }
 
-    pub fn get_error(&self) -> Option<&E> {
+    pub(crate) fn get_error(&self) -> Option<&E> {
         self.maybe_error.get()
     }
 }
 
-pub struct ServiceInitializer<C, M> {
+pub(crate) struct ServiceInitializer<C, M> {
     service_connector: C,
     connection_manager: M,
 }
@@ -161,14 +161,14 @@ where
     C::Channel: Send + Sync,
     C::Error: Send + Sync + Debug + LogSafeDisplay,
 {
-    pub fn new(service_connector: C, connection_manager: M) -> Self {
+    pub(crate) fn new(service_connector: C, connection_manager: M) -> Self {
         Self {
             service_connector,
             connection_manager,
         }
     }
 
-    pub async fn connect(&self) -> ServiceState<C::Service, C::Error> {
+    pub(crate) async fn connect(&self) -> ServiceState<C::Service, C::Error> {
         log::debug!("attempting a connection");
         let connection_attempt_result = self
             .connection_manager
@@ -208,14 +208,14 @@ where
 }
 
 pub(crate) struct ServiceWithReconnectData<C: ServiceConnector, M> {
-    pub(crate) reconnect_count: AtomicU32,
+    reconnect_count: AtomicU32,
     state: Mutex<ServiceState<C::Service, C::Error>>,
     service_initializer: ServiceInitializer<C, M>,
     connection_timeout: Duration,
 }
 
 #[derive(Clone)]
-pub struct ServiceWithReconnect<C: ServiceConnector, M> {
+pub(crate) struct ServiceWithReconnect<C: ServiceConnector, M> {
     data: Arc<ServiceWithReconnectData<C, M>>,
 }
 
@@ -227,7 +227,11 @@ where
     C::Channel: Send + Sync,
     C::Error: Send + Sync + Debug + LogSafeDisplay,
 {
-    pub fn new(service_connector: C, connection_manager: M, connection_timeout: Duration) -> Self {
+    pub(crate) fn new(
+        service_connector: C,
+        connection_manager: M,
+        connection_timeout: Duration,
+    ) -> Self {
         // We're starting in a `Cooldown` state with a `next_attempt_time` set to `now`,
         // which effectively allows for an immediate use.
         Self {

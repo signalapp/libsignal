@@ -32,11 +32,8 @@ pub mod certs;
 pub mod connection_manager;
 pub mod dns;
 pub mod errors;
-pub(crate) mod http;
 pub(crate) mod reconnect;
-pub(crate) mod tokio_executor;
-pub(crate) mod tokio_io;
-pub mod ws;
+pub(crate) mod ws;
 
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
@@ -390,7 +387,7 @@ pub(crate) mod test {
         }
 
         #[derive_where(Clone)]
-        pub struct NoReconnectService<C: ServiceConnector> {
+        pub(crate) struct NoReconnectService<C: ServiceConnector> {
             pub(crate) inner: Arc<ServiceState<C::Service, C::Error>>,
         }
 
@@ -401,7 +398,7 @@ pub(crate) mod test {
             C::Channel: Send + Sync,
             C::Error: Send + Sync + Debug + LogSafeDisplay,
         {
-            pub async fn start<M>(service_connector: C, connection_manager: M) -> Self
+            pub(crate) async fn start<M>(service_connector: C, connection_manager: M) -> Self
             where
                 M: ConnectionManager + 'static,
             {
@@ -413,7 +410,7 @@ pub(crate) mod test {
                 }
             }
 
-            pub fn service_status(&self) -> Option<&ServiceStatus<C::Error>> {
+            pub(crate) fn service_status(&self) -> Option<&ServiceStatus<C::Error>> {
                 match &*self.inner {
                     ServiceState::Active(_, status) => Some(status),
                     _ => None,

@@ -42,13 +42,13 @@ pub struct WebSocketConfig {
 }
 
 #[derive(Clone)]
-pub struct WebSocketClientConnector<T> {
+pub(crate) struct WebSocketClientConnector<T> {
     transport_connector: T,
     cfg: WebSocketConfig,
 }
 
 impl<T: TransportConnector> WebSocketClientConnector<T> {
-    pub fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
+    pub(crate) fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
         Self {
             transport_connector,
             cfg,
@@ -155,7 +155,7 @@ pub(crate) struct WebSocketClientReader<S> {
 }
 
 impl<S: AsyncDuplexStream> WebSocketClientReader<S> {
-    pub async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, NetError> {
+    pub(crate) async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, NetError> {
         enum Event {
             Message(Option<Result<Message, tungstenite::Error>>),
             SendKeepAlive,

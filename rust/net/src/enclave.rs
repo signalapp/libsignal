@@ -207,7 +207,7 @@ impl From<AttestedConnectionError> for Error {
 }
 
 impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnection<E, C> {
-    pub async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
+    pub(crate) async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
         &self,
         auth: impl HttpBasicAuth,
         transport_connector: T,

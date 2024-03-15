@@ -24,15 +24,6 @@ impl<Flavor: Svr3Flavor> From<SvrConnection<Flavor>> for AttestedConnection {
     }
 }
 
-impl<Flavor: Svr3Flavor, S> SvrConnection<Flavor, S> {
-    pub fn new(inner: AttestedConnection<S>) -> Self {
-        Self {
-            inner,
-            witness: PhantomData,
-        }
-    }
-}
-
 impl<E: Svr3Flavor, S: AsyncDuplexStream> SvrConnection<E, S>
 where
     E: Svr3Flavor + NewHandshake + Sized,
@@ -50,6 +41,9 @@ where
         connection
             .connect(auth, transport_connector)
             .await
-            .map(Self::new)
+            .map(|inner| Self {
+                inner,
+                witness: PhantomData,
+            })
     }
 }

@@ -20,7 +20,7 @@ use crate::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorS
 pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
 
-pub const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     hostname: "chat.signal.org",
     ip_v4: &[
         ip_addr!(v4, "76.223.92.165"),
@@ -34,7 +34,7 @@ pub const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     proxy_path: "/service",
 };
 
-pub const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     hostname: "chat.staging.signal.org",
     ip_v4: &[
         ip_addr!(v4, "76.223.72.142"),
@@ -48,7 +48,7 @@ pub const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     proxy_path: "/service-staging",
 };
 
-pub const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     hostname: "cdsi.signal.org",
     ip_v4: &[ip_addr!(v4, "40.122.45.194")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
@@ -56,7 +56,7 @@ pub const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     proxy_path: "/cdsi",
 };
 
-pub const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     hostname: "cdsi.staging.signal.org",
     ip_v4: &[ip_addr!(v4, "104.43.162.137")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
@@ -64,7 +64,7 @@ pub const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     proxy_path: "/cdsi-staging",
 };
 
-pub const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     hostname: "svr2.signal.org",
     ip_v4: &[ip_addr!(v4, "20.66.40.69")],
     ip_v6: &[],
@@ -72,7 +72,7 @@ pub const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     proxy_path: "/svr2",
 };
 
-pub const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     hostname: "svr2.staging.signal.org",
     ip_v4: &[ip_addr!(v4, "20.253.229.239")],
     ip_v6: &[],
@@ -80,7 +80,7 @@ pub const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     proxy_path: "/svr2-staging",
 };
 
-pub const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     hostname: "svr3.signal.org",
     ip_v4: &[ip_addr!(v4, "143.244.220.150")],
     ip_v6: &[],
@@ -88,7 +88,7 @@ pub const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     proxy_path: "/svr3-sgx",
 };
 
-pub const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     hostname: "backend1.svr3.staging.signal.org",
     ip_v4: &[ip_addr!(v4, "13.88.63.29")],
     ip_v6: &[],
@@ -96,7 +96,7 @@ pub const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     proxy_path: "/svr3-sgx-staging",
 };
 
-pub const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     hostname: "devnull.signal.org",
     ip_v4: &[],
     ip_v6: &[],
@@ -104,7 +104,7 @@ pub const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     proxy_path: "/svr3-nitro",
 };
 
-pub const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
+const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     hostname: "backend2.svr3.staging.signal.org",
     ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
     ip_v6: &[],
