@@ -14,10 +14,10 @@ use boring::pkey::Public;
 use chrono::Utc;
 use serde::Deserialize;
 use serde_json::value::RawValue;
+use strum::EnumCount;
 
 use std::intrinsics::transmute;
 use std::time::SystemTime;
-use variant_count::VariantCount;
 
 use crate::dcap::cert_chain::CertChain;
 use crate::dcap::ecdsa::{deserialize_ecdsa_signature, EcdsaSigned};
@@ -30,7 +30,7 @@ use crate::util;
 // Inline header file references are paths from the root of the repository tree.
 // https://github.com/openenclave/openenclave/tree/v0.17.7
 
-#[derive(Debug, Clone, Copy, VariantCount)]
+#[derive(Debug, Clone, Copy, EnumCount)]
 #[repr(u8)]
 enum SgxEndorsementField {
     Version = 0,
@@ -213,7 +213,7 @@ impl Expireable for SgxEndorsements {
 }
 
 fn validate_offsets(offsets: &[usize], data: &[u8]) -> Result<()> {
-    if offsets.len() < SgxEndorsementField::VARIANT_COUNT {
+    if offsets.len() < SgxEndorsementField::COUNT {
         return Err(Error::new("too few fields"));
     }
 

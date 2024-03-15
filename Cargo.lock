@@ -272,9 +272,9 @@ dependencies = [
  "sha2",
  "snow",
  "static_assertions",
+ "strum",
  "subtle",
  "uuid",
- "variant_count",
  "x25519-dalek",
 ]
 
@@ -4053,16 +4053,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f00cc9702ca12d3c81455259621e676d0f7251cec66a21e98fe2e9a37db93b2a"
 dependencies = [
  "sha1_smol",
-]
-
-[[package]]
-name = "variant_count"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aae2faf80ac463422992abf4de234731279c058aaf33171ca70277c98406b124"
-dependencies = [
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
