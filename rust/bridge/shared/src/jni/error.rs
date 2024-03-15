@@ -12,13 +12,13 @@ use libsignal_net::infra::errors::NetError;
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use libsignal_net::cdsi::CdsiError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
+use crate::net::cdsi::CdsiError;
 use crate::support::describe_panic;
 
 use super::*;

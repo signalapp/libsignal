@@ -7,7 +7,6 @@ use std::default::Default;
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
-use std::time::Duration;
 
 use libsignal_core::{Aci, Pni};
 use prost::Message as _;
@@ -249,21 +248,6 @@ pub enum LookupError {
     InvalidResponse,
     /// Retry later.
     RateLimited { retry_after_seconds: u32 },
-    /// Failed to parse the response from the server.
-    ParseError,
-}
-
-/// CDSI-protocol-specific subset of [`LookupError`] cases.
-///
-/// Contains cases for errors that aren't covered by other error types.
-#[derive(Debug, displaydoc::Display)]
-pub enum CdsiError {
-    /// Protocol error after establishing a connection.
-    Protocol,
-    /// Invalid response received from the server.
-    InvalidResponse,
-    /// Retry later.
-    RateLimited { retry_after: Duration },
     /// Failed to parse the response from the server.
     ParseError,
 }

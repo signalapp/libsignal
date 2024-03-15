@@ -474,6 +474,14 @@ typedef struct {
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
  */
+typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
 typedef void (*SignalCPromiseCdsiLookup)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
 
 typedef struct {
@@ -488,14 +496,6 @@ typedef struct {
  * `SignalCPromiseProtocolAddress`.
  */
 typedef void (*SignalCPromiseFfiCdsiLookupResponse)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- */
-typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
 
 typedef SignalBytestringArray SignalStringArray;
 
@@ -1323,6 +1323,18 @@ SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uin
 
 SignalFfiError *signal_connection_manager_destroy(SignalConnectionManager *p);
 
+SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
+
+SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
+
+SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
+
+SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
+
+SignalFfiError *signal_chat_destroy(SignalChat *p);
+
+SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
+
 SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
 
 SignalFfiError *signal_lookup_request_add_e164(const SignalLookupRequest *request, const char *e164);
@@ -1344,18 +1356,6 @@ SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup promise, const v
 SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCdsiLookup *lookup);
 
 SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
-
-SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
-
-SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
-
-SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
-
-SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
-
-SignalFfiError *signal_chat_destroy(SignalChat *p);
-
-SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
 
 SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
 
