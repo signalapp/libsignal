@@ -614,16 +614,6 @@ fn ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(
     presentation.get_profile_key_ciphertext().into()
 }
 
-// Only used by the server.
-#[bridge_fn(ffi = false, node = false)]
-fn ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(
-    presentation_bytes: &[u8],
-) -> Vec<u8> {
-    let presentation = AnyProfileKeyCredentialPresentation::new(presentation_bytes)
-        .expect("should have been parsed previously");
-    presentation.to_structurally_valid_v1_presentation_bytes()
-}
-
 // FIXME: bridge_get
 #[bridge_fn]
 fn ReceiptCredentialRequestContext_GetRequest(

@@ -5,7 +5,6 @@
 
 #![allow(non_snake_case)]
 
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
 
@@ -1060,22 +1059,6 @@ impl AuthCredentialWithPniPresentationProof {
         match Self::get_poksho_statement().verify_proof(poksho_proof, &point_args, &[]) {
             Err(_) => Err(ZkGroupVerificationFailure),
             Ok(_) => Ok(()),
-        }
-    }
-}
-
-impl ProfileKeyCredentialPresentationProofV1 {
-    pub(crate) fn from_invalid_proof(poksho_proof: Vec<u8>) -> Self {
-        Self {
-            C_x0: RISTRETTO_BASEPOINT_POINT,
-            C_x1: RISTRETTO_BASEPOINT_POINT,
-            C_y1: RISTRETTO_BASEPOINT_POINT,
-            C_y2: RISTRETTO_BASEPOINT_POINT,
-            C_y3: RISTRETTO_BASEPOINT_POINT,
-            C_y4: RISTRETTO_BASEPOINT_POINT,
-            C_V: RISTRETTO_BASEPOINT_POINT,
-            C_z: RISTRETTO_BASEPOINT_POINT,
-            poksho_proof,
         }
     }
 }

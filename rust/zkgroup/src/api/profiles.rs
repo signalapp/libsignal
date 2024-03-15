@@ -18,7 +18,7 @@ pub use profile_key::ProfileKey;
 pub use profile_key_commitment::ProfileKeyCommitment;
 pub use profile_key_credential_presentation::{
     AnyProfileKeyCredentialPresentation, ExpiringProfileKeyCredentialPresentation,
-    ProfileKeyCredentialPresentationV1, ProfileKeyCredentialPresentationV2,
+    ProfileKeyCredentialPresentationV2,
 };
 pub use profile_key_credential_request::ProfileKeyCredentialRequest;
 pub use profile_key_credential_request_context::ProfileKeyCredentialRequestContext;
