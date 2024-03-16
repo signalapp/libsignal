@@ -32,8 +32,10 @@ signal-pin = { path = "../../pin" }
 signal-media = { path = "../../media" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 async-trait = "0.1.41"
-cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.
 futures-util = "0.3"
 rand = "0.8"
 log = { version = "0.4", features = ["release_max_level_info"] }
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
+
+[target.aarch64-apple-ios.dependencies]
+cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.
