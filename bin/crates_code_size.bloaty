@@ -18,7 +18,7 @@ custom_data_source: {
     replacement: "\\1"
   }
   rewrite: {
-    pattern: "^(/?([^/]+/)*)src/"
+    pattern: "^(/?([^/]+/)+)src/"
     replacement: "\\1"
   }
   rewrite: {
