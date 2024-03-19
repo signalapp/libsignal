@@ -12,8 +12,8 @@
 //! 3. Manipulate the default evidence/endorsements
 //! 4. Create the final evidence/endorsements with [`FakeAttestation::sign`]
 
-use crate::dcap::cert_chain::testutil::TestCert;
-use crate::dcap::cert_chain::CertChain;
+use crate::cert_chain::testutil::TestCert;
+use crate::cert_chain::CertChain;
 use crate::dcap::ecdsa::EcdsaSigned;
 use crate::dcap::endorsements::SgxEndorsements;
 use crate::dcap::evidence::Evidence;

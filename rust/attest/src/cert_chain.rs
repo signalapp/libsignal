@@ -12,7 +12,13 @@ use boring::x509::{X509StoreContext, X509VerifyResult, X509};
 
 use std::time::SystemTime;
 
-use crate::dcap::{Error, Expireable, Result};
+use crate::error::ContextError;
+use crate::expireable::Expireable;
+
+pub(crate) struct CertChainErrorDomain;
+pub(crate) type Error = ContextError<CertChainErrorDomain>;
+
+type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub(crate) struct CertChain {
@@ -156,7 +162,8 @@ impl Expireable for CertChain {
 #[cfg(test)]
 /// Utilities for creating test certificates / crls
 pub mod testutil {
-    use crate::dcap::cert_chain::CertChain;
+    use super::CertChain;
+
     use boring::asn1::{Asn1Integer, Asn1IntegerRef, Asn1Time};
     use boring::bn::{BigNum, MsbOption};
     use boring::ec::{EcGroup, EcKey};

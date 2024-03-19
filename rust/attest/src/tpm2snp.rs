@@ -10,9 +10,9 @@ use boring::x509::store::X509StoreBuilder;
 use boring::x509::X509;
 use prost::Message;
 
-use crate::dcap::cert_chain::CertChain;
-use crate::dcap::{Error as DcapError, Expireable as _};
+use crate::cert_chain::{self, CertChain};
 use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
+use crate::expireable::Expireable as _;
 use crate::proto::svr2;
 use crate::svr2::expected_raft_config;
 
@@ -161,8 +161,8 @@ impl From<boring::error::ErrorStack> for Error {
     }
 }
 
-impl From<DcapError> for Error {
-    fn from(err: DcapError) -> Self {
+impl From<cert_chain::Error> for Error {
+    fn from(err: cert_chain::Error) -> Self {
         Error::AttestationDataError {
             reason: err.to_string(),
         }

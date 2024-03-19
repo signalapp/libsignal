@@ -18,7 +18,7 @@ use sha2::Digest;
 use std::intrinsics::transmute;
 use std::time::SystemTime;
 
-use crate::dcap::cert_chain::CertChain;
+use crate::cert_chain::CertChain;
 use crate::dcap::ecdsa::{ecdsa_signature_from_bytes, EcdsaSigned};
 use crate::dcap::sgx_report_body::SgxReportBody;
 use crate::dcap::sgx_x509::SgxPckExtension;
@@ -363,7 +363,7 @@ mod tests {
     use std::fs;
     use std::path::Path;
 
-    use crate::dcap::cert_chain::testutil::cert_chain;
+    use crate::cert_chain::testutil::cert_chain;
 
     #[test]
     fn valid_quote_from_disk() {

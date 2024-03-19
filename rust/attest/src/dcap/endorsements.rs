@@ -19,7 +19,7 @@ use strum::EnumCount;
 use std::intrinsics::transmute;
 use std::time::SystemTime;
 
-use crate::dcap::cert_chain::CertChain;
+use crate::cert_chain::CertChain;
 use crate::dcap::ecdsa::{deserialize_ecdsa_signature, EcdsaSigned};
 use crate::dcap::revocation_list::RevocationList;
 use crate::dcap::{Error, Expireable, Result};

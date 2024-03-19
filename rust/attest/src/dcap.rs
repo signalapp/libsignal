@@ -49,8 +49,8 @@ use crate::dcap::sgx_report_body::SgxFlags;
 use crate::dcap::sgx_x509::SgxPckExtension;
 use crate::enclave::AttestationError;
 use crate::error::{Context, ContextError};
+use crate::expireable::Expireable;
 
-pub(crate) mod cert_chain;
 mod ecdsa;
 mod endorsements;
 mod evidence;
@@ -66,10 +66,6 @@ pub(crate) struct DcapErrorDomain;
 pub(crate) type Error = ContextError<DcapErrorDomain>;
 
 type Result<T> = std::result::Result<T, Error>;
-
-pub(crate) trait Expireable {
-    fn valid_at(&self, timestamp: SystemTime) -> bool;
-}
 
 /// Intel public key that signs all root certificates for DCAP
 const INTEL_ROOT_PUB_KEY: &[u8] = &[

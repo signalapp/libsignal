@@ -15,8 +15,10 @@ pub mod sgx_session;
 pub mod svr2;
 pub mod tpm2snp;
 
+mod cert_chain;
 mod endian;
 mod error;
+mod expireable;
 mod proto;
 mod snow_resolver;
 mod util;
