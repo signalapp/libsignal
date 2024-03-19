@@ -14,11 +14,13 @@ license = "AGPL-3.0-only"
 boring = { git = "https://github.com/signalapp/boring", branch = "libsignal", default-features = false }
 
 asn1 = "0.16.1"
+base64 = "0.21"
 bitflags = "2.3.3"
 chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 ciborium = "0.2"
 displaydoc = "0.2"
+hmac = "0.12"
 hex = { version = "0.4", features = ["serde"] }
 hex-literal = "0.4.1"
 lazy_static = "1.4.0"
@@ -37,7 +39,9 @@ uuid = "1.1.2"
 x25519-dalek = "2.0.0"
 
 [dev-dependencies]
+assert_matches = "1.5"
 snow = { version = "0.9.5", features = ["default-resolver"] }
+test-case = "3.3"
 
 [build-dependencies]
 prost-build = "0.12"

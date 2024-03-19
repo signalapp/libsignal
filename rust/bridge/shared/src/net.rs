@@ -18,7 +18,7 @@ use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{chat_service, ChatServiceWithDebugInfo, DebugInfo, Request, Response};
 use libsignal_net::enclave::{
-    Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx,
+    Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
@@ -92,6 +92,7 @@ pub struct ConnectionManager {
     svr3: (
         EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager>,
         EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager>,
+        EnclaveEndpointConnection<Tpm2Snp, MultiRouteConnectionManager>,
     ),
     transport_connector: TcpSslTransportConnector,
 }
@@ -120,6 +121,7 @@ impl ConnectionManager {
             svr3: (
                 Self::endpoint_connection(environment.env().svr3.sgx()),
                 Self::endpoint_connection(environment.env().svr3.nitro()),
+                Self::endpoint_connection(environment.env().svr3.tpm2snp()),
             ),
             transport_connector,
         }
@@ -220,12 +222,13 @@ async fn svr3_connect<'a>(
     let ConnectionManager {
         chat: _chat,
         cdsi: _cdsi,
-        svr3: (sgx, nitro),
+        svr3: (sgx, nitro, tpm2snp),
         transport_connector,
     } = connection_manager;
     let sgx = SvrConnection::connect(auth.clone(), sgx, transport_connector.clone()).await?;
-    let nitro = SvrConnection::connect(auth, nitro, transport_connector.clone()).await?;
-    Ok((sgx, nitro))
+    let nitro = SvrConnection::connect(auth.clone(), nitro, transport_connector.clone()).await?;
+    let tpm2snp = SvrConnection::connect(auth, tpm2snp, transport_connector.clone()).await?;
+    Ok((sgx, nitro, tpm2snp))
 }
 
 pub struct Chat {

@@ -17,7 +17,7 @@ use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, Sgx};
+use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, Sgx, Tpm2Snp};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
@@ -25,12 +25,9 @@ use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// base64 encoding of the auth secret for SGX
+    /// base64 encoding of the auth secret for enclaves
     #[arg(long)]
-    sgx_secret: String,
-    #[arg(long)]
-    /// base64 encoding of the auth secret for Nitro
-    nitro_secret: String,
+    enclave_secret: Option<String>,
     /// Password to be used to protect the data
     #[arg(long)]
     password: String,
@@ -40,8 +37,13 @@ async fn main() {
     init_logger();
     let args = Args::parse();
 
-    let sgx_secret: [u8; 32] = parse_auth_secret(&args.sgx_secret);
-    let nitro_secret: [u8; 32] = parse_auth_secret(&args.nitro_secret);
+    let enclave_secret: [u8; 32] = {
+        let b64 = &args
+            .enclave_secret
+            .or_else(|| std::env::var("ENCLAVE_SECRET").ok())
+            .expect("Enclave secret is not set");
+        parse_auth_secret(b64)
+    };
 
     let mut rng = OsRng;
 
@@ -52,22 +54,25 @@ async fn main() {
         rng.fill_bytes(&mut bytes[..]);
         bytes
     };
+    let auth = Auth::from_uid_and_secret(uid, enclave_secret);
 
     let connect = || async {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
         let connection_a = EnclaveEndpointConnection::new(env.sgx(), Duration::from_secs(10));
-        let sgx_auth = Auth::from_uid_and_secret(uid, sgx_secret);
-        let a = SvrConnection::<Sgx>::connect(sgx_auth, &connection_a, connector.clone())
+        let a = SvrConnection::<Sgx>::connect(auth.clone(), &connection_a, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
         let connection_b = EnclaveEndpointConnection::new(env.nitro(), Duration::from_secs(10));
-        let nitro_auth = Auth::from_uid_and_secret(uid, nitro_secret);
-        let b = SvrConnection::<Nitro>::connect(nitro_auth, &connection_b, connector)
+        let b = SvrConnection::<Nitro>::connect(auth.clone(), &connection_b, connector.clone())
             .await
             .expect("can attestedly connect to Nitro");
 
-        (a, b)
+        let connection_c = EnclaveEndpointConnection::new(env.tpm2snp(), Duration::from_secs(10));
+        let c = SvrConnection::<Tpm2Snp>::connect(auth.clone(), &connection_c, connector)
+            .await
+            .expect("can attestedly connect to Tpm2Snp");
+        (a, b, c)
     };
 
     let secret = make_secret(&mut rng);

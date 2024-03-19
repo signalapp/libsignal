@@ -14,7 +14,7 @@ use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMac
 use rand_core::OsRng;
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, PpssSetup, Sgx};
+use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, PpssSetup, Sgx, Tpm2Snp};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
@@ -125,8 +125,7 @@ pub struct Svr3Storage {
     runtime: tokio::runtime::Runtime,
     env: Svr3Env<'static>,
     current_uid: Option<Uid>,
-    sgx_secret: Secret,
-    nitro_secret: Secret,
+    enclave_secret: Secret,
     share_sets: HashMap<Uid, OpaqueMaskedShareSet>,
     config: SUTConfig,
 }
@@ -297,15 +296,11 @@ impl StateMachineTest for Svr3Storage {
 
 impl Svr3Storage {
     fn new() -> Self {
-        let sgx_secret = {
-            let b64 = std::env::var("SVR3_SGX_SECRET").expect("SGX secret should be set");
+        let enclave_secret = {
+            let b64 = std::env::var("ENCLAVE_SECRET").expect("ENCLAVE_SECRET should be set");
             parse_auth_secret(&b64)
         };
 
-        let nitro_secret = {
-            let b64 = std::env::var("SVR3_NITRO_SECRET").expect("Nitro secret should be set");
-            parse_auth_secret(&b64)
-        };
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .worker_threads(1)
@@ -315,8 +310,7 @@ impl Svr3Storage {
             runtime,
             env: libsignal_net::env::STAGING.svr3,
             current_uid: None,
-            sgx_secret,
-            nitro_secret,
+            enclave_secret,
             share_sets: HashMap::default(),
             config: SUTConfig::default(),
         }
@@ -327,21 +321,26 @@ impl Svr3Storage {
         if let Some(duration) = self.config.sleep {
             tokio::time::sleep(duration).await;
         }
+        let auth = Auth::from_uid_and_secret(uid, self.enclave_secret);
         let sgx_connection =
             EnclaveEndpointConnection::new(self.env.sgx(), Duration::from_secs(10));
-        let sgx_auth = Auth::from_uid_and_secret(uid, self.sgx_secret);
-        let a = SvrConnection::<Sgx>::connect(sgx_auth, &sgx_connection, connector.clone())
+        let a = SvrConnection::<Sgx>::connect(auth.clone(), &sgx_connection, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
         let nitro_connection =
             EnclaveEndpointConnection::new(self.env.nitro(), Duration::from_secs(10));
-        let nitro_auth = Auth::from_uid_and_secret(uid, self.nitro_secret);
-        let b = SvrConnection::<Nitro>::connect(nitro_auth, &nitro_connection, connector)
+        let b = SvrConnection::<Nitro>::connect(auth.clone(), &nitro_connection, connector.clone())
             .await
             .expect("can attestedly connect to Nitro");
 
-        (a, b)
+        let tpm2snp_connection =
+            EnclaveEndpointConnection::new(self.env.tpm2snp(), Duration::from_secs(10));
+        let c = SvrConnection::<Tpm2Snp>::connect(auth.clone(), &tpm2snp_connection, connector)
+            .await
+            .expect("can attestedly connect to Nitro");
+
+        (a, b, c)
     }
 
     fn backup(&mut self, uid: Uid, what: Secret, max_tries: u32) -> OpaqueMaskedShareSet {

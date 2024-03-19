@@ -13,6 +13,7 @@ pub mod ias;
 pub mod nitro;
 pub mod sgx_session;
 pub mod svr2;
+pub mod tpm2snp;
 
 mod endian;
 mod error;

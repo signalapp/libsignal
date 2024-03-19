@@ -9,6 +9,7 @@ use displaydoc::Display;
 
 use crate::client_connection::ClientConnection;
 use crate::svr2::RaftConfig;
+use crate::tpm2snp::tpm2;
 use crate::{client_connection, dcap, nitro, proto, snow_resolver};
 use prost::Message;
 
@@ -90,6 +91,20 @@ impl From<nitro::NitroError> for Error {
     }
 }
 
+impl From<tpm2::Error> for AttestationError {
+    fn from(err: tpm2::Error) -> Self {
+        AttestationError {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<tpm2::Error> for Error {
+    fn from(err: tpm2::Error) -> Self {
+        Self::AttestationError(err.into())
+    }
+}
+
 /// A noise handshaker that can be used to build a [client_connection::ClientConnection]
 ///
 /// Callers provide an attestation that must contain the remote enclave's public key. If the
@@ -102,7 +117,7 @@ impl From<nitro::NitroError> for Error {
 /// ```pseudocode
 ///   let websocket = ... open websocket ...
 ///   let attestation_msg = websocket.recv();
-///   let (evidence, endoresments) = parse(attestation_msg);
+///   let (evidence, endorsements) = parse(attestation_msg);
 ///   let mut handshake = Handshake::new(
 ///     mrenclave, evidence, endorsements, acceptable_sw_advisories, current_time)?;
 ///   websocket.send(handshaker.initial_request());

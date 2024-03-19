@@ -24,8 +24,12 @@ pub(crate) struct CertChain {
 
 impl CertChain {
     pub fn from_pem_data(data: &[u8]) -> Result<CertChain> {
-        let mut certs = X509::stack_from_pem(data)?;
+        let certs = X509::stack_from_pem(data)?;
+        Self::new(certs)
+    }
 
+    pub fn new(maybe_unsorted_certs: impl IntoIterator<Item = X509>) -> Result<CertChain> {
+        let mut certs = Vec::from_iter(maybe_unsorted_certs);
         if certs.is_empty() {
             return Err(Error::new("empty chain"));
         }
@@ -300,6 +304,8 @@ pub mod testutil {
 mod test {
     use super::testutil::*;
     use super::*;
+
+    use assert_matches::assert_matches;
     use boring::nid::Nid;
     use boring::x509::store::{X509Store, X509StoreBuilder};
     use boring::x509::verify::X509VerifyFlags;
@@ -458,5 +464,16 @@ mod test {
         cert_chain
             .validate_chain(&trust, &[&intermediate_crl])
             .expect("should validate");
+    }
+
+    #[test]
+    fn new_chain_from_unsorted_certs() {
+        let mut certs = chain(5);
+        let expected = names(&certs);
+        certs.swap(4, 2);
+        certs.swap(0, 3);
+        assert_matches!(CertChain::new(certs), Ok(CertChain { certs: actual }) => {
+            assert_eq!(names(&actual), expected);
+        });
     }
 }

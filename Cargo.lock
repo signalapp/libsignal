@@ -253,6 +253,8 @@ name = "attest"
 version = "0.1.0"
 dependencies = [
  "asn1",
+ "assert_matches",
+ "base64",
  "bitflags 2.4.2",
  "boring",
  "chacha20poly1305",
@@ -261,6 +263,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex-literal",
+ "hmac",
  "lazy_static",
  "libc",
  "log",
@@ -274,6 +277,7 @@ dependencies = [
  "static_assertions",
  "strum",
  "subtle",
+ "test-case",
  "uuid",
  "x25519-dalek",
 ]

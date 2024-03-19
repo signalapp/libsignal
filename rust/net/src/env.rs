@@ -12,7 +12,7 @@ use std::time::Duration;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
-use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx};
+use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx, Tpm2Snp};
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::LookupResult;
 use crate::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq};
@@ -110,6 +110,24 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: &RootCertificates::Signal,
     proxy_path: "/svr3-nitro-staging",
+};
+
+pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
+    hostname: "devnull.signal.org",
+    ip_v4: &[],
+    ip_v6: &[],
+    cert: &RootCertificates::Signal,
+    proxy_path: "/svr3-tpm2snp",
+};
+
+const TPM2SNP_TEST_SERVER_CERT: RootCertificates =
+    RootCertificates::FromDer(include_bytes!("../res/tpm2snp_test_server_cert.cer"));
+pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
+    hostname: "backend3.svr3.staging.signal.org",
+    ip_v4: &[ip_addr!(v4, "13.88.30.76")],
+    ip_v6: &[],
+    cert: &TPM2SNP_TEST_SERVER_CERT,
+    proxy_path: "/svr3-tpm2snp-staging",
 };
 
 const PROXY_CONFIG_F: ProxyConfig = ProxyConfig {
@@ -216,12 +234,17 @@ impl<'a> Env<'a, Svr3Env<'a>> {
             svr2.domain_config.static_fallback(),
             svr3.sgx().domain_config.static_fallback(),
             svr3.nitro().domain_config.static_fallback(),
+            svr3.tpm2snp().domain_config.static_fallback(),
             chat_domain_config.static_fallback(),
         ])
     }
 }
 
-pub struct Svr3Env<'a>(EnclaveEndpoint<'a, Sgx>, EnclaveEndpoint<'a, Nitro>);
+pub struct Svr3Env<'a>(
+    EnclaveEndpoint<'a, Sgx>,
+    EnclaveEndpoint<'a, Nitro>,
+    EnclaveEndpoint<'a, Tpm2Snp>,
+);
 
 impl<'a> Svr3Env<'a> {
     #[inline]
@@ -232,6 +255,11 @@ impl<'a> Svr3Env<'a> {
     #[inline]
     pub fn nitro(&self) -> EnclaveEndpoint<'a, Nitro> {
         self.1
+    }
+
+    #[inline]
+    pub fn tpm2snp(&self) -> EnclaveEndpoint<'a, Tpm2Snp> {
+        self.2
     }
 }
 
@@ -254,6 +282,10 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_STAGING),
         },
+        EnclaveEndpoint {
+            domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING,
+            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING),
+        },
     ),
 };
 
@@ -275,6 +307,10 @@ pub const PROD: Env<'static, Svr3Env> = Env {
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
+        },
+        EnclaveEndpoint {
+            domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP,
+            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_PROD),
         },
     ),
 };
