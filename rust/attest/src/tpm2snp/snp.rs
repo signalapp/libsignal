@@ -16,7 +16,7 @@ use subtle::ConstantTimeEq as _;
 const SIG_PART_SIZE: usize = 48;
 const SIG_PART_CAPACITY: usize = 72;
 const REPORT_SIZE: usize = 1184;
-pub const SIGNATURE_OFFSET: usize = 0x2A0;
+const SIGNATURE_OFFSET: usize = 0x2A0;
 const REPORT_DATA_OFFSET: usize = 0x50;
 const SHA256_SIZE: usize = 32;
 
@@ -59,7 +59,7 @@ impl<'a> Report<'a> {
         }
     }
 
-    pub fn digest(&self) -> &'a [u8] {
+    fn digest(&self) -> &'a [u8] {
         &self.0[REPORT_DATA_OFFSET..][..SHA256_SIZE]
     }
 

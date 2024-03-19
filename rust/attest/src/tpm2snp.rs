@@ -19,7 +19,9 @@ use crate::svr2::expected_raft_config;
 use crate::constants::TPM2SNP_EXPECTED_PCRS;
 
 mod snp;
-pub(crate) mod tpm2;
+mod tpm2;
+
+pub(crate) use tpm2::{Error as Tpm2Error, PcrMap};
 
 const MSFT_AKCERT_ROOT_PEM: &[u8] = include_bytes!("../res/msft_akcert_root.pem");
 
@@ -36,7 +38,7 @@ pub fn new_handshake(enclave: &[u8], attestation_msg: &[u8], now: SystemTime) ->
 }
 
 impl Handshake {
-    pub(crate) fn for_tpm2snp(
+    fn for_tpm2snp(
         enclave: &[u8],
         evidence: &[u8],
         endorsements: &[u8],

@@ -5,10 +5,9 @@
 
 use hex_literal::hex;
 
-use crate::nitro;
 use crate::svr2::RaftConfig;
-use crate::tpm2snp::tpm2;
 use crate::util::SmallMap;
+use crate::{nitro, tpm2snp};
 
 pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
     &hex!("0f6fd79cdfdaa5b2e6337f534d3baf999318b0c462a7ac1f41297a3e4b424a57");
@@ -41,7 +40,7 @@ pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 1> 
 
 // Manually format the following to keep the indexes and hexstrings on the same line.
 #[rustfmt::skip]
-pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2::PcrMap, 1> =
+pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp::PcrMap, 1> =
     SmallMap::new([(
         ENCLAVE_ID_SVR3_TPM2SNP_STAGING,
         &[

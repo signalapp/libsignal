@@ -9,7 +9,7 @@ use displaydoc::Display;
 
 use crate::client_connection::ClientConnection;
 use crate::svr2::RaftConfig;
-use crate::tpm2snp::tpm2;
+use crate::tpm2snp::Tpm2Error;
 use crate::{client_connection, dcap, nitro, proto, snow_resolver};
 use prost::Message;
 
@@ -91,16 +91,16 @@ impl From<nitro::NitroError> for Error {
     }
 }
 
-impl From<tpm2::Error> for AttestationError {
-    fn from(err: tpm2::Error) -> Self {
+impl From<Tpm2Error> for AttestationError {
+    fn from(err: Tpm2Error) -> Self {
         AttestationError {
             message: err.to_string(),
         }
     }
 }
 
-impl From<tpm2::Error> for Error {
-    fn from(err: tpm2::Error) -> Self {
+impl From<Tpm2Error> for Error {
+    fn from(err: Tpm2Error) -> Self {
         Self::AttestationError(err.into())
     }
 }
