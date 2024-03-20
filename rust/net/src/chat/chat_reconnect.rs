@@ -10,10 +10,11 @@ use async_trait::async_trait;
 use tokio::time::Instant;
 
 use crate::chat::{
-    ChatService, ChatServiceWithDebugInfo, DebugInfo, IpType, RemoteAddressInfo, Request, Response,
+    ChatService, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, IpType, RemoteAddressInfo,
+    Request, Response,
 };
 use crate::infra::connection_manager::ConnectionManager;
-use crate::infra::errors::{LogSafeDisplay, NetError};
+use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnector, ServiceWithReconnect};
 
 #[async_trait]
@@ -23,13 +24,14 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::Error: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         let service = self.service_clone().await;
         match service {
             Some(s) => s.send(msg, timeout).await,
-            None => Err(NetError::NoServiceConnection),
+            None => Err(ChatServiceError::NoServiceConnection),
         }
     }
 
@@ -45,13 +47,14 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::Error: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send_and_debug(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         let deadline = Instant::now() + timeout;
         let is_connected = self.is_connected(deadline).await;
         let service = self.service_clone().await;
@@ -60,7 +63,7 @@ where
                 let result = s.send(msg, deadline - Instant::now()).await;
                 (result, s.remote_address().into())
             }
-            None => (Err(NetError::NoServiceConnection), IpType::Unknown),
+            None => (Err(ChatServiceError::NoServiceConnection), IpType::Unknown),
         };
         (
             response,

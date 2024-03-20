@@ -16,9 +16,12 @@ use crate::env::{DomainConfig, Svr3Env};
 use crate::infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::infra::errors::{LogSafeDisplay, NetError};
+use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
-use crate::infra::ws::{AttestedConnection, AttestedConnectionError, WebSocketClientConnector};
+use crate::infra::ws::{
+    AttestedConnection, AttestedConnectionError, WebSocketClientConnector, WebSocketConnectError,
+    WebSocketServiceError,
+};
 use crate::infra::{
     make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, TransportConnector,
 };
@@ -203,12 +206,16 @@ pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
+    /// websocket error: {0}
+    WebSocketConnect(#[from] WebSocketConnectError),
     /// Network error: {0}
-    Net(#[from] NetError),
+    WebSocket(#[from] WebSocketServiceError),
     /// Protocol error after establishing a connection
     Protocol,
     /// Enclave attestation failed: {0}
     AttestationError(attest::enclave::Error),
+    /// Timeout
+    Timeout,
 }
 
 impl LogSafeDisplay for Error {}
@@ -217,7 +224,7 @@ impl From<AttestedConnectionError> for Error {
     fn from(value: AttestedConnectionError) -> Self {
         match value {
             AttestedConnectionError::ClientConnection(_) => Self::Protocol,
-            AttestedConnectionError::Net(net) => Self::Net(net),
+            AttestedConnectionError::WebSocket(net) => Self::WebSocket(net),
             AttestedConnectionError::Protocol => Self::Protocol,
             AttestedConnectionError::Sgx(err) => Self::AttestationError(err),
         }
@@ -235,7 +242,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
     {
         let auth_decorator = auth.into();
         let connector = ServiceConnectorWithDecorator::new(
-            WebSocketClientConnector::new(
+            WebSocketClientConnector::<_, WebSocketServiceError>::new(
                 transport_connector,
                 self.endpoint_connection.config.clone(),
             ),
@@ -246,9 +253,11 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),
-            ServiceState::Cooldown(_) => Err(Error::Net(NetError::NoServiceConnection)),
-            ServiceState::Error(e) => Err(Error::Net(e)),
-            ServiceState::TimedOut => Err(Error::Net(NetError::Timeout)),
+            ServiceState::Cooldown(_) => {
+                unreachable!("new servie connector should not be in cooldown")
+            }
+            ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
+            ServiceState::TimedOut => Err(Error::Timeout),
         }?;
         let attested = AttestedConnection::connect(websocket, |attestation_msg| {
             E::new_handshake(&self.params, attestation_msg)

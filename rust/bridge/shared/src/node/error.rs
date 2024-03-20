@@ -396,7 +396,7 @@ impl SignalNodeError for std::io::Error {
     }
 }
 
-impl SignalNodeError for libsignal_net::infra::errors::NetError {
+impl SignalNodeError for libsignal_net::chat::ChatServiceError {
     fn throw<'a>(
         self,
         cx: &mut impl Context<'a>,
@@ -454,9 +454,12 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
                 }),
             ),
             Self::AttestationError(e) => return e.throw(cx, module, operation_name),
-            Self::Net(_) | Self::Protocol | Self::InvalidResponse | Self::ParseError => {
-                (IO_ERROR, None)
-            }
+            Self::Timeout
+            | Self::ConnectTransport(_)
+            | Self::WebSocket(_)
+            | Self::Protocol
+            | Self::InvalidResponse
+            | Self::ParseError => (IO_ERROR, None),
         };
         let message = self.to_string();
         new_js_error(
@@ -481,7 +484,7 @@ impl SignalNodeError for libsignal_net::svr3::Error {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let name = match self {
-            Svr3Error::Net(_) => Some(IO_ERROR),
+            Svr3Error::Service(_) | Svr3Error::Timeout | Svr3Error::Connect(_) => Some(IO_ERROR),
             Svr3Error::AttestationError(inner) => {
                 return inner.throw(cx, module, operation_name);
             }

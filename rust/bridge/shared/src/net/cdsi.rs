@@ -11,7 +11,6 @@ use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
-use libsignal_net::infra::errors::NetError;
 use libsignal_net::utils::timeout;
 use libsignal_protocol::{Aci, SignalProtocolError};
 
@@ -119,7 +118,7 @@ async fn CdsiLookup_new(
     .await?;
     let (token, remaining_response) = timeout(
         Duration::from_millis(timeout_millis.into()),
-        cdsi::LookupError::Net(NetError::Timeout),
+        cdsi::LookupError::Timeout,
         connected.send_request(request),
     )
     .await?;

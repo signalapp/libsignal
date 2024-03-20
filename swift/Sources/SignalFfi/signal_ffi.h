@@ -184,9 +184,10 @@ typedef enum {
   SignalErrorCodeIoError = 130,
   SignalErrorCodeInvalidMediaInput = 131,
   SignalErrorCodeUnsupportedMediaInput = 132,
-  SignalErrorCodeNetwork = 133,
+  SignalErrorCodeTimeout = 133,
   SignalErrorCodeNetworkProtocol = 134,
   SignalErrorCodeRateLimited = 135,
+  SignalErrorCodeWebSocket = 136,
   SignalErrorCodeSvrDataMissing = 150,
   SignalErrorCodeSvrRestoreFailed = 151,
 } SignalErrorCode;

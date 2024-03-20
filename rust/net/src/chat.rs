@@ -10,18 +10,17 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use url::Host;
 
-use crate::chat::ws::ChatOverWebSocketServiceConnector;
+use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use crate::infra::connection_manager::MultiRouteConnectionManager;
-use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
 use crate::infra::ws::WebSocketClientConnector;
 use crate::infra::{EndpointConnection, HttpRequestDecorator, TransportConnector};
 use crate::proto;
 use crate::utils::basic_authorization;
 
-use self::ws::ServerRequest;
-
 pub mod chat_reconnect;
+mod error;
+pub use error::ChatServiceError;
 pub mod ws;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;
@@ -37,7 +36,7 @@ pub trait ChatService {
     ///
     /// This API can be represented using different transports (e.g. WebSockets
     /// or HTTP) capable of sending [Request] objects.
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError>;
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError>;
 
     /// If the service is currently holding an open connection, closes that connection.
     ///
@@ -53,7 +52,7 @@ pub trait ChatServiceWithDebugInfo: ChatService {
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo);
+    ) -> (Result<Response, ChatServiceError>, DebugInfo);
 }
 
 pub trait RemoteAddressInfo {
@@ -109,16 +108,19 @@ pub struct Response {
     pub headers: HeaderMap,
 }
 
+#[derive(Debug)]
+pub struct ResponseProtoInvalidError;
+
 impl TryFrom<ResponseProto> for Response {
-    type Error = NetError;
+    type Error = ResponseProtoInvalidError;
 
     fn try_from(response_proto: ResponseProto) -> Result<Self, Self::Error> {
         let status = response_proto
             .status()
             .try_into()
-            .map_err(|_| NetError::IncomingDataInvalid)
+            .map_err(|_| ResponseProtoInvalidError)
             .and_then(|status_code| {
-                StatusCode::from_u16(status_code).map_err(|_| NetError::IncomingDataInvalid)
+                StatusCode::from_u16(status_code).map_err(|_| ResponseProtoInvalidError)
             })?;
         let message = response_proto.message;
         let body = response_proto.body.map(|v| v.into_boxed_slice());
@@ -127,13 +129,13 @@ impl TryFrom<ResponseProto> for Response {
             |mut headers, header_string| {
                 let (name, value) = header_string
                     .split_once(':')
-                    .ok_or(NetError::IncomingDataInvalid)?;
+                    .ok_or(ResponseProtoInvalidError)?;
                 let header_name =
-                    HeaderName::try_from(name).map_err(|_| NetError::IncomingDataInvalid)?;
-                let header_value = HeaderValue::from_str(value.trim())
-                    .map_err(|_| NetError::IncomingDataInvalid)?;
+                    HeaderName::try_from(name).map_err(|_| ResponseProtoInvalidError)?;
+                let header_value =
+                    HeaderValue::from_str(value.trim()).map_err(|_| ResponseProtoInvalidError)?;
                 headers.append(header_name, header_value);
-                Ok::<HeaderMap, NetError>(headers)
+                Ok(headers)
             },
         )?;
         Ok(Response {
@@ -142,6 +144,12 @@ impl TryFrom<ResponseProto> for Response {
             body,
             headers,
         })
+    }
+}
+
+impl From<ResponseProtoInvalidError> for ChatServiceError {
+    fn from(ResponseProtoInvalidError: ResponseProtoInvalidError) -> Self {
+        Self::IncomingDataInvalid
     }
 }
 
@@ -159,7 +167,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> Result<Response, NetError> {
+    ) -> Result<Response, ChatServiceError> {
         self.auth_service.send(msg, timeout).await
     }
 
@@ -167,7 +175,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> Result<Response, NetError> {
+    ) -> Result<Response, ChatServiceError> {
         self.unauth_service.send(msg, timeout).await
     }
 
@@ -175,7 +183,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.auth_service.send_and_debug(msg, timeout).await
     }
 
@@ -183,7 +191,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.unauth_service.send_and_debug(msg, timeout).await
     }
 
@@ -234,7 +242,7 @@ impl<T> ChatService for AnonymousChatService<T>
 where
     T: ChatService + Send + Sync,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.inner.send(msg, timeout).await
     }
 
@@ -252,7 +260,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.inner.send_and_debug(msg, timeout).await
     }
 }
@@ -274,7 +282,7 @@ impl<T> ChatService for AuthorizedChatService<T>
 where
     T: ChatService + Send + Sync,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.inner.send(msg, timeout).await
     }
 
@@ -285,7 +293,7 @@ where
 
 #[async_trait]
 impl ChatService for Arc<dyn ChatService + Send + Sync> {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.as_ref().send(msg, timeout).await
     }
 
@@ -303,14 +311,14 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.inner.send_and_debug(msg, timeout).await
     }
 }
 
 #[async_trait]
 impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.as_ref().send(msg, timeout).await
     }
 
@@ -325,7 +333,7 @@ impl ChatServiceWithDebugInfo for Arc<dyn ChatServiceWithDebugInfo + Send + Sync
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.as_ref().send_and_debug(msg, timeout).await
     }
 }
@@ -398,8 +406,7 @@ pub fn chat_service<T: TransportConnector + 'static>(
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::chat::{Response, ResponseProto};
-    use crate::infra::errors::NetError;
+    use crate::chat::{Response, ResponseProto, ResponseProtoInvalidError};
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue};
 
@@ -410,10 +417,10 @@ pub(crate) mod test {
         use async_trait::async_trait;
         use http::Method;
 
-        use crate::chat::{ChatService, Request, Response};
+        use crate::chat::{ChatService, ChatServiceError, Request, Response};
         use crate::infra::certs::RootCertificates;
         use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
-        use crate::infra::errors::{LogSafeDisplay, NetError};
+        use crate::infra::errors::LogSafeDisplay;
         use crate::infra::reconnect::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
         use crate::infra::ConnectionParams;
@@ -424,14 +431,19 @@ pub(crate) mod test {
             C: ServiceConnector + Send + Sync + 'static,
             C::Service: ChatService + Clone + Send + Sync + 'static,
             C::Channel: Send + Sync,
-            C::Error: Send + Sync + Debug + LogSafeDisplay,
+            C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+            C::StartError: Send + Sync + Debug + LogSafeDisplay,
         {
-            async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+            async fn send(
+                &self,
+                msg: Request,
+                timeout: Duration,
+            ) -> Result<Response, ChatServiceError> {
                 match &*self.inner {
                     ServiceState::Active(service, status) if !status.is_stopped() => {
                         service.clone().send(msg, timeout).await
                     }
-                    _ => Err(NetError::NoServiceConnection),
+                    _ => Err(ChatServiceError::NoServiceConnection),
                 }
             }
 
@@ -577,7 +589,7 @@ pub(crate) mod test {
             message: None,
             id: None,
         };
-        let response: Result<Response, NetError> = proto.try_into();
-        assert_matches!(response, Err(NetError::IncomingDataInvalid));
+        let response: Result<Response, _> = proto.try_into();
+        assert_matches!(response, Err(ResponseProtoInvalidError));
     }
 }

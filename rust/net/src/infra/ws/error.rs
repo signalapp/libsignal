@@ -7,7 +7,22 @@
 //! [`Error`] type is a mirror of [`tungstenite::error::Error`] whose
 //! [`std::fmt::Display`] impl doesn't contain any user data.
 
-use crate::infra::errors::LogSafeDisplay;
+use std::borrow::Borrow;
+
+use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
+
+/// Errors that can occur when connecting a websocket.
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum WebSocketConnectError {
+    /// transport: {0}
+    Transport(#[from] TransportConnectError),
+    /// timed out while connecting
+    Timeout,
+    /// websocket error
+    WebSocketError(#[from] tungstenite::Error),
+}
+
+impl LogSafeDisplay for WebSocketConnectError {}
 
 /// Mirror of [`tungstenite::error::Error`].
 ///
@@ -21,7 +36,7 @@ pub enum Error {
     Io,
 
     /// Space: {0}
-    Space(SpaceError),
+    Space(#[from] SpaceError),
 
     /// WebSocket protocol error: {0}
     Protocol(#[from] ProtocolError),
@@ -120,8 +135,9 @@ impl std::fmt::Display for HttpFormatError {
     }
 }
 
-impl From<http::Error> for HttpFormatError {
-    fn from(value: http::Error) -> Self {
+impl<E: Borrow<http::Error>> From<E> for HttpFormatError {
+    fn from(value: E) -> Self {
+        let value = value.borrow();
         // Try to figure out the actual error type since there's no enum to
         // exhaustively match on.
         if value.is::<http::status::InvalidStatusCode>() {

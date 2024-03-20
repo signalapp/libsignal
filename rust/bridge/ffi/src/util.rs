@@ -79,9 +79,10 @@ pub enum SignalErrorCode {
     #[allow(dead_code)]
     UnsupportedMediaInput = 132,
 
-    Network = 133,
+    Timeout = 133,
     NetworkProtocol = 134,
     RateLimited = 135,
+    WebSocket = 136,
 
     SvrDataMissing = 150,
     SvrRestoreFailed = 151,
@@ -317,7 +318,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                     }
                 }
             }
-            SignalFfiError::Network(_) => SignalErrorCode::Network,
+            SignalFfiError::WebSocket(_) => SignalErrorCode::WebSocket,
+            SignalFfiError::Timeout => SignalErrorCode::Timeout,
             SignalFfiError::NetworkProtocol(_) => SignalErrorCode::NetworkProtocol,
             SignalFfiError::RateLimited {
                 retry_after_seconds: _,

@@ -9,6 +9,7 @@ use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -21,7 +22,7 @@ use crate::support::describe_panic;
 use super::NullPointerError;
 
 /// The top-level error type (opaquely) returned to C clients when something goes wrong.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum SignalFfiError {
     Signal(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
@@ -35,7 +36,8 @@ pub enum SignalFfiError {
     UsernameProofError(usernames::ProofVerificationFailure),
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
-    Network(libsignal_net::infra::errors::NetError),
+    WebSocket(#[from] WebSocketServiceError),
+    Timeout,
     NetworkProtocol(String),
     RateLimited {
         retry_after_seconds: u32,
@@ -73,7 +75,8 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::UsernameProofError(e) => write!(f, "{}", e),
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
-            SignalFfiError::Network(e) => write!(f, "Network error: {e}"),
+            SignalFfiError::Timeout => write!(f, "Operation timed out"),
+            SignalFfiError::WebSocket(e) => write!(f, "WebSocket error: {e}"),
             SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
             SignalFfiError::RateLimited {
                 retry_after_seconds,
@@ -192,7 +195,9 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
 
         match value {
             LookupError::AttestationError(e) => SignalFfiError::Sgx(e),
-            LookupError::Net(e) => SignalFfiError::Network(e),
+            LookupError::ConnectTransport(e) => SignalFfiError::Io(e.into()),
+            LookupError::WebSocket(e) => SignalFfiError::WebSocket(e),
+            LookupError::Timeout => SignalFfiError::Timeout,
             LookupError::ParseError | LookupError::Protocol | LookupError::InvalidResponse => {
                 SignalFfiError::NetworkProtocol(value.to_string())
             }
@@ -208,7 +213,13 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
 impl From<Svr3Error> for SignalFfiError {
     fn from(err: Svr3Error) -> Self {
         match err {
-            Svr3Error::Net(inner) => SignalFfiError::Network(inner),
+            Svr3Error::Connect(e) => match e {
+                WebSocketConnectError::Transport(e) => SignalFfiError::Io(e.into()),
+                WebSocketConnectError::Timeout => SignalFfiError::Timeout,
+                WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
+            },
+            Svr3Error::Service(e) => SignalFfiError::WebSocket(e),
+            Svr3Error::Timeout => SignalFfiError::Timeout,
             Svr3Error::AttestationError(inner) => SignalFfiError::Sgx(inner),
             Svr3Error::Protocol(inner) => SignalFfiError::NetworkProtocol(inner.to_string()),
             Svr3Error::RequestFailed(_) | Svr3Error::RestoreFailed | Svr3Error::DataMissing => {

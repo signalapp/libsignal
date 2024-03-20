@@ -18,8 +18,11 @@ use uuid::Uuid;
 use crate::auth::HttpBasicAuth;
 use crate::enclave::{Cdsi, EnclaveEndpointConnection};
 use crate::infra::connection_manager::ConnectionManager;
-use crate::infra::errors::NetError;
-use crate::infra::ws::{AttestedConnection, AttestedConnectionError, NextOrClose};
+use crate::infra::errors::TransportConnectError;
+use crate::infra::ws::{
+    AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketConnectError,
+    WebSocketServiceError,
+};
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 
@@ -238,8 +241,6 @@ impl<S> AsMut<AttestedConnection<S>> for CdsiConnection<S> {
 /// Anything that can go wrong during a CDSI lookup.
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum LookupError {
-    /// Network error
-    Net(#[from] NetError),
     /// Protocol error after establishing a connection.
     Protocol,
     /// SGX attestation failed.
@@ -250,13 +251,19 @@ pub enum LookupError {
     RateLimited { retry_after_seconds: u32 },
     /// Failed to parse the response from the server.
     ParseError,
+    /// Transport failed: {0}
+    ConnectTransport(TransportConnectError),
+    /// WebSocket error: {0}
+    WebSocket(WebSocketServiceError),
+    /// Lookup timed out
+    Timeout,
 }
 
 impl From<AttestedConnectionError> for LookupError {
     fn from(value: AttestedConnectionError) -> Self {
         match value {
             AttestedConnectionError::ClientConnection(_) => Self::Protocol,
-            AttestedConnectionError::Net(net) => Self::Net(net),
+            AttestedConnectionError::WebSocket(e) => Self::WebSocket(e),
             AttestedConnectionError::Protocol => Self::Protocol,
             AttestedConnectionError::Sgx(e) => Self::AttestationError(e),
         }
@@ -266,9 +273,15 @@ impl From<AttestedConnectionError> for LookupError {
 impl From<crate::enclave::Error> for LookupError {
     fn from(value: crate::enclave::Error) -> Self {
         match value {
+            crate::svr::Error::WebSocketConnect(err) => match err {
+                WebSocketConnectError::Timeout => Self::Timeout,
+                WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
+                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+            },
             crate::svr::Error::AttestationError(err) => Self::AttestationError(err),
-            crate::svr::Error::Net(err) => Self::Net(err),
+            crate::svr::Error::WebSocket(err) => Self::WebSocket(err),
             crate::svr::Error::Protocol => Self::Protocol,
+            crate::svr::Error::Timeout => Self::Timeout,
         }
     }
 }

@@ -6,8 +6,7 @@
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
-use libsignal_net::chat::{DebugInfo, IpType, Response};
-use libsignal_net::infra::errors::NetError;
+use libsignal_net::chat::{ChatServiceError, DebugInfo, IpType, Response};
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
@@ -50,12 +49,12 @@ fn TESTING_CdsiLookupErrorConvert() -> Result<(), LookupError> {
 }
 
 #[bridge_fn(ffi = false, jni = false)]
-fn TESTING_ChatServiceErrorConvert() -> Result<(), NetError> {
-    Err(NetError::Timeout)
+fn TESTING_ChatServiceErrorConvert() -> Result<(), ChatServiceError> {
+    Err(ChatServiceError::Timeout)
 }
 
 #[bridge_fn(ffi = false, jni = false)]
-fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, NetError> {
+fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, ChatServiceError> {
     let body = match body_present {
         true => Some(b"content".to_vec().into_boxed_slice()),
         false => None,
@@ -72,7 +71,7 @@ fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, Ne
 }
 
 #[bridge_fn(ffi = false, jni = false)]
-fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, NetError> {
+fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, ChatServiceError> {
     Ok(DebugInfo {
         connection_reused: true,
         reconnect_count: 2,

@@ -544,7 +544,9 @@ where
         }
 
         SignalJniError::Cdsi(_) => jni_class_name!(org.signal.libsignal.net.CdsiLookupException),
-        SignalJniError::Net(_) => jni_class_name!(org.signal.libsignal.net.NetworkException),
+        SignalJniError::WebSocket(_) | SignalJniError::Timeout => {
+            jni_class_name!(org.signal.libsignal.net.NetworkException)
+        }
 
         SignalJniError::Svr3(Svr3Error::RestoreFailed) => {
             jni_class_name!(org.signal.libsignal.svr.RestoreFailedException)

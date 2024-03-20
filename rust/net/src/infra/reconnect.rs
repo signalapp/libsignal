@@ -21,16 +21,16 @@ use crate::infra::{ConnectionParams, HttpRequestDecorator};
 /// For a service that needs to go through some initialization procedure
 /// before it's ready for use, this enum describes its possible states.
 #[derive(Debug)]
-pub(crate) enum ServiceState<T, E> {
+pub(crate) enum ServiceState<T, CE, SE> {
     /// Contains an instance of the service which is initialized and ready to use.
     /// Also, since we're not actively listening for the event of service going inactive,
     /// the `ServiceStatus` could be used to see if the service is actually running.
-    Active(T, ServiceStatus<E>),
+    Active(T, ServiceStatus<SE>),
     /// The service is inactive and no initialization attempts are to be made
     /// until the `Instant` held by this object.
     Cooldown(Instant),
     /// Last connection attempt resulted in an error.
-    Error(E),
+    Error(CE),
     /// Last connection attempt timed out.
     TimedOut,
 }
@@ -42,14 +42,18 @@ pub(crate) enum ServiceState<T, E> {
 pub(crate) trait ServiceConnector: Clone {
     type Service;
     type Channel;
-    type Error;
+    type ConnectError;
+    type StartError;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::Error>;
+    ) -> Result<Self::Channel, Self::ConnectError>;
 
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>);
+    fn start_service(
+        &self,
+        channel: Self::Channel,
+    ) -> (Self::Service, ServiceStatus<Self::StartError>);
 }
 
 #[async_trait]
@@ -59,16 +63,20 @@ where
 {
     type Service = T::Service;
     type Channel = T::Channel;
-    type Error = T::Error;
+    type ConnectError = T::ConnectError;
+    type StartError = T::StartError;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::Error> {
+    ) -> Result<Self::Channel, Self::ConnectError> {
         (*self).connect_channel(connection_params).await
     }
 
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
+    fn start_service(
+        &self,
+        channel: Self::Channel,
+    ) -> (Self::Service, ServiceStatus<Self::StartError>) {
         (*self).start_service(channel)
     }
 }
@@ -92,19 +100,23 @@ where
 {
     type Service = C::Service;
     type Channel = C::Channel;
-    type Error = C::Error;
+    type ConnectError = C::ConnectError;
+    type StartError = C::StartError;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::Error> {
+    ) -> Result<Self::Channel, Self::ConnectError> {
         let decorated = connection_params
             .clone()
             .with_decorator(self.decorator.clone());
         self.inner.connect_channel(&decorated).await
     }
 
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
+    fn start_service(
+        &self,
+        channel: Self::Channel,
+    ) -> (Self::Service, ServiceStatus<Self::StartError>) {
         self.inner.start_service(channel)
     }
 }
@@ -159,7 +171,7 @@ where
     C: ServiceConnector + Send + Sync + 'a,
     C::Service: Send + Sync + 'a,
     C::Channel: Send + Sync,
-    C::Error: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
 {
     pub(crate) fn new(service_connector: C, connection_manager: M) -> Self {
         Self {
@@ -168,7 +180,7 @@ where
         }
     }
 
-    pub(crate) async fn connect(&self) -> ServiceState<C::Service, C::Error> {
+    pub(crate) async fn connect(&self) -> ServiceState<C::Service, C::ConnectError, C::StartError> {
         log::debug!("attempting a connection");
         let connection_attempt_result = self
             .connection_manager
@@ -209,7 +221,7 @@ where
 
 pub(crate) struct ServiceWithReconnectData<C: ServiceConnector, M> {
     reconnect_count: AtomicU32,
-    state: Mutex<ServiceState<C::Service, C::Error>>,
+    state: Mutex<ServiceState<C::Service, C::ConnectError, C::StartError>>,
     service_initializer: ServiceInitializer<C, M>,
     connection_timeout: Duration,
 }
@@ -225,7 +237,8 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: Clone + Send + Sync + 'static,
     C::Channel: Send + Sync,
-    C::Error: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::StartError: Debug + LogSafeDisplay,
 {
     pub(crate) fn new(
         service_connector: C,
@@ -399,12 +412,13 @@ mod test {
     impl ServiceConnector for TestServiceConnector {
         type Service = TestService;
         type Channel = ();
-        type Error = TestError;
+        type ConnectError = TestError;
+        type StartError = TestError;
 
         async fn connect_channel(
             &self,
             _connection_params: &ConnectionParams,
-        ) -> Result<Self::Channel, Self::Error> {
+        ) -> Result<Self::Channel, Self::ConnectError> {
             self.attempts.fetch_add(1, Ordering::Relaxed);
             let connection_time = *self.time_to_connect.lock().unwrap();
             let service_healthy = self.service_healthy.load(Ordering::Relaxed);
@@ -419,7 +433,7 @@ mod test {
         fn start_service(
             &self,
             _channel: Self::Channel,
-        ) -> (Self::Service, ServiceStatus<Self::Error>) {
+        ) -> (Self::Service, ServiceStatus<Self::StartError>) {
             let service_status_arc = ServiceStatus::default();
             let service = TestService::new(service_status_arc.clone());
             (service, service_status_arc)

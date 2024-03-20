@@ -286,7 +286,7 @@ final class Svr3Tests: TestCaseBase {
                 timeout: TimeInterval(0.01)
             )
             XCTFail("Should have thrown")
-        } catch SignalError.networkError(let message) {
+        } catch SignalError.timeoutError(let message) {
             // Make sure the logged message will provide enough details
             XCTAssertTrue(message.contains("Operation timed out"), "Unexpected message: '\(message)'")
         } catch {

@@ -17,14 +17,15 @@ use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::{chat_service, ChatServiceWithDebugInfo, DebugInfo, Request, Response};
+use libsignal_net::chat::{
+    chat_service, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, Request, Response,
+};
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::errors::NetError;
 use libsignal_net::infra::{make_ws_config, EndpointConnection, TcpSslTransportConnector};
 use libsignal_net::svr::{self, SvrConnection};
 use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
@@ -175,7 +176,7 @@ async fn Svr3Backup(
     let mut rng = OsRng;
     let share_set = timeout(
         Duration::from_millis(op_timeout_ms.into()),
-        svr::Error::Net(NetError::Timeout).into(),
+        svr::Error::Timeout.into(),
         svr3_connect(connection_manager, username, enclave_password)
             .map_err(|err| err.into())
             .and_then(|connections| {
@@ -205,7 +206,7 @@ async fn Svr3Restore(
     let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
     let restored_secret = timeout(
         Duration::from_millis(op_timeout_ms.into()),
-        svr::Error::Net(NetError::Timeout).into(),
+        svr::Error::Timeout.into(),
         svr3_connect(connection_manager, username, enclave_password)
             .map_err(|err| err.into())
             .and_then(|connections| Svr3Env::restore(connections, &password, share_set, &mut rng)),
@@ -326,7 +327,7 @@ async fn ChatService_unauth_send(
     chat: &Chat,
     http_request: &HttpRequest,
     timeout_millis: u32,
-) -> Result<Response, NetError> {
+) -> Result<Response, ChatServiceError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = Request {
         method: http_request.method.clone(),
@@ -344,7 +345,7 @@ async fn ChatService_unauth_send_and_debug(
     chat: &Chat,
     http_request: &HttpRequest,
     timeout_millis: u32,
-) -> Result<ResponseAndDebugInfo, NetError> {
+) -> Result<ResponseAndDebugInfo, ChatServiceError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = Request {
         method: http_request.method.clone(),

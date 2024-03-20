@@ -13,7 +13,6 @@ use tokio::io::AsyncBufReadExt as _;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
 use libsignal_net::enclave::{Cdsi, EnclaveEndpointConnection};
-use libsignal_net::infra::errors::NetError;
 use libsignal_net::infra::{TcpSslTransportConnector, TransportConnector};
 
 async fn cdsi_lookup(
@@ -26,7 +25,7 @@ async fn cdsi_lookup(
     let connected = CdsiConnection::connect(endpoint, transport_connector, auth).await?;
     let (_token, remaining_response) = libsignal_net::utils::timeout(
         timeout,
-        LookupError::Net(NetError::Timeout),
+        LookupError::Timeout,
         connected.send_request(request),
     )
     .await?;

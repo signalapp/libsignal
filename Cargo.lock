@@ -1859,6 +1859,7 @@ dependencies = [
  "static_assertions",
  "subtle",
  "test-case",
+ "thiserror",
  "tokio",
  "tokio-boring",
  "usernames",

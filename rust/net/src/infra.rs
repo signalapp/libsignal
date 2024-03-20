@@ -24,7 +24,7 @@ use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use crate::infra::dns::DnsResolver;
-use crate::infra::errors::NetError;
+use crate::infra::errors::TransportConnectError;
 use crate::infra::ws::WebSocketConfig;
 use crate::utils::first_ok;
 
@@ -33,7 +33,7 @@ pub mod connection_manager;
 pub mod dns;
 pub mod errors;
 pub(crate) mod reconnect;
-pub(crate) mod ws;
+pub mod ws;
 
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
@@ -156,7 +156,7 @@ pub trait TransportConnector: Clone + Send + Sync {
         &self,
         connection_params: &ConnectionParams,
         alpn: &[u8],
-    ) -> Result<StreamAndHost<Self::Stream>, NetError>;
+    ) -> Result<StreamAndHost<Self::Stream>, TransportConnectError>;
 }
 
 #[derive(Clone)]
@@ -172,7 +172,7 @@ impl TransportConnector for TcpSslTransportConnector {
         &self,
         connection_params: &ConnectionParams,
         alpn: &[u8],
-    ) -> Result<StreamAndHost<Self::Stream>, NetError> {
+    ) -> Result<StreamAndHost<Self::Stream>, TransportConnectError> {
         let StreamAndHost(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
             &connection_params.sni,
@@ -186,7 +186,7 @@ impl TransportConnector for TcpSslTransportConnector {
 
         let ssl_stream = tokio_boring::connect(ssl_config, &connection_params.sni, tcp_stream)
             .await
-            .map_err(|_| NetError::SslFailedHandshake)?;
+            .map_err(|_| TransportConnectError::SslFailedHandshake)?;
 
         Ok(StreamAndHost(ssl_stream, remote_address))
     }
@@ -199,7 +199,10 @@ impl TcpSslTransportConnector {
         }
     }
 
-    fn builder(certs: RootCertificates, alpn: &[u8]) -> Result<SslConnectorBuilder, NetError> {
+    fn builder(
+        certs: RootCertificates,
+        alpn: &[u8],
+    ) -> Result<SslConnectorBuilder, TransportConnectError> {
         let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
         ssl.set_verify_cert_store(certs.try_into()?)?;
         ssl.set_alpn_protos(alpn)?;
@@ -250,14 +253,14 @@ pub(crate) async fn connect_tcp(
     dns_resolver: &DnsResolver,
     host: &str,
     port: u16,
-) -> Result<StreamAndHost<TcpStream>, NetError> {
+) -> Result<StreamAndHost<TcpStream>, TransportConnectError> {
     let dns_lookup = dns_resolver
         .lookup_ip(host)
         .await
-        .map_err(|_| NetError::DnsError)?;
+        .map_err(|_| TransportConnectError::DnsError)?;
 
     if dns_lookup.is_empty() {
-        return Err(NetError::DnsError);
+        return Err(TransportConnectError::DnsError);
     }
 
     // The idea is to go through the list of candidate IP addresses
@@ -285,7 +288,7 @@ pub(crate) async fn connect_tcp(
 
     first_ok(staggered_futures)
         .await
-        .ok_or(NetError::TcpConnectionFailed)
+        .ok_or(TransportConnectError::TcpConnectionFailed)
 }
 
 fn ip_addr_to_host(ip: IpAddr) -> url::Host {
@@ -315,7 +318,7 @@ pub(crate) mod test {
         use warp::{Filter, Reply};
 
         use crate::infra::connection_manager::ConnectionManager;
-        use crate::infra::errors::{LogSafeDisplay, NetError};
+        use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
         use crate::infra::reconnect::{
             ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
         };
@@ -371,7 +374,7 @@ pub(crate) mod test {
                 &self,
                 connection_params: &ConnectionParams,
                 _alpn: &[u8],
-            ) -> Result<StreamAndHost<Self::Stream>, NetError> {
+            ) -> Result<StreamAndHost<Self::Stream>, TransportConnectError> {
                 let (client, server) = tokio::io::duplex(1024);
                 let routes = self.filter.clone();
                 tokio::spawn(async {
@@ -388,7 +391,7 @@ pub(crate) mod test {
 
         #[derive_where(Clone)]
         pub(crate) struct NoReconnectService<C: ServiceConnector> {
-            pub(crate) inner: Arc<ServiceState<C::Service, C::Error>>,
+            pub(crate) inner: Arc<ServiceState<C::Service, C::ConnectError, C::StartError>>,
         }
 
         impl<C> NoReconnectService<C>
@@ -396,7 +399,7 @@ pub(crate) mod test {
             C: ServiceConnector + Send + Sync + 'static,
             C::Service: Clone + Send + Sync + 'static,
             C::Channel: Send + Sync,
-            C::Error: Send + Sync + Debug + LogSafeDisplay,
+            C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
         {
             pub(crate) async fn start<M>(service_connector: C, connection_manager: M) -> Self
             where
@@ -410,7 +413,7 @@ pub(crate) mod test {
                 }
             }
 
-            pub(crate) fn service_status(&self) -> Option<&ServiceStatus<C::Error>> {
+            pub(crate) fn service_status(&self) -> Option<&ServiceStatus<C::StartError>> {
                 match &*self.inner {
                     ServiceState::Active(_, status) => Some(status),
                     _ => None,

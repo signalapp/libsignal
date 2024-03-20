@@ -8,10 +8,10 @@ use std::time::Duration;
 
 use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
-use libsignal_net::infra::errors::NetError;
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
@@ -24,7 +24,7 @@ use crate::support::describe_panic;
 use super::*;
 
 /// The top-level error type for when something goes wrong.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum SignalJniError {
     Protocol(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
@@ -43,8 +43,9 @@ pub enum SignalJniError {
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Cdsi(CdsiError),
-    Net(NetError),
     Svr3(libsignal_net::svr3::Error),
+    WebSocket(#[from] WebSocketServiceError),
+    Timeout,
     Bridge(BridgeLayerError),
     #[cfg(feature = "testing-fns")]
     TestingError {
@@ -89,7 +90,8 @@ impl fmt::Display for SignalJniError {
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
-            SignalJniError::Net(e) => write!(f, "{}", e),
+            SignalJniError::WebSocket(e) => write!(f, "{e}"),
+            SignalJniError::Timeout => write!(f, "timeout"),
             SignalJniError::Svr3(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
             #[cfg(feature = "testing-fns")]
@@ -231,8 +233,10 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
     fn from(e: libsignal_net::cdsi::LookupError) -> SignalJniError {
         use libsignal_net::cdsi::LookupError;
         SignalJniError::Cdsi(match e {
+            LookupError::Timeout => return SignalJniError::Timeout,
             LookupError::AttestationError(e) => return e.into(),
-            LookupError::Net(e) => return e.into(),
+            LookupError::ConnectTransport(e) => return IoError::from(e).into(),
+            LookupError::WebSocket(e) => return e.into(),
             LookupError::InvalidResponse => CdsiError::InvalidResponse,
             LookupError::Protocol => CdsiError::Protocol,
             LookupError::RateLimited {
@@ -242,12 +246,6 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             },
             LookupError::ParseError => CdsiError::ParseError,
         })
-    }
-}
-
-impl From<NetError> for SignalJniError {
-    fn from(e: NetError) -> SignalJniError {
-        Self::Net(e)
     }
 }
 
@@ -266,7 +264,13 @@ impl From<jni::errors::Error> for BridgeLayerError {
 impl From<Svr3Error> for SignalJniError {
     fn from(err: Svr3Error) -> Self {
         match err {
-            Svr3Error::Net(inner) => inner.into(),
+            Svr3Error::Connect(inner) => match inner {
+                WebSocketConnectError::Timeout => SignalJniError::Timeout,
+                WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
+                WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
+            },
+            Svr3Error::Timeout => SignalJniError::Timeout,
+            Svr3Error::Service(inner) => inner.into(),
             Svr3Error::AttestationError(inner) => inner.into(),
             Svr3Error::Protocol(_)
             | Svr3Error::RequestFailed(_)

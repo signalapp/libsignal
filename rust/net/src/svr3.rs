@@ -6,8 +6,10 @@
 use thiserror::Error;
 
 use crate::enclave::{IntoConnections, PpssSetup};
-use crate::infra::errors::{LogSafeDisplay, NetError};
-use crate::infra::ws::{run_attested_interaction, AttestedConnectionError};
+use crate::infra::errors::LogSafeDisplay;
+use crate::infra::ws::{
+    run_attested_interaction, AttestedConnectionError, WebSocketConnectError, WebSocketServiceError,
+};
 use async_trait::async_trait;
 use bincode::Options as _;
 use futures_util::future::try_join_all;
@@ -122,8 +124,10 @@ impl OpaqueMaskedShareSet {
 #[derive(Debug, Error, displaydoc::Display)]
 #[ignore_extra_doc_attributes]
 pub enum Error {
+    /// Connection error: {0}
+    Connect(WebSocketConnectError),
     /// Network error: {0}
-    Net(#[from] NetError),
+    Service(#[from] WebSocketServiceError),
     /// Protocol error after establishing a connection: {0}
     Protocol(String),
     /// Enclave attestation failed: {0}
@@ -139,6 +143,8 @@ pub enum Error {
     /// This could mean either the data was never backed-up or we ran out of attempts to restore
     /// it.
     DataMissing,
+    /// Timeout
+    Timeout,
 }
 
 impl From<DeserializeError> for Error {
@@ -174,9 +180,11 @@ impl From<super::svr::Error> for Error {
     fn from(err: super::svr::Error) -> Self {
         use super::svr::Error as SvrError;
         match err {
-            SvrError::Net(inner) => Self::Net(inner),
+            SvrError::WebSocketConnect(inner) => Self::Connect(inner),
+            SvrError::WebSocket(inner) => Self::Service(inner),
             SvrError::Protocol => Self::Protocol("General SVR protocol error".to_string()),
             SvrError::AttestationError(inner) => Self::AttestationError(inner),
+            SvrError::Timeout => Self::Timeout,
         }
     }
 }
@@ -225,7 +233,13 @@ impl<Env: PpssSetup> PpssOps for Env {
         let result = try_join_all(futures).await?;
         let responses = result
             .into_iter()
-            .map(|next_or_close| next_or_close.next_or(NetError::Failure))
+            .enumerate()
+            .map(|(i, next_or_close)| {
+                let remote_address = connections.as_ref()[i].remote_address();
+                next_or_close.next_or(Error::Protocol(format!(
+                    "no response from {remote_address}"
+                )))
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let share_set = backup.finalize(rng, &responses)?;
         Ok(OpaqueMaskedShareSet::new(share_set))
@@ -247,7 +261,13 @@ impl<Env: PpssSetup> PpssOps for Env {
         let result = try_join_all(futures).await?;
         let responses = result
             .into_iter()
-            .map(|next_or_close| next_or_close.next_or(NetError::Failure))
+            .enumerate()
+            .map(|(i, next_or_close)| {
+                let remote_address = connections.as_ref()[i].remote_address();
+                next_or_close.next_or(Error::Protocol(format!(
+                    "no response from {remote_address}"
+                )))
+            })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(restore.finalize(&responses)?)
     }

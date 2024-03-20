@@ -3,15 +3,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::future::Future;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use attest::client_connection::ClientConnection;
+use attest::enclave;
 use derive_where::derive_where;
 use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{SinkExt as _, StreamExt};
+use futures_util::{SinkExt as _, StreamExt, TryFutureExt};
 use http::uri::PathAndQuery;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -20,15 +23,14 @@ use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
-use crate::infra::errors::NetError;
+use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
+use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::infra::{AsyncDuplexStream, ConnectionParams, StreamAndHost, TransportConnector};
 use crate::utils::timeout;
-use attest::client_connection::ClientConnection;
-use attest::enclave;
 
 pub mod error;
-pub use error::Error;
+pub use error::{Error, WebSocketConnectError};
 
 const WS_ALPN: &[u8] = b"\x08http/1.1";
 
@@ -41,34 +43,92 @@ pub struct WebSocketConfig {
     pub max_idle_time: Duration,
 }
 
-#[derive(Clone)]
-pub(crate) struct WebSocketClientConnector<T> {
+#[derive_where(Clone; T)]
+pub(crate) struct WebSocketClientConnector<T, E> {
     transport_connector: T,
     cfg: WebSocketConfig,
+    service_error_type: PhantomData<E>,
 }
 
-impl<T: TransportConnector> WebSocketClientConnector<T> {
+impl<T: TransportConnector, E> WebSocketClientConnector<T, E> {
     pub(crate) fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
         Self {
             transport_connector,
             cfg,
+            service_error_type: PhantomData,
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum WebSocketServiceError {
+    ChannelClosed,
+    ChannelIdleTooLong,
+    Io(std::io::Error),
+    Protocol(tungstenite::error::ProtocolError),
+    Capacity(SpaceError),
+    Http(http::Response<Option<Vec<u8>>>),
+    HttpFormat(http::Error),
+    Url(tungstenite::error::UrlError),
+    Other(&'static str),
+}
+
+impl LogSafeDisplay for WebSocketServiceError {}
+impl Display for WebSocketServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WebSocketServiceError::ChannelClosed => write!(f, "channel already closed"),
+            WebSocketServiceError::ChannelIdleTooLong => write!(f, "channel was idle for too long"),
+            WebSocketServiceError::Io(e) => write!(f, "IO error: {}", e.kind()),
+            WebSocketServiceError::Protocol(p) => {
+                write!(f, "websocket protocol: {}", ProtocolError::from(p.clone()))
+            }
+            WebSocketServiceError::Capacity(e) => write!(f, "capacity error: {e}"),
+            WebSocketServiceError::Http(response) => write!(f, "HTTP error: {}", response.status()),
+            WebSocketServiceError::HttpFormat(e) => {
+                write!(f, "HTTP format error: {}", HttpFormatError::from(e))
+            }
+            WebSocketServiceError::Url(_) => write!(f, "URL error"),
+            WebSocketServiceError::Other(message) => write!(f, "other web socket error: {message}"),
+        }
+    }
+}
+
+impl From<tungstenite::Error> for WebSocketServiceError {
+    fn from(value: tungstenite::Error) -> Self {
+        match value {
+            tungstenite::Error::ConnectionClosed => Self::ChannelClosed,
+            tungstenite::Error::AlreadyClosed => Self::ChannelClosed,
+            tungstenite::Error::Io(e) => Self::Io(e),
+            tungstenite::Error::Protocol(e) => Self::Protocol(e),
+            tungstenite::Error::Capacity(e) => Self::Capacity(e.into()),
+            tungstenite::Error::WriteBufferFull(_) => Self::Capacity(SpaceError::SendQueueFull),
+            tungstenite::Error::Url(e) => Self::Url(e),
+            tungstenite::Error::Http(response) => Self::Http(response),
+            tungstenite::Error::HttpFormat(e) => Self::HttpFormat(e),
+            tungstenite::Error::Utf8 => Self::Other("UTF-8 error"),
+            tungstenite::Error::AttackAttempt => Self::Other("attack attempt"),
+            tungstenite::Error::Tls(_) => unreachable!("all TLS is handled below tungstenite"),
         }
     }
 }
 
 #[async_trait]
-impl<T> ServiceConnector for WebSocketClientConnector<T>
+impl<T, E> ServiceConnector for WebSocketClientConnector<T, E>
 where
     T: TransportConnector,
+    E: Send + Sync,
+    WebSocketServiceError: Into<E>,
 {
-    type Service = WebSocketClient<T::Stream>;
+    type Service = WebSocketClient<T::Stream, E>;
     type Channel = (WebSocketStream<T::Stream>, url::Host);
-    type Error = NetError;
+    type ConnectError = WebSocketConnectError;
+    type StartError = E;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::Error> {
+    ) -> Result<Self::Channel, Self::ConnectError> {
         let connect_future = connect_websocket(
             connection_params,
             self.cfg.endpoint.clone(),
@@ -77,13 +137,17 @@ where
         );
         timeout(
             self.cfg.max_connection_time,
-            NetError::Timeout,
+            WebSocketConnectError::Timeout,
             connect_future,
         )
         .await
+        .map_err(Into::into)
     }
 
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
+    fn start_service(
+        &self,
+        channel: Self::Channel,
+    ) -> (Self::Service, ServiceStatus<Self::StartError>) {
         start_ws_service(
             channel.0,
             channel.1,
@@ -93,12 +157,12 @@ where
     }
 }
 
-fn start_ws_service<S: AsyncDuplexStream>(
+fn start_ws_service<S: AsyncDuplexStream, E>(
     channel: WebSocketStream<S>,
     remote_address: url::Host,
     keep_alive_interval: Duration,
     max_idle_time: Duration,
-) -> (WebSocketClient<S>, ServiceStatus<NetError>) {
+) -> (WebSocketClient<S, E>, ServiceStatus<E>) {
     let service_status = ServiceStatus::default();
     let (ws_sink, ws_stream) = channel.split();
     let ws_client_writer = WebSocketClientWriter {
@@ -126,36 +190,45 @@ fn start_ws_service<S: AsyncDuplexStream>(
 
 #[derive_where(Clone)]
 #[derive(Debug)]
-pub(crate) struct WebSocketClientWriter<S> {
+pub(crate) struct WebSocketClientWriter<S, E> {
     ws_sink: Arc<Mutex<SplitSink<WebSocketStream<S>, Message>>>,
-    service_status: ServiceStatus<NetError>,
+    service_status: ServiceStatus<E>,
 }
 
-impl<S: AsyncDuplexStream> WebSocketClientWriter<S> {
-    pub async fn send(&self, message: impl Into<Message>) -> Result<(), NetError> {
-        run_and_update_status(&self.service_status, || async {
-            let mut guard = self.ws_sink.lock().await;
-            guard.send(message.into()).await?;
-            guard.flush().await?;
-            Ok(())
+impl<S: AsyncDuplexStream, E> WebSocketClientWriter<S, E>
+where
+    WebSocketServiceError: Into<E>,
+{
+    pub async fn send(&self, message: impl Into<Message>) -> Result<(), E> {
+        run_and_update_status(&self.service_status, || {
+            async {
+                let mut guard = self.ws_sink.lock().await;
+                guard.send(message.into()).await?;
+                guard.flush().await?;
+                Ok(())
+            }
+            .map_err(|e: tungstenite::Error| WebSocketServiceError::from(e).into())
         })
         .await
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct WebSocketClientReader<S> {
+pub(crate) struct WebSocketClientReader<S, E> {
     ws_stream: SplitStream<WebSocketStream<S>>,
-    ws_writer: WebSocketClientWriter<S>,
-    service_status: ServiceStatus<NetError>,
+    ws_writer: WebSocketClientWriter<S, E>,
+    service_status: ServiceStatus<E>,
     keep_alive_interval: Duration,
     max_idle_time: Duration,
     last_frame_received: Instant,
     last_keepalive_sent: Instant,
 }
 
-impl<S: AsyncDuplexStream> WebSocketClientReader<S> {
-    pub(crate) async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, NetError> {
+impl<S: AsyncDuplexStream, E> WebSocketClientReader<S, E>
+where
+    WebSocketServiceError: Into<E>,
+{
+    pub(crate) async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, E> {
         enum Event {
             Message(Option<Result<Message, tungstenite::Error>>),
             SendKeepAlive,
@@ -181,11 +254,11 @@ impl<S: AsyncDuplexStream> WebSocketClientReader<S> {
                     Event::Message(maybe_message) => maybe_message,
                     Event::StopService => {
                         log::info!("service was stopped");
-                        return Err(NetError::ChannelClosed);
+                        return Err(WebSocketServiceError::ChannelClosed.into());
                     }
                     Event::IdleTimeout => {
                         log::warn!("channel was idle for {}s", self.max_idle_time.as_secs());
-                        return Err(NetError::ChannelIdle);
+                        return Err(WebSocketServiceError::ChannelIdleTooLong.into());
                     }
                 };
                 // now checking if whatever we've read from the stream is a message
@@ -196,7 +269,7 @@ impl<S: AsyncDuplexStream> WebSocketClientReader<S> {
                     }
                     Some(Err(e)) => {
                         log::trace!("websocket error: {e}");
-                        return Err(e.into());
+                        return Err(WebSocketServiceError::from(e).into());
                     }
                     Some(Ok(message)) => message,
                 };
@@ -218,22 +291,20 @@ impl<S: AsyncDuplexStream> WebSocketClientReader<S> {
     }
 }
 
-async fn run_and_update_status<T, F, Ft>(
-    service_status: &ServiceStatus<NetError>,
-    f: F,
-) -> Result<T, NetError>
+async fn run_and_update_status<T, F, Ft, E>(service_status: &ServiceStatus<E>, f: F) -> Result<T, E>
 where
+    WebSocketServiceError: Into<E>,
     F: FnOnce() -> Ft,
-    Ft: Future<Output = Result<T, NetError>>,
+    Ft: Future<Output = Result<T, E>>,
 {
     if service_status.is_stopped() {
-        return Err(NetError::ChannelClosed);
+        return Err(WebSocketServiceError::ChannelClosed.into());
     }
     let result = f().await;
     if result.is_err() {
         service_status.stop_service();
     }
-    result
+    result.map_err(Into::into)
 }
 
 async fn connect_websocket<T: TransportConnector>(
@@ -241,7 +312,7 @@ async fn connect_websocket<T: TransportConnector>(
     endpoint: PathAndQuery,
     ws_config: tungstenite::protocol::WebSocketConfig,
     transport_connector: &T,
-) -> Result<(WebSocketStream<T::Stream>, url::Host), NetError> {
+) -> Result<(WebSocketStream<T::Stream>, url::Host), WebSocketConnectError> {
     let StreamAndHost(ssl_stream, remote_address) = transport_connector
         .connect(connection_params, WS_ALPN)
         .await?;
@@ -311,17 +382,20 @@ impl From<TextOrBinary> for Message {
 
 /// Wrapper for a websocket that can be used to send [`TextOrBinary`] messages.
 #[derive(Debug)]
-pub struct WebSocketClient<S = tokio_boring::SslStream<tokio::net::TcpStream>> {
-    pub(crate) ws_client_writer: WebSocketClientWriter<S>,
-    pub(crate) ws_client_reader: WebSocketClientReader<S>,
+pub struct WebSocketClient<S, E> {
+    pub(crate) ws_client_writer: WebSocketClientWriter<S, E>,
+    pub(crate) ws_client_reader: WebSocketClientReader<S, E>,
     pub(crate) remote_address: url::Host,
 }
 
-impl<S: AsyncDuplexStream> WebSocketClient<S> {
+impl<S: AsyncDuplexStream, E> WebSocketClient<S, E>
+where
+    WebSocketServiceError: Into<E>,
+{
     /// Sends a request on the connection.
     ///
     /// An error is returned if the send fails.
-    pub(crate) async fn send(&mut self, item: TextOrBinary) -> Result<(), NetError> {
+    pub(crate) async fn send(&mut self, item: TextOrBinary) -> Result<(), E> {
         self.ws_client_writer.send(item).await
     }
 
@@ -329,7 +403,7 @@ impl<S: AsyncDuplexStream> WebSocketClient<S> {
     ///
     /// Returns the next text or binary message received on the wrapped socket.
     /// If the next response received is a [`Message::Close`], returns `None`.
-    pub(crate) async fn receive(&mut self) -> Result<NextOrClose<TextOrBinary>, NetError> {
+    pub(crate) async fn receive(&mut self) -> Result<NextOrClose<TextOrBinary>, E> {
         self.ws_client_reader.next().await
     }
 }
@@ -339,7 +413,7 @@ pub enum AttestedConnectionError {
     Protocol,
     ClientConnection(attest::client_connection::Error),
     Sgx(attest::enclave::Error),
-    Net(NetError),
+    WebSocket(WebSocketServiceError),
 }
 
 impl From<enclave::Error> for AttestedConnectionError {
@@ -348,9 +422,9 @@ impl From<enclave::Error> for AttestedConnectionError {
     }
 }
 
-impl From<NetError> for AttestedConnectionError {
-    fn from(value: NetError) -> Self {
-        Self::Net(value)
+impl From<WebSocketServiceError> for AttestedConnectionError {
+    fn from(value: WebSocketServiceError) -> Self {
+        Self::WebSocket(value)
     }
 }
 
@@ -365,8 +439,14 @@ pub type DefaultStream = tokio_boring::SslStream<tokio::net::TcpStream>;
 /// Encrypted connection to an attested host.
 #[derive(Debug)]
 pub struct AttestedConnection<S = DefaultStream> {
-    websocket: WebSocketClient<S>,
+    websocket: WebSocketClient<S, WebSocketServiceError>,
     client_connection: ClientConnection,
+}
+
+impl<S> AttestedConnection<S> {
+    pub(crate) fn remote_address(&self) -> &url::Host {
+        &self.websocket.remote_address
+    }
 }
 
 impl AsMut<AttestedConnection> for AttestedConnection {
@@ -406,7 +486,7 @@ where
 {
     /// Connect to remote host and verify remote attestation.
     pub(crate) async fn connect(
-        mut websocket: WebSocketClient<S>,
+        mut websocket: WebSocketClient<S, WebSocketServiceError>,
         new_handshake: impl FnOnce(&[u8]) -> enclave::Result<enclave::Handshake>,
     ) -> Result<Self, AttestedConnectionError> {
         let client_connection = authenticate(&mut websocket, new_handshake).await?;
@@ -473,13 +553,13 @@ impl TextOrBinary {
 }
 
 async fn authenticate<S: AsyncDuplexStream>(
-    websocket: &mut WebSocketClient<S>,
+    websocket: &mut WebSocketClient<S, WebSocketServiceError>,
     new_handshake: impl FnOnce(&[u8]) -> enclave::Result<enclave::Handshake>,
 ) -> Result<ClientConnection, AttestedConnectionError> {
     let attestation_msg = websocket
         .receive()
         .await?
-        .next_or(NetError::Failure)?
+        .next_or(WebSocketServiceError::ChannelClosed)?
         .try_into_binary()?;
     let handshake = new_handshake(attestation_msg.as_ref())?;
 
@@ -490,7 +570,7 @@ async fn authenticate<S: AsyncDuplexStream>(
     let initial_response = websocket
         .receive()
         .await?
-        .next_or(NetError::Failure)?
+        .next_or(WebSocketServiceError::ChannelClosed)?
         .try_into_binary()?;
 
     Ok(handshake.complete(&initial_response)?)
@@ -532,7 +612,7 @@ mod test {
 
     fn websocket_test_client<S: AsyncDuplexStream>(
         channel: WebSocketStream<S>,
-    ) -> WebSocketClient<S> {
+    ) -> WebSocketClient<S, WebSocketServiceError> {
         start_ws_service(
             channel,
             url::Host::Domain("localhost".to_string()),
@@ -583,12 +663,14 @@ mod test {
         let receive_unsolicited = synchronous.receive();
         pin_mut!(receive_unsolicited);
 
-        assert_eq!(poll!(&mut receive_unsolicited), std::task::Poll::Pending);
+        assert_matches!(poll!(&mut receive_unsolicited), std::task::Poll::Pending);
 
         let item = TextOrBinary::Text(MESSAGE_TEXT.into());
         server.send(item.clone().into()).await.unwrap();
 
-        assert_eq!(receive_unsolicited.await, Ok(NextOrClose::Next(item)));
+        let received_item =
+            assert_matches!(receive_unsolicited.await, Ok(NextOrClose::Next(item)) => item);
+        assert_eq!(received_item, item);
     }
 
     #[tokio::test]
@@ -609,7 +691,7 @@ mod test {
 
         // Hang up.
         drop(server);
-        assert_eq!(handle.await.expect("joined"), Ok(()));
+        assert_matches!(handle.await.expect("joined"), Ok(()));
     }
 
     const FAKE_ATTESTATION: &[u8] =
