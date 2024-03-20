@@ -60,16 +60,17 @@ describe('chat service api', () => {
     expect(Native.TESTING_ChatServiceDebugInfoConvert()).deep.equals(expected);
   });
 
+  const verb = 'GET';
+  const path = '/test';
+  const userAgent = 'test';
+  const forwarded = '1.1.1.1';
+  const content = Buffer.from('content');
+  const headers: Array<[string, string]> = [
+    ['user-agent', userAgent],
+    ['forwarded', forwarded],
+  ];
+
   it('constructs request object correctly', () => {
-    const verb = 'GET';
-    const path = '/test';
-    const userAgent = 'test';
-    const forwarded = '1.1.1.1';
-    const content = Buffer.from('content');
-    const headers: Array<[string, string]> = [
-      ['user-agent', userAgent],
-      ['forwarded', forwarded],
-    ];
     const request = Net.buildHttpRequest({
       verb: verb,
       path: path,
@@ -85,6 +86,31 @@ describe('chat service api', () => {
     expect(
       Native.TESTING_ChatRequestGetHeaderValue(request, 'forwarded')
     ).equals(forwarded);
+  });
+
+  it('handles bad input gracefully', () => {
+    const goodRequest = {
+      verb: verb,
+      path: path,
+      headers: headers,
+      body: content,
+    };
+
+    const requestWith = (params: object) =>
+      Net.buildHttpRequest({ ...goodRequest, ...params });
+
+    expect(() => requestWith({ verb: '\x00abc' })).throws(TypeError, 'method');
+    expect(() => requestWith({ path: '/bad\x00path' }))
+      .throws(LibSignalErrorBase)
+      .with.property('code', ErrorCode.InvalidUri);
+    expect(() => requestWith({ headers: [['bad\x00name', 'value']] })).throws(
+      TypeError,
+      'header name'
+    );
+    expect(() => requestWith({ headers: [['name', 'bad\x00value']] })).throws(
+      TypeError,
+      'header value'
+    );
   });
 });
 

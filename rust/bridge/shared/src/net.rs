@@ -7,14 +7,15 @@ use std::convert::TryInto as _;
 use std::future::Future;
 use std::num::NonZeroU32;
 use std::panic::RefUnwindSafe;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use futures_util::future::TryFutureExt as _;
-use http::uri::PathAndQuery;
+use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
-use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{chat_service, ChatServiceWithDebugInfo, DebugInfo, Request, Response};
 use libsignal_net::enclave::{
@@ -255,17 +256,27 @@ pub struct ResponseAndDebugInfo {
 bridge_handle!(Chat, clone = false);
 bridge_handle!(HttpRequest, clone = false);
 
+#[cfg(feature = "node")]
+/// Newtype wrapper for implementing [`TryFrom`]`
+struct HttpMethod(http::Method);
+
+#[cfg(feature = "node")]
+impl TryFrom<String> for HttpMethod {
+    type Error = <http::Method as FromStr>::Err;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        FromStr::from_str(&value).map(Self)
+    }
+}
+
 #[bridge_fn(ffi = false, jni = false)]
 fn HttpRequest_new(
-    method: String,
+    method: AsType<HttpMethod, String>,
     path: String,
     body_as_slice: Option<&[u8]>,
-) -> Result<HttpRequest, NetError> {
+) -> Result<HttpRequest, InvalidUri> {
     let body = body_as_slice.map(|slice| slice.to_vec().into_boxed_slice());
-    let method = http::Method::try_from(method.as_str())
-        .map_err(|_| NetError::InvalidHttpRequestComponent)?;
-    let path =
-        PathAndQuery::try_from(path.as_str()).map_err(|_| NetError::InvalidHttpRequestComponent)?;
+    let method = method.into_inner().0;
+    let path = path.try_into()?;
     Ok(HttpRequest {
         method,
         path,
@@ -274,19 +285,16 @@ fn HttpRequest_new(
     })
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn_void(ffi = false, jni = false)]
 fn HttpRequest_add_header(
     request: &HttpRequest,
-    name: String,
-    value: String,
-) -> Result<(), NetError> {
+    name: AsType<HeaderName, String>,
+    value: AsType<HeaderValue, String>,
+) {
     let mut guard = request.headers.lock().expect("not poisoned");
-    let header_key =
-        HeaderName::try_from(name).map_err(|_| NetError::InvalidHttpRequestComponent)?;
-    let header_value =
-        HeaderValue::try_from(value).map_err(|_| NetError::InvalidHttpRequestComponent)?;
+    let header_key = name.into_inner();
+    let header_value = value.into_inner();
     (*guard).append(header_key, header_value);
-    Ok(())
 }
 
 #[bridge_fn(ffi = false, jni = false)]

@@ -62,6 +62,7 @@ def translate_to_ts(typ):
         "Pni": "Buffer",
         "E164": "string",
         "ServiceIdSequence<'_>": "Buffer",
+        "PathAndQuery": "string",
     }
 
     if typ in type_map:

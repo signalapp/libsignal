@@ -58,8 +58,6 @@ pub enum NetError {
     FailedToPassMessageToIncomingChannel,
     /// An HTTP stream was interrupted while receiving data.
     HttpInterruptedDuringReceive,
-    /// Failed to create HTTP object: an invalid component (method/path/header key/header value)
-    InvalidHttpRequestComponent,
 }
 
 impl LogSafeDisplay for NetError {}
