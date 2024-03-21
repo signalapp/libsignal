@@ -2,6 +2,7 @@
 // Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use http::uri::InvalidUri;
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use std::time::Duration;
@@ -11,6 +12,7 @@ use jni::{JNIEnv, JavaVM};
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -45,6 +47,8 @@ pub enum SignalJniError {
     Cdsi(CdsiError),
     Svr3(libsignal_net::svr3::Error),
     WebSocket(#[from] WebSocketServiceError),
+    ChatService(ChatServiceError),
+    InvalidUri(InvalidUri),
     Timeout,
     Bridge(BridgeLayerError),
     #[cfg(feature = "testing-fns")]
@@ -90,6 +94,8 @@ impl fmt::Display for SignalJniError {
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
+            SignalJniError::ChatService(e) => write!(f, "{}", e),
+            SignalJniError::InvalidUri(e) => write!(f, "{}", e),
             SignalJniError::WebSocket(e) => write!(f, "{e}"),
             SignalJniError::Timeout => write!(f, "timeout"),
             SignalJniError::Svr3(e) => write!(f, "{}", e),
@@ -198,6 +204,18 @@ impl From<usernames::ProofVerificationFailure> for SignalJniError {
 impl From<UsernameLinkError> for SignalJniError {
     fn from(e: UsernameLinkError) -> Self {
         SignalJniError::UsernameLinkError(e)
+    }
+}
+
+impl From<InvalidUri> for SignalJniError {
+    fn from(e: InvalidUri) -> Self {
+        SignalJniError::InvalidUri(e)
+    }
+}
+
+impl From<ChatServiceError> for SignalJniError {
+    fn from(e: ChatServiceError) -> Self {
+        SignalJniError::ChatService(e)
     }
 }
 

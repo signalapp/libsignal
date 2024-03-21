@@ -5,6 +5,9 @@
 
 package org.signal.libsignal.internal;
 
+import java.util.function.LongConsumer;
+import java.util.function.LongFunction;
+
 /**
  * Provides access to a Rust object handle while keeping the Java wrapper alive.
  *
@@ -21,8 +24,56 @@ public class NativeHandleGuard implements AutoCloseable {
   /**
    * @see NativeHandleGuard
    */
-  public static interface Owner {
+  public interface Owner {
     long unsafeNativeHandleWithoutGuard();
+  }
+
+  public abstract static class SimpleOwner implements Owner {
+
+    private final long nativeHandle;
+
+    protected SimpleOwner(final long nativeHandle) {
+      this.nativeHandle = nativeHandle;
+    }
+
+    protected abstract void release(long nativeHandle);
+
+    @Override
+    public long unsafeNativeHandleWithoutGuard() {
+      return nativeHandle;
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void finalize() {
+      release(this.nativeHandle);
+    }
+
+    public <T> T guardedMap(final LongFunction<T> function) {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        return function.apply(guard.nativeHandle());
+      }
+    }
+
+    public <T> T guardedMapChecked(final FilterExceptions.ThrowingLongFunction<T> function)
+        throws Exception {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        return function.apply(guard.nativeHandle());
+      }
+    }
+
+    public void guardedRun(final LongConsumer consumer) {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        consumer.accept(guard.nativeHandle());
+      }
+    }
+
+    public void guardedRunChecked(final FilterExceptions.ThrowingLongConsumer consumer)
+        throws Exception {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        consumer.accept(guard.nativeHandle());
+      }
+    }
   }
 
   private final Owner owner;

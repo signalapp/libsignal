@@ -161,6 +161,11 @@ public final class Native {
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
   public static native byte[] CdsiLookup_token(long lookup);
 
+  public static native CompletableFuture ChatService_disconnect(long asyncRuntime, long chat);
+  public static native long ChatService_new(long connectionManager, String username, String password);
+  public static native CompletableFuture<Object> ChatService_unauth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
+  public static native CompletableFuture<Object> ChatService_unauth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
+
   public static native void Chat_Destroy(long handle);
 
   public static native void ConnectionManager_Destroy(long handle);
@@ -291,6 +296,8 @@ public final class Native {
   public static native long HsmEnclaveClient_New(byte[] trustedPublicKey, byte[] trustedCodeHashes) throws Exception;
 
   public static native void HttpRequest_Destroy(long handle);
+  public static native void HttpRequest_add_header(long request, String name, String value);
+  public static native long HttpRequest_new(String method, String path, byte[] bodyAsSlice) throws Exception;
 
   public static native long[] IdentityKeyPair_Deserialize(byte[] data);
   public static native byte[] IdentityKeyPair_Serialize(long publicKey, long privateKey);
@@ -595,6 +602,14 @@ public final class Native {
 
   public static native void TESTING_CdsiLookupErrorConvert() throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
+  public static native byte[] TESTING_ChatRequestGetBody(long request);
+  public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);
+  public static native String TESTING_ChatRequestGetMethod(long request);
+  public static native String TESTING_ChatRequestGetPath(long request);
+  public static native Object TESTING_ChatServiceDebugInfoConvert() throws Exception;
+  public static native void TESTING_ChatServiceErrorConvert() throws Exception;
+  public static native Object TESTING_ChatServiceResponseAndDebugInfoConvert() throws Exception;
+  public static native Object TESTING_ChatServiceResponseConvert(boolean bodyPresent) throws Exception;
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);

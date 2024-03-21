@@ -11,7 +11,7 @@ use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-use crate::net::{HttpRequest, TokioAsyncContext};
+use crate::net::{HttpRequest, ResponseAndDebugInfo, TokioAsyncContext};
 use crate::support::*;
 use crate::*;
 
@@ -48,12 +48,12 @@ fn TESTING_CdsiLookupErrorConvert() -> Result<(), LookupError> {
     Err(LookupError::ParseError)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatServiceErrorConvert() -> Result<(), ChatServiceError> {
     Err(ChatServiceError::Timeout)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, ChatServiceError> {
     let body = match body_present {
         true => Some(b"content".to_vec().into_boxed_slice()),
@@ -64,13 +64,13 @@ fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, Ch
     headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
     Ok(Response {
         status: StatusCode::OK,
-        message: None,
+        message: Some("OK".to_string()),
         body,
         headers,
     })
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, ChatServiceError> {
     Ok(DebugInfo {
         connection_reused: true,
@@ -79,17 +79,26 @@ fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, ChatServiceError> 
     })
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
+fn TESTING_ChatServiceResponseAndDebugInfoConvert() -> Result<ResponseAndDebugInfo, ChatServiceError>
+{
+    Ok(ResponseAndDebugInfo {
+        response: TESTING_ChatServiceResponseConvert(true)?,
+        debug_info: TESTING_ChatServiceDebugInfoConvert()?,
+    })
+}
+
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatRequestGetMethod(request: &HttpRequest) -> String {
     request.method.to_string()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatRequestGetPath(request: &HttpRequest) -> String {
     request.path.to_string()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String) -> String {
     request
         .headers
@@ -102,7 +111,7 @@ fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String)
         .to_string()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Option<Vec<u8>> {
     request.body.clone().map(|b| b.to_vec())
 }

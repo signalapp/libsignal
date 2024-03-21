@@ -8,21 +8,13 @@ package org.signal.libsignal.net;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
-class TokioAsyncContext implements NativeHandleGuard.Owner {
-  private long nativeHandle;
-
+class TokioAsyncContext extends NativeHandleGuard.SimpleOwner {
   TokioAsyncContext() {
-    this.nativeHandle = Native.TokioAsyncContext_new();
+    super(Native.TokioAsyncContext_new());
   }
 
   @Override
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.nativeHandle;
-  }
-
-  @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.TokioAsyncContext_Destroy(this.nativeHandle);
+  protected void release(final long nativeHandle) {
+    Native.TokioAsyncContext_Destroy(nativeHandle);
   }
 }

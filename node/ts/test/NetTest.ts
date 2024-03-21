@@ -33,13 +33,13 @@ describe('chat service api', () => {
     ];
     const expectedWithContent: Response = {
       status: status,
-      message: undefined,
+      message: 'OK',
       headers: headers,
       body: Buffer.from('content'),
     };
     const expectedWithoutContent: Response = {
       status: status,
-      message: undefined,
+      message: 'OK',
       headers: headers,
       body: undefined,
     };

@@ -24,23 +24,45 @@ import org.signal.libsignal.protocol.logging.Log;
  */
 public class FilterExceptions {
   /** A "functional interface" for an operation that returns an object and can throw. */
-  public static interface ThrowingNativeOperation<R> {
+  @FunctionalInterface
+  public interface ThrowingNativeOperation<R> {
     R run() throws Exception;
   }
 
   /** A "functional interface" for an operation that returns an {@code int} and can throw. */
-  public static interface ThrowingNativeIntOperation {
+  @FunctionalInterface
+  public interface ThrowingNativeIntOperation {
     int run() throws Exception;
   }
 
   /** A "functional interface" for an operation that returns a {@code long} and can throw. */
-  public static interface ThrowingNativeLongOperation {
+  @FunctionalInterface
+  public interface ThrowingNativeLongOperation {
     long run() throws Exception;
   }
 
   /** A "functional interface" for an operation that has no result but can throw. */
-  public static interface ThrowingNativeVoidOperation {
+  @FunctionalInterface
+  public interface ThrowingNativeVoidOperation {
     void run() throws Exception;
+  }
+
+  /**
+   * A "functional interface" for an operation that maps a {@code long} value to an object and can
+   * throw.
+   */
+  @FunctionalInterface
+  public interface ThrowingLongFunction<R> {
+    R apply(long value) throws Exception;
+  }
+
+  /**
+   * A "functional interface" for an operation that accepts a {@code long} value, has no result, and
+   * can throw.
+   */
+  @FunctionalInterface
+  public interface ThrowingLongConsumer {
+    void accept(long value) throws Exception;
   }
 
   private static AssertionError reportUnexpectedException(Exception e) {

@@ -20,10 +20,14 @@ public class Network {
 
     private final int value;
 
-    private Environment(int value) {
+    Environment(int value) {
       this.value = value;
     }
   }
+
+  private final TokioAsyncContext tokioAsyncContext;
+
+  private final ConnectionManager connectionManager;
 
   /**
    * Group of the APIs responsible for communication with the SVR3 service.
@@ -65,25 +69,18 @@ public class Network {
     return this.connectionManager;
   }
 
-  class ConnectionManager implements NativeHandleGuard.Owner {
-    private long nativeHandle;
-
-    private ConnectionManager(Environment env) {
-      this.nativeHandle = Native.ConnectionManager_new(env.value);
-    }
-
-    @Override
-    public long unsafeNativeHandleWithoutGuard() {
-      return this.nativeHandle;
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected void finalize() {
-      Native.ConnectionManager_Destroy(this.nativeHandle);
-    }
+  public ChatService createChatService(final String username, final String password) {
+    return new ChatService(tokioAsyncContext, connectionManager, username, password);
   }
 
-  private TokioAsyncContext tokioAsyncContext;
-  private ConnectionManager connectionManager;
+  static class ConnectionManager extends NativeHandleGuard.SimpleOwner {
+    private ConnectionManager(Environment env) {
+      super(Native.ConnectionManager_new(env.value));
+    }
+
+    @Override
+    protected void release(final long nativeHandle) {
+      Native.ConnectionManager_Destroy(nativeHandle);
+    }
+  }
 }

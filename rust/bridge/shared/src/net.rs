@@ -257,11 +257,11 @@ pub struct ResponseAndDebugInfo {
 bridge_handle!(Chat, clone = false);
 bridge_handle!(HttpRequest, clone = false);
 
-#[cfg(feature = "node")]
+#[cfg(any(feature = "node", feature = "jni"))]
 /// Newtype wrapper for implementing [`TryFrom`]`
 struct HttpMethod(http::Method);
 
-#[cfg(feature = "node")]
+#[cfg(any(feature = "node", feature = "jni"))]
 impl TryFrom<String> for HttpMethod {
     type Error = <http::Method as FromStr>::Err;
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -269,7 +269,7 @@ impl TryFrom<String> for HttpMethod {
     }
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn HttpRequest_new(
     method: AsType<HttpMethod, String>,
     path: String,
@@ -286,7 +286,7 @@ fn HttpRequest_new(
     })
 }
 
-#[bridge_fn_void(ffi = false, jni = false)]
+#[bridge_fn_void(ffi = false)]
 fn HttpRequest_add_header(
     request: &HttpRequest,
     name: AsType<HeaderName, String>,
@@ -298,7 +298,7 @@ fn HttpRequest_add_header(
     (*guard).append(header_key, header_value);
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn ChatService_new(
     connection_manager: &ConnectionManager,
     username: String,
@@ -317,12 +317,12 @@ fn ChatService_new(
     }
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn ChatService_disconnect(chat: &Chat) {
     chat.service.disconnect().await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn ChatService_unauth_send(
     chat: &Chat,
     http_request: &HttpRequest,
@@ -340,7 +340,7 @@ async fn ChatService_unauth_send(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn ChatService_unauth_send_and_debug(
     chat: &Chat,
     http_request: &HttpRequest,

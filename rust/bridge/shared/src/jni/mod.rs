@@ -556,6 +556,13 @@ where
         }
         SignalJniError::Svr3(_) => jni_class_name!(org.signal.libsignal.svr.SvrException),
 
+        SignalJniError::InvalidUri(_) => {
+            jni_class_name!(java.net.MalformedURLException)
+        }
+        SignalJniError::ChatService(_) => {
+            jni_class_name!(org.signal.libsignal.net.ChatServiceException)
+        }
+
         #[cfg(feature = "testing-fns")]
         SignalJniError::TestingError { exception_class } => exception_class,
     };
@@ -701,6 +708,10 @@ static PRELOADED_CLASSES: OnceCell<HashMap<&'static str, GlobalRef>> = OnceCell:
 const PRELOADED_CLASS_NAMES: &[&str] = &[
     jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry),
     jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse),
+    jni_class_name!(org.signal.libsignal.net.ChatService),
+    jni_class_name!(org.signal.libsignal.net.ChatService::Response),
+    jni_class_name!(org.signal.libsignal.net.ChatService::DebugInfo),
+    jni_class_name!(org.signal.libsignal.net.ChatService::ResponseAndDebugInfo),
     jni_class_name!(org.signal.libsignal.internal.TestingException),
 ];
 

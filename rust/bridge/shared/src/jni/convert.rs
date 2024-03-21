@@ -16,6 +16,7 @@ use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
+use crate::net::ResponseAndDebugInfo;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -1021,6 +1022,125 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let Self {
+            status,
+            message,
+            body,
+            headers,
+        } = self;
+
+        // body
+        let body = body.as_deref().unwrap_or(&[]);
+        let body_arr = env.byte_array_from_slice(body)?;
+
+        // message
+        let message_local = env.new_string(message.as_deref().unwrap_or(""))?;
+
+        // headers
+        let headers_map = new_object(
+            env,
+            jni_class_name!(java.util.HashMap),
+            jni_args!(() -> void),
+        )?;
+        let headers_jmap = JMap::from_env(env, &headers_map)?;
+        for (name, value) in headers.iter() {
+            let name_str = env.new_string(name.as_str())?;
+            let value_str = env.new_string(value.to_str().expect("valid header value"))?;
+            headers_jmap.put(env, &name_str, &value_str)?;
+        }
+
+        let class = {
+            const RESPONSE_CLASS: &str =
+                jni_class_name!(org.signal.libsignal.net.ChatService::Response);
+            get_preloaded_class(env, RESPONSE_CLASS)
+                .transpose()
+                .unwrap_or_else(|| env.find_class(RESPONSE_CLASS))?
+        };
+
+        Ok(new_object(
+            env,
+            class,
+            jni_args!((
+                status.as_u16().into() => int,
+                message_local => java.lang.String,
+                headers_jmap => java.util.Map,
+                body_arr => [byte]
+            ) -> void),
+        )?)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let Self {
+            connection_reused,
+            reconnect_count,
+            ip_type,
+        } = self;
+
+        // reconnect count as i32
+        let reconnect_count_i32: i32 = reconnect_count.try_into().expect("within i32 range");
+
+        // ip type as code
+        let ip_type_byte = ip_type as i8;
+
+        let class = {
+            const RESPONSE_CLASS: &str =
+                jni_class_name!(org.signal.libsignal.net.ChatService::DebugInfo);
+            get_preloaded_class(env, RESPONSE_CLASS)
+                .transpose()
+                .unwrap_or_else(|| env.find_class(RESPONSE_CLASS))?
+        };
+
+        Ok(new_object(
+            env,
+            class,
+            jni_args!((
+                connection_reused => boolean,
+                reconnect_count_i32 => int,
+                ip_type_byte => byte
+            ) -> void),
+        )?)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let Self {
+            response,
+            debug_info,
+        } = self;
+
+        let response: JObject<'a> = response.convert_into(env)?;
+        let debug_info: JObject<'a> = debug_info.convert_into(env)?;
+
+        let class = {
+            const RESPONSE_CLASS: &str =
+                jni_class_name!(org.signal.libsignal.net.ChatService::ResponseAndDebugInfo);
+            get_preloaded_class(env, RESPONSE_CLASS)
+                .transpose()
+                .unwrap_or_else(|| env.find_class(RESPONSE_CLASS))?
+        };
+
+        Ok(new_object(
+            env,
+            class,
+            jni_args!((
+                response => org.signal.libsignal.net.ChatService::Response,
+                debug_info => org.signal.libsignal.net.ChatService::DebugInfo
+            ) -> void),
+        )?)
+    }
+}
+
 /// Converts each element of `it` to a Java object, storing the result in an array.
 ///
 /// `element_type_signature` should use [`jni_class_name`] if it's a plain class and
@@ -1342,6 +1462,15 @@ macro_rules! jni_result_type {
         jni::JObject<'local>
     };
     (LookupResponse) => {
+        jni::JObject<'local>
+    };
+    (Response) => {
+        jni::JObject<'local>
+    };
+    (DebugInfo) => {
+        jni::JObject<'local>
+    };
+    (ResponseAndDebugInfo) => {
         jni::JObject<'local>
     };
     (CiphertextMessage) => {
