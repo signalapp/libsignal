@@ -58,7 +58,7 @@ pub fn new_handshake(
     raft_config_override: Option<&'static RaftConfig>,
 ) -> Result<Handshake, enclave::Error> {
     let expected_raft_config = expected_raft_config(mr_enclave, raft_config_override)?;
-    let handshake_start = proto::svr2::ClientHandshakeStart::decode(attestation_msg)?;
+    let handshake_start = proto::svr::ClientHandshakeStart::decode(attestation_msg)?;
     let handshake = Handshake::for_nitro(
         mr_enclave,
         &handshake_start.evidence,
@@ -409,12 +409,12 @@ impl AttestationDoc {
     fn extract_attestation_data(
         &self,
         expected_pcrs: &PcrMap,
-    ) -> Result<Option<proto::svr2::AttestationData>, NitroError> {
+    ) -> Result<Option<proto::svr::AttestationData>, NitroError> {
         self.validate_pcrs(expected_pcrs)?;
         self.user_data
             .as_ref()
             .map(|user_data| {
-                proto::svr2::AttestationData::decode(user_data.as_slice())
+                proto::svr::AttestationData::decode(user_data.as_slice())
                     .map_err(|_| NitroError::InvalidUserData)
             })
             .transpose()

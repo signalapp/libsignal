@@ -13,7 +13,7 @@ use prost::Message;
 use crate::cert_chain::{self, CertChain};
 use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
 use crate::expireable::Expireable as _;
-use crate::proto::svr2;
+use crate::proto::{svr, svr3};
 use crate::svr2::expected_raft_config;
 
 use crate::constants::TPM2SNP_EXPECTED_PCRS;
@@ -27,7 +27,7 @@ const MSFT_AKCERT_ROOT_PEM: &[u8] = include_bytes!("../res/msft_akcert_root.pem"
 
 pub fn new_handshake(enclave: &[u8], attestation_msg: &[u8], now: SystemTime) -> Result<Handshake> {
     let expected_raft_config = expected_raft_config(enclave, None)?;
-    let handshake_start = svr2::ClientHandshakeStart::decode(attestation_msg)?;
+    let handshake_start = svr::ClientHandshakeStart::decode(attestation_msg)?;
     Handshake::for_tpm2snp(
         enclave,
         &handshake_start.evidence,
@@ -44,8 +44,8 @@ impl Handshake {
         endorsements: &[u8],
         now: SystemTime,
     ) -> Result<UnvalidatedHandshake> {
-        let evidence = svr2::AsnpEvidence::decode(evidence)?;
-        let endorsements = svr2::AsnpEndorsements::decode(endorsements)?;
+        let evidence = svr3::AsnpEvidence::decode(evidence)?;
+        let endorsements = svr3::AsnpEndorsements::decode(endorsements)?;
         let attestation_data = attest(enclave, &evidence, &endorsements, now)?;
         let claims = Claims::from_attestation_data(attestation_data)?;
         Handshake::with_claims(claims)
@@ -54,10 +54,10 @@ impl Handshake {
 
 fn attest(
     enclave: &[u8],
-    evidence: &svr2::AsnpEvidence,
-    endorsements: &svr2::AsnpEndorsements,
+    evidence: &svr3::AsnpEvidence,
+    endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
-) -> Result<svr2::AttestationData> {
+) -> Result<svr::AttestationData> {
     let ak_cert_pk = verify_ak_cert(evidence, endorsements, now)?;
     let runtime_pk = verify_snp_report(evidence, endorsements, now)?;
     if !(ak_cert_pk.n() == runtime_pk.n() && ak_cert_pk.e() == runtime_pk.e()) {
@@ -73,12 +73,12 @@ fn attest(
             })?;
     let tpm2_report = verify_tpm2_quote(evidence, expected_pcrs)?;
     let attestation_data = tpm2_report.verify_atteststion_data(&evidence.attestation_data)?;
-    Ok(svr2::AttestationData::decode(attestation_data.as_ref())?)
+    Ok(svr::AttestationData::decode(attestation_data.as_ref())?)
 }
 
 fn verify_ak_cert(
-    evidence: &svr2::AsnpEvidence,
-    endorsements: &svr2::AsnpEndorsements,
+    evidence: &svr3::AsnpEvidence,
+    endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
 ) -> Result<Rsa<Public>> {
     let akcert = X509::from_der(&evidence.akcert_der).expect("valid cert der");
@@ -109,8 +109,8 @@ fn verify_ak_cert(
 }
 
 fn verify_snp_report(
-    evidence: &svr2::AsnpEvidence,
-    endorsements: &svr2::AsnpEndorsements,
+    evidence: &svr3::AsnpEvidence,
+    endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
 ) -> Result<Rsa<Public>> {
     let vcek_cert_public_key = verify_vcek_cert(endorsements, now)?;
@@ -123,7 +123,7 @@ fn verify_snp_report(
 }
 
 fn verify_vcek_cert(
-    endorsements: &svr2::AsnpEndorsements,
+    endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
 ) -> Result<PKey<Public>> {
     let vcek_cert = X509::from_der(&endorsements.vcek_der)?;
@@ -178,7 +178,7 @@ impl From<snp::Error> for Error {
 }
 
 fn verify_tpm2_quote<'a>(
-    evidence: &'a svr2::AsnpEvidence,
+    evidence: &'a svr3::AsnpEvidence,
     expected_pcrs: &tpm2::PcrMap,
 ) -> Result<tpm2::Report<'a>> {
     let signature = tpm2::Signature::from_slice(&evidence.sig)?;
@@ -206,11 +206,11 @@ mod test {
     #[test]
     fn full_tpm2snp_attestation() {
         let attestation_data = include_bytes!("../tests/data/tpm2snp_attestation_msg.dat");
-        let attestation = svr2::ClientHandshakeStart::decode(attestation_data.as_slice())
-            .expect("valid protobuf");
+        let attestation =
+            svr::ClientHandshakeStart::decode(attestation_data.as_slice()).expect("valid protobuf");
         let evidence =
-            svr2::AsnpEvidence::decode(attestation.evidence.as_slice()).expect("valid evidence");
-        let endorsements = svr2::AsnpEndorsements::decode(attestation.endorsement.as_slice())
+            svr3::AsnpEvidence::decode(attestation.evidence.as_slice()).expect("valid evidence");
+        let endorsements = svr3::AsnpEndorsements::decode(attestation.endorsement.as_slice())
             .expect("valid endorsements");
         attest(
             ENCLAVE_ID_SVR3_TPM2SNP_STAGING,

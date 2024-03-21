@@ -7,7 +7,7 @@ use crate::constants::{ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED
 use prost::Message;
 
 use crate::enclave::{Error, Handshake, Result};
-use crate::proto::svr2;
+use crate::proto::svr;
 
 /// A RaftConfig that can be checked against the attested remote config
 #[derive(Debug)]
@@ -18,8 +18,8 @@ pub struct RaftConfig {
     pub group_id: u64,
 }
 
-impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
-    fn eq(&self, pb: &svr2::RaftGroupConfig) -> bool {
+impl PartialEq<svr::RaftGroupConfig> for RaftConfig {
+    fn eq(&self, pb: &svr::RaftGroupConfig) -> bool {
         pb.min_voting_replicas == self.min_voting_replicas
             && pb.max_voting_replicas == self.max_voting_replicas
             && pb.super_majority == self.super_majority
@@ -78,7 +78,7 @@ fn new_handshake_with_constants(
     expected_raft_config: &RaftConfig,
 ) -> Result<Handshake> {
     // Deserialize attestation handshake start.
-    let handshake_start = svr2::ClientHandshakeStart::decode(attestation_msg)?;
+    let handshake_start = svr::ClientHandshakeStart::decode(attestation_msg)?;
     let handshake = Handshake::for_sgx(
         mrenclave,
         &handshake_start.evidence,
@@ -138,7 +138,7 @@ mod tests {
         expected: &RaftConfig,
     ) -> bool {
         expected
-            == &svr2::RaftGroupConfig {
+            == &svr::RaftGroupConfig {
                 min_voting_replicas,
                 max_voting_replicas,
                 super_majority,
