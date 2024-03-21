@@ -48,7 +48,7 @@ pub struct Clock {
     pub millis_since_clear: u64,
     pub resets: u32,
     pub restarts: u32,
-    pub safe: u8,
+    pub is_safe: bool,
 }
 
 pub struct Report<'a> {
@@ -189,12 +189,12 @@ impl<'a> Report<'a> {
             let millis_since_clear = view.read_be_u64().map_err(|_| Error::InvalidReport)?;
             let resets = view.read_be_u32().map_err(|_| Error::InvalidReport)?;
             let restarts = view.read_be_u32().map_err(|_| Error::InvalidReport)?;
-            let safe = view.read_u8().map_err(|_| Error::InvalidReport)?;
+            let is_safe = view.read_u8().map_err(|_| Error::InvalidReport)? == 0x01;
             Clock {
                 millis_since_clear,
                 resets,
                 restarts,
-                safe,
+                is_safe,
             }
         };
 
