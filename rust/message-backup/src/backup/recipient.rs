@@ -179,6 +179,7 @@ impl TryFrom<proto::Group> for GroupData {
             whitelisted: _,
             hideStory: _,
             storySendMode: _,
+            name: _,
             special_fields: _,
         } = value;
 
