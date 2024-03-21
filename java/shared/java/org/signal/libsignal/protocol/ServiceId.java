@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 
 public abstract class ServiceId {
@@ -107,6 +108,7 @@ public abstract class ServiceId {
     return parseFromFixedWidthBinary(storage);
   }
 
+  @CalledFromNative
   public static ServiceId parseFromFixedWidthBinary(byte[] storage)
       throws InvalidServiceIdException {
     if (storage == null) {

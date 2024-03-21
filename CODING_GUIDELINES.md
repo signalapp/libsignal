@@ -66,6 +66,11 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - **Write javadocs** unless an API is trivial (or not app-team-facing). Even for internal methods, though, if you do write a comment, make it a doc comment (like for Rust code), because it shows up in IDEs.
 
+- Our Java code gets minified with [Android's R8] tool, which scans for usages of all items (classes, methods, fields) and prunes those that are never used. It can't see usages from Rust code via JNI, so additional annotations are required. **Annotate classes, methods, and fields that are accessed via JNI with `@CalledFromNative`**, which is recognized by the directives in [`libsignal.pro`], to ensure they are kept.
+
+[Android's R8]: https://developer.android.com/build/shrink-code
+[`libsignal.pro`]: ./java/shared/resources/META-INF/proguard/libsignal.pro
+
 
 # Swift
 

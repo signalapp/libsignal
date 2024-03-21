@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.state;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.IdentityKeyPair;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
@@ -14,8 +15,10 @@ import org.signal.libsignal.protocol.SignalProtocolAddress;
  *
  * @author Moxie Marlinspike
  */
+@CalledFromNative
 public interface IdentityKeyStore {
 
+  @CalledFromNative
   public enum Direction {
     SENDING,
     RECEIVING

@@ -7,10 +7,12 @@ package org.signal.libsignal.net;
 
 import java.util.Map;
 import java.util.Objects;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.protocol.ServiceId;
 
 public class CdsiLookupResponse {
   public static class Entry {
+    @CalledFromNative
     Entry(byte[] aci, byte[] pni) throws ServiceId.InvalidServiceIdException {
       this(
           aci != null ? ServiceId.Aci.parseFromFixedWidthBinary(aci) : null,
@@ -42,6 +44,7 @@ public class CdsiLookupResponse {
     public final ServiceId.Pni pni;
   }
 
+  @CalledFromNative
   CdsiLookupResponse(Map<String, Entry> entries, int debugPermitsUsed) {
     this.entries = entries;
     this.debugPermitsUsed = debugPermitsUsed;

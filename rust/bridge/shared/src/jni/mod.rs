@@ -846,8 +846,8 @@ pub fn check_jobject_type(
 
 /// Calls a method, then clones the Rust value from the result.
 ///
-/// The method is assumed to return a type with a `long nativeHandle()` method, which in turn must
-/// produce a boxed Rust value.
+/// The method is assumed to return a type with a `long unsafeHandle` field,
+/// which in turn must hold a raw pointer produced from a boxed Rust value.
 pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
     env: &mut JNIEnv,
     store_obj: &JObject,

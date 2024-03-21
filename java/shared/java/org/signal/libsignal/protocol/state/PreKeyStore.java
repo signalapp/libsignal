@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol.state;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.protocol.InvalidKeyIdException;
 
 /**
@@ -12,6 +13,7 @@ import org.signal.libsignal.protocol.InvalidKeyIdException;
  *
  * @author Moxie Marlinspike
  */
+@CalledFromNative
 public interface PreKeyStore {
 
   /**

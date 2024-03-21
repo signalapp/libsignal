@@ -6,8 +6,10 @@
 package org.signal.libsignal.protocol.groups.state;
 
 import java.util.UUID;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 
+@CalledFromNative
 public interface SenderKeyStore {
 
   /**

@@ -7,6 +7,7 @@ package org.signal.libsignal.protocol;
 
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ecc.Curve;
@@ -52,6 +53,7 @@ public class IdentityKeyPair {
     return privateKey;
   }
 
+  @CalledFromNative
   public byte[] serialize() {
     try (NativeHandleGuard publicKey = new NativeHandleGuard(this.publicKey.getPublicKey());
         NativeHandleGuard privateKey = new NativeHandleGuard(this.privateKey); ) {

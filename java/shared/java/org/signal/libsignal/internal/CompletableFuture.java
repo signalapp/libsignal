@@ -23,6 +23,7 @@ public class CompletableFuture<T> implements Future<T> {
   private Throwable exception;
   private List<ThenApplyCompleter<T>> consumers;
 
+  @CalledFromNative
   public CompletableFuture() {
     this.consumers = new ArrayList<>();
   }
@@ -43,6 +44,7 @@ public class CompletableFuture<T> implements Future<T> {
     return completed;
   }
 
+  @CalledFromNative
   public synchronized boolean complete(T result) {
     if (completed) return false;
 
@@ -58,6 +60,7 @@ public class CompletableFuture<T> implements Future<T> {
     return true;
   }
 
+  @CalledFromNative
   public synchronized boolean completeExceptionally(Throwable throwable) {
     if (completed) return false;
 

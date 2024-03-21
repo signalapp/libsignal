@@ -12,7 +12,7 @@ import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 
-class Aes256GcmSiv implements NativeHandleGuard.Owner {
+public class Aes256GcmSiv implements NativeHandleGuard.Owner {
   private final long unsafeHandle;
 
   public Aes256GcmSiv(byte[] key) throws InvalidKeyException {
@@ -30,7 +30,7 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
     return this.unsafeHandle;
   }
 
-  byte[] encrypt(byte[] plaintext, byte[] nonce, byte[] associated_data) {
+  public byte[] encrypt(byte[] plaintext, byte[] nonce, byte[] associated_data) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return filterExceptions(
           () ->
@@ -38,7 +38,7 @@ class Aes256GcmSiv implements NativeHandleGuard.Owner {
     }
   }
 
-  byte[] decrypt(byte[] ciphertext, byte[] nonce, byte[] associated_data)
+  public byte[] decrypt(byte[] ciphertext, byte[] nonce, byte[] associated_data)
       throws InvalidMessageException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return filterExceptions(
