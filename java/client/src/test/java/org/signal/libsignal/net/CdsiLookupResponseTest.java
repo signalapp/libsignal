@@ -70,6 +70,8 @@ public class CdsiLookupResponseTest {
     assertEquals(retryLater.duration, Duration.ofSeconds(42));
 
     assertLookupErrorIs(
+        "InvalidToken", CdsiInvalidTokenException.class, "Request token was invalid");
+    assertLookupErrorIs(
         "Parse", CdsiProtocolException.class, "Failed to parse the response from the server");
     assertLookupErrorIs("ConnectDnsFailed", IOException.class, "DNS lookup failed");
     assertLookupErrorIs(

@@ -67,6 +67,11 @@ final class NetTests: XCTestCase {
             XCTAssertEqual(message, "Rate limited; try again after 42s")
         }
         do {
+            try failWithError("InvalidToken")
+        } catch SignalError.cdsiInvalidToken(let message) {
+            XCTAssertEqual(message, "CDSI request token was invalid")
+        }
+        do {
             try failWithError("Parse")
         } catch SignalError.networkProtocolError(let message) {
             XCTAssertEqual(message, "Protocol error: failed to parse the response from the server")

@@ -251,6 +251,8 @@ pub enum LookupError {
     InvalidResponse,
     /// retry later
     RateLimited { retry_after_seconds: u32 },
+    /// request token was invalid
+    InvalidToken,
     /// failed to parse the response from the server
     ParseError,
     /// transport failed: {0}
@@ -321,6 +323,8 @@ impl RateLimitExceededResponse {
     const CLOSE_CODE: u16 = 4008;
 }
 
+const INVALID_TOKEN_CLOSE_CODE: u16 = 4101;
+
 #[cfg_attr(test, derive(Debug))]
 pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
 
@@ -348,15 +352,19 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
             NextOrClose::Next(response) => response,
             NextOrClose::Close(close) => {
                 if let Some(close) = close {
-                    if u16::from(close.code) == RateLimitExceededResponse::CLOSE_CODE {
-                        if let Ok(RateLimitExceededResponse {
-                            retry_after_seconds,
-                        }) = serde_json::from_str(&close.reason)
-                        {
-                            return Err(LookupError::RateLimited {
+                    match u16::from(close.code) {
+                        RateLimitExceededResponse::CLOSE_CODE => {
+                            if let Ok(RateLimitExceededResponse {
                                 retry_after_seconds,
-                            });
+                            }) = serde_json::from_str(&close.reason)
+                            {
+                                return Err(LookupError::RateLimited {
+                                    retry_after_seconds,
+                                });
+                            }
                         }
+                        INVALID_TOKEN_CLOSE_CODE => return Err(LookupError::InvalidToken),
+                        _ => (),
                     }
                 };
                 return Err(LookupError::Protocol);
@@ -590,5 +598,50 @@ mod test {
                 retry_after_seconds: 100
             })
         )
+    }
+
+    #[tokio::test]
+    async fn websocket_invalid_token_close() {
+        let (server, client) = fake_websocket().await;
+
+        const INVALID_TOKEN: &[u8] = b"invalid token";
+
+        let on_message = |next: NextOrClose<Vec<u8>>| {
+            let message_bytes = next.unwrap_next();
+            let client_request =
+                ClientRequest::decode(message_bytes.as_slice()).expect("can decode");
+            assert_eq!(client_request.token, INVALID_TOKEN);
+
+            NextOrClose::Close(Some(CloseFrame {
+                code: CloseCode::Bad(INVALID_TOKEN_CLOSE_CODE),
+                reason: "invalid token".into(),
+            }))
+        };
+
+        tokio::spawn(run_attested_server(
+            server,
+            attest::sgx_session::testutil::private_key(),
+            on_message,
+        ));
+
+        let ws_client =
+            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let cdsi_connection = CdsiConnection(
+            AttestedConnection::connect(ws_client, |fake_attestation| {
+                assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                attest::sgx_session::testutil::handshake_from_tests_data()
+            })
+            .await
+            .expect("handshake failed"),
+        );
+
+        let response = cdsi_connection
+            .send_request(LookupRequest {
+                token: INVALID_TOKEN.into(),
+                ..Default::default()
+            })
+            .await;
+
+        assert_matches!(response, Err(LookupError::InvalidToken));
     }
 }

@@ -263,6 +263,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
                 retry_after: Duration::from_secs(retry_after_seconds.into()),
             },
             LookupError::ParseError => CdsiError::ParseError,
+            LookupError::InvalidToken => CdsiError::InvalidToken,
         })
     }
 }

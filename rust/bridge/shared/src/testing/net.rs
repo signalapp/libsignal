@@ -52,6 +52,7 @@ enum TestingCdsiLookupError {
     AttestationDataError,
     InvalidResponse,
     RetryAfter42Seconds,
+    InvalidToken,
     Parse,
     ConnectDnsFailed,
     WebSocketIdleTooLong,
@@ -82,6 +83,7 @@ fn TESTING_CdsiLookupErrorConvert(
         TestingCdsiLookupError::RetryAfter42Seconds => LookupError::RateLimited {
             retry_after_seconds: 42,
         },
+        TestingCdsiLookupError::InvalidToken => LookupError::InvalidToken,
         TestingCdsiLookupError::Parse => LookupError::ParseError,
         TestingCdsiLookupError::ConnectDnsFailed => LookupError::ConnectTransport(
             libsignal_net::infra::errors::TransportConnectError::DnsError,

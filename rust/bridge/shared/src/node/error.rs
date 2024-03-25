@@ -454,6 +454,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
                 }),
             ),
             Self::AttestationError(e) => return e.throw(cx, module, operation_name),
+            Self::InvalidToken => ("CdsiInvalidToken", None),
             Self::Timeout
             | Self::ConnectTransport(_)
             | Self::WebSocket(_)

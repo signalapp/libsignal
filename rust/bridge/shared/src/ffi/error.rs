@@ -39,6 +39,7 @@ pub enum SignalFfiError {
     WebSocket(#[from] WebSocketServiceError),
     Timeout,
     NetworkProtocol(String),
+    CdsiInvalidToken,
     RateLimited {
         retry_after_seconds: u32,
     },
@@ -77,6 +78,7 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
             SignalFfiError::Timeout => write!(f, "Operation timed out"),
             SignalFfiError::WebSocket(e) => write!(f, "WebSocket error: {e}"),
+            SignalFfiError::CdsiInvalidToken => write!(f, "CDSI request token was invalid"),
             SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
             SignalFfiError::RateLimited {
                 retry_after_seconds,
@@ -206,6 +208,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
             } => SignalFfiError::RateLimited {
                 retry_after_seconds: retry_after,
             },
+            LookupError::InvalidToken => SignalFfiError::CdsiInvalidToken,
         }
     }
 }

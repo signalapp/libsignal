@@ -83,6 +83,7 @@ pub enum SignalErrorCode {
     NetworkProtocol = 134,
     RateLimited = 135,
     WebSocket = 136,
+    CdsiInvalidToken = 137,
 
     SvrDataMissing = 150,
     SvrRestoreFailed = 151,
@@ -321,6 +322,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::WebSocket(_) => SignalErrorCode::WebSocket,
             SignalFfiError::Timeout => SignalErrorCode::Timeout,
             SignalFfiError::NetworkProtocol(_) => SignalErrorCode::NetworkProtocol,
+            SignalFfiError::CdsiInvalidToken => SignalErrorCode::CdsiInvalidToken,
             SignalFfiError::RateLimited {
                 retry_after_seconds: _,
             } => SignalErrorCode::RateLimited,

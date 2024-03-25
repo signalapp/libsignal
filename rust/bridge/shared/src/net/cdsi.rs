@@ -32,6 +32,8 @@ pub enum CdsiError {
     RateLimited { retry_after: Duration },
     /// Failed to parse the response from the server
     ParseError,
+    /// Request token was invalid
+    InvalidToken,
 }
 
 #[derive(Default)]

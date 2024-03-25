@@ -188,6 +188,7 @@ typedef enum {
   SignalErrorCodeNetworkProtocol = 134,
   SignalErrorCodeRateLimited = 135,
   SignalErrorCodeWebSocket = 136,
+  SignalErrorCodeCdsiInvalidToken = 137,
   SignalErrorCodeSvrDataMissing = 150,
   SignalErrorCodeSvrRestoreFailed = 151,
 } SignalErrorCode;

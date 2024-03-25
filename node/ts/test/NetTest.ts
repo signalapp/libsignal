@@ -164,6 +164,11 @@ describe('cdsi lookup', () => {
         ],
         ['RetryAfter42Seconds', ErrorCode.RateLimitedError, 'retry later'],
         [
+          'InvalidToken',
+          ErrorCode.CdsiInvalidToken,
+          'request token was invalid',
+        ],
+        [
           'Parse',
           ErrorCode.IoError,
           'failed to parse the response from the server',

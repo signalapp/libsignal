@@ -31,6 +31,7 @@ export enum ErrorCode {
   DiscriminatorTooLarge,
 
   IoError,
+  CdsiInvalidToken,
   InvalidUri,
 
   InvalidMediaInput,
@@ -187,6 +188,10 @@ export type IoError = LibSignalErrorCommon & {
   code: ErrorCode.IoError;
 };
 
+export type CdsiInvalidTokenError = LibSignalErrorCommon & {
+  code: ErrorCode.CdsiInvalidToken;
+};
+
 export type InvalidUriError = LibSignalErrorCommon & {
   code: ErrorCode.InvalidUri;
 };
@@ -241,6 +246,7 @@ export type LibSignalError =
   | InvalidEntropyDataLength
   | InvalidUsernameLinkEncryptedData
   | IoError
+  | CdsiInvalidTokenError
   | InvalidUriError
   | InvalidMediaInputError
   | SvrDataMissingError

@@ -564,6 +564,9 @@ where
             unreachable!("already handled above")
         }
 
+        SignalJniError::Cdsi(CdsiError::InvalidToken) => {
+            jni_class_name!(org.signal.libsignal.net.CdsiInvalidTokenException)
+        }
         SignalJniError::Cdsi(
             CdsiError::InvalidResponse | CdsiError::ParseError | CdsiError::Protocol,
         ) => jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),

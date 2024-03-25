@@ -56,6 +56,7 @@ public enum SignalError: Error {
     case webSocketError(String)
     case timeoutError(String)
     case networkProtocolError(String)
+    case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
     case unknown(UInt32, String)
     case svrDataMissing(String)
@@ -171,6 +172,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.timeoutError(errStr)
     case SignalErrorCodeNetworkProtocol:
         throw SignalError.networkProtocolError(errStr)
+    case SignalErrorCodeCdsiInvalidToken:
+        throw SignalError.cdsiInvalidToken(errStr)
     case SignalErrorCodeRateLimited:
         let retryAfterSeconds = try invokeFnReturningInteger {
             signal_error_get_retry_after_seconds(error, $0)
